@@ -1,0 +1,318 @@
+import {
+  HeroBlockConfig,
+  ProductBlockConfig,
+  CategoryBlockConfig,
+  ContentBlockConfig,
+  BlockRegistry
+} from "@/lib/types/blocks";
+
+const heroFullWidthDefault: HeroBlockConfig = {
+  variant: "fullWidth",
+  title: "Welcome to Our Store",
+  subtitle: "Discover amazing plumbing and bathroom products.",
+  cta: {
+    text: "Shop Catalog",
+    link: "/catalog",
+    style: "primary"
+  },
+  background: {
+    type: "image",
+    src: "https://images.unsplash.com/photo-1676210134188-4c05dd172f89?auto=format&fit=crop&w=1600&q=80",
+    alt: "Technician installing piping"
+  },
+  textAlign: "center",
+  height: "large",
+  overlay: 0.35
+};
+
+const heroSplitDefault: HeroBlockConfig = {
+  variant: "split",
+  title: "Configure Luxury Bathrooms",
+  subtitle: "Curated vanities, fittings, and showers shipped direct.",
+  cta: {
+    text: "Explore Projects",
+    link: "/projects",
+    style: "secondary"
+  },
+  image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80",
+  imagePosition: "right",
+  backgroundColor: "#f8f9fa"
+};
+
+const heroCarouselDefault: HeroBlockConfig = {
+  variant: "carousel",
+  slides: [
+    {
+      title: "Replacement Boiler Kits",
+      subtitle: "Available for next-day delivery in major cities.",
+      cta: { text: "View Kits", link: "/collections/boilers", style: "primary" },
+      image: "https://images.unsplash.com/photo-1588619461335-b81119fee1b5?auto=format&fit=crop&w=1600&q=80"
+    },
+    {
+      title: "Designer Tapware",
+      subtitle: "Premium finishes with trade-only pricing.",
+      cta: { text: "Browse Tapware", link: "/collections/tapware", style: "secondary" },
+      image: "https://images.unsplash.com/photo-1540574163026-643ea20ade25?auto=format&fit=crop&w=1600&q=80"
+    }
+  ],
+  autoplay: true,
+  interval: 5000,
+  showDots: true,
+  showArrows: true
+};
+
+const productSliderDefault: ProductBlockConfig = {
+  variant: "slider",
+  title: "Featured Trade Bundles",
+  subtitle: "Ready-to-install bundles curated by our resident engineers.",
+  collection: "featured",
+  limit: 8,
+  columns: { mobile: 1, tablet: 2, desktop: 4 },
+  showBadges: true,
+  showQuickAdd: true,
+  slidesPerView: 4,
+  spaceBetween: 24
+};
+
+const productGridDefault: ProductBlockConfig = {
+  variant: "grid",
+  title: "All Plumbing Essentials",
+  collection: "all",
+  limit: 12,
+  columns: { mobile: 2, tablet: 3, desktop: 4 },
+  showFilters: true,
+  showSort: true,
+  pagination: "infinite-scroll"
+};
+
+const categoryGridDefault: CategoryBlockConfig = {
+  variant: "grid",
+  title: "Shop by System",
+  categories: [],
+  layout: "grid",
+  columns: { mobile: 2, tablet: 3, desktop: 4 },
+  showImage: true,
+  showCount: true,
+  imageAspectRatio: "1:1"
+};
+
+const categoryCarouselDefault: CategoryBlockConfig = {
+  variant: "carousel",
+  title: "Browse Categories",
+  categories: [],
+  slidesPerView: 5,
+  showImage: true
+};
+
+const contentRichTextDefault: ContentBlockConfig = {
+  variant: "richText",
+  content:
+    "<p class='leading-relaxed'>Add engaging content, FAQs, or installation tips to support your trade customers.</p>",
+  width: "contained",
+  textAlign: "left",
+  padding: "medium"
+};
+
+const contentFeaturesDefault: ContentBlockConfig = {
+  variant: "features",
+  title: "Why Installers Choose VINC",
+  features: [
+    {
+      icon: "🚚",
+      title: "Same-Day Dispatch",
+      description: "Ship direct from EU distribution hubs."
+    },
+    {
+      icon: "🛠️",
+      title: "Technical Support",
+      description: "Product specialists ready to advise on every order."
+    },
+    {
+      icon: "📦",
+      title: "Bundled Pricing",
+      description: "Quote faster with preconfigured kits and volume pricing."
+    }
+  ],
+  columns: { mobile: 1, tablet: 2, desktop: 3 }
+};
+
+const contentTestimonialsDefault: ContentBlockConfig = {
+  variant: "testimonials",
+  title: "Trusted by Installers Across Europe",
+  testimonials: [
+    {
+      quote: "VINC keeps our teams supplied with premium fixtures without the hassle.",
+      author: "Gianni R.",
+      role: "Owner, Milano Plumbing Co.",
+      rating: 5
+    },
+    {
+      quote: "The private storefront lets us price confidently for each customer.",
+      author: "Sofia L.",
+      role: "Project Manager, AquaBuild",
+      rating: 5
+    }
+  ],
+  layout: "carousel",
+  showRating: true,
+  showAvatar: false
+};
+
+export const BLOCK_REGISTRY: BlockRegistry = {
+  hero: {
+    id: "hero",
+    name: "Hero Section",
+    category: "headers",
+    variants: {
+      fullWidth: {
+        id: "hero-full-width",
+        label: "Full Width Hero",
+        icon: "🖼️",
+        defaultConfig: heroFullWidthDefault
+      },
+      split: {
+        id: "hero-split",
+        label: "Split Hero",
+        icon: "📱",
+        defaultConfig: heroSplitDefault
+      },
+      carousel: {
+        id: "hero-carousel",
+        label: "Carousel Hero",
+        icon: "🎠",
+        defaultConfig: heroCarouselDefault
+      }
+    }
+  },
+  product: {
+    id: "product",
+    name: "Product Section",
+    category: "commerce",
+    variants: {
+      slider: {
+        id: "product-slider",
+        label: "Product Slider",
+        icon: "🛍️",
+        defaultConfig: productSliderDefault
+      },
+      grid: {
+        id: "product-grid",
+        label: "Product Grid",
+        icon: "📦",
+        defaultConfig: productGridDefault
+      }
+    }
+  },
+  category: {
+    id: "category",
+    name: "Category Section",
+    category: "navigation",
+    variants: {
+      grid: {
+        id: "category-grid",
+        label: "Category Grid",
+        icon: "📑",
+        defaultConfig: categoryGridDefault
+      },
+      carousel: {
+        id: "category-carousel",
+        label: "Category Carousel",
+        icon: "🎪",
+        defaultConfig: categoryCarouselDefault
+      }
+    }
+  },
+  content: {
+    id: "content",
+    name: "Content Section",
+    category: "content",
+    variants: {
+      richText: {
+        id: "content-rich-text",
+        label: "Rich Text",
+        icon: "📝",
+        defaultConfig: contentRichTextDefault
+      },
+      features: {
+        id: "content-features",
+        label: "Feature Grid",
+        icon: "⭐",
+        defaultConfig: contentFeaturesDefault
+      },
+      testimonials: {
+        id: "content-testimonials",
+        label: "Testimonials",
+        icon: "💬",
+        defaultConfig: contentTestimonialsDefault
+      }
+    }
+  }
+};
+
+export const getAllBlockTemplates = () =>
+  Object.values(BLOCK_REGISTRY).flatMap((section) => Object.values(section.variants));
+
+export const getBlockTemplate = (variantId: string) => {
+  for (const section of Object.values(BLOCK_REGISTRY)) {
+    const variant = Object.values(section.variants).find((item) => item.id === variantId);
+    if (variant) {
+      return variant;
+    }
+  }
+  return null;
+};
+
+export const DEFAULT_HOME_BLOCKS = [
+  {
+    id: "hero-default",
+    type: "hero-full-width",
+    order: 0,
+    config: heroFullWidthDefault
+  },
+  {
+    id: "categories-default",
+    type: "category-grid",
+    order: 1,
+    config: {
+      ...categoryGridDefault,
+      categories: [
+        {
+          id: "hydronics",
+          name: "Hydronic Heating",
+          image: "https://images.unsplash.com/photo-1620825141088-a824daf6a46b?auto=format&fit=crop&w=640&q=80",
+          link: "/categories/hydronics"
+        },
+        {
+          id: "bathroom",
+          name: "Bathroom Suites",
+          image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=640&q=80",
+          link: "/categories/bathroom"
+        },
+        {
+          id: "kitchen",
+          name: "Kitchen Tapware",
+          image: "https://images.unsplash.com/photo-1581166397057-235af2b3c6dd?auto=format&fit=crop&w=640&q=80",
+          link: "/categories/kitchen"
+        },
+        {
+          id: "tools",
+          name: "Service Tools",
+          image: "https://images.unsplash.com/photo-1654923203455-23b1e9dd97ec?auto=format&fit=crop&w=640&q=80",
+          link: "/categories/tools"
+        }
+      ]
+    }
+  },
+  {
+    id: "products-default",
+    type: "product-slider",
+    order: 2,
+    config: productSliderDefault
+  },
+  {
+    id: "content-default",
+    type: "content-features",
+    order: 3,
+    config: contentFeaturesDefault
+  }
+];
