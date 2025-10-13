@@ -76,17 +76,37 @@ const ensureDefaultHomepage = async () => {
 };
 
 export const getPageConfig = async (slug: string): Promise<PageConfig | null> => {
-  await connectToDatabase();
+  try {
+    await connectToDatabase();
 
-  if (slug === "home") {
-    return ensureDefaultHomepage();
-  }
+    if (slug === "home") {
+      return ensureDefaultHomepage();
+    }
 
-  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
-  if (!doc) {
+    const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+    if (!doc) {
+      return null;
+    }
+    return serializePage(doc);
+  } catch (error) {
+    console.error("Failed to load page config", error);
+    if (slug === "home") {
+      return serializePage({
+        slug: "home",
+        name: "Homepage",
+        blocks: resolveDefaultBlocks(),
+        seo: {
+          title: "VINC Trade Supply – Private Storefront",
+          description:
+            "Configure private storefronts for installers with curated plumbing, HVAC, and bathroom fixtures."
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        published: true
+      });
+    }
     return null;
   }
-  return serializePage(doc);
 };
 
 export const getAllPages = async (): Promise<PageConfig[]> => {

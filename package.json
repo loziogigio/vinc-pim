@@ -12,10 +12,11 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "dompurify": "^3.2.7",
     "framer-motion": "^11.0.17",
     "lucide-react": "^0.424.0",
-    "mongoose": "^8.19.1",
     "mongodb": "^6.20.0",
+    "mongoose": "^8.19.1",
     "next": "^15.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
