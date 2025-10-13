@@ -1,3 +1,6 @@
+'use client';
+
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -12,9 +15,12 @@ import {
   Store,
   Sun
 } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+
+const MotionImage = motion.create(Image);
 
 type Category = {
   id: number;
@@ -39,40 +45,158 @@ type Post = {
 };
 
 const categories: Category[] = [
-  { id: 1, name: "Cheese", image: "https://picsum.photos/seed/cheese/120/80" },
-  { id: 2, name: "Ham", image: "https://picsum.photos/seed/ham/120/80" },
-  { id: 3, name: "Pasta", image: "https://picsum.photos/seed/pasta/120/80" },
-  { id: 4, name: "Wine", image: "https://picsum.photos/seed/wine/120/80" },
-  { id: 5, name: "Olive Oil", image: "https://picsum.photos/seed/oil/120/80" },
-  { id: 6, name: "Sweets", image: "https://picsum.photos/seed/sweets/120/80" },
-  { id: 7, name: "Coffee", image: "https://picsum.photos/seed/coffee/120/80" },
-  { id: 8, name: "Bakery", image: "https://picsum.photos/seed/bakery/120/80" },
-  { id: 9, name: "Antipasti", image: "https://picsum.photos/seed/antipasti/120/80" },
-  { id: 10, name: "Sauces", image: "https://picsum.photos/seed/sauces/120/80" }
+  {
+    id: 1,
+    name: "Pipe Fittings",
+    image: "https://images.unsplash.com/photo-1555001972-76611884af13?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 2,
+    name: "Valves & Controls",
+    image: "https://images.unsplash.com/photo-1581166397057-235af2b3c6dd?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 3,
+    name: "Drainage",
+    image: "https://images.unsplash.com/photo-1620825141088-a824daf6a46b?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 4,
+    name: "Faucets",
+    image: "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 5,
+    name: "Showers",
+    image: "https://images.unsplash.com/photo-1567016376408-0226e4d0c1ea?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 6,
+    name: "Bath Furniture",
+    image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 7,
+    name: "Heating & Boilers",
+    image: "https://images.unsplash.com/photo-1588619461335-b81119fee1b5?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 8,
+    name: "Sealants & Tape",
+    image: "https://images.unsplash.com/photo-1654923203455-23b1e9dd97ec?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 9,
+    name: "Power Tools",
+    image: "https://images.unsplash.com/photo-1581166418878-11f0dde922c2?auto=format&fit=crop&w=320&q=80"
+  },
+  {
+    id: 10,
+    name: "Service Kits",
+    image: "https://images.unsplash.com/photo-1654440122140-f1fc995ddb34?auto=format&fit=crop&w=320&q=80"
+  }
 ];
 
-const products: Product[] = Array.from({ length: 16 }).map((_, i) => ({
-  id: i + 1,
-  name: `Product ${i + 1}`,
-  price: (9.9 + i).toFixed(2),
-  compareAt: i % 3 === 0 ? (12.9 + i).toFixed(2) : null,
-  rating: 4 + ((i % 2) as 0 | 1) * 0.5,
-  image: `https://picsum.photos/seed/prod${i}/600/400`
-}));
+const products: Product[] = [
+  {
+    id: 1,
+    name: "ProPEX Expansion Tool Kit",
+    price: "129.90",
+    compareAt: "149.90",
+    rating: 4.5,
+    image: "https://images.unsplash.com/photo-1581166397057-235af2b3c6dd?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 2,
+    name: "Thermostatic Shower Column",
+    price: "499.00",
+    compareAt: "549.00",
+    rating: 4.5,
+    image: "https://images.unsplash.com/photo-1567016376408-0226e4d0c1ea?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 3,
+    name: "Wall-Mounted Vanity Set",
+    price: "899.00",
+    compareAt: null,
+    rating: 4.0,
+    image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 4,
+    name: "Stainless Work Basin & Faucet",
+    price: "259.90",
+    compareAt: "289.90",
+    rating: 5,
+    image: "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 5,
+    name: "High-Flow Sump Pump",
+    price: "349.00",
+    compareAt: null,
+    rating: 4.5,
+    image: "https://images.unsplash.com/photo-1620825141088-a824daf6a46b?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 6,
+    name: "Copper Press Fittings (50 pcs)",
+    price: "189.00",
+    compareAt: "209.00",
+    rating: 4.5,
+    image: "https://images.unsplash.com/photo-1555001972-76611884af13?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 7,
+    name: "Condensing Boiler Maintenance Kit",
+    price: "129.00",
+    compareAt: null,
+    rating: 4,
+    image: "https://images.unsplash.com/photo-1588619461335-b81119fee1b5?auto=format&fit=crop&w=640&q=80"
+  },
+  {
+    id: 8,
+    name: "Pro Service Tool Roll",
+    price: "89.90",
+    compareAt: "99.90",
+    rating: 4.5,
+    image: "https://images.unsplash.com/photo-1654923203455-23b1e9dd97ec?auto=format&fit=crop&w=640&q=80"
+  }
+];
 
-const posts: Post[] = Array.from({ length: 6 }).map((_, i) => ({
-  id: i + 1,
-  title: `How to pair Italian ${["cheese", "ham", "wine", "pasta"][i % 4]} like a pro`,
-  image: `https://picsum.photos/seed/blog${i}/800/500`,
-  excerpt: "Short preview text to show a compelling story about taste, regions and tradition…"
-}));
+const posts: Post[] = [
+  {
+    id: 1,
+    title: "How to spec the right valve for commercial jobs",
+    image: "https://images.unsplash.com/photo-1595345263387-c01f60e7c1b9?auto=format&fit=crop&w=880&q=80",
+    excerpt: "Key pressure ratings, media compatibility, and install tips to help you choose the perfect valve every time."
+  },
+  {
+    id: 2,
+    title: "Planning spa-like bathrooms clients will love",
+    image: "https://images.unsplash.com/photo-1487015307662-6ce6210680f1?auto=format&fit=crop&w=880&q=80",
+    excerpt: "From concealed mixers to floating vanities, here’s how installers elevate residential bath projects."
+  },
+  {
+    id: 3,
+    title: "Five must-have tools for rapid callouts",
+    image: "https://images.unsplash.com/photo-1618373012585-ae012fc350e8?auto=format&fit=crop&w=880&q=80",
+    excerpt: "A curated checklist to keep every emergency service van stocked and profitable."
+  },
+  {
+    id: 4,
+    title: "Troubleshooting hydronic heating complaints",
+    image: "https://images.unsplash.com/photo-1654440122140-f1fc995ddb34?auto=format&fit=crop&w=880&q=80",
+    excerpt: "Learn the diagnostic flow our pros follow before swapping pumps or controls."
+  }
+];
 
 const Section = ({
   children,
   title,
   className = ""
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   title?: string;
   className?: string;
 }) => (
@@ -94,7 +218,11 @@ const useDarkMode = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    dark ? root.classList.add("dark") : root.classList.remove("dark");
+    if (dark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
   }, [dark]);
 
   return { dark, setDark };
@@ -139,7 +267,7 @@ const CategoryScroller = ({ items }: { items: Category[] }) => {
       try {
         ref.current.releasePointerCapture(pointerId.current);
       } catch {
-        // ignore release errors if pointer already released
+        // pointer already released
       }
       pointerId.current = null;
     }
@@ -171,10 +299,13 @@ const CategoryScroller = ({ items }: { items: Category[] }) => {
             key={category.id}
             className="group inline-flex flex-shrink-0 items-center gap-3 rounded-2xl border bg-card px-3 py-2 shadow-sm transition-colors hover:bg-accent"
           >
-            <img
+            <Image
               src={category.image}
               alt={category.name}
+              width={120}
+              height={80}
               className="h-8 w-12 rounded-xl object-cover"
+              sizes="48px"
             />
             <span className="text-sm font-medium whitespace-nowrap md:text-[15px]">
               {category.name}
@@ -207,7 +338,7 @@ const Header = ({
       </Button>
       <div className="flex items-center gap-2">
         <Store className="text-primary" />
-        <span className="text-lg font-semibold">VIC Store</span>
+        <span className="text-lg font-semibold">VINC Trade Supply</span>
       </div>
       <div className="hidden flex-1 items-center gap-2 md:flex">
         <div className="relative w-full">
@@ -232,10 +363,13 @@ const Header = ({
 
 const HeroBanner = () => (
   <div className="relative h-[48vh] w-full overflow-hidden rounded-3xl md:h-[56vh]">
-    <img
-      src="https://picsum.photos/seed/hero/1600/900"
-      className="absolute inset-0 h-full w-full object-cover"
-      alt="hero"
+    <Image
+      src="https://images.unsplash.com/photo-1676210134188-4c05dd172f89?auto=format&fit=crop&w=1600&q=80"
+      alt="Plumber at work installing piping"
+      fill
+      priority
+      className="object-cover"
+      sizes="100vw"
     />
     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
     <div className="absolute bottom-6 left-6 max-w-xl text-white md:left-10">
@@ -244,7 +378,7 @@ const HeroBanner = () => (
         animate={{ opacity: 1, y: 0 }}
         className="text-3xl font-bold leading-tight md:text-5xl"
       >
-        Italian Flavours, Delivered
+        Trade-Ready Plumbing Supply, Delivered Fast
       </motion.h1>
       <motion.p
         initial={{ opacity: 0 }}
@@ -252,12 +386,12 @@ const HeroBanner = () => (
         transition={{ delay: 0.1 }}
         className="mt-2 text-white/90 md:mt-3"
       >
-        Curated boxes and daily essentials from trusted producers.
+        Stock your crew with pro fixtures, fittings, and finish-grade bath furniture in one place.
       </motion.p>
       <div className="mt-4 flex gap-3">
-        <Button className="rounded-xl">Shop Now</Button>
+        <Button className="rounded-xl">Shop Catalog</Button>
         <Button variant="secondary" className="rounded-xl">
-          View Collections
+          Request Trade Account
         </Button>
       </div>
     </div>
@@ -267,56 +401,100 @@ const HeroBanner = () => (
 const HeroSplit = () => (
   <div className="grid items-stretch gap-4 overflow-hidden rounded-3xl md:grid-cols-2 md:gap-6">
     <div className="flex flex-col justify-center rounded-3xl border bg-card p-6 md:p-10">
-      <h1 className="text-3xl font-bold md:text-5xl">Your Private Storefront</h1>
+      <h1 className="text-3xl font-bold md:text-5xl">Built for Installers</h1>
       <p className="mt-3 text-muted-foreground">
-        Start in minutes. Use supplier catalogs, your prices, your brand.
+        Upload supplier price lists, manage customer quotes, and bundle premium bath furniture in
+        minutes.
       </p>
       <div className="mt-5 flex gap-3">
-        <Button className="rounded-xl">Create Account</Button>
+        <Button className="rounded-xl">Create Free Account</Button>
         <Button variant="outline" className="rounded-xl">
-          Learn More
+          Explore Platform
         </Button>
       </div>
     </div>
-    <div className="overflow-hidden rounded-3xl">
-      <img
-        src="https://picsum.photos/seed/split/1200/800"
-        className="h-full w-full object-cover"
-        alt="hero"
+    <div className="relative overflow-hidden rounded-3xl">
+      <Image
+        src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80"
+        alt="Modern bathroom interior with freestanding tub"
+        fill
+        className="object-cover"
+        sizes="(min-width: 768px) 50vw, 100vw"
       />
     </div>
   </div>
 );
 
+const gridImages = [
+  {
+    label: "Copper & PEX",
+    image: "https://images.unsplash.com/photo-1581166397057-235af2b3c6dd?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    label: "Bathroom Suites",
+    image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    label: "Drainage Kits",
+    image: "https://images.unsplash.com/photo-1620825141088-a824daf6a46b?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    label: "Heating Systems",
+    image: "https://images.unsplash.com/photo-1588619461335-b81119fee1b5?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    label: "Tool Bundles",
+    image: "https://images.unsplash.com/photo-1654923203455-23b1e9dd97ec?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    label: "Service Packages",
+    image: "https://images.unsplash.com/photo-1676210134188-4c05dd172f89?auto=format&fit=crop&w=1200&q=80"
+  }
+];
+
 const HeroGrid = () => (
   <div className="grid grid-cols-2 gap-4 rounded-3xl md:grid-cols-3 md:gap-6">
-    {["Pasta Nights", "Cheese & Wine", "Weekend Box", "Aperitivo", "Gift Boxes", "Fresh Cuts"].map(
-      (label, index) => (
-        <div
-          key={label}
-          className={`group relative overflow-hidden rounded-3xl ${
-            index === 0 ? "h-56 md:col-span-2 md:row-span-2 md:h-full" : "h-40 md:h-56"
-          }`}
-        >
-          <img
-            src={`https://picsum.photos/seed/grid${index}/900/900`}
-            className="h-full w-full object-cover"
-            alt={label}
-          />
-          <div className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/30" />
-          <div className="absolute bottom-3 left-3 font-semibold text-white drop-shadow">{label}</div>
+    {gridImages.map((item, index) => (
+      <div
+        key={item.label}
+        className={`group relative overflow-hidden rounded-3xl ${
+          index === 0 ? "h-56 md:col-span-2 md:row-span-2 md:h-full" : "h-40 md:h-56"
+        }`}
+      >
+        <Image
+          src={item.image}
+          alt={item.label}
+          fill
+          className="object-cover"
+          sizes="(min-width: 768px) 33vw, 50vw"
+        />
+        <div className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/30" />
+        <div className="absolute bottom-3 left-3 font-semibold text-white drop-shadow">
+          {item.label}
         </div>
-      )
-    )}
+      </div>
+    ))}
   </div>
 );
 
 const HeroCarousel = () => {
   const slides = useMemo(
     () => [
-      { id: 1, title: "Autumn Specials", img: "https://picsum.photos/seed/car1/1600/900" },
-      { id: 2, title: "Fresh from Italy", img: "https://picsum.photos/seed/car2/1600/900" },
-      { id: 3, title: "Holiday Gifts", img: "https://picsum.photos/seed/car3/1600/900" }
+      {
+        id: 1,
+        title: "Express Boiler Replacement Kits",
+        img: "https://images.unsplash.com/photo-1588619461335-b81119fee1b5?auto=format&fit=crop&w=1600&q=80"
+      },
+      {
+        id: 2,
+        title: "Designer Sinks & Tapware",
+        img: "https://images.unsplash.com/photo-1540574163026-643ea20ade25?auto=format&fit=crop&w=1600&q=80"
+      },
+      {
+        id: 3,
+        title: "Service-Van Tool Bundles",
+        img: "https://images.unsplash.com/photo-1654923203455-23b1e9dd97ec?auto=format&fit=crop&w=1600&q=80"
+      }
     ],
     []
   );
@@ -333,15 +511,17 @@ const HeroCarousel = () => {
   return (
     <div className="relative h-[42vh] overflow-hidden rounded-3xl md:h-[56vh]">
       <AnimatePresence mode="wait">
-        <motion.img
+        <MotionImage
           key={slides[index].id}
           src={slides[index].img}
           alt={slides[index].title}
+          fill
+          className="object-cover"
+          sizes="100vw"
           initial={{ opacity: 0, scale: 1.03 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.5 }}
-          className="absolute inset-0 h-full w-full object-cover"
         />
       </AnimatePresence>
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -368,7 +548,7 @@ const HorizontalSlider = <T,>({
   itemWidth = 260
 }: {
   items: T[];
-  renderItem: (item: T) => React.ReactNode;
+  renderItem: (item: T) => ReactNode;
   itemWidth?: number;
 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -405,7 +585,14 @@ const HorizontalSlider = <T,>({
 const ProductCard = ({ product }: { product: Product }) => (
   <Card className="w-[240px] overflow-hidden rounded-2xl shadow-sm transition hover:shadow-md md:w-[260px]">
     <div className="relative">
-      <img src={product.image} alt={product.name} className="h-40 w-full object-cover md:h-48" />
+      <Image
+        src={product.image}
+        alt={product.name}
+        width={640}
+        height={480}
+        className="h-40 w-full object-cover md:h-48"
+        sizes="(min-width: 768px) 260px, 240px"
+      />
       {product.compareAt && (
         <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs text-primary-foreground shadow">
           <Percent size={14} /> Sale
@@ -440,7 +627,14 @@ const ProductCard = ({ product }: { product: Product }) => (
 
 const BlogCard = ({ post }: { post: Post }) => (
   <Card className="w-[300px] overflow-hidden rounded-2xl md:w-[360px]">
-    <img src={post.image} alt={post.title} className="h-40 w-full object-cover md:h-48" />
+    <Image
+      src={post.image}
+      alt={post.title}
+      width={880}
+      height={500}
+      className="h-40 w-full object-cover md:h-48"
+      sizes="(min-width: 768px) 360px, 300px"
+    />
     <CardHeader className="p-4">
       <CardTitle className="text-base leading-tight md:text-lg line-clamp-2">{post.title}</CardTitle>
     </CardHeader>
@@ -454,7 +648,7 @@ const Footer = () => (
   <footer className="mt-12 border-t">
     <div className="mx-auto grid max-w-screen-xl grid-cols-2 gap-6 px-4 py-10 text-sm md:grid-cols-4 md:px-6">
       <div>
-        <div className="mb-2 font-semibold">VIC Store</div>
+        <div className="mb-2 font-semibold">VINC Trade Supply</div>
         <ul className="space-y-1 text-muted-foreground">
           <li>About</li>
           <li>Careers</li>
@@ -486,7 +680,7 @@ const Footer = () => (
       </div>
     </div>
     <div className="border-t py-4 text-center text-xs text-muted-foreground">
-      © {new Date().getFullYear()} VIC Storefront
+      © {new Date().getFullYear()} VINC Storefront
     </div>
   </footer>
 );
@@ -542,7 +736,7 @@ const ControlPanel = ({
   </div>
 );
 
-export default function App() {
+export default function StorefrontPage() {
   const { dark, setDark } = useDarkMode();
   const [hero, setHero] = useState<HeroVariant>("Banner");
   const [toggles, setToggles] = useState<Record<ToggleKeys, boolean>>({
@@ -590,10 +784,13 @@ export default function App() {
                 key={category.id}
                 className="overflow-hidden rounded-2xl transition hover:shadow-md"
               >
-                <img
+                <Image
                   src={category.image}
                   alt={category.name}
+                  width={320}
+                  height={200}
                   className="h-24 w-full object-cover"
+                  sizes="(min-width: 768px) 180px, 50vw"
                 />
                 <CardContent className="p-2 text-center text-sm font-medium">
                   {category.name}

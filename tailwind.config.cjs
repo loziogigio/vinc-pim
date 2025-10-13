@@ -1,10 +1,12 @@
-import forms from "@tailwindcss/forms";
-import { fontFamily } from "tailwindcss/defaultTheme";
+const forms = require("@tailwindcss/forms");
+const { fontFamily } = require("tailwindcss/defaultTheme");
 
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   darkMode: ["class"],
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx,mdx}"
+  ],
   theme: {
     container: {
       center: true,

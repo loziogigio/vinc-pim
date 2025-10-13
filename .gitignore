@@ -2,6 +2,8 @@
 node_modules/
 
 # build outputs
+.next/
+out/
 dist/
 
 # environment & logs
