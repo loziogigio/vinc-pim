@@ -10,7 +10,8 @@ import {
   X,
   ChevronDown,
   Search,
-  Star
+  Star,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mockCatalog, type MockProduct } from "@/lib/data/mockCatalog";
@@ -191,11 +192,29 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Search Products</h1>
-          <p className="mt-2 text-muted-foreground">
-            {filteredProducts.length} products found
-          </p>
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          {/* Breadcrumbs */}
+          <nav aria-label="Breadcrumb" className="mb-3">
+            <ol className="flex items-center gap-2 text-xs text-muted-foreground">
+              <li>
+                <Link href="/" className="hover:text-primary transition">
+                  Home
+                </Link>
+              </li>
+              <ChevronRight className="h-3 w-3" />
+              <li className="text-foreground font-medium">Search</li>
+            </ol>
+          </nav>
+
+          {/* Header */}
+          <div className="flex items-baseline justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground md:text-2xl">Search Products</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -245,9 +264,9 @@ export default function SearchPage() {
 
               {/* Active Filters */}
               {activeFilterCount > 0 && (
-                <div className="rounded-lg border bg-card p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-foreground">
+                <div className="rounded-lg bg-muted p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">
                       Active Filters ({activeFilterCount})
                     </span>
                     <Button
@@ -265,7 +284,7 @@ export default function SearchPage() {
                         <button
                           key={`${facetId}-${value}`}
                           onClick={() => toggleFilter(facetId, value)}
-                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition hover:bg-primary/20"
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition hover:bg-primary/20"
                         >
                           {value}
                           <X className="h-3 w-3" />
@@ -278,12 +297,12 @@ export default function SearchPage() {
 
               {/* Facets */}
               {facets.map((facet) => (
-                <div key={facet.id} className="rounded-lg border bg-card p-4">
+                <div key={facet.id} className="pb-4 border-b last:border-0">
                   <button
                     onClick={() => {
                       // Toggle facet expansion (you can add state for this if needed)
                     }}
-                    className="flex w-full items-center justify-between text-sm font-semibold text-foreground"
+                    className="flex w-full items-center justify-between text-sm font-semibold text-foreground mb-3"
                   >
                     {facet.label}
                     <ChevronDown
@@ -293,7 +312,7 @@ export default function SearchPage() {
                     />
                   </button>
                   {facet.expanded && (
-                    <div className="mt-3 space-y-2">
+                    <div className="space-y-2">
                       {facet.options.map((option) => {
                         const isSelected = selectedFilters[facet.id]?.includes(option.value);
                         return (
@@ -322,7 +341,7 @@ export default function SearchPage() {
           {/* Main Content */}
           <main className="space-y-4">
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b">
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(true)}
