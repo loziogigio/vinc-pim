@@ -191,35 +191,27 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b">
-        <div className="mx-auto max-w-7xl px-4 py-3">
-          {/* Breadcrumbs & Header Combined */}
-          <div className="flex flex-col gap-1">
-            <nav aria-label="Breadcrumb">
-              <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <li>
-                  <Link href="/" className="hover:text-primary transition">
-                    Home
-                  </Link>
-                </li>
-                <ChevronRight className="h-3 w-3" />
-                <li className="text-foreground">Search</li>
-              </ol>
-            </nav>
-
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-lg font-bold text-foreground md:text-xl">Search Products</h1>
-                <span className="text-xs text-muted-foreground">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
-                </span>
-              </div>
-            </div>
-          </div>
+      <div className="mx-auto max-w-7xl px-4 py-3">
+        {/* Breadcrumbs with results count */}
+        <div className="flex items-center justify-between">
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <li>
+                <Link href="/" className="hover:text-primary transition">
+                  Home
+                </Link>
+              </li>
+              <ChevronRight className="h-3 w-3" />
+              <li className="text-foreground">Search</li>
+            </ol>
+          </nav>
+          <span className="text-xs text-muted-foreground">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+          </span>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-4">
+      <div className="mx-auto max-w-7xl px-4 pb-4">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
           {/* Filters Sidebar */}
           <aside
