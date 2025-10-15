@@ -1,55 +1,52 @@
-import { connectToDatabase } from "@/lib/db/connection";
-import { PageModel, type PageDocument } from "@/lib/db/models/page";
-import { resolveDefaultBlocks } from "@/lib/config/blockTemplates";
-import { pageConfigSchema, type PageConfigInput } from "@/lib/validation/blockSchemas";
-import type { BlockConfig, PageBlock, PageConfig } from "@/lib/types/blocks";
+import { connectToDatabase } from "./connection";
+import { PageModel, type PageDocument } from "./models/page";
+import type { PageConfig, PageBlock, BlockConfig, PageVersion } from "@/lib/types/blocks";
+import { pageConfigSchema } from "@/lib/validation/blockSchemas";
+import { sanitizeBlock } from "@/lib/validation/sanitizers";
 
 const serializeBlock = (
-  block: {
-    id: string;
-    type: string;
-    order?: number;
-    config: unknown;
-    metadata?: Record<string, unknown>;
-  }
-): PageBlock => ({
-  id: block.id,
-  type: block.type,
-  order: block.order ?? 0,
+  block: { id: string; type: string; order?: number; config: unknown; metadata?: Record<string, unknown> }
+): PageBlock<BlockConfig> => ({
+  id: String(block.id),
+  type: String(block.type),
+  order: Number(block.order ?? 0),
   config: block.config as BlockConfig,
   metadata: block.metadata ?? {}
 });
 
 const serializePage = (
   doc: Record<string, unknown> & {
-    blocks?: unknown[];
-    seo?: Record<string, unknown>;
+    versions?: unknown[];
+    currentVersion?: number | null;
+    currentPublishedVersion?: number | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
-    published?: boolean;
   }
-): PageConfig =>
-  pageConfigSchema.parse({
+): PageConfig => {
+  return pageConfigSchema.parse({
     slug: String(doc.slug ?? ""),
     name: String(doc.name ?? ""),
-    blocks: Array.isArray(doc.blocks)
-      ? doc.blocks.map((block) =>
-          serializeBlock(
-            block as {
-              id: string;
-              type: string;
-              order?: number;
-              config: unknown;
-              metadata?: Record<string, unknown>;
-            }
-          )
-        )
+    versions: Array.isArray(doc.versions)
+      ? doc.versions.map((v: any) => ({
+          version: v.version,
+          blocks: Array.isArray(v.blocks)
+            ? v.blocks.map((block: any) => serializeBlock(block))
+            : [],
+          seo: v.seo,
+          status: v.status,
+          createdAt: v.createdAt,
+          lastSavedAt: v.lastSavedAt,
+          publishedAt: v.publishedAt,
+          createdBy: v.createdBy,
+          comment: v.comment
+        }))
       : [],
-    seo: doc.seo ?? undefined,
+    currentVersion: doc.currentVersion || 0,
+    currentPublishedVersion: doc.currentPublishedVersion ?? undefined,
     createdAt: new Date(doc.createdAt ?? Date.now()).toISOString(),
-    updatedAt: new Date(doc.updatedAt ?? Date.now()).toISOString(),
-    published: doc.published ?? true
+    updatedAt: new Date(doc.updatedAt ?? Date.now()).toISOString()
   });
+};
 
 const ensureDefaultHomepage = async () => {
   const existing = await PageModel.findOne({ slug: "home" }).lean<PageDocument | null>();
@@ -58,84 +55,449 @@ const ensureDefaultHomepage = async () => {
   }
 
   const now = new Date();
-  const created = await PageModel.create({
+  const newPage = await PageModel.create({
     slug: "home",
     name: "Homepage",
-    blocks: resolveDefaultBlocks(),
-    seo: {
-      title: "VINC Trade Supply – Private Storefront",
-      description:
-        "Configure private storefronts for installers with curated plumbing, HVAC, and bathroom fixtures."
-    },
-    published: true,
+    versions: [],
+    currentVersion: 0,
+    currentPublishedVersion: undefined,
     createdAt: now,
     updatedAt: now
   });
 
-  return serializePage(created.toObject());
+  return serializePage(newPage.toObject());
 };
 
-export const getPageConfig = async (slug: string): Promise<PageConfig | null> => {
-  try {
-    await connectToDatabase();
+export const getPageConfig = async (slug: string): Promise<PageConfig> => {
+  await connectToDatabase();
 
-    if (slug === "home") {
-      return ensureDefaultHomepage();
-    }
-
-    const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
-    if (!doc) {
-      return null;
-    }
-    return serializePage(doc);
-  } catch (error) {
-    console.error("Failed to load page config", error);
-    if (slug === "home") {
-      return serializePage({
-        slug: "home",
-        name: "Homepage",
-        blocks: resolveDefaultBlocks(),
-        seo: {
-          title: "VINC Trade Supply – Private Storefront",
-          description:
-            "Configure private storefronts for installers with curated plumbing, HVAC, and bathroom fixtures."
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        published: true
-      });
-    }
-    return null;
+  if (slug === "home") {
+    return ensureDefaultHomepage();
   }
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) {
+    throw new Error("Page not found");
+  }
+
+  return serializePage(doc);
 };
 
-export const getAllPages = async (): Promise<PageConfig[]> => {
-  await connectToDatabase();
-  const docs = await PageModel.find({}).lean<PageDocument[]>();
-  return docs.map(serializePage);
-};
-
-export const savePageConfig = async (input: PageConfigInput): Promise<PageConfig> => {
-  const parsed = pageConfigSchema.parse({
-    ...input,
-    createdAt: input.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
-
+// Save - updates current version if it's a draft, or creates new version if current is published
+export const savePage = async (input: {
+  slug: string;
+  blocks: PageBlock[];
+  seo?: any;
+}): Promise<PageConfig> => {
   await connectToDatabase();
 
-  const doc = await PageModel.findOneAndUpdate(
-    { slug: parsed.slug },
+  const { slug, blocks, seo } = input;
+
+  // Sanitize blocks
+  const sanitizedBlocks = blocks.map((block) => sanitizeBlock(block));
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  const now = new Date();
+  const nowISO = now.toISOString();
+
+  if (!doc) {
+    // Create new page with version 1 as draft
+    const version1: PageVersion = {
+      version: 1,
+      blocks: sanitizedBlocks,
+      seo,
+      status: "draft",
+      createdAt: nowISO,
+      lastSavedAt: nowISO,
+      createdBy: "admin",
+      comment: "Version 1"
+    };
+
+    const newPage = await PageModel.create({
+      slug,
+      name: slug === "home" ? "Homepage" : slug,
+      versions: [version1],
+      currentVersion: 1,
+      currentPublishedVersion: undefined,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    return serializePage(newPage.toObject());
+  }
+
+  const versions = doc.versions || [];
+
+  // Get the current working version by currentVersion number from doc
+  const currentVersion = versions.find((v: any) => v.version === doc.currentVersion) as PageVersion | undefined;
+
+  if (!currentVersion) {
+    // No versions exist, create version 1 as draft
+    const version1: PageVersion = {
+      version: 1,
+      blocks: sanitizedBlocks,
+      seo,
+      status: "draft",
+      createdAt: nowISO,
+      lastSavedAt: nowISO,
+      createdBy: "admin",
+      comment: "Version 1"
+    };
+
+    const updated = await PageModel.findOneAndUpdate(
+      { slug },
+      {
+        versions: [version1],
+        currentVersion: 1,
+        updatedAt: now
+      },
+      { new: true }
+    );
+
+    if (!updated) throw new Error("Failed to save");
+    return serializePage(updated.toObject());
+  }
+
+  if (currentVersion.status === "draft") {
+    // Update existing draft version
+    const updatedVersions = versions.map((v: any) =>
+      v.version === currentVersion.version
+        ? {
+            ...v,
+            blocks: sanitizedBlocks,
+            seo,
+            lastSavedAt: nowISO
+          }
+        : v
+    );
+
+    const updated = await PageModel.findOneAndUpdate(
+      { slug },
+      {
+        versions: updatedVersions,
+        updatedAt: now
+      },
+      { new: true }
+    );
+
+    if (!updated) throw new Error("Failed to save");
+    return serializePage(updated.toObject());
+  }
+
+  // Current version is published, create new draft version
+  // Calculate next version by finding max version number in versions array
+  const maxVersion = versions.reduce((max: number, v: any) => Math.max(max, v.version || 0), 0);
+  const nextVersion = maxVersion + 1;
+
+  // Validate that this version doesn't already exist (prevents duplicates)
+  const versionExists = versions.some((v: any) => v.version === nextVersion);
+  if (versionExists) {
+    throw new Error(`Version ${nextVersion} already exists. Data corruption detected.`);
+  }
+
+  const newVersion: PageVersion = {
+    version: nextVersion,
+    blocks: sanitizedBlocks,
+    seo,
+    status: "draft",
+    createdAt: nowISO,
+    lastSavedAt: nowISO,
+    createdBy: "admin",
+    comment: `Version ${nextVersion}`
+  };
+
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
     {
-      name: parsed.name,
-      blocks: parsed.blocks,
-      seo: parsed.seo,
-      published: parsed.published ?? true,
-      createdAt: parsed.createdAt,
-      updatedAt: parsed.updatedAt
+      versions: [...versions, newVersion],
+      currentVersion: nextVersion,
+      updatedAt: now
     },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { new: true }
   );
 
-  return serializePage(doc.toObject());
+  if (!updated) throw new Error("Failed to save");
+  return serializePage(updated.toObject());
+};
+
+// Hot Fix - updates a published version in-place without creating new version
+export const hotfixPage = async (input: {
+  slug: string;
+  blocks: PageBlock[];
+  seo?: any;
+}): Promise<PageConfig> => {
+  await connectToDatabase();
+
+  const { slug, blocks, seo } = input;
+
+  // Sanitize blocks
+  const sanitizedBlocks = blocks.map((block) => sanitizeBlock(block));
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) throw new Error("Page not found");
+
+  const versions = doc.versions || [];
+  const currentVersion = versions.find((v: any) => v.version === doc.currentVersion) as PageVersion | undefined;
+
+  if (!currentVersion) {
+    throw new Error(`No version ${doc.currentVersion} found to hotfix`);
+  }
+
+  if (currentVersion.status !== "published") {
+    throw new Error(`Version ${currentVersion.version} is not published. Use regular save for draft versions.`);
+  }
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+
+  // Update the published version directly
+  const updatedVersions = versions.map((v: any) =>
+    v.version === currentVersion.version
+      ? {
+          ...v,
+          blocks: sanitizedBlocks,
+          seo,
+          lastSavedAt: nowISO
+          // Keep publishedAt, status, and other metadata unchanged
+        }
+      : v
+  );
+
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
+    {
+      versions: updatedVersions,
+      updatedAt: now
+    },
+    { new: true }
+  );
+
+  if (!updated) throw new Error("Failed to apply hotfix");
+  return serializePage(updated.toObject());
+};
+
+// Publish - marks current version as published
+export const publishPage = async (slug: string): Promise<PageConfig> => {
+  await connectToDatabase();
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) throw new Error("Page not found");
+
+  const versions = doc.versions || [];
+
+  // Get the current working version by currentVersion number from doc
+  const currentVersion = versions.find((v: any) => v.version === doc.currentVersion) as PageVersion | undefined;
+
+  if (!currentVersion) {
+    throw new Error(`No version ${doc.currentVersion} found to publish`);
+  }
+
+  if (currentVersion.status === "published") {
+    throw new Error(`Version ${currentVersion.version} is already published. Create a new draft version to make changes.`);
+  }
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+
+  // Mark current version as published
+  const updatedVersions = versions.map((v: any) =>
+    v.version === currentVersion.version
+      ? {
+          ...v,
+          status: "published",
+          publishedAt: nowISO
+        }
+      : v
+  );
+
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
+    {
+      versions: updatedVersions,
+      currentPublishedVersion: currentVersion.version,
+      updatedAt: now
+    },
+    { new: true }
+  );
+
+  if (!updated) throw new Error("Failed to publish");
+  return serializePage(updated.toObject());
+};
+
+// Load version - loads a specific version as the current working version
+/**
+ * Load a version for editing - just switches the current version pointer
+ * Does NOT create a new version, just makes the selected version current
+ */
+export const loadVersion = async (slug: string, version: number): Promise<PageConfig> => {
+  await connectToDatabase();
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) throw new Error("Page not found");
+
+  const versions = doc.versions || [];
+  const targetVersion = versions.find((v: any) => v.version === version);
+
+  if (!targetVersion) {
+    throw new Error("Version not found");
+  }
+
+  const now = new Date();
+
+  // Just update the currentVersion pointer to switch to this version
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
+    {
+      currentVersion: version,
+      updatedAt: now
+    },
+    { new: true }
+  );
+
+  if (!updated) throw new Error("Failed to load version");
+  return serializePage(updated.toObject());
+};
+
+// Delete version - removes a version from history
+export const deleteVersion = async (slug: string, version: number): Promise<PageConfig> => {
+  await connectToDatabase();
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) throw new Error("Page not found");
+
+  // Cannot delete current version
+  if (version === doc.currentVersion) {
+    throw new Error("Cannot delete the current version");
+  }
+
+  // Cannot delete current published version
+  if (version === doc.currentPublishedVersion) {
+    throw new Error("Cannot delete the current published version");
+  }
+
+  const updatedVersions = (doc.versions || []).filter((v: any) => v.version !== version);
+
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
+    {
+      versions: updatedVersions,
+      updatedAt: new Date()
+    },
+    { new: true }
+  );
+
+  if (!updated) throw new Error("Failed to delete version");
+  return serializePage(updated.toObject());
+};
+
+// Duplicate version - creates a new draft version with content from an existing version
+export const duplicateVersion = async (slug: string, sourceVersion: number): Promise<PageConfig> => {
+  await connectToDatabase();
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) throw new Error("Page not found");
+
+  const versions = doc.versions || [];
+
+  // Find the source version to duplicate
+  const sourceVersionData = versions.find((v: any) => v.version === sourceVersion);
+  if (!sourceVersionData) {
+    throw new Error(`Source version ${sourceVersion} not found`);
+  }
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+
+  // Calculate next version number
+  const maxVersion = versions.reduce((max: number, v: any) => Math.max(max, v.version || 0), 0);
+  const nextVersion = maxVersion + 1;
+
+  // Validate that this version doesn't already exist
+  const versionExists = versions.some((v: any) => v.version === nextVersion);
+  if (versionExists) {
+    throw new Error(`Version ${nextVersion} already exists. Data corruption detected.`);
+  }
+
+  // Create new version with duplicated content
+  const newVersion: PageVersion = {
+    version: nextVersion,
+    blocks: JSON.parse(JSON.stringify(sourceVersionData.blocks)), // Deep clone blocks
+    seo: sourceVersionData.seo ? JSON.parse(JSON.stringify(sourceVersionData.seo)) : undefined,
+    status: "draft",
+    createdAt: nowISO,
+    lastSavedAt: nowISO,
+    createdBy: "admin",
+    comment: `Version ${nextVersion} (duplicated from v${sourceVersion})`
+  };
+
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
+    {
+      versions: [...versions, newVersion],
+      currentVersion: nextVersion,
+      updatedAt: now
+    },
+    { new: true }
+  );
+
+  if (!updated) throw new Error("Failed to duplicate version");
+  return serializePage(updated.toObject());
+};
+
+// Start new version - creates a new draft version from scratch
+export const startNewVersion = async (slug: string): Promise<PageConfig> => {
+  await connectToDatabase();
+
+  const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (!doc) throw new Error("Page not found");
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+
+  // Calculate next version by finding max version number in versions array
+  const versions = doc.versions || [];
+  const maxVersion = versions.reduce((max: number, v: any) => Math.max(max, v.version || 0), 0);
+  const nextVersion = maxVersion + 1;
+
+  // Validate that this version doesn't already exist (prevents duplicates)
+  const versionExists = versions.some((v: any) => v.version === nextVersion);
+  if (versionExists) {
+    throw new Error(`Version ${nextVersion} already exists. Data corruption detected.`);
+  }
+
+  const newVersion: PageVersion = {
+    version: nextVersion,
+    blocks: [],
+    seo: undefined,
+    status: "draft",
+    createdAt: nowISO,
+    lastSavedAt: nowISO,
+    createdBy: "admin",
+    comment: `Version ${nextVersion}`
+  };
+
+  const updated = await PageModel.findOneAndUpdate(
+    { slug },
+    {
+      versions: [...versions, newVersion],
+      currentVersion: nextVersion,
+      updatedAt: now
+    },
+    { new: true }
+  );
+
+  if (!updated) throw new Error("Failed to start new version");
+  return serializePage(updated.toObject());
+};
+
+/**
+ * Get all pages (for sitemap generation)
+ */
+export const getAllPages = async (): Promise<Array<{ slug: string; updatedAt: string }>> => {
+  await connectToDatabase();
+  const pages = await PageModel.find({}, { slug: 1, updatedAt: 1 }).lean();
+  return pages.map(p => ({
+    slug: p.slug,
+    updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()
+  }));
 };

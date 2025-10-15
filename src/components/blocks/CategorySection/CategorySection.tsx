@@ -45,7 +45,13 @@ const CategoryCard = ({
 const GridLayout = ({ config }: { config: Extract<CategoryBlockConfig, { variant: "grid" }> }) => {
   const categories = useMemo(() => {
     if (config.categories.length) return config.categories;
-    return getMockCategories().map((category) => ({ ...category, productCount: Math.floor(Math.random() * 40) + 1 }));
+    // Use deterministic product counts based on category ID to avoid hydration mismatch
+    return getMockCategories().map((category) => {
+      // Generate consistent count from category ID hash
+      const hash = category.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const productCount = (hash % 40) + 1; // 1-40 products
+      return { ...category, productCount };
+    });
   }, [config.categories]);
 
   const desktopCols = {

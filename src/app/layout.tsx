@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
+import { Suspense } from "react";
 import clsx from "clsx";
 import "./globals.css";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,10 +17,40 @@ type RootLayoutProps = {
   children: React.ReactNode;
 };
 
+const themeInitScript = `
+(() => {
+  try {
+    const storageKey = "vinc-theme";
+    const root = document.documentElement;
+    const stored = window.localStorage.getItem(storageKey);
+    const mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    const system = mql && mql.matches ? "dark" : "light";
+    const theme = stored === "light" || stored === "dark" ? stored : system;
+
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+
+    root.setAttribute("data-theme", theme);
+    root.style.colorScheme = theme;
+  } catch {
+    // no-op
+  }
+})();
+`;
+
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={clsx(inter.className, "bg-background text-foreground")}>{children}</body>
+      <body className={clsx(inter.className, "bg-background text-foreground")}>
+        <Script id="theme-initializer" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Suspense fallback={null}>
+          <SiteHeader />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

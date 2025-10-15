@@ -1,11 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getPageConfig } from "@/lib/db/pages";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { slug: string } }
-) {
-  const slug = params.slug ?? "home";
+export async function GET(request: NextRequest) {
+  const pathname = new URL(request.url).pathname;
+  const slug = pathname.split("/").pop() || "home";
   const pageConfig = await getPageConfig(slug);
 
   if (!pageConfig) {

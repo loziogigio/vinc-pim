@@ -3,7 +3,15 @@ import { SEO_CONFIG } from "@/lib/config/seo";
 import type { PageConfig } from "@/lib/types/blocks";
 
 const getHeroImage = (pageConfig: PageConfig): string | undefined => {
-  const heroBlock = pageConfig.blocks.find((block) => block.type.startsWith("hero"));
+  // Get the latest published version, or fall back to the current version
+  const publishedVersion = pageConfig.currentPublishedVersion
+    ? pageConfig.versions.find(v => v.version === pageConfig.currentPublishedVersion && v.status === "published")
+    : null;
+  const currentVersion = pageConfig.versions[pageConfig.versions.length - 1];
+  const versionToRender = publishedVersion || currentVersion;
+  const blocks = versionToRender?.blocks || [];
+
+  const heroBlock = blocks.find((block) => block.type.startsWith("hero"));
   if (!heroBlock) return undefined;
   const config = heroBlock.config as { variant: string; [key: string]: unknown };
   switch (config.variant) {
@@ -19,11 +27,21 @@ const getHeroImage = (pageConfig: PageConfig): string | undefined => {
 };
 
 export const generatePageMetadata = (pageConfig: PageConfig): Metadata => {
-  const seo = pageConfig.seo ?? {};
+  // Get SEO from the latest published version, or fall back to the current version
+  const publishedVersion = pageConfig.currentPublishedVersion
+    ? pageConfig.versions.find(v => v.version === pageConfig.currentPublishedVersion && v.status === "published")
+    : null;
+  const currentVersion = pageConfig.versions[pageConfig.versions.length - 1];
+  const versionToRender = publishedVersion || currentVersion;
+
+  const seo = versionToRender?.seo ?? {};
   const title = seo.title ?? SEO_CONFIG.defaultMetadata.defaultTitle;
   const description = seo.description ?? SEO_CONFIG.defaultMetadata.defaultDescription;
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? SEO_CONFIG.siteUrl).replace(/\/$/, "");
   const image = seo.image ?? getHeroImage(pageConfig) ?? SEO_CONFIG.defaultMetadata.defaultImage;
-  const pageUrl = `${SEO_CONFIG.siteUrl}${pageConfig.slug === "home" ? "" : `/${pageConfig.slug}`}`;
+  const fallbackOgImage = `${baseUrl}/api/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`;
+  const resolvedImage = image ?? fallbackOgImage;
+  const pageUrl = `${baseUrl}${pageConfig.slug === "home" ? "" : `/${pageConfig.slug}`}`;
 
   return {
     title,
@@ -35,10 +53,10 @@ export const generatePageMetadata = (pageConfig: PageConfig): Metadata => {
       title: seo.ogTitle ?? title,
       description: seo.ogDescription ?? description,
       url: pageUrl,
-      images: image
+      images: resolvedImage
         ? [
             {
-              url: image,
+              url: resolvedImage,
               width: 1200,
               height: 630,
               alt: title
@@ -52,7 +70,7 @@ export const generatePageMetadata = (pageConfig: PageConfig): Metadata => {
       site: SEO_CONFIG.social.twitterHandle,
       title: seo.ogTitle ?? title,
       description: seo.ogDescription ?? description,
-      images: image ? [image] : undefined
+      images: resolvedImage ? [resolvedImage] : undefined
     },
     alternates: {
       canonical: pageUrl

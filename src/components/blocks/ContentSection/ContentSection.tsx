@@ -1,6 +1,6 @@
 "use client";
 
-import DOMPurify from "dompurify";
+import { useEffect, useState } from "react";
 import type { ContentBlockConfig } from "@/lib/types/blocks";
 
 interface ContentSectionProps {
@@ -25,12 +25,24 @@ const textAlignMap = {
   right: "text-right"
 } as const;
 
-const ContentRichText = ({ config }: { config: Extract<ContentBlockConfig, { variant: "richText" }> }) => (
-  <div
-    className={`${widthClassMap[config.width]} ${paddingClassMap[config.padding]} ${textAlignMap[config.textAlign]}`}
-    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(config.content) }}
-  />
-);
+const ContentRichText = ({ config }: { config: Extract<ContentBlockConfig, { variant: "richText" }> }) => {
+  const [sanitizedContent, setSanitizedContent] = useState("");
+
+  useEffect(() => {
+    // Dynamically import DOMPurify only on client-side
+    import("dompurify").then((module) => {
+      const DOMPurify = module.default;
+      setSanitizedContent(DOMPurify.sanitize(config.content));
+    });
+  }, [config.content]);
+
+  return (
+    <div
+      className={`${widthClassMap[config.width]} ${paddingClassMap[config.padding]} ${textAlignMap[config.textAlign]}`}
+      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+    />
+  );
+};
 
 const ContentFeatures = ({ config }: { config: Extract<ContentBlockConfig, { variant: "features" }> }) => {
   const desktopCols = {

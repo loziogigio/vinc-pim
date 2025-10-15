@@ -195,14 +195,40 @@ export const seoSettingsSchema = z.object({
   image: z.string().url().optional()
 });
 
+const pageVersionSchema = z.object({
+  version: z.number(),
+  blocks: z.array(pageBlockSchema),
+  seo: seoSettingsSchema.optional(),
+  status: z.enum(["draft", "published"]),
+  createdAt: z.string(),
+  lastSavedAt: z.string(),
+  publishedAt: z.string().optional(),
+  createdBy: z.string().optional(),
+  comment: z.string().optional()
+});
+
 export const pageConfigSchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
-  blocks: z.array(pageBlockSchema),
-  seo: seoSettingsSchema.optional(),
+  versions: z.array(pageVersionSchema).default([]),
+  currentVersion: z.number().default(0),
+  currentPublishedVersion: z.number().optional(),
   updatedAt: z.string(),
   createdAt: z.string(),
-  published: z.boolean().optional()
+  // Deprecated fields (for backwards compatibility)
+  blocks: z.array(pageBlockSchema).optional(),
+  seo: seoSettingsSchema.optional(),
+  published: z.boolean().optional(),
+  status: z.enum(["draft", "published"]).optional(),
+  publishedVersion: z.number().optional(),
+  draft: z.object({
+    blocks: z.array(pageBlockSchema),
+    seo: seoSettingsSchema.optional(),
+    basedOnVersion: z.number().optional(),
+    lastSavedAt: z.string(),
+    lastSavedBy: z.string().optional()
+  }).optional(),
+  publishedVersions: z.array(pageVersionSchema).optional()
 });
 
 export type PageConfigInput = z.infer<typeof pageConfigSchema>;

@@ -47,6 +47,36 @@ const MOCK_CATEGORIES: CategoryItem[] = [
     name: "Service Tools",
     image: "https://images.unsplash.com/photo-1654923203455-23b1e9dd97ec?auto=format&fit=crop&w=640&q=80",
     link: "/categories/tools"
+  },
+  {
+    id: "water-heaters",
+    name: "Water Heaters",
+    image: "https://images.unsplash.com/photo-1580983669876-26ce2fe10723?auto=format&fit=crop&w=640&q=80",
+    link: "/categories/water-heaters"
+  },
+  {
+    id: "filtration",
+    name: "Water Filtration",
+    image: "https://images.unsplash.com/photo-1613478836448-0e4ac259b010?auto=format&fit=crop&w=640&q=80",
+    link: "/categories/filtration"
+  },
+  {
+    id: "outdoor",
+    name: "Outdoor Kitchens",
+    image: "https://images.unsplash.com/photo-1505692952047-897bf90f17f3?auto=format&fit=crop&w=640&q=80",
+    link: "/categories/outdoor"
+  },
+  {
+    id: "commercial",
+    name: "Commercial Plumbing",
+    image: "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=640&q=80",
+    link: "/categories/commercial"
+  },
+  {
+    id: "smart-home",
+    name: "Smart Home",
+    image: "https://images.unsplash.com/photo-1495375225758-c0c23fef4241?auto=format&fit=crop&w=640&q=80",
+    link: "/categories/smart-home"
   }
 ];
 

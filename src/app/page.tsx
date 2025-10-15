@@ -37,11 +37,21 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(generateStructuredData(pageConfig)) }}
       />
       <main className="mx-auto max-w-screen-xl space-y-12 px-4 py-10 md:px-6 md:py-16">
-        {pageConfig.blocks
-          .sort((a, b) => a.order - b.order)
-          .map((block) => (
-            <ServerBlockRenderer key={block.id} block={block} />
-          ))}
+        {(() => {
+          // Get the latest published version, or fall back to the current version
+          const publishedVersion = pageConfig.currentPublishedVersion
+            ? pageConfig.versions.find(v => v.version === pageConfig.currentPublishedVersion && v.status === "published")
+            : null;
+          const currentVersion = pageConfig.versions[pageConfig.versions.length - 1];
+          const versionToRender = publishedVersion || currentVersion;
+          const blocks = versionToRender?.blocks || [];
+
+          return blocks
+            .sort((a, b) => a.order - b.order)
+            .map((block) => (
+              <ServerBlockRenderer key={block.id} block={block} />
+            ));
+        })()}
       </main>
     </>
   );

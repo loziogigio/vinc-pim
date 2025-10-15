@@ -13,6 +13,7 @@ Quick reference materials, cheat sheets, templates, and glossary for fast lookup
 - **GLOSSARY.md** - Project terminology and definitions
 - **TEMPLATES.md** - Document templates for copy-paste
 - **LINKS.md** - Important links and resources
+- **CDN_SETUP.md** - Configure CDN uploads and environment variables
 
 ---
 

@@ -224,12 +224,40 @@ export interface PageSEOSettings {
   image?: string;
 }
 
+// Version in history (can be draft or published)
+export interface PageVersion {
+  version: number;
+  blocks: PageBlock[];
+  seo?: PageSEOSettings;
+  status: "draft" | "published";
+  createdAt: string;
+  lastSavedAt: string;
+  publishedAt?: string;
+  createdBy?: string;
+  comment?: string;
+}
+
 export interface PageConfig {
   slug: string;
   name: string;
-  blocks: PageBlock[];
-  seo?: PageSEOSettings;
+  // All versions (both draft and published)
+  versions: PageVersion[];
+  // Current working version number
+  currentVersion: number;
+  // Latest published version number
+  currentPublishedVersion?: number;
   updatedAt: string;
   createdAt: string;
+  // Deprecated fields
+  draft?: {
+    blocks: PageBlock[];
+    seo?: PageSEOSettings;
+    basedOnVersion?: number;
+    lastSavedAt: string;
+    lastSavedBy?: string;
+  };
+  publishedVersions?: PageVersion[];
   published?: boolean;
+  status?: "draft" | "published";
+  publishedVersion?: number;
 }

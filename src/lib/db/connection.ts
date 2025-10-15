@@ -18,20 +18,37 @@ if (!globalForMongoose._mongoose) {
 }
 
 export const connectToDatabase = async () => {
-  if (globalForMongoose._mongoose?.conn) {
-    return globalForMongoose._mongoose.conn;
+  const cache = globalForMongoose._mongoose!;
+
+  if (cache.conn) {
+    return cache.conn;
   }
 
-  if (!globalForMongoose._mongoose?.promise) {
-    globalForMongoose._mongoose!.promise = mongoose.connect(mongoUri, {
-      dbName: mongoDbName,
-      minPoolSize: MIN_POOL,
-      maxPoolSize: MAX_POOL,
-      bufferCommands: false
-    });
+  if (!cache.promise) {
+    cache.promise = mongoose
+      .connect(mongoUri, {
+        dbName: mongoDbName,
+        minPoolSize: MIN_POOL,
+        maxPoolSize: MAX_POOL,
+        bufferCommands: false
+      })
+      .then((m) => {
+        cache.conn = m;
+        return m;
+      })
+      .catch((error) => {
+        cache.promise = null;
+        cache.conn = null;
+        throw error;
+      });
   }
 
-  globalForMongoose._mongoose!.conn = await globalForMongoose._mongoose!.promise;
+  try {
+    cache.conn = await cache.promise;
+  } catch (error) {
+    cache.conn = null;
+    throw error;
+  }
 
-  return globalForMongoose._mongoose!.conn;
+  return cache.conn;
 };
