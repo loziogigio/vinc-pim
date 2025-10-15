@@ -10,8 +10,7 @@ import {
   X,
   ChevronDown,
   Search,
-  Star,
-  ChevronRight
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mockCatalog, type MockProduct } from "@/lib/data/mockCatalog";
@@ -193,19 +192,19 @@ export default function SearchPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-3">
         {/* Breadcrumbs with results count */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <nav aria-label="Breadcrumb">
-            <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <ol className="flex items-center gap-2">
               <li>
                 <Link href="/" className="hover:text-primary transition">
                   Home
                 </Link>
               </li>
-              <ChevronRight className="h-3 w-3" />
+              <li>/</li>
               <li className="text-foreground">Search</li>
             </ol>
           </nav>
-          <span className="text-xs text-muted-foreground">
+          <span>
             {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
           </span>
         </div>
