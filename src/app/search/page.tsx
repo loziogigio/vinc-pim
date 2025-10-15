@@ -191,42 +191,43 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-4">
-          {/* Breadcrumbs */}
-          <nav aria-label="Breadcrumb" className="mb-3">
-            <ol className="flex items-center gap-2 text-xs text-muted-foreground">
-              <li>
-                <Link href="/" className="hover:text-primary transition">
-                  Home
-                </Link>
-              </li>
-              <ChevronRight className="h-3 w-3" />
-              <li className="text-foreground font-medium">Search</li>
-            </ol>
-          </nav>
+      <div className="border-b">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          {/* Breadcrumbs & Header Combined */}
+          <div className="flex flex-col gap-1">
+            <nav aria-label="Breadcrumb">
+              <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <li>
+                  <Link href="/" className="hover:text-primary transition">
+                    Home
+                  </Link>
+                </li>
+                <ChevronRight className="h-3 w-3" />
+                <li className="text-foreground">Search</li>
+              </ol>
+            </nav>
 
-          {/* Header */}
-          <div className="flex items-baseline justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground md:text-2xl">Search Products</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
-              </p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-lg font-bold text-foreground md:text-xl">Search Products</h1>
+                <span className="text-xs text-muted-foreground">
+                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="mx-auto max-w-7xl px-4 py-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
           {/* Filters Sidebar */}
           <aside
             className={`lg:block ${
               showFilters ? "fixed inset-0 z-50 bg-background p-4 lg:relative lg:p-0" : "hidden"
             }`}
           >
-            <div className="sticky top-24 space-y-6">
+            <div className="sticky top-24 space-y-4">
               {/* Mobile Filter Header */}
               <div className="flex items-center justify-between lg:hidden">
                 <h2 className="text-lg font-semibold text-foreground">Filters</h2>
