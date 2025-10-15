@@ -3,23 +3,38 @@ import type { CategoryItem } from "@/lib/types/blocks";
 export interface MockProduct {
   id: string;
   name: string;
+  slug: string;
   price: number;
   compareAt?: number;
   image: string;
   collection: string[];
   rating?: number;
+  category?: string;
+  brand?: string;
+  description?: string;
+  badge?: string;
 }
 
-const MOCK_PRODUCTS: MockProduct[] = Array.from({ length: 16 }).map((_, index) => {
+const MOCK_PRODUCTS: MockProduct[] = Array.from({ length: 50 }).map((_, index) => {
   const base = index + 1;
+  const categories = ["Hydronic Heating", "Bathroom Suites", "Kitchen Tapware", "Service Tools", "Water Heaters"];
+  const brands = ["Bosch", "Viessmann", "Grundfos", "Vaillant", "Honeywell", "Danfoss"];
+  const category = categories[base % categories.length];
+  const brand = brands[base % brands.length];
+
   return {
     id: `prod-${base}`,
-    name: `Professional Kit ${base}`,
+    slug: `professional-kit-${base}`,
+    name: `${brand} Professional ${category} Kit ${base}`,
     price: 149 + base * 12,
     compareAt: base % 3 === 0 ? 199 + base * 10 : undefined,
     image: `https://images.unsplash.com/photo-1581166397057-235af2b3c6dd?auto=format&fit=crop&w=640&q=${70 + base}`,
-    rating: 4 + ((base + 1) % 2) * 0.5,
-    collection: base % 2 === 0 ? ["featured", "all"] : ["best-sellers", "featured", "all"]
+    rating: 3.5 + ((base % 5) * 0.3),
+    collection: base % 2 === 0 ? ["featured", "all"] : ["best-sellers", "featured", "all"],
+    category,
+    brand,
+    description: `High-quality ${category.toLowerCase()} equipment from ${brand}. Professional grade with warranty.`,
+    badge: base % 5 === 0 ? "New" : base % 7 === 0 ? "Sale" : undefined
   };
 });
 
@@ -87,3 +102,6 @@ export const getMockProducts = (collection: string, limit: number) => {
 
 export const getMockCategories = (limit?: number) =>
   typeof limit === "number" ? MOCK_CATEGORIES.slice(0, limit) : MOCK_CATEGORIES;
+
+// Export the full catalog for search page
+export const mockCatalog = MOCK_PRODUCTS;
