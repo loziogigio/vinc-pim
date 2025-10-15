@@ -141,69 +141,76 @@ export const SiteHeader = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-      <div className="mx-auto flex max-w-screen-xl items-center gap-3 px-4 py-3 md:px-6">
-        <Button variant="ghost" size="icon" className="rounded-xl">
-          <Menu />
-        </Button>
-        <div className="flex items-center gap-2">
-          <Store className="text-primary" />
-          <span className="text-lg font-semibold">VIC Store</span>
-        </div>
-        <div className="hidden flex-1 items-center gap-2 md:flex">
-          <div className="relative w-full">
-            <Input placeholder="Search products…" className="rounded-xl pl-9" />
+    <>
+      {/* Sticky Top Bar - Always visible when scrolling */}
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-screen-xl items-center gap-3 px-4 py-3 md:px-6">
+          <Button variant="ghost" size="icon" className="rounded-xl">
+            <Menu />
+          </Button>
+          <div className="flex items-center gap-2">
+            <Store className="text-primary" />
+            <span className="text-lg font-semibold">VIC Store</span>
+          </div>
+          <div className="hidden flex-1 items-center gap-2 md:flex">
+            <div className="relative w-full">
+              <Input placeholder="Search products…" className="rounded-xl pl-9" />
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-xl"
+              onClick={toggle}
+              aria-pressed={isDark}
+              disabled={!initialized}
+              aria-label="Toggle color theme"
+            >
+              {isDark ? <Sun /> : <Moon />}
+            </Button>
+            <Button variant="default" size="icon" className="rounded-xl">
+              <ShoppingCart />
+            </Button>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-xl"
-            onClick={toggle}
-            aria-pressed={isDark}
-            disabled={!initialized}
-            aria-label="Toggle color theme"
+      </header>
+
+      {/* Category Navigation - Scrolls with page */}
+      <div className="border-b bg-background">
+        <div className="relative mx-auto max-w-screen-xl">
+          <button
+            aria-label="Scroll categories left"
+            onClick={() => scrollBy(-240)}
+            className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/80 p-1 shadow md:flex"
           >
-            {isDark ? <Sun /> : <Moon />}
-          </Button>
-          <Button variant="default" size="icon" className="rounded-xl">
-            <ShoppingCart />
-          </Button>
+            <ChevronLeft size={18} />
+          </button>
+          <div
+            ref={listRef}
+            className="no-scrollbar flex gap-3 overflow-x-auto px-4 py-3 scroll-smooth md:px-6"
+          >
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                className="flex items-center gap-3 rounded-2xl border bg-card px-3 py-2 shadow-sm transition-colors hover:bg-accent"
+              >
+                <img src={category.image} alt={category.name} className="h-8 w-12 rounded-xl object-cover" />
+                <span className="text-sm font-medium whitespace-nowrap md:text-[15px]">
+                  {category.name}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            aria-label="Scroll categories right"
+            onClick={() => scrollBy(240)}
+            className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/80 p-1 shadow md:flex"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
-      <div className="relative mx-auto max-w-screen-xl">
-        <button
-          aria-label="Scroll categories left"
-          onClick={() => scrollBy(-240)}
-          className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/80 p-1 shadow md:flex"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <div
-          ref={listRef}
-          className="no-scrollbar flex gap-3 overflow-x-auto px-4 py-3 scroll-smooth md:px-6"
-        >
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              className="flex items-center gap-3 rounded-2xl border bg-card px-3 py-2 shadow-sm transition-colors hover:bg-accent"
-            >
-              <img src={category.image} alt={category.name} className="h-8 w-12 rounded-xl object-cover" />
-              <span className="text-sm font-medium whitespace-nowrap md:text-[15px]">
-                {category.name}
-              </span>
-            </button>
-          ))}
-        </div>
-        <button
-          aria-label="Scroll categories right"
-          onClick={() => scrollBy(240)}
-          className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/80 p-1 shadow md:flex"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-    </header>
+    </>
   );
 };
