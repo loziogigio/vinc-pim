@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -66,7 +66,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
   const [slugs, setSlugs] = useState<string[]>([]);
 
   // Resolve params on mount
-  useMemo(() => {
+  useEffect(() => {
     params.then((p) => {
       setSlugs(p.slug);
     });
@@ -207,9 +207,9 @@ export default function CategoryPage({ params }: CategoryPageProps) {
               <p className="mt-2 text-sm text-muted-foreground">
                 We couldn't find any products in this category.
               </p>
-              <Button className="mt-4" asChild>
-                <Link href="/search">Browse All Products</Link>
-              </Button>
+              <Link href="/search" className="mt-4 inline-block">
+                <Button>Browse All Products</Button>
+              </Link>
             </div>
           </div>
         )}
@@ -246,12 +246,12 @@ function ProductRail({ title, subtitle, products, viewAllHref }: ProductRailProp
         </div>
         <div className="flex items-center gap-2">
           {viewAllHref && (
-            <Button variant="ghost" size="sm" asChild className="hidden md:flex">
-              <Link href={viewAllHref}>
+            <Link href={viewAllHref} className="hidden md:inline-block">
+              <Button variant="ghost" size="sm" className="flex items-center">
                 View All
                 <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           )}
           <div className="hidden gap-2 md:flex">
             <button
@@ -287,12 +287,12 @@ function ProductRail({ title, subtitle, products, viewAllHref }: ProductRailProp
       {/* Mobile View All */}
       {viewAllHref && (
         <div className="md:hidden">
-          <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href={viewAllHref}>
+          <Link href={viewAllHref} className="block">
+            <Button variant="outline" size="sm" className="w-full">
               View All {title}
               <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       )}
     </section>
