@@ -354,9 +354,6 @@ export default function SearchPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
-                </span>
                 <div className="flex items-center gap-1 rounded-lg border p-1">
                   <Button
                     variant={viewMode === "grid" ? "default" : "ghost"}
@@ -375,6 +372,9 @@ export default function SearchPage() {
                     <List className="h-4 w-4" />
                   </Button>
                 </div>
+                <span className="text-xs text-muted-foreground">
+                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+                </span>
               </div>
             </div>
 
