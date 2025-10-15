@@ -191,23 +191,18 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-3">
-        {/* Breadcrumbs with results count */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <nav aria-label="Breadcrumb">
-            <ol className="flex items-center gap-2">
-              <li>
-                <Link href="/" className="hover:text-primary transition">
-                  Home
-                </Link>
-              </li>
-              <li>/</li>
-              <li className="text-foreground">Search</li>
-            </ol>
-          </nav>
-          <span>
-            {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
-          </span>
-        </div>
+        {/* Breadcrumbs */}
+        <nav aria-label="Breadcrumb">
+          <ol className="flex items-center gap-2 text-xs text-muted-foreground">
+            <li>
+              <Link href="/" className="hover:text-primary transition">
+                Home
+              </Link>
+            </li>
+            <li>/</li>
+            <li className="text-foreground">Search</li>
+          </ol>
+        </nav>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pb-4">
@@ -358,23 +353,28 @@ export default function SearchPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1 rounded-lg border p-1">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className="h-8 w-8 p-0"
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  className="h-8 w-8 p-0"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+                </span>
+                <div className="flex items-center gap-1 rounded-lg border p-1">
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("list")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
