@@ -285,7 +285,7 @@ const PRODUCTS: Record<string, ProductDetailData> = {
 };
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export async function generateStaticParams() {
@@ -293,7 +293,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const product = PRODUCTS[params.slug];
+  const { slug } = await params;
+  const product = PRODUCTS[slug];
   if (!product) {
     return {
       title: "Product not found"
@@ -306,8 +307,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default function ProductDetailPage({ params }: PageProps) {
-  const product = PRODUCTS[params.slug];
+export default async function ProductDetailPage({ params }: PageProps) {
+  const { slug } = await params;
+  const product = PRODUCTS[slug];
   if (!product) {
     notFound();
   }

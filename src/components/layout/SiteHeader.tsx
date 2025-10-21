@@ -131,8 +131,9 @@ export const SiteHeader = () => {
   const { isDark, toggle, initialized } = useTheme();
   const listRef = useRef<HTMLDivElement | null>(null);
   const isAdminRoute = pathname?.startsWith("/admin");
+  const isB2BRoute = pathname?.startsWith("/b2b");
   const isEmbeddedPreview = pathname === "/preview" && searchParams?.get("embed") === "true";
-  if (isAdminRoute || isEmbeddedPreview) {
+  if (isAdminRoute || isB2BRoute || isEmbeddedPreview) {
     return null;
   }
 
@@ -182,30 +183,38 @@ export const SiteHeader = () => {
           <button
             aria-label="Scroll categories left"
             onClick={() => scrollBy(-240)}
-            className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/80 p-1 shadow md:flex"
+            className="absolute left-2 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/90 p-1 shadow-md backdrop-blur-sm md:flex"
           >
             <ChevronLeft size={18} />
           </button>
+
+          {/* Left fade gradient */}
+          <div className="pointer-events-none absolute left-0 top-0 z-10 hidden h-full w-16 bg-gradient-to-r from-background via-background/80 to-transparent md:block" />
+
           <div
             ref={listRef}
-            className="no-scrollbar flex gap-3 overflow-x-auto px-4 py-3 scroll-smooth md:px-6"
+            className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-2 scroll-smooth md:px-6"
           >
             {categories.map((category) => (
               <button
                 key={category.id}
-                className="flex items-center gap-3 rounded-2xl border bg-card px-3 py-2 shadow-sm transition-colors hover:bg-accent"
+                className="flex shrink-0 items-center gap-2 rounded-xl border bg-card px-2 py-1.5 shadow-sm transition-colors hover:bg-accent"
               >
-                <img src={category.image} alt={category.name} className="h-8 w-12 rounded-xl object-cover" />
-                <span className="text-sm font-medium whitespace-nowrap md:text-[15px]">
+                <img src={category.image} alt={category.name} className="h-7 w-10 rounded-lg object-cover" />
+                <span className="text-xs font-medium whitespace-nowrap md:text-sm">
                   {category.name}
                 </span>
               </button>
             ))}
           </div>
+
+          {/* Right fade gradient */}
+          <div className="pointer-events-none absolute right-0 top-0 z-10 hidden h-full w-16 bg-gradient-to-l from-background via-background/80 to-transparent md:block" />
+
           <button
             aria-label="Scroll categories right"
             onClick={() => scrollBy(240)}
-            className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/80 p-1 shadow md:flex"
+            className="absolute right-2 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full border bg-background/90 p-1 shadow-md backdrop-blur-sm md:flex"
           >
             <ChevronRight size={18} />
           </button>

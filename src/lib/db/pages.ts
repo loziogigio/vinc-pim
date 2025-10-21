@@ -5,14 +5,46 @@ import { pageConfigSchema } from "@/lib/validation/blockSchemas";
 import { sanitizeBlock } from "@/lib/validation/sanitizers";
 
 const serializeBlock = (
-  block: { id: string; type: string; order?: number; config: unknown; metadata?: Record<string, unknown> }
-): PageBlock<BlockConfig> => ({
-  id: String(block.id),
-  type: String(block.type),
-  order: Number(block.order ?? 0),
-  config: block.config as BlockConfig,
-  metadata: block.metadata ?? {}
-});
+  block: {
+    id: string;
+    type: string;
+    order?: number;
+    config: unknown;
+    metadata?: Record<string, unknown>;
+    zone?: string;
+    tabLabel?: string;
+    tabIcon?: string;
+  },
+  pageSlug?: string
+): PageBlock<BlockConfig> => {
+  const serialized = {
+    id: String(block.id),
+    type: String(block.type),
+    order: Number(block.order ?? 0),
+    config: block.config as BlockConfig,
+    metadata: block.metadata ?? {}
+  };
+
+  if (block.zone || pageSlug?.startsWith("product-detail")) {
+    serialized.zone = (block.zone as PageBlock["zone"]) ?? "zone3";
+  }
+
+  if (block.tabLabel) {
+    serialized.tabLabel = String(block.tabLabel);
+  }
+
+  if (block.tabIcon) {
+    serialized.tabIcon = String(block.tabIcon);
+  }
+
+  // Debug logging for config serialization
+  if (block.type === 'youtubeEmbed' || Object.keys(block.config || {}).length > 0) {
+    console.log('[serializeBlock] Type:', block.type, 'Config keys:', Object.keys(block.config || {}));
+    console.log('[serializeBlock] Full config:', JSON.stringify(block.config, null, 2));
+  }
+
+  return serialized;
+};
 
 const serializePage = (
   doc: Record<string, unknown> & {
@@ -30,7 +62,7 @@ const serializePage = (
       ? doc.versions.map((v: any) => ({
           version: v.version,
           blocks: Array.isArray(v.blocks)
-            ? v.blocks.map((block: any) => serializeBlock(block))
+            ? v.blocks.map((block: any) => serializeBlock(block, String(doc.slug ?? "")))
             : [],
           seo: v.seo,
           status: v.status,
@@ -68,11 +100,53 @@ const ensureDefaultHomepage = async () => {
   return serializePage(newPage.toObject());
 };
 
+const ensureDefaultProductDetail = async (slug: string) => {
+  const existing = await PageModel.findOne({ slug }).lean<PageDocument | null>();
+  if (existing) {
+    return serializePage(existing);
+  }
+
+  // Create a new empty product detail page
+  const now = new Date();
+  const isDefaultTemplate = slug === "product-detail";
+  const pageName = isDefaultTemplate
+    ? "Product Detail (Default Template)"
+    : `Product Detail - ${slug.replace("product-detail-", "")}`;
+
+  const newPage = await PageModel.create({
+    slug,
+    name: pageName,
+    versions: [],
+    currentVersion: 0,
+    currentPublishedVersion: undefined,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  return serializePage(newPage.toObject());
+};
+
 export const getPageConfig = async (slug: string): Promise<PageConfig> => {
   await connectToDatabase();
 
   if (slug === "home") {
     return ensureDefaultHomepage();
+  }
+
+  // Handle product detail pages (product-detail or product-detail-{productId})
+  if (slug === "product-detail" || slug.startsWith("product-detail-")) {
+    const config = await ensureDefaultProductDetail(slug);
+    console.log('[getPageConfig] ===== LOAD REQUEST =====');
+    console.log('[getPageConfig] Slug:', slug);
+    console.log('[getPageConfig] Versions count:', config.versions.length);
+    if (config.versions.length > 0) {
+      const lastVersion = config.versions[config.versions.length - 1];
+      console.log('[getPageConfig] Last version blocks:', lastVersion.blocks.length);
+      if (lastVersion.blocks.length > 0) {
+        console.log('[getPageConfig] First block:', JSON.stringify(lastVersion.blocks[0], null, 2));
+      }
+    }
+    return config;
   }
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
@@ -93,8 +167,15 @@ export const savePage = async (input: {
 
   const { slug, blocks, seo } = input;
 
+  console.log('[savePage] ===== SAVE REQUEST =====');
+  console.log('[savePage] Slug:', slug);
+  console.log('[savePage] Blocks count:', blocks.length);
+  console.log('[savePage] First block:', JSON.stringify(blocks[0], null, 2));
+
   // Sanitize blocks
   const sanitizedBlocks = blocks.map((block) => sanitizeBlock(block));
+
+  console.log('[savePage] After sanitization, first block:', JSON.stringify(sanitizedBlocks[0], null, 2));
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   const now = new Date();

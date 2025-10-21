@@ -58,14 +58,57 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
   currentPublishedVersion: undefined,
   versions: [],
   loadPageConfig: (config) => {
+    console.log('[loadPageConfig] ===== LOADING CONFIG INTO STORE =====');
+    console.log('[loadPageConfig] Slug:', config.slug);
+    console.log('[loadPageConfig] Versions count:', config.versions.length);
+    console.log('[loadPageConfig] Current version:', config.currentVersion);
+
     // Get current working version by currentVersion number, not last in array
     const currentVersionData = config.versions.find(v => v.version === config.currentVersion)
       || config.versions[config.versions.length - 1]; // Fallback to last if not found
+
+    console.log('[loadPageConfig] Current version data found:', !!currentVersionData);
+    console.log('[loadPageConfig] Blocks in version:', currentVersionData?.blocks?.length || 0);
+
+    if (currentVersionData?.blocks && currentVersionData.blocks.length > 0) {
+      console.log('[loadPageConfig] First block:', JSON.stringify(currentVersionData.blocks[0], null, 2));
+    }
+
     const blocks = currentVersionData?.blocks || [];
+    // Check if this is a product detail page (slug starts with "product-detail-", "sku-", or "parentSku-")
+    const isProductDetailPage =
+      config.slug === "product-detail" ||
+      config.slug.startsWith("product-detail-") ||
+      config.slug.startsWith("sku-") ||
+      config.slug.startsWith("parentSku-");
+
+    console.log('[loadPageConfig] isProductDetailPage:', isProductDetailPage, 'slug:', config.slug);
+
+    const normalizedBlocks = [...blocks]
+      .map((block, index) => {
+        const resolvedOrder = typeof block.order === "number" ? block.order : index;
+        const hasZone = !!block.zone;
+        const normalized = {
+          ...block,
+          order: resolvedOrder,
+          // For product detail pages, add default zone "zone1" if missing
+          ...(isProductDetailPage && !hasZone ? { zone: "zone1" as const } : {})
+        };
+
+        if (isProductDetailPage && !hasZone) {
+          console.log('[loadPageConfig] Added default zone "zone1" to block:', block.type);
+        }
+
+        return normalized;
+      })
+      .sort((a, b) => a.order - b.order);
+
+    console.log('[loadPageConfig] Normalized blocks count:', normalizedBlocks.length);
+
     const seo = currentVersionData?.seo;
 
     set({
-      blocks: [...blocks].sort((a, b) => a.order - b.order),
+      blocks: normalizedBlocks,
       selectedBlockId: null,
       isDirty: false,
       history: { past: [], future: [] },
@@ -85,12 +128,20 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
     const template = getBlockTemplate(variantId);
     if (!template) return;
 
+    const slug = get().pageDetails.slug;
+    const isProductDetailPage =
+      slug === "product-detail" ||
+      slug.startsWith("product-detail-") ||
+      slug.startsWith("sku-") ||
+      slug.startsWith("parentSku-");
+
     const newBlock: PageBlock = {
       id: nanoid(),
       type: variantId,
       order: get().blocks.length,
       config: template.defaultConfig,
-      metadata: { templateVersion: "1.0", createdAt: new Date().toISOString() }
+      metadata: { templateVersion: "1.0", createdAt: new Date().toISOString() },
+      ...(isProductDetailPage ? { zone: "zone3" as const } : {})
     };
 
     set((state) => ({
@@ -229,7 +280,8 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
   markSaved: () => set({ isDirty: false }),
   getPagePayload: () => {
     const state = get();
-    return {
+    console.log('[getPagePayload] Current blocks in store:', state.blocks.map(b => ({ id: b.id, type: b.type, zone: b.zone })));
+    const payload = {
       slug: state.pageDetails.slug,
       blocks: state.blocks.map((block, index) => ({
         ...block,
@@ -237,5 +289,7 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
       })),
       seo: state.pageDetails.seo
     };
+    console.log('[getPagePayload] Payload blocks:', payload.blocks.map(b => ({ id: b.id, type: b.type, zone: b.zone })));
+    return payload;
   }
 }));

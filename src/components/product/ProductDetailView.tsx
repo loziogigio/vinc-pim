@@ -541,10 +541,10 @@ export const ProductDetailView = ({
 
             {/* Action Buttons */}
             <div className="flex gap-2">
-              <Button size="lg" className="flex-1 py-3 px-4 rounded-lg font-semibold transition text-sm">
+              <Button className="flex-1 py-3 px-4 rounded-lg font-semibold transition text-sm">
                 Add to Cart - {formatCurrency(product.price.amount * quantity, product.price.currency)}
               </Button>
-              <Button size="lg" variant="outline" className="flex-1 py-3 px-4 rounded-lg font-semibold border-2 transition text-sm">
+              <Button variant="outline" className="flex-1 py-3 px-4 rounded-lg font-semibold border-2 transition text-sm">
                 Request Installation Quote
               </Button>
             </div>
@@ -594,7 +594,7 @@ export const ProductDetailView = ({
 
           {/* What's Included */}
           <div className="mb-4">
-            <h3 className="font-semibold text-base mb-3 text-foreground">What's Included</h3>
+            <h3 className="font-semibold text-base mb-3 text-foreground">What&apos;s Included</h3>
             <div className="bg-muted p-4 rounded-lg">
               <div className="space-y-2">
                 {product.whatsIncluded.map((item, index) => (

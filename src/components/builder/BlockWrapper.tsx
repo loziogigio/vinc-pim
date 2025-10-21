@@ -16,69 +16,61 @@ interface BlockWrapperProps {
 
 const builderStyles: Record<
   string,
-  { background: string; text: string; accent: string; badgeBg: string }
+  { previewBg: string; previewText: string; previewBorder?: string }
 > = {
   "hero-full-width": {
-    background: "bg-gradient-to-br from-blue-500 to-purple-600 text-white",
-    text: "text-white",
-    accent: "hover:bg-blue-600",
-    badgeBg: "bg-white/20 text-white"
+    previewBg: "bg-gradient-to-r from-[#11998e] to-[#38ef7d]",
+    previewText: "text-white"
   },
   "hero-split": {
-    background: "bg-gradient-to-br from-purple-500 to-pink-500 text-white",
-    text: "text-white",
-    accent: "hover:bg-purple-600",
-    badgeBg: "bg-white/20 text-white"
+    previewBg: "bg-gradient-to-r from-[#667eea] to-[#764ba2]",
+    previewText: "text-white"
   },
   "hero-carousel": {
-    background: "bg-gradient-to-br from-rose-500 to-amber-500 text-white",
-    text: "text-white",
-    accent: "hover:bg-rose-600",
-    badgeBg: "bg-white/20 text-white"
+    previewBg: "bg-gradient-to-r from-[#4facfe] to-[#00f2fe]",
+    previewText: "text-white"
   },
   "product-slider": {
-    background: "bg-white text-slate-800 border border-slate-200",
-    text: "text-slate-800",
-    accent: "hover:bg-slate-100",
-    badgeBg: "bg-slate-900 text-white"
+    previewBg: "bg-[#fafafc]",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-[#ebe9f1]"
   },
   "product-grid": {
-    background: "bg-white text-slate-800 border border-slate-200",
-    text: "text-slate-800",
-    accent: "hover:bg-slate-100",
-    badgeBg: "bg-slate-900 text-white"
+    previewBg: "bg-[#fafafc]",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-[#ebe9f1]"
   },
   "category-grid": {
-    background: "bg-slate-100 text-slate-800",
-    text: "text-slate-800",
-    accent: "hover:bg-slate-200",
-    badgeBg: "bg-slate-900 text-white"
+    previewBg: "bg-[#fafafc]",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-[#ebe9f1]"
+  },
+  "category-carousel": {
+    previewBg: "bg-[#fafafc]",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-[#ebe9f1]"
   },
   "content-features": {
-    background: "bg-blue-50 text-blue-900",
-    text: "text-blue-900",
-    accent: "hover:bg-blue-100",
-    badgeBg: "bg-blue-600 text-white"
+    previewBg: "bg-white",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-dashed border-[#d8d6de]"
   },
   "content-rich-text": {
-    background: "bg-slate-50 text-slate-800",
-    text: "text-slate-800",
-    accent: "hover:bg-slate-100",
-    badgeBg: "bg-slate-900 text-white"
+    previewBg: "bg-white",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-dashed border-[#d8d6de]"
   },
   "content-testimonials": {
-    background: "bg-indigo-50 text-indigo-900",
-    text: "text-indigo-900",
-    accent: "hover:bg-indigo-100",
-    badgeBg: "bg-indigo-600 text-white"
+    previewBg: "bg-white",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-dashed border-[#d8d6de]"
   }
 };
 
 const defaultStyle = {
-  background: "bg-white text-slate-800 border border-slate-200",
-  text: "text-slate-800",
-  accent: "hover:bg-slate-100",
-  badgeBg: "bg-slate-900 text-white"
+  previewBg: "bg-[#fafafc]",
+  previewText: "text-[#5e5873]",
+  previewBorder: "border border-[#ebe9f1]"
 };
 
 export const BlockWrapper = ({ block, index, onOpenSettings }: BlockWrapperProps) => {
@@ -104,9 +96,10 @@ export const BlockWrapper = ({ block, index, onOpenSettings }: BlockWrapperProps
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-transparent shadow-sm transition-all",
-        styleTokens.background,
-        selectedBlockId === block.id ? "ring-2 ring-orange-400" : "hover:ring-2 hover:ring-slate-300"
+        "group relative cursor-pointer overflow-visible rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#009688]/40",
+        selectedBlockId === block.id
+          ? "border-[2px] border-[#009688] p-[calc(1rem-1px)] shadow-[0_4px_16px_rgba(0,150,136,0.15)]"
+          : "hover:-translate-y-0.5 hover:border-[#009688] hover:shadow-[0_4px_12px_rgba(0,150,136,0.1)]"
       )}
       role="button"
       tabIndex={0}
@@ -117,25 +110,22 @@ export const BlockWrapper = ({ block, index, onOpenSettings }: BlockWrapperProps
         }
       }}
     >
-      <div
-        className={cn(
-          "absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold shadow-sm",
-          styleTokens.badgeBg
-        )}
-      >
+      {/* Position Badge */}
+      <div className="absolute left-4 top-[-10px] z-20 rounded-[12px] bg-[#5e5873] px-[10px] py-[3px] text-[11px] font-semibold text-white shadow-sm">
         Position {index + 1}
       </div>
 
-      <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/90 px-1 py-1 opacity-0 shadow-lg transition group-hover:opacity-100">
+      {/* Action Buttons */}
+      <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-[0.428rem] bg-white/95 px-1 py-1 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
         <button
           type="button"
           {...attributes}
           {...listeners}
           onClick={(event) => event.stopPropagation()}
-          className="flex h-8 w-8 cursor-grab items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
+          className="flex h-7 w-7 cursor-grab items-center justify-center rounded-[4px] text-[#6e6b7b] transition hover:bg-[#f5f5f5]"
           aria-label="Drag to reorder"
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -144,10 +134,10 @@ export const BlockWrapper = ({ block, index, onOpenSettings }: BlockWrapperProps
             selectBlock(block.id);
             onOpenSettings();
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 hover:bg-blue-50 hover:text-blue-600"
+          className="flex h-7 w-7 items-center justify-center rounded-[4px] text-[#6e6b7b] transition hover:bg-[rgba(0,150,136,0.1)] hover:text-[#009688]"
           aria-label="Configure block"
         >
-          <Settings className="h-4 w-4" />
+          <Settings className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -155,10 +145,10 @@ export const BlockWrapper = ({ block, index, onOpenSettings }: BlockWrapperProps
             event.stopPropagation();
             duplicateBlock(block.id);
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
+          className="flex h-7 w-7 items-center justify-center rounded-[4px] text-[#6e6b7b] transition hover:bg-[#f5f5f5]"
           aria-label="Duplicate block"
         >
-          <Copy className="h-4 w-4" />
+          <Copy className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -166,18 +156,31 @@ export const BlockWrapper = ({ block, index, onOpenSettings }: BlockWrapperProps
             event.stopPropagation();
             removeBlock(block.id);
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-red-600 hover:bg-red-50"
+          className="flex h-7 w-7 items-center justify-center rounded-[4px] text-red-600 transition hover:bg-red-50"
           aria-label="Remove block"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="flex min-h-[180px] flex-col items-center justify-center px-10 py-12 text-center">
-        <h3 className={cn("text-lg font-semibold", styleTokens.text)}>
-          {template?.label ?? block.type}
-        </h3>
-        <p className={cn("mt-2 text-sm opacity-90", styleTokens.text)}>Block {index + 1}</p>
+      {/* Block Content */}
+      <div className="space-y-[0.75rem]">
+        <div className="space-y-[0.15rem]">
+          <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">
+            {template?.label ?? block.type}
+          </h3>
+          <p className="text-[0.75rem] text-[#b9b9c3]">Block {index + 1}</p>
+        </div>
+        <div
+          className={cn(
+            "rounded-[0.428rem] px-3 py-3 text-center text-[0.85rem] font-medium transition-all",
+            styleTokens.previewBg,
+            styleTokens.previewText,
+            styleTokens.previewBorder
+          )}
+        >
+          {template?.label ?? block.type} Preview
+        </div>
       </div>
     </div>
   );

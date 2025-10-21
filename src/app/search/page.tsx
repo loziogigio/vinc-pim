@@ -190,26 +190,6 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-3">
-        {/* Breadcrumbs with results count */}
-        <div className="flex items-center justify-between text-xs">
-          <nav aria-label="Breadcrumb">
-            <ol className="flex items-center gap-2 text-muted-foreground">
-              <li>
-                <Link href="/" className="hover:text-primary transition">
-                  Home
-                </Link>
-              </li>
-              <li>/</li>
-              <li className="text-foreground">Search</li>
-            </ol>
-          </nav>
-          <span className="text-muted-foreground">
-            {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
-          </span>
-        </div>
-      </div>
-
       <div className="mx-auto max-w-7xl px-4 pb-4">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
           {/* Filters Sidebar */}
@@ -333,7 +313,8 @@ export default function SearchPage() {
           {/* Main Content */}
           <main className="space-y-4">
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b">
+            <div className="flex items-center gap-3 pb-4 border-b">
+              {/* Mobile Filter Button */}
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(true)}
@@ -343,12 +324,35 @@ export default function SearchPage() {
                 Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
               </Button>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Sort by:</span>
+              {/* Search Input - Hidden on mobile sidebar */}
+              <div className="relative hidden lg:block lg:flex-1 lg:max-w-xs">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border bg-card px-10 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="flex items-center gap-2 ml-auto lg:ml-0">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Sort by:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="rounded-lg border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="rounded-lg border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="relevance">Relevance</option>
                   <option value="price-asc">Price: Low to High</option>
@@ -358,12 +362,14 @@ export default function SearchPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1 rounded-lg border p-1">
+              {/* Grid/List Toggle */}
+              <div className="flex items-center gap-1 rounded-lg border p-1 bg-background">
                 <Button
                   variant={viewMode === "grid" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
                   className="h-8 w-8 p-0"
+                  aria-label="Grid view"
                 >
                   <Grid3x3 className="h-4 w-4" />
                 </Button>
@@ -372,6 +378,7 @@ export default function SearchPage() {
                   size="sm"
                   onClick={() => setViewMode("list")}
                   className="h-8 w-8 p-0"
+                  aria-label="List view"
                 >
                   <List className="h-4 w-4" />
                 </Button>

@@ -1,4 +1,5 @@
 const forms = require("@tailwindcss/forms");
+const typography = require("@tailwindcss/typography");
 const { fontFamily } = require("tailwindcss/defaultTheme");
 
 /** @type {import('tailwindcss').Config} */
@@ -61,5 +62,5 @@ module.exports = {
       }
     }
   },
-  plugins: [forms]
+  plugins: [forms, typography]
 };

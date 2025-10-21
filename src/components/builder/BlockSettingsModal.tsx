@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { usePageBuilderStore } from "@/lib/store/pageBuilderStore";
 import { getBlockTemplate } from "@/lib/config/blockTemplates";
 import type { PageBlock } from "@/lib/types/blocks";
+import { YouTubeBlockSettings } from "./YouTubeBlockSettings";
+import { MediaImageBlockSettings } from "./MediaImageBlockSettings";
+import { ZoneSelector } from "./ZoneSelector";
+import { RichTextEditor } from "./RichTextEditor";
+import type { ProductDetailZone } from "@/lib/types/blocks";
 
 type DraftConfig = Record<string, unknown>;
 
@@ -40,14 +45,22 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
   const backgroundFileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Zone placement state
+  const [zone, setZone] = useState<ProductDetailZone>(selectedBlock?.zone || "zone3");
+  const [tabLabel, setTabLabel] = useState<string>(selectedBlock?.tabLabel || "");
+
   useEffect(() => {
     if (selectedBlock) {
       const cloned = cloneConfig(selectedBlock.config);
       setDraft(cloned);
       setAdvancedDraft(JSON.stringify(cloned, null, 2));
+      setZone(selectedBlock.zone || "zone3");
+      setTabLabel(selectedBlock.tabLabel || "");
     } else {
       setDraft(null);
       setAdvancedDraft("");
+      setZone("zone3");
+      setTabLabel("");
     }
     setHasLocalChanges(false);
     setJsonError(null);
@@ -75,7 +88,29 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
   const handleApply = () => {
     if (!selectedBlock || !draft) return;
+
+    console.log('[BlockSettingsModal] Applying settings - zone:', zone, 'tabLabel:', tabLabel);
+
+    // Update config
     updateBlockConfig(selectedBlock.id, draft as Partial<PageBlock["config"]>);
+
+    // Update zone and tabLabel directly (since updateBlockConfig doesn't handle these)
+    usePageBuilderStore.setState((state) => ({
+      blocks: state.blocks.map((block) =>
+        block.id === selectedBlock.id
+          ? {
+              ...block,
+              zone,
+              tabLabel:
+                zone === "zone3" && tabLabel.trim().length > 0 ? tabLabel.trim() : undefined
+            }
+          : block
+      ),
+      isDirty: true // Mark as dirty when zone changes
+    }));
+
+    console.log('[BlockSettingsModal] Block updated, new state:', usePageBuilderStore.getState().blocks.find(b => b.id === selectedBlock.id));
+
     setHasLocalChanges(false);
     closeModal();
   };
@@ -195,6 +230,44 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-6">
+            {/* Zone Selector - Always show for product detail blocks */}
+            <div className="pb-6 border-b border-slate-200">
+              <ZoneSelector
+                zone={zone}
+                tabLabel={tabLabel}
+                onChange={(newZone, newTabLabel) => {
+                  setZone(newZone);
+                  setTabLabel(newTabLabel || "");
+                  setHasLocalChanges(true);
+                }}
+              />
+            </div>
+
+            {/* YouTube Block Custom UI */}
+            {selectedBlock.type === "youtubeEmbed" ? (
+              <YouTubeBlockSettings
+                config={draft as any}
+                onChange={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {/* Media Image Block Custom UI */}
+            {selectedBlock.type === "media-image" ? (
+              <MediaImageBlockSettings
+                config={draft as any}
+                onChange={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {/* Standard Block Fields */}
             {hasTitle ? (
               <div>
                 <label className="text-sm font-medium text-slate-700">Title</label>
@@ -225,14 +298,15 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             {hasContent ? (
               <div>
                 <label className="text-sm font-medium text-slate-700">Rich content</label>
-                <textarea
-                  value={contentValue}
-                  onChange={(event) =>
-                    updateDraft((current) => ({ ...current, content: event.target.value }))
-                  }
-                  rows={6}
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
+                <div className="mt-2">
+                  <RichTextEditor
+                    content={contentValue}
+                    onChange={(html) =>
+                      updateDraft((current) => ({ ...current, content: html }))
+                    }
+                    placeholder="Type your content here..."
+                  />
+                </div>
               </div>
             ) : null}
 

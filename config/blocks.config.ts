@@ -246,6 +246,39 @@ export const BLOCK_REGISTRY: BlockRegistry = {
         defaultConfig: contentTestimonialsDefault
       }
     }
+  },
+  media: {
+    id: "media",
+    name: "Media Section",
+    category: "media",
+    variants: {
+      youtubeEmbed: {
+        id: "youtubeEmbed",
+        label: "YouTube Video",
+        icon: "🎥",
+        defaultConfig: {
+          url: "",
+          title: "Product Video",
+          autoplay: false,
+          width: "100%",
+          height: "450px"
+        }
+      },
+      mediaImage: {
+        id: "media-image",
+        label: "Media Image",
+        icon: "🖼️",
+        defaultConfig: {
+          imageUrl: "",
+          alt: "Product image",
+          linkUrl: "",
+          openInNewTab: true,
+          width: "100%",
+          maxWidth: "800px",
+          alignment: "center"
+        }
+      }
+    }
   }
 };
 

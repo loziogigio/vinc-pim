@@ -7,6 +7,8 @@ import { pageConfigSchema } from "@/lib/validation/blockSchemas";
 import { sessionOptions, type AdminSessionData } from "@/lib/auth/session";
 import { consumeRateLimit, getClientKey } from "@/lib/security/rateLimiter";
 import type { PageConfig } from "@/lib/types/blocks";
+import { getOrCreateTemplate } from "@/lib/db/product-templates-simple";
+import { ProductTemplateModel } from "@/lib/db/models/product-template-simple";
 
 const PREVIEW_TTL_SECONDS = 60 * 10; // 10 minutes
 
@@ -63,7 +65,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid payload", details: result.error.flatten() }, { status: 400 });
   }
 
+  // Save to cache (old system)
   await cache.set(cacheKey(result.data.slug), result.data, PREVIEW_TTL_SECONDS);
+
+  // Also save to new template system if it's a product template
+  // Format: product-{sku} or product-detail-{sku}
+  const slug = result.data.slug;
+  if (slug.startsWith('product-detail-') || slug.startsWith('product-')) {
+    const sku = slug.replace('product-detail-', '').replace('product-', '');
+
+    if (sku && result.data.versions.length > 0) {
+      try {
+        // Ensure template exists
+        await getOrCreateTemplate('sku', sku);
+
+        // Get the latest version data
+        const latestVersion = result.data.versions[result.data.versions.length - 1];
+
+        // Use updateOne to modify the template
+        await ProductTemplateModel.updateOne(
+          {
+            "matchRules.type": 'sku',
+            "matchRules.value": sku
+          },
+          {
+            $set: {
+              "versions.0": latestVersion,
+              currentVersion: latestVersion.version,
+              updatedAt: new Date()
+            }
+          },
+          { upsert: false }
+        );
+      } catch (err) {
+        console.error('Failed to save preview to new template system:', err);
+        // Don't fail the whole request if new system fails
+      }
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

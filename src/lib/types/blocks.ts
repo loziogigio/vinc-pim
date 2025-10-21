@@ -164,11 +164,22 @@ export type ContentBlockConfig =
   | ContentFeaturesConfig
   | ContentTestimonialsConfig;
 
+export interface YouTubeEmbedConfig {
+  url: string;
+  title?: string;
+  autoplay?: boolean;
+  width?: string;
+  height?: string;
+}
+
+export type MediaBlockConfig = YouTubeEmbedConfig;
+
 export type BlockConfig =
   | HeroBlockConfig
   | ProductBlockConfig
   | CategoryBlockConfig
-  | ContentBlockConfig;
+  | ContentBlockConfig
+  | MediaBlockConfig;
 
 export interface BlockVariantDefinition<TConfig extends BlockConfig> {
   id: string;
@@ -182,7 +193,7 @@ export interface BlockFamily<
 > {
   id: string;
   name: string;
-  category: "headers" | "commerce" | "navigation" | "content";
+  category: "headers" | "commerce" | "navigation" | "content" | "media";
   variants: TVariants;
 }
 
@@ -205,7 +216,13 @@ export type BlockRegistry = {
     features: BlockVariantDefinition<Extract<ContentBlockConfig, { variant: "features" }>>;
     testimonials: BlockVariantDefinition<Extract<ContentBlockConfig, { variant: "testimonials" }>>;
   }>;
+  media: BlockFamily<{
+    youtubeEmbed: BlockVariantDefinition<YouTubeEmbedConfig>;
+  }>;
 };
+
+// Zone types for product detail page placement
+export type ProductDetailZone = "zone1" | "zone2" | "zone3" | "zone4";
 
 export interface PageBlock<TConfig extends BlockConfig = BlockConfig> {
   id: string;
@@ -213,6 +230,11 @@ export interface PageBlock<TConfig extends BlockConfig = BlockConfig> {
   order: number;
   config: TConfig;
   metadata?: Record<string, unknown>;
+  // NEW: Zone placement for product detail pages
+  zone?: ProductDetailZone;
+  // NEW: Tab label for zone3 (new tab placement)
+  tabLabel?: string;
+  tabIcon?: string;
 }
 
 export interface PageSEOSettings {

@@ -8,18 +8,19 @@ import {
   LogOut,
   Menu,
   Monitor,
+  Smartphone,
   RefreshCcw,
   RotateCcw,
   RotateCw,
   Save,
-  Smartphone,
-  Tablet,
   ChevronLeft,
   ChevronRight,
   History,
+  Tablet,
   Upload
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Public_Sans } from "next/font/google";
 import { BlockLibrary } from "@/components/builder/BlockLibrary";
 import { Canvas } from "@/components/builder/Canvas";
 import { BlockSettingsModal } from "@/components/builder/BlockSettingsModal";
@@ -29,6 +30,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { usePageBuilderStore, type DeviceMode } from "@/lib/store/pageBuilderStore";
 import type { PageConfig } from "@/lib/types/blocks";
+
+const publicSans = Public_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap"
+});
 
 const fetchPageConfig = async (slug: string) => {
   const response = await fetch(`/api/pages/${slug}`, { cache: "no-store" });
@@ -55,6 +62,7 @@ export default function PageBuilderPage() {
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [splitView, setSplitView] = useState(true);
+  const [activeTab, setActiveTab] = useState<"builder" | "preview">("builder");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   // const [isResetting, setIsResetting] = useState(false);
@@ -98,6 +106,29 @@ export default function PageBuilderPage() {
 
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
+
+  const handleSelectTab = (tab: "builder" | "preview") => {
+    setActiveTab(tab);
+    if (tab === "preview") {
+      setSplitView(false);
+    }
+  };
+
+  const toggleSplitView = () => {
+    setSplitView((previous) => {
+      const next = !previous;
+      if (next) {
+        setActiveTab("builder");
+      }
+      return next;
+    });
+  };
+
+  const iconButtonClass =
+    "flex h-[38px] w-[38px] items-center justify-center rounded-[5px] border-0 bg-transparent text-[#6e6b7b] transition hover:bg-[#fafafc] hover:text-[#009688]";
+  const disabledIconButtonClass = "cursor-not-allowed text-[#d8d6de] hover:bg-transparent hover:text-[#d8d6de]";
+  const shouldShowCanvas = splitView || (!splitView && activeTab === "builder");
+  const shouldShowPreview = splitView || (!splitView && activeTab === "preview");
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -375,92 +406,81 @@ export default function PageBuilderPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted">
-        <div className="flex items-center gap-3 rounded-3xl border bg-background px-6 py-4 shadow-sm">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-sm font-medium text-muted-foreground">Loading builder…</span>
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f7fa]">
+        <div className="flex items-center gap-3 rounded-[0.428rem] border border-[#ebe9f1] bg-white px-6 py-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
+          <Loader2 className="h-5 w-5 animate-spin text-[#009688]" />
+          <span className="text-[0.857rem] font-medium text-[#5e5873]">Loading builder…</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+    <div className={cn(publicSans.className, "flex h-screen flex-col bg-[#f8f7fa] text-[#5e5873]")}>
+      <header className="flex h-[64px] items-center bg-white px-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-orange-500 transition hover:bg-orange-50"
+            className={cn(iconButtonClass, sidebarCollapsed && "border border-[#ebe9f1]")}
             aria-label="Toggle block library"
           >
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {sidebarCollapsed ? <ChevronRight className="h-[1.1rem] w-[1.1rem]" /> : <Menu className="h-[1.1rem] w-[1.1rem]" />}
           </button>
-          <div className="flex items-center gap-3">
-            <span className="text-base font-semibold text-slate-900">VIC Store</span>
-            <span className="hidden h-6 w-px bg-slate-200 md:block" />
-            <span className="text-sm text-slate-500">Homepage Builder</span>
-            {currentVersion > 0 && (() => {
-              const isCurrentPublished = currentVersion === currentPublishedVersion;
-
-              return (
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[1rem] font-semibold text-[#5e5873]">VIC Store</span>
+              <span className="text-[0.857rem] text-[#b9b9c3]">Homepage Builder</span>
+              {currentVersion > 0 ? (
                 <>
-                  <span className={cn(
-                    "rounded-full px-2.5 py-1 text-xs font-medium",
-                    isCurrentPublished
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-amber-100 text-amber-700"
-                  )}>
-                    v{currentVersion} {isCurrentPublished ? "published" : "draft"}
+                  <span
+                    className={cn(
+                      "rounded-[0.358rem] px-[0.714rem] py-[0.286rem] text-[0.786rem] font-semibold",
+                      isEditingPublishedVersion
+                        ? "bg-[rgba(0,150,136,0.12)] text-[#00796b]"
+                        : "bg-[rgba(255,152,0,0.12)] text-[#e65100]"
+                    )}
+                  >
+                    {isEditingPublishedVersion ? "✓ Published" : "Draft"} · v{currentVersion}
                   </span>
-                  {currentPublishedVersion && currentPublishedVersion !== currentVersion && (
-                    <span className="text-xs text-slate-400">
-                      latest published: v{currentPublishedVersion}
-                    </span>
-                  )}
+                  {currentPublishedVersion && currentPublishedVersion !== currentVersion ? (
+                    <span className="text-[0.786rem] text-[#b9b9c3]">latest published: v{currentPublishedVersion}</span>
+                  ) : null}
                 </>
-              );
-            })()}
+              ) : null}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-            <button
-              type="button"
-              onClick={undo}
-              disabled={!canUndo}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition",
-                canUndo ? "text-slate-700 hover:bg-slate-200" : "cursor-not-allowed text-slate-300"
-              )}
-              aria-label="Undo"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={redo}
-              disabled={!canRedo}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition",
-                canRedo ? "text-slate-700 hover:bg-slate-200" : "cursor-not-allowed text-slate-300"
-              )}
-              aria-label="Redo"
-            >
-              <RotateCw className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            className={cn(iconButtonClass, !canUndo && disabledIconButtonClass)}
+            aria-label="Undo"
+          >
+            <RotateCcw className="h-[1.1rem] w-[1.1rem]" />
+          </button>
+          <button
+            type="button"
+            onClick={redo}
+            disabled={!canRedo}
+            className={cn(iconButtonClass, !canRedo && disabledIconButtonClass)}
+            aria-label="Redo"
+          >
+            <RotateCw className="h-[1.1rem] w-[1.1rem]" />
+          </button>
 
-          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+          <div className="flex items-center gap-[0.25rem] rounded-[0.428rem] border border-[#ebe9f1] bg-[#fafafc] p-1">
             <button
               type="button"
               onClick={() => setDevice("desktop")}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition",
+                "flex h-[38px] w-[38px] items-center justify-center rounded-[5px] transition",
                 device === "desktop"
-                  ? "bg-white shadow text-slate-800"
-                  : "text-slate-500 hover:bg-slate-200"
+                  ? "bg-[#009688] text-white shadow"
+                  : "text-[#5e5873] hover:bg-white"
               )}
               aria-label="Desktop preview"
             >
@@ -470,8 +490,10 @@ export default function PageBuilderPage() {
               type="button"
               onClick={() => setDevice("tablet")}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition",
-                device === "tablet" ? "bg-white shadow text-slate-800" : "text-slate-500 hover:bg-slate-200"
+                "flex h-[38px] w-[38px] items-center justify-center rounded-[5px] transition",
+                device === "tablet"
+                  ? "bg-[#009688] text-white shadow"
+                  : "text-[#5e5873] hover:bg-white"
               )}
               aria-label="Tablet preview"
             >
@@ -481,8 +503,10 @@ export default function PageBuilderPage() {
               type="button"
               onClick={() => setDevice("mobile")}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition",
-                device === "mobile" ? "bg-white shadow text-slate-800" : "text-slate-500 hover:bg-slate-200"
+                "flex h-[38px] w-[38px] items-center justify-center rounded-[5px] transition",
+                device === "mobile"
+                  ? "bg-[#009688] text-white shadow"
+                  : "text-[#5e5873] hover:bg-white"
               )}
               aria-label="Mobile preview"
             >
@@ -490,16 +514,16 @@ export default function PageBuilderPage() {
             </button>
           </div>
 
-          <div className="hidden h-6 w-px bg-slate-200 md:block" />
-
           <Button
             type="button"
             variant="ghost"
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
-              splitView ? "bg-orange-100 text-orange-700" : "text-slate-700 hover:bg-slate-100"
+              "flex items-center gap-2 rounded-[0.358rem] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium transition",
+              splitView
+                ? "border border-transparent bg-[rgba(255,152,0,0.12)] text-[#e65100]"
+                : "border border-[#ebe9f1] bg-[#fafafc] text-[#5e5873] hover:bg-white"
             )}
-            onClick={() => setSplitView((prev) => !prev)}
+            onClick={toggleSplitView}
           >
             {splitView ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             Split View
@@ -508,7 +532,7 @@ export default function PageBuilderPage() {
           <Button
             type="button"
             variant="ghost"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
             onClick={handlePreview}
           >
             <Eye className="h-4 w-4" />
@@ -518,7 +542,7 @@ export default function PageBuilderPage() {
           <Button
             type="button"
             variant="ghost"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
             onClick={() => {
               console.log("Opening version history, versions:", versions);
               console.log("Current version:", currentVersion);
@@ -530,11 +554,10 @@ export default function PageBuilderPage() {
             History
           </Button>
 
-          {/* Show Save button only for draft versions */}
           {!isEditingPublishedVersion && (
             <Button
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+              className="flex items-center gap-2 rounded-[0.358rem] bg-[#009688] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(0,150,136,0.3)] transition hover:bg-[#00796b]"
               onClick={handleSave}
               disabled={isSaving || !isDirty || blocks.length === 0}
             >
@@ -543,11 +566,10 @@ export default function PageBuilderPage() {
             </Button>
           )}
 
-          {/* Show Hot Fix button when editing a published version */}
           {isEditingPublishedVersion && (
             <Button
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+              className="flex items-center gap-2 rounded-[0.358rem] bg-gradient-to-tr from-[#ff5722] to-[rgba(255,87,34,0.7)] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(255,87,34,0.4)] transition hover:from-[#f4511e] hover:to-[rgba(244,81,30,0.7)]"
               onClick={handleHotfix}
               disabled={isHotfixing || !isDirty || blocks.length === 0}
               title="Update published version directly without creating a new version"
@@ -557,11 +579,10 @@ export default function PageBuilderPage() {
             </Button>
           )}
 
-          {/* Show Publish button only for draft versions */}
           {!isEditingPublishedVersion && (
             <Button
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="flex items-center gap-2 rounded-[0.358rem] bg-[#009688] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(0,150,136,0.3)] transition hover:bg-[#00796b]"
               onClick={handlePublish}
               disabled={isPublishing}
               title="Publish the current draft version"
@@ -574,7 +595,7 @@ export default function PageBuilderPage() {
           <Button
             type="button"
             variant="ghost"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+            className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
             onClick={handleStartNewVersion}
             title="Start a new version from scratch"
           >
@@ -585,7 +606,7 @@ export default function PageBuilderPage() {
           <Button
             type="button"
             variant="ghost"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+            className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
@@ -595,24 +616,24 @@ export default function PageBuilderPage() {
       </header>
 
       {error ? (
-        <div className="border-l-4 border-red-500 bg-red-50 px-6 py-3 text-sm text-red-600">{error}</div>
+        <div className="border-l-4 border-red-500 bg-red-50 px-6 py-3 text-[0.857rem] text-red-600">{error}</div>
       ) : null}
       {info ? (
-        <div className="border-l-4 border-emerald-500 bg-emerald-50 px-6 py-3 text-sm text-emerald-600">
+        <div className="border-l-4 border-[#009688] bg-[rgba(0,150,136,0.08)] px-6 py-3 text-[0.857rem] text-[#00796b]">
           {info}
         </div>
       ) : null}
       {currentVersion === currentPublishedVersion && !isDirty ? (
-        <div className="border-l-4 border-blue-500 bg-blue-50 px-6 py-3 text-sm text-blue-700">
+        <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-[0.857rem] text-[#1976d2]">
           <strong>Viewing published version {currentVersion}.</strong> Make changes and click <strong>Hot Fix</strong> to update this version directly, or click <strong>New Version</strong> to create a new draft.
         </div>
       ) : null}
 
-      <main className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 overflow-hidden bg-[#e8eaed]">
         <aside
           className={cn(
-            "h-full overflow-hidden border-r border-slate-200 bg-white transition-all duration-300",
-            sidebarCollapsed ? "w-0" : "w-[120px]"
+            "h-full overflow-hidden border-r border-[#ebe9f1] bg-white transition-all duration-300",
+            sidebarCollapsed ? "w-0" : "w-[100px]"
           )}
         >
           <div
@@ -622,11 +643,11 @@ export default function PageBuilderPage() {
             )}
           >
             {!sidebarCollapsed ? (
-              <div className="border-b border-slate-200 px-3 py-2">
+              <div className="border-b border-[#ebe9f1] px-2 py-3">
                 <button
                   type="button"
                   onClick={() => setSidebarCollapsed(true)}
-                  className="flex w-full items-center justify-center rounded-md border border-slate-200 bg-white py-2 text-slate-500 transition hover:bg-slate-100"
+                  className="flex w-full items-center justify-center rounded-[5px] border border-[#ebe9f1] bg-white py-2 text-[#6e6b7b] transition hover:bg-[#fafafc]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -636,26 +657,36 @@ export default function PageBuilderPage() {
           </div>
         </aside>
 
-        <div className="flex flex-1 overflow-hidden px-6 py-6">
-          <div className="flex w-full flex-col gap-6 lg:flex-row">
-            {splitView ? (
-              <section className="w-full lg:w-[20%] lg:transition-all lg:duration-300">
-                <Canvas
-                  onOpenSettings={() => {
-                    setIsSettingsOpen(true);
-                  }}
-                />
-              </section>
-            ) : null}
-            <section className={cn("w-full", splitView ? "lg:flex-1" : "lg:w-full")}>
-              <LivePreview device={device} blocks={blocks} />
+        <div className="flex flex-1 min-w-0 overflow-hidden">
+          {shouldShowCanvas ? (
+            <section
+              className={cn(
+                "flex h-full w-full flex-col border-r border-[#ebe9f1] bg-[#e8eaed] transition-all duration-300",
+                splitView ? "lg:w-[285px] lg:min-w-[260px]" : "lg:w-full"
+              )}
+            >
+              <Canvas
+                isSplitView={splitView}
+                activeTab={activeTab}
+                onSelectTab={handleSelectTab}
+                device={device}
+                onOpenSettings={() => {
+                  setIsSettingsOpen(true);
+                }}
+              />
             </section>
-          </div>
+          ) : null}
+
+          {shouldShowPreview ? (
+            <section className="flex flex-1 flex-col bg-[#e8eaed] px-6 py-6">
+              <LivePreview device={device} blocks={blocks} isDirty={isDirty} />
+            </section>
+          ) : null}
         </div>
       </main>
 
-      <div className="fixed bottom-6 right-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-lg">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+      <div className="fixed bottom-6 right-6 flex items-center gap-3 rounded-[0.428rem] border border-[#ebe9f1] bg-white px-4 py-3 text-[0.857rem] text-[#5e5873] shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[#009688]" />
         <span>{autosaveMessage}</span>
       </div>
 

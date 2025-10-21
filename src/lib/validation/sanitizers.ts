@@ -39,10 +39,13 @@ const RICH_TEXT_CONFIG: DOMPurifyConfig = {
 const sanitizeRichText = (value: string) => DOMPurify.sanitize(value, RICH_TEXT_CONFIG);
 
 export const sanitizeBlock = (block: PageBlock): PageBlock => {
+  console.log('[sanitizeBlock] Processing block type:', block.type, 'config:', block.config);
+
+  // For legacy block types with specific sanitization rules
   if (block.type.startsWith("hero")) {
     return sanitizeHeroBlock(block);
   }
-  if (block.type.startsWith("product")) {
+  if (block.type.startsWith("product") && !block.type.includes("Info") && !block.type.includes("Suggestions")) {
     return sanitizeProductBlock(block);
   }
   if (block.type.startsWith("category")) {
@@ -51,6 +54,10 @@ export const sanitizeBlock = (block: PageBlock): PageBlock => {
   if (block.type.startsWith("content")) {
     return sanitizeContentBlock(block);
   }
+
+  // For all other block types (youtubeEmbed, richText, customHTML, spacer, productInfo, productSuggestions, etc.)
+  // Return the block as-is to preserve the full config
+  console.log('[sanitizeBlock] Returning block as-is (no specific sanitization)');
   return block;
 };
 

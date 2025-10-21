@@ -156,31 +156,9 @@ export default function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Breadcrumbs Header */}
-      <div className="border-b bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-3">
-          <nav aria-label="Breadcrumb">
-            <ol className="flex items-center gap-2 text-xs text-muted-foreground">
-              {breadcrumbs.map((crumb, index) => (
-                <li key={crumb.href} className="flex items-center gap-2">
-                  {index > 0 && <span>/</span>}
-                  {index === breadcrumbs.length - 1 ? (
-                    <span className="text-foreground font-medium">{crumb.label}</span>
-                  ) : (
-                    <Link href={crumb.href} className="hover:text-primary transition">
-                      {crumb.label}
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </nav>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 space-y-8">
-        {/* Hero Banner (optional) */}
+        {/* Hero Banner */}
         <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">{categoryName}</h1>
           <p className="text-muted-foreground">
@@ -205,7 +183,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             <div>
               <h3 className="text-lg font-semibold text-foreground">No products found</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                We couldn't find any products in this category.
+                We couldn&apos;t find any products in this category.
               </p>
               <Link href="/search" className="mt-4 inline-block">
                 <Button>Browse All Products</Button>

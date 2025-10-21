@@ -10,7 +10,9 @@ import {
   SquareKanban,
   Sparkles,
   Type,
-  Quote
+  Quote,
+  Youtube,
+  Image
 } from "lucide-react";
 import { BLOCK_REGISTRY } from "@/lib/config/blockTemplates";
 import { usePageBuilderStore } from "@/lib/store/pageBuilderStore";
@@ -32,11 +34,13 @@ const COLOR_MAP: Record<string, { bg: string; text: string; icon: React.ElementT
   "category-grid": { bg: "bg-emerald-100", text: "text-emerald-600", icon: SquareKanban },
   "content-features": { bg: "bg-yellow-100", text: "text-yellow-600", icon: Sparkles },
   "content-rich-text": { bg: "bg-slate-100", text: "text-slate-600", icon: Type },
-  "content-testimonials": { bg: "bg-indigo-100", text: "text-indigo-600", icon: Quote }
+  "content-testimonials": { bg: "bg-indigo-100", text: "text-indigo-600", icon: Quote },
+  "youtubeEmbed": { bg: "bg-red-100", text: "text-red-600", icon: Youtube },
+  "media-image": { bg: "bg-teal-100", text: "text-teal-600", icon: Image }
 };
 
-const buildLibraryEntries = (): LibraryEntry[] =>
-  Object.values(BLOCK_REGISTRY).flatMap((family) =>
+const buildLibraryEntries = (allowedBlockIds?: string[]): LibraryEntry[] => {
+  const allEntries = Object.values(BLOCK_REGISTRY).flatMap((family) =>
     Object.values(family.variants).map((variant) => {
       const colors = COLOR_MAP[variant.id] ?? {
         bg: "bg-slate-100",
@@ -53,17 +57,30 @@ const buildLibraryEntries = (): LibraryEntry[] =>
     })
   );
 
-export const BlockLibrary = () => {
+  // If allowedBlockIds is provided, filter the entries
+  if (allowedBlockIds && allowedBlockIds.length > 0) {
+    return allEntries.filter((entry) => allowedBlockIds.includes(entry.id));
+  }
+
+  return allEntries;
+};
+
+interface BlockLibraryProps {
+  /** Optional array of block IDs to show. If not provided, all blocks are shown. */
+  allowedBlockIds?: string[];
+}
+
+export const BlockLibrary = ({ allowedBlockIds }: BlockLibraryProps = {}) => {
   const addBlock = usePageBuilderStore((state) => state.addBlock);
 
-  const entries = useMemo(() => buildLibraryEntries(), []);
+  const entries = useMemo(() => buildLibraryEntries(allowedBlockIds), [allowedBlockIds]);
 
   return (
-    <nav className="flex h-full w-full flex-col overflow-hidden border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-3 py-3">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Blocks</div>
+    <nav className="flex h-full w-full flex-col overflow-hidden">
+      <div className="px-2 py-4">
+        <div className="text-[0.714rem] font-semibold uppercase tracking-[0.5px] text-[#b9b9c3]">Blocks</div>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4">
+      <div className="flex-1 space-y-0 overflow-y-auto px-2 pb-4">
         {entries.map((entry) => {
           const Icon = entry.icon;
           return (
@@ -71,12 +88,12 @@ export const BlockLibrary = () => {
               key={entry.id}
               type="button"
               onClick={() => addBlock(entry.id)}
-              className={`${entry.bg} ${entry.text} group flex w-full flex-col items-center rounded-lg px-2 py-4 text-center shadow-sm transition-transform hover:scale-105`}
+              className="group flex w-full flex-col items-center gap-2 border-l-[3px] border-transparent px-2 py-3 text-center transition-all hover:border-l-[#009688] hover:bg-[rgba(0,150,136,0.08)]"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-current">
-                <Icon className="h-5 w-5" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-[0.428rem] bg-[#fafafc] text-[#5e5873] transition-all group-hover:bg-[rgba(0,150,136,0.12)] group-hover:text-[#009688]">
+                <Icon className="h-[1.1rem] w-[1.1rem]" />
               </span>
-              <span className="mt-2 text-xs font-medium text-current">{entry.label}</span>
+              <span className="text-[0.7rem] leading-[1.2] text-[#b9b9c3]">{entry.label}</span>
             </button>
           );
         })}

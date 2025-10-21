@@ -171,11 +171,23 @@ export const contentBlockSchema = z.discriminatedUnion("variant", [
   contentTestimonialsSchema
 ]);
 
+// Media blocks (YouTube, etc.)
+const youtubeEmbedSchema = z.object({
+  url: z.string().min(1),
+  title: z.string().optional(),
+  autoplay: z.boolean().optional(),
+  width: z.string().optional(),
+  height: z.string().optional()
+});
+
+export const mediaBlockSchema = youtubeEmbedSchema;
+
 export const blockConfigSchema = z.union([
   heroBlockSchema,
   productBlockSchema,
   categoryBlockSchema,
-  contentBlockSchema
+  contentBlockSchema,
+  mediaBlockSchema
 ]);
 
 export const pageBlockSchema = z.object({
@@ -183,7 +195,12 @@ export const pageBlockSchema = z.object({
   type: z.string().min(1),
   order: z.number().int().nonnegative(),
   config: blockConfigSchema,
-  metadata: z.record(z.string(), z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional(),
+  // Zone placement for product detail pages
+  zone: z.enum(["zone1", "zone2", "zone3", "zone4"]).optional(),
+  // Tab label for zone3 (new tab placement)
+  tabLabel: z.string().optional(),
+  tabIcon: z.string().optional()
 });
 
 export const seoSettingsSchema = z.object({

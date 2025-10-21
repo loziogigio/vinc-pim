@@ -79,7 +79,7 @@ export default async function PreviewPage({ searchParams }: PreviewPageProps) {
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">
                       {index + 1}
                     </span>
-                    <span>{getBlockTypeName(block.variantId)}</span>
+                    <span>{getBlockTypeName(block.type)}</span>
                   </div>
                 </div>
               )}
