@@ -158,6 +158,159 @@ const contentTestimonialsDefault: ContentBlockConfig = {
   showAvatar: false
 };
 
+// Home page carousel blocks - Refined configurations
+
+/**
+ * Hero Carousel Configuration
+ * Main hero section with multiple slides (desktop + mobile images)
+ * Recommended dimensions: Desktop 1920x600px, Mobile 768x800px
+ */
+const heroCarouselConfig = {
+  slides: [], // {id, imageDesktop: {url, alt}, imageMobile: {url, alt}, link?: {url, openInNewTab}, title?, description?}
+  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  // Simplified mode: Simple item count per device
+  itemsToShow: {
+    desktop: 2,   // >= 1024px
+    tablet: 2,    // >= 768px
+    mobile: 1     // < 768px
+  },
+  // Advanced mode: Full Swiper.js breakpoint JSON
+  breakpointsJSON: {
+    "1536": { slidesPerView: 2, spaceBetween: 20 },
+    "1280": { slidesPerView: 2, spaceBetween: 16 },
+    "1024": { slidesPerView: 2, spaceBetween: 16 },
+    "768": { slidesPerView: 2, spaceBetween: 16 },
+    "520": { slidesPerView: 2, spaceBetween: 12 },
+    "0": { slidesPerView: 1, spaceBetween: 5 }
+  },
+  autoplay: true,
+  autoplaySpeed: 5000, // milliseconds
+  loop: true,
+  showDots: true,
+  showArrows: true,
+  className: "mb-12 xl:mb-14 pt-1"
+};
+
+const productGalleryConfig = {
+  items: [],
+  columns: {
+    desktop: 4,
+    tablet: 2,
+    mobile: 1
+  },
+  gap: 16,
+  showPrice: true,
+  showBadge: true,
+  showAddToCart: false,
+  className: "mb-12 xl:mb-14 pt-1"
+};
+
+
+/**
+ * Promo Carousel Configuration
+ * Promotional banners with images/videos
+ */
+const promoCarouselConfig = {
+  items: [], // {id, mediaType: 'image'|'video', imageDesktop?, imageMobile?, videoUrl?, link?, title?}
+  variant: "promo",
+  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  itemsToShow: {
+    desktop: 5.5,
+    tablet: 4.5,
+    mobile: 2.5
+  },
+  breakpointsJSON: {
+    "1536": { slidesPerView: 5.5, spaceBetween: 20 },
+    "768": { slidesPerView: 4.5, spaceBetween: 16 },
+    "520": { slidesPerView: 3.5, spaceBetween: 12 },
+    "0": { slidesPerView: 2.5, spaceBetween: 5 }
+  },
+  autoplay: false,
+  loop: false,
+  className: "mb-12 xl:mb-14 pt-1"
+};
+
+/**
+ * Brand Carousel Configuration
+ * Brand logos carousel
+ */
+const brandCarouselConfig = {
+  items: [], // {id, mediaType: 'image', imageDesktop?, imageMobile?, link?, title?}
+  variant: "brand",
+  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  itemsToShow: {
+    desktop: 10.5,
+    tablet: 6.5,
+    mobile: 3.5
+  },
+  breakpointsJSON: {
+    "1536": { slidesPerView: 10.5, spaceBetween: 20 },
+    "1280": { slidesPerView: 8.5, spaceBetween: 16 },
+    "1024": { slidesPerView: 6.5, spaceBetween: 16 },
+    "768": { slidesPerView: 4.5, spaceBetween: 16 },
+    "520": { slidesPerView: 4.5, spaceBetween: 12 },
+    "0": { slidesPerView: 3.5, spaceBetween: 5 }
+  },
+  autoplay: false,
+  loop: false,
+  className: "mb-12 xl:mb-14 pt-1"
+};
+
+/**
+ * Flyer Carousel Configuration
+ * Flyer/catalog images carousel
+ */
+const flyerCarouselConfig = {
+  items: [], // {id, mediaType: 'image', imageDesktop?, imageMobile?, link?, title?}
+  variant: "flyer",
+  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  itemsToShow: {
+    desktop: 5,
+    tablet: 4,
+    mobile: 2
+  },
+  breakpointsJSON: {
+    "1536": { slidesPerView: 5, spaceBetween: 20 },
+    "1280": { slidesPerView: 5, spaceBetween: 16 },
+    "1024": { slidesPerView: 5, spaceBetween: 16 },
+    "768": { slidesPerView: 4, spaceBetween: 16 },
+    "520": { slidesPerView: 4, spaceBetween: 12 },
+    "0": { slidesPerView: 2, spaceBetween: 5 }
+  },
+  autoplay: false,
+  loop: false,
+  className: "mb-12 xl:mb-14 pt-1"
+};
+
+/**
+ * Product Carousel Configuration
+ * Display products by mode: wishlist (requires login), trending, category, or custom query
+ */
+const productCarouselConfig = {
+  mode: "trending", // 'wishlist' | 'trending' | 'category' | 'custom'
+  categoryId: undefined, // For 'category' mode
+  customQuery: undefined, // For 'custom' mode: {fq?, sort?, ...}
+  title: "Featured Products",
+  showWishlistButton: true, // Only visible if user is logged in
+  limit: 12,
+  displayLayout: "carousel", // 'carousel' | 'grid'
+  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  itemsToShow: {
+    desktop: 4,
+    tablet: 3,
+    mobile: 2
+  },
+  breakpointsJSON: {
+    "1536": { slidesPerView: 4, spaceBetween: 16 },
+    "1280": { slidesPerView: 4, spaceBetween: 16 },
+    "1024": { slidesPerView: 3, spaceBetween: 16 },
+    "768": { slidesPerView: 3, spaceBetween: 12 },
+    "520": { slidesPerView: 2, spaceBetween: 8 },
+    "0": { slidesPerView: 2, spaceBetween: 5 }
+  },
+  className: "mb-12 xl:mb-14"
+};
+
 export const BLOCK_REGISTRY: BlockRegistry = {
   hero: {
     id: "hero",
@@ -277,6 +430,52 @@ export const BLOCK_REGISTRY: BlockRegistry = {
           maxWidth: "800px",
           alignment: "center"
         }
+      }
+    }
+  },
+  carousel: {
+    id: "carousel",
+    name: "Carousel Section",
+    category: "content",
+    variants: {
+      heroCarousel: {
+        id: "carousel-hero",
+        label: "Media Carousel",
+        icon: "🎠",
+        defaultConfig: heroCarouselConfig
+      },
+      promoCarousel: {
+        id: "carousel-promo",
+        label: "Promo Carousel",
+        icon: "🎯",
+        hidden: true,
+        defaultConfig: promoCarouselConfig
+      },
+      brandCarousel: {
+        id: "carousel-brand",
+        label: "Brand Carousel",
+        icon: "🏷️",
+        hidden: true,
+        defaultConfig: brandCarouselConfig
+      },
+      flyerCarousel: {
+        id: "carousel-flyer",
+        label: "Flyer Carousel",
+        icon: "📰",
+        hidden: true,
+        defaultConfig: flyerCarouselConfig
+      },
+      productCategories: {
+        id: "carousel-products",
+        label: "Product Carousel",
+        icon: "📦",
+        defaultConfig: productCarouselConfig
+      },
+      productGallery: {
+        id: "carousel-gallery",
+        label: "Product Gallery",
+        icon: "🖼️",
+        defaultConfig: productGalleryConfig
       }
     }
   }
