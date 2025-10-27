@@ -81,4 +81,12 @@ export function computeMediaHoverDeclarations(style: MediaCardStyle): string[] {
   return declarations;
 }
 
+// Aliases for ProductCardStyle (same as MediaCardStyle)
+export const getCardStyleCSS = computeMediaCardStyle;
+
+export function getCardHoverStyleCSS(style: MediaCardStyle): string {
+  const declarations = computeMediaHoverDeclarations(style);
+  return declarations.join(' ');
+}
+
 export { borderRadiusMap, shadowMap, hoverShadowMap };
