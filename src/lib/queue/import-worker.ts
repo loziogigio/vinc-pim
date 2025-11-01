@@ -36,6 +36,13 @@ interface ImportJobData {
   auto_publish_enabled?: boolean;
   min_score_threshold?: number;
   required_fields?: string[];
+  // Phase 3: Batch metadata
+  batch_metadata?: {
+    batch_id: string; // Unique ID for the entire batch
+    batch_part: number; // Which part is this (1-based)
+    batch_total_parts: number; // Total expected parts
+    batch_total_items: number; // Total items across all parts
+  };
 }
 
 /**
@@ -59,10 +66,36 @@ async function processImport(job: Job<ImportJobData>) {
   await connectToDatabase();
 
   try {
-    // Update job status
+    // ========== PHASE 3: HANDLE BATCH METADATA ==========
+    const batchMetadata = job.data.batch_metadata;
+
+    if (batchMetadata) {
+      console.log(`📦 Batch ${batchMetadata.batch_id} - Part ${batchMetadata.batch_part}/${batchMetadata.batch_total_parts}`);
+
+      // Validate batch part number
+      if (batchMetadata.batch_part > batchMetadata.batch_total_parts) {
+        throw new Error(
+          `Invalid batch part: ${batchMetadata.batch_part} exceeds total ${batchMetadata.batch_total_parts}`
+        );
+      }
+      if (batchMetadata.batch_part < 1) {
+        throw new Error(`Invalid batch part: ${batchMetadata.batch_part} must be >= 1`);
+      }
+    }
+
+    // Update job status with batch metadata
     await ImportJobModel.findOneAndUpdate(
       { job_id },
-      { status: "processing", started_at: new Date() }
+      {
+        status: "processing",
+        started_at: new Date(),
+        ...(batchMetadata && {
+          batch_id: batchMetadata.batch_id,
+          batch_part: batchMetadata.batch_part,
+          batch_total_parts: batchMetadata.batch_total_parts,
+          batch_total_items: batchMetadata.batch_total_items,
+        }),
+      }
     );
 
     // Get source configuration
@@ -163,6 +196,48 @@ async function processImport(job: Job<ImportJobData>) {
         throw new Error("Unsupported file type");
       }
     }
+
+    // ========== PHASE 1: BATCH SIZE VALIDATION ==========
+    const MAX_BATCH_SIZE = source.limits?.max_batch_size || 10000;
+    const WARN_BATCH_SIZE = source.limits?.warn_batch_size || 5000;
+
+    // Validate batch size
+    if (rows.length > MAX_BATCH_SIZE) {
+      throw new Error(
+        `❌ Batch size ${rows.length.toLocaleString()} exceeds maximum allowed ${MAX_BATCH_SIZE.toLocaleString()}. ` +
+        `Please split into smaller batches or contact support to increase the limit for this source.`
+      );
+    }
+
+    // Warning for large batches
+    if (rows.length > WARN_BATCH_SIZE) {
+      console.warn(`⚠️ Large batch detected: ${rows.length.toLocaleString()} items (threshold: ${WARN_BATCH_SIZE.toLocaleString()})`);
+      console.warn(`⚠️ Processing time estimated: ~${Math.ceil(rows.length / 100 * 0.1)} seconds`);
+    }
+
+    console.log(`📊 Batch size: ${rows.length.toLocaleString()} items (Max: ${MAX_BATCH_SIZE.toLocaleString()})`);
+
+    // ========== PHASE 4: MONITORING METRICS ==========
+    const metrics = {
+      job_id,
+      batch_id: batchMetadata?.batch_id,
+      batch_part: batchMetadata?.batch_part,
+      batch_size: rows.length,
+      start_time: Date.now(),
+      memory_start: process.memoryUsage().heapUsed / 1024 / 1024, // MB
+      chunk_count: Math.ceil(rows.length / (source.limits?.chunk_size || 100)),
+      estimated_duration_seconds: Math.ceil(rows.length / 100 * 0.1),
+    };
+
+    console.log(`📈 Import Metrics:`, JSON.stringify({
+      job_id: metrics.job_id,
+      batch_id: metrics.batch_id,
+      batch_part: metrics.batch_part,
+      batch_size: metrics.batch_size,
+      memory_mb: Math.round(metrics.memory_start),
+      estimated_duration: `${metrics.estimated_duration_seconds}s`,
+      chunk_count: metrics.chunk_count,
+    }));
 
     // Update total rows
     await ImportJobModel.findOneAndUpdate({ job_id }, { total_rows: rows.length });
@@ -334,6 +409,46 @@ async function processImport(job: Job<ImportJobData>) {
       }
     );
 
+    // ========== PHASE 4: FINAL METRICS ==========
+    const finalMetrics = {
+      job_id,
+      batch_id: batchMetadata?.batch_id,
+      batch_part: batchMetadata?.batch_part,
+      duration_seconds: durationSeconds,
+      memory_end: process.memoryUsage().heapUsed / 1024 / 1024,
+      memory_delta: (process.memoryUsage().heapUsed / 1024 / 1024) - metrics.memory_start,
+      processed,
+      successful,
+      failed,
+      auto_published: autoPublished,
+      success_rate: processed > 0 ? ((successful / processed) * 100).toFixed(2) : 0,
+      items_per_second: durationSeconds > 0 ? (processed / durationSeconds).toFixed(2) : 0,
+    };
+
+    console.log(`✅ Import Complete:`, JSON.stringify({
+      job_id: finalMetrics.job_id,
+      batch_id: finalMetrics.batch_id,
+      batch_part: finalMetrics.batch_part,
+      duration: `${finalMetrics.duration_seconds}s`,
+      processed: finalMetrics.processed,
+      successful: finalMetrics.successful,
+      failed: finalMetrics.failed,
+      success_rate: `${finalMetrics.success_rate}%`,
+      throughput: `${finalMetrics.items_per_second} items/s`,
+      memory_mb: Math.round(finalMetrics.memory_end),
+    }));
+
+    // Alert on high failure rate
+    if (processed > 100 && (failed / processed) > 0.1) {
+      console.error(`⚠️ HIGH FAILURE RATE: ${((failed / processed) * 100).toFixed(2)}% (${failed}/${processed} items)`);
+    }
+
+    // Alert on slow processing
+    const expectedDuration = metrics.estimated_duration_seconds;
+    if (durationSeconds > expectedDuration * 2) {
+      console.warn(`⚠️ SLOW PROCESSING: ${durationSeconds}s (expected: ${expectedDuration}s, ${((durationSeconds / expectedDuration) * 100).toFixed(0)}% slower)`);
+    }
+
     return { processed, successful, failed, autoPublished };
   } catch (error: any) {
     // Mark job as failed
@@ -359,12 +474,31 @@ async function processImport(job: Job<ImportJobData>) {
 const REDIS_HOST = process.env.REDIS_HOST || "localhost";
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379");
 
+// ========== PHASE 1: WORKER CONFIGURATION ==========
+const WORKER_CONCURRENCY = parseInt(process.env.IMPORT_WORKER_CONCURRENCY || "2");
+const RATE_LIMIT_MAX = parseInt(process.env.IMPORT_RATE_LIMIT_MAX || "5");
+const RATE_LIMIT_DURATION = parseInt(process.env.IMPORT_RATE_LIMIT_DURATION_MS || "60000");
+const JOB_TIMEOUT = parseInt(process.env.IMPORT_JOB_TIMEOUT_MINUTES || "60") * 60 * 1000;
+
+console.log(`🔧 Import Worker Configuration:`);
+console.log(`   Concurrency: ${WORKER_CONCURRENCY} jobs`);
+console.log(`   Rate Limit: ${RATE_LIMIT_MAX} jobs per ${RATE_LIMIT_DURATION / 1000}s`);
+console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
+
 export const importWorker = new Worker("import-queue", processImport, {
   connection: {
     host: REDIS_HOST,
     port: REDIS_PORT,
   },
-  concurrency: 2, // Process 2 imports simultaneously
+  concurrency: WORKER_CONCURRENCY, // Process N imports simultaneously
+  limiter: {
+    max: RATE_LIMIT_MAX, // Maximum jobs per duration
+    duration: RATE_LIMIT_DURATION, // Time window in milliseconds
+  },
+  settings: {
+    maxStalledCount: 1, // Retry once if job stalls
+    stalledInterval: 300000, // Check for stalled jobs every 5 minutes
+  },
 });
 
 // Event listeners

@@ -1,0 +1,117 @@
+/**
+ * Import Source Model
+ * Configuration for product import sources
+ */
+
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface IImportSource extends Document {
+  wholesaler_id: string;
+  source_id: string; // e.g., "manufacturer_acme_feed"
+  source_name: string; // e.g., "ACME Manufacturing Feed"
+  source_type: "api" | "csv" | "excel" | "xml" | "manual" | "manual_upload";
+
+  // API configuration (for source_type: "api")
+  api_config?: {
+    endpoint: string; // API URL
+    method: "GET" | "POST";
+    headers?: Record<string, string>; // Authentication, Content-Type, etc.
+    params?: Record<string, string>; // Query parameters
+    auth_type?: "none" | "bearer" | "api_key" | "basic";
+    auth_token?: string; // Bearer token or API key
+    schedule_cron?: string; // Cron schedule for auto-import
+  };
+
+  // Auto-publish configuration
+  auto_publish_enabled: boolean;
+  min_score_threshold: number; // 0-100
+  required_fields: string[]; // ["title", "price", "images"]
+
+  // Field mapping: supplier field name -> PIM field name
+  field_mappings: Record<string, string>;
+
+  // Import limits and performance settings
+  limits?: {
+    max_batch_size: number; // Maximum items per batch (default: 10000)
+    warn_batch_size: number; // Warning threshold (default: 5000)
+    chunk_size: number; // Items per processing chunk (default: 100)
+    timeout_minutes: number; // Job timeout in minutes (default: 60)
+  };
+
+  // Stats
+  stats: {
+    total_imports: number;
+    total_products: number;
+    last_import_at?: Date;
+    last_import_status?: "success" | "failed" | "partial";
+    avg_completeness_score: number;
+  };
+
+  // Metadata
+  created_by: string;
+  created_at: Date;
+  updated_at: Date;
+  is_active: boolean;
+}
+
+const ImportSourceSchema = new Schema<IImportSource>(
+  {
+    wholesaler_id: { type: String, required: true, index: true },
+    source_id: { type: String, required: true, unique: true },
+    source_name: { type: String, required: true },
+    source_type: {
+      type: String,
+      enum: ["api", "csv", "excel", "xml", "manual", "manual_upload"],
+      required: true,
+    },
+
+    // API configuration for API sources
+    api_config: {
+      endpoint: { type: String },
+      method: { type: String, enum: ["GET", "POST"] },
+      headers: { type: Schema.Types.Mixed },
+      params: { type: Schema.Types.Mixed },
+      auth_type: { type: String, enum: ["none", "bearer", "api_key", "basic"] },
+      auth_token: { type: String },
+      schedule_cron: { type: String },
+    },
+
+    auto_publish_enabled: { type: Boolean, default: false },
+    min_score_threshold: { type: Number, default: 80, min: 0, max: 100 },
+    required_fields: [{ type: String }],
+
+    // Field mappings as object: { "supplier_field": "pim_field" }
+    field_mappings: { type: Schema.Types.Mixed, default: {} },
+
+    // Import limits and performance settings
+    limits: {
+      max_batch_size: { type: Number, default: 10000 },
+      warn_batch_size: { type: Number, default: 5000 },
+      chunk_size: { type: Number, default: 100 },
+      timeout_minutes: { type: Number, default: 60 },
+    },
+
+    stats: {
+      total_imports: { type: Number, default: 0 },
+      total_products: { type: Number, default: 0 },
+      last_import_at: { type: Date },
+      last_import_status: {
+        type: String,
+        enum: ["success", "failed", "partial"],
+      },
+      avg_completeness_score: { type: Number, default: 0 },
+    },
+
+    created_by: { type: String, required: true },
+    created_at: { type: Date, default: Date.now },
+    updated_at: { type: Date, default: Date.now },
+    is_active: { type: Boolean, default: true },
+  },
+  {
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+  }
+);
+
+export const ImportSourceModel =
+  mongoose.models.ImportSource ||
+  mongoose.model<IImportSource>("ImportSource", ImportSourceSchema);

@@ -37,6 +37,13 @@ export interface IImportJob extends Document {
   completed_at?: Date;
   duration_seconds?: number;
 
+  // Batch tracking (Phase 3)
+  batch_id?: string; // Links multiple imports together
+  batch_part?: number; // Which part of the batch (1, 2, 3...)
+  batch_total_parts?: number; // Total expected parts
+  batch_total_items?: number; // Total items across all parts
+  parent_job_id?: string; // If this is a retry of another job
+
   created_at: Date;
   updated_at: Date;
 }
@@ -77,6 +84,13 @@ const ImportJobSchema = new Schema<IImportJob>(
     completed_at: { type: Date },
     duration_seconds: { type: Number },
 
+    // Batch tracking (Phase 3)
+    batch_id: { type: String, index: true },
+    batch_part: { type: Number },
+    batch_total_parts: { type: Number },
+    batch_total_items: { type: Number },
+    parent_job_id: { type: String, index: true },
+
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
   },
@@ -84,6 +98,10 @@ const ImportJobSchema = new Schema<IImportJob>(
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
   }
 );
+
+// Compound index for batch queries
+ImportJobSchema.index({ batch_id: 1, batch_part: 1 });
+ImportJobSchema.index({ wholesaler_id: 1, batch_id: 1 });
 
 export const ImportJobModel =
   mongoose.models.ImportJob ||
