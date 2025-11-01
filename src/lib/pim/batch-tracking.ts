@@ -31,7 +31,7 @@ export async function checkBatchCompletion(
     filter.wholesaler_id = wholesaler_id;
   }
 
-  const jobs = await ImportJobModel.find(filter).sort({ batch_part: 1 });
+  const jobs = await ImportJobModel.find(filter).sort({ batch_part: 1 }).exec();
 
   if (jobs.length === 0) {
     throw new Error(`No jobs found for batch_id: ${batch_id}`);
@@ -192,7 +192,8 @@ export async function autoGenerateBatchId(
     batch_id: { $exists: false }, // Only jobs without explicit batch_id
   })
     .sort({ created_at: 1 })
-    .limit(1);
+    .limit(1)
+    .exec();
 
   if (recentJobs.length > 0) {
     // Use existing auto-generated batch

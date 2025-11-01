@@ -495,10 +495,6 @@ export const importWorker = new Worker("import-queue", processImport, {
     max: RATE_LIMIT_MAX, // Maximum jobs per duration
     duration: RATE_LIMIT_DURATION, // Time window in milliseconds
   },
-  settings: {
-    maxStalledCount: 1, // Retry once if job stalls
-    stalledInterval: 300000, // Check for stalled jobs every 5 minutes
-  },
 });
 
 // Event listeners
