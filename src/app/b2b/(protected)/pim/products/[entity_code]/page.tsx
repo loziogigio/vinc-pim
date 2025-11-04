@@ -9,6 +9,7 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ImageGallery } from "@/components/pim/ImageGallery";
 import { MediaGallery } from "@/components/pim/MediaGallery";
 import { ConflictResolver } from "@/components/pim/ConflictResolver";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import {
   ArrowLeft,
   Save,
@@ -688,12 +689,11 @@ export default function ProductDetailPage({
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Description
                 </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
-                  rows={4}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
+                <RichTextEditor
+                  content={formData.description}
+                  onChange={(html) => handleInputChange("description", html)}
                   placeholder="Detailed product description"
+                  minHeight="200px"
                 />
               </div>
             </div>
@@ -869,9 +869,10 @@ export default function ProductDetailPage({
               {formData.description && (
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {formData.description}
-                  </p>
+                  <div
+                    className="prose prose-sm max-w-none text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: formData.description }}
+                  />
                 </div>
               )}
 

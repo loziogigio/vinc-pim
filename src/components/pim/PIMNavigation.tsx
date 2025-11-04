@@ -10,13 +10,15 @@ import {
   Settings,
   Sparkles,
   FolderOpen,
-  Image
+  Image,
+  FolderTree
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
 const navItems = [
   { label: "Overview", href: "/b2b/pim", icon: Box, description: "Catalog quality snapshot" },
   { label: "Products", href: "/b2b/pim/products", icon: Package, description: "Master list (CRUD)" },
+  { label: "Categories", href: "/b2b/pim/categories", icon: FolderTree, description: "Hierarchical structure" },
   { label: "AI Enhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, description: "Generate content" },
   { label: "Attributes", href: "/b2b/pim/attributes", icon: FolderOpen, description: "Schema & mapping" },
   { label: "Media", href: "/b2b/pim/media", icon: Image, description: "Product images" },
