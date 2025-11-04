@@ -205,7 +205,7 @@ export default function SourcesPage() {
                       {source.source_name}
                     </h3>
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                      {source.source_type.toUpperCase()}
+                      {source.source_type?.toUpperCase() || source.type?.toUpperCase() || "UNKNOWN"}
                     </span>
                     {source.is_active ? (
                       <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">

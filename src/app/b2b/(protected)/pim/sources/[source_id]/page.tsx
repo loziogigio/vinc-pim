@@ -64,6 +64,7 @@ export default function SourceDetailPage() {
     auto_publish_enabled: false,
     min_score_threshold: 70,
     required_fields: [] as string[],
+    overwrite_level: "automatic" as "automatic" | "manual",
   });
 
   // Field mapping editor state
@@ -92,6 +93,7 @@ export default function SourceDetailPage() {
           auto_publish_enabled: data.source.auto_publish_enabled,
           min_score_threshold: data.source.min_score_threshold,
           required_fields: data.source.required_fields || [],
+          overwrite_level: data.source.overwrite_level || "automatic",
         });
       } else {
         router.push("/b2b/pim/sources");
@@ -477,6 +479,36 @@ export default function SourceDetailPage() {
               )}
               <p className="text-xs text-muted-foreground mt-1">
                 Products with score above this will auto-publish
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Conflict Resolution
+              </label>
+              {isEditing ? (
+                <select
+                  value={editData.overwrite_level}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      overwrite_level: e.target.value as "automatic" | "manual",
+                    })
+                  }
+                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="automatic">Automatic (API always overwrites)</option>
+                  <option value="manual">Manual (Protect manual edits)</option>
+                </select>
+              ) : (
+                <p className="text-sm text-muted-foreground capitalize">
+                  {source.overwrite_level || "automatic"}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {editData.overwrite_level === "automatic"
+                  ? "API updates will always overwrite manual edits without creating conflicts"
+                  : "Manual edits will be protected - conflicts created when API tries to update them"}
               </p>
             </div>
 

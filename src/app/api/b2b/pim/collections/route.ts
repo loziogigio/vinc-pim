@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
-import { CategoryModel } from "@/lib/db/models/category";
+import { CollectionModel } from "@/lib/db/models/collection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { nanoid } from "nanoid";
 
 /**
- * GET /api/b2b/pim/categories
- * Get all categories with hierarchy
+ * GET /api/b2b/pim/collections
+ * Get all collections
  */
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
 
     const searchParams = req.nextUrl.searchParams;
-    const parentId = searchParams.get("parent_id");
     const includeInactive = searchParams.get("include_inactive") === "true";
 
     // Build query
@@ -28,39 +27,27 @@ export async function GET(req: NextRequest) {
       wholesaler_id: session.userId,
     };
 
-    // Only filter by parent_id if explicitly provided in query params
-    if (searchParams.has("parent_id")) {
-      const parentIdValue = searchParams.get("parent_id");
-      if (parentIdValue === "null" || parentIdValue === "") {
-        // Explicitly requesting root categories
-        query.parent_id = null;
-      } else {
-        query.parent_id = parentIdValue;
-      }
-    }
-    // Otherwise, don't filter by parent_id (return all categories)
-
     if (!includeInactive) {
       query.is_active = true;
     }
 
-    const categories = await CategoryModel.find(query)
+    const collections = await CollectionModel.find(query)
       .sort({ display_order: 1, name: 1 })
       .lean();
 
-    // Update product counts for each category
-    const categoryIds = categories.map((c) => c.category_id);
+    // Update product counts for each collection
+    const collectionIds = collections.map((c) => c.collection_id);
     const productCounts = await PIMProductModel.aggregate([
       {
         $match: {
           wholesaler_id: session.userId,
           isCurrent: true,
-          "category.id": { $in: categoryIds },
+          "collection.id": { $in: collectionIds },
         },
       },
       {
         $group: {
-          _id: "$category.id",
+          _id: "$collection.id",
           count: { $sum: 1 },
         },
       },
@@ -68,14 +55,14 @@ export async function GET(req: NextRequest) {
 
     const countMap = new Map(productCounts.map((c) => [c._id, c.count]));
 
-    const categoriesWithCounts = categories.map((cat) => ({
-      ...cat,
-      product_count: countMap.get(cat.category_id) || 0,
+    const collectionsWithCounts = collections.map((col) => ({
+      ...col,
+      product_count: countMap.get(col.collection_id) || 0,
     }));
 
-    return NextResponse.json({ categories: categoriesWithCounts });
+    return NextResponse.json({ collections: collectionsWithCounts });
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("Error fetching collections:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -84,8 +71,8 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/b2b/pim/categories
- * Create a new category
+ * POST /api/b2b/pim/collections
+ * Create a new collection
  */
 export async function POST(req: NextRequest) {
   try {
@@ -97,7 +84,7 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const body = await req.json();
-    const { name, slug, description, parent_id, hero_image, seo, display_order } = body;
+    const { name, slug, description, hero_image, seo, display_order } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -107,48 +94,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if slug already exists for this wholesaler
-    const existing = await CategoryModel.findOne({
+    const existing = await CollectionModel.findOne({
       wholesaler_id: session.userId,
       slug,
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: "A category with this slug already exists" },
+        { error: "A collection with this slug already exists" },
         { status: 400 }
       );
     }
 
-    // Calculate level and path based on parent
-    let level = 0;
-    let path: string[] = [];
-
-    if (parent_id) {
-      const parent = await CategoryModel.findOne({
-        category_id: parent_id,
-        wholesaler_id: session.userId,
-      });
-
-      if (!parent) {
-        return NextResponse.json(
-          { error: "Parent category not found" },
-          { status: 404 }
-        );
-      }
-
-      level = parent.level + 1;
-      path = [...parent.path, parent.category_id];
-    }
-
-    const category = await CategoryModel.create({
-      category_id: nanoid(12),
+    const collection = await CollectionModel.create({
+      collection_id: nanoid(12),
       wholesaler_id: session.userId,
       name,
       slug,
       description,
-      parent_id,
-      level,
-      path,
       hero_image,
       seo: seo || {},
       display_order: display_order || 0,
@@ -156,9 +119,9 @@ export async function POST(req: NextRequest) {
       product_count: 0,
     });
 
-    return NextResponse.json({ category }, { status: 201 });
+    return NextResponse.json({ collection }, { status: 201 });
   } catch (error) {
-    console.error("Error creating category:", error);
+    console.error("Error creating collection:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

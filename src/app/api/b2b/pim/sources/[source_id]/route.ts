@@ -86,6 +86,7 @@ export async function PATCH(
       "auto_publish_enabled",
       "min_score_threshold",
       "required_fields",
+      "overwrite_level",
       "is_active",
     ];
 

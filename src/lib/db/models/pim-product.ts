@@ -153,6 +153,32 @@ export interface IPIMProduct extends Document {
     icon?: string;
   };
 
+  // Collections (can have multiple)
+  collections?: {
+    id: string;
+    name: string;
+    slug: string;
+  }[];
+
+  // Product Type (with features)
+  product_type?: {
+    id: string;
+    name: string;
+    slug: string;
+    features?: {
+      key: string;
+      label: string;
+      value: string | number | boolean | string[];
+      unit?: string;
+    }[];
+  };
+
+  // Custom Attributes (flexible key-value pairs)
+  attributes?: Record<string, any>;
+
+  // Tags (array of strings)
+  tags?: string[];
+
   // Tags (Tag[] type)
   tag?: {
     id: string;
@@ -354,6 +380,40 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         original: { type: String },
       },
       icon: { type: String },
+    },
+
+    collections: [
+      {
+        id: { type: String },
+        name: { type: String },
+        slug: { type: String },
+      },
+    ],
+
+    product_type: {
+      id: { type: String },
+      name: { type: String },
+      slug: { type: String },
+      features: [
+        {
+          key: { type: String },
+          label: { type: String },
+          value: { type: Schema.Types.Mixed },
+          unit: { type: String },
+        },
+      ],
+    },
+
+    // Custom Attributes (flexible key-value pairs)
+    attributes: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+
+    // Tags (array of strings)
+    tags: {
+      type: [String],
+      default: [],
     },
 
     tag: [

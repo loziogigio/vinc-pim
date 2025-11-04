@@ -10,6 +10,12 @@ import { ImageGallery } from "@/components/pim/ImageGallery";
 import { MediaGallery } from "@/components/pim/MediaGallery";
 import { ConflictResolver } from "@/components/pim/ConflictResolver";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { ProductTypeSelector } from "@/components/pim/ProductTypeSelector";
+import { CollectionsSelector } from "@/components/pim/CollectionsSelector";
+import { CategorySelector } from "@/components/pim/CategorySelector";
+import { FeaturesForm } from "@/components/pim/FeaturesForm";
+import { AttributesEditor } from "@/components/pim/AttributesEditor";
+import { TagsInput } from "@/components/pim/TagsInput";
 import {
   ArrowLeft,
   Save,
@@ -65,6 +71,17 @@ type Product = {
     name: string;
     slug: string;
   };
+  product_type?: {
+    id: string;
+    name: string;
+    slug: string;
+    features?: any[];
+  };
+  collections?: {
+    id: string;
+    name: string;
+    slug: string;
+  }[];
   category?: {
     id: string;
     name: string;
@@ -126,6 +143,22 @@ export default function ProductDetailPage({
 
   const [originalData, setOriginalData] = useState<FormData | null>(null);
 
+  // Product associations
+  const [productType, setProductType] = useState<any>(null);
+  const [collections, setCollections] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [category, setCategory] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [featureValues, setFeatureValues] = useState<any[]>([]);
+  const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({});
+  const [tags, setTags] = useState<string[]>([]);
+
+  // Original values for comparison
+  const [originalProductType, setOriginalProductType] = useState<any>(null);
+  const [originalCollections, setOriginalCollections] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [originalCategory, setOriginalCategory] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [originalFeatureValues, setOriginalFeatureValues] = useState<any[]>([]);
+  const [originalCustomAttributes, setOriginalCustomAttributes] = useState<Record<string, any>>({});
+  const [originalTags, setOriginalTags] = useState<string[]>([]);
+
   useEffect(() => {
     if (entity_code) {
       fetchProduct();
@@ -133,13 +166,57 @@ export default function ProductDetailPage({
   }, [entity_code]);
 
   useEffect(() => {
-    if (originalData) {
-      const changed = Object.keys(formData).some(
-        (key) => formData[key as keyof FormData] !== originalData[key as keyof FormData]
-      );
-      setHasChanges(changed);
-    }
-  }, [formData, originalData]);
+    if (!originalData) return;
+
+    // Check if basic form fields changed
+    const formChanged = Object.keys(formData).some(
+      (key) => formData[key as keyof FormData] !== originalData[key as keyof FormData]
+    );
+
+    // Check if product type changed
+    const productTypeChanged = productType?.id !== originalProductType?.id;
+
+    // Check if collections changed
+    const collectionsChanged = JSON.stringify(collections) !== JSON.stringify(originalCollections);
+
+    // Check if category changed
+    const categoryChanged = category?.id !== originalCategory?.id;
+
+    // Check if feature values changed
+    const featuresChanged = JSON.stringify(featureValues) !== JSON.stringify(originalFeatureValues);
+
+    // Check if custom attributes changed
+    const attributesChanged = JSON.stringify(customAttributes) !== JSON.stringify(originalCustomAttributes);
+
+    // Check if tags changed
+    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(originalTags);
+
+    const hasAnyChanges =
+      formChanged ||
+      productTypeChanged ||
+      collectionsChanged ||
+      categoryChanged ||
+      featuresChanged ||
+      attributesChanged ||
+      tagsChanged;
+
+    setHasChanges(hasAnyChanges);
+  }, [
+    formData,
+    originalData,
+    productType,
+    originalProductType,
+    collections,
+    originalCollections,
+    category,
+    originalCategory,
+    featureValues,
+    originalFeatureValues,
+    customAttributes,
+    originalCustomAttributes,
+    tags,
+    originalTags
+  ]);
 
   async function fetchProduct() {
     setIsLoading(true);
@@ -175,6 +252,29 @@ export default function ProductDetailPage({
         };
         setFormData(initialData);
         setOriginalData(initialData);
+
+        // Initialize product associations
+        const loadedProductType = data.product.product_type || null;
+        const loadedFeatures = data.product.product_type?.features || [];
+        const loadedCollections = data.product.collections || [];
+        const loadedCategory = data.product.category || null;
+        const loadedAttributes = data.product.attributes || {};
+        const loadedTags = data.product.tags || [];
+
+        setProductType(loadedProductType);
+        setFeatureValues(loadedFeatures);
+        setCollections(loadedCollections);
+        setCategory(loadedCategory);
+        setCustomAttributes(loadedAttributes);
+        setTags(loadedTags);
+
+        // Set original values for change detection
+        setOriginalProductType(loadedProductType);
+        setOriginalFeatureValues(loadedFeatures);
+        setOriginalCollections(loadedCollections);
+        setOriginalCategory(loadedCategory);
+        setOriginalCustomAttributes(loadedAttributes);
+        setOriginalTags(loadedTags);
       } else if (res.status === 404) {
         setProduct(null);
       } else {
@@ -215,16 +315,36 @@ export default function ProductDetailPage({
           : null;
       }
 
-      // Add category if changed
-      if (formData.category_name !== originalData?.category_name) {
-        updates.category = formData.category_name
-          ? {
-              name: formData.category_name,
-              id: product?.category?.id || formData.category_name.toLowerCase().replace(/\s+/g, "-"),
-              slug: formData.category_name.toLowerCase().replace(/\s+/g, "-"),
-            }
-          : null;
+      // Add category if changed (using the CategorySelector value)
+      if (category !== product?.category) {
+        updates.category = category;
       }
+
+      // Add product type if changed
+      if (productType) {
+        updates.product_type = {
+          id: productType.product_type_id || productType.id,
+          name: productType.name,
+          slug: productType.slug,
+          features: featureValues,
+        };
+      }
+
+      // Add collections
+      updates.collections = collections;
+
+      // Add custom attributes
+      updates.attributes = customAttributes;
+
+      // Add tags
+      updates.tags = tags;
+
+      console.log("💾 Saving product with updates:", {
+        product_type: updates.product_type,
+        collections: updates.collections,
+        attributes: updates.attributes,
+        tags: updates.tags,
+      });
 
       const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
         method: "PATCH",
@@ -250,6 +370,15 @@ export default function ProductDetailPage({
         };
         setFormData(savedData);
         setOriginalData(savedData);
+
+        // Update original association values
+        setOriginalProductType(productType);
+        setOriginalCollections(collections);
+        setOriginalCategory(category);
+        setOriginalFeatureValues(featureValues);
+        setOriginalCustomAttributes(customAttributes);
+        setOriginalTags(tags);
+
         setHasChanges(false);
 
         // Show success message
@@ -406,6 +535,12 @@ export default function ProductDetailPage({
   function handleDiscard() {
     if (originalData) {
       setFormData(originalData);
+      setProductType(originalProductType);
+      setCollections(originalCollections);
+      setCategory(originalCategory);
+      setFeatureValues(originalFeatureValues);
+      setCustomAttributes(originalCustomAttributes);
+      setTags(originalTags);
       setHasChanges(false);
     }
   }
@@ -733,36 +868,98 @@ export default function ProductDetailPage({
             </div>
           </div>
 
-          {/* Classification */}
+          {/* Product Type */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Classification</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Brand
-                </label>
-                <input
-                  type="text"
-                  value={formData.brand_name}
-                  onChange={(e) => handleInputChange("brand_name", e.target.value)}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Enter brand name"
-                />
-              </div>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Product Type</h3>
+            <ProductTypeSelector
+              value={productType ? {
+                id: productType.product_type_id || productType.id,
+                name: productType.name,
+                slug: productType.slug,
+              } : undefined}
+              onChange={(selectedType) => {
+                setProductType(selectedType);
+                // Clear feature values when product type changes
+                if (!selectedType) {
+                  setFeatureValues([]);
+                }
+              }}
+              disabled={isOldVersion}
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  value={formData.category_name}
-                  onChange={(e) => handleInputChange("category_name", e.target.value)}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Enter category name"
-                />
-              </div>
+          {/* Category */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Category</h3>
+            <CategorySelector
+              value={category || undefined}
+              onChange={setCategory}
+              disabled={isOldVersion}
+            />
+          </div>
+
+          {/* Collections */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Collections</h3>
+            <CollectionsSelector
+              value={collections}
+              onChange={setCollections}
+              disabled={isOldVersion}
+            />
+          </div>
+
+          {/* Brand (keeping simple text input for now) */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Brand</h3>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Brand Name
+              </label>
+              <input
+                type="text"
+                value={formData.brand_name}
+                onChange={(e) => handleInputChange("brand_name", e.target.value)}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="Enter brand name"
+              />
             </div>
+          </div>
+
+          {/* Features - Only shown when product type is selected */}
+          {productType && productType.featureDetails && productType.featureDetails.length > 0 && (
+            <div className="rounded-lg bg-card p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Features</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Complete the technical features for this product type
+              </p>
+              <FeaturesForm
+                features={productType.featureDetails}
+                values={featureValues}
+                onChange={setFeatureValues}
+                disabled={isOldVersion}
+              />
+            </div>
+          )}
+
+          {/* Custom Attributes */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Custom Attributes</h3>
+            <AttributesEditor
+              value={customAttributes}
+              onChange={setCustomAttributes}
+              disabled={isOldVersion}
+            />
+          </div>
+
+          {/* Tags */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Tags</h3>
+            <TagsInput
+              value={tags}
+              onChange={setTags}
+              disabled={isOldVersion}
+              placeholder="Add tags for better organization and search..."
+            />
           </div>
         </div>
       </div>
