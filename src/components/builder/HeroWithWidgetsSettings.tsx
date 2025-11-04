@@ -108,6 +108,28 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
   const [loop, setLoop] = useState(config.loop ?? true);
   const [showDots, setShowDots] = useState(config.showDots ?? true);
   const [showArrows, setShowArrows] = useState(config.showArrows ?? true);
+  const [breakpointMode, setBreakpointMode] = useState<"simplified" | "advanced">(
+    config.breakpointMode || "simplified"
+  );
+  const [itemsToShow, setItemsToShow] = useState({
+    desktop: config.itemsToShow?.desktop || 2,
+    tablet: config.itemsToShow?.tablet || 2,
+    mobile: config.itemsToShow?.mobile || 1
+  });
+  const [breakpointsJSON, setBreakpointsJSON] = useState(
+    JSON.stringify(
+      config.breakpointsJSON || {
+        "1536": { slidesPerView: 2, spaceBetween: 20 },
+        "1280": { slidesPerView: 2, spaceBetween: 20 },
+        "1024": { slidesPerView: 2, spaceBetween: 20 },
+        "768": { slidesPerView: 2, spaceBetween: 16 },
+        "520": { slidesPerView: 1, spaceBetween: 12 },
+        "0": { slidesPerView: 1, spaceBetween: 8 }
+      },
+      null,
+      2
+    )
+  );
 
   // Widget settings
   const [clockEnabled, setClockEnabled] = useState(config.widgets?.clock?.enabled ?? true);
@@ -158,33 +180,44 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
   };
 
   const handleSave = () => {
-    const finalConfig = {
-      slides,
-      autoplay,
-      autoplaySpeed,
-      loop,
-      showDots,
-      showArrows,
-      widgets: {
-        clock: {
-          enabled: clockEnabled,
-          timezone: clockTimezone,
-          showWeather,
-          weatherLocation
+    try {
+      const finalConfig: any = {
+        slides,
+        autoplay,
+        autoplaySpeed,
+        loop,
+        showDots,
+        showArrows,
+        breakpointMode,
+        widgets: {
+          clock: {
+            enabled: clockEnabled,
+            timezone: clockTimezone,
+            showWeather,
+            weatherLocation
+          },
+          calendar: {
+            enabled: calendarEnabled,
+            highlightToday
+          }
         },
-        calendar: {
-          enabled: calendarEnabled,
-          highlightToday
-        }
-      },
-      layout: {
-        carouselWidth: "80%",
-        widgetsWidth: "20%"
-      },
-      className: config.className || "hero-with-widgets-section"
-    };
+        layout: {
+          carouselWidth: "80%",
+          widgetsWidth: "20%"
+        },
+        className: config.className || "hero-with-widgets-section"
+      };
 
-    onSave(finalConfig);
+      if (breakpointMode === "simplified") {
+        finalConfig.itemsToShow = itemsToShow;
+      } else {
+        finalConfig.breakpointsJSON = JSON.parse(breakpointsJSON);
+      }
+
+      onSave(finalConfig);
+    } catch (error) {
+      alert("Invalid JSON in carousel breakpoints");
+    }
   };
 
   return (
@@ -208,7 +241,7 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
 
         {slides.length === 0 && (
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-            <p className="text-sm text-gray-500">No slides yet. Click "Add Slide" to get started.</p>
+            <p className="text-sm text-gray-500">No slides yet. Click &quot;Add Slide&quot; to get started.</p>
           </div>
         )}
 
@@ -299,6 +332,91 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Responsive Settings */}
+      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <Label className="text-sm font-semibold text-slate-700">Responsive Settings</Label>
+        <div className="flex items-center gap-6 text-sm text-slate-600">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={breakpointMode === "simplified"}
+              onChange={() => setBreakpointMode("simplified")}
+            />
+            Simplified
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={breakpointMode === "advanced"}
+              onChange={() => setBreakpointMode("advanced")}
+            />
+            Advanced (JSON)
+          </label>
+        </div>
+
+        {breakpointMode === "simplified" ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-slate-500">
+                Desktop (≥1024px)
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={itemsToShow.desktop}
+                onChange={(event) =>
+                  setItemsToShow((prev) => ({ ...prev, desktop: Number(event.target.value) }))
+                }
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-slate-500">
+                Tablet (≥768px)
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={itemsToShow.tablet}
+                onChange={(event) =>
+                  setItemsToShow((prev) => ({ ...prev, tablet: Number(event.target.value) }))
+                }
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-slate-500">
+                Mobile (&lt;768px)
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={itemsToShow.mobile}
+                onChange={(event) =>
+                  setItemsToShow((prev) => ({ ...prev, mobile: Number(event.target.value) }))
+                }
+                className="mt-2"
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Label className="text-xs uppercase tracking-wide text-slate-500">
+              Breakpoints JSON
+            </Label>
+            <textarea
+              value={breakpointsJSON}
+              onChange={(event) => setBreakpointsJSON(event.target.value)}
+              rows={8}
+              className="mt-2 w-full rounded-lg border border-slate-300 p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              Provide Swiper.js breakpoint configuration. Example: {`{"1024": {"slidesPerView": 2}}`}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Widget Settings Section */}
@@ -395,66 +513,49 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
       </div>
 
       {/* Carousel Options */}
-      <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <h4 className="font-medium">Carousel Options</h4>
+      <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <Label className="text-sm font-semibold text-slate-700">Carousel options</Label>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Autoplay</Label>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={autoplay}
-                onChange={(e) => setAutoplay(e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#009688] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Loop</Label>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={loop}
-                onChange={(e) => setLoop(e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#009688] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Show Dots</Label>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={showDots}
-                onChange={(e) => setShowDots(e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#009688] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Show Arrows</Label>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={showArrows}
-                onChange={(e) => setShowArrows(e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#009688] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
-            </label>
-          </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={autoplay}
+              onChange={(e) => setAutoplay(e.target.checked)}
+            />
+            Autoplay
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={loop}
+              onChange={(e) => setLoop(e.target.checked)}
+            />
+            Loop slides
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={showDots}
+              onChange={(e) => setShowDots(e.target.checked)}
+            />
+            Show dots
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={showArrows}
+              onChange={(e) => setShowArrows(e.target.checked)}
+            />
+            Show arrows
+          </label>
         </div>
 
         {autoplay && (
           <div>
-            <Label className="text-xs">Autoplay Speed (ms)</Label>
+            <Label className="text-xs uppercase tracking-wide text-slate-500">
+              Autoplay speed (ms)
+            </Label>
             <Input
               type="number"
               value={autoplaySpeed}
@@ -462,7 +563,7 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
               min={1000}
               max={10000}
               step={500}
-              className="mt-1"
+              className="mt-2"
             />
           </div>
         )}

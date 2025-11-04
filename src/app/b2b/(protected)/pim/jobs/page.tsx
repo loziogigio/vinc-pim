@@ -17,6 +17,9 @@ import {
   Download,
   ExternalLink,
   Database,
+  Search,
+  Filter,
+  X,
 } from "lucide-react";
 
 type ImportJob = {
@@ -32,6 +35,10 @@ type ImportJob = {
   successful_rows: number;
   failed_rows: number;
   auto_published_count: number;
+  batch_id?: string;
+  batch_part?: number;
+  batch_total_parts?: number;
+  batch_total_items?: number;
   import_errors: {
     row: number;
     entity_code: string;
@@ -48,6 +55,24 @@ export default function JobsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [batchFilter, setBatchFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+  const [completedFrom, setCompletedFrom] = useState("");
+  const [completedTo, setCompletedTo] = useState("");
+
+  // Pagination
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 0,
+  });
+
   useEffect(() => {
     fetchJobs();
 
@@ -55,14 +80,33 @@ export default function JobsPage() {
       const interval = setInterval(fetchJobs, 5000); // Refresh every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, pagination.page, pagination.limit, statusFilter, sourceFilter, batchFilter, searchQuery, createdFrom, createdTo, completedFrom, completedTo]);
 
   async function fetchJobs() {
     try {
-      const res = await fetch("/api/b2b/pim/jobs?limit=50");
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
+
+      if (statusFilter) params.append("status", statusFilter);
+      if (sourceFilter) params.append("source", sourceFilter);
+      if (batchFilter) params.append("batch", batchFilter);
+      if (searchQuery) params.append("search", searchQuery);
+      if (createdFrom) params.append("created_from", createdFrom);
+      if (createdTo) params.append("created_to", createdTo);
+      if (completedFrom) params.append("completed_from", completedFrom);
+      if (completedTo) params.append("completed_to", completedTo);
+
+      const res = await fetch(`/api/b2b/pim/jobs?${params}`);
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs || []);
+        setPagination(prev => ({
+          ...prev,
+          total: data.pagination?.total || data.jobs?.length || 0,
+          totalPages: data.pagination?.totalPages || 1,
+        }));
 
         // Disable auto-refresh if no active jobs
         const hasActiveJobs = data.jobs?.some(
@@ -215,6 +259,176 @@ export default function JobsPage() {
         </div>
       </div>
 
+      {/* Search and Filters */}
+      <div className="rounded-lg bg-card p-4 shadow-sm">
+        <div className="flex items-center gap-4 mb-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search by file name, job ID, or source..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPagination((p) => ({ ...p, page: 1 }));
+              }}
+              className="w-full pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPagination((p) => ({ ...p, page: 1 }));
+            }}
+            className="px-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[150px]"
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Database className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Source ID..."
+                value={sourceFilter}
+                onChange={(e) => {
+                  setSourceFilter(e.target.value);
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
+              />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Batch ID..."
+                value={batchFilter}
+                onChange={(e) => {
+                  setBatchFilter(e.target.value);
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Date Range Filters */}
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Created Date Range */}
+            <div>
+              <label className="block text-xs text-muted-foreground mb-2">Created Date Range</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={createdFrom}
+                  onChange={(e) => {
+                    setCreatedFrom(e.target.value);
+                    setPagination((p) => ({ ...p, page: 1 }));
+                  }}
+                  className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="From"
+                />
+                <span className="text-muted-foreground">to</span>
+                <input
+                  type="date"
+                  value={createdTo}
+                  onChange={(e) => {
+                    setCreatedTo(e.target.value);
+                    setPagination((p) => ({ ...p, page: 1 }));
+                  }}
+                  className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="To"
+                />
+              </div>
+            </div>
+
+            {/* Completed Date Range */}
+            <div>
+              <label className="block text-xs text-muted-foreground mb-2">Completed Date Range</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={completedFrom}
+                  onChange={(e) => {
+                    setCompletedFrom(e.target.value);
+                    setPagination((p) => ({ ...p, page: 1 }));
+                  }}
+                  className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="From"
+                />
+                <span className="text-muted-foreground">to</span>
+                <input
+                  type="date"
+                  value={completedTo}
+                  onChange={(e) => {
+                    setCompletedTo(e.target.value);
+                    setPagination((p) => ({ ...p, page: 1 }));
+                  }}
+                  className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="To"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {(statusFilter || sourceFilter || batchFilter || searchQuery || createdFrom || createdTo || completedFrom || completedTo) && (
+              <button
+                onClick={() => {
+                  setStatusFilter("");
+                  setSourceFilter("");
+                  setBatchFilter("");
+                  setSearchQuery("");
+                  setCreatedFrom("");
+                  setCreatedTo("");
+                  setCompletedFrom("");
+                  setCompletedTo("");
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded border border-border hover:bg-muted text-muted-foreground"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters
+              </button>
+            )}
+            <div className="text-sm text-muted-foreground">
+              {pagination.total > 0 ? (
+                <>Showing {jobs.length} of {pagination.total} jobs</>
+              ) : (
+                <>No jobs found</>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Per page:</span>
+            <select
+              value={pagination.limit}
+              onChange={(e) => {
+                setPagination((p) => ({ ...p, limit: parseInt(e.target.value), page: 1 }));
+              }}
+              className="px-2 py-1 text-sm rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Jobs List */}
       <div className="space-y-4">
         {jobs.length === 0 ? (
@@ -259,6 +473,24 @@ export default function JobsPage() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>Job ID: {job.job_id}</span>
+                        {job.batch_id && (
+                          <>
+                            <span>•</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBatchFilter(job.batch_id!);
+                                setPagination((p) => ({ ...p, page: 1 }));
+                              }}
+                              className="font-mono text-primary hover:underline"
+                              title="Click to filter by this batch"
+                            >
+                              Batch: {job.batch_id}
+                              {job.batch_total_parts && job.batch_total_parts > 1 &&
+                                ` (${job.batch_part}/${job.batch_total_parts})`}
+                            </button>
+                          </>
+                        )}
                         {job.file_size && (
                           <>
                             <span>•</span>
@@ -436,6 +668,31 @@ export default function JobsPage() {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between rounded-lg bg-card p-4 shadow-sm">
+          <div className="text-sm text-muted-foreground">
+            Page {pagination.page} of {pagination.totalPages}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
+              disabled={pagination.page === 1}
+              className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
+              disabled={pagination.page === pagination.totalPages}
+              className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ type LivePreviewProps = {
   device: DeviceMode;
   blocks: PageBlock[];
   productId?: string; // For product detail preview (e.g., "cr6001")
+  pageType?: "home" | "product"; // Type of page being previewed
   customerWebUrl?: string; // Customer web base URL (e.g., "http://localhost:3000")
   isDirty?: boolean;
 };
@@ -17,6 +18,7 @@ export const LivePreview = ({
   device,
   blocks,
   productId,
+  pageType,
   customerWebUrl = process.env.NEXT_PUBLIC_CUSTOMER_WEB_URL || "http://localhost:3000",
   isDirty = true
 }: LivePreviewProps) => {
@@ -25,12 +27,42 @@ export const LivePreview = ({
   // Send blocks to preview iframe via postMessage (instant, no DB save)
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const previewUrl = useMemo(() => {
+    let url;
+    if (pageType === "home") {
+      url = `${customerWebUrl}/it?preview=true`;
+    } else if (productId) {
+      url = `${customerWebUrl}/it/products/${productId}?preview=true`;
+    } else {
+      url = `/preview?slug=home&embed=true`;
+    }
+    console.log('[LivePreview] Preview URL computed:', url);
+    return url;
+  }, [productId, pageType, customerWebUrl]);
+
+  const resolveOrigin = () => {
+    try {
+      if (typeof window !== "undefined" && iframeRef.current?.src) {
+        return new URL(iframeRef.current.src, window.location.origin).origin;
+      }
+      if (previewUrl.startsWith("http://") || previewUrl.startsWith("https://")) {
+        return new URL(previewUrl).origin;
+      }
+      if (typeof window !== "undefined") {
+        return new URL(previewUrl, window.location.origin).origin;
+      }
+      return new URL(previewUrl, customerWebUrl).origin;
+    } catch (error) {
+      console.warn("[LivePreview] Unable to resolve target origin from previewUrl:", previewUrl, error);
+      return customerWebUrl;
+    }
+  };
+
   useEffect(() => {
     console.log('[LivePreview] useEffect triggered');
     console.log('[LivePreview] Blocks count:', blocks.length);
     console.log('[LivePreview] isDirty:', isDirty);
     console.log('[LivePreview] productId:', productId);
-    console.log('[LivePreview] customerWebUrl:', customerWebUrl);
     console.log('[LivePreview] iframeRef exists:', !!iframeRef.current);
     console.log('[LivePreview] contentWindow exists:', !!iframeRef.current?.contentWindow);
 
@@ -50,29 +82,42 @@ export const LivePreview = ({
       }
 
       console.log('[LivePreview] ✅ Sending postMessage with', blocks.length, 'blocks');
-      console.log('[LivePreview] Target origin:', customerWebUrl);
+      const resolvedTarget = resolveOrigin();
+      console.log('[LivePreview] Target origin:', resolvedTarget);
+
+      const payload = {
+        type: 'PREVIEW_UPDATE',
+        blocks: blocks,
+        productId: productId,
+        timestamp: Date.now(),
+        isDirty
+      } as const;
 
       try {
         iframeRef.current.contentWindow.postMessage(
-          {
-            type: 'PREVIEW_UPDATE',
-            blocks: blocks,
-            productId: productId,
-            timestamp: Date.now(),
-            isDirty
-          },
-          customerWebUrl // Target origin
+          payload,
+          resolvedTarget // Target origin
         );
-        console.log('[LivePreview] ✅ postMessage sent successfully to', customerWebUrl);
+        console.log('[LivePreview] ✅ postMessage sent successfully to', resolvedTarget);
       } catch (error) {
-        console.error('[LivePreview] ❌ postMessage failed:', error);
+        console.error('[LivePreview] ❌ postMessage failed for origin', resolvedTarget, error);
+        if (typeof window !== "undefined" && resolvedTarget !== window.location.origin) {
+          try {
+            const fallbackOrigin = window.location.origin;
+            console.log('[LivePreview] ♻️ Retrying postMessage with fallback origin:', fallbackOrigin);
+            iframeRef.current.contentWindow.postMessage(payload, fallbackOrigin);
+            console.log('[LivePreview] ✅ postMessage sent successfully to fallback origin', fallbackOrigin);
+          } catch (fallbackError) {
+            console.error('[LivePreview] ❌ postMessage fallback failed:', fallbackError);
+          }
+        }
       }
     } else {
       console.warn('[LivePreview] ❌ Cannot send postMessage - iframe not ready');
       console.warn('[LivePreview] - iframeRef.current:', !!iframeRef.current);
       console.warn('[LivePreview] - contentWindow:', !!iframeRef.current?.contentWindow);
     }
-  }, [blocks, productId, customerWebUrl, isDirty]);
+  }, [blocks, productId, previewUrl, customerWebUrl, isDirty]);
 
   // REMOVED: Auto-save to preview cache - not needed with postMessage
   // Preview is now instant via postMessage, only save when user clicks "Save Draft"
@@ -116,21 +161,6 @@ export const LivePreview = ({
         return "Desktop";
     }
   }, [device]);
-
-  // Determine preview URL (stable - no timestamp to avoid iframe reloads)
-  const previewUrl = useMemo(() => {
-    let url;
-    if (productId) {
-      // Show customer_web product detail page
-      // Example: http://localhost:3000/it/products/daliakcl?preview=true
-      url = `${customerWebUrl}/it/products/${productId}?preview=true`;
-    } else {
-      // Fallback to internal preview page
-      url = `/preview?slug=home&embed=true`;
-    }
-    console.log('[LivePreview] Preview URL computed:', url);
-    return url;
-  }, [productId, customerWebUrl]);
 
   return (
     <div className="flex h-full flex-col">

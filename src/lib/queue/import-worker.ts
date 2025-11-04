@@ -17,6 +17,7 @@ import {
   checkAutoPublishEligibility,
   mergeWithLockedFields,
 } from "../pim/auto-publish";
+import { detectConflicts } from "../pim/conflict-resolver";
 
 interface ImportJobData {
   job_id: string;
@@ -83,19 +84,24 @@ async function processImport(job: Job<ImportJobData>) {
       }
     }
 
-    // Update job status with batch metadata
+    // Create or update job status with batch metadata
     await ImportJobModel.findOneAndUpdate(
       { job_id },
       {
-        status: "processing",
-        started_at: new Date(),
-        ...(batchMetadata && {
-          batch_id: batchMetadata.batch_id,
-          batch_part: batchMetadata.batch_part,
-          batch_total_parts: batchMetadata.batch_total_parts,
-          batch_total_items: batchMetadata.batch_total_items,
-        }),
-      }
+        $set: {
+          status: "processing",
+          started_at: new Date(),
+          wholesaler_id,
+          source_id,
+          ...(batchMetadata && {
+            batch_id: batchMetadata.batch_id,
+            batch_part: batchMetadata.batch_part,
+            batch_total_parts: batchMetadata.batch_total_parts,
+            batch_total_items: batchMetadata.batch_total_items,
+          }),
+        },
+      },
+      { upsert: true }
     );
 
     // Get source configuration
@@ -274,10 +280,13 @@ async function processImport(job: Job<ImportJobData>) {
 
         const newVersion = latestProduct ? latestProduct.version + 1 : 1;
 
+        // Detect conflicts between manual edits and API updates
+        const conflictDetection = detectConflicts(latestProduct, data, source);
+
         // Merge with locked fields if product exists
-        let productData = data;
+        let productData = conflictDetection.mergedData;
         if (latestProduct && latestProduct.locked_fields.length > 0) {
-          productData = mergeWithLockedFields(latestProduct, data);
+          productData = mergeWithLockedFields(latestProduct, productData);
         }
 
         // Provide default values for required fields if missing
@@ -331,6 +340,7 @@ async function processImport(job: Job<ImportJobData>) {
           source: {
             source_id: source.source_id,
             source_name: source.source_name,
+            batch_id: job.data.batch_metadata?.batch_id,
             imported_at: new Date(),
             auto_publish_enabled: source.auto_publish_enabled,
             min_score_threshold: source.min_score_threshold,
@@ -348,6 +358,15 @@ async function processImport(job: Job<ImportJobData>) {
             priority_score: 0,
             last_synced_at: new Date(),
           },
+          // Conflict tracking
+          last_api_update_at: new Date(),
+          has_conflict: conflictDetection.hasConflicts,
+          conflict_data: conflictDetection.conflictData,
+          // Preserve manual edit tracking from previous version
+          manually_edited: latestProduct?.manually_edited || false,
+          manually_edited_fields: latestProduct?.manually_edited_fields || [],
+          last_manual_update_at: latestProduct?.last_manual_update_at,
+          locked_fields: latestProduct?.locked_fields || [],
           ...productData,
         });
 
@@ -485,7 +504,113 @@ console.log(`   Concurrency: ${WORKER_CONCURRENCY} jobs`);
 console.log(`   Rate Limit: ${RATE_LIMIT_MAX} jobs per ${RATE_LIMIT_DURATION / 1000}s`);
 console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
 
-export const importWorker = new Worker("import-queue", processImport, {
+/**
+ * Process bulk update job
+ */
+async function processBulkUpdate(job: Job<any>) {
+  const { job_id, wholesaler_id, product_ids, updates } = job.data;
+
+  console.log(`\n🔄 Processing bulk update job: ${job_id}`);
+  console.log(`   Products: ${product_ids.length}`);
+  console.log(`   Updates:`, updates);
+
+  await connectToDatabase();
+
+  try {
+    // Update job status
+    await ImportJobModel.findOneAndUpdate(
+      { job_id },
+      {
+        $set: {
+          status: "processing",
+          started_at: new Date(),
+        },
+      }
+    );
+
+    // Build update object
+    const updateDoc: any = {
+      updated_at: new Date(),
+    };
+
+    if (updates.status) {
+      updateDoc.status = updates.status;
+    }
+    if (updates.brand) {
+      updateDoc["brand.name"] = updates.brand;
+    }
+    if (updates.category) {
+      updateDoc["category.name"] = updates.category;
+    }
+    if (updates.currency) {
+      updateDoc.currency = updates.currency.toUpperCase();
+    }
+
+    // Execute bulk update
+    const result = await PIMProductModel.updateMany(
+      {
+        _id: { $in: product_ids },
+        wholesaler_id,
+        isCurrent: true,
+      },
+      {
+        $set: updateDoc,
+      }
+    );
+
+    // Calculate duration
+    const durationSeconds = Math.round((Date.now() - new Date(job.timestamp || Date.now()).getTime()) / 1000);
+
+    // Mark job as completed
+    await ImportJobModel.findOneAndUpdate(
+      { job_id },
+      {
+        $set: {
+          status: "completed",
+          completed_at: new Date(),
+          duration_seconds: durationSeconds,
+          processed_rows: result.matchedCount,
+          successful_rows: result.modifiedCount,
+          failed_rows: result.matchedCount - result.modifiedCount,
+        },
+      }
+    );
+
+    console.log(`✓ Bulk update completed:`);
+    console.log(`   Matched: ${result.matchedCount}`);
+    console.log(`   Modified: ${result.modifiedCount}`);
+    console.log(`   Duration: ${durationSeconds}s`);
+
+    return { matched: result.matchedCount, modified: result.modifiedCount };
+  } catch (error: any) {
+    // Mark job as failed
+    await ImportJobModel.findOneAndUpdate(
+      { job_id },
+      {
+        status: "failed",
+        completed_at: new Date(),
+        import_errors: [{ row: 0, entity_code: "", error: error.message }],
+      }
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Route job to appropriate processor based on job type
+ */
+async function processJob(job: Job<any>) {
+  const jobType = job.data.job_type || job.name;
+
+  if (jobType === "bulk_update" || job.name === "bulk-update") {
+    return processBulkUpdate(job);
+  } else {
+    return processImport(job);
+  }
+}
+
+export const importWorker = new Worker("import-queue", processJob, {
   connection: {
     host: REDIS_HOST,
     port: REDIS_PORT,

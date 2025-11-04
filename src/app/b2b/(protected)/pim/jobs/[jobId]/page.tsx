@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   CheckCircle2,
@@ -49,6 +50,7 @@ type Product = {
 type ImportJob = {
   job_id: string;
   source_id: string;
+  batch_id?: string;
   status: "pending" | "processing" | "completed" | "failed";
   total_rows: number;
   successful_rows: number;
@@ -61,13 +63,14 @@ type ImportJob = {
     row: number;
     entity_code: string;
     error: string;
+    raw_data?: any;
   }[];
 };
 
 export default function ImportJobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const jobId = params.jobId as string;
+  const jobId = params?.jobId as string;
 
   const [job, setJob] = useState<ImportJob | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -269,7 +272,17 @@ export default function ImportJobDetailPage() {
               <CheckCircle2 className="h-4 w-4" />
               Successful
             </div>
-            <div className="font-medium text-emerald-600">{job.successful_rows}</div>
+            {job.batch_id ? (
+              <Link
+                href={`/b2b/pim/products?batch_id=${job.batch_id}`}
+                className="font-medium text-emerald-600 hover:underline cursor-pointer"
+                title="View all products from this batch"
+              >
+                {job.successful_rows}
+              </Link>
+            ) : (
+              <div className="font-medium text-emerald-600">{job.successful_rows}</div>
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
@@ -283,7 +296,17 @@ export default function ImportJobDetailPage() {
               <FileText className="h-4 w-4" />
               Auto-published
             </div>
-            <div className="font-medium text-blue-600">{job.auto_published_count}</div>
+            {job.batch_id ? (
+              <Link
+                href={`/b2b/pim/products?batch_id=${job.batch_id}&status=published`}
+                className="font-medium text-blue-600 hover:underline cursor-pointer"
+                title="View published products from this batch"
+              >
+                {job.auto_published_count}
+              </Link>
+            ) : (
+              <div className="font-medium text-blue-600">{job.auto_published_count}</div>
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">

@@ -1,0 +1,38 @@
+{
+  "source_id": "api-supplier-1",
+  "products": [
+    {
+      "product_code": "SUPP-001",
+      "product_title": "Professional Wireless Mouse",
+      "long_description": "Ergonomic wireless mouse with precision sensor",
+      "retail_price": 34.99,
+      "promo_price": 29.99,
+      "product_category": "Electronics",
+      "manufacturer": "TechBrand",
+      "quantity_available": 250,
+      "item_weight": 0.18,
+      "product_color": "Silver",
+      "build_material": "Aluminum",
+      "model_number": "WM-PRO-2024",
+      "guarantee_period": 12,
+      "custom_field_1": "Express Shipping Available",
+      "supplier_notes": "Popular item"
+    },
+    {
+      "product_code": "SUPP-002",
+      "product_title": "Gaming Headset RGB",
+      "long_description": "7.1 surround sound gaming headset with RGB lighting",
+      "retail_price": 79.99,
+      "product_category": "Electronics",
+      "manufacturer": "GameAudio",
+      "quantity_available": 150,
+      "item_weight": 0.35,
+      "product_color": "Black/Red",
+      "build_material": "Plastic/Metal",
+      "model_number": "GH-RGB-100",
+      "guarantee_period": 24,
+      "custom_field_1": "Limited Edition",
+      "custom_field_2": "Includes carrying case"
+    }
+  ]
+}

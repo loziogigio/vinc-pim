@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
 import { getBlockTemplate } from "@/lib/config/blockTemplates";
-import type { PageBlock, BlockConfig, PageConfig } from "@/lib/types/blocks";
+import type { PageBlock, BlockConfig, PageConfig, ProductDetailZone } from "@/lib/types/blocks";
 
 export type DeviceMode = "desktop" | "tablet" | "mobile";
 
@@ -135,13 +135,15 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
       slug.startsWith("sku-") ||
       slug.startsWith("parentSku-");
 
+    const defaultZone: ProductDetailZone = variantId === "product-data-table" ? "zone1" : "zone3";
+
     const newBlock: PageBlock = {
       id: nanoid(),
       type: variantId,
       order: get().blocks.length,
       config: template.defaultConfig,
       metadata: { templateVersion: "1.0", createdAt: new Date().toISOString() },
-      ...(isProductDetailPage ? { zone: "zone3" as const } : {})
+      ...(isProductDetailPage ? { zone: defaultZone } : {})
     };
 
     set((state) => ({

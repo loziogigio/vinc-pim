@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import {
+  Code,
   Layout,
   LayoutDashboard,
   Layers,
@@ -9,10 +10,12 @@ import {
   SquareStack,
   SquareKanban,
   Sparkles,
+  Table,
   Type,
   Quote,
   Youtube,
-  Image
+  Image,
+  Images
 } from "lucide-react";
 import { BLOCK_REGISTRY } from "@/lib/config/blockTemplates";
 import { usePageBuilderStore } from "@/lib/store/pageBuilderStore";
@@ -29,32 +32,43 @@ const COLOR_MAP: Record<string, { bg: string; text: string; icon: React.ElementT
   "hero-full-width": { bg: "bg-orange-100", text: "text-orange-600", icon: LayoutDashboard },
   "hero-split": { bg: "bg-purple-100", text: "text-purple-600", icon: Layout },
   "hero-carousel": { bg: "bg-pink-100", text: "text-pink-600", icon: Layers },
+  "hero-with-widgets": { bg: "bg-indigo-100", text: "text-indigo-600", icon: LayoutDashboard },
   "product-slider": { bg: "bg-blue-100", text: "text-blue-600", icon: Rows },
   "product-grid": { bg: "bg-cyan-100", text: "text-cyan-600", icon: SquareStack },
   "category-grid": { bg: "bg-emerald-100", text: "text-emerald-600", icon: SquareKanban },
-  "content-features": { bg: "bg-yellow-100", text: "text-yellow-600", icon: Sparkles },
+  "carousel-hero": { bg: "bg-sky-100", text: "text-sky-600", icon: Images },
+  "carousel-promo": { bg: "bg-rose-100", text: "text-rose-600", icon: Sparkles },
+  "carousel-brand": { bg: "bg-indigo-100", text: "text-indigo-600", icon: Layout },
+  "carousel-flyer": { bg: "bg-amber-100", text: "text-amber-600", icon: Rows },
+  "carousel-products": { bg: "bg-lime-100", text: "text-lime-600", icon: SquareStack },
+  "carousel-gallery": { bg: "bg-fuchsia-100", text: "text-fuchsia-600", icon: Images },
   "content-rich-text": { bg: "bg-slate-100", text: "text-slate-600", icon: Type },
+  "content-features": { bg: "bg-yellow-100", text: "text-yellow-600", icon: Sparkles },
   "content-testimonials": { bg: "bg-indigo-100", text: "text-indigo-600", icon: Quote },
+  "content-custom-html": { bg: "bg-slate-100", text: "text-slate-600", icon: Code },
   "youtubeEmbed": { bg: "bg-red-100", text: "text-red-600", icon: Youtube },
-  "media-image": { bg: "bg-teal-100", text: "text-teal-600", icon: Image }
+  "media-image": { bg: "bg-teal-100", text: "text-teal-600", icon: Image },
+  "product-data-table": { bg: "bg-amber-100", text: "text-amber-600", icon: Table }
 };
 
 const buildLibraryEntries = (allowedBlockIds?: string[]): LibraryEntry[] => {
   const allEntries = Object.values(BLOCK_REGISTRY).flatMap((family) =>
-    Object.values(family.variants).map((variant) => {
-      const colors = COLOR_MAP[variant.id] ?? {
-        bg: "bg-slate-100",
-        text: "text-slate-600",
-        icon: Layout
-      };
-      return {
-        id: variant.id,
-        label: variant.label,
-        bg: colors.bg,
-        text: colors.text,
-        icon: colors.icon
-      };
-    })
+    Object.values(family.variants)
+      .filter((variant) => !variant.hidden)
+      .map((variant) => {
+        const colors = COLOR_MAP[variant.id] ?? {
+          bg: "bg-slate-100",
+          text: "text-slate-600",
+          icon: Layout
+        };
+        return {
+          id: variant.id,
+          label: variant.label,
+          bg: colors.bg,
+          text: colors.text,
+          icon: colors.icon
+        };
+      })
   );
 
   // If allowedBlockIds is provided, filter the entries

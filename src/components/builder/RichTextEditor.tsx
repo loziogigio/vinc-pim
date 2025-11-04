@@ -4,8 +4,8 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
-import TextStyle from "@tiptap/extension-text-style";
-import Color from "@tiptap/extension-color";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { useEffect, useRef, useState } from "react";
 import { CustomImage } from "./ImageNode";
@@ -22,7 +22,6 @@ import {
   Redo,
   ImageIcon,
   ChevronDown,
-  Type,
   Palette,
   Highlighter
 } from "lucide-react";
@@ -35,7 +34,6 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ content, onChange, placeholder = "Start typing..." }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showFontSize, setShowFontSize] = useState(false);
   const [showTextColor, setShowTextColor] = useState(false);
   const [showHighlight, setShowHighlight] = useState(false);
 
@@ -105,13 +103,6 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
     }
   };
 
-  const addImageFromUrl = () => {
-    const url = window.prompt("Enter image URL:");
-    if (url) {
-      (editor.chain().focus() as any).setCustomImage({ src: url, width: "500px", align: "center" }).run();
-    }
-  };
-
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -162,7 +153,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
     children,
     title
   }: {
-    onClick: () => void;
+    onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void;
     active?: boolean;
     disabled?: boolean;
     children: React.ReactNode;
@@ -207,7 +198,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
         <div className="relative">
           <MenuButton
             onClick={(e) => {
-              e.stopPropagation();
+              e?.stopPropagation();
               setShowTextColor(!showTextColor);
               setShowHighlight(false);
             }}
@@ -219,7 +210,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
           {showTextColor && (
             <div
               className="absolute top-full left-0 mt-1 bg-white border-2 border-slate-400 rounded-lg shadow-2xl p-3 z-50 w-48"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => e?.stopPropagation()}
             >
               <div className="text-xs font-semibold text-slate-700 mb-2">Text Color</div>
               <div className="grid grid-cols-5 gap-2">
@@ -261,7 +252,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
         <div className="relative">
           <MenuButton
             onClick={(e) => {
-              e.stopPropagation();
+              e?.stopPropagation();
               setShowHighlight(!showHighlight);
               setShowTextColor(false);
             }}
@@ -273,7 +264,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
           {showHighlight && (
             <div
               className="absolute top-full left-0 mt-1 bg-white border-2 border-slate-400 rounded-lg shadow-2xl p-3 z-50 w-48"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => e?.stopPropagation()}
             >
               <div className="text-xs font-semibold text-slate-700 mb-2">Highlight Color</div>
               <div className="grid grid-cols-5 gap-2">

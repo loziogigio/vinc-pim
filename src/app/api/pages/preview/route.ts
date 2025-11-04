@@ -1,10 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
 import { cache } from "@/lib/db/cache";
 import { getPageConfig } from "@/lib/db/pages";
 import { pageConfigSchema } from "@/lib/validation/blockSchemas";
-import { sessionOptions, type AdminSessionData } from "@/lib/auth/session";
+import { hasHomeBuilderAccess } from "@/lib/auth/home-builder-access";
 import { consumeRateLimit, getClientKey } from "@/lib/security/rateLimiter";
 import type { PageConfig } from "@/lib/types/blocks";
 import { getOrCreateTemplate } from "@/lib/db/product-templates-simple";
@@ -14,20 +12,10 @@ const PREVIEW_TTL_SECONDS = 60 * 10; // 10 minutes
 
 const cacheKey = (slug: string) => `preview:${slug}`;
 
-const assertAdminSession = async () => {
-  const cookieStore = await cookies();
-  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions);
-  if (!session.isLoggedIn) {
-    return null;
-  }
-  return session;
-};
-
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const session = await assertAdminSession();
-  if (!session) {
+  if (!(await hasHomeBuilderAccess())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -47,8 +35,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await assertAdminSession();
-  if (!session) {
+  if (!(await hasHomeBuilderAccess())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -108,8 +95,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const session = await assertAdminSession();
-  if (!session) {
+  if (!(await hasHomeBuilderAccess())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

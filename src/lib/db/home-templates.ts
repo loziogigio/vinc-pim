@@ -1,5 +1,5 @@
 import { connectToDatabase } from "./connection";
-import { HomeTemplateModel, type HomeTemplateDocument } from "./models/home-template";
+import { B2BHomeTemplateModel, type HomeTemplateDocument } from "./models/home-template";
 import { initializeHomeTemplate } from "./init-home-template";
 import type { PageVersionTags } from "@/lib/types/blocks";
 
@@ -108,7 +108,7 @@ const cloneTags = (tags?: PageVersionTags | { attributes?: any }) => {
  * Get all versions for a template
  */
 async function getAllVersions(lean: boolean = true): Promise<HomeTemplateDocument[]> {
-  const query = HomeTemplateModel.find({ templateId: HOME_TEMPLATE_ID }).sort({ version: 1 });
+  const query = B2BHomeTemplateModel.find({ templateId: HOME_TEMPLATE_ID }).sort({ version: 1 });
   return lean ? query.lean<HomeTemplateDocument[]>() : query.exec();
 }
 
@@ -116,7 +116,7 @@ async function getAllVersions(lean: boolean = true): Promise<HomeTemplateDocumen
  * Get the current working version
  */
 async function getCurrentVersion(lean: boolean = true): Promise<HomeTemplateDocument | null> {
-  const query = HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrent: true });
+  const query = B2BHomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrent: true });
   return lean ? query.lean<HomeTemplateDocument | null>() : query.findOne().exec();
 }
 
@@ -124,7 +124,7 @@ async function getCurrentVersion(lean: boolean = true): Promise<HomeTemplateDocu
  * Get the current published version
  */
 async function getCurrentPublishedVersion(lean: boolean = true): Promise<HomeTemplateDocument | null> {
-  const query = HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrentPublished: true });
+  const query = B2BHomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrentPublished: true });
   return lean ? query.lean<HomeTemplateDocument | null>() : query.findOne().exec();
 }
 
@@ -150,7 +150,7 @@ function findDefaultPublishedVersion(versions: HomeTemplateDocument[]): HomeTemp
     }
   }
 
-  return defaultVersion;
+  return defaultVersion || null;
 }
 
 /**
@@ -177,6 +177,10 @@ export async function getOrCreateHomeTemplate(): Promise<HomeTemplateDocument> {
     console.log("[getOrCreateHomeTemplate] Template not found, creating empty template...");
     const initialized = await initializeHomeTemplate();
     template = initialized.toObject ? initialized.toObject() : initialized;
+  }
+
+  if (!template) {
+    throw new Error("Failed to get or create home template");
   }
 
   return template;
@@ -253,7 +257,7 @@ export async function saveHomeTemplateDraft(input: {
     if (allVersions.length === 0) {
       // Create version 1
       console.log(`[saveHomeTemplateDraft] No versions exist, creating version 1`);
-      currentVersion = await HomeTemplateModel.create({
+      currentVersion = await B2BHomeTemplateModel.create({
         templateId: HOME_TEMPLATE_ID,
         name: "Home Page",
         version: 1,
@@ -270,11 +274,11 @@ export async function saveHomeTemplateDraft(input: {
     } else {
       // Mark latest version as current
       const latest = allVersions[allVersions.length - 1];
-      await HomeTemplateModel.updateOne(
+      await B2BHomeTemplateModel.updateOne(
         { _id: latest._id },
         { $set: { isCurrent: true } }
       );
-      currentVersion = await HomeTemplateModel.findById(latest._id);
+      currentVersion = await B2BHomeTemplateModel.findById(latest._id);
     }
   }
 
@@ -286,18 +290,21 @@ export async function saveHomeTemplateDraft(input: {
   if (currentVersion.status === "published") {
     // Hotfix: Allow saving over published version (updates it directly)
     console.log(`[saveHomeTemplateDraft] HOTFIX: Updating published version ${currentVersion.version}`);
-    currentVersion.blocks = sanitizedBlocks;
-    currentVersion.seo = seo || {};
-    currentVersion.lastSavedAt = now;
   } else {
     // Update the existing draft version
     console.log(`[saveHomeTemplateDraft] Updating existing draft version ${currentVersion.version}`);
-    currentVersion.blocks = sanitizedBlocks;
-    currentVersion.seo = seo || {};
-    currentVersion.lastSavedAt = now;
   }
 
-  await currentVersion.save();
+  await B2BHomeTemplateModel.updateOne(
+    { _id: currentVersion._id },
+    {
+      $set: {
+        blocks: sanitizedBlocks,
+        seo: seo || {},
+        lastSavedAt: now
+      }
+    }
+  );
 
   console.log(`[saveHomeTemplateDraft] Saved version ${currentVersion.version}`);
 
@@ -325,55 +332,57 @@ export async function publishHomeTemplate(metadata?: PublishMetadataInput): Prom
 
   const now = new Date().toISOString();
 
-  // Apply metadata
-  currentVersion.status = "published";
-  currentVersion.publishedAt = now;
-  currentVersion.lastSavedAt = now;
+  // Build update object
+  const updates: any = {
+    status: "published",
+    publishedAt: now,
+    lastSavedAt: now
+  };
 
   const tagsUpdate = buildTagsFromInput(metadata);
   if (tagsUpdate.shouldUpdate) {
-    currentVersion.tags = tagsUpdate.value;
+    updates.tags = tagsUpdate.value;
     if (tagsUpdate.value?.campaign) {
-      currentVersion.tag = tagsUpdate.value.campaign;
+      updates.tag = tagsUpdate.value.campaign;
     } else {
-      currentVersion.tag = undefined;
+      updates.tag = undefined;
     }
   }
 
   if (metadata?.priority !== undefined) {
-    currentVersion.priority = metadata.priority === null ? 0 : metadata.priority;
+    updates.priority = metadata.priority === null ? 0 : metadata.priority;
   }
 
   const activeFrom = normalizeDateInput(metadata?.activeFrom);
   if (activeFrom !== undefined) {
-    currentVersion.activeFrom = activeFrom === null ? undefined : activeFrom;
+    updates.activeFrom = activeFrom === null ? undefined : activeFrom;
   }
 
   const activeTo = normalizeDateInput(metadata?.activeTo);
   if (activeTo !== undefined) {
-    currentVersion.activeTo = activeTo === null ? undefined : activeTo;
+    updates.activeTo = activeTo === null ? undefined : activeTo;
   }
 
   if (metadata?.comment !== undefined) {
     const comment = normalizeStringInput(metadata.comment);
-    currentVersion.comment = comment === null ? undefined : comment;
+    updates.comment = comment === null ? undefined : comment;
   }
 
   // Handle isDefault flag
   if (metadata?.isDefault !== undefined) {
     if (metadata.isDefault) {
       // Clear isDefault from all other versions
-      await HomeTemplateModel.updateMany(
+      await B2BHomeTemplateModel.updateMany(
         { templateId: HOME_TEMPLATE_ID, _id: { $ne: currentVersion._id } },
         { $set: { isDefault: false } }
       );
-      currentVersion.isDefault = true;
+      updates.isDefault = true;
     } else {
-      currentVersion.isDefault = false;
+      updates.isDefault = false;
     }
   } else {
     // Check if there's any other default published version
-    const otherDefault = await HomeTemplateModel.findOne({
+    const otherDefault = await B2BHomeTemplateModel.findOne({
       templateId: HOME_TEMPLATE_ID,
       _id: { $ne: currentVersion._id },
       status: "published",
@@ -382,11 +391,14 @@ export async function publishHomeTemplate(metadata?: PublishMetadataInput): Prom
 
     if (!otherDefault) {
       // This should be the default
-      currentVersion.isDefault = true;
+      updates.isDefault = true;
     }
   }
 
-  await currentVersion.save();
+  await B2BHomeTemplateModel.updateOne(
+    { _id: currentVersion._id },
+    { $set: updates }
+  );
 
   // Update isCurrentPublished flags
   await updateCurrentPublishedFlags();
@@ -404,14 +416,14 @@ async function updateCurrentPublishedFlags(): Promise<void> {
   const defaultPublished = findDefaultPublishedVersion(allVersions);
 
   // Clear all isCurrentPublished flags
-  await HomeTemplateModel.updateMany(
+  await B2BHomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrentPublished: false } }
   );
 
   // Set the current published version
   if (defaultPublished) {
-    await HomeTemplateModel.updateOne(
+    await B2BHomeTemplateModel.updateOne(
       { _id: defaultPublished._id },
       { $set: { isCurrentPublished: true } }
     );
@@ -425,7 +437,7 @@ async function updateCurrentPublishedFlags(): Promise<void> {
 export async function loadHomeTemplateVersion(version: number): Promise<any> {
   await connectToDatabase();
 
-  const targetVersion = await HomeTemplateModel.findOne({
+  const targetVersion = await B2BHomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   });
@@ -435,13 +447,13 @@ export async function loadHomeTemplateVersion(version: number): Promise<any> {
   }
 
   // Clear isCurrent from all versions
-  await HomeTemplateModel.updateMany(
+  await B2BHomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
 
   // Set isCurrent on target version
-  await HomeTemplateModel.updateOne(
+  await B2BHomeTemplateModel.updateOne(
     { _id: targetVersion._id },
     { $set: { isCurrent: true } }
   );
@@ -483,13 +495,13 @@ export async function startNewHomeTemplateVersion(): Promise<any> {
   const nextVersion = maxVersion + 1;
 
   // Clear isCurrent from all versions
-  await HomeTemplateModel.updateMany(
+  await B2BHomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
 
   // Create new version
-  const newVersion = await HomeTemplateModel.create({
+  const newVersion = await B2BHomeTemplateModel.create({
     templateId: HOME_TEMPLATE_ID,
     name: baseVersion.name,
     version: nextVersion,
@@ -521,7 +533,7 @@ export async function startNewHomeTemplateVersion(): Promise<any> {
 export async function deleteHomeTemplateVersion(version: number): Promise<any> {
   await connectToDatabase();
 
-  const targetVersion = await HomeTemplateModel.findOne({
+  const targetVersion = await B2BHomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   });
@@ -538,7 +550,7 @@ export async function deleteHomeTemplateVersion(version: number): Promise<any> {
     throw new Error("Cannot delete the published version");
   }
 
-  await HomeTemplateModel.deleteOne({ _id: targetVersion._id });
+  await B2BHomeTemplateModel.deleteOne({ _id: targetVersion._id });
 
   console.log(`[deleteHomeTemplateVersion] Deleted version ${version}`);
 
@@ -554,7 +566,7 @@ export async function deleteHomeTemplateVersion(version: number): Promise<any> {
 export async function duplicateHomeTemplateVersion(sourceVersion: number): Promise<any> {
   await connectToDatabase();
 
-  const source = await HomeTemplateModel.findOne({
+  const source = await B2BHomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: sourceVersion
   });
@@ -570,13 +582,13 @@ export async function duplicateHomeTemplateVersion(sourceVersion: number): Promi
   const now = new Date().toISOString();
 
   // Clear isCurrent from all versions
-  await HomeTemplateModel.updateMany(
+  await B2BHomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
 
   // Create new version
-  const newVersion = await HomeTemplateModel.create({
+  const newVersion = await B2BHomeTemplateModel.create({
     templateId: HOME_TEMPLATE_ID,
     name: source.name,
     version: nextVersion,
@@ -610,7 +622,7 @@ export async function renameHomeTemplateVersion(input: { version: number; label:
 
   const { version, label } = input;
 
-  const target = await HomeTemplateModel.findOne({
+  const target = await B2BHomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   });
@@ -638,7 +650,7 @@ export async function publishHomeTemplateVersion(
 ): Promise<any> {
   await connectToDatabase();
 
-  const target = await HomeTemplateModel.findOne({
+  const target = await B2BHomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   });
@@ -687,7 +699,7 @@ export async function publishHomeTemplateVersion(
   if (metadata?.isDefault !== undefined) {
     if (metadata.isDefault) {
       // Clear isDefault from all other versions
-      await HomeTemplateModel.updateMany(
+      await B2BHomeTemplateModel.updateMany(
         { templateId: HOME_TEMPLATE_ID, _id: { $ne: target._id } },
         { $set: { isDefault: false } }
       );
@@ -697,7 +709,7 @@ export async function publishHomeTemplateVersion(
     }
   } else {
     // Check if there's any other default published version
-    const otherDefault = await HomeTemplateModel.findOne({
+    const otherDefault = await B2BHomeTemplateModel.findOne({
       templateId: HOME_TEMPLATE_ID,
       _id: { $ne: target._id },
       status: "published",
@@ -712,11 +724,11 @@ export async function publishHomeTemplateVersion(
   await target.save();
 
   // Set as current version
-  await HomeTemplateModel.updateMany(
+  await B2BHomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
-  await HomeTemplateModel.updateOne(
+  await B2BHomeTemplateModel.updateOne(
     { _id: target._id },
     { $set: { isCurrent: true } }
   );
@@ -735,7 +747,7 @@ export async function publishHomeTemplateVersion(
 export async function unpublishHomeTemplateVersion(version: number): Promise<any> {
   await connectToDatabase();
 
-  const target = await HomeTemplateModel.findOne({
+  const target = await B2BHomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   });

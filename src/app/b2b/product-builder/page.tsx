@@ -803,7 +803,7 @@ function ProductBuilderContent() {
                 </button>
               </div>
             ) : null}
-            <BlockLibrary allowedBlockIds={["content-rich-text", "youtubeEmbed", "media-image"]} />
+            <BlockLibrary allowedBlockIds={["content-rich-text", "youtubeEmbed", "media-image", "product-data-table"]} />
           </div>
         </aside>
 

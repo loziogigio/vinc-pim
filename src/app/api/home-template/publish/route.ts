@@ -1,0 +1,96 @@
+import { revalidatePath } from "next/cache";
+import { NextResponse } from "next/server";
+import { hasHomeBuilderAccess } from "@/lib/auth/home-builder-access";
+import { publishHomeTemplate, type PublishMetadataInput } from "@/lib/db/home-templates";
+
+const extractMetadata = (body: any): PublishMetadataInput | undefined => {
+  if (!body || typeof body !== "object") {
+    return undefined;
+  }
+
+  const metadata: PublishMetadataInput = {};
+  let hasField = false;
+
+  if (body.campaign !== undefined) {
+    metadata.campaign = body.campaign;
+    hasField = true;
+  }
+  if (body.segment !== undefined) {
+    metadata.segment = body.segment;
+    hasField = true;
+  }
+
+  let attributesSource: Record<string, string | null | undefined> | undefined;
+  if (body.attributes && typeof body.attributes === "object") {
+    attributesSource = body.attributes as Record<string, string | null | undefined>;
+  } else {
+    const fallback: Record<string, string | null | undefined> = {};
+    ["region", "language", "device"].forEach((key) => {
+      if (body[key] !== undefined) {
+        fallback[key] = body[key];
+      }
+    });
+    if (Object.keys(fallback).length > 0) {
+      attributesSource = fallback;
+    }
+  }
+
+  if (attributesSource) {
+    metadata.attributes = attributesSource;
+    hasField = true;
+  }
+
+  if (body.priority !== undefined) {
+    metadata.priority = body.priority;
+    hasField = true;
+  }
+  if (body.isDefault !== undefined) {
+    metadata.isDefault = body.isDefault;
+    hasField = true;
+  }
+  if (body.activeFrom !== undefined) {
+    metadata.activeFrom = body.activeFrom;
+    hasField = true;
+  }
+  if (body.activeTo !== undefined) {
+    metadata.activeTo = body.activeTo;
+    hasField = true;
+  }
+  if (body.comment !== undefined) {
+    metadata.comment = body.comment;
+    hasField = true;
+  }
+
+  return hasField ? metadata : undefined;
+};
+
+/**
+ * POST /api/home-template/publish
+ * Publish current home page template draft
+ */
+export async function POST(request: Request) {
+  try {
+    if (!(await hasHomeBuilderAccess())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let payload: PublishMetadataInput | undefined;
+    try {
+      const body = await request.json();
+      payload = extractMetadata(body);
+    } catch {
+      payload = undefined;
+    }
+
+    const published = await publishHomeTemplate(payload);
+
+    revalidatePath("/");
+    revalidatePath("/preview");
+
+    return NextResponse.json(published);
+  } catch (error) {
+    console.error("Publish home template error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to publish home template";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}

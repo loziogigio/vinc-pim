@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Test for 3D Models</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 IBM Cloud S3 CORS Test</h1>
+
+    <p>This tool tests if CORS is properly configured for your 3D model files.</p>
+
+    <div>
+        <label><strong>Enter your .glb file URL:</strong></label>
+        <input
+            type="text"
+            id="testUrl"
+            placeholder="https://s3.eu-de.cloud-object-storage.appdomain.cloud/eatit/vinc_storefront/..."
+            value="https://s3.eu-de.cloud-object-storage.appdomain.cloud/eatit/vinc_storefront/2025-11-04T09-48-45-596Z-products-f10000-3d-model-1762249725596-vaz-2105-1-.glb"
+        />
+        <button onclick="testCORS()">🔍 Test CORS</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        async function testCORS() {
+            const url = document.getElementById('testUrl').value;
+            const resultsDiv = document.getElementById('results');
+
+            resultsDiv.innerHTML = '<div class="result info">🔄 Testing CORS configuration...</div>';
+
+            try {
+                // Test 1: Check CORS preflight
+                console.log('Testing CORS for:', url);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors', // Explicitly request CORS
+                });
+
+                // Check response headers
+                const contentType = response.headers.get('content-type');
+                const corsHeader = response.headers.get('access-control-allow-origin');
+
+                let html = '<h3>✅ Fetch Successful!</h3>';
+
+                // Check if it's actually a .glb file
+                if (contentType && contentType.includes('model/gltf-binary')) {
+                    html += '<div class="result success">';
+                    html += '<strong>✅ Content-Type is correct:</strong> ' + contentType;
+                    html += '</div>';
+                } else if (contentType && contentType.includes('text/html')) {
+                    html += '<div class="result error">';
+                    html += '<strong>❌ ERROR: Receiving HTML instead of 3D model!</strong><br>';
+                    html += 'Content-Type: ' + contentType + '<br>';
+                    html += 'This means the server is returning an error page instead of the file.';
+                    html += '</div>';
+                } else {
+                    html += '<div class="result info">';
+                    html += '<strong>⚠️ Content-Type:</strong> ' + (contentType || 'Not set') + '<br>';
+                    html += 'Expected: model/gltf-binary or application/octet-stream';
+                    html += '</div>';
+                }
+
+                // Check CORS headers
+                if (corsHeader) {
+                    html += '<div class="result success">';
+                    html += '<strong>✅ CORS Header Present:</strong><br>';
+                    html += 'Access-Control-Allow-Origin: ' + corsHeader;
+                    html += '</div>';
+                } else {
+                    html += '<div class="result error">';
+                    html += '<strong>❌ CORS Header Missing!</strong><br>';
+                    html += 'The Access-Control-Allow-Origin header is not set.<br>';
+                    html += 'You need to configure CORS on your IBM Cloud Object Storage bucket.';
+                    html += '</div>';
+                }
+
+                // Show all headers
+                html += '<div class="result info">';
+                html += '<strong>📋 All Response Headers:</strong><br><pre>';
+                response.headers.forEach((value, key) => {
+                    html += key + ': ' + value + '\n';
+                });
+                html += '</pre></div>';
+
+                // Check file size
+                const blob = await response.blob();
+                html += '<div class="result info">';
+                html += '<strong>📦 File Size:</strong> ' + (blob.size / 1024).toFixed(2) + ' KB<br>';
+                if (blob.size < 1000 && blob.type.includes('text/html')) {
+                    html += '<strong>⚠️ WARNING:</strong> File is very small and is HTML. This is likely an error page!';
+                }
+                html += '</div>';
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                let html = '<div class="result error">';
+                html += '<strong>❌ CORS Error!</strong><br><br>';
+                html += '<strong>Error Message:</strong><br>';
+                html += '<pre>' + error.message + '</pre>';
+                html += '<br><strong>What this means:</strong><br>';
+
+                if (error.message.includes('CORS')) {
+                    html += 'The server is blocking cross-origin requests. You need to configure CORS on IBM Cloud Object Storage.<br><br>';
+                    html += '<strong>To fix this:</strong><br>';
+                    html += '1. Go to IBM Cloud Console<br>';
+                    html += '2. Navigate to your Object Storage bucket<br>';
+                    html += '3. Go to Configuration → CORS<br>';
+                    html += '4. Add a CORS rule:<br>';
+                    html += '   - Allowed Origin: http://localhost:3001 (or * for testing)<br>';
+                    html += '   - Allowed Methods: GET, HEAD<br>';
+                    html += '   - Allowed Headers: *<br>';
+                    html += '   - Max Age: 3600<br>';
+                } else {
+                    html += 'There was an error fetching the file. Check the URL and try again.';
+                }
+
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+            }
+        }
+    </script>
+</body>
+</html>

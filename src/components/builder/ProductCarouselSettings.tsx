@@ -28,6 +28,9 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
   const [title, setTitle] = useState<string>(config.title || "Featured Products");
   const [searchQuery, setSearchQuery] = useState<string>(config.searchQuery || "");
   const [limit, setLimit] = useState<number>(config.limit || 12);
+  const [dataSource, setDataSource] = useState<"search" | "liked" | "trending">(
+    config.dataSource || "search"
+  );
   const [breakpointMode, setBreakpointMode] = useState<"simplified" | "advanced">(
     config.breakpointMode || "simplified"
   );
@@ -60,7 +63,47 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  const parsedSearchSummary = useMemo(() => {
+    if (dataSource !== "search") return null;
+    const trimmed = searchQuery.trim();
+    if (!/[?=&]/.test(trimmed)) {
+      return null;
+    }
+
+    try {
+      const queryString = trimmed.startsWith("shop?") ? trimmed.slice(5) : trimmed.replace(/^\?/, "");
+      const params = new URLSearchParams(queryString);
+
+      const keyword = params.get("text") || "";
+      const filters: Array<{ key: string; values: string[] }> = [];
+
+      params.forEach((value, key) => {
+        if (key === "text") return;
+        const normalizedKey = key.startsWith("filters-") ? key.replace(/^filters-/, "") : key;
+        const values = value.split(";").map((item) => item.trim()).filter(Boolean);
+        if (values.length) {
+          filters.push({ key: normalizedKey, values });
+        }
+      });
+
+      return {
+        keyword,
+        filters
+      };
+    } catch (error) {
+      console.warn("[ProductCarouselSettings] Unable to parse search summary", error);
+      return null;
+    }
+  }, [searchQuery, dataSource]);
+
   useEffect(() => {
+    if (dataSource !== "search") {
+      setPreviewProducts([]);
+      setPreviewError(null);
+      setPreviewLoading(false);
+      return;
+    }
+
     const trimmed = searchQuery.trim();
     if (!trimmed) {
       setPreviewProducts([]);
@@ -80,6 +123,16 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
 
         if (/[?=&]/.test(trimmed)) {
           params.set("query", trimmed);
+          try {
+            const raw = trimmed.startsWith("shop?") ? trimmed.slice(5) : trimmed;
+            const parsed = new URLSearchParams(raw);
+            const extractedText = parsed.get("text");
+            if (extractedText) {
+              params.set("text", extractedText);
+            }
+          } catch (parseError) {
+            console.warn("[ProductCarouselSettings] Unable to parse search query", parseError);
+          }
         } else {
           params.set("text", trimmed);
         }
@@ -87,13 +140,22 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
         const response = await fetch(`${PREVIEW_ENDPOINT}?${params.toString()}`, {
           signal: controller.signal
         });
-        if (!response.ok) throw new Error('Request failed');
         const data = await response.json();
+        if (!response.ok || data?.error) {
+          const message =
+            typeof data?.error === "string"
+              ? data.error
+              : `Request failed with status ${response.status}`;
+          setPreviewProducts([]);
+          setPreviewError(message);
+          return;
+        }
         setPreviewProducts(Array.isArray(data.items) ? data.items.slice(0, 8) : []);
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error('[ProductCarouselSettings] preview error', error);
-          setPreviewError('Unable to load preview results');
+          const errorMessage = error instanceof Error ? error.message : 'Unable to load preview results';
+          setPreviewError(errorMessage);
           setPreviewProducts([]);
         }
       } finally {
@@ -107,7 +169,7 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchQuery, limit]);
+  }, [searchQuery, limit, dataSource]);
 
   const handleSave = () => {
     try {
@@ -115,6 +177,7 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
         title: title.trim() || 'Featured Products',
         searchQuery: searchQuery.trim(),
         limit: clamp(limit, 1, 50),
+        dataSource,
         breakpointMode,
         autoplay,
         autoplaySpeed: clamp(autoplaySpeed, 1000, 20000),
@@ -141,6 +204,9 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
   };
 
   const previewContent = useMemo(() => {
+    if (dataSource !== "search") {
+      return <PreviewPlaceholder message="Preview is unavailable for this data source." />;
+    }
     if (!searchQuery.trim()) {
       return <PreviewPlaceholder message="Type a keyword above to preview matching products." />;
     }
@@ -198,17 +264,59 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
       </div>
 
       <div>
-        <Label className="text-base font-semibold">Search keyword</Label>
-        <Input
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="e.g. caldaia, climatizzatore, rubinetto"
-          className="mt-2"
-        />
+        <Label className="text-base font-semibold">Data source</Label>
+        <select
+          value={dataSource}
+          onChange={(event) => setDataSource(event.target.value as "search" | "liked" | "trending")}
+          className="mt-2 h-10 w-full rounded border border-slate-300 bg-white px-3 text-sm text-slate-700"
+        >
+          <option value="search">Keyword / advanced query</option>
+          <option value="trending">Trending products</option>
+          <option value="liked">Customer liked products</option>
+        </select>
         <p className="mt-1 text-xs text-slate-500">
-          Products are fetched from the customer storefront search endpoint.
+          Use “Trending” or “Liked” for special carousels that load automatically. Keywords are ignored
+          for those sources.
         </p>
       </div>
+
+      {dataSource === 'search' ? (
+        <div>
+          <Label className="text-base font-semibold">Search keyword</Label>
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="e.g. caldaia, climatizzatore, rubinetto"
+            className="mt-2"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Products are fetched from the customer storefront search endpoint. Paste a keyword or an
+            advanced query (e.g. <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">shop?text=lavabo&amp;filters-brand=VUC</code>).
+          </p>
+          {parsedSearchSummary ? (
+            <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              {parsedSearchSummary.keyword ? (
+                <div className="mb-1">
+                  <span className="font-semibold text-slate-700">Keyword:</span>{" "}
+                  <span>{parsedSearchSummary.keyword}</span>
+                </div>
+              ) : null}
+              {parsedSearchSummary.filters.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {parsedSearchSummary.filters.map(({ key, values }) => (
+                    <div key={key} className="flex items-center gap-1 rounded bg-white px-2 py-1">
+                      <span className="text-[11px] font-semibold uppercase text-slate-500">{key}</span>
+                      <span className="text-[11px] text-slate-600">
+                        {values.join(", ")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div>
         <Label className="text-base font-semibold">Preview</Label>

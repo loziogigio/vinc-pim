@@ -1,0 +1,926 @@
+[
+  {
+    "id": "slide-brand-0-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/OLI.jpg",
+      "alt": "Oli"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/OLI.jpg",
+      "alt": "Oli"
+    },
+    "link": {
+      "url": "shop?text&id_brand=oli",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-1-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/BAX.jpg",
+      "alt": "Baxi"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/BAX.jpg",
+      "alt": "Baxi"
+    },
+    "link": {
+      "url": "shop?text&id_brand=bax",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-2-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ICM.jpg",
+      "alt": "Icma"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ICM.jpg",
+      "alt": "Icma"
+    },
+    "link": {
+      "url": "shop?text&id_brand=icm",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-3-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ITP.jpg",
+      "alt": "Itap"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ITP.jpg",
+      "alt": "Itap"
+    },
+    "link": {
+      "url": "shop?text&id_brand=itp",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-4-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/MOB.jpg",
+      "alt": "Mobo"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/MOB.jpg",
+      "alt": "Mobo"
+    },
+    "link": {
+      "url": "shop?text&id_brand=mob",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-5-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/REM.jpg",
+      "alt": "Rems"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/REM.jpg",
+      "alt": "Rems"
+    },
+    "link": {
+      "url": "shop?text&id_brand=rem",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-6-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/RYN.jpg",
+      "alt": "Ryno"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/RYN.jpg",
+      "alt": "Ryno"
+    },
+    "link": {
+      "url": "shop?text&id_brand=ryn",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-7-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/TEC.jpg",
+      "alt": "Teco"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/TEC.jpg",
+      "alt": "Teco"
+    },
+    "link": {
+      "url": "shop?text&id_brand=tec",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-8-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/FLA.jpg",
+      "alt": "Flexa"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/FLA.jpg",
+      "alt": "Flexa"
+    },
+    "link": {
+      "url": "shop?text&id_brand=fla",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-9-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/GLA.jpg",
+      "alt": "Glass"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/GLA.jpg",
+      "alt": "Glass"
+    },
+    "link": {
+      "url": "shop?text&id_brand=gla",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-10-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/GRO.jpg",
+      "alt": "Grohe"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/GRO.jpg",
+      "alt": "Grohe"
+    },
+    "link": {
+      "url": "shop?text&id_brand=gro",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-11-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/HAI.jpg",
+      "alt": "Haier"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/HAI.jpg",
+      "alt": "Haier"
+    },
+    "link": {
+      "url": "shop?text&id_brand=hai",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-12-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/VRM.jpg",
+      "alt": "Varem"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/VRM.jpg",
+      "alt": "Varem"
+    },
+    "link": {
+      "url": "shop?text&id_brand=vrm",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-13-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/VIA.jpg",
+      "alt": "Vitra"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/VIA.jpg",
+      "alt": "Vitra"
+    },
+    "link": {
+      "url": "shop?text&id_brand=via",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-14-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/WAV.jpg",
+      "alt": "Wavin"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/WAV.jpg",
+      "alt": "Wavin"
+    },
+    "link": {
+      "url": "shop?text&id_brand=wav",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-15-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/EFF.jpg",
+      "alt": "Effebi"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/EFF.jpg",
+      "alt": "Effebi"
+    },
+    "link": {
+      "url": "shop?text&id_brand=eff",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-16-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/HID.jpg",
+      "alt": "Hidros"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/HID.jpg",
+      "alt": "Hidros"
+    },
+    "link": {
+      "url": "shop?id_brand=HID",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-17-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/INO.jpg",
+      "alt": "Innova"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/INO.jpg",
+      "alt": "Innova"
+    },
+    "link": {
+      "url": "shop?text&id_brand=ino",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-18-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/KAR.jpg",
+      "alt": "Kariba"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/KAR.jpg",
+      "alt": "Kariba"
+    },
+    "link": {
+      "url": "shop?text&id_brand=kar",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-19-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/TIM.jpg",
+      "alt": "Tiemme"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/TIM.jpg",
+      "alt": "Tiemme"
+    },
+    "link": {
+      "url": "shop?text&id_brand=tim",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-20-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/VIL.jpg",
+      "alt": "Valsir"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/VIL.jpg",
+      "alt": "Valsir"
+    },
+    "link": {
+      "url": "shop?text&id_brand=vil",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-21-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/FIS.jpg",
+      "alt": "Fischer"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/FIS.jpg",
+      "alt": "Fischer"
+    },
+    "link": {
+      "url": "shop?text&id_brand=fis",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-22-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/GBR.jpg",
+      "alt": "Geberit"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/GBR.jpg",
+      "alt": "Geberit"
+    },
+    "link": {
+      "url": "shop?text=%2a&id_brand=gbr",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-23-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/HER.jpg",
+      "alt": "Hermann"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/HER.jpg",
+      "alt": "Hermann"
+    },
+    "link": {
+      "url": "shop?text&id_brand=her",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-24-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/NEO.jpg",
+      "alt": "Neoperl"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/NEO.jpg",
+      "alt": "Neoperl"
+    },
+    "link": {
+      "url": "shop?text&id_brand=neo",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-25-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/PAF.jpg",
+      "alt": "Paffoni"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/PAF.jpg",
+      "alt": "Paffoni"
+    },
+    "link": {
+      "url": "shop?text&id_brand=paf",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-26-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/SMG.jpg",
+      "alt": "Samsung"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/SMG.jpg",
+      "alt": "Samsung"
+    },
+    "link": {
+      "url": "shop?text&id_brand=smg",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-27-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/SEI.jpg",
+      "alt": "Seitron"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/SEI.jpg",
+      "alt": "Seitron"
+    },
+    "link": {
+      "url": "shop?text&id_brand=sei",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-28-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ATC.jpg",
+      "alt": "Atlantic"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ATC.jpg",
+      "alt": "Atlantic"
+    },
+    "link": {
+      "url": "shop?text&id_brand=atc",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-29-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/BON.jpg",
+      "alt": "Bonomini"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/BON.jpg",
+      "alt": "Bonomini"
+    },
+    "link": {
+      "url": "shop?text&id_brand=bon",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-30-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/IMM.jpg",
+      "alt": "Immergas"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/IMM.jpg",
+      "alt": "Immergas"
+    },
+    "link": {
+      "url": "shop?text&id_brand=imm",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-31-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/INM.jpg",
+      "alt": "Innovita"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/INM.jpg",
+      "alt": "Innovita"
+    },
+    "link": {
+      "url": "shop?text&id_brand=inm",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-32-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/PED.jpg",
+      "alt": "Pedrollo"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/PED.jpg",
+      "alt": "Pedrollo"
+    },
+    "link": {
+      "url": "shop?text&id_brand=ped",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-33-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ACQ.jpg",
+      "alt": "Acquapura"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ACQ.jpg",
+      "alt": "Acquapura"
+    },
+    "link": {
+      "url": "shop?text&id_brand=acq",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-34-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ART.jpg",
+      "alt": "Arteclima"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/ART.jpg",
+      "alt": "Arteclima"
+    },
+    "link": {
+      "url": "shop?text&id_brand=art",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-35-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/BAR.jpg",
+      "alt": "Barbottina"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/BAR.jpg",
+      "alt": "Barbottina"
+    },
+    "link": {
+      "url": "shop?text&id_brand=bar",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-36-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/STO.jpg",
+      "alt": "Stratoplus"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/STO.jpg",
+      "alt": "Stratoplus"
+    },
+    "link": {
+      "url": "shop?text&id_brand=sto",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-37-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/AER.jpg",
+      "alt": "Ambra Water"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/AER.jpg",
+      "alt": "Ambra Water"
+    },
+    "link": {
+      "url": "shop?text&id_brand=aer",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-38-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/CHA.jpg",
+      "alt": "Chaffateaux"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/CHA.jpg",
+      "alt": "Chaffateaux"
+    },
+    "link": {
+      "url": "shop?text&id_brand=cha",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-39-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/RUB.jpg",
+      "alt": "Rubinetterie bresciane"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/RUB.jpg",
+      "alt": "Rubinetterie bresciane"
+    },
+    "link": {
+      "url": "shop?text&id_brand=rub",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-40-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/DEK.jpg",
+      "alt": "Dekon"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/DEK.jpg",
+      "alt": "Dekon"
+    },
+    "link": {
+      "url": "shop?text&id_brand=dek",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  },
+  {
+    "id": "slide-brand-41-1761582861521",
+    "imageDesktop": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/MAM.jpg",
+      "alt": "Magma"
+    },
+    "imageMobile": {
+      "url": "https://hidros.s3.eu-de.cloud-object-storage.appdomain.cloud/hidros/eshop/home_brand/MAM.jpg",
+      "alt": "Magma"
+    },
+    "link": {
+      "url": "shop?text&id_brand=mam",
+      "openInNewTab": false
+    },
+    "title": "",
+    "overlay": {
+      "position": "bottom",
+      "textColor": "#ffffff",
+      "backgroundColor": "#0f172a",
+      "backgroundOpacity": 0.65
+    }
+  }
+]

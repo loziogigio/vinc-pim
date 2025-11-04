@@ -9,11 +9,19 @@ import { getBlockTemplate } from "@/lib/config/blockTemplates";
 import type { PageBlock } from "@/lib/types/blocks";
 import { YouTubeBlockSettings } from "./YouTubeBlockSettings";
 import { MediaImageBlockSettings } from "./MediaImageBlockSettings";
+import { HeroCarouselSettings } from "./HeroCarouselSettings";
+import { HeroWithWidgetsSettings } from "./HeroWithWidgetsSettings";
+import { MediaCarouselSettings } from "./MediaCarouselSettings";
+import { ProductCarouselSettings } from "./ProductCarouselSettings";
+import { ProductGallerySettings } from "./ProductGallerySettings";
+import { ProductDataTableSettings } from "./ProductDataTableSettings";
 import { ZoneSelector } from "./ZoneSelector";
 import { RichTextEditor } from "./RichTextEditor";
 import type { ProductDetailZone } from "@/lib/types/blocks";
 
 type DraftConfig = Record<string, unknown>;
+
+const BLOCKS_WITH_CUSTOM_TITLE = new Set(["media-image", "carousel-hero"]);
 
 const cloneConfig = (config: PageBlock["config"]): DraftConfig =>
   JSON.parse(JSON.stringify(config)) as DraftConfig;
@@ -28,11 +36,16 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
   const selectedBlockId = usePageBuilderStore((state) => state.selectedBlockId);
   const updateBlockConfig = usePageBuilderStore((state) => state.updateBlockConfig);
   const selectBlock = usePageBuilderStore((state) => state.selectBlock);
+  const pageDetails = usePageBuilderStore((state) => state.pageDetails);
 
   const selectedBlock = useMemo(
     () => blocks.find((block) => block.id === selectedBlockId) ?? null,
     [blocks, selectedBlockId]
   );
+  const skipStandardTitleField = selectedBlock ? BLOCKS_WITH_CUSTOM_TITLE.has(selectedBlock.type) : false;
+
+  // Check if we're in home-builder (slug is "home")
+  const isHomePage = pageDetails.slug === "home";
 
   const [draft, setDraft] = useState<DraftConfig | null>(() =>
     selectedBlock ? cloneConfig(selectedBlock.config) : null
@@ -132,6 +145,9 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
   const hasLimit = draft ? typeof draft.limit === "number" : false;
   const hasColumns = draft?.columns && typeof draft.columns === "object";
   const hasContent = draft ? typeof draft.content === "string" : false;
+  const isCustomHtmlBlock = selectedBlock ? selectedBlock.type === "content-custom-html" : false;
+  const customHtmlValue =
+    isCustomHtmlBlock && draft && typeof draft.html === "string" ? (draft.html as string) : "";
   const hasFeatures = draft ? Array.isArray(draft.features) : false;
   const hasTestimonials = draft ? Array.isArray(draft.testimonials) : false;
   const columnsRecord = hasColumns ? (draft?.columns as Record<string, unknown>) : null;
@@ -230,18 +246,20 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-6">
-            {/* Zone Selector - Always show for product detail blocks */}
-            <div className="pb-6 border-b border-slate-200">
-              <ZoneSelector
-                zone={zone}
-                tabLabel={tabLabel}
-                onChange={(newZone, newTabLabel) => {
-                  setZone(newZone);
-                  setTabLabel(newTabLabel || "");
-                  setHasLocalChanges(true);
-                }}
-              />
-            </div>
+            {/* Zone Selector - Only show for product detail pages, not for home page */}
+            {!isHomePage && (
+              <div className="pb-6 border-b border-slate-200">
+                <ZoneSelector
+                  zone={zone}
+                  tabLabel={tabLabel}
+                  onChange={(newZone, newTabLabel) => {
+                    setZone(newZone);
+                    setTabLabel(newTabLabel || "");
+                    setHasLocalChanges(true);
+                  }}
+                />
+              </div>
+            )}
 
             {/* YouTube Block Custom UI */}
             {selectedBlock.type === "youtubeEmbed" ? (
@@ -267,8 +285,82 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
               />
             ) : null}
 
+            {selectedBlock.type === "product-data-table" ? (
+              <ProductDataTableSettings
+                config={draft as any}
+                onChange={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {/* Hero With Widgets Block Custom UI */}
+            {selectedBlock.type === "hero-with-widgets" ? (
+              <HeroWithWidgetsSettings
+                blockId={selectedBlock.id}
+                config={draft as any}
+                onSave={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                }}
+              />
+            ) : null}
+
+            {/* Hero Carousel Block Custom UI */}
+            {selectedBlock.type === "carousel-hero" ? (
+              <HeroCarouselSettings
+                blockId={selectedBlock.id}
+                config={draft as any}
+                onSave={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {/* Media Carousel Block Custom UI (promo/brand/flyer) */}
+            {["carousel-promo", "carousel-brand", "carousel-flyer"].includes(selectedBlock.type) ? (
+              <MediaCarouselSettings
+                blockId={selectedBlock.id}
+                config={draft as any}
+                onSave={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {/* Product Carousel Block Custom UI */}
+            {selectedBlock.type === "carousel-products" ? (
+              <ProductCarouselSettings
+                blockId={selectedBlock.id}
+                config={draft as any}
+                onSave={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {selectedBlock.type === "carousel-gallery" ? (
+              <ProductGallerySettings
+                blockId={selectedBlock.id}
+                config={draft as any}
+                onSave={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
             {/* Standard Block Fields */}
-            {hasTitle ? (
+            {hasTitle && !skipStandardTitleField ? (
               <div>
                 <label className="text-sm font-medium text-slate-700">Title</label>
                 <Input
@@ -307,6 +399,28 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
                     placeholder="Type your content here..."
                   />
                 </div>
+              </div>
+            ) : null}
+
+            {isCustomHtmlBlock ? (
+              <div>
+                <label className="text-sm font-medium text-slate-700">Custom HTML markup</label>
+                <textarea
+                  value={customHtmlValue}
+                  onChange={(event) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      html: event.target.value
+                    }))
+                  }
+                  rows={12}
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Paste complete HTML snippet here"
+                  spellCheck={false}
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  The markup renders exactly as provided—no additional wrappers or classes are added.
+                </p>
               </div>
             ) : null}
 

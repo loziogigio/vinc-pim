@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Code,
   Columns,
   Grid3x3,
   Images,
@@ -10,6 +11,7 @@ import {
   PanelsTopLeft,
   ShoppingBag,
   Sparkles,
+  Table,
   Type
 } from "lucide-react";
 
@@ -23,7 +25,9 @@ const BLOCK_DESCRIPTIONS: Record<string, string> = {
   "category-carousel": "Scrollable category highlights",
   "content-rich-text": "Formatted editorial content",
   "content-features": "Highlight core value propositions",
-  "content-testimonials": "Customer reviews and ratings"
+  "content-testimonials": "Customer reviews and ratings",
+  "content-custom-html": "Render custom HTML exactly as provided",
+  "product-data-table": "Structured specification table with text, images, and links"
 };
 
 const BLOCK_PREVIEW_STYLES: Record<string, string> = {
@@ -36,7 +40,9 @@ const BLOCK_PREVIEW_STYLES: Record<string, string> = {
   "category-carousel": "bg-orange-50",
   "content-rich-text": "bg-white border border-dashed border-slate-300",
   "content-features": "bg-blue-50",
-  "content-testimonials": "bg-amber-50"
+  "content-testimonials": "bg-amber-50",
+  "content-custom-html": "bg-white border border-dashed border-slate-300",
+  "product-data-table": "bg-white border border-emerald-100"
 };
 
 const BLOCK_ICON_MAP: Record<string, LucideIcon> = {
@@ -49,7 +55,9 @@ const BLOCK_ICON_MAP: Record<string, LucideIcon> = {
   "category-carousel": PanelsTopBottom,
   "content-rich-text": Type,
   "content-features": Sparkles,
-  "content-testimonials": MessageSquareQuote
+  "content-testimonials": MessageSquareQuote,
+  "content-custom-html": Code,
+  "product-data-table": Table
 };
 
 export const getBlockDescription = (variantId: string): string =>

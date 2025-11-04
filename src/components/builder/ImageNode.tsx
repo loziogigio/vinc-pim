@@ -5,6 +5,15 @@ import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from "@tiptap/r
 import { useState, useRef, useEffect } from "react";
 import { AlignLeft, AlignCenter, AlignRight, Trash2 } from "lucide-react";
 
+// Declare module augmentation for TypeScript
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    customImage: {
+      setCustomImage: (options: { src: string; alt?: string; title?: string }) => ReturnType;
+    };
+  }
+}
+
 // React component for the image node view
 function ImageNodeView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
   const [showControls, setShowControls] = useState(false);
@@ -28,11 +37,12 @@ function ImageNodeView({ node, updateAttributes, deleteNode, selected }: NodeVie
     updateAttributes({ align });
   };
 
-  const alignmentClass = {
+  const alignmentMap: Record<string, string> = {
     left: "mr-auto",
     center: "mx-auto",
     right: "ml-auto"
-  }[node.attrs.align || "center"];
+  };
+  const alignmentClass = alignmentMap[node.attrs.align || "center"];
 
   return (
     <NodeViewWrapper className="relative my-4">

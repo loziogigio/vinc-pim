@@ -1,0 +1,4 @@
+sku,name,description,price
+SKU001,Product 1,This is a product with a quote" problem,29.99
+SKU002,Product 2,This has extra,commas,and,breaks,things,12.99
+SKU003,Product 3,Normal product,45.99

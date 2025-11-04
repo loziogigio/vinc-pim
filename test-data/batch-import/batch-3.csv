@@ -1,0 +1,201 @@
+entity_code,sku,name,description,price,category,stock,weight,brand,status
+TEST-PROD-00401,SKU-401,Test Product 401,This is test product number 401,57.42,Sports,496,30.41,BrandC,active
+TEST-PROD-00402,SKU-402,Test Product 402,This is test product number 402,51.37,Clothing,399,45.50,BrandA,active
+TEST-PROD-00403,SKU-403,Test Product 403,This is test product number 403,73.93,Sports,592,19.94,BrandC,active
+TEST-PROD-00404,SKU-404,Test Product 404,This is test product number 404,8.34,Clothing,221,49.89,BrandB,active
+TEST-PROD-00405,SKU-405,Test Product 405,This is test product number 405,45.68,Clothing,779,22.65,BrandB,active
+TEST-PROD-00406,SKU-406,,Description for 406,7.25,Home,575,45.18,BrandC,active
+TEST-PROD-00407,SKU-407,Test Product 407,Description for 407,invalid-price,Electronics,708,10.41,BrandB,active
+TEST-PROD-00408,SKU-408,Test Product 408,This is test product number 408,47.64,Home,410,1.07,BrandB,active
+TEST-PROD-00409,SKU-409,Test Product 409,This is test product number 409,26.24,Sports,35,39.55,BrandB,active
+TEST-PROD-00410,SKU-410,Test Product 410,This is test product number 410,9.68,Home,324,34.71,BrandB,active
+TEST-PROD-00411,SKU-411,Test Product 411,This is test product number 411,98.34,Electronics,555,1.95,BrandB,active
+TEST-PROD-00412,SKU-412,Test Product 412,This is test product number 412,96.56,Electronics,771,0.55,BrandA,active
+TEST-PROD-00413,SKU-413,Test Product 413,This is test product number 413,69.12,Sports,197,44.07,BrandC,active
+TEST-PROD-00414,SKU-414,Test Product 414,Description for 414,invalid-price,Electronics,413,47.54,BrandB,active
+TEST-PROD-00415,SKU-415,Test Product 415,This is test product number 415,35.75,Electronics,75,24.20,BrandB,active
+TEST-PROD-00416,SKU-416,Test Product 416,This is test product number 416,63.40,Electronics,707,4.47,BrandA,active
+TEST-PROD-00417,SKU-417,Test Product 417,This is test product number 417,86.51,Sports,390,8.86,BrandC,active
+TEST-PROD-00418,SKU-418,Test Product 418,This is test product number 418,21.94,Sports,672,0.70,BrandA,active
+TEST-PROD-00419,SKU-419,Test Product 419,This is test product number 419,81.95,Clothing,866,13.76,BrandC,active
+TEST-PROD-00420,SKU-420,,Description for 420,36.97,Home,469,40.20,BrandC,active
+TEST-PROD-00421,SKU-421,Test Product 421,This is test product number 421,89.75,Electronics,2,42.33,BrandA,active
+TEST-PROD-00422,SKU-422,Test Product 422,This is test product number 422,70.01,Clothing,724,31.19,BrandC,active
+,SKU-423,Test Product 423,Description for 423,1.66,Electronics,980,43.25,BrandA,active
+TEST-PROD-00424,SKU-424,Test Product 424,Description for 424,30.84,Sports,invalid-stock,1.88,BrandA,active
+TEST-PROD-00425,SKU-425,Test Product 425,This is test product number 425,72.73,Home,632,49.75,BrandC,active
+TEST-PROD-00426,SKU-426,Test Product 426,This is test product number 426,25.42,Sports,576,46.00,BrandA,active
+TEST-PROD-00427,SKU-427,Test Product 427,This is test product number 427,45.50,Clothing,904,23.97,BrandA,active
+TEST-PROD-00428,SKU-428,Test Product 428,This is test product number 428,76.28,Home,97,15.47,BrandC,active
+TEST-PROD-00429,SKU-429,Test Product 429,This is test product number 429,26.83,Electronics,126,18.49,BrandA,active
+TEST-PROD-00430,SKU-430,Test Product 430,This is test product number 430,26.35,Sports,532,35.97,BrandB,active
+TEST-PROD-00431,SKU-431,Test Product 431,This is test product number 431,41.76,Clothing,81,16.37,BrandA,active
+TEST-PROD-00432,SKU-432,Test Product 432,This is test product number 432,28.47,Electronics,207,40.95,BrandA,active
+TEST-PROD-00433,SKU-433,Test Product 433,This is test product number 433,33.65,Clothing,294,4.73,BrandB,active
+TEST-PROD-00434,SKU-434,Test Product 434,This is test product number 434,8.97,Clothing,325,26.73,BrandA,active
+TEST-PROD-00435,SKU-435,Test Product 435,This is test product number 435,29.94,Home,628,38.38,BrandA,active
+TEST-PROD-00436,SKU-436,Test Product 436,This is test product number 436,37.27,Home,631,30.42,BrandC,active
+TEST-PROD-00437,SKU-437,Test Product 437,This is test product number 437,99.39,Electronics,748,29.00,BrandA,active
+TEST-PROD-00438,SKU-438,Test Product 438,This is test product number 438,54.41,Electronics,847,12.59,BrandB,active
+TEST-PROD-00439,SKU-439,Test Product 439,This is test product number 439,76.97,Home,383,26.54,BrandA,active
+TEST-PROD-00440,SKU-440,Test Product 440,This is test product number 440,11.05,Electronics,119,22.99,BrandB,active
+TEST-PROD-00441,SKU-441,Test Product 441,This is test product number 441,57.13,Sports,818,26.71,BrandB,active
+TEST-PROD-00442,SKU-442,Test Product 442,Description for 442,invalid-price,Electronics,864,2.47,BrandB,active
+TEST-PROD-00443,SKU-443,Test Product 443,This is test product number 443,65.40,Clothing,202,15.99,BrandB,active
+TEST-PROD-00444,SKU-444,Test Product 444,This is test product number 444,38.18,Clothing,323,20.84,BrandA,active
+TEST-PROD-00445,SKU-445,Test Product 445,This is test product number 445,34.89,Clothing,962,4.92,BrandB,active
+TEST-PROD-00446,SKU-446,Test Product 446,Description for 446,0.98,Sports,invalid-stock,4.75,BrandA,active
+TEST-PROD-00447,SKU-447,Test Product 447,This is test product number 447,10.03,Home,410,45.87,BrandA,active
+TEST-PROD-00448,SKU-448,Test Product 448,This is test product number 448,65.65,Clothing,420,3.23,BrandC,active
+TEST-PROD-00449,SKU-449,Test Product 449,This is test product number 449,45.50,Home,62,28.66,BrandC,active
+TEST-PROD-00450,SKU-450,Test Product 450,This is test product number 450,70.53,Electronics,996,2.69,BrandB,active
+TEST-PROD-00451,SKU-451,Test Product 451,This is test product number 451,81.08,Clothing,604,38.98,BrandA,active
+TEST-PROD-00452,SKU-452,Test Product 452,This is test product number 452,98.87,Clothing,895,31.16,BrandA,active
+TEST-PROD-00453,SKU-453,Test Product 453,This is test product number 453,77.37,Sports,573,23.33,BrandC,active
+TEST-PROD-00454,SKU-454,Test Product 454,This is test product number 454,90.75,Home,276,34.72,BrandB,active
+TEST-PROD-00455,SKU-455,Test Product 455,This is test product number 455,17.96,Electronics,544,12.44,BrandC,active
+TEST-PROD-00456,SKU-456,Test Product 456,This is test product number 456,78.48,Sports,523,26.56,BrandA,active
+TEST-PROD-00457,SKU-457,Test Product 457,This is test product number 457,5.58,Home,257,31.53,BrandB,active
+TEST-PROD-00458,SKU-458,Test Product 458,This is test product number 458,6.19,Clothing,65,24.43,BrandA,active
+TEST-PROD-00459,SKU-459,Test Product 459,This is test product number 459,67.67,Electronics,322,18.73,BrandB,active
+TEST-PROD-00460,SKU-460,Test Product 460,This is test product number 460,4.60,Home,601,5.82,BrandB,active
+TEST-PROD-00461,SKU-461,Test Product 461,This is test product number 461,32.46,Sports,923,37.94,BrandC,active
+TEST-PROD-00462,SKU-462,Test Product 462,This is test product number 462,94.06,Sports,645,25.79,BrandA,active
+TEST-PROD-00463,SKU-463,Test Product 463,This is test product number 463,17.29,Electronics,583,14.03,BrandB,active
+TEST-PROD-00464,SKU-464,Test Product 464,This is test product number 464,79.51,Home,317,12.47,BrandB,active
+TEST-PROD-00465,SKU-465,Test Product 465,This is test product number 465,23.06,Clothing,351,3.60,BrandA,active
+TEST-PROD-00466,SKU-466,Test Product 466,This is test product number 466,31.63,Home,716,23.28,BrandB,active
+TEST-PROD-00467,SKU-467,Test Product 467,This is test product number 467,63.46,Electronics,794,34.55,BrandB,active
+TEST-PROD-00468,SKU-468,,Description for 468,12.97,Home,859,18.11,BrandC,active
+TEST-PROD-00469,SKU-469,Test Product 469,This is test product number 469,15.84,Clothing,21,7.78,BrandA,active
+TEST-PROD-00470,SKU-470,Test Product 470,This is test product number 470,25.79,Home,794,14.17,BrandA,active
+TEST-PROD-00471,SKU-471,,Description for 471,97.00,Home,651,9.48,BrandC,active
+TEST-PROD-00472,SKU-472,Test Product 472,This is test product number 472,51.49,Home,742,22.97,BrandC,active
+TEST-PROD-00473,SKU-473,,Description for 473,47.64,Home,864,42.42,BrandC,active
+TEST-PROD-00474,SKU-474,Test Product 474,This is test product number 474,43.51,Electronics,19,3.86,BrandC,active
+TEST-PROD-00475,SKU-475,Test Product 475,This is test product number 475,99.25,Clothing,567,46.64,BrandA,active
+TEST-PROD-00476,SKU-476,Test Product 476,This is test product number 476,24.73,Home,263,13.99,BrandA,active
+TEST-PROD-00477,SKU-477,Test Product 477,This is test product number 477,34.14,Sports,962,5.02,BrandA,active
+TEST-PROD-00478,SKU-478,Test Product 478,This is test product number 478,24.44,Clothing,697,45.82,BrandB,active
+TEST-PROD-00479,SKU-479,Test Product 479,This is test product number 479,98.99,Sports,350,25.45,BrandC,active
+TEST-PROD-00480,SKU-480,,Description for 480,14.52,Home,351,22.90,BrandC,active
+TEST-PROD-00481,SKU-481,Test Product 481,This is test product number 481,21.66,Home,528,27.52,BrandB,active
+TEST-PROD-00482,SKU-482,Test Product 482,This is test product number 482,29.16,Clothing,537,3.47,BrandB,active
+TEST-PROD-00483,SKU-483,Test Product 483,This is test product number 483,27.36,Clothing,607,22.72,BrandA,active
+TEST-PROD-00484,SKU-484,Test Product 484,This is test product number 484,57.40,Home,362,12.01,BrandC,active
+TEST-PROD-00485,SKU-485,Test Product 485,This is test product number 485,19.97,Sports,66,17.87,BrandA,active
+TEST-PROD-00486,SKU-486,Test Product 486,This is test product number 486,89.53,Sports,920,24.17,BrandA,active
+TEST-PROD-00487,SKU-487,Test Product 487,This is test product number 487,4.65,Electronics,305,19.63,BrandB,active
+TEST-PROD-00488,SKU-488,Test Product 488,This is test product number 488,54.04,Sports,157,9.35,BrandC,active
+TEST-PROD-00489,SKU-489,Test Product 489,This is test product number 489,61.23,Sports,825,13.41,BrandA,active
+TEST-PROD-00490,SKU-490,Test Product 490,This is test product number 490,56.42,Home,187,41.65,BrandC,active
+TEST-PROD-00491,SKU-491,Test Product 491,This is test product number 491,34.29,Clothing,149,32.82,BrandB,active
+TEST-PROD-00492,SKU-492,Test Product 492,This is test product number 492,89.05,Clothing,783,49.87,BrandA,active
+TEST-PROD-00493,SKU-493,,Description for 493,95.06,Home,25,32.21,BrandC,active
+TEST-PROD-00494,SKU-494,Test Product 494,This is test product number 494,21.12,Home,990,9.79,BrandA,active
+TEST-PROD-00495,SKU-495,Test Product 495,This is test product number 495,30.43,Electronics,317,47.17,BrandC,active
+TEST-PROD-00496,SKU-496,Test Product 496,This is test product number 496,86.69,Sports,25,37.44,BrandA,active
+TEST-PROD-00497,SKU-497,Test Product 497,This is test product number 497,49.56,Electronics,551,49.00,BrandA,active
+TEST-PROD-00498,SKU-498,Test Product 498,This is test product number 498,54.26,Home,89,7.86,BrandA,active
+TEST-PROD-00499,SKU-499,Test Product 499,This is test product number 499,73.68,Clothing,789,42.71,BrandC,active
+TEST-PROD-00500,SKU-500,Test Product 500,This is test product number 500,51.43,Electronics,224,34.18,BrandB,active
+TEST-PROD-00501,SKU-501,Test Product 501,This is test product number 501,29.65,Home,148,8.24,BrandB,active
+TEST-PROD-00502,SKU-502,Test Product 502,This is test product number 502,19.25,Home,125,26.52,BrandC,active
+TEST-PROD-00503,SKU-503,Test Product 503,This is test product number 503,29.11,Electronics,394,45.59,BrandB,active
+TEST-PROD-00504,SKU-504,Test Product 504,This is test product number 504,14.19,Clothing,511,29.52,BrandA,active
+TEST-PROD-00505,SKU-505,Test Product 505,This is test product number 505,40.48,Clothing,661,31.44,BrandA,active
+TEST-PROD-00506,SKU-506,Test Product 506,Description for 506,invalid-price,Electronics,971,29.31,BrandB,active
+TEST-PROD-00507,SKU-507,Test Product 507,This is test product number 507,4.44,Clothing,901,18.68,BrandA,active
+TEST-PROD-00508,SKU-508,Test Product 508,This is test product number 508,20.98,Home,245,33.80,BrandA,active
+TEST-PROD-00509,SKU-509,Test Product 509,This is test product number 509,22.59,Clothing,813,39.51,BrandC,active
+TEST-PROD-00510,SKU-510,Test Product 510,This is test product number 510,17.22,Electronics,450,35.25,BrandC,active
+TEST-PROD-00511,SKU-511,Test Product 511,Description for 511,74.68,Sports,invalid-stock,27.31,BrandA,active
+TEST-PROD-00512,SKU-512,Test Product 512,This is test product number 512,96.83,Electronics,542,15.86,BrandB,active
+TEST-PROD-00513,SKU-513,Test Product 513,This is test product number 513,9.74,Home,179,8.52,BrandB,active
+TEST-PROD-00514,SKU-514,Test Product 514,This is test product number 514,75.09,Sports,614,41.02,BrandC,active
+TEST-PROD-00515,SKU-515,Test Product 515,This is test product number 515,79.28,Sports,255,22.23,BrandB,active
+TEST-PROD-00516,SKU-516,Test Product 516,This is test product number 516,19.86,Electronics,757,5.93,BrandB,active
+TEST-PROD-00517,SKU-517,Test Product 517,This is test product number 517,37.19,Home,774,23.64,BrandA,active
+TEST-PROD-00518,SKU-518,Test Product 518,This is test product number 518,4.75,Electronics,168,36.82,BrandA,active
+TEST-PROD-00519,SKU-519,Test Product 519,This is test product number 519,58.95,Electronics,801,43.75,BrandC,active
+TEST-PROD-00520,SKU-520,Test Product 520,This is test product number 520,71.32,Sports,382,43.78,BrandC,active
+TEST-PROD-00521,SKU-521,Test Product 521,This is test product number 521,43.03,Sports,599,24.93,BrandC,active
+TEST-PROD-00522,SKU-522,Test Product 522,This is test product number 522,48.30,Clothing,717,29.33,BrandB,active
+TEST-PROD-00523,SKU-523,Test Product 523,This is test product number 523,98.47,Electronics,926,19.30,BrandC,active
+TEST-PROD-00524,SKU-524,Test Product 524,This is test product number 524,42.68,Sports,890,28.90,BrandB,active
+TEST-PROD-00525,SKU-525,Test Product 525,This is test product number 525,17.03,Home,351,34.64,BrandC,active
+TEST-PROD-00526,SKU-526,,Description for 526,48.85,Home,944,21.37,BrandC,active
+TEST-PROD-00527,SKU-527,Test Product 527,This is test product number 527,51.19,Electronics,330,10.11,BrandA,active
+TEST-PROD-00528,SKU-528,Test Product 528,This is test product number 528,57.90,Home,125,36.33,BrandB,active
+TEST-PROD-00529,SKU-529,Test Product 529,This is test product number 529,3.23,Clothing,281,37.68,BrandA,active
+TEST-PROD-00530,SKU-530,Test Product 530,This is test product number 530,67.87,Electronics,358,42.65,BrandB,active
+TEST-PROD-00531,SKU-531,Test Product 531,This is test product number 531,36.98,Clothing,824,1.63,BrandC,active
+TEST-PROD-00532,SKU-532,Test Product 532,This is test product number 532,67.46,Clothing,764,47.41,BrandB,active
+TEST-PROD-00533,SKU-533,Test Product 533,This is test product number 533,23.25,Home,735,12.81,BrandC,active
+TEST-PROD-00534,SKU-534,Test Product 534,This is test product number 534,34.08,Clothing,751,28.00,BrandA,active
+TEST-PROD-00535,SKU-535,Test Product 535,This is test product number 535,23.14,Home,130,43.83,BrandA,active
+TEST-PROD-00536,SKU-536,Test Product 536,This is test product number 536,4.64,Electronics,288,37.73,BrandB,active
+TEST-PROD-00537,SKU-537,Test Product 537,This is test product number 537,56.06,Sports,596,32.71,BrandA,active
+TEST-PROD-00538,SKU-538,Test Product 538,Description for 538,80.40,Sports,invalid-stock,3.02,BrandA,active
+TEST-PROD-00539,SKU-539,Test Product 539,This is test product number 539,37.53,Sports,718,41.42,BrandA,active
+TEST-PROD-00540,SKU-540,Test Product 540,This is test product number 540,17.81,Home,173,33.63,BrandB,active
+TEST-PROD-00541,SKU-541,Test Product 541,This is test product number 541,56.90,Sports,759,27.03,BrandB,active
+TEST-PROD-00542,SKU-542,Test Product 542,This is test product number 542,21.92,Electronics,940,48.41,BrandA,active
+TEST-PROD-00543,SKU-543,Test Product 543,This is test product number 543,38.14,Electronics,708,26.72,BrandB,active
+,SKU-544,Test Product 544,Description for 544,14.83,Electronics,47,43.97,BrandA,active
+TEST-PROD-00545,SKU-545,Test Product 545,This is test product number 545,57.42,Electronics,822,34.19,BrandB,active
+TEST-PROD-00546,SKU-546,Test Product 546,This is test product number 546,3.60,Clothing,767,18.20,BrandA,active
+TEST-PROD-00547,SKU-547,Test Product 547,This is test product number 547,54.41,Sports,299,49.64,BrandC,active
+TEST-PROD-00548,SKU-548,Test Product 548,This is test product number 548,50.45,Electronics,250,18.61,BrandB,active
+TEST-PROD-00549,SKU-549,Test Product 549,This is test product number 549,58.76,Clothing,337,47.27,BrandC,active
+TEST-PROD-00550,SKU-550,Test Product 550,This is test product number 550,51.56,Home,161,47.62,BrandB,active
+TEST-PROD-00551,SKU-551,Test Product 551,This is test product number 551,19.76,Home,307,13.27,BrandC,active
+TEST-PROD-00552,SKU-552,Test Product 552,This is test product number 552,24.11,Home,558,32.65,BrandC,active
+TEST-PROD-00553,SKU-553,Test Product 553,This is test product number 553,34.04,Clothing,756,7.26,BrandB,active
+TEST-PROD-00554,SKU-554,Test Product 554,This is test product number 554,79.64,Sports,55,39.60,BrandC,active
+TEST-PROD-00555,SKU-555,Test Product 555,This is test product number 555,23.68,Home,93,10.46,BrandB,active
+TEST-PROD-00556,SKU-556,Test Product 556,This is test product number 556,9.92,Sports,797,7.56,BrandA,active
+TEST-PROD-00557,SKU-557,Test Product 557,This is test product number 557,25.01,Sports,89,29.04,BrandA,active
+TEST-PROD-00558,SKU-558,Test Product 558,This is test product number 558,95.00,Clothing,673,13.64,BrandC,active
+TEST-PROD-00559,SKU-559,Test Product 559,This is test product number 559,13.59,Electronics,13,40.79,BrandA,active
+TEST-PROD-00560,SKU-560,Test Product 560,This is test product number 560,18.34,Sports,602,38.76,BrandA,active
+TEST-PROD-00561,SKU-561,Test Product 561,This is test product number 561,92.43,Clothing,475,13.04,BrandC,active
+TEST-PROD-00562,SKU-562,Test Product 562,This is test product number 562,93.73,Home,508,30.24,BrandB,active
+TEST-PROD-00563,SKU-563,Test Product 563,This is test product number 563,70.99,Sports,768,14.13,BrandA,active
+TEST-PROD-00564,SKU-564,Test Product 564,This is test product number 564,52.80,Clothing,162,48.80,BrandC,active
+TEST-PROD-00565,SKU-565,Test Product 565,This is test product number 565,66.01,Electronics,747,14.92,BrandA,active
+TEST-PROD-00566,SKU-566,Test Product 566,This is test product number 566,99.72,Electronics,134,16.28,BrandA,active
+TEST-PROD-00567,SKU-567,Test Product 567,This is test product number 567,65.85,Clothing,624,47.71,BrandC,active
+TEST-PROD-00568,SKU-568,Test Product 568,Description for 568,46.05,Sports,invalid-stock,20.58,BrandA,active
+TEST-PROD-00569,SKU-569,Test Product 569,This is test product number 569,96.43,Sports,53,44.75,BrandA,active
+TEST-PROD-00570,SKU-570,Test Product 570,This is test product number 570,44.63,Home,441,38.69,BrandC,active
+TEST-PROD-00571,SKU-571,Test Product 571,This is test product number 571,28.44,Sports,379,4.27,BrandB,active
+TEST-PROD-00572,SKU-572,Test Product 572,This is test product number 572,4.86,Home,235,27.33,BrandA,active
+TEST-PROD-00573,SKU-573,Test Product 573,This is test product number 573,33.74,Home,750,14.63,BrandC,active
+TEST-PROD-00574,SKU-574,Test Product 574,This is test product number 574,13.01,Clothing,962,2.59,BrandC,active
+TEST-PROD-00575,SKU-575,Test Product 575,This is test product number 575,86.27,Electronics,223,23.76,BrandA,active
+TEST-PROD-00576,SKU-576,Test Product 576,This is test product number 576,62.02,Sports,520,26.12,BrandA,active
+TEST-PROD-00577,SKU-577,Test Product 577,This is test product number 577,20.19,Home,975,29.87,BrandA,active
+TEST-PROD-00578,SKU-578,Test Product 578,This is test product number 578,77.67,Clothing,46,45.60,BrandB,active
+TEST-PROD-00579,SKU-579,Test Product 579,This is test product number 579,8.03,Home,114,19.95,BrandB,active
+TEST-PROD-00580,SKU-580,Test Product 580,This is test product number 580,37.13,Sports,828,22.74,BrandC,active
+TEST-PROD-00581,SKU-581,Test Product 581,This is test product number 581,30.44,Home,844,47.84,BrandB,active
+TEST-PROD-00582,SKU-582,Test Product 582,This is test product number 582,54.14,Sports,897,46.69,BrandB,active
+TEST-PROD-00583,SKU-583,Test Product 583,This is test product number 583,76.20,Sports,855,29.27,BrandA,active
+TEST-PROD-00584,SKU-584,Test Product 584,This is test product number 584,49.33,Home,369,24.64,BrandC,active
+TEST-PROD-00585,SKU-585,Test Product 585,This is test product number 585,49.89,Clothing,678,21.37,BrandB,active
+TEST-PROD-00586,SKU-586,Test Product 586,This is test product number 586,3.95,Sports,620,6.92,BrandA,active
+TEST-PROD-00587,SKU-587,Test Product 587,This is test product number 587,14.49,Clothing,524,9.86,BrandB,active
+TEST-PROD-00588,SKU-588,Test Product 588,This is test product number 588,24.98,Electronics,396,41.70,BrandC,active
+TEST-PROD-00589,SKU-589,Test Product 589,This is test product number 589,36.37,Sports,774,8.28,BrandB,active
+TEST-PROD-00590,SKU-590,Test Product 590,This is test product number 590,41.07,Electronics,119,46.75,BrandC,active
+TEST-PROD-00591,SKU-591,Test Product 591,This is test product number 591,18.65,Electronics,631,13.85,BrandC,active
+TEST-PROD-00592,SKU-592,Test Product 592,This is test product number 592,77.21,Sports,611,15.45,BrandA,active
+TEST-PROD-00593,SKU-593,Test Product 593,This is test product number 593,4.81,Home,631,3.86,BrandB,active
+TEST-PROD-00594,SKU-594,Test Product 594,This is test product number 594,73.53,Home,258,29.18,BrandC,active
+TEST-PROD-00595,SKU-595,Test Product 595,This is test product number 595,1.25,Home,691,10.84,BrandB,active
+TEST-PROD-00596,SKU-596,,Description for 596,56.59,Home,68,13.75,BrandC,active
+TEST-PROD-00597,SKU-597,Test Product 597,This is test product number 597,74.64,Home,948,48.09,BrandC,active
+TEST-PROD-00598,SKU-598,Test Product 598,This is test product number 598,95.24,Clothing,415,9.66,BrandA,active
+TEST-PROD-00599,SKU-599,Test Product 599,This is test product number 599,83.82,Home,469,23.78,BrandB,active
+TEST-PROD-00600,SKU-600,Test Product 600,This is test product number 600,15.16,Clothing,156,2.99,BrandB,active

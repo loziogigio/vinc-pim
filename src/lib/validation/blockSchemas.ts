@@ -46,7 +46,23 @@ const heroCarouselSchema = z.object({
   autoplay: z.boolean().optional(),
   interval: z.number().int().min(1000).max(30000).optional(),
   showDots: z.boolean().optional(),
-  showArrows: z.boolean().optional()
+  showArrows: z.boolean().optional(),
+  cardStyle: z
+    .object({
+      borderWidth: z.number().min(0).max(16).default(0),
+      borderColor: z.string().default("#EAEEF2"),
+      borderStyle: z.enum(["solid", "dashed", "dotted", "none"]).default("solid"),
+      borderRadius: z.enum(["none", "sm", "md", "lg", "xl", "2xl", "full"]).default("md"),
+      shadowSize: z.enum(["none", "sm", "md", "lg", "xl", "2xl"]).default("none"),
+      shadowColor: z.string().default("rgba(0, 0, 0, 0.15)"),
+      backgroundColor: z.string().default("#ffffff"),
+      hoverEffect: z.enum(["none", "lift", "shadow", "scale", "border", "glow"]).default("none"),
+      hoverScale: z.number().min(1).max(1.1).optional(),
+      hoverShadowSize: z.enum(["sm", "md", "lg", "xl", "2xl"]).optional(),
+      hoverBackgroundColor: z.string().optional()
+    })
+    .partial()
+    .optional()
 });
 
 export const heroBlockSchema = z.discriminatedUnion("variant", [
@@ -165,10 +181,16 @@ const contentTestimonialsSchema = z.object({
   showAvatar: z.boolean().optional()
 });
 
+const contentCustomHtmlSchema = z.object({
+  variant: z.literal("customHtml"),
+  html: z.string().min(1)
+});
+
 export const contentBlockSchema = z.discriminatedUnion("variant", [
   contentRichTextSchema,
   contentFeaturesSchema,
-  contentTestimonialsSchema
+  contentTestimonialsSchema,
+  contentCustomHtmlSchema
 ]);
 
 // Media blocks (YouTube, etc.)
@@ -180,14 +202,88 @@ const youtubeEmbedSchema = z.object({
   height: z.string().optional()
 });
 
-export const mediaBlockSchema = youtubeEmbedSchema;
+const mediaCardStyleSchema = z.object({
+  borderWidth: z.number().min(0).max(16).default(0),
+  borderColor: z.string().default("#EAEEF2"),
+  borderStyle: z.enum(["solid", "dashed", "dotted", "none"]).default("solid"),
+  borderRadius: z.enum(["none", "sm", "md", "lg", "xl", "2xl", "full"]).default("md"),
+  shadowSize: z.enum(["none", "sm", "md", "lg", "xl", "2xl"]).default("none"),
+  shadowColor: z.string().default("rgba(0, 0, 0, 0.15)"),
+  backgroundColor: z.string().default("#ffffff"),
+  hoverEffect: z.enum(["none", "lift", "shadow", "scale", "border", "glow"]).default("none"),
+  hoverScale: z.number().min(1).max(1.1).optional(),
+  hoverShadowSize: z.enum(["sm", "md", "lg", "xl", "2xl"]).optional(),
+  hoverBackgroundColor: z.string().optional()
+});
+
+const mediaImageSchema = z.object({
+  imageUrl: z.string().min(1),
+  alt: z.string().optional(),
+  linkUrl: z.string().url().optional(),
+  openInNewTab: z.boolean().optional(),
+  width: z.string().optional(),
+  maxWidth: z.string().optional(),
+  alignment: z.enum(["left", "center", "right"]).optional(),
+  style: mediaCardStyleSchema.partial().optional()
+});
+
+export const mediaBlockSchema = z.union([youtubeEmbedSchema, mediaImageSchema]);
+
+const productDataTableRowSchema = z.object({
+  id: z.string().optional(),
+  label: z.string().min(1, "Label is required"),
+  leftValueType: z.enum(["text", "html", "image"]).optional(),
+  valueType: z.enum(["text", "html", "image"]).default("text"),
+  value: z.string().optional(),
+  html: z.string().optional(),
+  imageUrl: z.string().optional(),
+  imageAlt: z.string().optional(),
+  imageAspectRatio: z.string().optional(),
+  leftHtml: z.string().optional(),
+  leftLink: z
+    .object({
+      url: z.string().min(1),
+      openInNewTab: z.boolean().optional(),
+      rel: z.string().optional()
+    })
+    .optional(),
+  leftHelperText: z.string().optional(),
+  valueImageUrl: z.string().optional(),
+  valueImageAlt: z.string().optional(),
+  valueImageAspectRatio: z.string().optional(),
+  link: z
+    .object({
+      url: z.string().min(1),
+      openInNewTab: z.boolean().optional(),
+      rel: z.string().optional()
+    })
+    .optional(),
+  helperText: z.string().optional(),
+  highlight: z.boolean().optional()
+});
+
+const productDataTableSchema = z.object({
+  variant: z.literal("productDataTable"),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  labelColumnWidth: z.number().min(120).max(420).optional(),
+  appearance: z
+    .object({
+      bordered: z.boolean().optional(),
+      rounded: z.boolean().optional(),
+      zebraStripes: z.boolean().optional()
+    })
+    .optional(),
+  rows: z.array(productDataTableRowSchema).default([])
+});
 
 export const blockConfigSchema = z.union([
   heroBlockSchema,
   productBlockSchema,
   categoryBlockSchema,
   contentBlockSchema,
-  mediaBlockSchema
+  mediaBlockSchema,
+  productDataTableSchema
 ]);
 
 export const pageBlockSchema = z.object({
@@ -217,6 +313,7 @@ const pageVersionSchema = z.object({
   blocks: z.array(pageBlockSchema),
   seo: seoSettingsSchema.optional(),
   status: z.enum(["draft", "published"]),
+  label: z.string().optional(),
   createdAt: z.string(),
   lastSavedAt: z.string(),
   publishedAt: z.string().optional(),

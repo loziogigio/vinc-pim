@@ -1,0 +1,13 @@
+sku,name,description,price,category,brand,stock,weight,color,material
+SKU001,Wireless Mouse,Ergonomic wireless mouse with USB receiver,29.99,Electronics,TechPro,150,0.2,Black,Plastic
+SKU002,Mechanical Keyboard,RGB mechanical gaming keyboard,89.99,Electronics,GameTech,80,1.2,Black,Metal
+SKU003,USB-C Cable,Premium USB-C charging cable 2m,12.99,Accessories,TechPro,500,0.1,White,Nylon
+SKU004,Laptop Stand,Adjustable aluminum laptop stand,45.99,Accessories,OfficeMax,200,0.8,Silver,Aluminum
+SKU005,Webcam HD,1080p HD webcam with built-in microphone,59.99,Electronics,TechPro,120,0.3,Black,Plastic
+SKU006,Monitor 24",Full HD 24 inch LED monitor,179.99,Electronics,ViewTech,45,5.5,Black,Plastic
+SKU007,Mouse Pad XL,Extended gaming mouse pad,19.99,Accessories,GameTech,300,0.4,Black,Rubber
+SKU008,Desk Lamp,LED desk lamp with adjustable brightness,34.99,Office,BrightLight,90,,White,Metal
+SKU009,Notebook A5,Premium leather notebook 200 pages,15.99,Stationery,PaperCo,250,0.3,Brown,Leather
+SKU010,Pen Set,Set of 5 premium ballpoint pens,24.99,Stationery,WritePro,180,0.15,Mixed,Metal
+SKU011,Backpack,Waterproof laptop backpack 15.6",49.99,Bags,TravelGear,65,0.9,Gray,Polyester
+SKU012,Water Bottle,Insulated stainless steel water bottle,22.99,Accessories,,200,0.4,Blue,Steel

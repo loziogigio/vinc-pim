@@ -27,8 +27,15 @@ export interface IImportSource extends Document {
   min_score_threshold: number; // 0-100
   required_fields: string[]; // ["title", "price", "images"]
 
-  // Field mapping: supplier field name -> PIM field name
-  field_mappings: Record<string, string>;
+  // Conflict resolution: How to handle manual vs API updates
+  overwrite_level: "automatic" | "manual"; // Default: "automatic"
+
+  // Field mapping: array of field transformations
+  field_mapping: Array<{
+    source_field: string;
+    pim_field: string;
+    transform?: string;
+  }>;
 
   // Import limits and performance settings
   limits?: {
@@ -80,8 +87,24 @@ const ImportSourceSchema = new Schema<IImportSource>(
     min_score_threshold: { type: Number, default: 80, min: 0, max: 100 },
     required_fields: [{ type: String }],
 
-    // Field mappings as object: { "supplier_field": "pim_field" }
-    field_mappings: { type: Schema.Types.Mixed, default: {} },
+    // Conflict resolution setting
+    overwrite_level: {
+      type: String,
+      enum: ["automatic", "manual"],
+      default: "automatic",
+    },
+
+    // Field mapping as array of transformations
+    field_mapping: {
+      type: [
+        {
+          source_field: { type: String, required: true },
+          pim_field: { type: String, required: true },
+          transform: { type: String },
+        },
+      ],
+      default: [],
+    },
 
     // Import limits and performance settings
     limits: {

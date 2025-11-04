@@ -1,5 +1,6 @@
 import { connectToDatabase } from "./connection";
 import { PageModel, type PageDocument } from "./models/page";
+import { getHomeTemplateConfig } from "./home-templates";
 import type { PageConfig, PageBlock, BlockConfig, PageVersion } from "@/lib/types/blocks";
 import { pageConfigSchema } from "@/lib/validation/blockSchemas";
 import { sanitizeBlock } from "@/lib/validation/sanitizers";
@@ -17,7 +18,7 @@ const serializeBlock = (
   },
   pageSlug?: string
 ): PageBlock<BlockConfig> => {
-  const serialized = {
+  const serialized: any = {
     id: String(block.id),
     type: String(block.type),
     order: Number(block.order ?? 0),
@@ -55,7 +56,7 @@ const serializePage = (
     updatedAt?: Date | string;
   }
 ): PageConfig => {
-  return pageConfigSchema.parse({
+  return {
     slug: String(doc.slug ?? ""),
     name: String(doc.name ?? ""),
     versions: Array.isArray(doc.versions)
@@ -66,6 +67,7 @@ const serializePage = (
             : [],
           seo: v.seo,
           status: v.status,
+          label: v.label,
           createdAt: v.createdAt,
           lastSavedAt: v.lastSavedAt,
           publishedAt: v.publishedAt,
@@ -77,7 +79,7 @@ const serializePage = (
     currentPublishedVersion: doc.currentPublishedVersion ?? undefined,
     createdAt: new Date(doc.createdAt ?? Date.now()).toISOString(),
     updatedAt: new Date(doc.updatedAt ?? Date.now()).toISOString()
-  });
+  } as PageConfig;
 };
 
 const ensureDefaultHomepage = async () => {
@@ -130,7 +132,13 @@ export const getPageConfig = async (slug: string): Promise<PageConfig> => {
   await connectToDatabase();
 
   if (slug === "home") {
-    return ensureDefaultHomepage();
+    try {
+      const homeTemplateConfig = await getHomeTemplateConfig();
+      return homeTemplateConfig as PageConfig;
+    } catch (error) {
+      console.error("[getPageConfig] Failed to load home template config, falling back to PageModel:", error);
+      return ensureDefaultHomepage();
+    }
   }
 
   // Handle product detail pages (product-detail or product-detail-{productId})
@@ -188,6 +196,7 @@ export const savePage = async (input: {
       blocks: sanitizedBlocks,
       seo,
       status: "draft",
+      label: "Version 1",
       createdAt: nowISO,
       lastSavedAt: nowISO,
       createdBy: "admin",
@@ -219,6 +228,7 @@ export const savePage = async (input: {
       blocks: sanitizedBlocks,
       seo,
       status: "draft",
+      label: "Version 1",
       createdAt: nowISO,
       lastSavedAt: nowISO,
       createdBy: "admin",
@@ -247,7 +257,8 @@ export const savePage = async (input: {
             ...v,
             blocks: sanitizedBlocks,
             seo,
-            lastSavedAt: nowISO
+            lastSavedAt: nowISO,
+            label: v.label ?? v.comment ?? `Version ${currentVersion.version}`
           }
         : v
     );
@@ -281,6 +292,7 @@ export const savePage = async (input: {
     blocks: sanitizedBlocks,
     seo,
     status: "draft",
+    label: `Version ${nextVersion}`,
     createdAt: nowISO,
     lastSavedAt: nowISO,
     createdBy: "admin",
@@ -338,7 +350,8 @@ export const hotfixPage = async (input: {
           ...v,
           blocks: sanitizedBlocks,
           seo,
-          lastSavedAt: nowISO
+          lastSavedAt: nowISO,
+          label: v.label ?? v.comment ?? `Version ${currentVersion.version}`
           // Keep publishedAt, status, and other metadata unchanged
         }
       : v
@@ -500,11 +513,13 @@ export const duplicateVersion = async (slug: string, sourceVersion: number): Pro
   }
 
   // Create new version with duplicated content
+  const sourceData = sourceVersionData as any;
   const newVersion: PageVersion = {
     version: nextVersion,
-    blocks: JSON.parse(JSON.stringify(sourceVersionData.blocks)), // Deep clone blocks
-    seo: sourceVersionData.seo ? JSON.parse(JSON.stringify(sourceVersionData.seo)) : undefined,
+    blocks: JSON.parse(JSON.stringify(sourceData.blocks)), // Deep clone blocks
+    seo: sourceData.seo ? JSON.parse(JSON.stringify(sourceData.seo)) : undefined,
     status: "draft",
+    label: sourceData.label ? `${sourceData.label} (Copy)` : `Version ${nextVersion}`,
     createdAt: nowISO,
     lastSavedAt: nowISO,
     createdBy: "admin",
@@ -551,6 +566,7 @@ export const startNewVersion = async (slug: string): Promise<PageConfig> => {
     blocks: [],
     seo: undefined,
     status: "draft",
+    label: `Version ${nextVersion}`,
     createdAt: nowISO,
     lastSavedAt: nowISO,
     createdBy: "admin",

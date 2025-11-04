@@ -5,13 +5,15 @@ import { HeroSection } from "@/components/blocks/HeroSection";
 import { ProductSection } from "@/components/blocks/ProductSection";
 import { CategorySection } from "@/components/blocks/CategorySection";
 import { ContentSection } from "@/components/blocks/ContentSection";
+import { ProductDataTableSection } from "@/components/blocks/ProductDataTable/ProductDataTableSection";
 import { blockConfigSchema } from "@/lib/validation/blockSchemas";
 import type {
   CategoryBlockConfig,
   ContentBlockConfig,
   HeroBlockConfig,
   PageBlock,
-  ProductBlockConfig
+  ProductBlockConfig,
+  ProductDataTableBlockConfig
 } from "@/lib/types/blocks";
 
 export interface BlockRendererProps {
@@ -27,6 +29,10 @@ export const BlockRenderer = ({ block }: BlockRendererProps) => {
   if (!parsedConfig) {
     console.warn("Invalid block config", block);
     return null;
+  }
+
+  if (block.type === "product-data-table") {
+    return <ProductDataTableSection config={parsedConfig as ProductDataTableBlockConfig} />;
   }
 
   if (block.type.startsWith("hero")) {

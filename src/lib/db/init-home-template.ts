@@ -1,5 +1,5 @@
 import { connectToDatabase } from "./connection";
-import { HomeTemplateModel } from "./models/home-template";
+import { B2BHomeTemplateModel } from "./models/home-template";
 
 const HOME_TEMPLATE_ID = "home-page";
 
@@ -12,7 +12,7 @@ export async function initializeHomeTemplate() {
   await connectToDatabase();
 
   // Check if template already exists (any version)
-  const existing = await HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID });
+  const existing = await B2BHomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID });
 
   if (existing) {
     console.log("[initializeHomeTemplate] Home template already exists, skipping initialization");
@@ -24,7 +24,7 @@ export async function initializeHomeTemplate() {
   const now = new Date().toISOString();
 
   // Create empty initial version as a single document
-  const template = await HomeTemplateModel.create({
+  const template = await B2BHomeTemplateModel.create({
     templateId: HOME_TEMPLATE_ID,
     name: "Home Page",
     version: 1,

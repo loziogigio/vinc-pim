@@ -30,6 +30,40 @@ const builderStyles: Record<
     previewBg: "bg-gradient-to-r from-[#4facfe] to-[#00f2fe]",
     previewText: "text-white"
   },
+  "hero-with-widgets": {
+    previewBg: "bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#3b82f6]",
+    previewText: "text-white",
+    previewBorder: "border border-[#93c5fd]"
+  },
+  "carousel-hero": {
+    previewBg: "bg-gradient-to-r from-[#38bdf8] to-[#60a5fa]",
+    previewText: "text-white"
+  },
+  "carousel-promo": {
+    previewBg: "bg-[#fff1f2]",
+    previewText: "text-[#be123c]",
+    previewBorder: "border border-[#fecdd3]"
+  },
+  "carousel-brand": {
+    previewBg: "bg-[#eef2ff]",
+    previewText: "text-[#4338ca]",
+    previewBorder: "border border-[#e0e7ff]"
+  },
+  "carousel-flyer": {
+    previewBg: "bg-[#fffbeb]",
+    previewText: "text-[#b45309]",
+    previewBorder: "border border-[#fde68a]"
+  },
+  "carousel-products": {
+    previewBg: "bg-[#f0fdf4]",
+    previewText: "text-[#166534]",
+    previewBorder: "border border-[#bbf7d0]"
+  },
+  "carousel-gallery": {
+    previewBg: "bg-[#f5f3ff]",
+    previewText: "text-[#5b21b6]",
+    previewBorder: "border border-[#e9d5ff]"
+  },
   "product-slider": {
     previewBg: "bg-[#fafafc]",
     previewText: "text-[#5e5873]",
@@ -60,10 +94,25 @@ const builderStyles: Record<
     previewText: "text-[#5e5873]",
     previewBorder: "border border-dashed border-[#d8d6de]"
   },
+  "content-custom-html": {
+    previewBg: "bg-white",
+    previewText: "text-[#5e5873]",
+    previewBorder: "border border-dashed border-[#d8d6de]"
+  },
   "content-testimonials": {
     previewBg: "bg-white",
     previewText: "text-[#5e5873]",
     previewBorder: "border border-dashed border-[#d8d6de]"
+  },
+  youtubeEmbed: {
+    previewBg: "bg-[#fef2f2]",
+    previewText: "text-[#b91c1c]",
+    previewBorder: "border border-[#fee2e2]"
+  },
+  "media-image": {
+    previewBg: "bg-[#ecfeff]",
+    previewText: "text-[#0f766e]",
+    previewBorder: "border border-[#ccfbf1]"
   }
 };
 

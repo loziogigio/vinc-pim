@@ -4,6 +4,8 @@ import { getPageConfig } from "@/lib/db/pages";
 import { generatePageMetadata } from "@/lib/seo/metadataGenerator";
 import { generateStructuredData } from "@/lib/seo/structuredData";
 
+// Force dynamic rendering to avoid MongoDB connection during Docker build
+export const dynamic = 'force-dynamic';
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {

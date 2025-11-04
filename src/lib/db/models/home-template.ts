@@ -155,5 +155,5 @@ HomeTemplateSchema.index({ templateId: 1, version: 1 }, { unique: true });
 HomeTemplateSchema.index({ templateId: 1, isCurrent: 1 });
 HomeTemplateSchema.index({ templateId: 1, isCurrentPublished: 1 });
 
-export const HomeTemplateModel =
+export const B2BHomeTemplateModel =
   models.B2BHomeTemplate || model<HomeTemplateDocument>("B2BHomeTemplate", HomeTemplateSchema);

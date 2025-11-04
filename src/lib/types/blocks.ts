@@ -46,6 +46,7 @@ export type HeroBlockConfig =
       interval?: number;
       showDots?: boolean;
       showArrows?: boolean;
+      cardStyle?: MediaCardStyle;
     };
 
 export type ProductBlockVariant = "slider" | "grid";
@@ -115,7 +116,7 @@ export interface CategoryCarouselConfig {
 
 export type CategoryBlockConfig = CategoryGridConfig | CategoryCarouselConfig;
 
-export type ContentBlockVariant = "richText" | "features" | "testimonials";
+export type ContentBlockVariant = "richText" | "features" | "testimonials" | "customHtml";
 
 export interface ContentRichTextConfig {
   variant: "richText";
@@ -159,10 +160,16 @@ export interface ContentTestimonialsConfig {
   showAvatar?: boolean;
 }
 
+export interface ContentCustomHtmlConfig {
+  variant: "customHtml";
+  html: string;
+}
+
 export type ContentBlockConfig =
   | ContentRichTextConfig
   | ContentFeaturesConfig
-  | ContentTestimonialsConfig;
+  | ContentTestimonialsConfig
+  | ContentCustomHtmlConfig;
 
 export interface YouTubeEmbedConfig {
   url: string;
@@ -172,20 +179,160 @@ export interface YouTubeEmbedConfig {
   height?: string;
 }
 
-export type MediaBlockConfig = YouTubeEmbedConfig;
+export interface MediaCardStyle {
+  borderWidth: number;
+  borderColor: string;
+  borderStyle: "solid" | "dashed" | "dotted" | "none";
+  borderRadius: "none" | "sm" | "md" | "lg" | "xl" | "2xl" | "full";
+  shadowSize: "none" | "sm" | "md" | "lg" | "xl" | "2xl";
+  shadowColor: string;
+  backgroundColor: string;
+  hoverEffect: "none" | "lift" | "shadow" | "scale" | "border" | "glow";
+  hoverScale?: number;
+  hoverShadowSize?: "sm" | "md" | "lg" | "xl" | "2xl";
+  hoverBackgroundColor?: string;
+}
+
+export interface MediaImageBlockConfig {
+  title?: string;
+  imageUrl: string;
+  alt?: string;
+  linkUrl?: string;
+  openInNewTab?: boolean;
+  width?: string;
+  maxWidth?: string;
+  alignment?: "left" | "center" | "right";
+  style?: MediaCardStyle;
+  className?: string;
+}
+
+export type ProductDataTableValueType = "text" | "html" | "image";
+
+export interface ProductDataTableRowLinkConfig {
+  url: string;
+  openInNewTab?: boolean;
+  rel?: string;
+}
+
+export interface ProductDataTableRowConfig {
+  id?: string;
+  label: string;
+  leftValueType?: ProductDataTableValueType;
+  valueType?: ProductDataTableValueType;
+  value?: string;
+  html?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  imageAspectRatio?: string;
+  leftHtml?: string;
+  leftLink?: ProductDataTableRowLinkConfig;
+  leftHelperText?: string;
+  valueImageUrl?: string;
+  valueImageAlt?: string;
+  valueImageAspectRatio?: string;
+  link?: ProductDataTableRowLinkConfig;
+  helperText?: string;
+  highlight?: boolean;
+}
+
+export interface ProductDataTableAppearance {
+  bordered?: boolean;
+  rounded?: boolean;
+  zebraStripes?: boolean;
+}
+
+export interface ProductDataTableBlockConfig {
+  variant: "productDataTable";
+  title?: string;
+  description?: string;
+  labelColumnWidth?: number;
+  appearance?: ProductDataTableAppearance;
+  rows: ProductDataTableRowConfig[];
+}
+
+export type MediaOverlayPosition = "top" | "middle" | "bottom";
+export type MediaOverlayAlign = "left" | "center" | "right";
+
+export interface HeroCarouselOverlay {
+  position?: MediaOverlayPosition;
+  align?: MediaOverlayAlign;
+  textColor?: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+}
+
+export interface HeroCarouselSlide {
+  id: string;
+  title?: string;
+  imageDesktop?: { url: string; alt?: string };
+  imageMobile?: { url: string; alt?: string };
+  link?: { url: string; openInNewTab?: boolean };
+  overlay?: HeroCarouselOverlay;
+}
+
+export interface HeroCarouselBlockConfig {
+  title?: string;
+  slides: HeroCarouselSlide[];
+  breakpointMode: "simplified" | "advanced";
+  itemsToShow?: {
+    desktop: number;
+    tablet: number;
+    mobile: number;
+  };
+  breakpointsJSON?: Record<string, unknown>;
+  autoplay?: boolean;
+  autoplaySpeed?: number;
+  loop?: boolean;
+  showDots?: boolean;
+  showArrows?: boolean;
+  cardStyle?: MediaCardStyle;
+  className?: string;
+}
+
+export interface MediaCarouselItem {
+  id: string;
+  mediaType?: "image" | "video";
+  imageDesktop?: { url: string; alt?: string };
+  imageMobile?: { url: string; alt?: string };
+  videoUrl?: string;
+  link?: { url: string; openInNewTab?: boolean };
+  title?: string;
+}
+
+export interface MediaCarouselBlockConfig {
+  items: MediaCarouselItem[];
+  variant?: "promo" | "brand" | "flyer" | "products" | "gallery";
+  breakpointMode: "simplified" | "advanced";
+  itemsToShow?: {
+    desktop: number;
+    tablet: number;
+    mobile: number;
+  };
+  breakpointsJSON?: Record<string, unknown>;
+  autoplay?: boolean;
+  loop?: boolean;
+  cardStyle?: MediaCardStyle;
+  className?: string;
+}
+
+export type MediaBlockConfig = YouTubeEmbedConfig | MediaImageBlockConfig;
 
 export type BlockConfig =
   | HeroBlockConfig
   | ProductBlockConfig
   | CategoryBlockConfig
   | ContentBlockConfig
-  | MediaBlockConfig;
+  | MediaBlockConfig
+  | HeroCarouselBlockConfig
+  | MediaCarouselBlockConfig
+  | ProductDataTableBlockConfig;
 
 export interface BlockVariantDefinition<TConfig extends BlockConfig> {
   id: string;
   label: string;
   icon: string;
   defaultConfig: TConfig;
+  hidden?: boolean;
 }
 
 export interface BlockFamily<
@@ -215,9 +362,23 @@ export type BlockRegistry = {
     richText: BlockVariantDefinition<Extract<ContentBlockConfig, { variant: "richText" }>>;
     features: BlockVariantDefinition<Extract<ContentBlockConfig, { variant: "features" }>>;
     testimonials: BlockVariantDefinition<Extract<ContentBlockConfig, { variant: "testimonials" }>>;
+    customHtml: BlockVariantDefinition<Extract<ContentBlockConfig, { variant: "customHtml" }>>;
   }>;
   media: BlockFamily<{
     youtubeEmbed: BlockVariantDefinition<YouTubeEmbedConfig>;
+    mediaImage: BlockVariantDefinition<MediaImageBlockConfig>;
+  }>;
+  productDetail: BlockFamily<{
+    dataTable: BlockVariantDefinition<ProductDataTableBlockConfig>;
+  }>;
+  carousel: BlockFamily<{
+    heroWithWidgets: BlockVariantDefinition<HeroCarouselBlockConfig>;
+    heroCarousel: BlockVariantDefinition<HeroCarouselBlockConfig>;
+    promoCarousel: BlockVariantDefinition<MediaCarouselBlockConfig>;
+    brandCarousel: BlockVariantDefinition<MediaCarouselBlockConfig>;
+    flyerCarousel: BlockVariantDefinition<MediaCarouselBlockConfig>;
+    productCategories: BlockVariantDefinition<MediaCarouselBlockConfig>;
+    productGallery: BlockVariantDefinition<MediaCarouselBlockConfig>;
   }>;
 };
 
@@ -246,17 +407,37 @@ export interface PageSEOSettings {
   image?: string;
 }
 
+export interface PageVersionAttributes {
+  region?: string;
+  language?: string;
+  device?: string;
+  [key: string]: string | undefined;
+}
+
+export interface PageVersionTags {
+  campaign?: string;
+  segment?: string;
+  attributes?: PageVersionAttributes;
+}
+
 // Version in history (can be draft or published)
 export interface PageVersion {
   version: number;
   blocks: PageBlock[];
   seo?: PageSEOSettings;
   status: "draft" | "published";
+  label?: string;
   createdAt: string;
   lastSavedAt: string;
   publishedAt?: string;
   createdBy?: string;
   comment?: string;
+  tag?: string;
+  tags?: PageVersionTags;
+  priority?: number;
+  isDefault?: boolean;
+  activeFrom?: string;
+  activeTo?: string;
 }
 
 export interface PageConfig {

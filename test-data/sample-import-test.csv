@@ -1,0 +1,26 @@
+sku,name,description,price,sale_price,category,brand,stock,weight,color,material,model,warranty_months
+SKU001,Wireless Mouse,"Ergonomic wireless mouse with USB receiver, 2.4GHz connection",29.99,24.99,Electronics,TechPro,150,0.2,Black,Plastic,WM-2024,12
+SKU002,Mechanical Keyboard,"RGB mechanical gaming keyboard with blue switches, anti-ghosting",89.99,,Electronics,GameTech,80,1.2,Black,Metal,MK-RGB-100,24
+SKU003,USB-C Cable,Premium braided USB-C charging cable 2 meters,12.99,9.99,Accessories,TechPro,500,0.1,White,Nylon,USBC-2M,6
+SKU004,Laptop Stand,"Adjustable aluminum laptop stand, ergonomic design for better posture",45.99,,Accessories,OfficeMax,200,0.8,Silver,Aluminum,LS-ADJ-01,12
+SKU005,Webcam HD,"1080p HD webcam with built-in microphone and privacy cover",59.99,49.99,Electronics,TechPro,120,0.3,Black,Plastic,WC-1080P,12
+SKU006,Monitor 24 inch,"Full HD 24 inch LED monitor, 1920x1080, 75Hz refresh rate",179.99,,Electronics,ViewTech,45,5.5,Black,Plastic,VM-24FHD,36
+SKU007,Mouse Pad XL,"Extended gaming mouse pad with non-slip rubber base, 900x400mm",19.99,14.99,Accessories,GameTech,300,0.4,Black,Rubber,MP-XL-900,
+SKU008,Desk Lamp LED,"LED desk lamp with adjustable brightness, USB charging port",34.99,,Office,BrightLight,90,,White,Metal,DL-USB-W,24
+SKU009,Notebook A5,"Premium leather notebook 200 lined pages, ribbon bookmark",15.99,12.99,Stationery,PaperCo,250,0.3,Brown,Leather,NB-LEA-A5,
+SKU010,Pen Set,"Set of 5 premium ballpoint pens with black ink, metal body",24.99,,Stationery,WritePro,180,0.15,Mixed,Metal,PS-5BP,
+SKU011,Backpack Laptop,"Waterproof laptop backpack fits up to 15.6 inch, USB charging port",49.99,39.99,Bags,TravelGear,65,0.9,Gray,Polyester,BP-156-WP,12
+SKU012,Water Bottle Insulated,"Stainless steel insulated water bottle keeps cold 24h, hot 12h",22.99,19.99,Accessories,,200,0.4,Blue,Steel,WB-INS-750,
+SKU013,Phone Stand,"Adjustable phone stand for desk, compatible with all smartphones",16.99,,Accessories,TechPro,320,0.15,Silver,Aluminum,PS-ADJ-02,
+SKU014,Headphone Stand,"RGB headphone stand with USB hub, 3 USB 3.0 ports",35.99,29.99,Electronics,GameTech,95,0.6,Black,Plastic,HS-RGB-USB,12
+SKU015,Cable Organizer,"Cable management box with 5 clips, hides power strips and cables",18.99,,Office,OfficeMax,175,0.5,White,Plastic,CO-BOX-5C,
+SKU016,Desk Mat,"Premium PU leather desk mat 80x40cm, waterproof and easy to clean",32.99,27.99,Office,,140,0.7,Brown,Leather,DM-PU-80,
+SKU017,Monitor Arm,"Single monitor arm mount, fits 17-32 inch screens, VESA compatible",69.99,,Accessories,ViewTech,55,3.2,Black,Metal,MA-VESA-32,24
+SKU018,Keyboard Wrist Rest,"Memory foam keyboard wrist rest, ergonomic design reduces strain",14.99,11.99,Accessories,GameTech,280,0.25,Black,Foam,KWR-MF-BK,
+SKU019,USB Hub 7-Port,"Powered USB 3.0 hub with individual switches, 7 ports",28.99,,Electronics,TechPro,145,0.35,White,Plastic,UH-7P-3.0,12
+SKU020,Wireless Charger,"Fast wireless charger 15W, compatible with all Qi-enabled devices",24.99,19.99,Electronics,,190,0.2,Black,Plastic,WC-15W-QI,12
+SKU021,HDMI Cable 2m,"Premium HDMI 2.1 cable 2 meters, supports 4K@120Hz and 8K@60Hz",16.99,,Accessories,TechPro,420,0.18,Black,Nylon,HDMI-2M-21,
+SKU022,Screen Cleaner Kit,"Screen cleaning kit with spray and microfiber cloth, streak-free",9.99,7.99,Accessories,BrightLight,350,0.1,Blue,Plastic,SC-KIT-50,
+SKU023,Portable SSD 1TB,"External SSD 1TB USB 3.2, read speed up to 1000MB/s",119.99,,Electronics,TechPro,75,0.15,Silver,Aluminum,SSD-1TB-P,36
+SKU024,Drawing Tablet,"Digital drawing tablet 10x6 inch active area, 8192 pressure levels",79.99,69.99,Electronics,ArtTech,48,0.8,Black,Plastic,DT-10X6-P,24
+SKU025,Bluetooth Speaker,"Portable Bluetooth speaker with 20h battery, IPX7 waterproof",45.99,,Electronics,SoundWave,110,0.6,Blue,Plastic,BS-20H-IP7,12

@@ -21,5 +21,10 @@ export const CONTENT_VARIANTS: ContentVariantMeta[] = [
     id: "testimonials",
     label: "Testimonials",
     description: "Customer quotes with rating support."
+  },
+  {
+    id: "customHtml",
+    label: "Custom HTML",
+    description: "Paste raw HTML that renders without extra wrappers."
   }
 ];

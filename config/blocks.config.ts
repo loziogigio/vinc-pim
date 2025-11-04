@@ -3,6 +3,7 @@ import {
   ProductBlockConfig,
   CategoryBlockConfig,
   ContentBlockConfig,
+  ProductDataTableBlockConfig,
   BlockRegistry
 } from "@/lib/types/blocks";
 
@@ -158,7 +159,86 @@ const contentTestimonialsDefault: ContentBlockConfig = {
   showAvatar: false
 };
 
+const contentCustomHtmlDefault: ContentBlockConfig = {
+  variant: "customHtml",
+  html: "<section>\n  <!-- Custom HTML block -->\n</section>"
+};
+
+const productDataTableDefault: ProductDataTableBlockConfig = {
+  variant: "productDataTable",
+  title: "Documenti e Specifiche",
+  description:
+    "Mostra documenti lato sinistro e la descrizione/azioni sulla destra. Ogni riga può avere un'icona immagine e un link.",
+  labelColumnWidth: 220,
+  appearance: {
+    bordered: true,
+    rounded: true,
+    zebraStripes: false
+  },
+  rows: [
+    {
+      id: "doc-example",
+      label: "Scheda Tecnica PDF",
+      leftValueType: "image",
+      valueType: "image",
+      valueImageUrl: "https://cdn.example.com/images/demo-product.png",
+      valueImageAlt: "Anteprima prodotto",
+      leftHelperText: "Documento ufficiale",
+      helperText: "Aggiornato 10/2024",
+      link: {
+        url: "https://cdn.example.com/docs/manual.pdf",
+        openInNewTab: true
+      },
+      imageUrl: "https://cdn.example.com/icons/pdf.png",
+      imageAlt: "PDF",
+      imageAspectRatio: "1/1"
+    }
+  ]
+};
+
 // Home page carousel blocks - Refined configurations
+
+/**
+ * Hero With Widgets Configuration
+ * 80/20 layout: Carousel on left (80%), Widgets on right (20%)
+ * Widgets: Clock widget (top) + Calendar widget (bottom)
+ */
+const heroWithWidgetsConfig = {
+  // Carousel slides (same as hero carousel)
+  slides: [], // {id, imageDesktop, imageMobile, link?, title?, overlay?}
+
+  breakpointMode: "simplified" as const,
+
+  // Carousel settings
+  autoplay: true,
+  autoplaySpeed: 5000,
+  loop: true,
+  showDots: true,
+  showArrows: true,
+
+  // Widget settings
+  widgets: {
+    clock: {
+      enabled: true,
+      timezone: "Europe/Rome",
+      showWeather: true,
+      weatherLocation: "Paris" // City name for weather
+    },
+    calendar: {
+      enabled: true,
+      highlightToday: true,
+      showWeekNumbers: false
+    }
+  },
+
+  // Layout settings
+  layout: {
+    carouselWidth: "80%", // Left side
+    widgetsWidth: "20%"   // Right side
+  },
+
+  className: "hero-with-widgets-section"
+};
 
 /**
  * Hero Carousel Configuration
@@ -166,8 +246,9 @@ const contentTestimonialsDefault: ContentBlockConfig = {
  * Recommended dimensions: Desktop 1920x600px, Mobile 768x800px
  */
 const heroCarouselConfig = {
-  slides: [], // {id, imageDesktop: {url, alt}, imageMobile: {url, alt}, link?: {url, openInNewTab}, title?, description?}
-  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  title: "",
+  slides: [], // {id, imageDesktop, imageMobile, link?, title?, overlay?}
+  breakpointMode: "simplified" as const, // 'simplified' | 'advanced'
   // Simplified mode: Simple item count per device
   itemsToShow: {
     desktop: 2,   // >= 1024px
@@ -183,6 +264,19 @@ const heroCarouselConfig = {
     "520": { slidesPerView: 2, spaceBetween: 12 },
     "0": { slidesPerView: 1, spaceBetween: 5 }
   },
+  cardStyle: {
+    borderWidth: 0,
+    borderColor: "#EAEEF2",
+    borderStyle: "solid" as const,
+    borderRadius: "md" as const,
+    shadowSize: "none" as const,
+    shadowColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: "#ffffff",
+    hoverEffect: "none" as const,
+    hoverScale: 1.02,
+    hoverShadowSize: "lg" as const,
+    hoverBackgroundColor: ""
+  },
   autoplay: true,
   autoplaySpeed: 5000, // milliseconds
   loop: true,
@@ -192,7 +286,11 @@ const heroCarouselConfig = {
 };
 
 const productGalleryConfig = {
+  title: "Product Gallery",
   items: [],
+  searchQuery: "",
+  limit: 12,
+  breakpointMode: "simplified" as const,
   columns: {
     desktop: 4,
     tablet: 2,
@@ -212,8 +310,8 @@ const productGalleryConfig = {
  */
 const promoCarouselConfig = {
   items: [], // {id, mediaType: 'image'|'video', imageDesktop?, imageMobile?, videoUrl?, link?, title?}
-  variant: "promo",
-  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  variant: "promo" as const,
+  breakpointMode: "simplified" as const, // 'simplified' | 'advanced'
   itemsToShow: {
     desktop: 5.5,
     tablet: 4.5,
@@ -224,6 +322,19 @@ const promoCarouselConfig = {
     "768": { slidesPerView: 4.5, spaceBetween: 16 },
     "520": { slidesPerView: 3.5, spaceBetween: 12 },
     "0": { slidesPerView: 2.5, spaceBetween: 5 }
+  },
+  cardStyle: {
+    borderWidth: 0,
+    borderColor: "#EAEEF2",
+    borderStyle: "solid" as const,
+    borderRadius: "md" as const,
+    shadowSize: "none" as const,
+    shadowColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: "#ffffff",
+    hoverEffect: "none" as const,
+    hoverScale: 1.02,
+    hoverShadowSize: "lg" as const,
+    hoverBackgroundColor: ""
   },
   autoplay: false,
   loop: false,
@@ -236,8 +347,8 @@ const promoCarouselConfig = {
  */
 const brandCarouselConfig = {
   items: [], // {id, mediaType: 'image', imageDesktop?, imageMobile?, link?, title?}
-  variant: "brand",
-  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  variant: "brand" as const,
+  breakpointMode: "simplified" as const, // 'simplified' | 'advanced'
   itemsToShow: {
     desktop: 10.5,
     tablet: 6.5,
@@ -251,6 +362,19 @@ const brandCarouselConfig = {
     "520": { slidesPerView: 4.5, spaceBetween: 12 },
     "0": { slidesPerView: 3.5, spaceBetween: 5 }
   },
+  cardStyle: {
+    borderWidth: 0,
+    borderColor: "#EAEEF2",
+    borderStyle: "solid" as const,
+    borderRadius: "md" as const,
+    shadowSize: "none" as const,
+    shadowColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: "#ffffff",
+    hoverEffect: "none" as const,
+    hoverScale: 1.02,
+    hoverShadowSize: "lg" as const,
+    hoverBackgroundColor: ""
+  },
   autoplay: false,
   loop: false,
   className: "mb-12 xl:mb-14 pt-1"
@@ -262,8 +386,8 @@ const brandCarouselConfig = {
  */
 const flyerCarouselConfig = {
   items: [], // {id, mediaType: 'image', imageDesktop?, imageMobile?, link?, title?}
-  variant: "flyer",
-  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  variant: "flyer" as const,
+  breakpointMode: "simplified" as const, // 'simplified' | 'advanced'
   itemsToShow: {
     desktop: 5,
     tablet: 4,
@@ -277,6 +401,19 @@ const flyerCarouselConfig = {
     "520": { slidesPerView: 4, spaceBetween: 12 },
     "0": { slidesPerView: 2, spaceBetween: 5 }
   },
+  cardStyle: {
+    borderWidth: 0,
+    borderColor: "#EAEEF2",
+    borderStyle: "solid" as const,
+    borderRadius: "md" as const,
+    shadowSize: "none" as const,
+    shadowColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: "#ffffff",
+    hoverEffect: "none" as const,
+    hoverScale: 1.02,
+    hoverShadowSize: "lg" as const,
+    hoverBackgroundColor: ""
+  },
   autoplay: false,
   loop: false,
   className: "mb-12 xl:mb-14 pt-1"
@@ -287,28 +424,31 @@ const flyerCarouselConfig = {
  * Display products by mode: wishlist (requires login), trending, category, or custom query
  */
 const productCarouselConfig = {
-  mode: "trending", // 'wishlist' | 'trending' | 'category' | 'custom'
-  categoryId: undefined, // For 'category' mode
-  customQuery: undefined, // For 'custom' mode: {fq?, sort?, ...}
   title: "Featured Products",
-  showWishlistButton: true, // Only visible if user is logged in
+  items: [],
+  searchQuery: "",
   limit: 12,
-  displayLayout: "carousel", // 'carousel' | 'grid'
-  breakpointMode: "simplified", // 'simplified' | 'advanced'
+  dataSource: "search" as const,
+  breakpointMode: "simplified" as const,
   itemsToShow: {
     desktop: 4,
     tablet: 3,
-    mobile: 2
+    mobile: 1
   },
   breakpointsJSON: {
     "1536": { slidesPerView: 4, spaceBetween: 16 },
     "1280": { slidesPerView: 4, spaceBetween: 16 },
     "1024": { slidesPerView: 3, spaceBetween: 16 },
-    "768": { slidesPerView: 3, spaceBetween: 12 },
-    "520": { slidesPerView: 2, spaceBetween: 8 },
-    "0": { slidesPerView: 2, spaceBetween: 5 }
+    "768": { slidesPerView: 2, spaceBetween: 12 },
+    "520": { slidesPerView: 1, spaceBetween: 8 },
+    "0": { slidesPerView: 1, spaceBetween: 6 }
   },
-  className: "mb-12 xl:mb-14"
+  autoplay: false,
+  autoplaySpeed: 5000,
+  loop: false,
+  showDots: true,
+  showArrows: true,
+  className: "mb-12 xl:mb-14 pt-1"
 };
 
 export const BLOCK_REGISTRY: BlockRegistry = {
@@ -397,6 +537,12 @@ export const BLOCK_REGISTRY: BlockRegistry = {
         label: "Testimonials",
         icon: "💬",
         defaultConfig: contentTestimonialsDefault
+      },
+      customHtml: {
+        id: "content-custom-html",
+        label: "Custom HTML",
+        icon: "🧩",
+        defaultConfig: contentCustomHtmlDefault
       }
     }
   },
@@ -422,14 +568,42 @@ export const BLOCK_REGISTRY: BlockRegistry = {
         label: "Media Image",
         icon: "🖼️",
         defaultConfig: {
+          title: "",
           imageUrl: "",
           alt: "Product image",
           linkUrl: "",
           openInNewTab: true,
           width: "100%",
           maxWidth: "800px",
-          alignment: "center"
+          alignment: "center",
+          className: "mb-12 xl:mb-14 pt-1",
+          style: {
+            borderWidth: 0,
+            borderColor: "#EAEEF2",
+            borderStyle: "solid",
+            borderRadius: "md",
+            shadowSize: "none",
+            shadowColor: "rgba(0, 0, 0, 0.15)",
+            backgroundColor: "#ffffff",
+            hoverEffect: "none",
+            hoverScale: 1.02,
+            hoverShadowSize: "lg",
+            hoverBackgroundColor: ""
+          }
         }
+      }
+    }
+  },
+  productDetail: {
+    id: "productDetail",
+    name: "Product Detail Enhancements",
+    category: "content",
+    variants: {
+      dataTable: {
+        id: "product-data-table",
+        label: "Data Table",
+        icon: "📋",
+        defaultConfig: productDataTableDefault
       }
     }
   },
@@ -438,6 +612,12 @@ export const BLOCK_REGISTRY: BlockRegistry = {
     name: "Carousel Section",
     category: "content",
     variants: {
+      heroWithWidgets: {
+        id: "hero-with-widgets",
+        label: "Hero with Widgets (80/20)",
+        icon: "🎯",
+        defaultConfig: heroWithWidgetsConfig
+      },
       heroCarousel: {
         id: "carousel-hero",
         label: "Media Carousel",

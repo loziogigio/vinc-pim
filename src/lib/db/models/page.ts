@@ -22,7 +22,8 @@ const PageVersionSchema = new Schema(
     lastSavedAt: { type: String, required: true },
     publishedAt: { type: String },
     createdBy: { type: String },
-    comment: { type: String }
+    comment: { type: String },
+    tag: { type: String } // Optional tag/label to identify version
   },
   { _id: false }
 );

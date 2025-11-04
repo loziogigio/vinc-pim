@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Public_Sans } from "next/font/google";
+import { Toaster } from "sonner";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { DashboardHeader } from "@/components/b2b/DashboardHeader";
 import type { B2BSessionData } from "@/lib/types/b2b";
@@ -36,6 +37,7 @@ export default async function B2BProtectedLayout({
 
   return (
     <div className={cn(publicSans.className, "min-h-screen bg-[#f8f7fa] text-[#5e5873]")}>
+      <Toaster position="top-right" richColors />
       <DashboardHeader session={sessionData} notificationCount={3} />
       <main className="mx-auto max-w-[1600px] px-8 pb-10 pt-6">
         {children}

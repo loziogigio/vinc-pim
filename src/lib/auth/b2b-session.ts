@@ -11,8 +11,12 @@ const sessionOptions = {
   password: process.env.SESSION_SECRET || "complex_password_at_least_32_characters_long",
   cookieName: "vinc_b2b_session",
   cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
+    // Only use secure cookies if explicitly enabled via env var (requires HTTPS)
+    // Set SECURE_COOKIES=true when HTTPS is configured
+    secure: process.env.SECURE_COOKIES === "true",
     maxAge: 60 * 60 * 24 * 7, // 7 days
+    httpOnly: true,
+    sameSite: "lax" as const,
   },
 };
 
