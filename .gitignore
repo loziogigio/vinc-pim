@@ -5,6 +5,8 @@ node_modules/
 .next/
 out/
 dist/
+exports/
+*-exports/
 
 # environment & logs
 .env
