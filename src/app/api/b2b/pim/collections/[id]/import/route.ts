@@ -6,10 +6,10 @@ import { CollectionModel } from "@/lib/db/models/collection";
 import { AssociationJobModel } from "@/lib/db/models/association-job";
 import { nanoid } from "nanoid";
 
-// POST /api/b2b/pim/collections/[collectionId]/import - Import products from file
+// POST /api/b2b/pim/collections/[id]/import - Import products from file
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ collectionId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -20,7 +20,7 @@ export async function POST(
     await connectToDatabase();
 
     // Await params (Next.js 15+)
-    const { collectionId } = await params;
+    const { id } = await params;
 
     // Get action from query params
     const { searchParams } = new URL(req.url);
@@ -35,7 +35,7 @@ export async function POST(
 
     // Verify collection belongs to this wholesaler
     const collection = await CollectionModel.findOne({
-      collection_id: collectionId,
+      collection_id: id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -125,7 +125,7 @@ export async function POST(
       wholesaler_id: session.userId,
       job_type: "collection_import",
       entity_type: "collection",
-      entity_id: collectionId,
+      entity_id: id,
       entity_name: collection.name,
       action,
       status: "pending",
@@ -140,7 +140,7 @@ export async function POST(
     });
 
     // Process asynchronously
-    processCollectionImportJob(jobId, collectionId, entityCodes, action, session.userId, collection).catch(
+    processCollectionImportJob(jobId, id, entityCodes, action, session.userId, collection).catch(
       (error) => {
         console.error("Background job error:", error);
       }
@@ -163,7 +163,7 @@ export async function POST(
 // Background job processor
 async function processCollectionImportJob(
   jobId: string,
-  collectionId: string,
+  id: string,
   entityCodes: string[],
   action: string,
   wholesalerId: string,
@@ -195,7 +195,7 @@ async function processCollectionImportJob(
         if (action === "add") {
           // Add collection to products' collections array
           const collectionData = {
-            id: collectionId,
+            id: id,
             name: collection.name,
             slug: collection.slug,
           };
@@ -205,7 +205,7 @@ async function processCollectionImportJob(
               entity_code: { $in: batch },
               wholesaler_id: wholesalerId,
               isCurrent: true,
-              "collections.id": { $ne: collectionId }, // Only if not already in array
+              "collections.id": { $ne: id }, // Only if not already in array
             },
             { $push: { collections: collectionData } }
           );
@@ -219,9 +219,9 @@ async function processCollectionImportJob(
               entity_code: { $in: batch },
               wholesaler_id: wholesalerId,
               isCurrent: true,
-              "collections.id": collectionId,
+              "collections.id": id,
             },
-            { $pull: { collections: { id: collectionId } } }
+            { $pull: { collections: { id: id } } }
           );
 
           successfulItems += result.modifiedCount;
@@ -263,11 +263,11 @@ async function processCollectionImportJob(
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: wholesalerId,
       isCurrent: true,
-      "collections.id": collectionId,
+      "collections.id": id,
     });
 
     await CollectionModel.updateOne(
-      { collection_id: collectionId, wholesaler_id: wholesalerId },
+      { collection_id: id, wholesaler_id: wholesalerId },
       { $set: { product_count: productCount } }
     );
 

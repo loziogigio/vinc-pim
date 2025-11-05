@@ -7,7 +7,7 @@ import { CollectionModel } from "@/lib/db/models/collection";
 // GET /api/b2b/pim/collections/[collectionId]/products - Get products for a collection
 export async function GET(
   req: NextRequest,
-  { params }: { params: { collectionId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -25,7 +25,7 @@ export async function GET(
 
     // Verify collection belongs to this wholesaler
     const collection = await CollectionModel.findOne({
-      collection_id: params.collectionId,
+      collection_id: params.id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -37,7 +37,7 @@ export async function GET(
     const query: any = {
       wholesaler_id: session.userId,
       isCurrent: true,
-      "collections.id": params.collectionId,
+      "collections.id": params.id,
     };
 
     // Add search filter
@@ -81,7 +81,7 @@ export async function GET(
 // POST /api/b2b/pim/collections/[collectionId]/products - Bulk associate/disassociate products
 export async function POST(
   req: NextRequest,
-  { params }: { params: { collectionId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -110,7 +110,7 @@ export async function POST(
 
     // Verify collection belongs to this wholesaler
     const collection = await CollectionModel.findOne({
-      collection_id: params.collectionId,
+      collection_id: params.id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -121,7 +121,7 @@ export async function POST(
     if (action === "add") {
       // Add collection to products' collections array
       const collectionData = {
-        id: params.collectionId,
+        id: params.id,
         name: collection.name,
         slug: collection.slug,
       };
@@ -131,7 +131,7 @@ export async function POST(
           entity_code: { $in: entity_codes },
           wholesaler_id: session.userId,
           isCurrent: true,
-          "collections.id": { $ne: params.collectionId }, // Only if not already in array
+          "collections.id": { $ne: params.id }, // Only if not already in array
         },
         { $push: { collections: collectionData } }
       );
@@ -140,11 +140,11 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         wholesaler_id: session.userId,
         isCurrent: true,
-        "collections.id": params.collectionId,
+        "collections.id": params.id,
       });
 
       await CollectionModel.updateOne(
-        { collection_id: params.collectionId, wholesaler_id: session.userId },
+        { collection_id: params.id, wholesaler_id: session.userId },
         { $set: { product_count: productCount } }
       );
 
@@ -159,20 +159,20 @@ export async function POST(
           entity_code: { $in: entity_codes },
           wholesaler_id: session.userId,
           isCurrent: true,
-          "collections.id": params.collectionId,
+          "collections.id": params.id,
         },
-        { $pull: { collections: { id: params.collectionId } } }
+        { $pull: { collections: { id: params.id } } }
       );
 
       // Update collection product count
       const productCount = await PIMProductModel.countDocuments({
         wholesaler_id: session.userId,
         isCurrent: true,
-        "collections.id": params.collectionId,
+        "collections.id": params.id,
       });
 
       await CollectionModel.updateOne(
-        { collection_id: params.collectionId, wholesaler_id: session.userId },
+        { collection_id: params.id, wholesaler_id: session.userId },
         { $set: { product_count: productCount } }
       );
 

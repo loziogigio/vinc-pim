@@ -4,10 +4,10 @@ import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { CollectionModel } from "@/lib/db/models/collection";
 
-// GET /api/b2b/pim/collections/[collectionId]/export - Export products
+// GET /api/b2b/pim/collections/[id]/export - Export products
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ collectionId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -18,7 +18,7 @@ export async function GET(
     await connectToDatabase();
 
     // Await params (Next.js 15+)
-    const { collectionId } = await params;
+    const { id } = await params;
 
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") || "csv"; // csv, xlsx, txt
@@ -32,7 +32,7 @@ export async function GET(
 
     // Verify collection belongs to this wholesaler
     const collection = await CollectionModel.findOne({
-      collection_id: collectionId,
+      collection_id: id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -44,7 +44,7 @@ export async function GET(
     const products = await PIMProductModel.find({
       wholesaler_id: session.userId,
       isCurrent: true,
-      "collections.id": collectionId,
+      "collections.id": id,
     })
       .select("entity_code sku name")
       .lean() as any[];

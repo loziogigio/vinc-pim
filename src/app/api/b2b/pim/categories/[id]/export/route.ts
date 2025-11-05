@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { ProductTypeModel } from "@/lib/db/models/product-type";
+import { CategoryModel } from "@/lib/db/models/category";
 
-// GET /api/b2b/pim/product-types/[productTypeId]/export - Export products
+// GET /api/b2b/pim/categories/[category_id]/export - Export products
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ productTypeId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -18,7 +18,7 @@ export async function GET(
     await connectToDatabase();
 
     // Await params (Next.js 15+)
-    const { productTypeId } = await params;
+    const { id } = await params;
 
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") || "csv"; // csv, xlsx, txt
@@ -30,21 +30,21 @@ export async function GET(
       );
     }
 
-    // Verify product type belongs to this wholesaler
-    const productType = await ProductTypeModel.findOne({
-      product_type_id: productTypeId,
+    // Verify category belongs to this wholesaler
+    const category = await CategoryModel.findOne({
+      category_id: id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
-    if (!productType) {
-      return NextResponse.json({ error: "Product type not found" }, { status: 404 });
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
-    // Get all products for this product type
+    // Get all products for this category
     const products = await PIMProductModel.find({
       wholesaler_id: session.userId,
       isCurrent: true,
-      "product_type.id": productTypeId,
+      "category.id": id,
     })
       .select("entity_code sku name")
       .lean() as any[];
@@ -55,7 +55,7 @@ export async function GET(
       return new NextResponse(content, {
         headers: {
           "Content-Type": "text/plain",
-          "Content-Disposition": `attachment; filename="product-type-${productType.slug}-products.txt"`,
+          "Content-Disposition": `attachment; filename="category-${category.slug}-products.txt"`,
         },
       });
     }
@@ -71,7 +71,7 @@ export async function GET(
       return new NextResponse(content, {
         headers: {
           "Content-Type": "text/csv",
-          "Content-Disposition": `attachment; filename="product-type-${productType.slug}-products.csv"`,
+          "Content-Disposition": `attachment; filename="category-${category.slug}-products.csv"`,
         },
       });
     }
@@ -88,14 +88,14 @@ export async function GET(
       return new NextResponse(content, {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="product-type-${productType.slug}-products.xlsx"`,
+          "Content-Disposition": `attachment; filename="category-${category.slug}-products.xlsx"`,
         },
       });
     }
 
     return NextResponse.json({ error: "Invalid format" }, { status: 400 });
   } catch (error: any) {
-    console.error("Error exporting product type products:", error);
+    console.error("Error exporting category products:", error);
     return NextResponse.json(
       { error: error.message || "Failed to export products" },
       { status: 500 }

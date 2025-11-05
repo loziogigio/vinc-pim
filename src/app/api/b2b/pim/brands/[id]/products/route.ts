@@ -4,10 +4,10 @@ import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { BrandModel } from "@/lib/db/models/brand";
 
-// GET /api/b2b/pim/brands/[brandId]/products - Get products for a brand
+// GET /api/b2b/pim/brands/[id]/products - Get products for a brand
 export async function GET(
   req: NextRequest,
-  { params }: { params: { brandId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -25,7 +25,7 @@ export async function GET(
 
     // Verify brand belongs to this wholesaler
     const brand = await BrandModel.findOne({
-      brand_id: params.brandId,
+      brand_id: params.id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -37,7 +37,7 @@ export async function GET(
     const query: any = {
       wholesaler_id: session.userId,
       isCurrent: true,
-      "brand.id": params.brandId,
+      "brand.id": params.id,
     };
 
     // Add search filter
@@ -78,10 +78,10 @@ export async function GET(
   }
 }
 
-// POST /api/b2b/pim/brands/[brandId]/products - Bulk associate/disassociate products
+// POST /api/b2b/pim/brands/[id]/products - Bulk associate/disassociate products
 export async function POST(
   req: NextRequest,
-  { params }: { params: { brandId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -110,7 +110,7 @@ export async function POST(
 
     // Verify brand belongs to this wholesaler
     const brand = await BrandModel.findOne({
-      brand_id: params.brandId,
+      brand_id: params.id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -121,14 +121,14 @@ export async function POST(
     if (action === "add") {
       // Associate products with brand
       const updateData: any = {
-        "brand.id": params.brandId,
+        "brand.id": params.id,
         "brand.name": brand.label,
         "brand.slug": brand.slug,
       };
 
       if (brand.logo_url) {
         updateData["brand.image"] = {
-          id: params.brandId,
+          id: params.id,
           thumbnail: brand.logo_url,
           original: brand.logo_url,
         };
@@ -147,11 +147,11 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         wholesaler_id: session.userId,
         isCurrent: true,
-        "brand.id": params.brandId,
+        "brand.id": params.id,
       });
 
       await BrandModel.updateOne(
-        { brand_id: params.brandId, wholesaler_id: session.userId },
+        { brand_id: params.id, wholesaler_id: session.userId },
         { $set: { product_count: productCount } }
       );
 
@@ -166,7 +166,7 @@ export async function POST(
           entity_code: { $in: entity_codes },
           wholesaler_id: session.userId,
           isCurrent: true,
-          "brand.id": params.brandId,
+          "brand.id": params.id,
         },
         { $unset: { brand: "" } }
       );
@@ -175,11 +175,11 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         wholesaler_id: session.userId,
         isCurrent: true,
-        "brand.id": params.brandId,
+        "brand.id": params.id,
       });
 
       await BrandModel.updateOne(
-        { brand_id: params.brandId, wholesaler_id: session.userId },
+        { brand_id: params.id, wholesaler_id: session.userId },
         { $set: { product_count: productCount } }
       );
 

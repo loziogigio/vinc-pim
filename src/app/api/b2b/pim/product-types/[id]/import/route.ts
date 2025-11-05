@@ -5,10 +5,10 @@ import { ProductTypeModel } from "@/lib/db/models/product-type";
 import { AssociationJobModel } from "@/lib/db/models/association-job";
 import { nanoid } from "nanoid";
 
-// POST /api/b2b/pim/product-types/[productTypeId]/import - Import product associations
+// POST /api/b2b/pim/product-types/[id]/import - Import product associations
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ productTypeId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -19,7 +19,7 @@ export async function POST(
     await connectToDatabase();
 
     // Await params (Next.js 15+)
-    const { productTypeId } = await params;
+    const { id } = await params;
 
     // Get action from query params
     const { searchParams } = new URL(req.url);
@@ -34,7 +34,7 @@ export async function POST(
 
     // Verify product type belongs to this wholesaler
     const productType = await ProductTypeModel.findOne({
-      product_type_id: productTypeId,
+      product_type_id: id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
@@ -116,7 +116,7 @@ export async function POST(
       wholesaler_id: session.userId,
       job_type: "product_type_import" as const,
       entity_type: "product_type" as const,
-      entity_id: productTypeId,
+      entity_id: id,
       entity_name: productType.name,
       action: action as "add" | "remove",
       status: "pending" as const,
@@ -136,7 +136,7 @@ export async function POST(
 
     // Process the job asynchronously (in background)
     // For now, we'll process immediately but in production this should use a queue
-    processAssociationJob(jobId, productTypeId, entityCodes, action, session.userId, productType).catch(err => {
+    processAssociationJob(jobId, id, entityCodes, action, session.userId, productType).catch(err => {
       console.error("Error processing association job:", err);
     });
 
@@ -157,7 +157,7 @@ export async function POST(
 // Background job processor
 async function processAssociationJob(
   jobId: string,
-  productTypeId: string,
+  id: string,
   entityCodes: string[],
   action: string,
   wholesalerId: string,
@@ -192,7 +192,7 @@ async function processAssociationJob(
         if (action === "add") {
           // Associate products with product type
           const updateData: any = {
-            "product_type.id": productTypeId,
+            "product_type.id": id,
             "product_type.name": productType.name,
             "product_type.slug": productType.slug,
           };
@@ -214,7 +214,7 @@ async function processAssociationJob(
               entity_code: { $in: batch },
               wholesaler_id: wholesalerId,
               isCurrent: true,
-              "product_type.id": productTypeId,
+              "product_type.id": id,
             },
             { $unset: { product_type: "" } }
           );
@@ -247,11 +247,11 @@ async function processAssociationJob(
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: wholesalerId,
       isCurrent: true,
-      "product_type.id": productTypeId,
+      "product_type.id": id,
     });
 
     await ProductTypeModel.updateOne(
-      { product_type_id: productTypeId, wholesaler_id: wholesalerId },
+      { product_type_id: id, wholesaler_id: wholesalerId },
       { $set: { product_count: productCount } }
     );
 

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
-import { BrandModel } from "@/lib/db/models/brand";
+import { CategoryModel } from "@/lib/db/models/category";
 import { AssociationJobModel } from "@/lib/db/models/association-job";
 import { nanoid } from "nanoid";
 
-// POST /api/b2b/pim/brands/[brandId]/import - Import product associations
+// POST /api/b2b/pim/categories/[category_id]/import - Import product associations
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ brandId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -19,7 +19,7 @@ export async function POST(
     await connectToDatabase();
 
     // Await params (Next.js 15+)
-    const { brandId } = await params;
+    const { id } = await params;
 
     // Get action from query params
     const { searchParams } = new URL(req.url);
@@ -32,14 +32,14 @@ export async function POST(
       );
     }
 
-    // Verify brand belongs to this wholesaler
-    const brand = await BrandModel.findOne({
-      brand_id: brandId,
+    // Verify category belongs to this wholesaler
+    const category = await CategoryModel.findOne({
+      category_id: id,
       wholesaler_id: session.userId,
     }).lean() as any;
 
-    if (!brand) {
-      return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
     const formData = await req.formData();
@@ -114,10 +114,10 @@ export async function POST(
     const job = {
       job_id: jobId,
       wholesaler_id: session.userId,
-      job_type: "brand_import" as const,
-      entity_type: "brand" as const,
-      entity_id: brandId,
-      entity_name: brand.label,
+      job_type: "category_import" as const,
+      entity_type: "category" as const,
+      entity_id: id,
+      entity_name: category.name,
       action: action as "add" | "remove",
       status: "pending" as const,
       total_items: entityCodes.length,
@@ -136,7 +136,7 @@ export async function POST(
 
     // Process the job asynchronously (in background)
     // For now, we'll process immediately but in production this should use a queue
-    processAssociationJob(jobId, brandId, entityCodes, action, session.userId, brand).catch(err => {
+    processAssociationJob(jobId, id, entityCodes, action, session.userId, category).catch(err => {
       console.error("Error processing association job:", err);
     });
 
@@ -146,7 +146,7 @@ export async function POST(
       total_items: entityCodes.length,
     });
   } catch (error: any) {
-    console.error("Error importing brand products:", error);
+    console.error("Error importing category products:", error);
     return NextResponse.json(
       { error: error.message || "Failed to import products" },
       { status: 500 }
@@ -157,11 +157,11 @@ export async function POST(
 // Background job processor
 async function processAssociationJob(
   jobId: string,
-  brandId: string,
+  category_id: string,
   entityCodes: string[],
   action: string,
   wholesalerId: string,
-  brand: any
+  category: any
 ) {
   try {
     await connectToDatabase();
@@ -190,20 +190,12 @@ async function processAssociationJob(
 
       try {
         if (action === "add") {
-          // Associate products with brand
+          // Associate products with category
           const updateData: any = {
-            "brand.id": brandId,
-            "brand.name": brand.label,
-            "brand.slug": brand.slug,
+            "category.id": id,
+            "category.name": category.name,
+            "category.slug": category.slug,
           };
-
-          if (brand.logo_url) {
-            updateData["brand.image"] = {
-              id: brandId,
-              thumbnail: brand.logo_url,
-              original: brand.logo_url,
-            };
-          }
 
           const result = await PIMProductModel.updateMany(
             {
@@ -216,15 +208,15 @@ async function processAssociationJob(
 
           successful += result.modifiedCount;
         } else {
-          // Remove brand from products
+          // Remove category from products
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
               wholesaler_id: wholesalerId,
               isCurrent: true,
-              "brand.id": brandId,
+              "category.id": id,
             },
-            { $unset: { brand: "" } }
+            { $unset: { category: "" } }
           );
 
           successful += result.modifiedCount;
@@ -250,16 +242,16 @@ async function processAssociationJob(
       );
     }
 
-    // Update brand product count
-    const { BrandModel } = await import("@/lib/db/models/brand");
+    // Update category product count
+    const { CategoryModel } = await import("@/lib/db/models/category");
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: wholesalerId,
       isCurrent: true,
-      "brand.id": brandId,
+      "category.id": id,
     });
 
-    await BrandModel.updateOne(
-      { brand_id: brandId, wholesaler_id: wholesalerId },
+    await CategoryModel.updateOne(
+      { category_id: id, wholesaler_id: wholesalerId },
       { $set: { product_count: productCount } }
     );
 

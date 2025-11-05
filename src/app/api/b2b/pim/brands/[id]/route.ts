@@ -3,10 +3,10 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { BrandModel } from "@/lib/db/models/brand";
 
-// GET /api/b2b/pim/brands/[brandId] - Get single brand
+// GET /api/b2b/pim/brands/[id] - Get single brand
 export async function GET(
   req: NextRequest,
-  { params }: { params: { brandId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -17,7 +17,7 @@ export async function GET(
     await connectToDatabase();
 
     const brand = await BrandModel.findOne({
-      brand_id: params.brandId,
+      brand_id: params.id,
       wholesaler_id: session.userId,
     }).lean();
 
@@ -35,10 +35,10 @@ export async function GET(
   }
 }
 
-// PATCH /api/b2b/pim/brands/[brandId] - Update brand
+// PATCH /api/b2b/pim/brands/[id] - Update brand
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { brandId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -53,7 +53,7 @@ export async function PATCH(
 
     // Find existing brand
     const existingBrand = await BrandModel.findOne({
-      brand_id: params.brandId,
+      brand_id: params.id,
       wholesaler_id: session.userId,
     });
 
@@ -66,7 +66,7 @@ export async function PATCH(
       const conflictingBrand = await BrandModel.findOne({
         wholesaler_id: session.userId,
         slug: slug,
-        brand_id: { $ne: params.brandId },
+        brand_id: { $ne: params.id },
       });
 
       if (conflictingBrand) {
@@ -101,10 +101,10 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/b2b/pim/brands/[brandId] - Delete brand
+// DELETE /api/b2b/pim/brands/[id] - Delete brand
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { brandId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -115,7 +115,7 @@ export async function DELETE(
     await connectToDatabase();
 
     const brand = await BrandModel.findOne({
-      brand_id: params.brandId,
+      brand_id: params.id,
       wholesaler_id: session.userId,
     });
 
@@ -134,7 +134,7 @@ export async function DELETE(
     }
 
     await BrandModel.deleteOne({
-      brand_id: params.brandId,
+      brand_id: params.id,
       wholesaler_id: session.userId,
     });
 

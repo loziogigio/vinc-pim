@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
-import { ProductTypeModel } from "@/lib/db/models/product-type";
+import { CollectionModel } from "@/lib/db/models/collection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 
 /**
- * PATCH /api/b2b/pim/product-types/[productTypeId]
- * Update a product type
+ * PATCH /api/b2b/pim/collections/[id]
+ * Update a collection
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { productTypeId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -20,40 +20,40 @@ export async function PATCH(
 
     await connectToDatabase();
 
-    const { productTypeId } = params;
+    const { id } = params;
     const body = await req.json();
-    const { name, slug, description, features, display_order, is_active } = body;
+    const { name, slug, description, hero_image, seo, display_order, is_active } = body;
 
-    // Check if product type exists and belongs to wholesaler
-    const productType = await ProductTypeModel.findOne({
-      product_type_id: productTypeId,
+    // Check if collection exists and belongs to wholesaler
+    const collection = await CollectionModel.findOne({
+      collection_id: id,
       wholesaler_id: session.userId,
     });
 
-    if (!productType) {
+    if (!collection) {
       return NextResponse.json(
-        { error: "Product type not found" },
+        { error: "Collection not found" },
         { status: 404 }
       );
     }
 
     // If slug is changing, check for duplicates
-    if (slug && slug !== productType.slug) {
-      const existing = await ProductTypeModel.findOne({
+    if (slug && slug !== collection.slug) {
+      const existing = await CollectionModel.findOne({
         wholesaler_id: session.userId,
         slug,
-        product_type_id: { $ne: productTypeId },
+        collection_id: { $ne: id },
       });
 
       if (existing) {
         return NextResponse.json(
-          { error: "A product type with this slug already exists" },
+          { error: "A collection with this slug already exists" },
           { status: 400 }
         );
       }
     }
 
-    // Update product type
+    // Update collection
     const updateData: any = {
       updated_at: new Date(),
     };
@@ -61,19 +61,20 @@ export async function PATCH(
     if (name !== undefined) updateData.name = name;
     if (slug !== undefined) updateData.slug = slug;
     if (description !== undefined) updateData.description = description;
-    if (features !== undefined) updateData.features = features;
+    if (hero_image !== undefined) updateData.hero_image = hero_image;
+    if (seo !== undefined) updateData.seo = seo;
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;
 
-    const updatedProductType = await ProductTypeModel.findOneAndUpdate(
-      { product_type_id: productTypeId, wholesaler_id: session.userId },
+    const updatedCollection = await CollectionModel.findOneAndUpdate(
+      { collection_id: id, wholesaler_id: session.userId },
       updateData,
       { new: true }
     );
 
-    return NextResponse.json({ productType: updatedProductType });
+    return NextResponse.json({ collection: updatedCollection });
   } catch (error) {
-    console.error("Error updating product type:", error);
+    console.error("Error updating collection:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -82,12 +83,12 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/b2b/pim/product-types/[productTypeId]
- * Delete a product type
+ * DELETE /api/b2b/pim/collections/[id]
+ * Delete a collection
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { productTypeId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getB2BSession();
@@ -97,46 +98,46 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const { productTypeId } = params;
+    const { id } = params;
 
-    // Check if product type exists and belongs to wholesaler
-    const productType = await ProductTypeModel.findOne({
-      product_type_id: productTypeId,
+    // Check if collection exists and belongs to wholesaler
+    const collection = await CollectionModel.findOne({
+      collection_id: id,
       wholesaler_id: session.userId,
     });
 
-    if (!productType) {
+    if (!collection) {
       return NextResponse.json(
-        { error: "Product type not found" },
+        { error: "Collection not found" },
         { status: 404 }
       );
     }
 
-    // Check if product type has products
+    // Check if collection has products
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: session.userId,
       isCurrent: true,
-      "product_type.id": productTypeId,
+      "collection.id": id,
     });
 
     if (productCount > 0) {
       return NextResponse.json(
         {
-          error: `Cannot delete product type with ${productCount} products. Please reassign them first.`,
+          error: `Cannot delete collection with ${productCount} products. Please reassign them first.`,
         },
         { status: 400 }
       );
     }
 
-    // Delete product type
-    await ProductTypeModel.deleteOne({
-      product_type_id: productTypeId,
+    // Delete collection
+    await CollectionModel.deleteOne({
+      collection_id: id,
       wholesaler_id: session.userId,
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting product type:", error);
+    console.error("Error deleting collection:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -5,12 +5,12 @@ import { CategoryModel } from "@/lib/db/models/category";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 
 /**
- * GET /api/b2b/pim/categories/[category_id]
+ * GET /api/b2b/pim/categories/[id]
  * Get a single category with details
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ category_id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -20,10 +20,10 @@ export async function GET(
 
     await connectToDatabase();
 
-    const { category_id } = await params;
+    const { id } = await params;
 
     const category = await CategoryModel.findOne({
-      category_id,
+      id: id,
       wholesaler_id: session.userId,
     }).lean();
 
@@ -38,13 +38,13 @@ export async function GET(
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: session.userId,
       isCurrent: true,
-      "category.id": category_id,
+      "category.id": id: id,
     });
 
     // Get child categories count
     const childCount = await CategoryModel.countDocuments({
       wholesaler_id: session.userId,
-      parent_id: category_id,
+      parent_id: id: id,
     });
 
     return NextResponse.json({
@@ -64,12 +64,12 @@ export async function GET(
 }
 
 /**
- * PATCH /api/b2b/pim/categories/[category_id]
+ * PATCH /api/b2b/pim/categories/[id]
  * Update a category
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ category_id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -79,7 +79,7 @@ export async function PATCH(
 
     await connectToDatabase();
 
-    const { category_id } = await params;
+    const { id } = await params;
     const body = await req.json();
 
     const allowedFields = [
@@ -105,7 +105,7 @@ export async function PATCH(
     if (body.parent_id !== undefined) {
       if (body.parent_id) {
         const parent = await CategoryModel.findOne({
-          category_id: body.parent_id,
+          id: body.parent_id,
           wholesaler_id: session.userId,
         });
 
@@ -117,7 +117,7 @@ export async function PATCH(
         }
 
         // Check for circular reference
-        if (parent.path.includes(category_id) || parent.category_id === category_id) {
+        if (parent.path.includes(id) || parent.id === id) {
           return NextResponse.json(
             { error: "Cannot set a child category as parent" },
             { status: 400 }
@@ -125,7 +125,7 @@ export async function PATCH(
         }
 
         updateData.level = parent.level + 1;
-        updateData.path = [...parent.path, parent.category_id];
+        updateData.path = [...parent.path, parent.id];
       } else {
         // Moving to root level
         updateData.level = 0;
@@ -134,7 +134,7 @@ export async function PATCH(
     }
 
     const category = await CategoryModel.findOneAndUpdate(
-      { category_id, wholesaler_id: session.userId },
+      { id: id, wholesaler_id: session.userId },
       updateData,
       { new: true }
     ).lean();
@@ -157,12 +157,12 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/b2b/pim/categories/[category_id]
+ * DELETE /api/b2b/pim/categories/[id]
  * Delete a category (soft delete)
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ category_id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -172,13 +172,13 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const { category_id } = await params;
+    const { id } = await params;
 
     // Check if category has products
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: session.userId,
       isCurrent: true,
-      "category.id": category_id,
+      "category.id": id: id,
     });
 
     if (productCount > 0) {
@@ -193,7 +193,7 @@ export async function DELETE(
     // Check if category has children
     const childCount = await CategoryModel.countDocuments({
       wholesaler_id: session.userId,
-      parent_id: category_id,
+      parent_id: id: id,
     });
 
     if (childCount > 0) {
@@ -207,7 +207,7 @@ export async function DELETE(
 
     // Soft delete
     const category = await CategoryModel.findOneAndUpdate(
-      { category_id, wholesaler_id: session.userId },
+      { id: id, wholesaler_id: session.userId },
       { is_active: false, updated_at: new Date() },
       { new: true }
     );

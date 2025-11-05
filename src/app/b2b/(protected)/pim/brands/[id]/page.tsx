@@ -16,13 +16,16 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-type Collection = {
-  collection_id: string;
-  name: string;
+type Brand = {
+  brand_id: string;
+  label: string;
   slug: string;
   description?: string;
+  logo_url?: string;
+  website_url?: string;
   is_active: boolean;
   product_count: number;
+  display_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -38,13 +41,13 @@ type Product = {
   quantity: number;
 };
 
-export default function CollectionDetailPage() {
+export default function BrandDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const collectionId = params?.collectionId as string;
+  const brandId = params?.id as string;
 
   // State
-  const [collection, setCollection] = useState<Collection | null>(null);
+  const [brand, setBrand] = useState<Brand | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -77,20 +80,20 @@ export default function CollectionDetailPage() {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    if (collectionId) {
-      fetchCollection();
+    if (brandId) {
+      fetchBrand();
       fetchProducts();
     }
-  }, [collectionId, page, search]);
+  }, [brandId, page, search]);
 
-  async function fetchCollection() {
+  async function fetchBrand() {
     try {
-      const res = await fetch(`/api/b2b/pim/collections/${collectionId}`);
-      if (!res.ok) throw new Error("Failed to fetch collection");
+      const res = await fetch(`/api/b2b/pim/brands/${brandId}`);
+      if (!res.ok) throw new Error("Failed to fetch brand");
       const data = await res.json();
-      setCollection(data.collection);
+      setBrand(data.brand);
     } catch (error) {
-      console.error("Failed to fetch collection:", error);
+      console.error("Failed to fetch brand:", error);
     } finally {
       setLoading(false);
     }
@@ -100,13 +103,13 @@ export default function CollectionDetailPage() {
     setProductsLoading(true);
     try {
       const params = new URLSearchParams({
-        collection_id: collectionId,
+        brand_id: brandId,
         page: page.toString(),
         limit: limit.toString(),
         ...(search && { search }),
       });
 
-      const res = await fetch(`/api/b2b/pim/collections/${collectionId}/products?${params}`);
+      const res = await fetch(`/api/b2b/pim/brands/${brandId}/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");
 
       const data = await res.json();
@@ -122,7 +125,7 @@ export default function CollectionDetailPage() {
   async function fetchAvailableProducts() {
     try {
       const params = new URLSearchParams({
-        exclude_collection: collectionId,
+        exclude_brand: brandId,
         limit: "100",
         ...(availableSearch && { search: availableSearch }),
       });
@@ -169,7 +172,7 @@ export default function CollectionDetailPage() {
 
   async function handleBulkAssociate(entityCodes: string[]) {
     try {
-      const res = await fetch(`/api/b2b/pim/collections/${collectionId}/products`, {
+      const res = await fetch(`/api/b2b/pim/brands/${brandId}/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entity_codes: entityCodes, action: "add" }),
@@ -186,7 +189,7 @@ export default function CollectionDetailPage() {
 
       // Refresh
       fetchProducts();
-      fetchCollection();
+      fetchBrand();
       setShowAddModal(false);
       setAvailableSelected(new Set());
     } catch (error) {
@@ -201,12 +204,12 @@ export default function CollectionDetailPage() {
       return;
     }
 
-    if (!confirm(`Remove ${selectedProducts.size} product(s) from this collection?`)) {
+    if (!confirm(`Remove ${selectedProducts.size} product(s) from this brand?`)) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/b2b/pim/collections/${collectionId}/products`, {
+      const res = await fetch(`/api/b2b/pim/brands/${brandId}/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -228,7 +231,7 @@ export default function CollectionDetailPage() {
       setSelectedProducts(new Set());
       setSelectAll(false);
       fetchProducts();
-      fetchCollection();
+      fetchBrand();
     } catch (error) {
       console.error("Failed to remove products:", error);
       toast.error("Failed to remove products");
@@ -237,14 +240,14 @@ export default function CollectionDetailPage() {
 
   async function handleExport(format: "csv" | "xlsx" | "txt") {
     try {
-      const res = await fetch(`/api/b2b/pim/collections/${collectionId}/export?format=${format}`);
+      const res = await fetch(`/api/b2b/pim/brands/${brandId}/export?format=${format}`);
       if (!res.ok) throw new Error("Failed to export");
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `collection-${collection?.slug}-products.${format}`;
+      a.download = `brand-${brand?.slug}-products.${format}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -274,7 +277,7 @@ export default function CollectionDetailPage() {
         const formData = new FormData();
         formData.append("file", importFile!);
 
-        const res = await fetch(`/api/b2b/pim/collections/${collectionId}/import?action=${importAction}`, {
+        const res = await fetch(`/api/b2b/pim/brands/${brandId}/import?action=${importAction}`, {
           method: "POST",
           body: formData,
         });
@@ -304,7 +307,7 @@ export default function CollectionDetailPage() {
         const formData = new FormData();
         formData.append("file", file);
 
-        const res = await fetch(`/api/b2b/pim/collections/${collectionId}/import?action=${importAction}`, {
+        const res = await fetch(`/api/b2b/pim/brands/${brandId}/import?action=${importAction}`, {
           method: "POST",
           body: formData,
         });
@@ -373,10 +376,10 @@ export default function CollectionDetailPage() {
     );
   }
 
-  if (!collection) {
+  if (!brand) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-muted-foreground">Collection not found</div>
+        <div className="text-muted-foreground">Brand not found</div>
       </div>
     );
   }
@@ -389,22 +392,44 @@ export default function CollectionDetailPage() {
       <div className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <Link
-            href="/b2b/pim/collections"
+            href="/b2b/pim/brands"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Collections
+            Back to Brands
           </Link>
 
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">{collection.name}</h1>
-            {collection.description && (
-              <p className="text-muted-foreground mb-3">{collection.description}</p>
+          <div className="flex items-start gap-4">
+            {brand.logo_url && (
+              <img
+                src={brand.logo_url}
+                alt={brand.label}
+                className="w-20 h-20 object-contain border border-border rounded-lg p-2 bg-muted"
+              />
             )}
-            <div className="flex items-center gap-2 text-sm">
-              <Package className="w-4 h-4 text-muted-foreground" />
-              <span className="text-foreground font-medium">{totalProducts}</span>
-              <span className="text-muted-foreground">products</span>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-foreground mb-2">{brand.label}</h1>
+              {brand.description && (
+                <p className="text-muted-foreground mb-3">{brand.description}</p>
+              )}
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground font-medium">{totalProducts}</span>
+                  <span className="text-muted-foreground">products</span>
+                </div>
+                {brand.website_url && (
+                  <a
+                    href={brand.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Website
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -509,7 +534,7 @@ export default function CollectionDetailPage() {
         ) : products.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No products in this collection</p>
+            <p className="text-muted-foreground">No products associated with this brand</p>
             <button
               onClick={() => {
                 setShowAddModal(true);
@@ -626,7 +651,7 @@ export default function CollectionDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-semibold text-foreground">Add Products to Collection</h2>
+              <h2 className="text-xl font-semibold text-foreground">Add Products to Brand</h2>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="text-muted-foreground hover:text-foreground"
@@ -730,8 +755,8 @@ export default function CollectionDetailPage() {
                   onChange={(e) => setImportAction(e.target.value as "add" | "remove")}
                   className="w-full px-3 py-2.5 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                 >
-                  <option value="add">Add products to collection</option>
-                  <option value="remove">Remove products from collection</option>
+                  <option value="add">Add products to brand</option>
+                  <option value="remove">Remove products from brand</option>
                 </select>
               </div>
 
@@ -788,7 +813,7 @@ export default function CollectionDetailPage() {
                   >
                     <input
                       type="file"
-                      id="file-upload-collection"
+                      id="file-upload"
                       accept=".csv,.xlsx,.txt"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -815,7 +840,7 @@ export default function CollectionDetailPage() {
                             or
                           </p>
                           <label
-                            htmlFor="file-upload-collection"
+                            htmlFor="file-upload"
                             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 cursor-pointer text-sm font-medium transition"
                           >
                             <Upload className="w-4 h-4" />
