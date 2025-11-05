@@ -13,6 +13,7 @@ import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { ProductTypeSelector } from "@/components/pim/ProductTypeSelector";
 import { CollectionsSelector } from "@/components/pim/CollectionsSelector";
 import { CategorySelector } from "@/components/pim/CategorySelector";
+import { BrandSelector } from "@/components/pim/BrandSelector";
 import { FeaturesForm } from "@/components/pim/FeaturesForm";
 import { AttributesEditor } from "@/components/pim/AttributesEditor";
 import { TagsInput } from "@/components/pim/TagsInput";
@@ -147,6 +148,7 @@ export default function ProductDetailPage({
   const [productType, setProductType] = useState<any>(null);
   const [collections, setCollections] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [category, setCategory] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [brand, setBrand] = useState<{ id: string; name: string; slug: string; image?: any } | null>(null);
   const [featureValues, setFeatureValues] = useState<any[]>([]);
   const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({});
   const [tags, setTags] = useState<string[]>([]);
@@ -155,6 +157,7 @@ export default function ProductDetailPage({
   const [originalProductType, setOriginalProductType] = useState<any>(null);
   const [originalCollections, setOriginalCollections] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [originalCategory, setOriginalCategory] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [originalBrand, setOriginalBrand] = useState<{ id: string; name: string; slug: string; image?: any } | null>(null);
   const [originalFeatureValues, setOriginalFeatureValues] = useState<any[]>([]);
   const [originalCustomAttributes, setOriginalCustomAttributes] = useState<Record<string, any>>({});
   const [originalTags, setOriginalTags] = useState<string[]>([]);
@@ -182,6 +185,9 @@ export default function ProductDetailPage({
     // Check if category changed
     const categoryChanged = category?.id !== originalCategory?.id;
 
+    // Check if brand changed
+    const brandChanged = brand?.id !== originalBrand?.id;
+
     // Check if feature values changed
     const featuresChanged = JSON.stringify(featureValues) !== JSON.stringify(originalFeatureValues);
 
@@ -196,6 +202,7 @@ export default function ProductDetailPage({
       productTypeChanged ||
       collectionsChanged ||
       categoryChanged ||
+      brandChanged ||
       featuresChanged ||
       attributesChanged ||
       tagsChanged;
@@ -210,6 +217,8 @@ export default function ProductDetailPage({
     originalCollections,
     category,
     originalCategory,
+    brand,
+    originalBrand,
     featureValues,
     originalFeatureValues,
     customAttributes,
@@ -258,6 +267,7 @@ export default function ProductDetailPage({
         const loadedFeatures = data.product.product_type?.features || [];
         const loadedCollections = data.product.collections || [];
         const loadedCategory = data.product.category || null;
+        const loadedBrand = data.product.brand || null;
         const loadedAttributes = data.product.attributes || {};
         const loadedTags = data.product.tags || [];
 
@@ -265,6 +275,7 @@ export default function ProductDetailPage({
         setFeatureValues(loadedFeatures);
         setCollections(loadedCollections);
         setCategory(loadedCategory);
+        setBrand(loadedBrand);
         setCustomAttributes(loadedAttributes);
         setTags(loadedTags);
 
@@ -273,6 +284,7 @@ export default function ProductDetailPage({
         setOriginalFeatureValues(loadedFeatures);
         setOriginalCollections(loadedCollections);
         setOriginalCategory(loadedCategory);
+        setOriginalBrand(loadedBrand);
         setOriginalCustomAttributes(loadedAttributes);
         setOriginalTags(loadedTags);
       } else if (res.status === 404) {
@@ -333,6 +345,16 @@ export default function ProductDetailPage({
       // Add collections
       updates.collections = collections;
 
+      // Add brand
+      if (brand) {
+        updates.brand = {
+          id: brand.id,
+          name: brand.name,
+          slug: brand.slug,
+          image: brand.image,
+        };
+      }
+
       // Add custom attributes
       updates.attributes = customAttributes;
 
@@ -342,6 +364,7 @@ export default function ProductDetailPage({
       console.log("💾 Saving product with updates:", {
         product_type: updates.product_type,
         collections: updates.collections,
+        brand: updates.brand,
         attributes: updates.attributes,
         tags: updates.tags,
       });
@@ -375,6 +398,7 @@ export default function ProductDetailPage({
         setOriginalProductType(productType);
         setOriginalCollections(collections);
         setOriginalCategory(category);
+        setOriginalBrand(brand);
         setOriginalFeatureValues(featureValues);
         setOriginalCustomAttributes(customAttributes);
         setOriginalTags(tags);
@@ -908,21 +932,13 @@ export default function ProductDetailPage({
             />
           </div>
 
-          {/* Brand (keeping simple text input for now) */}
+          {/* Brand */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-foreground mb-4">Brand</h3>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Brand Name
-              </label>
-              <input
-                type="text"
-                value={formData.brand_name}
-                onChange={(e) => handleInputChange("brand_name", e.target.value)}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Enter brand name"
-              />
-            </div>
+            <BrandSelector
+              value={brand}
+              onChange={setBrand}
+            />
           </div>
 
           {/* Features - Only shown when product type is selected */}
@@ -1082,10 +1098,10 @@ export default function ProductDetailPage({
                   <div className="text-xs text-muted-foreground mb-1">Stock</div>
                   <div className="text-sm font-medium text-foreground">{formData.stock_quantity} units</div>
                 </div>
-                {formData.brand_name && (
+                {brand && (
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Brand</div>
-                    <div className="text-sm font-medium text-foreground">{formData.brand_name}</div>
+                    <div className="text-sm font-medium text-foreground">{brand.name}</div>
                   </div>
                 )}
                 {formData.category_name && (

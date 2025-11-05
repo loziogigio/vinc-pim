@@ -202,6 +202,20 @@ export async function PATCH(
       tags: updateDoc.tags,
     });
 
+    // Get the old product to check if brand changed
+    const oldProduct = await PIMProductModel.findOne({
+      entity_code,
+      wholesaler_id: session.userId,
+      isCurrent: true,
+    }).lean() as any;
+
+    if (!oldProduct) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    const oldBrandId = oldProduct.brand?.id;
+    const newBrandId = updates.brand?.id;
+
     const product = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
@@ -214,6 +228,37 @@ export async function PATCH(
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Update brand product counts if brand changed
+    if (oldBrandId !== newBrandId) {
+      const { BrandModel } = await import("@/lib/db/models/brand");
+
+      // Update old brand count (decrease)
+      if (oldBrandId) {
+        const oldBrandCount = await PIMProductModel.countDocuments({
+          wholesaler_id: session.userId,
+          isCurrent: true,
+          "brand.id": oldBrandId,
+        });
+        await BrandModel.updateOne(
+          { brand_id: oldBrandId, wholesaler_id: session.userId },
+          { $set: { product_count: oldBrandCount } }
+        );
+      }
+
+      // Update new brand count (increase)
+      if (newBrandId) {
+        const newBrandCount = await PIMProductModel.countDocuments({
+          wholesaler_id: session.userId,
+          isCurrent: true,
+          "brand.id": newBrandId,
+        });
+        await BrandModel.updateOne(
+          { brand_id: newBrandId, wholesaler_id: session.userId },
+          { $set: { product_count: newBrandCount } }
+        );
+      }
     }
 
     console.log("✅ Product updated and returned:", {

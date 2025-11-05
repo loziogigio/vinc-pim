@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   Layers,
@@ -11,6 +12,7 @@ import {
   Search,
   Filter,
   Image as ImageIcon,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -246,6 +248,13 @@ export default function CollectionsPage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-3 border-t border-border">
+                      <Link
+                        href={`/b2b/pim/collections/${collection.collection_id}`}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Link>
                       <button
                         type="button"
                         onClick={() => setEditingCollection(collection)}

@@ -14,7 +14,8 @@ import {
   FolderTree,
   Layers,
   Cpu,
-  Sliders
+  Sliders,
+  Tag
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -23,6 +24,7 @@ const navItems = [
   { label: "Products", href: "/b2b/pim/products", icon: Package, description: "Master list (CRUD)" },
   { label: "Categories", href: "/b2b/pim/categories", icon: FolderTree, description: "Hierarchical structure" },
   { label: "Collections", href: "/b2b/pim/collections", icon: Layers, description: "Flexible grouping" },
+  { label: "Brands", href: "/b2b/pim/brands", icon: Tag, description: "Product brands" },
   { label: "Product Types", href: "/b2b/pim/product-types", icon: Cpu, description: "Features" },
   { label: "Features", href: "/b2b/pim/features", icon: Sliders, description: "Reusable attributes" },
   { label: "AI Enhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, description: "Generate content" },

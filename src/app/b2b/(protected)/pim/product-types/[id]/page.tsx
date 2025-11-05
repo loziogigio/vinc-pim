@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
-import { ArrowLeft, Edit, Plus, X, Search, Package, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Plus, X, Search, Package, Trash2, Upload, Download, ExternalLink } from "lucide-react";
 
 type Product = {
   _id: string;
@@ -49,6 +49,15 @@ export default function ProductTypeDetailPage({
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [selectedForRemoval, setSelectedForRemoval] = useState<Set<string>>(new Set());
+
+  // Import/Export state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importMethod, setImportMethod] = useState<"file" | "url">("file");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importUrl, setImportUrl] = useState("");
+  const [importAction, setImportAction] = useState<"add" | "remove">("add");
+  const [importing, setImporting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     fetchProductTypeAndProducts();
@@ -152,6 +161,147 @@ export default function ProductTypeDetailPage({
     } catch (error) {
       console.error("Error removing products:", error);
       toast.error("Failed to remove products");
+    }
+  }
+
+  async function handleExport(format: "csv" | "xlsx" | "txt") {
+    try {
+      const res = await fetch(`/api/b2b/pim/product-types/${productType?.product_type_id}/export?format=${format}`);
+      if (!res.ok) throw new Error("Failed to export");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `product-type-${productType?.slug}-products.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`Exported successfully as ${format.toUpperCase()}`);
+    } catch (error) {
+      console.error("Failed to export:", error);
+      toast.error("Failed to export products");
+    }
+  }
+
+  async function handleImport() {
+    // Validation
+    if (importMethod === "file" && !importFile) {
+      toast.warning("Please select a file");
+      return;
+    }
+    if (importMethod === "url" && !importUrl.trim()) {
+      toast.warning("Please enter a file URL");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      if (importMethod === "file") {
+        // File upload method
+        const formData = new FormData();
+        formData.append("file", importFile!);
+
+        const res = await fetch(`/api/b2b/pim/product-types/${productType?.product_type_id}/import?action=${importAction}`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          toast.error(error.error || "Failed to import");
+          return;
+        }
+
+        const data = await res.json();
+        toast.success(data.message || "Import job started successfully");
+        if (data.jobId) {
+          toast.info(`Job ID: ${data.jobId}`);
+        }
+      } else {
+        // URL method - fetch file from URL first
+        toast.info("Fetching file from URL...");
+
+        const fetchRes = await fetch(importUrl);
+        if (!fetchRes.ok) {
+          toast.error("Failed to fetch file from URL");
+          return;
+        }
+
+        const blob = await fetchRes.blob();
+        const fileName = importUrl.split("/").pop() || "import.csv";
+        const file = new File([blob], fileName, { type: blob.type });
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch(`/api/b2b/pim/product-types/${productType?.product_type_id}/import?action=${importAction}`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          toast.error(error.error || "Failed to import");
+          return;
+        }
+
+        const data = await res.json();
+        toast.success(data.message || "Import job started successfully");
+        if (data.jobId) {
+          toast.info(`Job ID: ${data.jobId}`);
+        }
+      }
+
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportUrl("");
+      setImportMethod("file");
+
+      // Refresh products after a short delay
+      setTimeout(() => {
+        fetchProductTypeAndProducts();
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to import:", error);
+      toast.error("Failed to import products");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // Drag and drop handlers
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const fileName = file.name.toLowerCase();
+
+      // Validate file type
+      if (fileName.endsWith(".csv") || fileName.endsWith(".xlsx") || fileName.endsWith(".txt")) {
+        setImportFile(file);
+        setImportMethod("file");
+        toast.success(`File selected: ${file.name}`);
+      } else {
+        toast.error("Invalid file type. Please upload CSV, XLSX, or TXT files only.");
+      }
     }
   }
 
@@ -265,6 +415,47 @@ export default function ProductTypeDetailPage({
           <p className="text-sm text-muted-foreground">{productType.description}</p>
         </div>
       )}
+
+      {/* Import/Export Section */}
+      <div className="rounded-lg bg-card p-6 shadow-sm border border-border">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Import/Export Products</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition"
+          >
+            <Upload className="h-4 w-4" />
+            Import Products
+          </button>
+
+          <div className="relative group">
+            <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition">
+              <Download className="h-4 w-4" />
+              Export Products
+            </button>
+            <div className="absolute left-0 mt-1 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport("csv")}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted rounded-t-lg"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => handleExport("xlsx")}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
+              >
+                XLSX
+              </button>
+              <button
+                onClick={() => handleExport("txt")}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted rounded-b-lg"
+              >
+                TXT
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Bulk Actions Bar */}
       {selectedForRemoval.size > 0 && (
@@ -479,6 +670,218 @@ export default function ProductTypeDetailPage({
                   Add Selected
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold text-foreground">Import Products</h2>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportUrl("");
+                  setImportMethod("file");
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Action Selection */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  What would you like to do?
+                </label>
+                <select
+                  value={importAction}
+                  onChange={(e) => setImportAction(e.target.value as "add" | "remove")}
+                  className="w-full px-3 py-2.5 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                >
+                  <option value="add">Add products to product type</option>
+                  <option value="remove">Remove products from product type</option>
+                </select>
+              </div>
+
+              {/* Import Method */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-3">
+                  Select import method
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setImportMethod("file")}
+                    className={`px-4 py-3 rounded-lg border-2 transition text-sm font-medium ${
+                      importMethod === "file"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <Upload className="w-5 h-5 mx-auto mb-1" />
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportMethod("url")}
+                    className={`px-4 py-3 rounded-lg border-2 transition text-sm font-medium ${
+                      importMethod === "url"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <ExternalLink className="w-5 h-5 mx-auto mb-1" />
+                    From URL
+                  </button>
+                </div>
+              </div>
+
+              {/* File Upload */}
+              {importMethod === "file" && (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-foreground">
+                    Upload file (CSV, XLSX, TXT)
+                  </label>
+
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/10 scale-[1.02]"
+                        : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      id="file-upload"
+                      accept=".csv,.xlsx,.txt"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImportFile(file);
+                          toast.success(`File selected: ${file.name}`);
+                        }
+                      }}
+                      className="hidden"
+                    />
+
+                    {!importFile ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-center">
+                          <Upload className={`w-12 h-12 transition-colors ${
+                            isDragging ? "text-primary" : "text-muted-foreground"
+                          }`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground mb-1">
+                            {isDragging ? "Drop file here" : "Drag and drop your file here"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            or
+                          </p>
+                          <label
+                            htmlFor="file-upload"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer text-sm font-medium transition"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Choose File
+                          </label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Supports: CSV, XLSX, TXT (max 10MB)
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-center">
+                          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <Package className="w-6 h-6 text-green-600 dark:text-green-400" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {importFile.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(importFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setImportFile(null)}
+                          className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                        >
+                          Remove file
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    File should contain one entity_code per line (TXT) or entity_code column (CSV/XLSX)
+                  </p>
+                </div>
+              )}
+
+              {/* URL Input */}
+              {importMethod === "url" && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-foreground">
+                    Enter file URL
+                  </label>
+                  <input
+                    type="url"
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    placeholder="https://cdn.example.com/import-file.csv"
+                    className="w-full px-3 py-2.5 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste a URL to a CSV, XLSX, or TXT file (e.g., from your CDN or cloud storage)
+                  </p>
+                </div>
+              )}
+
+              {/* Info Box */}
+              <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                <h4 className="text-sm font-medium text-foreground mb-2">Supported Formats:</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• <strong>TXT:</strong> One entity_code per line</li>
+                  <li>• <strong>CSV:</strong> Header row with entity_code column</li>
+                  <li>• <strong>XLSX:</strong> Excel file with entity_code column</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-muted/20">
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportUrl("");
+                  setImportMethod("file");
+                }}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={(importMethod === "file" && !importFile) || (importMethod === "url" && !importUrl.trim()) || importing}
+                className="px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                {importing ? "Processing..." : "Start Import"}
+              </button>
             </div>
           </div>
         </div>

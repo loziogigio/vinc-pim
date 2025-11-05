@@ -47,11 +47,40 @@ type ImportJob = {
   created_at: string;
   completed_at?: string;
   duration_seconds?: number;
+  job_category: "import";
 };
+
+type AssociationJob = {
+  _id: string;
+  job_id: string;
+  wholesaler_id: string;
+  job_type: "brand_import" | "collection_import" | "category_import" | "product_type_import";
+  entity_type: "brand" | "collection" | "category" | "product_type";
+  entity_id: string;
+  entity_name: string;
+  action: "add" | "remove";
+  status: "pending" | "processing" | "completed" | "failed";
+  total_items: number;
+  processed_items: number;
+  successful_items: number;
+  failed_items: number;
+  metadata?: {
+    file_name?: string;
+    entity_codes?: string[];
+  };
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+  job_category: "association";
+};
+
+type Job = ImportJob | AssociationJob;
 
 export default function JobsPage() {
   const router = useRouter();
-  const [jobs, setJobs] = useState<ImportJob[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -110,7 +139,7 @@ export default function JobsPage() {
 
         // Disable auto-refresh if no active jobs
         const hasActiveJobs = data.jobs?.some(
-          (job: ImportJob) => job.status === "pending" || job.status === "processing"
+          (job: Job) => job.status === "pending" || job.status === "processing"
         );
         if (!hasActiveJobs && autoRefresh) {
           setIsLoading(false);
@@ -456,9 +485,11 @@ export default function JobsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-lg font-semibold text-foreground">
-                          {job.file_name}
+                          {job.job_category === "import"
+                            ? job.file_name
+                            : job.metadata?.file_name || `${job.entity_type}: ${job.entity_name}`}
                         </h3>
-                        {job.file_url && (
+                        {job.job_category === "import" && job.file_url && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -470,10 +501,25 @@ export default function JobsPage() {
                             <Download className="h-4 w-4" />
                           </button>
                         )}
+                        {job.job_category === "association" && (
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            job.action === "add"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-red-100 text-red-700"
+                          }`}>
+                            {job.action === "add" ? "Adding" : "Removing"}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>Job ID: {job.job_id}</span>
-                        {job.batch_id && (
+                        {job.job_category === "association" && (
+                          <>
+                            <span>•</span>
+                            <span className="capitalize">{job.entity_type} Association</span>
+                          </>
+                        )}
+                        {job.job_category === "import" && job.batch_id && (
                           <>
                             <span>•</span>
                             <button
@@ -491,17 +537,21 @@ export default function JobsPage() {
                             </button>
                           </>
                         )}
-                        {job.file_size && (
+                        {job.job_category === "import" && job.file_size && (
                           <>
                             <span>•</span>
                             <span>File Size: {formatFileSize(job.file_size)}</span>
                           </>
                         )}
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Database className="h-3 w-3" />
-                          Source: {job.source_id}
-                        </span>
+                        {job.job_category === "import" && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Database className="h-3 w-3" />
+                              Source: {job.source_id}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -515,8 +565,8 @@ export default function JobsPage() {
 
                       {/* Action Buttons */}
                       <div className="flex gap-1">
-                        {/* Download button - always available if file_url exists */}
-                        {job.file_url && (
+                        {/* Download button - only for import jobs with file_url */}
+                        {job.job_category === "import" && job.file_url && (
                           <a
                             href={job.file_url}
                             target="_blank"
@@ -527,34 +577,6 @@ export default function JobsPage() {
                           >
                             <ExternalLink className="h-4 w-4" />
                           </a>
-                        )}
-
-                        {/* Retry button - only for failed jobs */}
-                        {job.status === "failed" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleJobAction(job.job_id, "retry");
-                            }}
-                            className="p-1.5 rounded border border-border hover:bg-blue-50 hover:border-blue-200 text-blue-600"
-                            title="Retry job"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                        )}
-
-                        {/* Cancel button - only for pending/processing jobs */}
-                        {(job.status === "pending" || job.status === "processing") && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleJobAction(job.job_id, "cancel");
-                            }}
-                            className="p-1.5 rounded border border-border hover:bg-amber-50 hover:border-amber-200 text-amber-600"
-                            title="Cancel job"
-                          >
-                            <StopCircle className="h-4 w-4" />
-                          </button>
                         )}
 
                         {/* Delete button - for completed/failed jobs */}
@@ -575,56 +597,113 @@ export default function JobsPage() {
                   </div>
 
                   {/* Progress Bar */}
-                  {job.status === "processing" && job.total_rows > 0 && (
+                  {job.status === "processing" && (
                     <div className="mb-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                        <span>
-                          Processing: {job.processed_rows} / {job.total_rows} rows
-                        </span>
-                        <span>
-                          {Math.round((job.processed_rows / job.total_rows) * 100)}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-600 transition-all duration-300"
-                          style={{
-                            width: `${(job.processed_rows / job.total_rows) * 100}%`,
-                          }}
-                        />
-                      </div>
+                      {job.job_category === "import" && job.total_rows > 0 && (
+                        <>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>
+                              Processing: {job.processed_rows} / {job.total_rows} rows
+                            </span>
+                            <span>
+                              {Math.round((job.processed_rows / job.total_rows) * 100)}%
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-600 transition-all duration-300"
+                              style={{
+                                width: `${(job.processed_rows / job.total_rows) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </>
+                      )}
+                      {job.job_category === "association" && job.total_items > 0 && (
+                        <>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>
+                              Processing: {job.processed_items} / {job.total_items} items
+                            </span>
+                            <span>
+                              {Math.round((job.processed_items / job.total_items) * 100)}%
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-600 transition-all duration-300"
+                              style={{
+                                width: `${(job.processed_items / job.total_items) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   {/* Stats */}
-                  <div className="grid grid-cols-5 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Total Rows:</span>
-                      <div className="font-medium">{job.total_rows}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Successful:</span>
-                      <div className="font-medium text-emerald-600">
-                        {job.successful_rows}
+                  {job.job_category === "import" ? (
+                    <div className="grid grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Total Rows:</span>
+                        <div className="font-medium">{job.total_rows}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Successful:</span>
+                        <div className="font-medium text-emerald-600">
+                          {job.successful_rows}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Failed:</span>
+                        <div className="font-medium text-red-600">{job.failed_rows}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Auto-published:</span>
+                        <div className="font-medium text-blue-600">
+                          {job.auto_published_count}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Duration:</span>
+                        <div className="font-medium">
+                          {formatDuration(job.duration_seconds)}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Failed:</span>
-                      <div className="font-medium text-red-600">{job.failed_rows}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Auto-published:</span>
-                      <div className="font-medium text-blue-600">
-                        {job.auto_published_count}
+                  ) : (
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Total Items:</span>
+                        <div className="font-medium">{job.total_items}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Successful:</span>
+                        <div className="font-medium text-emerald-600">
+                          {job.successful_items}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Failed:</span>
+                        <div className="font-medium text-red-600">{job.failed_items}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Duration:</span>
+                        <div className="font-medium">
+                          {job.started_at && job.completed_at
+                            ? formatDuration(
+                                Math.floor(
+                                  (new Date(job.completed_at).getTime() -
+                                    new Date(job.started_at).getTime()) /
+                                    1000
+                                )
+                              )
+                            : "—"}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Duration:</span>
-                      <div className="font-medium">
-                        {formatDuration(job.duration_seconds)}
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Timestamps */}
                   <div className="mt-3 text-xs text-muted-foreground">
@@ -637,31 +716,45 @@ export default function JobsPage() {
                   </div>
 
                   {/* Errors */}
-                  {job.import_errors && job.import_errors.length > 0 && (
-                    <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-red-900 mb-2">
-                            {job.import_errors.length} errors occurred:
-                          </p>
-                          <div className="space-y-1 max-h-32 overflow-y-auto">
-                            {job.import_errors.slice(0, 5).map((error, idx) => (
-                              <p key={idx} className="text-xs text-red-700">
-                                Row {error.row}
-                                {error.entity_code && ` (${error.entity_code})`}: {error.error}
-                              </p>
-                            ))}
-                            {job.import_errors.length > 5 && (
-                              <p className="text-xs text-red-700 font-medium">
-                                ... and {job.import_errors.length - 5} more errors
-                              </p>
-                            )}
+                  {job.job_category === "import" &&
+                    job.import_errors &&
+                    job.import_errors.length > 0 && (
+                      <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-900 mb-2">
+                              {job.import_errors.length} errors occurred:
+                            </p>
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {job.import_errors.slice(0, 5).map((error, idx) => (
+                                <p key={idx} className="text-xs text-red-700">
+                                  Row {error.row}
+                                  {error.entity_code && ` (${error.entity_code})`}: {error.error}
+                                </p>
+                              ))}
+                              {job.import_errors.length > 5 && (
+                                <p className="text-xs text-red-700 font-medium">
+                                  ... and {job.import_errors.length - 5} more errors
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  {job.job_category === "association" &&
+                    job.error_message && (
+                      <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-900 mb-1">Error:</p>
+                            <p className="text-xs text-red-700">{job.error_message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
