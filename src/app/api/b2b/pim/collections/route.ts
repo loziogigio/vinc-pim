@@ -37,21 +37,29 @@ export async function GET(req: NextRequest) {
 
     // Update product counts for each collection
     const collectionIds = collections.map((c) => c.collection_id);
-    const productCounts = await PIMProductModel.aggregate([
-      {
-        $match: {
-          wholesaler_id: session.userId,
-          isCurrent: true,
-          "collection.id": { $in: collectionIds },
-        },
-      },
-      {
-        $group: {
-          _id: "$collection.id",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    const productCounts = collectionIds.length
+      ? await PIMProductModel.aggregate([
+          {
+            $match: {
+              wholesaler_id: session.userId,
+              isCurrent: true,
+              "collections.id": { $in: collectionIds },
+            },
+          },
+          { $unwind: "$collections" },
+          {
+            $match: {
+              "collections.id": { $in: collectionIds },
+            },
+          },
+          {
+            $group: {
+              _id: "$collections.id",
+              count: { $sum: 1 },
+            },
+          },
+        ])
+      : [];
 
     const countMap = new Map(productCounts.map((c) => [c._id, c.count]));
 

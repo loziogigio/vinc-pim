@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
@@ -11,6 +12,7 @@ import {
   Package,
   Search,
   Filter,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -227,6 +229,13 @@ export default function ProductTypesPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
+                    <Link
+                      href={`/b2b/pim/product-types/${productType.product_type_id}`}
+                      className="flex items-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View
+                    </Link>
                     <button
                       type="button"
                       onClick={() => router.push(`/b2b/pim/product-types/${productType.product_type_id}/edit`)}

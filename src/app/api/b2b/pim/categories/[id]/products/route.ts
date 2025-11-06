@@ -2,21 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { CollectionModel } from "@/lib/db/models/collection";
+import { CategoryModel } from "@/lib/db/models/category";
 
-// GET /api/b2b/pim/collections/[collectionId]/products - Get products for a collection
+// GET /api/b2b/pim/categories/[id]/products - Get products for a category
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
-    const { id: collectionId } = await params;
+    const { id: categoryId } = await params;
+
+    const category = await CategoryModel.findOne({
+      category_id: categoryId,
+      wholesaler_id: session.userId,
+    }).lean();
+
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -24,24 +33,12 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
-    // Verify collection belongs to this wholesaler
-    const collection = await CollectionModel.findOne({
-      collection_id: collectionId,
-      wholesaler_id: session.userId,
-    }).lean() as any;
-
-    if (!collection) {
-      return NextResponse.json({ error: "Collection not found" }, { status: 404 });
-    }
-
-    // Build query - products that have this collection in their collections array
-    const query: any = {
+    const query: Record<string, unknown> = {
       wholesaler_id: session.userId,
       isCurrent: true,
-      "collections.id": collectionId,
+      "category.id": categoryId,
     };
 
-    // Add search filter
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -50,14 +47,13 @@ export async function GET(
       ];
     }
 
-    // Get products
     const [products, total] = await Promise.all([
       PIMProductModel.find(query)
         .select("entity_code sku name image status quantity")
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(limit)
-        .lean() as any,
+        .lean(),
       PIMProductModel.countDocuments(query),
     ]);
 
@@ -71,7 +67,7 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error("Error fetching collection products:", error);
+    console.error("Error fetching category products:", error);
     return NextResponse.json(
       { error: error.message || "Failed to fetch products" },
       { status: 500 }
@@ -79,22 +75,25 @@ export async function GET(
   }
 }
 
-// POST /api/b2b/pim/collections/[collectionId]/products - Bulk associate/disassociate products
+// POST /api/b2b/pim/categories/[id]/products - Bulk associate/disassociate products
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
-    const { id: collectionId } = await params;
+    const { id: categoryId } = await params;
 
     const body = await req.json();
-    const { entity_codes, action } = body;
+    const { entity_codes, action } = body as {
+      entity_codes?: string[];
+      action?: "add" | "remove";
+    };
 
     if (!entity_codes || !Array.isArray(entity_codes) || entity_codes.length === 0) {
       return NextResponse.json(
@@ -110,22 +109,20 @@ export async function POST(
       );
     }
 
-    // Verify collection belongs to this wholesaler
-    const collection = await CollectionModel.findOne({
-      collection_id: collectionId,
+    const category = await CategoryModel.findOne({
+      category_id: categoryId,
       wholesaler_id: session.userId,
-    }).lean() as any;
+    }).lean();
 
-    if (!collection) {
-      return NextResponse.json({ error: "Collection not found" }, { status: 404 });
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
     if (action === "add") {
-      // Add collection to products' collections array
-      const collectionData = {
-        id: collectionId,
-        name: collection.name,
-        slug: collection.slug,
+      const categoryData = {
+        id: categoryId,
+        name: category.name,
+        slug: category.slug,
       };
 
       const result = await PIMProductModel.updateMany(
@@ -133,20 +130,18 @@ export async function POST(
           entity_code: { $in: entity_codes },
           wholesaler_id: session.userId,
           isCurrent: true,
-          "collections.id": { $ne: collectionId }, // Only if not already in array
         },
-        { $push: { collections: collectionData } }
+        { $set: { category: categoryData } }
       );
 
-      // Update collection product count
       const productCount = await PIMProductModel.countDocuments({
         wholesaler_id: session.userId,
         isCurrent: true,
-        "collections.id": collectionId,
+        "category.id": categoryId,
       });
 
-      await CollectionModel.updateOne(
-        { collection_id: collectionId, wholesaler_id: session.userId },
+      await CategoryModel.updateOne(
+        { category_id: categoryId, wholesaler_id: session.userId },
         { $set: { product_count: productCount } }
       );
 
@@ -154,37 +149,35 @@ export async function POST(
         message: `Successfully associated ${result.modifiedCount} product(s)`,
         modified: result.modifiedCount,
       });
-    } else {
-      // Remove collection from products' collections array
-      const result = await PIMProductModel.updateMany(
-        {
-          entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
-          isCurrent: true,
-          "collections.id": collectionId,
-        },
-        { $pull: { collections: { id: collectionId } } }
-      );
+    }
 
-      // Update collection product count
-      const productCount = await PIMProductModel.countDocuments({
+    const result = await PIMProductModel.updateMany(
+      {
+        entity_code: { $in: entity_codes },
         wholesaler_id: session.userId,
         isCurrent: true,
-        "collections.id": collectionId,
-      });
+        "category.id": categoryId,
+      },
+      { $unset: { category: "" } }
+    );
 
-      await CollectionModel.updateOne(
-        { collection_id: collectionId, wholesaler_id: session.userId },
-        { $set: { product_count: productCount } }
-      );
+    const productCount = await PIMProductModel.countDocuments({
+      wholesaler_id: session.userId,
+      isCurrent: true,
+      "category.id": categoryId,
+    });
 
-      return NextResponse.json({
-        message: `Successfully removed ${result.modifiedCount} product(s)`,
-        modified: result.modifiedCount,
-      });
-    }
+    await CategoryModel.updateOne(
+      { category_id: categoryId, wholesaler_id: session.userId },
+      { $set: { product_count: productCount } }
+    );
+
+    return NextResponse.json({
+      message: `Successfully removed ${result.modifiedCount} product(s)`,
+      modified: result.modifiedCount,
+    });
   } catch (error: any) {
-    console.error("Error updating collection products:", error);
+    console.error("Error updating category products:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update products" },
       { status: 500 }

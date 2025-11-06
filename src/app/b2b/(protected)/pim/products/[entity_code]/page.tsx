@@ -16,7 +16,7 @@ import { CategorySelector } from "@/components/pim/CategorySelector";
 import { BrandSelector } from "@/components/pim/BrandSelector";
 import { FeaturesForm } from "@/components/pim/FeaturesForm";
 import { AttributesEditor } from "@/components/pim/AttributesEditor";
-import { TagsInput } from "@/components/pim/TagsInput";
+import { TagSelector, TagReference } from "@/components/pim/TagSelector";
 import {
   ArrowLeft,
   Save,
@@ -88,6 +88,8 @@ type Product = {
     name: string;
     slug: string;
   };
+  tag?: TagReference[];
+  tags?: string[];
   completeness_score: number;
   critical_issues: string[];
   updated_at: string;
@@ -151,7 +153,7 @@ export default function ProductDetailPage({
   const [brand, setBrand] = useState<{ id: string; name: string; slug: string; image?: any } | null>(null);
   const [featureValues, setFeatureValues] = useState<any[]>([]);
   const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({});
-  const [tags, setTags] = useState<string[]>([]);
+  const [tagRefs, setTagRefs] = useState<TagReference[]>([]);
 
   // Original values for comparison
   const [originalProductType, setOriginalProductType] = useState<any>(null);
@@ -160,7 +162,7 @@ export default function ProductDetailPage({
   const [originalBrand, setOriginalBrand] = useState<{ id: string; name: string; slug: string; image?: any } | null>(null);
   const [originalFeatureValues, setOriginalFeatureValues] = useState<any[]>([]);
   const [originalCustomAttributes, setOriginalCustomAttributes] = useState<Record<string, any>>({});
-  const [originalTags, setOriginalTags] = useState<string[]>([]);
+  const [originalTagRefs, setOriginalTagRefs] = useState<TagReference[]>([]);
 
   useEffect(() => {
     if (entity_code) {
@@ -195,7 +197,7 @@ export default function ProductDetailPage({
     const attributesChanged = JSON.stringify(customAttributes) !== JSON.stringify(originalCustomAttributes);
 
     // Check if tags changed
-    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(originalTags);
+    const tagsChanged = JSON.stringify(tagRefs) !== JSON.stringify(originalTagRefs);
 
     const hasAnyChanges =
       formChanged ||
@@ -223,8 +225,8 @@ export default function ProductDetailPage({
     originalFeatureValues,
     customAttributes,
     originalCustomAttributes,
-    tags,
-    originalTags
+    tagRefs,
+    originalTagRefs
   ]);
 
   async function fetchProduct() {
@@ -269,7 +271,26 @@ export default function ProductDetailPage({
         const loadedCategory = data.product.category || null;
         const loadedBrand = data.product.brand || null;
         const loadedAttributes = data.product.attributes || {};
-        const loadedTags = data.product.tags || [];
+        const loadedTagRefs: TagReference[] = Array.isArray(data.product.tag)
+          ? data.product.tag.map((tag: any) => ({
+              id: tag.id || tag.tag_id || tag.slug || tag.name,
+              name: tag.name,
+              slug: tag.slug || tag.name?.toLowerCase().replace(/\s+/g, "-") || "",
+              color: tag.color,
+            }))
+          : [];
+
+        if (loadedTagRefs.length === 0 && Array.isArray(data.product.tags)) {
+          data.product.tags.forEach((tagName: string) => {
+            if (!tagName) return;
+            const slug = tagName.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+            loadedTagRefs.push({
+              id: slug,
+              name: tagName,
+              slug,
+            });
+          });
+        }
 
         setProductType(loadedProductType);
         setFeatureValues(loadedFeatures);
@@ -277,7 +298,7 @@ export default function ProductDetailPage({
         setCategory(loadedCategory);
         setBrand(loadedBrand);
         setCustomAttributes(loadedAttributes);
-        setTags(loadedTags);
+        setTagRefs(loadedTagRefs);
 
         // Set original values for change detection
         setOriginalProductType(loadedProductType);
@@ -286,7 +307,7 @@ export default function ProductDetailPage({
         setOriginalCategory(loadedCategory);
         setOriginalBrand(loadedBrand);
         setOriginalCustomAttributes(loadedAttributes);
-        setOriginalTags(loadedTags);
+        setOriginalTagRefs(loadedTagRefs);
       } else if (res.status === 404) {
         setProduct(null);
       } else {
@@ -359,7 +380,8 @@ export default function ProductDetailPage({
       updates.attributes = customAttributes;
 
       // Add tags
-      updates.tags = tags;
+      updates.tag = tagRefs;
+      updates.tags = tagRefs.map((tag) => tag.name);
 
       console.log("💾 Saving product with updates:", {
         product_type: updates.product_type,
@@ -401,7 +423,7 @@ export default function ProductDetailPage({
         setOriginalBrand(brand);
         setOriginalFeatureValues(featureValues);
         setOriginalCustomAttributes(customAttributes);
-        setOriginalTags(tags);
+        setOriginalTagRefs(tagRefs);
 
         setHasChanges(false);
 
@@ -564,7 +586,7 @@ export default function ProductDetailPage({
       setCategory(originalCategory);
       setFeatureValues(originalFeatureValues);
       setCustomAttributes(originalCustomAttributes);
-      setTags(originalTags);
+      setTagRefs(originalTagRefs);
       setHasChanges(false);
     }
   }
@@ -970,12 +992,7 @@ export default function ProductDetailPage({
           {/* Tags */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-foreground mb-4">Tags</h3>
-            <TagsInput
-              value={tags}
-              onChange={setTags}
-              disabled={isOldVersion}
-              placeholder="Add tags for better organization and search..."
-            />
+            <TagSelector value={tagRefs} onChange={setTagRefs} disabled={isOldVersion} />
           </div>
         </div>
       </div>

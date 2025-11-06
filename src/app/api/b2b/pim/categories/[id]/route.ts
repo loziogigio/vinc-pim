@@ -6,7 +6,7 @@ import { PIMProductModel } from "@/lib/db/models/pim-product";
 
 /**
  * GET /api/b2b/pim/categories/[id]
- * Get a single category with details
+ * Fetch a single category with product and child counts
  */
 export async function GET(
   req: NextRequest,
@@ -14,16 +14,15 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
-
     const { id } = await params;
 
     const category = await CategoryModel.findOne({
-      id: id,
+      category_id: id,
       wholesaler_id: session.userId,
     }).lean();
 
@@ -34,18 +33,17 @@ export async function GET(
       );
     }
 
-    // Get product count
-    const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
-      isCurrent: true,
-      "category.id": id: id,
-    });
-
-    // Get child categories count
-    const childCount = await CategoryModel.countDocuments({
-      wholesaler_id: session.userId,
-      parent_id: id: id,
-    });
+    const [productCount, childCount] = await Promise.all([
+      PIMProductModel.countDocuments({
+        wholesaler_id: session.userId,
+        isCurrent: true,
+        "category.id": id,
+      }),
+      CategoryModel.countDocuments({
+        wholesaler_id: session.userId,
+        parent_id: id,
+      }),
+    ]);
 
     return NextResponse.json({
       category: {
@@ -73,71 +71,29 @@ export async function PATCH(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
-
     const { id } = await params;
+
     const body = await req.json();
+    const {
+      name,
+      slug,
+      description,
+      parent_id,
+      hero_image,
+      seo,
+      display_order,
+      is_active,
+    } = body;
 
-    const allowedFields = [
-      "name",
-      "slug",
-      "description",
-      "parent_id",
-      "hero_image",
-      "seo",
-      "display_order",
-      "is_active",
-    ];
-
-    const updateData: any = { updated_at: new Date() };
-
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
-    }
-
-    // If parent_id is changing, recalculate level and path
-    if (body.parent_id !== undefined) {
-      if (body.parent_id) {
-        const parent = await CategoryModel.findOne({
-          id: body.parent_id,
-          wholesaler_id: session.userId,
-        });
-
-        if (!parent) {
-          return NextResponse.json(
-            { error: "Parent category not found" },
-            { status: 404 }
-          );
-        }
-
-        // Check for circular reference
-        if (parent.path.includes(id) || parent.id === id) {
-          return NextResponse.json(
-            { error: "Cannot set a child category as parent" },
-            { status: 400 }
-          );
-        }
-
-        updateData.level = parent.level + 1;
-        updateData.path = [...parent.path, parent.id];
-      } else {
-        // Moving to root level
-        updateData.level = 0;
-        updateData.path = [];
-      }
-    }
-
-    const category = await CategoryModel.findOneAndUpdate(
-      { id: id, wholesaler_id: session.userId },
-      updateData,
-      { new: true }
-    ).lean();
+    const category = await CategoryModel.findOne({
+      category_id: id,
+      wholesaler_id: session.userId,
+    });
 
     if (!category) {
       return NextResponse.json(
@@ -146,7 +102,80 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({ category });
+    // If slug is changing, check duplicates
+    if (slug && slug !== category.slug) {
+      const existing = await CategoryModel.findOne({
+        wholesaler_id: session.userId,
+        slug,
+        category_id: { $ne: id },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          { error: "A category with this slug already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updateData: any = {
+      updated_at: new Date(),
+    };
+
+    if (name !== undefined) updateData.name = name;
+    if (slug !== undefined) updateData.slug = slug;
+    if (description !== undefined) updateData.description = description;
+    if (hero_image !== undefined) updateData.hero_image = hero_image;
+    if (seo !== undefined) updateData.seo = seo;
+    if (display_order !== undefined) updateData.display_order = display_order;
+    if (is_active !== undefined) updateData.is_active = is_active;
+
+    if (parent_id !== undefined) {
+      const newParentId = parent_id || null;
+      updateData.parent_id = newParentId;
+
+      if (newParentId) {
+        if (newParentId === id) {
+          return NextResponse.json(
+            { error: "A category cannot be its own parent" },
+            { status: 400 }
+          );
+        }
+
+        const parent = await CategoryModel.findOne({
+          category_id: newParentId,
+          wholesaler_id: session.userId,
+        }).lean();
+
+        if (!parent) {
+          return NextResponse.json(
+            { error: "Parent category not found" },
+            { status: 404 }
+          );
+        }
+
+        if (parent.path.includes(id)) {
+          return NextResponse.json(
+            { error: "Cannot set a child category as parent" },
+            { status: 400 }
+          );
+        }
+
+        updateData.level = parent.level + 1;
+        updateData.path = [...parent.path, parent.category_id];
+      } else {
+        updateData.level = 0;
+        updateData.path = [];
+      }
+    }
+
+    const updatedCategory = await CategoryModel.findOneAndUpdate(
+      { category_id: id, wholesaler_id: session.userId },
+      updateData,
+      { new: true }
+    );
+
+    return NextResponse.json({ category: updatedCategory });
   } catch (error) {
     console.error("Error updating category:", error);
     return NextResponse.json(
@@ -158,7 +187,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/b2b/pim/categories/[id]
- * Delete a category (soft delete)
+ * Soft delete a category
  */
 export async function DELETE(
   req: NextRequest,
@@ -166,20 +195,24 @@ export async function DELETE(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
-
     const { id } = await params;
 
-    // Check if category has products
-    const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
-      isCurrent: true,
-      "category.id": id: id,
-    });
+    const [productCount, childCount] = await Promise.all([
+      PIMProductModel.countDocuments({
+        wholesaler_id: session.userId,
+        isCurrent: true,
+        "category.id": id,
+      }),
+      CategoryModel.countDocuments({
+        wholesaler_id: session.userId,
+        parent_id: id,
+      }),
+    ]);
 
     if (productCount > 0) {
       return NextResponse.json(
@@ -190,12 +223,6 @@ export async function DELETE(
       );
     }
 
-    // Check if category has children
-    const childCount = await CategoryModel.countDocuments({
-      wholesaler_id: session.userId,
-      parent_id: id: id,
-    });
-
     if (childCount > 0) {
       return NextResponse.json(
         {
@@ -205,9 +232,8 @@ export async function DELETE(
       );
     }
 
-    // Soft delete
     const category = await CategoryModel.findOneAndUpdate(
-      { id: id, wholesaler_id: session.userId },
+      { category_id: id, wholesaler_id: session.userId },
       { is_active: false, updated_at: new Date() },
       { new: true }
     );

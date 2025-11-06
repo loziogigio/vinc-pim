@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { ProductTypeModel } from "@/lib/db/models/product-type";
 import { FeatureModel } from "@/lib/db/models/feature";
+import { TagModel } from "@/lib/db/models/tag";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -189,6 +190,25 @@ export async function PATCH(
       }
     });
 
+    let sanitizedTagRefs: any[] | null = null;
+    if (updates.tag !== undefined) {
+      sanitizedTagRefs = Array.isArray(updates.tag)
+        ? updates.tag
+            .filter((tag: any) => tag && tag.name)
+            .map((tag: any) => ({
+              id: tag.id || tag.tag_id || tag.slug || tag.name,
+              name: tag.name,
+              slug:
+                tag.slug ||
+                tag.name?.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, ""),
+              color: tag.color,
+            }))
+        : [];
+
+      updateDoc.tag = sanitizedTagRefs;
+      updateDoc.tags = (sanitizedTagRefs || []).map((tag) => tag.name);
+    }
+
     // Handle stock_quantity -> quantity field mapping
     if (updates.stock_quantity !== undefined) {
       updateDoc.quantity = updates.stock_quantity;
@@ -199,6 +219,7 @@ export async function PATCH(
       product_type: updateDoc.product_type,
       collections: updateDoc.collections,
       attributes: updateDoc.attributes,
+      tag: updateDoc.tag,
       tags: updateDoc.tags,
     });
 
@@ -215,6 +236,9 @@ export async function PATCH(
 
     const oldBrandId = oldProduct.brand?.id;
     const newBrandId = updates.brand?.id;
+    const oldTagIds = Array.isArray(oldProduct.tag)
+      ? oldProduct.tag.map((tag: any) => tag.id).filter(Boolean)
+      : [];
 
     const product = await PIMProductModel.findOneAndUpdate(
       {
@@ -261,10 +285,31 @@ export async function PATCH(
       }
     }
 
+    if (sanitizedTagRefs) {
+      const newTagIds = sanitizedTagRefs.map((tag) => tag.id).filter(Boolean);
+      const affectedTagIds = Array.from(new Set([...oldTagIds, ...newTagIds]));
+
+      await Promise.all(
+        affectedTagIds.map(async (tagId) => {
+          const tagCount = await PIMProductModel.countDocuments({
+            wholesaler_id: session.userId,
+            isCurrent: true,
+            "tag.id": tagId,
+          });
+
+          await TagModel.updateOne(
+            { tag_id: tagId, wholesaler_id: session.userId },
+            { $set: { product_count: tagCount } }
+          );
+        })
+      );
+    }
+
     console.log("✅ Product updated and returned:", {
       product_type: product.product_type,
       collections: product.collections,
       attributes: product.attributes,
+      tag: product.tag,
       tags: product.tags,
     });
 

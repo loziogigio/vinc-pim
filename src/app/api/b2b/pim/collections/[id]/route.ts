@@ -5,12 +5,12 @@ import { CollectionModel } from "@/lib/db/models/collection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 
 /**
- * PATCH /api/b2b/pim/collections/[id]
- * Update a collection
+ * GET /api/b2b/pim/collections/[id]
+ * Fetch a single collection
  */
-export async function PATCH(
+export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -20,7 +20,58 @@ export async function PATCH(
 
     await connectToDatabase();
 
-    const { id } = params;
+    const { id } = await params;
+
+    const collection = await CollectionModel.findOne({
+      collection_id: id,
+      wholesaler_id: session.userId,
+    }).lean();
+
+    if (!collection) {
+      return NextResponse.json(
+        { error: "Collection not found" },
+        { status: 404 }
+      );
+    }
+
+    const productCount = await PIMProductModel.countDocuments({
+      wholesaler_id: session.userId,
+      isCurrent: true,
+      "collections.id": id,
+    });
+
+    return NextResponse.json({
+      collection: {
+        ...collection,
+        product_count: productCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching collection:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/b2b/pim/collections/[id]
+ * Update a collection
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getB2BSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectToDatabase();
+
+    const { id } = await params;
     const body = await req.json();
     const { name, slug, description, hero_image, seo, display_order, is_active } = body;
 
@@ -88,7 +139,7 @@ export async function PATCH(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
@@ -98,7 +149,7 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if collection exists and belongs to wholesaler
     const collection = await CollectionModel.findOne({
@@ -117,7 +168,7 @@ export async function DELETE(
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: session.userId,
       isCurrent: true,
-      "collection.id": id,
+      "collections.id": id,
     });
 
     if (productCount > 0) {

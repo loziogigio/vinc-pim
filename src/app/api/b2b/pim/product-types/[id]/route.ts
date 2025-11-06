@@ -5,26 +5,75 @@ import { ProductTypeModel } from "@/lib/db/models/product-type";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 
 /**
- * PATCH /api/b2b/pim/product-types/[productTypeId]
- * Update a product type
+ * GET /api/b2b/pim/product-types/[id]
+ * Fetch a single product type
  */
-export async function PATCH(
+export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
+    const { id } = await params;
 
-    const { id } = params;
+    const productType = await ProductTypeModel.findOne({
+      product_type_id: id,
+      wholesaler_id: session.userId,
+    }).lean();
+
+    if (!productType) {
+      return NextResponse.json(
+        { error: "Product type not found" },
+        { status: 404 }
+      );
+    }
+
+    const productCount = await PIMProductModel.countDocuments({
+      wholesaler_id: session.userId,
+      isCurrent: true,
+      "product_type.id": id,
+    });
+
+    return NextResponse.json({
+      productType: {
+        ...productType,
+        product_count: productCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching product type:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/b2b/pim/product-types/[id]
+ * Update a product type
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getB2BSession();
+    if (!session?.isLoggedIn) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectToDatabase();
+    const { id } = await params;
+
     const body = await req.json();
     const { name, slug, description, features, display_order, is_active } = body;
 
-    // Check if product type exists and belongs to wholesaler
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
       wholesaler_id: session.userId,
@@ -37,12 +86,11 @@ export async function PATCH(
       );
     }
 
-    // If slug is changing, check for duplicates
     if (slug && slug !== productType.slug) {
       const existing = await ProductTypeModel.findOne({
         wholesaler_id: session.userId,
         slug,
-        product_type_id: { $ne: productTypeId },
+        product_type_id: { $ne: id },
       });
 
       if (existing) {
@@ -53,25 +101,20 @@ export async function PATCH(
       }
     }
 
-    // Update product type
-    const updateData: any = {
-      updated_at: new Date(),
-    };
+    if (name !== undefined) productType.name = name;
+    if (slug !== undefined) productType.slug = slug;
+    if (description !== undefined) productType.description = description;
+    if (features !== undefined) productType.features = features;
+    if (display_order !== undefined) productType.display_order = display_order;
+    if (is_active !== undefined) productType.is_active = is_active;
+    productType.updated_at = new Date();
 
-    if (name !== undefined) updateData.name = name;
-    if (slug !== undefined) updateData.slug = slug;
-    if (description !== undefined) updateData.description = description;
-    if (features !== undefined) updateData.features = features;
-    if (display_order !== undefined) updateData.display_order = display_order;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    await productType.save();
 
-    const updatedProductType = await ProductTypeModel.findOneAndUpdate(
-      { product_type_id: id, wholesaler_id: session.userId },
-      updateData,
-      { new: true }
-    );
-
-    return NextResponse.json({ productType: updatedProductType });
+    return NextResponse.json({
+      productType,
+      message: "Product type updated successfully",
+    });
   } catch (error) {
     console.error("Error updating product type:", error);
     return NextResponse.json(
@@ -82,24 +125,22 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/b2b/pim/product-types/[productTypeId]
+ * DELETE /api/b2b/pim/product-types/[id]
  * Delete a product type
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session?.isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
+    const { id } = await params;
 
-    const { id } = params;
-
-    // Check if product type exists and belongs to wholesaler
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
       wholesaler_id: session.userId,
@@ -112,7 +153,6 @@ export async function DELETE(
       );
     }
 
-    // Check if product type has products
     const productCount = await PIMProductModel.countDocuments({
       wholesaler_id: session.userId,
       isCurrent: true,
@@ -128,7 +168,6 @@ export async function DELETE(
       );
     }
 
-    // Delete product type
     await ProductTypeModel.deleteOne({
       product_type_id: id,
       wholesaler_id: session.userId,
