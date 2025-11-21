@@ -21,7 +21,7 @@ export async function GET(
 
     const tag = await TagModel.findOne({
       tag_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!tag) {
@@ -29,7 +29,7 @@ export async function GET(
     }
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "tag.id": id,
     });
@@ -68,7 +68,7 @@ export async function PATCH(
 
     const tag = await TagModel.findOne({
       tag_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!tag) {
@@ -77,7 +77,7 @@ export async function PATCH(
 
     if (slug && slug !== tag.slug) {
       const conflict = await TagModel.findOne({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         slug,
         tag_id: { $ne: id },
       });
@@ -129,7 +129,7 @@ export async function DELETE(
     const { id } = await params;
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "tag.id": id,
     });
@@ -145,7 +145,7 @@ export async function DELETE(
 
     const result = await TagModel.deleteOne({
       tag_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (result.deletedCount === 0) {

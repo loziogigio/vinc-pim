@@ -23,7 +23,7 @@ export async function GET(
 
     const category = await CategoryModel.findOne({
       category_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!category) {
@@ -35,12 +35,12 @@ export async function GET(
 
     const [productCount, childCount] = await Promise.all([
       PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "category.id": id,
       }),
       CategoryModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         parent_id: id,
       }),
     ]);
@@ -92,7 +92,7 @@ export async function PATCH(
 
     const category = await CategoryModel.findOne({
       category_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!category) {
@@ -102,10 +102,9 @@ export async function PATCH(
       );
     }
 
-    // If slug is changing, check duplicates
+    // If slug is changing, check duplicates (no wholesaler_id - database provides isolation)
     if (slug && slug !== category.slug) {
       const existing = await CategoryModel.findOne({
-        wholesaler_id: session.userId,
         slug,
         category_id: { $ne: id },
       });
@@ -144,7 +143,7 @@ export async function PATCH(
 
         const parent = await CategoryModel.findOne({
           category_id: newParentId,
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
         }).lean();
 
         if (!parent) {
@@ -170,7 +169,7 @@ export async function PATCH(
     }
 
     const updatedCategory = await CategoryModel.findOneAndUpdate(
-      { category_id: id, wholesaler_id: session.userId },
+      { category_id: id }, // No wholesaler_id - database provides isolation
       updateData,
       { new: true }
     );
@@ -204,12 +203,12 @@ export async function DELETE(
 
     const [productCount, childCount] = await Promise.all([
       PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "category.id": id,
       }),
       CategoryModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         parent_id: id,
       }),
     ]);
@@ -233,7 +232,7 @@ export async function DELETE(
     }
 
     const category = await CategoryModel.findOneAndUpdate(
-      { category_id: id, wholesaler_id: session.userId },
+      { category_id: id }, // No wholesaler_id - database provides isolation
       { is_active: false, updated_at: new Date() },
       { new: true }
     );

@@ -38,7 +38,7 @@ export async function PATCH(
     // Find the product
     const product = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 
@@ -88,20 +88,36 @@ export async function PATCH(
 
     const finalImages = [...reorderedImages, ...remainingImages];
 
+    // Update the main product image to be the first image in the gallery
+    const mainImage = finalImages.length > 0 ? {
+      id: finalImages[0].cdn_key,
+      thumbnail: finalImages[0].url,
+      original: finalImages[0].url,
+      medium: finalImages[0].url,
+      large: finalImages[0].url,
+    } : undefined;
+
     // Update product
+    const updateData: any = {
+      images: finalImages,
+      updated_at: new Date(),
+      last_updated_by: "manual",
+    };
+
+    // Only update main image if we have images, otherwise keep existing (could be placeholder)
+    if (mainImage) {
+      updateData.image = mainImage;
+      // Remove "Missing product image" from critical issues if it exists
+      updateData.$pull = { critical_issues: "Missing product image" };
+    }
+
     const updatedProduct = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
-      {
-        $set: {
-          images: finalImages,
-          updated_at: new Date(),
-          last_updated_by: "manual",
-        },
-      },
+      updateData,
       { new: true }
     ).lean();
 

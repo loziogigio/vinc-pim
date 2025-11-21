@@ -45,12 +45,12 @@ export async function GET(
     const [version1, version2] = await Promise.all([
       PIMProductModel.findOne({
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         version: v1,
       }).lean(),
       PIMProductModel.findOne({
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         version: v2,
       }).lean(),
     ]);

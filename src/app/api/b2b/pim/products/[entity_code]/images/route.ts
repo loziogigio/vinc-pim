@@ -55,7 +55,7 @@ export async function POST(
     // Find the product
     const product = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 
@@ -85,20 +85,43 @@ export async function POST(
       size_bytes: result.size_bytes,
     }));
 
+    // Check if we should update the main image
+    // Update if: no images exist yet OR current main image is the placeholder
+    const shouldUpdateMainImage =
+      currentImages.length === 0 ||
+      product.image?.id === "placeholder";
+
+    // Build update object
+    const updateData: any = {
+      $push: { images: { $each: newImages } },
+      $set: {
+        updated_at: new Date(),
+        last_updated_by: "manual",
+      },
+    };
+
+    // If this is the first real image, set it as the main product image
+    if (shouldUpdateMainImage && newImages.length > 0) {
+      const firstImage = newImages[0];
+      updateData.$set.image = {
+        id: firstImage.cdn_key,
+        thumbnail: firstImage.url,
+        original: firstImage.url,
+        medium: firstImage.url,
+        large: firstImage.url,
+      };
+      // Remove "Missing product image" from critical issues
+      updateData.$pull = { critical_issues: "Missing product image" };
+    }
+
     // Update product with new images
     const updatedProduct = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
-      {
-        $push: { images: { $each: newImages } },
-        $set: {
-          updated_at: new Date(),
-          last_updated_by: "manual",
-        },
-      },
+      updateData,
       { new: true }
     ).lean();
 
@@ -155,11 +178,27 @@ export async function DELETE(
     // Connect to database
     await connectToDatabase();
 
+    // First, get the product to check if we're deleting the main image
+    const product = await PIMProductModel.findOne({
+      entity_code,
+      isCurrent: true,
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if the image being deleted is the main image
+    const isDeletingMainImage = product.image?.id === cdn_key;
+
     // Remove image from product
     const result = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
       {
@@ -170,13 +209,52 @@ export async function DELETE(
         },
       },
       { new: true }
-    ).lean();
+    );
 
     if (!result) {
       return NextResponse.json(
         { error: "Product not found" },
         { status: 404 }
       );
+    }
+
+    // If we deleted the main image, update to the next image or placeholder
+    if (isDeletingMainImage) {
+      const remainingImages = result.images || [];
+
+      if (remainingImages.length > 0) {
+        // Set first remaining image as main
+        const firstImage = remainingImages[0];
+        await PIMProductModel.updateOne(
+          { entity_code, isCurrent: true },
+          {
+            $set: {
+              image: {
+                id: firstImage.cdn_key,
+                thumbnail: firstImage.url,
+                original: firstImage.url,
+                medium: firstImage.url,
+                large: firstImage.url,
+              },
+            },
+          }
+        );
+      } else {
+        // No images left - revert to placeholder and add critical issue
+        await PIMProductModel.updateOne(
+          { entity_code, isCurrent: true },
+          {
+            $set: {
+              image: {
+                id: "placeholder",
+                thumbnail: "/placeholder-product.png",
+                original: "/placeholder-product.png",
+              },
+            },
+            $addToSet: { critical_issues: "Missing product image" },
+          }
+        );
+      }
     }
 
     return NextResponse.json({

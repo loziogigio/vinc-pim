@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { Search, X, FolderTree, ChevronRight } from "lucide-react";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 
 type Category = {
   category_id: string;
-  name: string;
+  name: string | Record<string, string>;
   slug: string;
   parent_id?: string | null;
   level: number;
-  path: string;
+  path: string | Record<string, string>;
   children?: Category[];
 };
 
 type SelectedCategory = {
   id: string;
-  name: string;
+  name: string | Record<string, string>;
   slug: string;
 };
 
@@ -25,6 +26,40 @@ type Props = {
   disabled?: boolean;
 };
 
+/**
+ * Helper function to extract text from multilingual objects
+ * Uses default language first, then fallback chain
+ * IMPORTANT: This function MUST always return a string, never an object
+ */
+function getMultilingualText(
+  text: string | Record<string, string> | undefined | null | any,
+  defaultLanguageCode: string = "it",
+  fallback: string = ""
+): string {
+  // Handle null, undefined, or empty values
+  if (!text) return fallback;
+
+  // If already a string, return it
+  if (typeof text === "string") return text;
+
+  // If not an object, convert to string
+  if (typeof text !== "object") return String(text);
+
+  // Try to extract string from multilingual object
+  try {
+    const result = text[defaultLanguageCode] || text.en || Object.values(text)[0];
+
+    // Ensure result is a string
+    if (typeof result === "string" && result) return result;
+    if (result) return String(result);
+
+    return fallback;
+  } catch (error) {
+    console.error("Error extracting multilingual text:", error, text);
+    return fallback;
+  }
+}
+
 export function CategorySelector({ value, onChange, disabled }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,7 +67,24 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
   const [flatCategories, setFlatCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Language store for getting default language from database
+  const { languages, fetchLanguages } = useLanguageStore();
+  const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
+  const defaultLanguageCode = defaultLanguage?.code || "it";
+
+  // Debug: Log value to understand its structure
+  if (value) {
+    console.log("CategorySelector received value:", {
+      id: value.id,
+      name: value.name,
+      nameType: typeof value.name,
+      slug: value.slug,
+      raw: value
+    });
+  }
+
   useEffect(() => {
+    fetchLanguages();
     fetchCategories();
   }, []);
 
@@ -82,11 +134,15 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
   }
 
   const filteredCategories = searchQuery
-    ? flatCategories.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.path.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? flatCategories.filter((c) => {
+        const name = getMultilingualText(c.name, defaultLanguageCode, "");
+        const path = getMultilingualText(c.path, defaultLanguageCode, "");
+        return (
+          name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          path.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      })
     : categories;
 
   return (
@@ -104,14 +160,21 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
               <p className="text-sm font-medium text-foreground">
                 {/* Find the selected category to get its full path */}
                 {(() => {
-                  const selectedCat = flatCategories.find(c => c.category_id === value.id);
-                  if (selectedCat && selectedCat.path) {
-                    return selectedCat.path;
+                  try {
+                    const selectedCat = flatCategories.find(c => c.category_id === value.id);
+                    if (selectedCat?.path) {
+                      const pathText = getMultilingualText(selectedCat.path, defaultLanguageCode, "");
+                      return String(pathText || "");
+                    }
+                    const nameText = getMultilingualText(value.name, defaultLanguageCode, "");
+                    return String(nameText || value.slug || "Category");
+                  } catch (error) {
+                    console.error("Error rendering category name:", error, value);
+                    return value.slug || "Category";
                   }
-                  return value.name;
                 })()}
               </p>
-              <p className="text-xs text-muted-foreground">{value.slug}</p>
+              <p className="text-xs text-muted-foreground">{String(value.slug || "")}</p>
             </div>
           </div>
           <button
@@ -188,8 +251,8 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
                       <div className="flex items-start gap-3">
                         <FolderTree className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground">{cat.name}</p>
-                          <p className="text-xs text-muted-foreground">{cat.path}</p>
+                          <p className="font-medium text-foreground">{getMultilingualText(cat.name, defaultLanguageCode, "")}</p>
+                          <p className="text-xs text-muted-foreground">{getMultilingualText(cat.path, defaultLanguageCode, "")}</p>
                         </div>
                       </div>
                     </button>
@@ -219,7 +282,7 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
                               </>
                             )}
                           </div>
-                          <span className="flex-1 text-sm font-medium text-foreground">{cat.name}</span>
+                          <span className="flex-1 text-sm font-medium text-foreground">{getMultilingualText(cat.name, defaultLanguageCode, "")}</span>
                         </div>
                       </button>
                     );
@@ -239,10 +302,12 @@ function CategoryTree({
   categories,
   onSelect,
   level = 0,
+  defaultLanguageCode = "it",
 }: {
   categories: Category[];
   onSelect: (category: Category) => void;
   level?: number;
+  defaultLanguageCode?: string;
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -286,7 +351,7 @@ function CategoryTree({
               >
                 <div className="flex items-center gap-2">
                   <FolderTree className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">{category.name}</span>
+                  <span className="text-sm font-medium text-foreground">{getMultilingualText(category.name, defaultLanguageCode, "")}</span>
                 </div>
               </button>
             </div>
@@ -296,6 +361,7 @@ function CategoryTree({
                 categories={category.children!}
                 onSelect={onSelect}
                 level={level + 1}
+                defaultLanguageCode={defaultLanguageCode}
               />
             )}
           </div>

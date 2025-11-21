@@ -7,7 +7,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAssociationJob extends Document {
   job_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
 
   // Job details
   job_type: "brand_import" | "collection_import" | "category_import" | "product_type_import";
@@ -44,7 +44,7 @@ export interface IAssociationJob extends Document {
 const AssociationJobSchema = new Schema<IAssociationJob>(
   {
     job_id: { type: String, required: true, unique: true, index: true },
-    wholesaler_id: { type: String, required: true, index: true },
+    // wholesaler_id removed - database per wholesaler provides isolation
 
     job_type: {
       type: String,
@@ -94,9 +94,9 @@ const AssociationJobSchema = new Schema<IAssociationJob>(
   }
 );
 
-// Compound indexes
-AssociationJobSchema.index({ wholesaler_id: 1, status: 1 });
-AssociationJobSchema.index({ wholesaler_id: 1, entity_type: 1, entity_id: 1 });
+// Indexes (no wholesaler_id - database provides isolation)
+AssociationJobSchema.index({ status: 1 });
+AssociationJobSchema.index({ entity_type: 1, entity_id: 1 });
 
 export const AssociationJobModel =
   mongoose.models.AssociationJob ||

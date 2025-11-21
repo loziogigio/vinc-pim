@@ -14,12 +14,10 @@ export async function GET(
     const { entity_code } = await params;
     await connectToDatabase();
 
-    // Get wholesaler_id from session/auth (for now using query param)
-    const wholesaler_id = req.nextUrl.searchParams.get("wholesaler_id") || "6900ac2364787f6f09231006";
+    // No wholesaler_id - database provides isolation
 
     // Get all versions of this product, sorted by version descending
     const versions = await PIMProductModel.find({
-      wholesaler_id,
       entity_code,
     })
       .sort({ version: -1 })

@@ -25,7 +25,7 @@ type ImportSource = {
   source_id: string;
   source_name: string;
   source_type: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   field_mappings: Record<string, string>;
   auto_publish_enabled: boolean;
   min_score_threshold: number;
@@ -401,7 +401,7 @@ export default function SourceDetailPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">Wholesaler ID</label>
-              <p className="text-sm text-muted-foreground font-mono">{source.wholesaler_id}</p>
+              {/* wholesaler_id removed - database per wholesaler provides isolation */}
             </div>
 
             <div>

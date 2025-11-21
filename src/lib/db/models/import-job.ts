@@ -6,7 +6,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IImportJob extends Document {
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   source_id: string;
   job_id: string; // BullMQ job ID
   job_type: "import" | "bulk_update"; // Type of job
@@ -51,7 +51,7 @@ export interface IImportJob extends Document {
 
 const ImportJobSchema = new Schema<IImportJob>(
   {
-    wholesaler_id: { type: String, required: true, index: true },
+    // wholesaler_id removed - database per wholesaler provides isolation
     source_id: { type: String, required: true, index: true },
     job_id: { type: String, required: true, unique: true },
     job_type: {
@@ -106,9 +106,8 @@ const ImportJobSchema = new Schema<IImportJob>(
   }
 );
 
-// Compound index for batch queries
+// Compound index for batch queries (no wholesaler_id - database provides isolation)
 ImportJobSchema.index({ batch_id: 1, batch_part: 1 });
-ImportJobSchema.index({ wholesaler_id: 1, batch_id: 1 });
 
 export const ImportJobModel =
   mongoose.models.ImportJob ||

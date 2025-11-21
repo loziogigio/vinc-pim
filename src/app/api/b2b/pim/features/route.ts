@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { FeatureModel } from "@/lib/db/models/feature";
+import { UOMModel } from "@/lib/db/models/uom";
 import { nanoid } from "nanoid";
 
 /**
  * GET /api/b2b/pim/features
- * Get all technical features
+ * Get all technical features with UOM data populated
  */
 export async function GET(req: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 
     // Build query
     const query: any = {
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     };
 
     if (!includeInactive) {
@@ -34,7 +35,25 @@ export async function GET(req: NextRequest) {
       .sort({ display_order: 1, label: 1 })
       .lean();
 
-    return NextResponse.json({ features });
+    // Populate UOM data for features that reference a UOM
+    const featuresWithUOM = await Promise.all(
+      features.map(async (feature: any) => {
+        if (feature.uom_id) {
+          const uom = await UOMModel.findOne({ uom_id: feature.uom_id }).lean();
+          if (uom) {
+            feature.uom = {
+              uom_id: uom.uom_id,
+              symbol: uom.symbol,
+              name: uom.name,
+              category: uom.category,
+            };
+          }
+        }
+        return feature;
+      })
+    );
+
+    return NextResponse.json({ features: featuresWithUOM });
   } catch (error) {
     console.error("Error fetching features:", error);
     return NextResponse.json(
@@ -46,7 +65,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/b2b/pim/features
- * Create a new technical feature
+ * Create a new technical feature with UOM support
  */
 export async function POST(req: NextRequest) {
   try {
@@ -58,7 +77,7 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const body = await req.json();
-    const { key, label, type, unit, options, default_required, display_order } = body;
+    const { key, label, type, unit, uom_id, options, default_required, display_order } = body;
 
     if (!key || !label || !type) {
       return NextResponse.json(
@@ -69,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     // Check if key already exists for this wholesaler
     const existing = await FeatureModel.findOne({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       key,
     });
 
@@ -82,18 +101,33 @@ export async function POST(req: NextRequest) {
 
     const feature = await FeatureModel.create({
       feature_id: nanoid(12),
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       key,
       label,
       type,
-      unit,
+      unit, // Keep for backwards compatibility
+      uom_id, // Preferred: reference to UOM
       options: options || [],
       default_required: default_required || false,
       display_order: display_order || 0,
       is_active: true,
     });
 
-    return NextResponse.json({ feature }, { status: 201 });
+    // Populate UOM data in response if uom_id is provided
+    let featureResponse = feature.toObject();
+    if (uom_id) {
+      const uom = await UOMModel.findOne({ uom_id }).lean();
+      if (uom) {
+        featureResponse.uom = {
+          uom_id: uom.uom_id,
+          symbol: uom.symbol,
+          name: uom.name,
+          category: uom.category,
+        };
+      }
+    }
+
+    return NextResponse.json({ feature: featureResponse }, { status: 201 });
   } catch (error) {
     console.error("Error creating feature:", error);
     return NextResponse.json(

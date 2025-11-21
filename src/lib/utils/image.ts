@@ -97,3 +97,51 @@ export type ProductImage = {
   original: string;       // 2000x2000+ for zoom/download
   blur?: string;          // Base64 blur placeholder
 };
+
+/**
+ * Construct full CDN URL from relative path
+ * @param relativePath - Relative path (e.g., /product_images/10076/main_image.jpg)
+ * @param cdnBaseUrl - CDN base URL (e.g., https://cdn.example.com/bucket)
+ * @returns Full CDN URL or relative path if CDN base URL not provided
+ */
+export function constructCDNUrl(relativePath?: string, cdnBaseUrl?: string): string {
+  if (!relativePath) {
+    return '';
+  }
+
+  if (!cdnBaseUrl) {
+    return relativePath;
+  }
+
+  // Remove trailing slash from base URL and ensure relative path starts with /
+  const normalizedBaseUrl = cdnBaseUrl.replace(/\/+$/, '');
+  const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+
+  return `${normalizedBaseUrl}${normalizedPath}`;
+}
+
+/**
+ * Construct full CDN URLs for all image versions
+ * @param image - Product image object with relative paths
+ * @param cdnBaseUrl - CDN base URL
+ * @returns Product image object with full CDN URLs
+ */
+export function constructImageUrls(
+  image: {
+    thumbnail?: string;
+    medium?: string;
+    large?: string;
+    original?: string;
+    [key: string]: any;
+  },
+  cdnBaseUrl?: string
+): ProductImage {
+  return {
+    id: image.id || '',
+    thumbnail: constructCDNUrl(image.thumbnail, cdnBaseUrl),
+    medium: image.medium ? constructCDNUrl(image.medium, cdnBaseUrl) : undefined,
+    large: image.large ? constructCDNUrl(image.large, cdnBaseUrl) : undefined,
+    original: constructCDNUrl(image.original, cdnBaseUrl),
+    blur: image.blur
+  };
+}

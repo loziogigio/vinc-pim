@@ -30,19 +30,17 @@ export async function GET(
       );
     }
 
-    // Verify collection belongs to this wholesaler
+    // Verify collection exists (no wholesaler_id - database provides isolation)
     const collection = await CollectionModel.findOne({
       collection_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!collection) {
       return NextResponse.json({ error: "Collection not found" }, { status: 404 });
     }
 
-    // Get all products for this collection
+    // Get all products for this collection (no wholesaler_id - database provides isolation)
     const products = await PIMProductModel.find({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "collections.id": id,
     })

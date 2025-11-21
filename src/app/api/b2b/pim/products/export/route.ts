@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Fetch products
     const products = await PIMProductModel.find({
       _id: { $in: product_ids },
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     })
       .sort({ entity_code: 1 })

@@ -39,14 +39,14 @@ export async function GET(
       const version = parseInt(versionParam);
       product = await PIMProductModel.findOne({
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         version,
       }).lean();
 
       // Also fetch current version info for comparison
       currentVersion = await PIMProductModel.findOne({
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       })
         .select("version")
@@ -55,7 +55,7 @@ export async function GET(
       // Fetch current version
       product = await PIMProductModel.findOne({
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       }).lean();
     }
@@ -68,7 +68,7 @@ export async function GET(
     if (product.product_type?.id) {
       const productType = await ProductTypeModel.findOne({
         product_type_id: product.product_type.id,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
       }).lean();
 
       if (productType && productType.features && productType.features.length > 0) {
@@ -78,7 +78,7 @@ export async function GET(
         // Fetch full feature definitions
         const features = await FeatureModel.find({
           feature_id: { $in: featureIds },
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
         }).lean();
 
         // Create a map for quick lookup
@@ -226,7 +226,7 @@ export async function PATCH(
     // Get the old product to check if brand changed
     const oldProduct = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     }).lean() as any;
 
@@ -243,7 +243,7 @@ export async function PATCH(
     const product = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
       { $set: updateDoc },
@@ -261,12 +261,13 @@ export async function PATCH(
       // Update old brand count (decrease)
       if (oldBrandId) {
         const oldBrandCount = await PIMProductModel.countDocuments({
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
           "brand.id": oldBrandId,
         });
+        // No wholesaler_id - database provides isolation
         await BrandModel.updateOne(
-          { brand_id: oldBrandId, wholesaler_id: session.userId },
+          { brand_id: oldBrandId },
           { $set: { product_count: oldBrandCount } }
         );
       }
@@ -274,12 +275,13 @@ export async function PATCH(
       // Update new brand count (increase)
       if (newBrandId) {
         const newBrandCount = await PIMProductModel.countDocuments({
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
           "brand.id": newBrandId,
         });
+        // No wholesaler_id - database provides isolation
         await BrandModel.updateOne(
-          { brand_id: newBrandId, wholesaler_id: session.userId },
+          { brand_id: newBrandId },
           { $set: { product_count: newBrandCount } }
         );
       }
@@ -292,13 +294,14 @@ export async function PATCH(
       await Promise.all(
         affectedTagIds.map(async (tagId) => {
           const tagCount = await PIMProductModel.countDocuments({
-            wholesaler_id: session.userId,
+            // No wholesaler_id - database provides isolation
             isCurrent: true,
             "tag.id": tagId,
           });
 
+          // No wholesaler_id - database provides isolation
           await TagModel.updateOne(
-            { tag_id: tagId, wholesaler_id: session.userId },
+            { tag_id: tagId },
             { $set: { product_count: tagCount } }
           );
         })

@@ -17,9 +17,7 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const wholesaler_id = session.userId;
-
-    // Get product stats
+    // Get product stats (no wholesaler_id - database provides isolation)
     const [
       totalProducts,
       publishedCount,
@@ -31,27 +29,27 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       // Total products (current versions only)
       PIMProductModel.countDocuments({
-        wholesaler_id,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       }),
 
       // Published products
       PIMProductModel.countDocuments({
-        wholesaler_id,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         status: "published",
       }),
 
       // Draft products
       PIMProductModel.countDocuments({
-        wholesaler_id,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         status: "draft",
       }),
 
       // Products with critical issues
       PIMProductModel.countDocuments({
-        wholesaler_id,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         critical_issues: { $exists: true, $ne: [] },
       }),
@@ -60,7 +58,7 @@ export async function GET(req: NextRequest) {
       PIMProductModel.aggregate([
         {
           $match: {
-            wholesaler_id,
+            // No wholesaler_id - database provides isolation
             isCurrent: true,
           },
         },
@@ -76,7 +74,7 @@ export async function GET(req: NextRequest) {
 
       // Auto-published today
       PIMProductModel.countDocuments({
-        wholesaler_id,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         status: "published",
         auto_publish_eligible: true,
@@ -87,7 +85,7 @@ export async function GET(req: NextRequest) {
 
       // Pending imports
       ImportJobModel.countDocuments({
-        wholesaler_id,
+        // No wholesaler_id - database provides isolation
         status: { $in: ["pending", "processing"] },
       }),
     ]);

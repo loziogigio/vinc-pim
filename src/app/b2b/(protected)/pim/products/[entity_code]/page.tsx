@@ -17,6 +17,10 @@ import { BrandSelector } from "@/components/pim/BrandSelector";
 import { FeaturesForm } from "@/components/pim/FeaturesForm";
 import { AttributesEditor } from "@/components/pim/AttributesEditor";
 import { TagSelector, TagReference } from "@/components/pim/TagSelector";
+import { MultilingualInput } from "@/components/pim/MultilingualInput";
+import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
+import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 import {
   ArrowLeft,
   Save,
@@ -26,16 +30,21 @@ import {
   AlertTriangle,
   CheckCircle2,
   History,
+  RefreshCw,
 } from "lucide-react";
 
 type Product = {
   _id: string;
   entity_code: string;
   sku: string;
-  name: string;
+  name: string | Record<string, string>;
   version: number;
-  description?: string;
-  short_description?: string;
+  updated_at?: string;
+  edited_at?: string;
+  last_manual_update_at?: string;
+  last_api_update_at?: string;
+  description?: string | Record<string, string>;
+  short_description?: string | Record<string, string>;
   price?: number;
   currency?: string;
   quantity: number;
@@ -63,29 +72,31 @@ type Product = {
     url: string;
     cdn_key: string;
     label?: string;
-    size_bytes: number;
+    size_bytes?: number;
     uploaded_at: string;
-    uploaded_by: string;
+    uploaded_by?: string;
+    is_external_link?: boolean;
+    position: number;
   }[];
   brand?: {
     id: string;
-    name: string;
+    name: string | Record<string, string>;
     slug: string;
   };
   product_type?: {
     id: string;
-    name: string;
+    name: string | Record<string, string>;
     slug: string;
     features?: any[];
   };
   collections?: {
     id: string;
-    name: string;
+    name: string | Record<string, string>;
     slug: string;
   }[];
   category?: {
     id: string;
-    name: string;
+    name: string | Record<string, string>;
     slug: string;
   };
   tag?: TagReference[];
@@ -103,17 +114,60 @@ type Product = {
   }[];
   last_api_update_at?: string;
   last_manual_update_at?: string;
+  // Analytics
+  analytics?: {
+    views_30d?: number;
+    clicks_30d?: number;
+    add_to_cart_30d?: number;
+    conversions_30d?: number;
+    priority_score?: number;
+    last_synced_at?: string;
+  };
 };
 
 type FormData = {
-  name: string;
-  description: string;
-  short_description: string;
+  name: Record<string, string>;
+  description: Record<string, string>;
+  short_description: Record<string, string>;
   stock_quantity: string;
   status: "draft" | "published" | "archived";
   brand_name: string;
   category_name: string;
 };
+
+/**
+ * Helper function to extract text from multilingual objects
+ * Uses default language first, then fallback chain
+ * IMPORTANT: This function MUST always return a string, never an object
+ */
+function getMultilingualText(
+  text: string | Record<string, string> | undefined | null | any,
+  defaultLanguageCode: string = "it",
+  fallback: string = ""
+): string {
+  // Handle null, undefined, or empty values
+  if (!text) return fallback;
+
+  // If already a string, return it
+  if (typeof text === "string") return text;
+
+  // If not an object, convert to string
+  if (typeof text !== "object") return String(text);
+
+  // Try to extract string from multilingual object
+  try {
+    const result = text[defaultLanguageCode] || text.en || Object.values(text)[0];
+
+    // Ensure result is a string
+    if (typeof result === "string" && result) return result;
+    if (result) return String(result);
+
+    return fallback;
+  } catch (error) {
+    console.error("Error extracting multilingual text:", error, text);
+    return fallback;
+  }
+}
 
 export default function ProductDetailPage({
   params,
@@ -126,18 +180,24 @@ export default function ProductDetailPage({
   const { version: versionParam } = use(searchParams);
   const router = useRouter();
 
+  // Language store for getting default language from database
+  const { languages } = useLanguageStore();
+  const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
+  const defaultLanguageCode = defaultLanguage?.code || "it";
+
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isOldVersion, setIsOldVersion] = useState(false);
   const [currentVersionNumber, setCurrentVersionNumber] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
-    name: "",
-    description: "",
-    short_description: "",
+    name: {},
+    description: {},
+    short_description: {},
     stock_quantity: "",
     status: "draft",
     brand_name: "",
@@ -148,18 +208,18 @@ export default function ProductDetailPage({
 
   // Product associations
   const [productType, setProductType] = useState<any>(null);
-  const [collections, setCollections] = useState<{ id: string; name: string; slug: string }[]>([]);
-  const [category, setCategory] = useState<{ id: string; name: string; slug: string } | null>(null);
-  const [brand, setBrand] = useState<{ id: string; name: string; slug: string; image?: any } | null>(null);
+  const [collections, setCollections] = useState<{ id: string; name: string | Record<string, string>; slug: string }[]>([]);
+  const [category, setCategory] = useState<{ id: string; name: string | Record<string, string>; slug: string } | null>(null);
+  const [brand, setBrand] = useState<{ id: string; name: string | Record<string, string>; slug: string; image?: any } | null>(null);
   const [featureValues, setFeatureValues] = useState<any[]>([]);
   const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({});
   const [tagRefs, setTagRefs] = useState<TagReference[]>([]);
 
   // Original values for comparison
   const [originalProductType, setOriginalProductType] = useState<any>(null);
-  const [originalCollections, setOriginalCollections] = useState<{ id: string; name: string; slug: string }[]>([]);
-  const [originalCategory, setOriginalCategory] = useState<{ id: string; name: string; slug: string } | null>(null);
-  const [originalBrand, setOriginalBrand] = useState<{ id: string; name: string; slug: string; image?: any } | null>(null);
+  const [originalCollections, setOriginalCollections] = useState<{ id: string; name: string | Record<string, string>; slug: string }[]>([]);
+  const [originalCategory, setOriginalCategory] = useState<{ id: string; name: string | Record<string, string>; slug: string } | null>(null);
+  const [originalBrand, setOriginalBrand] = useState<{ id: string; name: string | Record<string, string>; slug: string; image?: any } | null>(null);
   const [originalFeatureValues, setOriginalFeatureValues] = useState<any[]>([]);
   const [originalCustomAttributes, setOriginalCustomAttributes] = useState<Record<string, any>>({});
   const [originalTagRefs, setOriginalTagRefs] = useState<TagReference[]>([]);
@@ -251,15 +311,21 @@ export default function ProductDetailPage({
           setCurrentVersionNumber(null);
         }
 
-        // Initialize form data
+        // Initialize form data - keep full multilingual objects
         const initialData: FormData = {
-          name: data.product.name || "",
-          description: data.product.description || "",
-          short_description: data.product.short_description || "",
+          name: (typeof data.product.name === 'object' && data.product.name !== null)
+            ? data.product.name
+            : { [defaultLanguageCode]: data.product.name || "" },
+          description: (typeof data.product.description === 'object' && data.product.description !== null)
+            ? data.product.description
+            : { [defaultLanguageCode]: data.product.description || "" },
+          short_description: (typeof data.product.short_description === 'object' && data.product.short_description !== null)
+            ? data.product.short_description
+            : { [defaultLanguageCode]: data.product.short_description || "" },
           stock_quantity: data.product.quantity?.toString() || "0",
           status: data.product.status || "draft",
-          brand_name: data.product.brand?.name || "",
-          category_name: data.product.category?.name || "",
+          brand_name: getMultilingualText(data.product.brand?.name, defaultLanguageCode, ""),
+          category_name: getMultilingualText(data.product.category?.name, defaultLanguageCode, ""),
         };
         setFormData(initialData);
         setOriginalData(initialData);
@@ -272,21 +338,45 @@ export default function ProductDetailPage({
         const loadedBrand = data.product.brand || null;
         const loadedAttributes = data.product.attributes || {};
         const loadedTagRefs: TagReference[] = Array.isArray(data.product.tag)
-          ? data.product.tag.map((tag: any) => ({
-              id: tag.id || tag.tag_id || tag.slug || tag.name,
-              name: tag.name,
-              slug: tag.slug || tag.name?.toLowerCase().replace(/\s+/g, "-") || "",
-              color: tag.color,
-            }))
+          ? data.product.tag.map((tag: any) => {
+              // Extract string from multilingual name if needed
+              let tagNameString = '';
+              if (typeof tag.name === 'string') {
+                tagNameString = tag.name;
+              } else if (tag.name && typeof tag.name === 'object') {
+                tagNameString = tag.name.it || tag.name.en || Object.values(tag.name)[0] || '';
+              }
+
+              return {
+                id: tag.id || tag.tag_id || tag.slug || tagNameString,
+                name: tag.name,
+                slug: tag.slug || (tagNameString ? tagNameString.toLowerCase().replace(/\s+/g, "-") : ""),
+                color: tag.color,
+              };
+            })
           : [];
 
         if (loadedTagRefs.length === 0 && Array.isArray(data.product.tags)) {
-          data.product.tags.forEach((tagName: string) => {
-            if (!tagName) return;
-            const slug = tagName.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+          data.product.tags.forEach((tag: any) => {
+            if (!tag) return;
+
+            // Handle both string tags and tag objects with multilingual names
+            let tagName: string;
+            if (typeof tag === 'string') {
+              tagName = tag;
+            } else if (tag.name) {
+              // Extract name from multilingual object or use string directly
+              tagName = typeof tag.name === 'string'
+                ? tag.name
+                : (tag.name.it || tag.name.en || Object.values(tag.name)[0] || '');
+            } else {
+              return;
+            }
+
+            const slug = tag.slug || tagName.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
             loadedTagRefs.push({
-              id: slug,
-              name: tagName,
+              id: tag.id || slug,
+              name: tag.name || tagName,
               slug,
             });
           });
@@ -403,15 +493,21 @@ export default function ProductDetailPage({
         const data = await res.json();
         setProduct(data.product);
 
-        // Update original data to new saved state
+        // Update original data to new saved state - keep full multilingual objects
         const savedData: FormData = {
-          name: data.product.name || "",
-          description: data.product.description || "",
-          short_description: data.product.short_description || "",
+          name: (typeof data.product.name === 'object' && data.product.name !== null)
+            ? data.product.name
+            : { [defaultLanguageCode]: data.product.name || "" },
+          description: (typeof data.product.description === 'object' && data.product.description !== null)
+            ? data.product.description
+            : { [defaultLanguageCode]: data.product.description || "" },
+          short_description: (typeof data.product.short_description === 'object' && data.product.short_description !== null)
+            ? data.product.short_description
+            : { [defaultLanguageCode]: data.product.short_description || "" },
           stock_quantity: data.product.quantity?.toString() || "0",
           status: data.product.status || "draft",
-          brand_name: data.product.brand?.name || "",
-          category_name: data.product.category?.name || "",
+          brand_name: getMultilingualText(data.product.brand?.name, defaultLanguageCode, ""),
+          category_name: getMultilingualText(data.product.category?.name, defaultLanguageCode, ""),
         };
         setFormData(savedData);
         setOriginalData(savedData);
@@ -429,7 +525,7 @@ export default function ProductDetailPage({
 
         // Show success message
         toast.success("Product updated successfully!", {
-          description: `${data.product.name} has been saved.`,
+          description: `${getMultilingualText(data.product.name, defaultLanguageCode, "Product")} has been saved.`,
         });
       } else {
         const error = await res.json();
@@ -497,11 +593,12 @@ export default function ProductDetailPage({
     }
   }
 
-  async function handleMediaUpload(files: File[]) {
+  async function handleMediaUpload(files: File[], type: "document" | "video" | "3d-model") {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append("media", file);
     });
+    formData.append("type", type);
 
     const res = await fetch(`/api/b2b/pim/products/${entity_code}/media`, {
       method: "POST",
@@ -510,11 +607,64 @@ export default function ProductDetailPage({
 
     if (res.ok) {
       const data = await res.json();
-      // Refresh product data to get new media
-      await fetchProduct();
+      // Update local state with new media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
     } else {
       const error = await res.json();
       throw new Error(error.error || "Upload failed");
+    }
+  }
+
+  async function handleMediaAddLink(url: string, type: "document" | "video" | "3d-model", label?: string) {
+    const res = await fetch(`/api/b2b/pim/products/${entity_code}/media/link`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url, type, label }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with new media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
+    } else {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to add link");
+    }
+  }
+
+  async function handleMediaReorder(type: "document" | "video" | "3d-model", newOrder: string[]) {
+    const res = await fetch(`/api/b2b/pim/products/${entity_code}/media/reorder`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type, order: newOrder }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with reordered media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
+    } else {
+      const error = await res.json();
+      throw new Error(error.error || "Reorder failed");
     }
   }
 
@@ -526,7 +676,16 @@ export default function ProductDetailPage({
       }
     );
 
-    if (!res.ok) {
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with updated media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
+    } else {
       const error = await res.json();
       throw new Error(error.error || "Delete failed");
     }
@@ -541,13 +700,19 @@ export default function ProductDetailPage({
       body: JSON.stringify({ cdn_key, label: newLabel }),
     });
 
-    if (!res.ok) {
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with updated media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
+    } else {
       const error = await res.json();
       throw new Error(error.error || "Label update failed");
     }
-
-    // Refresh product data to get updated label
-    await fetchProduct();
   }
 
   async function handleResolveConflicts(resolutions: Record<string, "manual" | "api">) {
@@ -571,7 +736,50 @@ export default function ProductDetailPage({
     await fetchProduct();
   }
 
-  function handleInputChange(field: keyof FormData, value: string) {
+  async function handleSyncToSolr() {
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success("Synced to Search Engine!", {
+          description: "Product updated in search index",
+        });
+
+        // Update only the sync timestamp without refreshing entire page
+        setProduct((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            analytics: {
+              ...prev.analytics,
+              last_synced_at: data.synced_at,
+            },
+          };
+        });
+      } else {
+        const error = await res.json();
+        toast.error("Failed to sync to Search Engine", {
+          description: error.message || "Unknown error occurred",
+        });
+      }
+    } catch (error) {
+      console.error("Error syncing to Search Engine:", error);
+      toast.error("Failed to sync to Search Engine", {
+        description: "Please check your connection and try again.",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  function handleInputChange(field: keyof FormData, value: string | Record<string, string>) {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -647,7 +855,7 @@ export default function ProductDetailPage({
         items={[
           { label: "Product Information Management", href: "/b2b/pim" },
           { label: "Products", href: "/b2b/pim/products" },
-          { label: product.name },
+          { label: getMultilingualText(product.name, defaultLanguageCode, "Product") },
         ]}
       />
 
@@ -699,7 +907,14 @@ export default function ProductDetailPage({
             title={isOldVersion ? "Cannot save changes to old versions" : ""}
           >
             <Save className="h-4 w-4" />
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving
+              ? "Saving..."
+              : formData.status === "published"
+                ? "Commit Update"
+                : formData.status === "draft"
+                  ? "Save Draft"
+                  : "Save Changes"
+            }
           </button>
         </div>
       </div>
@@ -784,20 +999,85 @@ export default function ProductDetailPage({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Status:</span>
-            <span
-              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                product.status === "published"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : product.status === "draft"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
-              {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
-            </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Status:</span>
+              <span
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                  product.status === "published"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : product.status === "draft"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
+                {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+              </span>
+              {product.status === "published" && (
+                <button
+                  onClick={handleSyncToSolr}
+                  disabled={isSyncing}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  title="Sync to search engine"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
+                  {isSyncing ? "Syncing..." : "Sync to Search Engine"}
+                </button>
+              )}
+            </div>
+            {/* Sync Status Visual Display */}
+            {product.status === "published" && (
+              <div className="mt-2 flex flex-col gap-2">
+                {(() => {
+                  const updatedAt = product.updated_at ? new Date(product.updated_at) : null;
+                  const syncedAt = product.analytics?.last_synced_at ? new Date(product.analytics.last_synced_at) : null;
+
+                  // Determine sync status with 2-second tolerance for processing time
+                  const SYNC_TOLERANCE_MS = 2000; // 2 seconds
+                  const timeDiffMs = updatedAt && syncedAt ? updatedAt.getTime() - syncedAt.getTime() : 0;
+
+                  const needsSync = updatedAt && syncedAt && timeDiffMs > SYNC_TOLERANCE_MS;
+                  const isSynced = updatedAt && syncedAt && timeDiffMs <= SYNC_TOLERANCE_MS;
+                  const neverSynced = !syncedAt;
+
+                  return (
+                    <>
+                      {/* Sync Status Badge */}
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${
+                        isSynced
+                          ? "bg-green-50 text-green-700 border border-green-200"
+                          : needsSync
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-gray-50 text-gray-600 border border-gray-200"
+                      }`}>
+                        {isSynced && <CheckCircle2 className="h-3 w-3" />}
+                        {needsSync && <AlertTriangle className="h-3 w-3" />}
+                        {isSynced && "Search index up to date"}
+                        {needsSync && "Changes not synced"}
+                        {neverSynced && "Not synced to search"}
+                      </div>
+
+                      {/* Timestamp Details */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {updatedAt && (
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground font-medium">DB Updated</span>
+                            <span className="text-foreground">{updatedAt.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {syncedAt && (
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground font-medium">Search Synced</span>
+                            <span className="text-foreground">{syncedAt.toLocaleString()}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -812,7 +1092,7 @@ export default function ProductDetailPage({
               {product.image?.large || product.image?.original ? (
                 <Image
                   src={product.image.large || product.image.original}
-                  alt={product.name}
+                  alt={getMultilingualText(product.name, defaultLanguageCode, "Product image")}
                   width={400}
                   height={400}
                   quality={90}
@@ -836,47 +1116,43 @@ export default function ProductDetailPage({
 
         {/* Right Column - Edit Form */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Language Switcher */}
+          <div className="rounded-lg bg-card p-4 shadow-sm">
+            <LanguageSwitcher variant="compact" showLabel={true} />
+          </div>
+
           {/* Basic Information */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-foreground mb-4">Basic Information</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Product Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Enter product name"
-                />
-              </div>
+              <MultilingualInput
+                label="Product Name"
+                value={formData.name}
+                onChange={(value) => handleInputChange("name", value)}
+                placeholder="Enter product name"
+                required={true}
+                variant="reference"
+                showReference={true}
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Short Description
-                </label>
-                <input
-                  type="text"
-                  value={formData.short_description}
-                  onChange={(e) => handleInputChange("short_description", e.target.value)}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Brief product description"
-                />
-              </div>
+              <MultilingualInput
+                label="Short Description"
+                value={formData.short_description}
+                onChange={(value) => handleInputChange("short_description", value)}
+                placeholder="Brief product description"
+                variant="reference"
+                showReference={true}
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Description
-                </label>
-                <RichTextEditor
-                  content={formData.description}
-                  onChange={(html) => handleInputChange("description", html)}
-                  placeholder="Detailed product description"
-                  minHeight="200px"
-                />
-              </div>
+              <MultilingualTextarea
+                label="Description"
+                value={formData.description}
+                onChange={(value) => handleInputChange("description", value)}
+                placeholder="Detailed product description"
+                rows={8}
+                variant="reference"
+                showReference={true}
+              />
             </div>
           </div>
 
@@ -1013,8 +1289,10 @@ export default function ProductDetailPage({
         <MediaGallery
           media={product.media || []}
           onUpload={handleMediaUpload}
+          onAddLink={handleMediaAddLink}
           onDelete={handleMediaDelete}
           onLabelUpdate={handleMediaLabelUpdate}
+          onReorder={handleMediaReorder}
           disabled={isSaving}
         />
       </div>
@@ -1074,7 +1352,7 @@ export default function ProductDetailPage({
                 {product.image?.large || product.image?.original ? (
                   <Image
                     src={product.image.large || product.image.original}
-                    alt={formData.name}
+                    alt={getMultilingualText(formData.name, defaultLanguageCode, "Product")}
                     width={600}
                     height={600}
                     quality={90}
@@ -1090,19 +1368,22 @@ export default function ProductDetailPage({
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">{formData.name}</h2>
-                {formData.short_description && (
-                  <p className="text-sm text-muted-foreground mb-3">{formData.short_description}</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  {getMultilingualText(formData.name, defaultLanguageCode, "Product")}
+                </h2>
+                {getMultilingualText(formData.short_description, defaultLanguageCode, "") && (
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {getMultilingualText(formData.short_description, defaultLanguageCode, "")}
+                  </p>
                 )}
               </div>
 
-              {formData.description && (
+              {getMultilingualText(formData.description, defaultLanguageCode, "") && (
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-2">Description</h4>
-                  <div
-                    className="prose prose-sm max-w-none text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: formData.description }}
-                  />
+                  <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
+                    {getMultilingualText(formData.description, defaultLanguageCode, "")}
+                  </div>
                 </div>
               )}
 

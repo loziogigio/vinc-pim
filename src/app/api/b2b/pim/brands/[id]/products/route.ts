@@ -23,10 +23,10 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
-    // Verify brand belongs to this wholesaler
+    // Verify brand exists
     const brand = await BrandModel.findOne({
       brand_id: params.id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean() as any;
 
     if (!brand) {
@@ -35,7 +35,7 @@ export async function GET(
 
     // Build query
     const query: any = {
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "brand.id": params.id,
     };
@@ -108,10 +108,10 @@ export async function POST(
       );
     }
 
-    // Verify brand belongs to this wholesaler
+    // Verify brand exists
     const brand = await BrandModel.findOne({
       brand_id: params.id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean() as any;
 
     if (!brand) {
@@ -137,7 +137,7 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
         },
         { $set: updateData }
@@ -145,13 +145,13 @@ export async function POST(
 
       // Update brand product count
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "brand.id": params.id,
       });
 
       await BrandModel.updateOne(
-        { brand_id: params.id, wholesaler_id: session.userId },
+        { brand_id: params.id }, // No wholesaler_id - database provides isolation
         { $set: { product_count: productCount } }
       );
 
@@ -164,7 +164,7 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
           "brand.id": params.id,
         },
@@ -173,13 +173,13 @@ export async function POST(
 
       // Update brand product count
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "brand.id": params.id,
       });
 
       await BrandModel.updateOne(
-        { brand_id: params.id, wholesaler_id: session.userId },
+        { brand_id: params.id }, // No wholesaler_id - database provides isolation
         { $set: { product_count: productCount } }
       );
 

@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AlertTriangle, ArrowRight } from "lucide-react";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 
 type PriorityProduct = {
   _id: string;
   entity_code: string;
   sku: string;
-  name: string;
+  name: string | Record<string, string>;
   completeness_score: number;
   critical_issues: string[];
   analytics: {
@@ -20,11 +21,42 @@ type PriorityProduct = {
   gallery?: { id: string; thumbnail: string; original: string }[];
 };
 
+/**
+ * Helper function to extract text from multilingual objects
+ * Uses default language first, then fallback chain
+ * IMPORTANT: This function MUST always return a string, never an object
+ */
+function getMultilingualText(
+  text: string | Record<string, string> | undefined | null | any,
+  defaultLanguageCode: string = "it",
+  fallback: string = ""
+): string {
+  if (!text) return fallback;
+  if (typeof text === "string") return text;
+  if (typeof text !== "object") return String(text);
+
+  try {
+    const result = text[defaultLanguageCode] || text.en || Object.values(text)[0];
+    if (typeof result === "string" && result) return result;
+    if (result) return String(result);
+    return fallback;
+  } catch (error) {
+    console.error("Error extracting multilingual text:", error, text);
+    return fallback;
+  }
+}
+
 export function PriorityProductList() {
   const [products, setProducts] = useState<PriorityProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { languages, fetchLanguages } = useLanguageStore();
+  const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
+  const defaultLanguageCode = defaultLanguage?.code || "it";
+
   useEffect(() => {
+    fetchLanguages();
+
     async function fetchPriorityProducts() {
       try {
         const res = await fetch("/api/b2b/pim/products?sort=priority&limit=10&status=draft");
@@ -101,7 +133,7 @@ export function PriorityProductList() {
               {product.image?.thumbnail ? (
                 <Image
                   src={product.image.thumbnail}
-                  alt={product.name}
+                  alt={getMultilingualText(product.name, defaultLanguageCode, product.sku)}
                   width={48}
                   height={48}
                   className="w-full h-full object-cover"
@@ -121,7 +153,7 @@ export function PriorityProductList() {
                   Priority: {product.analytics.priority_score.toFixed(1)}
                 </span>
               </div>
-              <div className="text-sm font-medium text-foreground truncate">{product.name}</div>
+              <div className="text-sm font-medium text-foreground truncate">{getMultilingualText(product.name, defaultLanguageCode, product.sku)}</div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 {product.analytics.views_30d} views · {product.completeness_score}% complete
               </div>

@@ -6,7 +6,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IImportSource extends Document {
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   source_id: string; // e.g., "manufacturer_acme_feed"
   source_name: string; // e.g., "ACME Manufacturing Feed"
   source_type: "api" | "csv" | "excel" | "xml" | "manual" | "manual_upload";
@@ -63,7 +63,7 @@ export interface IImportSource extends Document {
 
 const ImportSourceSchema = new Schema<IImportSource>(
   {
-    wholesaler_id: { type: String, required: true, index: true },
+    // wholesaler_id removed - database per wholesaler provides isolation
     source_id: { type: String, required: true, unique: true },
     source_name: { type: String, required: true },
     source_type: {

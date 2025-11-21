@@ -2,7 +2,7 @@ import { Schema, model, models, Document } from "mongoose";
 
 export interface IBrand extends Document {
   brand_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   label: string;
   slug: string;
   description?: string;
@@ -23,11 +23,7 @@ const BrandSchema = new Schema<IBrand>(
       unique: true,
       index: true,
     },
-    wholesaler_id: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    // wholesaler_id removed - database per wholesaler provides isolation
     label: {
       type: String,
       required: true,
@@ -73,11 +69,11 @@ const BrandSchema = new Schema<IBrand>(
   }
 );
 
-// Compound index for efficient querying
-BrandSchema.index({ wholesaler_id: 1, slug: 1 }, { unique: true });
-BrandSchema.index({ wholesaler_id: 1, label: 1 });
-BrandSchema.index({ wholesaler_id: 1, is_active: 1 });
-BrandSchema.index({ wholesaler_id: 1, created_at: -1 });
+// Indexes for efficient querying (no wholesaler_id - database provides isolation)
+BrandSchema.index({ slug: 1 }, { unique: true });
+BrandSchema.index({ label: 1 });
+BrandSchema.index({ is_active: 1 });
+BrandSchema.index({ created_at: -1 });
 
 // Pre-save hook to generate slug from label if not provided
 BrandSchema.pre("save", function (next) {

@@ -10,13 +10,28 @@
 
 import mongoose, { Schema, Document } from "mongoose";
 
+// Dynamic Multilingual Text Field (supports any language - validated at runtime)
+export type MultilingualText = Record<string, string>;
+
+// Helper type for language codes (for stricter typing in function params)
+export type SupportedLanguage = string;
+
+// Shared Image Asset Type
+export interface IImageAsset {
+  id: string;
+  url: string;
+  s3_key?: string;
+  uploaded_at?: Date;
+  uploaded_by?: string;
+}
+
 export interface IPIMProduct extends Document {
   // ============================================
   // SECTION 1: PIM METADATA
   // ============================================
 
   // Identity & Ownership
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   entity_code: string; // Unique product identifier
 
   // Versioning System
@@ -82,44 +97,30 @@ export interface IPIMProduct extends Document {
 
   // Basic Info
   sku: string;
-  name: string;
-  slug: string;
-  description?: string;
+  name: MultilingualText;           // Multilingual: "it": "Trapano...", "de": "Schlagbohrmaschine...", etc.
+  slug: MultilingualText;           // Multilingual: "it": "trapano-battente...", "de": "schlagbohrmaschine...", etc.
+  description?: MultilingualText;   // Multilingual: "it": "Il trapano...", "de": "Die Bosch...", etc.
 
-  // Images (Attachment type)
-  image: {
-    id: string;
-    thumbnail: string;
-    original: string;
-  };
-  gallery?: {
-    id: string;
-    thumbnail: string;
-    original: string;
-  }[];
-
-  // PIM Image Management (for manual uploads)
-  images?: {
-    url: string;
-    cdn_key: string;
+  // Gallery Images (product photos - first image [position 0] is the cover/main image)
+  gallery?: (IImageAsset & {
+    label?: string;
     position: number;
-    uploaded_at: Date;
-    uploaded_by: string;
-    file_name?: string;
-    file_type?: string;
-    size_bytes?: number;
-  }[];
+  })[];
 
-  // PIM Media Management (documents, videos, 3D models)
+  // Media Files (documents, videos, 3D models, URLs with labels)
+  // Supports both uploaded files and external URLs (YouTube, Vimeo, etc.)
   media?: {
     type: "document" | "video" | "3d-model";
-    file_type: string;
-    url: string;
-    cdn_key: string;
-    label?: string;
-    size_bytes: number;
-    uploaded_at: Date;
-    uploaded_by: string;
+    url: string;           // S3/CDN URL or external URL (YouTube, Vimeo, etc.)
+    s3_key?: string;       // S3 key (empty for external links)
+    label: MultilingualText; // Multilingual label: "it": "Manuale d'uso italiano", "de": "Bedienungsanleitung", etc.
+    language?: SupportedLanguage; // Primary language of the media file (e.g., "it" for Italian manual)
+    file_type?: string;    // MIME type (e.g., "application/pdf", "video/mp4")
+    size_bytes?: number;   // File size (optional for external links)
+    uploaded_at?: Date;
+    uploaded_by?: string;
+    is_external_link?: boolean; // true for YouTube/Vimeo/external URLs, false for S3 uploads
+    position: number;      // Display order (0, 1, 2...)
   }[];
 
   // Inventory
@@ -130,7 +131,7 @@ export interface IPIMProduct extends Document {
   // Brand (Brand type)
   brand?: {
     id: string;
-    name: string;
+    name: string;           // Brand name can be universal (e.g., "Bosch Professional")
     slug: string;
     image?: {
       id: string;
@@ -142,9 +143,9 @@ export interface IPIMProduct extends Document {
   // Category (Category type)
   category?: {
     id: string;
-    name: string;
-    slug: string;
-    details?: string;
+    name: MultilingualText;   // Multilingual: "it": "Trapani Battenti", "de": "Schlagbohrmaschinen", etc.
+    slug: MultilingualText;   // Multilingual: "it": "trapani-battenti", "de": "schlagbohrmaschinen", etc.
+    details?: MultilingualText; // Multilingual details/description
     image?: {
       id: string;
       thumbnail: string;
@@ -156,51 +157,59 @@ export interface IPIMProduct extends Document {
   // Collections (can have multiple)
   collections?: {
     id: string;
-    name: string;
-    slug: string;
+    name: MultilingualText;   // Multilingual: "it": "Utensili Elettrici", "de": "Elektrowerkzeuge", etc.
+    slug: MultilingualText;   // Multilingual: "it": "utensili-elettrici", "de": "elektrowerkzeuge", etc.
   }[];
 
   // Product Type (with features)
   product_type?: {
     id: string;
-    name: string;
-    slug: string;
+    name: MultilingualText;   // Multilingual: "it": "Trapano", "de": "Bohrmaschine", etc.
+    slug: MultilingualText;   // Multilingual: "it": "trapano", "de": "bohrmaschine", etc.
     features?: {
       key: string;
-      label: string;
+      label: MultilingualText; // Multilingual label
       value: string | number | boolean | string[];
       unit?: string;
     }[];
   };
 
-  // Custom Attributes (flexible key-value pairs)
-  attributes?: Record<string, any>;
+  // Attributes (Product properties with labels)
+  // Multilingual structure: attributes organized by language
+  attributes?: {
+    [K in SupportedLanguage]?: {
+      key: string;        // Programmatic key (e.g., "color", "material")
+      label: string;      // Display label in this language (e.g., "Colore" for IT, "Farbe" for DE)
+      value: any;         // Attribute value (can be translated or universal)
+    }[];
+  };
 
-  // Tags (array of strings)
-  tags?: string[];
-
-  // Tags (Tag[] type)
-  tag?: {
+  // Tags (for marketing, SEO, filtering - e.g., "bestseller", "featured", "eco-friendly")
+  tags?: {
     id: string;
-    name: string;
-    slug: string;
+    name: MultilingualText;   // Multilingual: "it": "Più venduto", "de": "Bestseller", etc.
+    slug: string;             // Slug can be universal (e.g., "bestseller")
   }[];
 
-  // Features
+  // Features (Marketing highlights - "Caratteristiche")
+  // Multilingual structure: features organized by language
+  // Example: { "it": ["Ricarica wireless", "Resistente all'acqua IP68"], "de": [...] }
   features?: {
-    label: string;
-    value: string;
-    unit?: string;
-  }[];
+    [K in SupportedLanguage]?: string[];
+  };
 
-  // Documents
-  docs?: {
-    id: number;
-    url: string;
-    area?: string;
-    filename?: string;
-    ext?: string;
-  }[];
+  // Specifications (Technical data - "Specifiche tecniche")
+  // Multilingual structure: specifications organized by language (labels translated, values stay same)
+  specifications?: {
+    [K in SupportedLanguage]?: {
+      key: string;        // Programmatic key (e.g., "weight", "dimensions")
+      label: string;      // Display label in this language (e.g., "Peso" for IT, "Gewicht" for DE)
+      value: string | number; // Specification value (universal)
+      uom?: string;       // Unit of measure (e.g., "kg", "cm", "W")
+      category?: string;  // Group specs (translated or universal)
+      order?: number;     // Display order
+    }[];
+  };
 
   // Metadata
   meta?: {
@@ -209,28 +218,56 @@ export interface IPIMProduct extends Document {
   }[];
 
   // Variations
-  id_parent?: string;
   parent_sku?: string;
-  variations?: string[]; // Array of child entity_codes
+  parent_entity_code?: string;
+  variations_sku?: string[]; // Array of child SKUs
+  variations_entity_code?: string[]; // Array of child entity_codes
 
   // Additional Product Fields
   product_model?: string;
-  short_description?: string;
-  long_description?: string;
+  ean?: string[];                         // EAN barcodes (array for multiple codes)
+  short_description?: MultilingualText;   // Multilingual: "it": "Trapano professionale 750W...", etc.
+  long_description?: MultilingualText;    // Multilingual: "it": "Descrizione completa...", etc.
   product_status?: string;
-  product_status_description?: string;
+  product_status_description?: MultilingualText; // Multilingual: "it": "Disponibile", "de": "Verfügbar", etc.
   stock_status?: "in_stock" | "out_of_stock" | "pre_order";
 
-  // ERP Specific
+  // ERP Specific - Packaging Options
   packaging_options?: {
-    packaging_uom: string;
-    packaging_qty: number;
-    ean?: string;
+    id?: string;              // Optional unique ID
+    code: string;             // Packaging code (e.g., "MV", "IM", "CF", "PALLET")
+    label: MultilingualText;  // Multilingual: "it": "Pezzo singolo", "de": "Einzelstück", etc.
+    qty: number;              // Quantity per packaging unit
+    uom: string;              // Unit of measure (e.g., "PZ")
+    is_default: boolean;      // Is this the default packaging?
+    is_smallest: boolean;     // Is this the smallest unit?
+    ean?: string;             // EAN barcode (optional)
+    position?: number;        // Display order (optional)
+  }[];
+
+  // Promotions (Denormalized for faceting/search - filtered at query time)
+  // Each promotion is language-specific with translated label
+  promotions?: {
+    promo_code?: string;            // Promotion code (not promotion_id)
+    is_active: boolean;
+    promo_type?: "percentage" | "fixed_amount" | "amount" | "buy_x_get_y" | "bundle" | "free_shipping";
+    label: MultilingualText;        // Multilingual: "it": "Promozione di Natale", "de": "Weihnachtsaktion", etc.
+    language?: SupportedLanguage;   // Primary language of the promotion (optional)
+    discount_percentage?: number;   // Percentage discount (e.g., 20 for 20% off)
+    discount_amount?: number;       // Fixed amount discount (e.g., 10.00 for €10 off)
+    buy_x?: number;                 // Buy X quantity (for buy_x_get_y type)
+    get_y?: number;                 // Get Y quantity (for buy_x_get_y type)
+    is_stackable: boolean;          // Can be combined with other promotions
+    priority: number;               // Priority order (higher = more important)
+    start_date?: Date;              // Promotion start date
+    end_date?: Date;                // Promotion end date
+    min_quantity?: number;          // Minimum quantity to qualify
+    min_order_value?: number;       // Minimum order value to qualify
   }[];
 
   // SEO
-  meta_title?: string;
-  meta_description?: string;
+  meta_title?: MultilingualText;        // Multilingual: "it": "Bosch PSB 750 - Trapano...", etc.
+  meta_description?: MultilingualText;  // Multilingual: "it": "Acquista il trapano...", etc.
 
   // ============================================
   // SECTION 3: TIMESTAMPS
@@ -239,13 +276,51 @@ export interface IPIMProduct extends Document {
   updated_at: Date;
 }
 
+// Shared Image Asset Schema
+const ImageAssetSchema = {
+  id: { type: String, required: true },
+  url: { type: String, required: true },
+  s3_key: { type: String },
+  uploaded_at: { type: Date },
+  uploaded_by: { type: String },
+};
+
+// Dynamic Multilingual Text Schema Helper
+// Uses Mixed type to support all languages (validated at runtime via middleware)
+const createMultilingualTextSchema = () => {
+  return { type: Schema.Types.Mixed };
+};
+
+// Dynamic Features Schema (array of strings per language)
+// Uses Mixed type to support all languages (validated at runtime via middleware)
+const createFeaturesSchema = () => {
+  return { type: Schema.Types.Mixed };
+};
+
+// Dynamic Specifications Schema (structured array per language)
+// Uses Mixed type to support all languages (validated at runtime via middleware)
+const createSpecificationsSchema = () => {
+  return { type: Schema.Types.Mixed };
+};
+
+// Dynamic Attributes Schema (structured array per language)
+// Uses Mixed type to support all languages (validated at runtime via middleware)
+const createAttributesSchema = () => {
+  return { type: Schema.Types.Mixed };
+};
+
+const MultilingualTextSchema = createMultilingualTextSchema();
+const FeaturesSchema = createFeaturesSchema();
+const SpecificationsSchema = createSpecificationsSchema();
+const AttributesSchema = createAttributesSchema();
+
 const PIMProductSchema = new Schema<IPIMProduct>(
   {
     // ============================================
     // SECTION 1: PIM METADATA
     // ============================================
 
-    wholesaler_id: { type: String, required: true, index: true },
+    // wholesaler_id removed - database per wholesaler provides isolation
     entity_code: { type: String, required: true, index: true },
 
     version: { type: Number, required: true, default: 1 },
@@ -256,7 +331,6 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       type: String,
       enum: ["draft", "published", "archived"],
       default: "draft",
-      index: true,
     },
     published_at: { type: Date },
 
@@ -309,48 +383,33 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     // ============================================
 
     sku: { type: String, required: true, index: true },
-    name: { type: String, required: true },
-    slug: { type: String, index: true },
-    description: { type: String },
+    name: MultilingualTextSchema,
+    slug: MultilingualTextSchema,
+    description: MultilingualTextSchema,
 
-    image: {
-      id: { type: String, required: true },
-      thumbnail: { type: String, required: true },
-      original: { type: String, required: true },
-    },
+    // Gallery Images (product photos - first image [position 0] is the cover/main image)
     gallery: [
       {
-        id: { type: String, required: true },
-        thumbnail: { type: String, required: true },
-        original: { type: String, required: true },
+        ...ImageAssetSchema,
+        label: { type: String },
+        position: { type: Number, required: true, default: 0 },
       },
     ],
 
-    // PIM Image Management (for manual uploads)
-    images: [
-      {
-        url: { type: String, required: true },
-        cdn_key: { type: String, required: true },
-        position: { type: Number, required: true },
-        uploaded_at: { type: Date, required: true },
-        uploaded_by: { type: String, required: true },
-        file_name: { type: String },
-        file_type: { type: String },
-        size_bytes: { type: Number },
-      },
-    ],
-
-    // PIM Media Management (documents, videos, 3D models)
+    // Media Files (documents, videos, 3D models, URLs with labels)
     media: [
       {
         type: { type: String, enum: ["document", "video", "3d-model"], required: true },
-        file_type: { type: String, required: true },
         url: { type: String, required: true },
-        cdn_key: { type: String, required: true },
-        label: { type: String },
-        size_bytes: { type: Number, required: true },
-        uploaded_at: { type: Date, required: true },
-        uploaded_by: { type: String, required: true },
+        s3_key: { type: String },
+        label: MultilingualTextSchema,
+        language: { type: String }, // Validated at runtime via middleware
+        file_type: { type: String },
+        size_bytes: { type: Number },
+        uploaded_at: { type: Date },
+        uploaded_by: { type: String },
+        is_external_link: { type: Boolean, default: false },
+        position: { type: Number, required: true, default: 0 },
       },
     ],
 
@@ -371,9 +430,9 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     category: {
       id: { type: String },
-      name: { type: String },
-      slug: { type: String },
-      details: { type: String },
+      name: MultilingualTextSchema,
+      slug: MultilingualTextSchema,
+      details: MultilingualTextSchema,
       image: {
         id: { type: String },
         thumbnail: { type: String },
@@ -385,62 +444,42 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     collections: [
       {
         id: { type: String },
-        name: { type: String },
-        slug: { type: String },
+        name: MultilingualTextSchema,
+        slug: MultilingualTextSchema,
       },
     ],
 
     product_type: {
       id: { type: String },
-      name: { type: String },
-      slug: { type: String },
+      name: MultilingualTextSchema,
+      slug: MultilingualTextSchema,
       features: [
         {
           key: { type: String },
-          label: { type: String },
+          label: MultilingualTextSchema,
           value: { type: Schema.Types.Mixed },
           unit: { type: String },
         },
       ],
     },
 
-    // Custom Attributes (flexible key-value pairs)
-    attributes: {
-      type: Schema.Types.Mixed,
-      default: {},
-    },
+    // Attributes (Product properties with labels) - dynamically organized by language
+    attributes: AttributesSchema,
 
-    // Tags (array of strings)
-    tags: {
-      type: [String],
-      default: [],
-    },
-
-    tag: [
+    // Tags (for marketing, SEO, filtering)
+    tags: [
       {
-        id: { type: String },
-        name: { type: String },
-        slug: { type: String },
+        id: { type: String, required: true },
+        name: MultilingualTextSchema,
+        slug: { type: String, required: true },
       },
     ],
 
-    features: [
-      {
-        label: { type: String },
-        value: { type: String },
-        unit: { type: String },
-      },
-    ],
+    // Features (Marketing highlights - dynamically organized by language)
+    features: FeaturesSchema,
 
-    docs: [
-      {
-        id: { type: Number, required: true },
-        url: { type: String, required: true },
-        area: { type: String },
-        filename: { type: String },
-        ext: { type: String },
-      },
-    ],
+    // Specifications (Technical data - dynamically organized by language)
+    specifications: SpecificationsSchema,
 
     meta: [
       {
@@ -449,15 +488,17 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       },
     ],
 
-    id_parent: { type: String },
     parent_sku: { type: String },
-    variations: [{ type: String }],
+    parent_entity_code: { type: String },
+    variations_sku: [{ type: String }],
+    variations_entity_code: [{ type: String }],
 
     product_model: { type: String },
-    short_description: { type: String },
-    long_description: { type: String },
+    ean: [{ type: String }],
+    short_description: MultilingualTextSchema,
+    long_description: MultilingualTextSchema,
     product_status: { type: String },
-    product_status_description: { type: String },
+    product_status_description: MultilingualTextSchema,
     stock_status: {
       type: String,
       enum: ["in_stock", "out_of_stock", "pre_order"],
@@ -465,14 +506,43 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     packaging_options: [
       {
-        packaging_uom: { type: String, required: true },
-        packaging_qty: { type: Number, required: true },
+        id: { type: String },
+        code: { type: String, required: true },
+        label: MultilingualTextSchema,
+        qty: { type: Number, required: true },
+        uom: { type: String, required: true },
+        is_default: { type: Boolean, required: true, default: false },
+        is_smallest: { type: Boolean, required: true, default: false },
         ean: { type: String },
+        position: { type: Number },
       },
     ],
 
-    meta_title: { type: String },
-    meta_description: { type: String },
+    promotions: [
+      {
+        promo_code: { type: String },
+        is_active: { type: Boolean, required: true, default: true },
+        promo_type: {
+          type: String,
+          enum: ["percentage", "fixed_amount", "amount", "buy_x_get_y", "bundle", "free_shipping"],
+        },
+        label: MultilingualTextSchema,
+        language: { type: String }, // Validated at runtime via middleware
+        discount_percentage: { type: Number },
+        discount_amount: { type: Number },
+        buy_x: { type: Number },
+        get_y: { type: Number },
+        is_stackable: { type: Boolean, required: true, default: false },
+        priority: { type: Number, required: true, default: 0 },
+        start_date: { type: Date },
+        end_date: { type: Date },
+        min_quantity: { type: Number },
+        min_order_value: { type: Number },
+      },
+    ],
+
+    meta_title: MultilingualTextSchema,
+    meta_description: MultilingualTextSchema,
 
     // ============================================
     // SECTION 3: TIMESTAMPS
@@ -485,11 +555,11 @@ const PIMProductSchema = new Schema<IPIMProduct>(
   }
 );
 
-// Compound indexes for performance
+// Compound indexes for performance (no wholesaler_id - database provides isolation)
 PIMProductSchema.index({ entity_code: 1, version: 1 });
 PIMProductSchema.index({ entity_code: 1, isCurrent: 1 });
-PIMProductSchema.index({ wholesaler_id: 1, status: 1, completeness_score: -1 });
-PIMProductSchema.index({ wholesaler_id: 1, "analytics.priority_score": -1 });
+PIMProductSchema.index({ status: 1, completeness_score: -1 });
+PIMProductSchema.index({ "analytics.priority_score": -1 });
 PIMProductSchema.index({ "source.source_id": 1, status: 1 });
 
 export const PIMProductModel =

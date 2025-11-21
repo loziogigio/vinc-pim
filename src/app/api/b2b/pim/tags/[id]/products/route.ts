@@ -20,7 +20,7 @@ export async function GET(
 
     const tag = await TagModel.findOne({
       tag_id: tagId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!tag) {
@@ -34,7 +34,7 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "tag.id": tagId,
     };
@@ -111,7 +111,7 @@ export async function POST(
 
     const tag = await TagModel.findOne({
       tag_id: tagId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!tag) {
@@ -128,7 +128,7 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
           "tag.id": { $ne: tagId },
         },
@@ -136,13 +136,13 @@ export async function POST(
       );
 
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "tag.id": tagId,
       });
 
       await TagModel.updateOne(
-        { tag_id: tagId, wholesaler_id: session.userId },
+        { tag_id: tagId }, // No wholesaler_id - database provides isolation
         { $set: { product_count: productCount } }
       );
 
@@ -155,7 +155,7 @@ export async function POST(
     const result = await PIMProductModel.updateMany(
       {
         entity_code: { $in: entity_codes },
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "tag.id": tagId,
       },
@@ -163,13 +163,13 @@ export async function POST(
     );
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "tag.id": tagId,
     });
 
     await TagModel.updateOne(
-      { tag_id: tagId, wholesaler_id: session.userId },
+      { tag_id: tagId }, // No wholesaler_id - database provides isolation
       { $set: { product_count: productCount } }
     );
 

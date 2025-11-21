@@ -336,6 +336,7 @@ function CreateSourceModal({
     auto_publish_enabled: false,
     min_score_threshold: 80,
     required_fields: ["name", "sku", "price", "image"],
+    overwrite_level: "automatic" as "automatic" | "manual",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -469,6 +470,31 @@ function CreateSourceModal({
                 </p>
               </div>
             )}
+
+            {/* Conflict Resolution */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Conflict Resolution
+              </label>
+              <select
+                value={formData.overwrite_level}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    overwrite_level: e.target.value as "automatic" | "manual",
+                  })
+                }
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              >
+                <option value="automatic">Automatic (API always overwrites)</option>
+                <option value="manual">Manual (Protect manual edits)</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formData.overwrite_level === "automatic"
+                  ? "API updates will always overwrite manual edits without creating conflicts"
+                  : "Manual edits will be protected - conflicts created when API tries to update them"}
+              </p>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">

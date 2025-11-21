@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     // Create import job (using source's wholesaler_id)
     const jobId = `import_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const job = await ImportJobModel.create({
-      wholesaler_id: source.wholesaler_id,
+      // No wholesaler_id - database provides isolation
       source_id: sourceId,
       job_id: jobId,
       file_name: file.name,
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       const queueData = {
         job_id: jobId,
         source_id: sourceId,
-        wholesaler_id: source.wholesaler_id,
+        // No wholesaler_id - database provides isolation
         file_url: fileUrl, // CDN URL only
         file_name: file.name,
       };

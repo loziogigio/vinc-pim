@@ -30,19 +30,17 @@ export async function GET(
       );
     }
 
-    // Verify product type belongs to this wholesaler
+    // Verify product type exists (no wholesaler_id - database provides isolation)
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!productType) {
       return NextResponse.json({ error: "Product type not found" }, { status: 404 });
     }
 
-    // Get all products for this product type
+    // Get all products for this product type (no wholesaler_id - database provides isolation)
     const products = await PIMProductModel.find({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "product_type.id": id,
     })

@@ -27,7 +27,7 @@ type ProductVersion = {
   _id: string;
   entity_code: string;
   sku: string;
-  name: string;
+  name: string | Record<string, string>;
   description?: string;
   version: number;
   isCurrent: boolean;
@@ -277,7 +277,12 @@ export default function ProductHistoryPage({
           { label: "Product Information Management", href: "/b2b/pim" },
           { label: "Products", href: "/b2b/pim/products" },
           {
-            label: currentProduct?.name || entity_code,
+            label: (() => {
+              if (!currentProduct?.name) return entity_code;
+              if (typeof currentProduct.name === "string") return currentProduct.name;
+              // Extract from multilingual object - prefer Italian, then English, then first available
+              return currentProduct.name.it || currentProduct.name.en || Object.values(currentProduct.name)[0] || entity_code;
+            })(),
             href: `/b2b/pim/products/${entity_code}`,
           },
           { label: "Version History" },

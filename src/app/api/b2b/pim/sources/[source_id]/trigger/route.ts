@@ -47,7 +47,7 @@ export async function POST(
     const jobId = `api-import-${source_id}-${Date.now()}`;
 
     const importJob = await ImportJobModel.create({
-      wholesaler_id: source.wholesaler_id,
+      // No wholesaler_id - database provides isolation
       source_id: source.source_id,
       job_id: jobId,
       status: "pending",
@@ -66,7 +66,7 @@ export async function POST(
       "api-import",
       {
         source_id: source.source_id,
-        wholesaler_id: source.wholesaler_id,
+        // No wholesaler_id - database provides isolation
         job_id: jobId,
         api_config: source.api_config,
         field_mappings: source.field_mappings,

@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -57,6 +57,16 @@ const CompanyBrandingSchema = new Schema(
   { _id: false }
 );
 
+// CDN configuration schema
+const CDNConfigurationSchema = new Schema(
+  {
+    baseUrl: { type: String },
+    description: { type: String },
+    enabled: { type: Boolean, default: true }
+  },
+  { _id: false }
+);
+
 // Home settings schema
 const HomeSettingsSchema = new Schema(
   {
@@ -78,6 +88,9 @@ const HomeSettingsSchema = new Schema(
     cardStyle: {
       type: ProductCardStyleSchema,
       default: () => ({})
+    },
+    cdn: {
+      type: CDNConfigurationSchema
     },
     lastModifiedBy: { type: String }
   },

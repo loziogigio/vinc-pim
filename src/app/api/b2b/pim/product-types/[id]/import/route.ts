@@ -32,10 +32,9 @@ export async function POST(
       );
     }
 
-    // Verify product type belongs to this wholesaler
+    // Verify product type exists (no wholesaler_id - database provides isolation)
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!productType) {
@@ -113,7 +112,6 @@ export async function POST(
     const jobId = nanoid(16);
     const job = {
       job_id: jobId,
-      wholesaler_id: session.userId,
       job_type: "product_type_import" as const,
       entity_type: "product_type" as const,
       entity_id: id,
@@ -200,7 +198,7 @@ async function processAssociationJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
             },
             { $set: updateData }
@@ -212,7 +210,7 @@ async function processAssociationJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
               "product_type.id": id,
             },
@@ -242,16 +240,15 @@ async function processAssociationJob(
       );
     }
 
-    // Update product type product count
+    // Update product type product count (no wholesaler_id - database provides isolation)
     const { ProductTypeModel } = await import("@/lib/db/models/product-type");
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: wholesalerId,
       isCurrent: true,
       "product_type.id": id,
     });
 
     await ProductTypeModel.updateOne(
-      { product_type_id: id, wholesaler_id: wholesalerId },
+      { product_type_id: id },
       { $set: { product_count: productCount } }
     );
 

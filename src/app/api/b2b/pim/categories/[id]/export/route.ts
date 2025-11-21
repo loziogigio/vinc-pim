@@ -30,19 +30,17 @@ export async function GET(
       );
     }
 
-    // Verify category belongs to this wholesaler
+    // Verify category exists (no wholesaler_id - database provides isolation)
     const category = await CategoryModel.findOne({
       category_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!category) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
-    // Get all products for this category
+    // Get all products for this category (no wholesaler_id - database provides isolation)
     const products = await PIMProductModel.find({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "category.id": id,
     })

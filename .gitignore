@@ -8,6 +8,8 @@ dist/
 exports/
 *-exports/
 mongodb-exports/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # environment & logs
 .env
@@ -19,3 +21,10 @@ mongodb-exports/
 *.sw?
 .idea/
 .vscode/
+
+# test files
+test-*.csv
+test-*.json
+test-*.html
+sample-*.csv
+sample-*.json

@@ -30,19 +30,17 @@ export async function GET(
       );
     }
 
-    // Verify brand belongs to this wholesaler
+    // Verify brand exists (no wholesaler_id - database provides isolation)
     const brand = await BrandModel.findOne({
       brand_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!brand) {
       return NextResponse.json({ error: "Brand not found" }, { status: 404 });
     }
 
-    // Get all products for this brand
+    // Get all products for this brand (no wholesaler_id - database provides isolation)
     const products = await PIMProductModel.find({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "brand.id": id,
     })

@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
 
-    // Build query
-    const query: any = { wholesaler_id: session.userId };
+    // Build query - no wholesaler_id, database provides isolation
+    const query: any = {};
 
     if (search) {
       query.$or = [
@@ -98,9 +98,8 @@ export async function POST(req: NextRequest) {
         .replace(/^-+|-+$/g, "");
     }
 
-    // Check if slug already exists for this wholesaler
+    // Check if slug already exists (no wholesaler_id - database provides isolation)
     const existingBrand = await BrandModel.findOne({
-      wholesaler_id: session.userId,
       slug: finalSlug,
     });
 
@@ -111,10 +110,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create brand
+    // Create brand - no wholesaler_id, database provides isolation
     const brand = await BrandModel.create({
       brand_id: nanoid(12),
-      wholesaler_id: session.userId,
       label: label.trim(),
       slug: finalSlug,
       description: description?.trim() || undefined,

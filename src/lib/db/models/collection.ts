@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICollection extends Document {
   collection_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   name: string;
   slug: string;
   description?: string;
@@ -43,11 +43,7 @@ const CollectionSchema = new Schema<ICollection>(
       unique: true,
       index: true,
     },
-    wholesaler_id: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    // wholesaler_id removed - database per wholesaler provides isolation
     name: {
       type: String,
       required: true,
@@ -99,11 +95,11 @@ const CollectionSchema = new Schema<ICollection>(
   }
 );
 
-// Compound index for wholesaler + slug uniqueness
-CollectionSchema.index({ wholesaler_id: 1, slug: 1 }, { unique: true });
+// Index for slug uniqueness (no wholesaler_id - database provides isolation)
+CollectionSchema.index({ slug: 1 }, { unique: true });
 
 // Index for sorting
-CollectionSchema.index({ wholesaler_id: 1, display_order: 1 });
+CollectionSchema.index({ display_order: 1 });
 
 export const CollectionModel =
   mongoose.models.Collection || mongoose.model<ICollection>("Collection", CollectionSchema);

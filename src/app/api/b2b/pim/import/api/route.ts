@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     // Verify source exists
     console.log(`🔍 Looking for source: ${source_id}`);
     const source = await ImportSourceModel.findOne({ source_id });
-    console.log(`📦 Source found:`, source ? `${source.source_name} (${source.wholesaler_id})` : "null");
+    console.log(`📦 Source found:`, source ? `${source.source_name}` : "null");
 
     if (!source) {
       // List all sources for debugging
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     // Create import job
     const jobId = `api_import_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const job = await ImportJobModel.create({
-      wholesaler_id: source.wholesaler_id,
+      // No wholesaler_id - database provides isolation
       source_id: source_id,
       job_id: jobId,
       file_name: `API Import - ${products.length} products`,
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
 
         // Find latest version for this product
         const latestProduct = await PIMProductModel.findOne({
-          wholesaler_id: source.wholesaler_id,
+          // No wholesaler_id - database provides isolation
           entity_code,
           isCurrent: true,
         }).sort({ version: -1 });
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
         if (latestProduct) {
           await PIMProductModel.updateMany(
             {
-              wholesaler_id: source.wholesaler_id,
+              // No wholesaler_id - database provides isolation
               entity_code,
               isCurrent: true
             },
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
 
         // Create new version
         await PIMProductModel.create({
-          wholesaler_id: source.wholesaler_id,
+          // No wholesaler_id - database provides isolation
           entity_code,
           sku: finalProductData.sku || entity_code,
           version: newVersion,

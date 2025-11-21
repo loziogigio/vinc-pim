@@ -56,7 +56,7 @@ export function DashboardHeader({ session, notificationCount = 0 }: DashboardHea
               <span className="text-[0.95rem] font-semibold">B2B</span>
             </div>
             <div className="leading-tight">
-              <p className="text-[1rem] font-semibold text-[#5e5873]">VINC Trade Manager</p>
+              <p className="text-[1rem] font-semibold text-[#5e5873]">VINC PIM</p>
               <p className="text-[0.75rem] text-[#b9b9c3]">{session.companyName}</p>
             </div>
           </div>

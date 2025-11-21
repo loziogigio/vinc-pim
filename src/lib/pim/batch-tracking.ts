@@ -23,13 +23,10 @@ export interface BatchProgress {
  * Check batch completion status and progress
  */
 export async function checkBatchCompletion(
-  batch_id: string,
-  wholesaler_id?: string
+  batch_id: string
 ): Promise<BatchProgress> {
   const filter: any = { batch_id };
-  if (wholesaler_id) {
-    filter.wholesaler_id = wholesaler_id;
-  }
+  // No wholesaler_id filter - database provides isolation
 
   const jobs = await ImportJobModel.find(filter).sort({ batch_part: 1 }).exec();
 
@@ -107,11 +104,11 @@ export async function checkBatchCompletion(
 /**
  * Get all batches with their progress
  */
-export async function getAllBatches(wholesaler_id: string) {
+export async function getAllBatches() {
   const batchGroups = await ImportJobModel.aggregate([
     {
       $match: {
-        wholesaler_id,
+        // No wholesaler_id filter - database provides isolation
         batch_id: { $exists: true, $ne: null },
       },
     },
@@ -180,14 +177,13 @@ export async function getAllBatches(wholesaler_id: string) {
  * Groups imports by source + time window (1 hour)
  */
 export async function autoGenerateBatchId(
-  source_id: string,
-  wholesaler_id: string
+  source_id: string
 ): Promise<string> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
   const recentJobs = await ImportJobModel.find({
     source_id,
-    wholesaler_id,
+    // No wholesaler_id filter - database provides isolation
     created_at: { $gte: oneHourAgo },
     batch_id: { $exists: false }, // Only jobs without explicit batch_id
   })

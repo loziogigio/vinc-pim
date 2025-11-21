@@ -22,10 +22,8 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
 
-    // Build query
-    const query: any = {
-      wholesaler_id: session.userId,
-    };
+    // Build query - no wholesaler_id, database provides isolation
+    const query: any = {};
 
     if (!includeInactive) {
       query.is_active = true;
@@ -40,7 +38,7 @@ export async function GET(req: NextRequest) {
     const productCounts = await PIMProductModel.aggregate([
       {
         $match: {
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
           "product_type.id": { $in: productTypeIds },
         },
@@ -93,9 +91,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if slug already exists for this wholesaler
+    // Check if slug already exists (no wholesaler_id - database provides isolation)
     const existing = await ProductTypeModel.findOne({
-      wholesaler_id: session.userId,
       slug,
     });
 
@@ -108,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     const productType = await ProductTypeModel.create({
       product_type_id: nanoid(12),
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       name,
       slug,
       description,

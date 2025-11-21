@@ -1,5 +1,5 @@
 import { B2BHomeSettingsModel, HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectToDatabase } from "./connection";
 
@@ -115,6 +115,7 @@ type HomeSettingsUpdate = {
   branding?: Partial<CompanyBranding> | CompanyBranding;
   defaultCardVariant?: "b2b" | "horizontal" | "compact" | "detailed";
   cardStyle?: Partial<ProductCardStyle> | ProductCardStyle;
+  cdn?: Partial<CDNConfiguration> | CDNConfiguration;
   lastModifiedBy?: string;
 };
 
@@ -143,6 +144,7 @@ export async function upsertHomeSettings(
 
     const brandingUpdate = data.branding ? { ...(data.branding as Partial<CompanyBranding>) } : undefined;
     const cardStyleUpdate = data.cardStyle ? { ...(data.cardStyle as Partial<ProductCardStyle>) } : undefined;
+    const cdnUpdate = data.cdn ? { ...(data.cdn as Partial<CDNConfiguration>) } : undefined;
 
     if (!doc) {
       doc = new B2BHomeSettingsModel({
@@ -150,6 +152,7 @@ export async function upsertHomeSettings(
         branding: mergeBranding(undefined, brandingUpdate),
         defaultCardVariant: data.defaultCardVariant ?? "b2b",
         cardStyle: mergeCardStyle(undefined, cardStyleUpdate),
+        cdn: cdnUpdate,
         lastModifiedBy: data.lastModifiedBy
       });
     } else {
@@ -160,6 +163,10 @@ export async function upsertHomeSettings(
       if (cardStyleUpdate) {
         const currentCardStyle = typeof doc.cardStyle?.toObject === "function" ? doc.cardStyle.toObject() : doc.cardStyle;
         doc.cardStyle = mergeCardStyle(currentCardStyle, cardStyleUpdate);
+      }
+      if (cdnUpdate) {
+        const currentCdn = typeof doc.cdn?.toObject === "function" ? doc.cdn.toObject() : doc.cdn;
+        doc.cdn = { ...(currentCdn || {}), ...cdnUpdate };
       }
       if (data.defaultCardVariant) {
         doc.defaultCardVariant = data.defaultCardVariant;
@@ -218,4 +225,72 @@ export async function deleteHomeSettings(): Promise<boolean> {
     console.error("Error deleting home settings:", error);
     return false;
   }
+}
+
+export async function updateCDNConfiguration(
+  cdn: Partial<CDNConfiguration>,
+  lastModifiedBy?: string
+): Promise<HomeSettingsDocument | null> {
+  return upsertHomeSettings({ cdn, lastModifiedBy });
+}
+
+/**
+ * Get CDN base URL from database settings with fallback to environment variables
+ * @returns CDN base URL or empty string if not configured
+ */
+export async function getCDNBaseUrl(): Promise<string> {
+  try {
+    const settings = await getHomeSettings();
+
+    // Check if CDN is configured and enabled in database
+    if (settings?.cdn?.enabled && settings.cdn.baseUrl) {
+      return settings.cdn.baseUrl;
+    }
+
+    // Fallback to environment variables
+    const cdnEndpoint = process.env.CDN_ENDPOINT ?? process.env.NEXT_PUBLIC_CDN_ENDPOINT;
+    const cdnBucket = process.env.CDN_BUCKET ?? process.env.NEXT_PUBLIC_CDN_BUCKET;
+
+    if (cdnEndpoint && cdnBucket) {
+      // Normalize endpoint (remove trailing slash)
+      const normalizedEndpoint = cdnEndpoint.replace(/\/+$/, '');
+      return `${normalizedEndpoint}/${cdnBucket}`;
+    }
+
+    return '';
+  } catch (error) {
+    console.error("Error fetching CDN base URL:", error);
+
+    // On error, try environment variables as last resort
+    const cdnEndpoint = process.env.CDN_ENDPOINT ?? process.env.NEXT_PUBLIC_CDN_ENDPOINT;
+    const cdnBucket = process.env.CDN_BUCKET ?? process.env.NEXT_PUBLIC_CDN_BUCKET;
+
+    if (cdnEndpoint && cdnBucket) {
+      const normalizedEndpoint = cdnEndpoint.replace(/\/+$/, '');
+      return `${normalizedEndpoint}/${cdnBucket}`;
+    }
+
+    return '';
+  }
+}
+
+/**
+ * Construct full CDN URL from relative path
+ * @param relativePath - Relative path (e.g., /product_images/10076/main_image.jpg)
+ * @returns Full CDN URL or relative path if CDN not configured
+ */
+export async function constructCDNUrl(relativePath?: string): Promise<string> {
+  if (!relativePath) {
+    return '';
+  }
+
+  const baseUrl = await getCDNBaseUrl();
+  if (!baseUrl) {
+    return relativePath;
+  }
+
+  // Ensure relative path starts with /
+  const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+
+  return `${baseUrl}${normalizedPath}`;
 }

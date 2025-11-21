@@ -34,7 +34,7 @@ export async function POST(
     // Find current product version
     const product = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 

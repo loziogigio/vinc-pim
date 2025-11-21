@@ -141,7 +141,7 @@ export async function GET(
       // Fetch product details for the paginated entity codes
       const products = await PIMProductModel.find({
         entity_code: { $in: paginatedCodes },
-        wholesaler_id: job.wholesaler_id,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       })
         .select("entity_code sku name status brand collections category image")

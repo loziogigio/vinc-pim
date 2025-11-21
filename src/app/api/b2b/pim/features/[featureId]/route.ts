@@ -27,7 +27,7 @@ export async function PATCH(
     // Check if feature exists and belongs to wholesaler
     const feature = await FeatureModel.findOne({
       feature_id: featureId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!feature) {
@@ -40,7 +40,7 @@ export async function PATCH(
     // If key is changing, check for duplicates
     if (key && key !== feature.key) {
       const existing = await FeatureModel.findOne({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         key,
         feature_id: { $ne: featureId },
       });
@@ -67,8 +67,9 @@ export async function PATCH(
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;
 
+    // No wholesaler_id - database provides isolation
     const updatedFeature = await FeatureModel.findOneAndUpdate(
-      { feature_id: featureId, wholesaler_id: session.userId },
+      { feature_id: featureId },
       updateData,
       { new: true }
     );
@@ -104,7 +105,7 @@ export async function DELETE(
     // Check if feature exists and belongs to wholesaler
     const feature = await FeatureModel.findOne({
       feature_id: featureId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!feature) {
@@ -116,7 +117,7 @@ export async function DELETE(
 
     // Check if feature is being used by any product types
     const productTypesUsingFeature = await ProductTypeModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       "features.feature_id": featureId,
     });
 
@@ -132,7 +133,7 @@ export async function DELETE(
     // Delete feature
     await FeatureModel.deleteOne({
       feature_id: featureId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     return NextResponse.json({ success: true });

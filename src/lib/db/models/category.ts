@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICategory extends Document {
   category_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   name: string;
   slug: string;
   description?: string;
@@ -46,11 +46,7 @@ const CategorySchema = new Schema<ICategory>(
       unique: true,
       index: true,
     },
-    wholesaler_id: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    // wholesaler_id removed - database per wholesaler provides isolation
     name: {
       type: String,
       required: true,
@@ -115,11 +111,11 @@ const CategorySchema = new Schema<ICategory>(
   }
 );
 
-// Compound index for wholesaler + slug uniqueness
-CategorySchema.index({ wholesaler_id: 1, slug: 1 }, { unique: true });
+// Index for slug uniqueness (no wholesaler_id - database provides isolation)
+CategorySchema.index({ slug: 1 }, { unique: true });
 
 // Index for hierarchy queries
-CategorySchema.index({ wholesaler_id: 1, parent_id: 1, display_order: 1 });
+CategorySchema.index({ parent_id: 1, display_order: 1 });
 
 export const CategoryModel =
   mongoose.models.Category || mongoose.model<ICategory>("Category", CategorySchema);

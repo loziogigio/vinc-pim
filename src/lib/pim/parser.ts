@@ -7,12 +7,29 @@ import { parse } from "csv-parse/sync";
 import * as XLSX from "xlsx";
 import { IImportSource } from "../db/models/import-source";
 import { IPIMProduct } from "../db/models/pim-product";
+import { projectConfig } from "../../config/project.config";
 
 export interface ParsedRow {
   entity_code: string;
   data: Partial<IPIMProduct>;
   raw: Record<string, any>;
 }
+
+/**
+ * Multilingual fields that should have language suffixes
+ * If these fields are provided without a language suffix (e.g., "name" instead of "name.it"),
+ * they will be automatically mapped to the default language
+ */
+const MULTILINGUAL_FIELDS = [
+  "name",
+  "description",
+  "short_description",
+  "features",
+  "specifications",
+  "meta_title",
+  "meta_description",
+  "keywords",
+];
 
 /**
  * Parse CSV file
@@ -113,11 +130,43 @@ function mapRowToProduct(
   // Clean up incomplete array entries (gallery, features, etc.)
   cleanupIncompleteArrays(data);
 
+  // Apply default language to multilingual fields
+  applyDefaultLanguage(data);
+
   return {
     entity_code,
     data,
     raw: row,
   };
+}
+
+/**
+ * Apply default language to multilingual fields
+ * If a multilingual field is provided without a language suffix,
+ * move its value to the default language key
+ */
+function applyDefaultLanguage(data: any): void {
+  const defaultLang = projectConfig.defaultLanguage;
+
+  for (const field of MULTILINGUAL_FIELDS) {
+    // Check if the field exists without language suffix
+    if (data[field] !== undefined && data[field] !== null && data[field] !== "") {
+      // Check if it's already a language object (e.g., { it: "...", en: "..." })
+      const isLanguageObject = typeof data[field] === "object" &&
+                                !Array.isArray(data[field]) &&
+                                data[field] !== null;
+
+      if (!isLanguageObject) {
+        // Move the plain value to the default language
+        const plainValue = data[field];
+        data[field] = {
+          [defaultLang]: plainValue
+        };
+
+        console.log(`📝 Applied default language '${defaultLang}' to field '${field}'`);
+      }
+    }
+  }
 }
 
 /**

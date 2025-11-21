@@ -1,13 +1,20 @@
 /**
  * PIM Product Schema Definition
  * Defines all available fields in the PIM product standard
+ *
+ * MULTILINGUAL SUPPORT:
+ * - Fields marked as "multilingual_text" use the structure: { "it": "text", "de": "text", "en": "text", ... }
+ * - Fields marked as "multilingual_array" use the structure: { "it": ["item1", "item2"], "en": ["item1", "item2"], ... }
+ * - Language codes follow ISO 639-1 standard (2-letter lowercase codes)
+ * - All enabled languages in the system can be used
+ * - When importing, if a plain string is provided, it will be automatically converted to the default language
  */
 
 export type PIMFieldCategory = "core" | "pricing" | "inventory" | "media" | "taxonomy" | "features" | "additional";
 
 export type PIMField = {
   name: string;
-  type: "string" | "number" | "boolean" | "array" | "object";
+  type: "string" | "number" | "boolean" | "array" | "object" | "multilingual_text" | "multilingual_array";
   category: PIMFieldCategory;
   required: boolean;
   description: string;
@@ -38,35 +45,59 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
   },
   {
     name: "name",
-    type: "string",
+    type: "multilingual_text",
     category: "core",
     required: true,
-    description: "Product name/title",
-    example: "Wireless Mouse"
+    description: "Product name/title (multilingual - supports all enabled languages)",
+    example: '{"it": "Mouse Wireless", "de": "Kabellose Maus", "en": "Wireless Mouse"}'
   },
   {
     name: "slug",
-    type: "string",
+    type: "multilingual_text",
     category: "core",
     required: false,
-    description: "URL-friendly slug",
-    example: "wireless-mouse"
+    description: "URL-friendly slug (multilingual - supports all enabled languages)",
+    example: '{"it": "mouse-wireless", "de": "kabellose-maus", "en": "wireless-mouse"}'
   },
   {
     name: "description",
-    type: "string",
+    type: "multilingual_text",
     category: "core",
     required: false,
-    description: "Product description",
-    example: "High-precision wireless mouse"
+    description: "Product description (multilingual - supports all enabled languages)",
+    example: '{"it": "Mouse wireless ad alta precisione", "de": "Hochpräzise kabellose Maus", "en": "High-precision wireless mouse"}'
+  },
+  {
+    name: "short_description",
+    type: "multilingual_text",
+    category: "core",
+    required: false,
+    description: "Short product description (multilingual - supports all enabled languages)",
+    example: '{"it": "Mouse wireless ad alta precisione", "de": "Hochpräzise kabellose Maus", "en": "High-precision wireless mouse"}'
   },
   {
     name: "long_description",
+    type: "multilingual_text",
+    category: "core",
+    required: false,
+    description: "Detailed product description (multilingual - supports all enabled languages, can contain HTML)",
+    example: '{"it": "<p>Mouse wireless ergonomico con <strong>illuminazione RGB</strong></p>", "en": "<p>Ergonomic wireless mouse with <strong>RGB lighting</strong></p>"}'
+  },
+  {
+    name: "product_status",
     type: "string",
     category: "core",
     required: false,
-    description: "Detailed product description (can contain HTML)",
-    example: "<p>Ergonomic wireless mouse with <strong>RGB lighting</strong></p>"
+    description: "Product status code",
+    example: "available"
+  },
+  {
+    name: "product_status_description",
+    type: "multilingual_text",
+    category: "core",
+    required: false,
+    description: "Product status description (multilingual)",
+    example: '{"it": "Disponibile - Spedizione in 1-2 giorni", "de": "Verfügbar - Versand in 1-2 Tagen", "en": "Available - Ships in 1-2 days"}'
   },
 
   // Pricing
@@ -168,34 +199,14 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     example: "Pieces"
   },
 
-  // Packaging - Smallest Option
+  // Packaging Options
   {
-    name: "packaging_option_smallest",
-    type: "object",
-    category: "inventory",
-    required: false,
-    description: "Smallest packaging option (lowest qty_x_packaging)",
-    example: '{"packaging_id": 1, "packaging_code": "PZ", "packaging_uom": "PZ", "qty_x_packaging": 1, "packaging_is_default": false, "packaging_is_smallest": true}'
-  },
-
-  // Packaging - Default Option
-  {
-    name: "packaging_option_default",
-    type: "object",
-    category: "inventory",
-    required: false,
-    description: "Default packaging option for sales",
-    example: '{"packaging_id": 2, "packaging_code": "CT", "packaging_uom": "PZ", "qty_x_packaging": 12, "packaging_is_default": true, "packaging_is_smallest": false}'
-  },
-
-  // Packaging - All Options
-  {
-    name: "packaging_options_all",
+    name: "packaging_options",
     type: "array",
     category: "inventory",
     required: false,
-    description: "All available packaging options",
-    example: '[{"packaging_id": 1, "packaging_code": "PZ", "qty_x_packaging": 1}, {"packaging_id": 2, "packaging_code": "CT", "qty_x_packaging": 12}, {"packaging_id": 3, "packaging_code": "PAL", "qty_x_packaging": 576}]'
+    description: "All available packaging options with multilingual labels (array of objects with id, code, label, qty, uom, is_default, is_smallest, ean, position)",
+    example: '[{"id": "pkg-1", "code": "PZ", "label": {"it": "Pezzo singolo", "en": "Single Piece"}, "qty": 1, "uom": "PZ", "is_default": false, "is_smallest": true}, {"id": "pkg-2", "code": "CT", "label": {"it": "Cartone", "en": "Carton"}, "qty": 12, "uom": "PZ", "is_default": true, "is_smallest": false}]'
   },
 
   // Physical Properties - Weight
@@ -278,84 +289,96 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
 
   // Media
   {
-    name: "image",
-    type: "object",
-    category: "media",
-    required: false,
-    description: "Main product image with multiple sizes (thumbnail: 50x50 for lists, medium: 300x300 for cards, large: 1000x1000 for detail views, original: 2000x2000+ for zoom/download, blur: base64 placeholder)",
-    example: '{"id": "img_001", "thumbnail": "50x50.webp", "medium": "300x300.webp", "large": "1000x1000.webp", "original": "2000x2000.jpg", "blur": "data:image/jpeg;base64,/9j/4AAQ..."}'
-  },
-  {
     name: "gallery",
     type: "array",
     category: "media",
     required: false,
-    description: "Product image gallery"
+    description: "Product image gallery (array of image objects with id, url, s3_key, label, position - first image [position 0] is the cover/main image)",
+    example: '[{"id": "img_001", "url": "https://cdn.../image1.jpg", "label": "Main product photo", "position": 0}, {"id": "img_002", "url": "https://cdn.../image2.jpg", "position": 1}]'
   },
   {
-    name: "images",
+    name: "media",
     type: "array",
     category: "media",
     required: false,
-    description: "Array of image URLs",
-    example: '["url1", "url2"]'
+    description: "Media files (documents, videos, 3D models) with multilingual labels - supports both uploaded files and external URLs (YouTube, Vimeo, etc.)",
+    example: '[{"type": "document", "url": "https://cdn.../manual.pdf", "label": {"it": "Manuale d\'uso", "en": "User Manual"}, "language": "it", "position": 0}]'
   },
 
   // Taxonomy
   {
-    name: "category",
-    type: "string",
-    category: "taxonomy",
-    required: false,
-    description: "Product category",
-    example: "Electronics"
-  },
-  {
-    name: "subcategory",
-    type: "string",
-    category: "taxonomy",
-    required: false,
-    description: "Product subcategory",
-    example: "Computer Accessories"
-  },
-  {
     name: "brand",
-    type: "string",
+    type: "object",
     category: "taxonomy",
     required: false,
-    description: "Brand name",
-    example: "TechBrand"
+    description: "Brand object with id, name (universal, not translated), slug, and optional image",
+    example: '{"id": "brand-bosch", "name": "Bosch Professional", "slug": "bosch-professional"}'
   },
   {
-    name: "tag",
+    name: "category",
+    type: "object",
+    category: "taxonomy",
+    required: false,
+    description: "Category object with id, name (multilingual), slug (multilingual), details (multilingual), icon, and optional image",
+    example: '{"id": "cat-001", "name": {"it": "Trapani", "de": "Bohrmaschinen", "en": "Drills"}, "slug": {"it": "trapani", "de": "bohrmaschinen", "en": "drills"}}'
+  },
+  {
+    name: "collections",
     type: "array",
     category: "taxonomy",
     required: false,
-    description: "Product tags"
+    description: "Array of collection objects with id, name (multilingual), and slug (multilingual)",
+    example: '[{"id": "col-001", "name": {"it": "Utensili Elettrici", "en": "Power Tools"}, "slug": {"it": "utensili-elettrici", "en": "power-tools"}}]'
+  },
+  {
+    name: "product_type",
+    type: "object",
+    category: "taxonomy",
+    required: false,
+    description: "Product type object with id, name (multilingual), slug (multilingual), and optional features array",
+    example: '{"id": "type-001", "name": {"it": "Trapano", "en": "Drill"}, "slug": {"it": "trapano", "en": "drill"}}'
+  },
+  {
+    name: "tags",
+    type: "array",
+    category: "taxonomy",
+    required: false,
+    description: "Array of tag objects with id, name (multilingual), and slug (universal)",
+    example: '[{"id": "tag-bestseller", "name": {"it": "Più venduto", "en": "Bestseller"}, "slug": "bestseller"}]'
   },
 
   // Features & Specifications
   {
     name: "features",
-    type: "array",
+    type: "multilingual_array",
     category: "features",
     required: false,
-    description: "Product features (label, value, unit)",
-    example: '[{label: "Weight", value: "0.2", unit: "kg"}]'
+    description: "Product features (multilingual array of strings per language)",
+    example: '{"it": ["Connessione wireless 2.4GHz", "Sensore ottico 1600 DPI"], "en": ["2.4GHz wireless connection", "1600 DPI optical sensor"]}'
   },
   {
-    name: "technical_specs",
-    type: "array",
+    name: "specifications",
+    type: "multilingual_array",
     category: "features",
     required: false,
-    description: "Technical specifications"
+    description: "Product specifications (multilingual array of objects with key, label, value, uom, category, order)",
+    example: '{"it": [{"key": "peso", "label": "Peso", "value": "0.2", "uom": "kg"}], "en": [{"key": "weight", "label": "Weight", "value": "0.2", "uom": "kg"}]}'
+  },
+  {
+    name: "attributes",
+    type: "multilingual_array",
+    category: "features",
+    required: false,
+    description: "Product attributes (multilingual array of objects with key, label, value, uom, type, order)",
+    example: '{"it": [{"key": "colore", "label": "Colore", "value": "Nero"}], "en": [{"key": "color", "label": "Color", "value": "Black"}]}'
   },
   {
     name: "meta",
     type: "array",
     category: "features",
     required: false,
-    description: "Metadata key-value pairs"
+    description: "Metadata key-value pairs (array of objects with key and value)",
+    example: '[{"key": "warranty_type", "value": "manufacturer"}, {"key": "origin_country", "value": "Italy"}]'
   },
 
   // Additional Fields
@@ -422,18 +445,12 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     description: "Manufacturer name"
   },
   {
-    name: "barcode",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Product barcode/EAN"
-  },
-  {
     name: "ean",
-    type: "string",
+    type: "array",
     category: "additional",
     required: false,
-    description: "EAN code"
+    description: "EAN barcodes (array of strings for multiple codes)",
+    example: '["5901234123457", "5901234123464"]'
   },
   {
     name: "docs",
@@ -441,13 +458,6 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     category: "additional",
     required: false,
     description: "Product documents"
-  },
-  {
-    name: "id_parent",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Parent product ID (for variations)"
   },
   {
     name: "parent_entity_code",
@@ -465,11 +475,48 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     description: "Parent product SKU"
   },
   {
-    name: "variations",
+    name: "variations_sku",
     type: "array",
     category: "additional",
     required: false,
-    description: "Child variation SKUs"
+    description: "Child variation SKUs (array of SKU strings)",
+    example: '["SKU-VAR-001", "SKU-VAR-002", "SKU-VAR-003"]'
+  },
+  {
+    name: "variations_entity_code",
+    type: "array",
+    category: "additional",
+    required: false,
+    description: "Child variation entity_codes (array of entity_code strings)",
+    example: '["PROD-VAR-001", "PROD-VAR-002", "PROD-VAR-003"]'
+  },
+
+  // Promotions
+  {
+    name: "promotions",
+    type: "array",
+    category: "additional",
+    required: false,
+    description: "Product promotions with multilingual labels (array of promotion objects with promo_code, is_active, promo_type, label, discount_percentage, discount_amount, is_stackable, priority, start_date, end_date, min_quantity, min_order_value)",
+    example: '[{"promo_code": "PROMO-2024", "is_active": true, "promo_type": "percentage", "label": {"it": "Promozione di Natale", "en": "Christmas Promotion"}, "discount_percentage": 20, "is_stackable": false, "priority": 1, "start_date": "2024-12-01T00:00:00Z", "end_date": "2024-12-31T23:59:59Z"}]'
+  },
+
+  // SEO
+  {
+    name: "meta_title",
+    type: "multilingual_text",
+    category: "additional",
+    required: false,
+    description: "SEO meta title (multilingual - supports all enabled languages)",
+    example: '{"it": "Bosch PSB 750 - Trapano Professionale | Miglior Prezzo", "de": "Bosch PSB 750 - Profi-Bohrmaschine | Bester Preis", "en": "Bosch PSB 750 - Professional Drill | Best Price"}'
+  },
+  {
+    name: "meta_description",
+    type: "multilingual_text",
+    category: "additional",
+    required: false,
+    description: "SEO meta description (multilingual - supports all enabled languages)",
+    example: '{"it": "Acquista il trapano professionale Bosch PSB 750. Potenza 750W, 2 velocità. Spedizione gratuita.", "en": "Buy Bosch PSB 750 professional drill. 750W power, 2 speeds. Free shipping."}'
   }
 ];
 

@@ -29,12 +29,22 @@ export interface CompanyBranding {
   secondaryColor?: string;
 }
 
+export interface CDNConfiguration {
+  /** Base CDN URL (e.g., https://s3.eu-de.cloud-object-storage.appdomain.cloud/eatit) */
+  baseUrl?: string;
+  /** Description for admin reference (e.g., "IBM Cloud Object Storage - EU") */
+  description?: string;
+  /** Enable/disable CDN usage (falls back to environment variable if disabled) */
+  enabled?: boolean;
+}
+
 export interface HomeSettings {
   _id: string;
   customerId: string;
   branding: CompanyBranding;
   defaultCardVariant: "b2b" | "horizontal" | "compact" | "detailed";
   cardStyle: ProductCardStyle;
+  cdn?: CDNConfiguration;
   createdAt: string | Date;
   updatedAt: string | Date;
   lastModifiedBy?: string;

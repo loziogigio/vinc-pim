@@ -43,8 +43,27 @@ export const analyticsQueue = new Queue("analytics-queue", {
   },
 });
 
+// Marketplace sync queue for Solr, eBay, Amazon, etc.
+export const syncQueue = new Queue("sync-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000, // Longer delay for marketplace API rate limits
+    },
+    removeOnComplete: {
+      count: 200, // Keep more sync job history
+    },
+    removeOnFail: {
+      count: 1000,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
   ANALYTICS: "analytics-queue",
+  SYNC: "sync-queue",
 } as const;

@@ -20,7 +20,7 @@ export async function GET(
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: productTypeId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!productType) {
@@ -34,7 +34,7 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "product_type.id": productTypeId,
     };
@@ -111,7 +111,7 @@ export async function POST(
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: productTypeId,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!productType) {
@@ -128,20 +128,20 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
         },
         { $set: { product_type: productTypeData } }
       );
 
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "product_type.id": productTypeId,
       });
 
       await ProductTypeModel.updateOne(
-        { product_type_id: productTypeId, wholesaler_id: session.userId },
+        { product_type_id: productTypeId }, // No wholesaler_id - database provides isolation
         { $set: { product_count: productCount } }
       );
 
@@ -154,7 +154,7 @@ export async function POST(
     const result = await PIMProductModel.updateMany(
       {
         entity_code: { $in: entity_codes },
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
         "product_type.id": productTypeId,
       },
@@ -162,13 +162,14 @@ export async function POST(
     );
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "product_type.id": productTypeId,
     });
 
+    // No wholesaler_id - database provides isolation
     await ProductTypeModel.updateOne(
-      { product_type_id: productTypeId, wholesaler_id: session.userId },
+      { product_type_id: productTypeId },
       { $set: { product_count: productCount } }
     );
 

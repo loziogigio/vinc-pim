@@ -2,11 +2,19 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IFeature extends Document {
   feature_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   key: string; // e.g., "diameter", "pressure_rating", "material"
   label: string; // e.g., "Diameter", "Pressure Rating", "Material"
   type: "text" | "number" | "select" | "multiselect" | "boolean";
-  unit?: string; // e.g., "mm", "bar", "kg"
+  unit?: string; // DEPRECATED: Legacy field for backwards compatibility
+  uom_id?: string; // Reference to UOM model (preferred)
+  uom?: {
+    // Populated UOM data for display
+    uom_id: string;
+    symbol: string;
+    name: string;
+    category: string;
+  };
   options?: string[]; // For select/multiselect types
   default_required: boolean; // Default required state when added to product types
   display_order: number;
@@ -23,11 +31,7 @@ const FeatureSchema = new Schema<IFeature>(
       unique: true,
       index: true,
     },
-    wholesaler_id: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    // wholesaler_id removed - database per wholesaler provides isolation
     key: {
       type: String,
       required: true,
@@ -45,6 +49,11 @@ const FeatureSchema = new Schema<IFeature>(
     },
     unit: {
       type: String,
+      // DEPRECATED: Keep for backwards compatibility
+    },
+    uom_id: {
+      type: String,
+      // Reference to UOM model (preferred over legacy 'unit' field)
     },
     options: {
       type: [String],
@@ -75,11 +84,11 @@ const FeatureSchema = new Schema<IFeature>(
   }
 );
 
-// Compound index for wholesaler + key uniqueness
-FeatureSchema.index({ wholesaler_id: 1, key: 1 }, { unique: true });
+// Index for key uniqueness (no wholesaler_id - database provides isolation)
+FeatureSchema.index({ key: 1 }, { unique: true });
 
-// Index for sorting
-FeatureSchema.index({ wholesaler_id: 1, display_order: 1 });
+// Index for sorting (no wholesaler_id - database provides isolation)
+FeatureSchema.index({ display_order: 1 });
 
 export const FeatureModel =
   mongoose.models.Features || mongoose.model<IFeature>("Features", FeatureSchema);

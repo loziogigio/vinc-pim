@@ -1,10 +1,16 @@
 #!/usr/bin/env node
+require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 const mongoose = require('mongoose');
 
 async function main() {
+  const mongoDb = process.env.VINC_TENANT_ID
+    ? `vinc-${process.env.VINC_TENANT_ID}`
+    : process.env.VINC_MONGO_DB;
+
+  console.log(`Connecting to database: ${mongoDb}`);
   await mongoose.connect(process.env.VINC_MONGO_URL, {
-    dbName: process.env.VINC_MONGO_DB,
+    dbName: mongoDb,
   });
 
   const ImportJob = mongoose.models.ImportJob || mongoose.model(

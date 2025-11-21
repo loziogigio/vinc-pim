@@ -11,12 +11,13 @@ import {
   Palette,
   RefreshCcw,
   Save,
+  Server,
   Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
 const publicSans = Public_Sans({
@@ -47,6 +48,12 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   hoverBackgroundColor: undefined
 };
 
+const DEFAULT_CDN_CONFIG: CDNConfiguration = {
+  baseUrl: "",
+  description: "",
+  enabled: true
+};
+
 const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: string }> = [
   {
     value: "b2b",
@@ -60,7 +67,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product";
+type ActiveSection = "branding" | "product" | "cdn";
 
 interface BrandingFormProps {
   branding: CompanyBranding;
@@ -76,6 +83,11 @@ interface CardStyleFormProps {
   cardVariant: PreviewVariant;
   onVariantChange: (variant: PreviewVariant) => void;
   onStyleChange: <K extends keyof ProductCardStyle>(key: K, value: ProductCardStyle[K]) => void;
+}
+
+interface CDNFormProps {
+  cdnConfig: CDNConfiguration;
+  onChange: (key: keyof CDNConfiguration, value: string | boolean) => void;
 }
 
 const SectionCard: React.FC<{ title: string; description: string; children: React.ReactNode }> = ({
@@ -149,6 +161,7 @@ export default function HomeSettingsPage() {
   const [branding, setBranding] = useState<CompanyBranding>(DEFAULT_BRANDING);
   const [cardVariant, setCardVariant] = useState<PreviewVariant>("b2b");
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
+  const [cdnConfig, setCdnConfig] = useState<CDNConfiguration>(DEFAULT_CDN_CONFIG);
   const [activeSection, setActiveSection] = useState<ActiveSection>("branding");
   const [previewVariant, setPreviewVariant] = useState<PreviewVariant>("b2b");
 
@@ -173,6 +186,7 @@ export default function HomeSettingsPage() {
       if (response.status === 404) {
         setBranding(DEFAULT_BRANDING);
         setCardStyle(DEFAULT_CARD_STYLE);
+        setCdnConfig(DEFAULT_CDN_CONFIG);
         setCardVariant("b2b");
         setPreviewVariant("b2b");
         setDirty(false);
@@ -196,6 +210,10 @@ export default function HomeSettingsPage() {
       setCardStyle({
         ...DEFAULT_CARD_STYLE,
         ...(data.cardStyle ?? {})
+      });
+      setCdnConfig({
+        ...DEFAULT_CDN_CONFIG,
+        ...(data.cdn ?? {})
       });
       setDirty(false);
       setToast("Settings loaded.");
@@ -251,6 +269,11 @@ export default function HomeSettingsPage() {
     setDirty(true);
   };
 
+  const updateCdnConfig = (key: keyof CDNConfiguration, value: string | boolean) => {
+    setCdnConfig((prev: CDNConfiguration) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
@@ -263,6 +286,7 @@ export default function HomeSettingsPage() {
           branding,
           defaultCardVariant: cardVariant,
           cardStyle,
+          cdn: cdnConfig,
           lastModifiedBy: "admin"
         })
       });
@@ -411,6 +435,13 @@ export default function HomeSettingsPage() {
               active={activeSection === "product"}
               onClick={() => setActiveSection("product")}
             />
+            <SidebarItem
+              icon={Server}
+              label="CDN Configuration"
+              description="Media delivery settings"
+              active={activeSection === "cdn"}
+              onClick={() => setActiveSection("cdn")}
+            />
           </nav>
         </aside>
 
@@ -424,6 +455,11 @@ export default function HomeSettingsPage() {
             logoUpload={logoUploader.uploadState}
             faviconUpload={faviconUploader.uploadState}
           />
+          ) : activeSection === "cdn" ? (
+            <CDNForm
+              cdnConfig={cdnConfig}
+              onChange={updateCdnConfig}
+            />
           ) : (
             <CardStyleForm
               cardStyle={cardStyle}
@@ -780,6 +816,77 @@ function BrandingForm({
           onChange={(value) => onChange("secondaryColor", value)}
           helper="Badges, accents and hover states."
         />
+      </div>
+    </SectionCard>
+  );
+}
+
+function CDNForm({ cdnConfig, onChange }: CDNFormProps) {
+  return (
+    <SectionCard
+      title="CDN Configuration"
+      description="Configure content delivery network settings for product images and media."
+    >
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="cdn-enabled" className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            <input
+              id="cdn-enabled"
+              type="checkbox"
+              checked={cdnConfig.enabled ?? true}
+              onChange={(e) => onChange("enabled", e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary/20"
+            />
+            Enable CDN
+          </label>
+          <p className="text-xs text-slate-500">
+            When disabled, image paths will fall back to environment variable configuration.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="cdn-base-url" className="text-sm font-medium text-slate-600">
+            CDN Base URL
+          </label>
+          <input
+            id="cdn-base-url"
+            type="url"
+            value={cdnConfig.baseUrl || ""}
+            onChange={(e) => onChange("baseUrl", e.target.value)}
+            placeholder="https://s3.eu-de.cloud-object-storage.appdomain.cloud/eatit"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            Base URL for serving product images and media files. Relative paths from the database will be prepended with this URL.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="cdn-description" className="text-sm font-medium text-slate-600">
+            Description (optional)
+          </label>
+          <input
+            id="cdn-description"
+            type="text"
+            value={cdnConfig.description || ""}
+            onChange={(e) => onChange("description", e.target.value)}
+            placeholder="IBM Cloud Object Storage - EU Region"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            Admin reference note for this CDN configuration.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <h4 className="text-sm font-semibold text-blue-900 mb-2">How it works</h4>
+          <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+            <li>Product images store relative paths: <code className="bg-blue-100 px-1 py-0.5 rounded">/product_images/10076/main_image.jpg</code></li>
+            <li>Full URLs are constructed at runtime: <code className="bg-blue-100 px-1 py-0.5 rounded">CDN_URL + relative_path</code></li>
+            <li>Change CDN providers without updating database records</li>
+            <li>Supports multiple CDN regions and environments</li>
+          </ul>
+        </div>
       </div>
     </SectionCard>
   );

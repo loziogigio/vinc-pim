@@ -32,10 +32,9 @@ export async function POST(
       );
     }
 
-    // Verify category belongs to this wholesaler
+    // Verify category exists (no wholesaler_id - database provides isolation)
     const category = await CategoryModel.findOne({
       category_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!category) {
@@ -113,7 +112,6 @@ export async function POST(
     const jobId = nanoid(16);
     const job = {
       job_id: jobId,
-      wholesaler_id: session.userId,
       job_type: "category_import" as const,
       entity_type: "category" as const,
       entity_id: id,
@@ -200,7 +198,7 @@ async function processAssociationJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
             },
             { $set: updateData }
@@ -212,7 +210,7 @@ async function processAssociationJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
               "category.id": id,
             },
@@ -242,16 +240,15 @@ async function processAssociationJob(
       );
     }
 
-    // Update category product count
+    // Update category product count (no wholesaler_id - database provides isolation)
     const { CategoryModel } = await import("@/lib/db/models/category");
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: wholesalerId,
       isCurrent: true,
       "category.id": id,
     });
 
     await CategoryModel.updateOne(
-      { category_id: id, wholesaler_id: wholesalerId },
+      { category_id: id },
       { $set: { product_count: productCount } }
     );
 

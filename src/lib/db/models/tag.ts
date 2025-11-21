@@ -2,7 +2,7 @@ import { Schema, model, models, Document } from "mongoose";
 
 export interface ITag extends Document {
   tag_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   name: string;
   slug: string;
   description?: string;
@@ -22,11 +22,7 @@ const TagSchema = new Schema<ITag>(
       unique: true,
       index: true,
     },
-    wholesaler_id: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    // wholesaler_id removed - database per wholesaler provides isolation
     name: {
       type: String,
       required: true,
@@ -68,10 +64,11 @@ const TagSchema = new Schema<ITag>(
   }
 );
 
-TagSchema.index({ wholesaler_id: 1, slug: 1 }, { unique: true });
-TagSchema.index({ wholesaler_id: 1, name: 1 });
-TagSchema.index({ wholesaler_id: 1, is_active: 1 });
-TagSchema.index({ wholesaler_id: 1, display_order: 1 });
+// Indexes for efficient querying (no wholesaler_id - database provides isolation)
+TagSchema.index({ slug: 1 }, { unique: true });
+TagSchema.index({ name: 1 });
+TagSchema.index({ is_active: 1 });
+TagSchema.index({ display_order: 1 });
 
 TagSchema.pre("save", function (next) {
   if (!this.slug && this.name) {

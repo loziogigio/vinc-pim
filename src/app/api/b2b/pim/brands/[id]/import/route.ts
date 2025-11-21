@@ -32,10 +32,9 @@ export async function POST(
       );
     }
 
-    // Verify brand belongs to this wholesaler
+    // Verify brand exists (no wholesaler_id - database provides isolation)
     const brand = await BrandModel.findOne({
       brand_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!brand) {
@@ -113,7 +112,6 @@ export async function POST(
     const jobId = nanoid(16);
     const job = {
       job_id: jobId,
-      wholesaler_id: session.userId,
       job_type: "brand_import" as const,
       entity_type: "brand" as const,
       entity_id: id,
@@ -208,7 +206,7 @@ async function processAssociationJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
             },
             { $set: updateData }
@@ -220,7 +218,7 @@ async function processAssociationJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
               "brand.id": brandId,
             },
@@ -253,13 +251,13 @@ async function processAssociationJob(
     // Update brand product count
     const { BrandModel } = await import("@/lib/db/models/brand");
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: wholesalerId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "brand.id": brandId,
     });
 
     await BrandModel.updateOne(
-      { brand_id: brandId, wholesaler_id: wholesalerId },
+      { brand_id: brandId },
       { $set: { product_count: productCount } }
     );
 

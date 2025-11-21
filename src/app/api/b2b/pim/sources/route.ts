@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     const source = await ImportSourceModel.create({
       ...body,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       created_by: session.userId,
       stats: {
         total_imports: 0,

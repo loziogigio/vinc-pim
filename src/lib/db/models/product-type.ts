@@ -8,7 +8,7 @@ export interface IProductTypeFeature {
 
 export interface IProductType extends Document {
   product_type_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   name: string; // e.g., "Water Meter", "Pump", "Valve"
   slug: string;
   description?: string;
@@ -56,11 +56,7 @@ const ProductTypeSchema = new Schema<IProductType>(
       unique: true,
       index: true,
     },
-    wholesaler_id: {
-      type: String,
-      required: true,
-      index: true,
-    },
+    // wholesaler_id removed - database per wholesaler provides isolation
     name: {
       type: String,
       required: true,
@@ -106,11 +102,11 @@ const ProductTypeSchema = new Schema<IProductType>(
   }
 );
 
-// Compound index for wholesaler + slug uniqueness
-ProductTypeSchema.index({ wholesaler_id: 1, slug: 1 }, { unique: true });
+// Index for slug uniqueness (no wholesaler_id - database provides isolation)
+ProductTypeSchema.index({ slug: 1 }, { unique: true });
 
 // Index for sorting
-ProductTypeSchema.index({ wholesaler_id: 1, display_order: 1 });
+ProductTypeSchema.index({ display_order: 1 });
 
 export const ProductTypeModel =
   mongoose.models.ProductType || mongoose.model<IProductType>("ProductType", ProductTypeSchema);

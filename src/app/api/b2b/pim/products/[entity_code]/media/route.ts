@@ -25,10 +25,18 @@ export async function POST(
     // Parse form data
     const formData = await req.formData();
     const files = formData.getAll("media") as File[];
+    const type = formData.get("type") as string | null;
 
     if (!files || files.length === 0) {
       return NextResponse.json(
         { error: "No media files provided" },
+        { status: 400 }
+      );
+    }
+
+    if (!type || !["document", "video", "3d-model"].includes(type)) {
+      return NextResponse.json(
+        { error: "Invalid or missing type parameter" },
         { status: 400 }
       );
     }
@@ -58,7 +66,7 @@ export async function POST(
     // Find the product
     const product = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 
@@ -69,9 +77,15 @@ export async function POST(
       );
     }
 
+    // Calculate starting position for new media items
+    const existingMediaOfType = (product.media || []).filter((m: any) => m.type === type);
+    const maxPosition = existingMediaOfType.length > 0
+      ? Math.max(...existingMediaOfType.map((m: any) => m.position || 0))
+      : -1;
+
     // Prepare new media entries
-    const newMedia = uploadResults.successful.map((result) => ({
-      type: result.media_type,
+    const newMedia = uploadResults.successful.map((result, index) => ({
+      type: type,
       file_type: result.file_type,
       url: result.url,
       cdn_key: result.cdn_key,
@@ -79,13 +93,15 @@ export async function POST(
       size_bytes: result.size_bytes,
       uploaded_at: new Date(),
       uploaded_by: session.userId,
+      is_external_link: false,
+      position: maxPosition + 1 + index,
     }));
 
     // Update product with new media
     const updatedProduct = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
       {
@@ -155,7 +171,7 @@ export async function DELETE(
     const result = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
       {
@@ -216,7 +232,7 @@ export async function GET(
     // Find the product
     const product = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     })
       .select("media")

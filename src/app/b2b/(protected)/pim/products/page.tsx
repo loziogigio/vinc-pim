@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { BulkUpdateModal, BulkUpdateData } from "@/components/pim/BulkUpdateModal";
+import { LanguageStatusBadge } from "@/components/pim/LanguageStatusBadge";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 import {
   Search,
   Filter,
@@ -20,13 +22,15 @@ import {
   ChevronUp,
   Download,
   Edit as EditIcon,
+  Plus,
 } from "lucide-react";
 
 type Product = {
   _id: string;
   entity_code: string;
   sku: string;
-  name: string;
+  name: string | Record<string, string>; // Can be string or multilingual
+  description?: string | Record<string, string>; // Can be string or multilingual
   price: number;
   currency: string;
   image: {
@@ -37,8 +41,8 @@ type Product = {
     original: string;     // 2000x2000+ for zoom/download
     blur?: string;        // Base64 blur placeholder
   };
-  brand?: { id: string; name: string };
-  category?: { id: string; name: string };
+  brand?: { id: string; name: string | Record<string, string> };
+  category?: { id: string; name: string | Record<string, string> };
   completeness_score: number;
   status: "draft" | "published" | "archived";
   critical_issues: string[];
@@ -54,6 +58,9 @@ type Product = {
     priority_score: number;
   };
   updated_at: string;
+  // Language information
+  _available_languages?: string[]; // Array of language codes with translations
+  _language?: string; // Current language if API returned single-language response
 };
 
 type FilterState = {
@@ -76,9 +83,30 @@ type FilterState = {
   sku: string;
 };
 
+/**
+ * Helper function to extract text from multilingual objects
+ * Uses default language first, then fallback chain
+ */
+function getMultilingualText(
+  text: string | Record<string, string> | undefined,
+  defaultLanguageCode: string = "it",
+  fallback: string = ""
+): string {
+  if (!text) return fallback;
+  if (typeof text === "string") return text;
+
+  // Try default language first, then English, then first available value, then fallback
+  return text[defaultLanguageCode] || text.en || Object.values(text)[0] || fallback;
+}
+
 export default function ProductsListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Language store for getting default language from database
+  const { languages, fetchLanguages } = useLanguageStore();
+  const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
+  const defaultLanguageCode = defaultLanguage?.code || "it";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +117,7 @@ export default function ProductsListPage() {
   const [currencySuggestions, setCurrencySuggestions] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 50,
@@ -212,6 +241,8 @@ export default function ProductsListPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    // Fetch languages from database on mount
+    fetchLanguages();
     fetchBatchSuggestions();
     fetchBrandSuggestions();
     fetchCategorySuggestions();
@@ -352,6 +383,23 @@ export default function ProductsListPage() {
           { label: "Products" },
         ]}
       />
+
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your product catalog ({pagination.total} total)
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Create Product
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="rounded-lg bg-card p-3.5 shadow-sm">
@@ -843,6 +891,9 @@ export default function ProductsListPage() {
                       Quality
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                      Languages
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
@@ -891,7 +942,7 @@ export default function ProductsListPage() {
                             {product.image?.thumbnail ? (
                               <Image
                                 src={product.image.thumbnail}
-                                alt={product.name}
+                                alt={getMultilingualText(product.name, defaultLanguageCode, "Product image")}
                                 width={48}
                                 height={48}
                                 quality={75}
@@ -909,7 +960,7 @@ export default function ProductsListPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-medium text-foreground group-hover:text-primary truncate">
-                              {product.name}
+                              {getMultilingualText(product.name, defaultLanguageCode, "Untitled")}
                             </div>
                             <div className="text-xs text-muted-foreground font-mono">
                               SKU: {product.sku}
@@ -919,14 +970,18 @@ export default function ProductsListPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm text-foreground">
-                          {product.brand?.name || (
+                          {product.brand?.name ? (
+                            getMultilingualText(product.brand.name, defaultLanguageCode, "")
+                          ) : (
                             <span className="text-muted-foreground italic">No brand</span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm text-foreground">
-                          {product.category?.name || (
+                          {product.category?.name ? (
+                            getMultilingualText(product.category.name, defaultLanguageCode, "")
+                          ) : (
                             <span className="text-muted-foreground italic">No category</span>
                           )}
                         </div>
@@ -950,6 +1005,17 @@ export default function ProductsListPage() {
                               {product.critical_issues.length}
                             </div>
                           )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center">
+                          <LanguageStatusBadge
+                            name={typeof product.name === 'object' ? product.name : undefined}
+                            description={typeof product.description === 'object' ? product.description : undefined}
+                            availableLanguages={product._available_languages}
+                            variant="flags"
+                            size="sm"
+                          />
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -1041,6 +1107,284 @@ export default function ProductsListPage() {
         selectedCount={selectedProducts.size}
         onUpdate={handleBulkUpdate}
       />
+
+      {/* Create Product Modal */}
+      {showCreateModal && (
+        <CreateProductModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={(entityCode) => {
+            setShowCreateModal(false);
+            // Redirect to the new product's detail page
+            router.push(`/b2b/pim/products/${entityCode}`);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Create Product Modal Component
+function CreateProductModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: (entityCode: string) => void;
+}) {
+  const [formData, setFormData] = useState({
+    entity_code: "",
+    sku: "",
+    name: "",
+    description: "",
+    price: "",
+    currency: "EUR",
+    category: "",
+    brand: "",
+    stock_status: "in_stock" as "in_stock" | "out_of_stock" | "pre_order",
+    quantity: "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/b2b/pim/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          price: formData.price ? parseFloat(formData.price) : 0,
+          quantity: formData.quantity ? parseInt(formData.quantity) : 0,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        onSuccess(data.entity_code);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || "Failed to create product");
+      }
+    } catch (error) {
+      console.error("Error creating product:", error);
+      setError("Failed to create product. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4">Create New Product</h2>
+
+          {error && (
+            <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Required Fields Section */}
+            <div className="p-4 rounded border-2 border-primary/20 bg-primary/5">
+              <h3 className="text-sm font-semibold mb-3 text-primary">Required Fields</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Entity Code *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.entity_code}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        entity_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-_]/g, ""),
+                      })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
+                    placeholder="PROD-001"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Unique product identifier (uppercase, alphanumeric, dashes, underscores)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">SKU *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.sku}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sku: e.target.value })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="SKU-001"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="Product name"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Optional Fields Section */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Optional Fields</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="Product description"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Price</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: e.target.value })
+                      }
+                      className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      placeholder="0.00"
+                    />
+                    <select
+                      value={formData.currency}
+                      onChange={(e) =>
+                        setFormData({ ...formData, currency: e.target.value })
+                      }
+                      className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    >
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                      <option value="GBP">GBP</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.quantity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, quantity: e.target.value })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Brand</label>
+                  <input
+                    type="text"
+                    value={formData.brand}
+                    onChange={(e) =>
+                      setFormData({ ...formData, brand: e.target.value })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="Brand name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Category</label>
+                  <input
+                    type="text"
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="Category name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Stock Status
+                  </label>
+                  <select
+                    value={formData.stock_status}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stock_status: e.target.value as any,
+                      })
+                    }
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  >
+                    <option value="in_stock">In Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                    <option value="pre_order">Pre-order</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="p-3 rounded bg-blue-50 border border-blue-200">
+              <p className="text-sm text-blue-800">
+                The product will be created as a <strong>draft</strong> with source <strong>&quot;Manual Entry&quot;</strong>.
+                You can add more details and publish it from the product detail page.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex-1 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isSaving ? "Creating..." : "Create Product"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded border border-border hover:bg-muted"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

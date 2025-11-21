@@ -23,7 +23,7 @@ export async function GET(
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!productType) {
@@ -34,7 +34,7 @@ export async function GET(
     }
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "product_type.id": id,
     });
@@ -76,7 +76,7 @@ export async function PATCH(
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!productType) {
@@ -88,7 +88,7 @@ export async function PATCH(
 
     if (slug && slug !== productType.slug) {
       const existing = await ProductTypeModel.findOne({
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         slug,
         product_type_id: { $ne: id },
       });
@@ -143,7 +143,7 @@ export async function DELETE(
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!productType) {
@@ -154,7 +154,7 @@ export async function DELETE(
     }
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
       "product_type.id": id,
     });
@@ -170,7 +170,7 @@ export async function DELETE(
 
     await ProductTypeModel.deleteOne({
       product_type_id: id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     return NextResponse.json({ success: true });

@@ -174,8 +174,8 @@ export type ProductData = ProductCore &
     meta?: ProductMeta[];
 
     // Variations
-    id_parent?: string;
     parent_sku?: string;
+    parent_entity_code?: string;
     variations?: string[];
 
     // Additional
@@ -203,7 +203,7 @@ export type ProductData = ProductCore &
  */
 export type PIMProductData = {
   // Identity
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   entity_code: string;
 
   // PIM Metadata

@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, X, Tag as TagIcon } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 
 type TagOption = {
   tag_id: string;
-  name: string;
+  name: string | Record<string, string>;
   slug: string;
   color?: string;
   is_active: boolean;
@@ -14,10 +15,44 @@ type TagOption = {
 
 export type TagReference = {
   id: string;
-  name: string;
+  name: string | Record<string, string>;
   slug: string;
   color?: string;
 };
+
+/**
+ * Helper function to extract text from multilingual objects
+ * Uses default language first, then fallback chain
+ * IMPORTANT: This function MUST always return a string, never an object
+ */
+function getMultilingualText(
+  text: string | Record<string, string> | undefined | null | any,
+  defaultLanguageCode: string = "it",
+  fallback: string = ""
+): string {
+  // Handle null, undefined, or empty values
+  if (!text) return fallback;
+
+  // If already a string, return it
+  if (typeof text === "string") return text;
+
+  // If not an object, convert to string
+  if (typeof text !== "object") return String(text);
+
+  // Try to extract string from multilingual object
+  try {
+    const result = text[defaultLanguageCode] || text.en || Object.values(text)[0];
+
+    // Ensure result is a string
+    if (typeof result === "string" && result) return result;
+    if (result) return String(result);
+
+    return fallback;
+  } catch (error) {
+    console.error("Error extracting multilingual text:", error, text);
+    return fallback;
+  }
+}
 
 type Props = {
   value: TagReference[];
@@ -28,10 +63,16 @@ type Props = {
 export function TagSelector({ value, onChange, disabled }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Language store for getting default language from database
+  const { languages, fetchLanguages } = useLanguageStore();
+  const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
+  const defaultLanguageCode = defaultLanguage?.code || "it";
   const [tags, setTags] = useState<TagOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    fetchLanguages();
     fetchTags();
   }, []);
 
@@ -112,7 +153,7 @@ export function TagSelector({ value, onChange, disabled }: Props) {
             }
           >
             <TagIcon className="h-3 w-3" />
-            <span>{tag.name}</span>
+            <span>{getMultilingualText(tag.name, defaultLanguageCode, "")}</span>
             {!disabled && (
               <button
                 type="button"
@@ -201,7 +242,7 @@ export function TagSelector({ value, onChange, disabled }: Props) {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-foreground">{tag.name}</span>
+                              <span className="font-medium text-foreground">{getMultilingualText(tag.name, defaultLanguageCode, "")}</span>
                               {tag.color && (
                                 <span
                                   className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"

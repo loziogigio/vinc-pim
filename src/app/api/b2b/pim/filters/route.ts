@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search") || "";
 
     const query: any = {
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     };
 

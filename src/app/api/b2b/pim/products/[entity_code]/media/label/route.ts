@@ -34,7 +34,7 @@ export async function PATCH(
     // Get current product
     const product = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 
@@ -53,8 +53,8 @@ export async function PATCH(
     // Update the label
     media[mediaIndex].label = label.trim();
 
-    // Save updated product
-    await PIMProductModel.updateOne(
+    // Save and return updated product
+    const updatedProduct = await PIMProductModel.findOneAndUpdate(
       {
         _id: product._id,
       },
@@ -62,15 +62,18 @@ export async function PATCH(
         $set: {
           media,
           updated_at: new Date(),
+          last_updated_by: "manual",
         },
-      }
-    );
+      },
+      { new: true }
+    ).lean();
 
     return NextResponse.json({
       success: true,
       message: "Label updated successfully",
       cdn_key,
       label: label.trim(),
+      product: updatedProduct,
     });
   } catch (error) {
     console.error("Error updating media label:", error);

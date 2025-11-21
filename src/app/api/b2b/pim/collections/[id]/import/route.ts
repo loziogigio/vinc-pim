@@ -33,10 +33,9 @@ export async function POST(
       );
     }
 
-    // Verify collection belongs to this wholesaler
+    // Verify collection exists (no wholesaler_id - database provides isolation)
     const collection = await CollectionModel.findOne({
       collection_id: id,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!collection) {
@@ -122,7 +121,6 @@ export async function POST(
     const jobId = nanoid(16);
     const job = await AssociationJobModel.create({
       job_id: jobId,
-      wholesaler_id: session.userId,
       job_type: "collection_import",
       entity_type: "collection",
       entity_id: id,
@@ -203,7 +201,7 @@ async function processCollectionImportJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
               "collections.id": { $ne: id }, // Only if not already in array
             },
@@ -217,7 +215,7 @@ async function processCollectionImportJob(
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
-              wholesaler_id: wholesalerId,
+              // No wholesaler_id - database provides isolation
               isCurrent: true,
               "collections.id": id,
             },
@@ -259,15 +257,14 @@ async function processCollectionImportJob(
       }
     }
 
-    // Update collection product count
+    // Update collection product count (no wholesaler_id - database provides isolation)
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: wholesalerId,
       isCurrent: true,
       "collections.id": id,
     });
 
     await CollectionModel.updateOne(
-      { collection_id: id, wholesaler_id: wholesalerId },
+      { collection_id: id },
       { $set: { product_count: productCount } }
     );
 

@@ -1,68 +1,133 @@
 import mongoose from "mongoose";
 
-interface MongooseGlobal {
+interface TenantConnection {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
+  dbName: string;
 }
 
-const globalForMongoose = globalThis as typeof globalThis & { _mongoose?: MongooseGlobal };
+interface MongooseGlobal {
+  connections: Map<string, TenantConnection>;
+}
+
+const globalForMongoose = globalThis as typeof globalThis & {
+  _mongoose?: MongooseGlobal;
+};
 
 if (!globalForMongoose._mongoose) {
-  globalForMongoose._mongoose = { conn: null, promise: null };
+  globalForMongoose._mongoose = { connections: new Map() };
 }
 
-export const connectToDatabase = async () => {
+/**
+ * Connect to a tenant-specific database
+ * Each tenant gets its own connection pool for isolation
+ */
+export const connectToDatabase = async (tenantDbName?: string) => {
   // Read env vars inside function, not at module level!
-  // This ensures dotenv has loaded before we read the values
   const MIN_POOL = Number(process.env.VINC_MONGO_MIN_POOL_SIZE ?? "0");
   const MAX_POOL = Number(process.env.VINC_MONGO_MAX_POOL_SIZE ?? "50");
-  const mongoUri = process.env.VINC_MONGO_URL ?? "mongodb://admin:admin@localhost:27017/?authSource=admin";
-  const mongoDbName = process.env.VINC_MONGO_DB ?? "app";
+  const mongoUri =
+    process.env.VINC_MONGO_URL ??
+    "mongodb://admin:admin@localhost:27017/?authSource=admin";
+
+  // Determine which database to connect to
+  let mongoDbName: string;
+
+  if (tenantDbName) {
+    // Explicit tenant database provided
+    mongoDbName = tenantDbName;
+  } else if (process.env.VINC_TENANT_ID) {
+    // Build database name from tenant ID
+    mongoDbName = `vinc-${process.env.VINC_TENANT_ID}`;
+  } else {
+    // Fallback to VINC_MONGO_DB
+    mongoDbName = process.env.VINC_MONGO_DB ?? "app";
+  }
 
   const cache = globalForMongoose._mongoose!;
+  let tenantCache = cache.connections.get(mongoDbName);
 
-  // Force reconnect if connection failed or disconnected
-  if (cache.conn) {
+  // Initialize cache for this database if it doesn't exist
+  if (!tenantCache) {
+    tenantCache = {
+      conn: null,
+      promise: null,
+      dbName: mongoDbName,
+    };
+    cache.connections.set(mongoDbName, tenantCache);
+  }
+
+  // Check if we have an active connection for this database
+  if (tenantCache.conn) {
     const state = mongoose.connection.readyState;
+    // Verify the connection is to the correct database
+    const currentDb = mongoose.connection.db?.databaseName;
+
     // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
-    if (state === 0 || state === 3) {
-      console.log('⚠️  Mongoose disconnected, forcing reconnect...');
-      cache.conn = null;
-      cache.promise = null;
+    if (state === 0 || state === 3 || currentDb !== mongoDbName) {
+      console.log(
+        `⚠️  Mongoose disconnected or wrong DB (current: ${currentDb}, needed: ${mongoDbName}), reconnecting...`
+      );
+      tenantCache.conn = null;
+      tenantCache.promise = null;
     } else {
-      return cache.conn;
+      // Connection is good and to the right database
+      return tenantCache.conn;
     }
   }
 
-  if (!cache.promise) {
-    console.log(`🔌 Connecting to MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
-    cache.promise = mongoose
+  // Create new connection if needed
+  if (!tenantCache.promise) {
+    console.log(
+      `🔌 Connecting to MongoDB database: ${mongoDbName} (${mongoUri.replace(/\/\/.*@/, "//***@")})`
+    );
+
+    tenantCache.promise = mongoose
       .connect(mongoUri, {
         dbName: mongoDbName,
         minPoolSize: MIN_POOL,
         maxPoolSize: MAX_POOL,
-        bufferCommands: false
+        bufferCommands: false,
       })
       .then((m) => {
         console.log(`✅ MongoDB connected to database: ${mongoDbName}`);
-        cache.conn = m;
+        tenantCache!.conn = m;
         return m;
       })
       .catch((error) => {
-        console.error('❌ MongoDB connection failed:', error.message);
-        cache.promise = null;
-        cache.conn = null;
+        console.error(`❌ MongoDB connection failed for ${mongoDbName}:`, error.message);
+        tenantCache!.promise = null;
+        tenantCache!.conn = null;
         throw error;
       });
   }
 
   try {
-    cache.conn = await cache.promise;
+    tenantCache.conn = await tenantCache.promise;
   } catch (error) {
-    cache.conn = null;
-    cache.promise = null;
+    tenantCache.conn = null;
+    tenantCache.promise = null;
     throw error;
   }
 
-  return cache.conn;
+  return tenantCache.conn;
+};
+
+/**
+ * Get current database name
+ */
+export const getCurrentDatabase = (): string | undefined => {
+  return mongoose.connection.db?.databaseName;
+};
+
+/**
+ * Disconnect from all tenant databases
+ */
+export const disconnectAll = async () => {
+  const cache = globalForMongoose._mongoose!;
+  cache.connections.clear();
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+    console.log("🔌 Disconnected from all MongoDB databases");
+  }
 };

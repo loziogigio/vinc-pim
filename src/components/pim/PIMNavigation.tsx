@@ -16,7 +16,9 @@ import {
   Cpu,
   Sliders,
   Tag,
-  Tags as TagsIcon
+  Tags as TagsIcon,
+  Menu,
+  Languages
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -27,6 +29,8 @@ const navItems = [
   { label: "Collections", href: "/b2b/pim/collections", icon: Layers, description: "Flexible grouping" },
   { label: "Brands", href: "/b2b/pim/brands", icon: Tag, description: "Product brands" },
   { label: "Tags", href: "/b2b/pim/tags", icon: TagsIcon, description: "Reusable labels" },
+  { label: "Menu Settings", href: "/b2b/pim/menu-settings", icon: Menu, description: "Navigation builder" },
+  { label: "Languages", href: "/b2b/pim/languages", icon: Languages, description: "Multilingual support" },
   { label: "Product Types", href: "/b2b/pim/product-types", icon: Cpu, description: "Features" },
   { label: "Features", href: "/b2b/pim/features", icon: Sliders, description: "Reusable attributes" },
   { label: "AI Enhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, description: "Generate content" },

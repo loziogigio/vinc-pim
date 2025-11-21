@@ -34,7 +34,7 @@ export async function POST(
     // Get the current version
     const currentProduct = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 
@@ -45,7 +45,7 @@ export async function POST(
     // Get the target version to rollback to
     const targetProduct = await PIMProductModel.findOne({
       entity_code,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       version: target_version,
     }).lean();
 

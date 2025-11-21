@@ -53,7 +53,7 @@ type ImportJob = {
 type AssociationJob = {
   _id: string;
   job_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   job_type: "brand_import" | "collection_import" | "category_import" | "product_type_import";
   entity_type: "brand" | "collection" | "category" | "product_type";
   entity_id: string;

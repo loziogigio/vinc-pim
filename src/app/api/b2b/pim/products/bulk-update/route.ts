@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     await ImportJobModel.create({
       job_id,
       job_type: "bulk_update",
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       source_id: "bulk-update",
       status: "pending",
       total_rows: product_ids.length,
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       {
         job_id,
         job_type: "bulk_update",
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
         product_ids,
         updates,
       },

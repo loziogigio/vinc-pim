@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/db/connection";
 import { B2BUserModel } from "@/lib/db/models/b2b-user";
 import { createB2BSession } from "@/lib/auth/b2b-session";
 import { ActivityLogModel } from "@/lib/db/models/activity-log";
+import { getTenantDbFromRequest } from "@/lib/utils/tenant";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
@@ -16,7 +17,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    // Extract tenant database from request (subdomain, header, or query param)
+    const tenantDb = getTenantDbFromRequest(request);
+
+    if (!tenantDb) {
+      return NextResponse.json(
+        { error: "Tenant ID not found in request. Please access via tenant subdomain or provide X-Tenant-ID header." },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase(tenantDb);
 
     // Find user
     const user = await B2BUserModel.findOne({ username, isActive: true });

@@ -8,7 +8,9 @@ import { connectToDatabase } from "../db/connection";
 import { ImportSourceModel } from "../db/models/import-source";
 import { ImportJobModel } from "../db/models/import-job";
 import { PIMProductModel } from "../db/models/pim-product";
+import { LanguageModel } from "../db/models/language";
 import { parseCSV, parseExcel, detectFileType } from "../pim/parser";
+import { projectConfig } from "../../config/project.config";
 import {
   calculateCompletenessScore,
   findCriticalIssues,
@@ -18,11 +20,13 @@ import {
   mergeWithLockedFields,
 } from "../pim/auto-publish";
 import { detectConflicts } from "../pim/conflict-resolver";
+import { syncProductToSolr } from "../sync/marketplace-sync";
+import { syncQueue } from "./queues";
 
 interface ImportJobData {
   job_id: string;
   source_id: string;
-  wholesaler_id: string;
+  // wholesaler_id removed - database per wholesaler provides isolation
   file_url?: string; // CDN URL (for file imports)
   file_name?: string;
   api_config?: {
@@ -47,10 +51,48 @@ interface ImportJobData {
 }
 
 /**
+ * Multilingual fields that should have language suffixes
+ */
+const MULTILINGUAL_FIELDS = [
+  "name",
+  "description",
+  "short_description",
+  "features",
+  "specifications",
+  "meta_title",
+  "meta_description",
+  "keywords",
+];
+
+/**
+ * Apply default language to multilingual fields
+ * Same logic as parser.ts but for API imports
+ */
+function applyDefaultLanguageToData(data: any): void {
+  const defaultLang = projectConfig.defaultLanguage;
+
+  for (const field of MULTILINGUAL_FIELDS) {
+    if (data[field] !== undefined && data[field] !== null && data[field] !== "") {
+      const isLanguageObject = typeof data[field] === "object" &&
+                                !Array.isArray(data[field]) &&
+                                data[field] !== null;
+
+      if (!isLanguageObject) {
+        const plainValue = data[field];
+        data[field] = {
+          [defaultLang]: plainValue
+        };
+        console.log(`📝 Applied default language '${defaultLang}' to field '${field}'`);
+      }
+    }
+  }
+}
+
+/**
  * Process import job
  */
 async function processImport(job: Job<ImportJobData>) {
-  const { job_id, source_id, wholesaler_id, file_url, file_name, api_config } = job.data;
+  const { job_id, source_id, file_url, file_name, api_config } = job.data;
 
   const isApiImport = !!api_config;
 
@@ -91,7 +133,6 @@ async function processImport(job: Job<ImportJobData>) {
         $set: {
           status: "processing",
           started_at: new Date(),
-          wholesaler_id,
           source_id,
           ...(batchMetadata && {
             batch_id: batchMetadata.batch_id,
@@ -105,42 +146,50 @@ async function processImport(job: Job<ImportJobData>) {
     );
 
     // Get source configuration
-    const source = await ImportSourceModel.findOne({ source_id, wholesaler_id });
+    const source = await ImportSourceModel.findOne({ source_id });
     if (!source) throw new Error(`Source not found: ${source_id}`);
 
     let rows;
 
     if (isApiImport) {
       // ========== API IMPORT ==========
-      console.log(`📡 Fetching data from API: ${api_config.endpoint}`);
+      let apiData;
 
-      // Build fetch options
-      const fetchOptions: RequestInit = {
-        method: api_config.method || 'GET',
-        headers: api_config.headers || {},
-      };
+      // Check if products are passed directly (for testing)
+      if ((job.data as any).products) {
+        console.log(`📦 Using directly provided product data (${(job.data as any).products.length} products)`);
+        apiData = (job.data as any).products;
+      } else {
+        // Fetch from API
+        console.log(`📡 Fetching data from API: ${api_config.endpoint}`);
 
-      // Add authentication if configured
-      if (api_config.auth_type === 'bearer' && api_config.auth_token) {
-        fetchOptions.headers = {
-          ...fetchOptions.headers,
-          'Authorization': `Bearer ${api_config.auth_token}`
+        // Build fetch options
+        const fetchOptions: RequestInit = {
+          method: api_config.method || 'GET',
+          headers: api_config.headers || {},
         };
-      } else if (api_config.auth_type === 'api_key' && api_config.auth_token) {
-        fetchOptions.headers = {
-          ...fetchOptions.headers,
-          'X-API-Key': api_config.auth_token
-        };
-      }
 
-      // Fetch from API
-      const response = await fetch(api_config.endpoint, fetchOptions);
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
-      }
+        // Add authentication if configured
+        if (api_config.auth_type === 'bearer' && api_config.auth_token) {
+          fetchOptions.headers = {
+            ...fetchOptions.headers,
+            'Authorization': `Bearer ${api_config.auth_token}`
+          };
+        } else if (api_config.auth_type === 'api_key' && api_config.auth_token) {
+          fetchOptions.headers = {
+            ...fetchOptions.headers,
+            'X-API-Key': api_config.auth_token
+          };
+        }
 
-      const apiData = await response.json();
-      console.log(`✅ API data fetched (${JSON.stringify(apiData).length} bytes)`);
+        const response = await fetch(api_config.endpoint, fetchOptions);
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+        }
+
+        apiData = await response.json();
+        console.log(`✅ API data fetched (${JSON.stringify(apiData).length} bytes)`);
+      }
 
       // Transform API data to rows format
       const dataArray = Array.isArray(apiData) ? apiData : [apiData];
@@ -159,6 +208,9 @@ async function processImport(job: Job<ImportJobData>) {
           // No mappings, use data as-is
           Object.assign(mappedData, item);
         }
+
+        // Apply default language to multilingual fields (same as CSV parser)
+        applyDefaultLanguageToData(mappedData);
 
         return {
           entity_code: mappedData.entity_code || mappedData.id || String(Math.random()),
@@ -254,6 +306,7 @@ async function processImport(job: Job<ImportJobData>) {
     let failed = 0;
     let autoPublished = 0;
     const errors: any[] = [];
+    const successfulEntityCodes: string[] = []; // Collect for batch sync
 
     for (const row of rows) {
       try {
@@ -273,7 +326,6 @@ async function processImport(job: Job<ImportJobData>) {
 
         // Find latest version for this product
         const latestProduct = await PIMProductModel.findOne({
-          wholesaler_id,
           entity_code,
           isCurrent: true,
         }).sort({ version: -1 });
@@ -322,14 +374,16 @@ async function processImport(job: Job<ImportJobData>) {
         // Mark old versions as not current
         if (latestProduct) {
           await PIMProductModel.updateMany(
-            { wholesaler_id, entity_code, isCurrent: true },
+            { entity_code, isCurrent: true },
             { isCurrent: false, isCurrentPublished: false }
           );
         }
 
+        // Exclude fields that are calculated/managed by the system
+        const { status: _status, ...safeProductData } = productData;
+
         // Create new version
         await PIMProductModel.create({
-          wholesaler_id,
           entity_code,
           sku: productData.sku || entity_code,
           version: newVersion,
@@ -367,8 +421,11 @@ async function processImport(job: Job<ImportJobData>) {
           manually_edited_fields: latestProduct?.manually_edited_fields || [],
           last_manual_update_at: latestProduct?.last_manual_update_at,
           locked_fields: latestProduct?.locked_fields || [],
-          ...productData,
+          ...safeProductData,
         });
+
+        // Collect successful products for batch sync later
+        successfulEntityCodes.push(entity_code);
 
         successful++;
       } catch (error: any) {
@@ -468,6 +525,54 @@ async function processImport(job: Job<ImportJobData>) {
       console.warn(`⚠️ SLOW PROCESSING: ${durationSeconds}s (expected: ${expectedDuration}s, ${((durationSeconds / expectedDuration) * 100).toFixed(0)}% slower)`);
     }
 
+    // ========== PHASE 5: BATCH SYNC TO SOLR ==========
+    // Queue batch sync jobs if Solr is enabled and language has searchEnabled=true
+    if (successfulEntityCodes.length > 0 && process.env.SOLR_ENABLED === 'true') {
+      try {
+        // Get default language (or first enabled language with searchEnabled)
+        const defaultLanguage = await LanguageModel.findOne({
+          isDefault: true,
+          isEnabled: true,
+          searchEnabled: true
+        });
+
+        if (defaultLanguage) {
+          console.log(`\n📤 Queuing batch Solr sync for ${successfulEntityCodes.length} products (language: ${defaultLanguage.code})`);
+
+          // Batch the products (50 per batch for optimal performance)
+          const SYNC_BATCH_SIZE = 50;
+          const batchCount = Math.ceil(successfulEntityCodes.length / SYNC_BATCH_SIZE);
+
+          for (let i = 0; i < successfulEntityCodes.length; i += SYNC_BATCH_SIZE) {
+            const batchIds = successfulEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
+            const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
+
+            await syncQueue.add('bulk-sync-batch', {
+              product_id: `batch-${job_id}-${batchNumber}`,
+              product_ids: batchIds,
+              operation: 'bulk-sync',
+              channels: ['solr'],
+              tenant_id: process.env.VINC_TENANT_ID || 'default',
+              priority: 'high',
+            }, {
+              priority: 1, // High priority for search indexing
+            });
+
+            console.log(`   ✓ Queued batch ${batchNumber}/${batchCount} (${batchIds.length} products)`);
+          }
+
+          console.log(`✅ Queued ${batchCount} batch sync jobs for Solr indexing`);
+        } else {
+          console.log(`⚠️ No search-enabled default language found - skipping Solr sync`);
+        }
+      } catch (syncError: any) {
+        console.error(`⚠️ Failed to queue batch sync: ${syncError.message}`);
+        // Don't fail the import if sync queueing fails
+      }
+    } else if (successfulEntityCodes.length > 0) {
+      console.log(`ℹ️ Solr sync skipped (SOLR_ENABLED=${process.env.SOLR_ENABLED})`);
+    }
+
     return { processed, successful, failed, autoPublished };
   } catch (error: any) {
     // Mark job as failed
@@ -508,7 +613,7 @@ console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
  * Process bulk update job
  */
 async function processBulkUpdate(job: Job<any>) {
-  const { job_id, wholesaler_id, product_ids, updates } = job.data;
+  const { job_id, product_ids, updates } = job.data;
 
   console.log(`\n🔄 Processing bulk update job: ${job_id}`);
   console.log(`   Products: ${product_ids.length}`);
@@ -550,7 +655,6 @@ async function processBulkUpdate(job: Job<any>) {
     const result = await PIMProductModel.updateMany(
       {
         _id: { $in: product_ids },
-        wholesaler_id,
         isCurrent: true,
       },
       {

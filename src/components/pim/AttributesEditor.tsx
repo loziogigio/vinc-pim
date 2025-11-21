@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 type Attribute = {
   key: string;
   value: string;
+  uom?: string;
 };
 
 type Props = {
@@ -17,10 +18,21 @@ type Props = {
 export function AttributesEditor({ value, onChange, disabled }: Props) {
   // Convert object to array for easier editing
   const [attributesArray, setAttributesArray] = useState<Attribute[]>(() =>
-    Object.entries(value || {}).map(([key, val]) => ({
-      key,
-      value: String(val),
-    }))
+    Object.entries(value || {}).map(([key, val]) => {
+      // Handle both simple values and objects with value/uom
+      if (typeof val === 'object' && val !== null && 'value' in val) {
+        return {
+          key,
+          value: String(val.value),
+          uom: val.uom || undefined,
+        };
+      }
+      return {
+        key,
+        value: String(val),
+        uom: undefined,
+      };
+    })
   );
 
   // Track if we're making an internal update to avoid sync loop
@@ -34,15 +46,26 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
     }
 
     setAttributesArray(
-      Object.entries(value || {}).map(([key, val]) => ({
-        key,
-        value: String(val),
-      }))
+      Object.entries(value || {}).map(([key, val]) => {
+        // Handle both simple values and objects with value/uom
+        if (typeof val === 'object' && val !== null && 'value' in val) {
+          return {
+            key,
+            value: String(val.value),
+            uom: val.uom || undefined,
+          };
+        }
+        return {
+          key,
+          value: String(val),
+          uom: undefined,
+        };
+      })
     );
   }, [value]);
 
   function handleAdd() {
-    const newAttributes = [...attributesArray, { key: "", value: "" }];
+    const newAttributes = [...attributesArray, { key: "", value: "", uom: undefined }];
     setAttributesArray(newAttributes);
     updateAttributes(newAttributes);
   }
@@ -67,6 +90,13 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
     updateAttributes(newAttributes);
   }
 
+  function handleUomChange(index: number, newUom: string) {
+    const newAttributes = [...attributesArray];
+    newAttributes[index].uom = newUom || undefined;
+    setAttributesArray(newAttributes);
+    updateAttributes(newAttributes);
+  }
+
   function updateAttributes(attrs: Attribute[]) {
     // Convert array back to object, filtering out empty keys
     const obj: Record<string, any> = {};
@@ -74,7 +104,18 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
       if (attr.key.trim()) {
         // Try to parse as number if possible
         const numValue = Number(attr.value);
-        obj[attr.key.trim()] = isNaN(numValue) ? attr.value : numValue;
+        const parsedValue = isNaN(numValue) ? attr.value : numValue;
+
+        // If UOM is provided, store as object with value and uom
+        if (attr.uom && attr.uom.trim()) {
+          obj[attr.key.trim()] = {
+            value: parsedValue,
+            uom: attr.uom.trim(),
+          };
+        } else {
+          // Store as simple value
+          obj[attr.key.trim()] = parsedValue;
+        }
       }
     });
 
@@ -139,6 +180,16 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
                 className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
 
+              {/* UOM Input */}
+              <input
+                type="text"
+                value={attr.uom || ""}
+                onChange={(e) => handleUomChange(index, e.target.value)}
+                placeholder="Unit (e.g., kg, cm)"
+                disabled={disabled}
+                className="w-32 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+              />
+
               {/* Remove Button */}
               <button
                 type="button"
@@ -157,7 +208,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
       {/* Helper Text */}
       {attributesArray.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Tip: Numeric values will be automatically detected (e.g., "16" becomes a number)
+          Tip: Numeric values will be automatically detected (e.g., "16" becomes a number). Unit (UOM) is optional.
         </p>
       )}
     </div>

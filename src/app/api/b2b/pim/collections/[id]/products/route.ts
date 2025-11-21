@@ -24,10 +24,9 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
-    // Verify collection belongs to this wholesaler
+    // Verify collection exists
     const collection = await CollectionModel.findOne({
       collection_id: collectionId,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!collection) {
@@ -36,7 +35,6 @@ export async function GET(
 
     // Build query - products that have this collection in their collections array
     const query: any = {
-      wholesaler_id: session.userId,
       isCurrent: true,
       "collections.id": collectionId,
     };
@@ -110,10 +108,9 @@ export async function POST(
       );
     }
 
-    // Verify collection belongs to this wholesaler
+    // Verify collection exists
     const collection = await CollectionModel.findOne({
       collection_id: collectionId,
-      wholesaler_id: session.userId,
     }).lean() as any;
 
     if (!collection) {
@@ -131,7 +128,6 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
           isCurrent: true,
           "collections.id": { $ne: collectionId }, // Only if not already in array
         },
@@ -140,13 +136,12 @@ export async function POST(
 
       // Update collection product count
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
         isCurrent: true,
         "collections.id": collectionId,
       });
 
       await CollectionModel.updateOne(
-        { collection_id: collectionId, wholesaler_id: session.userId },
+        { collection_id: collectionId },
         { $set: { product_count: productCount } }
       );
 
@@ -159,7 +154,6 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
           isCurrent: true,
           "collections.id": collectionId,
         },
@@ -168,13 +162,12 @@ export async function POST(
 
       // Update collection product count
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
         isCurrent: true,
         "collections.id": collectionId,
       });
 
       await CollectionModel.updateOne(
-        { collection_id: collectionId, wholesaler_id: session.userId },
+        { collection_id: collectionId },
         { $set: { product_count: productCount } }
       );
 

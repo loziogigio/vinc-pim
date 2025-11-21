@@ -18,7 +18,7 @@ export async function GET(
 
     const brand = await BrandModel.findOne({
       brand_id: params.id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!brand) {
@@ -51,20 +51,18 @@ export async function PATCH(
     const body = await req.json();
     const { label, slug, description, logo_url, website_url, is_active, display_order } = body;
 
-    // Find existing brand
+    // Find existing brand (no wholesaler_id - database provides isolation)
     const existingBrand = await BrandModel.findOne({
       brand_id: params.id,
-      wholesaler_id: session.userId,
     });
 
     if (!existingBrand) {
       return NextResponse.json({ error: "Brand not found" }, { status: 404 });
     }
 
-    // If slug is being changed, check for conflicts
+    // If slug is being changed, check for conflicts (no wholesaler_id - database provides isolation)
     if (slug && slug !== existingBrand.slug) {
       const conflictingBrand = await BrandModel.findOne({
-        wholesaler_id: session.userId,
         slug: slug,
         brand_id: { $ne: params.id },
       });
@@ -116,7 +114,7 @@ export async function DELETE(
 
     const brand = await BrandModel.findOne({
       brand_id: params.id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     if (!brand) {
@@ -135,7 +133,7 @@ export async function DELETE(
 
     await BrandModel.deleteOne({
       brand_id: params.id,
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
     });
 
     return NextResponse.json({ message: "Brand deleted successfully" });

@@ -23,10 +23,8 @@ export async function GET(req: NextRequest) {
     const parentId = searchParams.get("parent_id");
     const includeInactive = searchParams.get("include_inactive") === "true";
 
-    // Build query
-    const query: any = {
-      wholesaler_id: session.userId,
-    };
+    // Build query - no wholesaler_id, database provides isolation
+    const query: any = {};
 
     // Only filter by parent_id if explicitly provided in query params
     if (searchParams.has("parent_id")) {
@@ -53,7 +51,7 @@ export async function GET(req: NextRequest) {
     const productCounts = await PIMProductModel.aggregate([
       {
         $match: {
-          wholesaler_id: session.userId,
+          // No wholesaler_id - database provides isolation
           isCurrent: true,
           "category.id": { $in: categoryIds },
         },
@@ -106,9 +104,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if slug already exists for this wholesaler
+    // Check if slug already exists (no wholesaler_id - database provides isolation)
     const existing = await CategoryModel.findOne({
-      wholesaler_id: session.userId,
       slug,
     });
 
@@ -126,7 +123,7 @@ export async function POST(req: NextRequest) {
     if (parent_id) {
       const parent = await CategoryModel.findOne({
         category_id: parent_id,
-        wholesaler_id: session.userId,
+        // No wholesaler_id - database provides isolation
       });
 
       if (!parent) {
@@ -142,7 +139,7 @@ export async function POST(req: NextRequest) {
 
     const category = await CategoryModel.create({
       category_id: nanoid(12),
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       name,
       slug,
       description,

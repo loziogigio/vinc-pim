@@ -24,7 +24,6 @@ export async function GET(
 
     const collection = await CollectionModel.findOne({
       collection_id: id,
-      wholesaler_id: session.userId,
     }).lean();
 
     if (!collection) {
@@ -35,7 +34,6 @@ export async function GET(
     }
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "collections.id": id,
     });
@@ -75,10 +73,9 @@ export async function PATCH(
     const body = await req.json();
     const { name, slug, description, hero_image, seo, display_order, is_active } = body;
 
-    // Check if collection exists and belongs to wholesaler
+    // Check if collection exists
     const collection = await CollectionModel.findOne({
       collection_id: id,
-      wholesaler_id: session.userId,
     });
 
     if (!collection) {
@@ -91,7 +88,6 @@ export async function PATCH(
     // If slug is changing, check for duplicates
     if (slug && slug !== collection.slug) {
       const existing = await CollectionModel.findOne({
-        wholesaler_id: session.userId,
         slug,
         collection_id: { $ne: id },
       });
@@ -118,7 +114,7 @@ export async function PATCH(
     if (is_active !== undefined) updateData.is_active = is_active;
 
     const updatedCollection = await CollectionModel.findOneAndUpdate(
-      { collection_id: id, wholesaler_id: session.userId },
+      { collection_id: id },
       updateData,
       { new: true }
     );
@@ -151,10 +147,9 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check if collection exists and belongs to wholesaler
+    // Check if collection exists
     const collection = await CollectionModel.findOne({
       collection_id: id,
-      wholesaler_id: session.userId,
     });
 
     if (!collection) {
@@ -166,7 +161,6 @@ export async function DELETE(
 
     // Check if collection has products
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "collections.id": id,
     });
@@ -183,7 +177,6 @@ export async function DELETE(
     // Delete collection
     await CollectionModel.deleteOne({
       collection_id: id,
-      wholesaler_id: session.userId,
     });
 
     return NextResponse.json({ success: true });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
+import crypto from "crypto";
 
 /**
  * GET /api/b2b/pim/products
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     // Build query
     const query: any = {
-      wholesaler_id: session.userId,
+      // No wholesaler_id - database provides isolation
       isCurrent: true,
     };
 
@@ -134,6 +135,113 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching products:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/b2b/pim/products
+ * Create a new product manually
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getB2BSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectToDatabase();
+
+    const body = await req.json();
+    const { entity_code, sku, name, description, price, currency, category, brand, stock_status, quantity } = body;
+
+    // Validate required fields
+    if (!entity_code || !sku || !name) {
+      return NextResponse.json(
+        { error: "Missing required fields: entity_code, sku, name" },
+        { status: 400 }
+      );
+    }
+
+    // Check if product with same entity_code or sku already exists
+    const existingProduct = await PIMProductModel.findOne({
+      $or: [{ entity_code }, { sku }],
+      isCurrent: true,
+    });
+
+    if (existingProduct) {
+      return NextResponse.json(
+        { error: `Product with entity_code "${entity_code}" or SKU "${sku}" already exists` },
+        { status: 409 }
+      );
+    }
+
+    // Generate unique hash for version tracking
+    const versionHash = crypto
+      .createHash("sha256")
+      .update(JSON.stringify({ entity_code, sku, name, created_at: new Date() }))
+      .digest("hex")
+      .substring(0, 16);
+
+    // Create new product with placeholder image (will be updated later)
+    const newProduct = await PIMProductModel.create({
+      entity_code,
+      sku,
+      name,
+      description: description || "",
+      long_description: "",
+      price: price || 0,
+      currency: currency || "EUR",
+      category: category ? { id: category, name: category } : undefined,
+      brand: brand ? { id: brand, name: brand } : undefined,
+      stock_status: stock_status || "in_stock",
+      quantity: quantity || 0,
+      status: "draft", // New manual products start as draft
+      isCurrent: true,
+      version: 1,
+      version_hash: versionHash,
+      // Placeholder image - user will upload actual image later
+      image: {
+        id: "placeholder",
+        thumbnail: "/placeholder-product.png",
+        original: "/placeholder-product.png",
+      },
+      source: {
+        source_id: "manual",
+        source_name: "Manual Entry",
+        imported_at: new Date(),
+      },
+      completeness_score: 30, // Basic score for required fields only
+      critical_issues: ["Missing product image"], // Flag missing image as issue
+      quality_data: {
+        scores: {
+          completeness: 30,
+          accuracy: 100,
+          richness: 0,
+        },
+        issues: ["Missing product image"],
+      },
+      analytics: {
+        views_30d: 0,
+        sales_30d: 0,
+        conversion_rate: 0,
+        priority_score: 50, // Default priority
+      },
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    return NextResponse.json({
+      success: true,
+      product: newProduct,
+      entity_code: newProduct.entity_code,
+    }, { status: 201 });
+
+  } catch (error) {
+    console.error("Error creating product:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

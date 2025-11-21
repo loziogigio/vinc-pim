@@ -20,7 +20,6 @@ export async function GET(
 
     const category = await CategoryModel.findOne({
       category_id: categoryId,
-      wholesaler_id: session.userId,
     }).lean();
 
     if (!category) {
@@ -34,7 +33,6 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {
-      wholesaler_id: session.userId,
       isCurrent: true,
       "category.id": categoryId,
     };
@@ -111,7 +109,6 @@ export async function POST(
 
     const category = await CategoryModel.findOne({
       category_id: categoryId,
-      wholesaler_id: session.userId,
     }).lean();
 
     if (!category) {
@@ -128,20 +125,18 @@ export async function POST(
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
-          wholesaler_id: session.userId,
           isCurrent: true,
         },
         { $set: { category: categoryData } }
       );
 
       const productCount = await PIMProductModel.countDocuments({
-        wholesaler_id: session.userId,
         isCurrent: true,
         "category.id": categoryId,
       });
 
       await CategoryModel.updateOne(
-        { category_id: categoryId, wholesaler_id: session.userId },
+        { category_id: categoryId },
         { $set: { product_count: productCount } }
       );
 
@@ -154,7 +149,6 @@ export async function POST(
     const result = await PIMProductModel.updateMany(
       {
         entity_code: { $in: entity_codes },
-        wholesaler_id: session.userId,
         isCurrent: true,
         "category.id": categoryId,
       },
@@ -162,13 +156,12 @@ export async function POST(
     );
 
     const productCount = await PIMProductModel.countDocuments({
-      wholesaler_id: session.userId,
       isCurrent: true,
       "category.id": categoryId,
     });
 
     await CategoryModel.updateOne(
-      { category_id: categoryId, wholesaler_id: session.userId },
+      { category_id: categoryId },
       { $set: { product_count: productCount } }
     );
 

@@ -25,13 +25,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update each category's display_order
+    // Update each category's display_order (no wholesaler_id - database provides isolation)
     const updatePromises = updates.map(
       async ({ category_id, display_order }: { category_id: string; display_order: number }) => {
         return CategoryModel.findOneAndUpdate(
           {
             category_id,
-            wholesaler_id: session.userId,
+            // No wholesaler_id - database provides isolation
           },
           {
             display_order,
