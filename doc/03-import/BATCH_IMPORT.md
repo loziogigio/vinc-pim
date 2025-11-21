@@ -12,6 +12,150 @@ Complete guide for importing products into the PIM system with automatic languag
 
 ---
 
+## 📦 Batch Processing
+
+### How Batch Import Works
+
+The batch import system allows you to import multiple products in a single API request. Products are processed asynchronously through a queue system (BullMQ + Redis) to ensure reliability and scalability.
+
+**Processing Flow:**
+
+1. **Submit Batch** → API receives array of products
+2. **Validation** → Each product is validated against schema
+3. **Queue Creation** → Valid products are queued for processing
+4. **Async Processing** → Workers process products in parallel
+5. **Database Update** → Products are saved to MongoDB
+6. **Search Sync** → Products are indexed in Solr (if enabled)
+7. **Job Completion** → Status updated with results
+
+### Batch Structure
+
+```typescript
+interface BatchImportRequest {
+  products: PIMProduct[];           // Array of products to import (required)
+  source_id?: string;               // Optional source identifier
+  sync_to_search?: boolean;         // Auto-sync to Solr (default: true)
+  update_existing?: boolean;        // Update if entity_code exists (default: true)
+  validation_mode?: 'strict' | 'lenient';  // Validation level (default: 'strict')
+}
+```
+
+**Example Batch Request:**
+```json
+{
+  "products": [
+    {
+      "entity_code": "PROD-001",
+      "sku": "SKU-001",
+      "name": "Product 1",
+      "price": 19.99,
+      "currency": "EUR",
+      "stock_quantity": 100
+    },
+    {
+      "entity_code": "PROD-002",
+      "sku": "SKU-002",
+      "name": "Product 2",
+      "price": 29.99,
+      "currency": "EUR",
+      "stock_quantity": 50
+    }
+  ],
+  "source_id": "wholesale-import-2025",
+  "sync_to_search": true,
+  "update_existing": true
+}
+```
+
+### Batch Size Recommendations
+
+| Batch Size | Processing Time | Use Case |
+|------------|----------------|----------|
+| **1-100 products** | 2-5 seconds | Quick updates, testing |
+| **100-500 products** | 10-30 seconds | Regular imports (recommended) |
+| **500-1000 products** | 30-60 seconds | Large imports |
+| **1000+ products** | 1+ minutes | Split into multiple batches |
+
+**Best Practices:**
+- ✅ **Recommended:** 100-500 products per batch for optimal performance
+- ✅ Split large datasets into multiple batch requests
+- ✅ Use job tracking for batches over 100 products
+- ⚠️ **Avoid:** Single requests with 5000+ products (may timeout)
+
+### Batch Validation
+
+Each product in the batch is validated before processing:
+
+**Required Fields:**
+- `entity_code` - Unique product identifier
+- `sku` - Stock keeping unit
+- `price` - Product price
+- `currency` - Currency code (e.g., "EUR")
+- `stock_quantity` - Available quantity
+
+**Validation Modes:**
+
+**Strict Mode (default):**
+- All required fields must be present
+- Invalid products block the entire batch
+- Returns detailed validation errors
+
+**Lenient Mode:**
+- Invalid products are skipped
+- Valid products continue processing
+- Returns list of skipped products with reasons
+
+### Error Handling
+
+If validation fails, you'll receive detailed errors:
+
+```json
+{
+  "success": false,
+  "error": "Batch validation failed",
+  "invalid_products": [
+    {
+      "index": 0,
+      "entity_code": "PROD-001",
+      "errors": [
+        { "field": "price", "message": "Price is required" },
+        { "field": "currency", "message": "Currency must be a valid ISO code" }
+      ]
+    }
+  ],
+  "valid_count": 8,
+  "invalid_count": 2
+}
+```
+
+### Update vs Create
+
+The batch import automatically handles both creating new products and updating existing ones:
+
+**Create New Product:**
+- Product with `entity_code` doesn't exist → Creates new product
+
+**Update Existing Product:**
+- Product with `entity_code` exists → Updates existing product
+- Only provided fields are updated (partial updates supported)
+- Set `update_existing: false` to prevent updates
+
+**Example - Partial Update:**
+```json
+{
+  "products": [
+    {
+      "entity_code": "EXISTING-PROD-001",
+      "price": 24.99,
+      "stock_quantity": 200
+    }
+  ]
+}
+```
+This updates only price and stock for the existing product, leaving other fields unchanged.
+
+---
+
 ## 🔧 Product Data Structure
 
 ### Complete Product Schema
