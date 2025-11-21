@@ -1,0 +1,302 @@
+{
+  "// ========================================== FULL MULTILINGUAL PRODUCT STRUCTURE": "",
+  "// 50k items - 4 languages: Italian, German, English, Czech": "",
+  "// All translatable fields organized by language": "",
+
+  "// ========================================== MONGODB STRUCTURE (RECOMMENDED)": "",
+  "// Use nested objects for multilingual content": "",
+
+  "entity_code": "TOOL-BOSCH-PSB-750-001",
+  "sku": "BOSCH-PSB-750-RCE",
+
+  "// ========== MULTILINGUAL NAME": "",
+  "name": {
+    "it": "Trapano Battente Professionale Bosch PSB 750 RCE 750W",
+    "de": "Bosch PSB 750 RCE Profi-Schlagbohrmaschine 750W",
+    "en": "Bosch PSB 750 RCE Professional Hammer Drill 750W",
+    "cs": "Bosch PSB 750 RCE Profesionální příklepová vrtačka 750W"
+  },
+
+  "// ========== MULTILINGUAL SLUG": "",
+  "slug": {
+    "it": "trapano-battente-bosch-psb-750-rce-750w",
+    "de": "schlagbohrmaschine-bosch-psb-750-rce-750w",
+    "en": "hammer-drill-bosch-psb-750-rce-750w",
+    "cs": "priklepova-vrtacka-bosch-psb-750-rce-750w"
+  },
+
+  "// ========== MULTILINGUAL DESCRIPTION": "",
+  "description": {
+    "it": "Il trapano a percussione professionale Bosch PSB 750 RCE con potenza di 750W è ideale per muratura, legno e metallo. Include funzione di inversione e velocità variabile.",
+    "de": "Die Bosch PSB 750 RCE Profi-Schlagbohrmaschine mit 750W Leistung ist ideal für Mauerwerk, Holz und Metall. Inklusive Rechts-/Linkslauf und Drehzahlregelung.",
+    "en": "The Bosch PSB 750 RCE professional hammer drill with 750W power is ideal for masonry, wood and metal. Includes reverse function and variable speed.",
+    "cs": "Profesionální příklepová vrtačka Bosch PSB 750 RCE s výkonem 750W je ideální pro zdivo, dřevo a kov. Včetně reverzace a regulace otáček."
+  },
+
+  "// ========== MULTILINGUAL SHORT DESCRIPTION": "",
+  "short_description": {
+    "it": "Trapano professionale 750W per muratura, legno e metallo",
+    "de": "Profi-Bohrmaschine 750W für Mauerwerk, Holz und Metall",
+    "en": "Professional drill 750W for masonry, wood and metal",
+    "cs": "Profesionální vrtačka 750W pro zdivo, dřevo a kov"
+  },
+
+  "// ========== MULTILINGUAL FEATURES (Marketing highlights)": "",
+  "features": {
+    "it": [
+      "Potenza 750W per lavori intensivi",
+      "Funzione percussione per muratura",
+      "Velocità variabile 0-3000 giri/min",
+      "Impugnatura ergonomica antiscivolo",
+      "Garanzia 5 anni"
+    ],
+    "de": [
+      "750W Leistung für intensive Arbeiten",
+      "Schlagfunktion für Mauerwerk",
+      "Variable Drehzahl 0-3000 U/min",
+      "Ergonomischer Rutschfester Griff",
+      "5 Jahre Garantie"
+    ],
+    "en": [
+      "750W power for intensive work",
+      "Hammer function for masonry",
+      "Variable speed 0-3000 rpm",
+      "Ergonomic non-slip handle",
+      "5-year warranty"
+    ],
+    "cs": [
+      "Výkon 750W pro intenzivní práci",
+      "Příklepová funkce pro zdivo",
+      "Proměnné otáčky 0-3000 ot/min",
+      "Ergonomická protiskluzová rukojeť",
+      "5letá záruka"
+    ]
+  },
+
+  "// ========== MULTILINGUAL SPECIFICATIONS": "",
+  "// Note: Values stay the same, labels are translated": "",
+  "specifications": {
+    "it": [
+      { "key": "power", "label": "Potenza", "value": 750, "uom": "W", "category": "Electrical", "order": 1 },
+      { "key": "weight", "label": "Peso", "value": 2.0, "uom": "kg", "category": "Physical", "order": 2 },
+      { "key": "voltage", "label": "Tensione", "value": 230, "uom": "V", "category": "Electrical", "order": 3 },
+      { "key": "max_drilling_concrete", "label": "Foratura max calcestruzzo", "value": 16, "uom": "mm", "category": "Capacity", "order": 4 }
+    ],
+    "de": [
+      { "key": "power", "label": "Leistung", "value": 750, "uom": "W", "category": "Elektrisch", "order": 1 },
+      { "key": "weight", "label": "Gewicht", "value": 2.0, "uom": "kg", "category": "Physisch", "order": 2 },
+      { "key": "voltage", "label": "Spannung", "value": 230, "uom": "V", "category": "Elektrisch", "order": 3 },
+      { "key": "max_drilling_concrete", "label": "Max. Bohrung Beton", "value": 16, "uom": "mm", "category": "Kapazität", "order": 4 }
+    ],
+    "en": [
+      { "key": "power", "label": "Power", "value": 750, "uom": "W", "category": "Electrical", "order": 1 },
+      { "key": "weight", "label": "Weight", "value": 2.0, "uom": "kg", "category": "Physical", "order": 2 },
+      { "key": "voltage", "label": "Voltage", "value": 230, "uom": "V", "category": "Electrical", "order": 3 },
+      { "key": "max_drilling_concrete", "label": "Max drilling concrete", "value": 16, "uom": "mm", "category": "Capacity", "order": 4 }
+    ],
+    "cs": [
+      { "key": "power", "label": "Výkon", "value": 750, "uom": "W", "category": "Elektrické", "order": 1 },
+      { "key": "weight", "label": "Hmotnost", "value": 2.0, "uom": "kg", "category": "Fyzické", "order": 2 },
+      { "key": "voltage", "label": "Napětí", "value": 230, "uom": "V", "category": "Elektrické", "order": 3 },
+      { "key": "max_drilling_concrete", "label": "Max. vrtání betonu", "value": 16, "uom": "mm", "category": "Kapacita", "order": 4 }
+    ]
+  },
+
+  "// ========== MULTILINGUAL ATTRIBUTES": "",
+  "attributes": {
+    "it": [
+      { "key": "color", "label": "Colore", "value": "blu" },
+      { "key": "material_housing", "label": "Materiale alloggiamento", "value": "plastica" },
+      { "key": "reverse_function", "label": "Funzione inversione", "value": true },
+      { "key": "warranty_years", "label": "Anni di garanzia", "value": 5 }
+    ],
+    "de": [
+      { "key": "color", "label": "Farbe", "value": "blau" },
+      { "key": "material_housing", "label": "Gehäusematerial", "value": "Kunststoff" },
+      { "key": "reverse_function", "label": "Umkehrfunktion", "value": true },
+      { "key": "warranty_years", "label": "Garantie Jahre", "value": 5 }
+    ],
+    "en": [
+      { "key": "color", "label": "Color", "value": "blue" },
+      { "key": "material_housing", "label": "Housing material", "value": "plastic" },
+      { "key": "reverse_function", "label": "Reverse function", "value": true },
+      { "key": "warranty_years", "label": "Warranty years", "value": 5 }
+    ],
+    "cs": [
+      { "key": "color", "label": "Barva", "value": "modrá" },
+      { "key": "material_housing", "label": "Materiál pouzdra", "value": "plast" },
+      { "key": "reverse_function", "label": "Funkce reverzace", "value": true },
+      { "key": "warranty_years", "label": "Roky záruky", "value": 5 }
+    ]
+  },
+
+  "// ========== MULTILINGUAL MEDIA LABELS": "",
+  "media": [
+    {
+      "type": "document",
+      "url": "https://cdn.example.com/manuals/bosch-psb-750-rce-manual-it.pdf",
+      "s3_key": "manuals/bosch-psb-750-rce-manual-it.pdf",
+      "label": {
+        "it": "Manuale d'uso italiano",
+        "de": "Italienische Bedienungsanleitung",
+        "en": "Italian user manual",
+        "cs": "Italská uživatelská příručka"
+      },
+      "language": "it",
+      "position": 0
+    },
+    {
+      "type": "video",
+      "url": "https://www.youtube.com/watch?v=example",
+      "label": {
+        "it": "Video dimostrazione prodotto",
+        "de": "Produktdemonstr ationsvideo",
+        "en": "Product demonstration video",
+        "cs": "Video prezentace produktu"
+      },
+      "is_external_link": true,
+      "position": 1
+    }
+  ],
+
+  "// ========== MULTILINGUAL CATEGORY": "",
+  "category": {
+    "id": "cat_hammer_drills",
+    "name": {
+      "it": "Trapani Battenti",
+      "de": "Schlagbohrmaschinen",
+      "en": "Hammer Drills",
+      "cs": "Příklepové vrtačky"
+    },
+    "slug": {
+      "it": "trapani-battenti",
+      "de": "schlagbohrmaschinen",
+      "en": "hammer-drills",
+      "cs": "priklepove-vrtacky"
+    }
+  },
+
+  "// ========== MULTILINGUAL BRAND": "",
+  "brand": {
+    "id": "brand_bosch",
+    "name": "Bosch Professional",
+    "slug": "bosch-professional"
+  },
+
+  "// ========== MULTILINGUAL COLLECTIONS": "",
+  "collections": [
+    {
+      "id": "col_power_tools",
+      "name": {
+        "it": "Utensili Elettrici",
+        "de": "Elektrowerkzeuge",
+        "en": "Power Tools",
+        "cs": "Elektrické nářadí"
+      },
+      "slug": {
+        "it": "utensili-elettrici",
+        "de": "elektrowerkzeuge",
+        "en": "power-tools",
+        "cs": "elektricke-naradi"
+      }
+    }
+  ],
+
+  "// ========== MULTILINGUAL TAGS": "",
+  "tags": [
+    {
+      "id": "tag_bestseller",
+      "name": {
+        "it": "Più venduto",
+        "de": "Bestseller",
+        "en": "Bestseller",
+        "cs": "Nejprodávanější"
+      },
+      "slug": "bestseller"
+    },
+    {
+      "id": "tag_professional",
+      "name": {
+        "it": "Professionale",
+        "de": "Professionell",
+        "en": "Professional",
+        "cs": "Profesionální"
+      },
+      "slug": "professional"
+    }
+  },
+
+  "// ========== MULTILINGUAL PACKAGING": "",
+  "packaging_options": [
+    {
+      "code": "MV",
+      "label": {
+        "it": "Pezzo singolo",
+        "de": "Einzelstück",
+        "en": "Single piece",
+        "cs": "Jeden kus"
+      },
+      "qty": 1,
+      "uom": "PZ",
+      "is_default": true,
+      "is_smallest": true
+    }
+  ],
+
+  "// ========== MULTILINGUAL PROMOTIONS": "",
+  "promotions": [
+    {
+      "promo_code": "IT_NATALE_2024",
+      "is_active": true,
+      "promo_type": "percentage",
+      "label": {
+        "it": "Promozione di Natale – Sconto del 20%",
+        "de": "Weihnachtsaktion – 20% Rabatt",
+        "en": "Christmas Promotion – 20% off",
+        "cs": "Vánoční akce – 20% sleva"
+      },
+      "discount_percentage": 20,
+      "priority": 10,
+      "language": "it"
+    }
+  ],
+
+  "// ========== MULTILINGUAL SEO": "",
+  "meta_title": {
+    "it": "Bosch PSB 750 RCE - Trapano Battente 750W | VendereinCloud",
+    "de": "Bosch PSB 750 RCE - Schlagbohrmaschine 750W | VendereinCloud",
+    "en": "Bosch PSB 750 RCE - Hammer Drill 750W | VendereinCloud",
+    "cs": "Bosch PSB 750 RCE - Příklepová vrtačka 750W | VendereinCloud"
+  },
+
+  "meta_description": {
+    "it": "Acquista il trapano a percussione Bosch PSB 750 RCE 750W. Ideale per muratura, legno e metallo. Garanzia 5 anni.",
+    "de": "Kaufen Sie die Bosch PSB 750 RCE Schlagbohrmaschine 750W. Ideal für Mauerwerk, Holz und Metall. 5 Jahre Garantie.",
+    "en": "Buy the Bosch PSB 750 RCE hammer drill 750W. Ideal for masonry, wood and metal. 5-year warranty.",
+    "cs": "Kupte si příklepovou vrtačku Bosch PSB 750 RCE 750W. Ideální pro zdivo, dřevo a kov. 5letá záruka."
+  },
+
+  "// ========================================== LANGUAGE-INDEPENDENT DATA": "",
+  "// Some fields don't need translation": "",
+
+  "gallery": [
+    {
+      "id": "img_001",
+      "url": "https://cdn.example.com/products/bosch-psb-750-rce/main.jpg",
+      "s3_key": "products/bosch-psb-750-rce/main.jpg",
+      "position": 0
+    }
+  ],
+
+  "quantity": 150,
+  "sold": 89,
+  "unit": "pcs",
+  "stock_status": "in_stock",
+
+  "// Universal product identifiers": "",
+  "product_model": "PSB 750 RCE",
+  "ean": "3165140379083",
+
+  "created_at": "2024-11-15T10:00:00.000Z",
+  "updated_at": "2024-11-18T10:34:00.000Z"
+}
