@@ -370,12 +370,22 @@ interface ProductImage {
 
 // Media structure
 interface ProductMedia {
-  type: 'document' | 'video' | 'pdf' | 'other';
-  url: string;
-  name?: string | MultilingualString;
-  label?: string | MultilingualString;
-  position?: number;
+  type: 'document' | 'video' | '3d-model';  // Media type
+  url: string;                               // Media URL or CDN URL
+  cdn_key?: string;                          // CDN key for uploaded files
+  file_name?: string;                        // Original file name
+  file_type?: string;                        // File extension (pdf, mp4, glb, etc.)
+  size_bytes?: number;                       // File size in bytes
+  name?: string | MultilingualString;        // Display name
+  label?: string | MultilingualString;       // Label/description
+  position?: number;                         // Display order
+  is_external_link?: boolean;                // True if URL is external link
 }
+
+// Supported media formats
+// - document: pdf, txt, csv, xls, xlsx (max 10MB)
+// - video: mp4, webm, mov (max 100MB)
+// - 3d-model: glb, gltf, obj, fbx (max 50MB)
 
 // Attribute value type
 type AttributeValue = string | number | boolean | string[] | MultilingualString;
@@ -477,8 +487,9 @@ Full product example with multiple languages:
   ],
   "media": [
     {
-      "type": "pdf",
+      "type": "document",
       "url": "https://cdn.example.com/screwdriver-manual.pdf",
+      "file_type": "pdf",
       "name": {
         "it": "Manuale d'uso",
         "en": "User manual",
@@ -486,6 +497,30 @@ Full product example with multiple languages:
         "fr": "Manuel d'utilisation"
       },
       "position": 1
+    },
+    {
+      "type": "video",
+      "url": "https://cdn.example.com/screwdriver-demo.mp4",
+      "file_type": "mp4",
+      "name": {
+        "it": "Video dimostrativo",
+        "en": "Demo video",
+        "de": "Demovideo",
+        "fr": "Vidéo de démonstration"
+      },
+      "position": 2
+    },
+    {
+      "type": "3d-model",
+      "url": "https://cdn.example.com/screwdriver-model.glb",
+      "file_type": "glb",
+      "name": {
+        "it": "Modello 3D",
+        "en": "3D Model",
+        "de": "3D-Modell",
+        "fr": "Modèle 3D"
+      },
+      "position": 3
     }
   ],
   "attributes": {
