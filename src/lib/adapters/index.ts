@@ -10,6 +10,8 @@ import { EbayAdapter } from './ebay-adapter';
 import { AmazonAdapter } from './amazon-adapter';
 import { TrovaprezziAdapter } from './trovaprezzi-adapter';
 import { ManoManoAdapter } from './manomano-adapter';
+import { B2BAdapter } from './b2b-adapter';
+import { B2CAdapter } from './b2c-adapter';
 
 /**
  * Adapter registry type mapping
@@ -25,6 +27,8 @@ const ADAPTER_REGISTRY: Record<string, AdapterClass> = {
   amazon: AmazonAdapter,
   trovaprezzi: TrovaprezziAdapter,
   manomano: ManoManoAdapter,
+  b2b: B2BAdapter,
+  b2c: B2CAdapter,
 };
 
 /**
@@ -127,6 +131,22 @@ export function loadAdapterConfigs(): Record<string, MarketplaceConfig> {
       enabled: process.env.MANOMANO_ENABLED === 'true',
       api_key: process.env.MANOMANO_API_KEY,
     },
+    b2b: {
+      enabled: process.env.B2B_ENABLED === 'true',
+      api_key: process.env.B2B_API_KEY,
+      custom_config: {
+        api_url: process.env.B2B_API_URL || 'http://localhost:3001',
+        tenant_id: process.env.B2B_TENANT_ID || process.env.VINC_TENANT_ID,
+      },
+    },
+    b2c: {
+      enabled: process.env.B2C_ENABLED === 'true',
+      api_key: process.env.B2C_API_KEY,
+      custom_config: {
+        api_url: process.env.B2C_API_URL || 'http://localhost:3002',
+        store_id: process.env.B2C_STORE_ID,
+      },
+    },
   };
 }
 
@@ -165,3 +185,5 @@ export { EbayAdapter } from './ebay-adapter';
 export { AmazonAdapter } from './amazon-adapter';
 export { TrovaprezziAdapter } from './trovaprezzi-adapter';
 export { ManoManoAdapter } from './manomano-adapter';
+export { B2BAdapter } from './b2b-adapter';
+export { B2CAdapter } from './b2c-adapter';

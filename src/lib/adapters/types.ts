@@ -95,6 +95,27 @@ export interface TransformOptions {
 export type SyncOperation = 'create' | 'update' | 'delete' | 'inventory' | 'price' | 'bulk-sync' | 'bulk-index-language';
 
 /**
+ * Channel-specific metadata for sync operations
+ */
+export interface ChannelMetadata {
+  b2b?: {
+    tenant_id?: string | string[];     // Tenant identifier(s) for B2B
+  };
+  b2c?: {
+    store_id?: string | string[];      // Store identifier(s) for B2C - supports multiple stores
+  };
+  ebay?: {
+    marketplace_id?: string | string[];
+    account_id?: string | string[];
+  };
+  amazon?: {
+    marketplace_id?: string | string[];
+    seller_id?: string | string[];
+  };
+  [key: string]: any;       // Allow custom metadata for other channels
+}
+
+/**
  * Sync job data
  */
 export interface SyncJobData {
@@ -104,6 +125,18 @@ export interface SyncJobData {
   channels: string[]; // Which marketplaces to sync to
   options?: TransformOptions;
   priority?: 'low' | 'normal' | 'high';
+
+  // Batch tracking fields
+  batch_id?: string;       // Import batch identifier
+  batch_metadata?: {       // Multi-part batch metadata
+    batch_id: string;
+    batch_part: number;
+    batch_total_parts: number;
+    batch_total_items: number;
+  };
+
+  // Channel-specific metadata
+  channel_metadata?: ChannelMetadata;
 
   // Bulk sync fields
   product_ids?: string[];  // Array of product IDs for bulk operations

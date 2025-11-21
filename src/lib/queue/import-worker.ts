@@ -394,11 +394,9 @@ async function processImport(job: Job<ImportJobData>) {
           source: {
             source_id: source.source_id,
             source_name: source.source_name,
-            batch_id: job.data.batch_metadata?.batch_id,
+            ...(job.data.batch_metadata?.batch_id && { batch_id: job.data.batch_metadata.batch_id }),
+            ...(job.data.batch_metadata && { batch_metadata: job.data.batch_metadata }),
             imported_at: new Date(),
-            auto_publish_enabled: source.auto_publish_enabled,
-            min_score_threshold: source.min_score_threshold,
-            required_fields: source.required_fields,
           },
           completeness_score: completenessScore,
           critical_issues: criticalIssues,

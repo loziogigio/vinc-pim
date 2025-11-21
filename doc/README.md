@@ -27,8 +27,10 @@ Product Information Management system with multilingual support and multi-tenant
 - Image and media management
 - Product associations
 
-### [05. Integrations](05-integrations/)
+### [05. Integrations](05-integrations/) ⭐
+- **[Multichannel Sync Guide](05-integrations/MULTICHANNEL_SYNC.md)** - Sync to eBay, Amazon, B2B, B2C, and more
 - Marketplace sync (eBay, Amazon, ManoMano, Trovaprezzi)
+- B2B and B2C storefronts
 - ERP integration
 - Webhooks
 
@@ -56,6 +58,8 @@ Product Information Management system with multilingual support and multi-tenant
 **New User?** → [Getting Started](01-getting-started/)
 
 **Import Products?** → [Batch Import Guide](03-import/BATCH_IMPORT.md) ⭐
+
+**Sync to Marketplaces?** → [Multichannel Sync Guide](05-integrations/MULTICHANNEL_SYNC.md) ⭐
 
 **API Integration?** → [API Documentation](02-api/)
 

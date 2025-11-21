@@ -46,6 +46,25 @@ interface BatchImportRequest {
     batch_total_parts: number;      // Total number of parts
     batch_total_items: number;      // Total items across all parts
   };
+
+  // Channel-specific metadata (placeholder for future implementation)
+  channel_metadata?: {
+    b2b?: {
+      tenant_id?: string | string[];           // B2B tenant identifier(s)
+    };
+    b2c?: {
+      store_id?: string | string[];            // B2C store identifier(s) - supports arrays
+    };
+    amazon?: {
+      marketplace_id?: string | string[];      // Amazon marketplace ID(s)
+      seller_id?: string | string[];           // Amazon seller ID(s)
+    };
+    ebay?: {
+      marketplace_id?: string | string[];      // eBay marketplace ID(s)
+      account_id?: string | string[];          // eBay account ID(s)
+    };
+    [key: string]: any;             // Custom metadata for other channels
+  };
 }
 ```
 
@@ -92,6 +111,69 @@ interface BatchImportRequest {
   ]
 }
 ```
+
+**Example with Channel Metadata (Single Store):**
+```json
+{
+  "source_id": "wholesale-import",
+  "batch_id": "batch_tenant_001",
+  "products": [
+    {
+      "entity_code": "PROD-001",
+      "name": "Product 1",
+      "price": 19.99,
+      "wholesale_price": 14.99
+    }
+  ],
+  "channel_metadata": {
+    "b2b": {
+      "tenant_id": "tenant_wholesale_electronics"
+    },
+    "b2c": {
+      "store_id": "store_italy_001"  // Single store (string)
+    },
+    "amazon": {
+      "marketplace_id": "A11IL2PNWYJU7H",
+      "seller_id": "A1234567890123"
+    }
+  }
+}
+```
+
+**Example with Channel Metadata (Multiple Stores):**
+```json
+{
+  "source_id": "wholesale-import",
+  "batch_id": "batch_multstore_001",
+  "products": [
+    {
+      "entity_code": "PROD-002",
+      "name": "Universal Product",
+      "price": 29.99,
+      "wholesale_price": 19.99
+    }
+  ],
+  "channel_metadata": {
+    "b2b": {
+      "tenant_id": ["tenant_001", "tenant_002"]  // Multiple tenants (array)
+    },
+    "b2c": {
+      "store_id": ["store_italy", "store_spain", "store_france"]  // Multiple stores (array)
+    },
+    "amazon": {
+      "marketplace_id": ["A11IL2PNWYJU7H", "A1PA6795UKMFR9"],  // Italy & Germany
+      "seller_id": "A1234567890123"
+    },
+    "ebay": {
+      "marketplace_id": ["EBAY-IT", "EBAY-DE", "EBAY-FR"]  // Multiple marketplaces (array)
+    }
+  }
+}
+```
+
+> **Note:** The `channel_metadata` field is a **placeholder** for future implementation. The API accepts and logs this metadata, but it is not yet passed to marketplace adapters during sync operations. This will be implemented in a future release to support multi-tenant B2B, multi-store B2C, and marketplace-specific routing.
+>
+> **Array Support:** All channel metadata fields support both single values (string) and multiple values (string array) for flexible routing to multiple tenants, stores, or marketplaces.
 
 ### Batch Size Limits and Recommendations
 
@@ -831,6 +913,13 @@ A: The **hard limit is 10,000 products per request**. Batches over 5,000 product
 **Q: How do I update existing products?**
 
 A: Use the same endpoint with the existing `entity_code`. The system will update the product instead of creating a new one.
+
+---
+
+## 📚 See Also
+
+- **[Multichannel Sync Guide](../05-integrations/MULTICHANNEL_SYNC.md)** - Complete guide to syncing products to marketplaces (eBay, Amazon, B2B, B2C, etc.)
+- **[Channel Metadata](../05-integrations/MULTICHANNEL_SYNC.md#5-channel-specific-metadata-tenant-id-store-id)** - How to specify tenant IDs and store IDs for multi-tenant/multi-store setups
 
 ---
 

@@ -31,7 +31,18 @@ import {
  *       "brand": "BrandName",
  *       "stock": 100
  *     }
- *   ]
+ *   ],
+ *   "batch_id": "batch_123",
+ *   "batch_metadata": {
+ *     "batch_id": "batch_123",
+ *     "batch_part": 1,
+ *     "batch_total_parts": 3,
+ *     "batch_total_items": 300
+ *   },
+ *   "channel_metadata": {
+ *     "b2b": { "tenant_id": "tenant_001" },
+ *     "b2c": { "store_id": "store_001" }
+ *   }
  * }
  */
 export async function POST(req: NextRequest) {
@@ -45,7 +56,15 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const body = await req.json();
-    const { source_id, products } = body;
+    const { source_id, products, batch_id, batch_metadata, channel_metadata } = body;
+
+    console.log('📦 Request params:', {
+      source_id,
+      batch_id,
+      batch_metadata,
+      channel_metadata,
+      product_count: products?.length
+    });
 
     // Validate request
     if (!source_id) {
@@ -111,6 +130,7 @@ export async function POST(req: NextRequest) {
     let failed = 0;
     let autoPublished = 0;
     const errors: any[] = [];
+    let debugProductSource: any = null; // For debugging first product
 
     for (const productData of products) {
       try {
@@ -196,8 +216,34 @@ export async function POST(req: NextRequest) {
         }
 
         // Create new version
+        const productSource: any = {
+          source_id: source.source_id,
+          source_name: source.source_name,
+          imported_at: new Date(),
+        };
+
+        if (batch_id) {
+          productSource.batch_id = batch_id;
+        }
+
+        if (batch_metadata) {
+          productSource.batch_metadata = batch_metadata;
+        }
+
+        // Capture first product source for debugging
+        if (!debugProductSource) {
+          debugProductSource = JSON.parse(JSON.stringify(productSource));
+        }
+
+        console.log(`🔍 Product ${entity_code}`);
+        console.log(`   batch_id received:`, batch_id);
+        console.log(`   batch_metadata received:`, JSON.stringify(batch_metadata));
+        console.log(`   productSource:`, JSON.stringify(productSource));
+        console.log(`   finalProductData.source:`, JSON.stringify(finalProductData.source || 'undefined'));
+
         await PIMProductModel.create({
           // No wholesaler_id - database provides isolation
+          ...finalProductData,
           entity_code,
           sku: finalProductData.sku || entity_code,
           version: newVersion,
@@ -205,14 +251,7 @@ export async function POST(req: NextRequest) {
           isCurrentPublished: autoPublishResult.eligible,
           status,
           published_at,
-          source: {
-            source_id: source.source_id,
-            source_name: source.source_name,
-            imported_at: new Date(),
-            auto_publish_enabled: source.auto_publish_enabled,
-            min_score_threshold: source.min_score_threshold,
-            required_fields: source.required_fields,
-          },
+          source: productSource,
           completeness_score: completenessScore,
           critical_issues: criticalIssues,
           auto_publish_eligible: autoPublishResult.eligible,
@@ -225,7 +264,6 @@ export async function POST(req: NextRequest) {
             priority_score: 0,
             last_synced_at: new Date(),
           },
-          ...finalProductData,
         });
 
         successful++;
@@ -276,6 +314,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       job_id: jobId,
+      debug: {
+        batch_id,
+        batch_metadata,
+        channel_metadata, // Placeholder for future implementation
+        first_product_source: debugProductSource,
+      },
       summary: {
         total: processed,
         successful,

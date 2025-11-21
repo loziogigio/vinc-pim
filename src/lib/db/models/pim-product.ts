@@ -48,6 +48,12 @@ export interface IPIMProduct extends Document {
     source_id: string;
     source_name: string;
     batch_id?: string;
+    batch_metadata?: {
+      batch_id: string;
+      batch_part: number;
+      batch_total_parts: number;
+      batch_total_items: number;
+    };
     imported_at: Date;
   };
 
@@ -314,6 +320,14 @@ const FeaturesSchema = createFeaturesSchema();
 const SpecificationsSchema = createSpecificationsSchema();
 const AttributesSchema = createAttributesSchema();
 
+// Source sub-schema (strict: false allows batch_metadata without defining it)
+const SourceSchema = new Schema({
+  source_id: { type: String, required: true, index: true },
+  source_name: { type: String, required: true },
+  batch_id: { type: String, index: true },
+  imported_at: { type: Date, required: true },
+}, { _id: false, strict: false });
+
 const PIMProductSchema = new Schema<IPIMProduct>(
   {
     // ============================================
@@ -334,12 +348,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     },
     published_at: { type: Date },
 
-    source: {
-      source_id: { type: String, required: true, index: true },
-      source_name: { type: String, required: true },
-      batch_id: { type: String, index: true },
-      imported_at: { type: Date, required: true },
-    },
+    source: SourceSchema,
 
     completeness_score: { type: Number, min: 0, max: 100, index: true, default: 0 },
     critical_issues: [{ type: String }],

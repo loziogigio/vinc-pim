@@ -132,6 +132,8 @@ export function getEnabledChannels(): string[] {
   if (process.env.AMAZON_ENABLED === 'true') channels.push('amazon');
   if (process.env.TROVAPREZZI_ENABLED === 'true') channels.push('trovaprezzi');
   if (process.env.MANOMANO_ENABLED === 'true') channels.push('manomano');
+  if (process.env.B2B_ENABLED === 'true') channels.push('b2b');
+  if (process.env.B2C_ENABLED === 'true') channels.push('b2c');
 
   return channels;
 }

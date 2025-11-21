@@ -38,12 +38,18 @@ interface SyncJobResult {
  * Process a marketplace sync job
  */
 async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
-  const { product_id, product_ids, tenant_id, operation, channels, options, language, productCount } = job.data;
+  const { product_id, product_ids, tenant_id, operation, channels, options, language, productCount, batch_id, batch_metadata } = job.data;
 
   console.log(`\n🔄 Processing sync job: ${job.id}`);
   console.log(`   Product${product_ids ? 's' : ''}: ${product_ids ? `${product_ids.length} products` : product_id}`);
   console.log(`   Operation: ${operation}`);
   console.log(`   Channels: ${channels.join(', ')}`);
+  if (batch_id) {
+    console.log(`   Batch ID: ${batch_id}`);
+  }
+  if (batch_metadata) {
+    console.log(`   Batch Part: ${batch_metadata.batch_part}/${batch_metadata.batch_total_parts}`);
+  }
 
   // Connect to database
   await connectToDatabase();
