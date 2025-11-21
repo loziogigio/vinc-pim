@@ -33,16 +33,27 @@ The batch import system allows you to import multiple products in a single API r
 ```typescript
 interface BatchImportRequest {
   products: PIMProduct[];           // Array of products to import (required)
-  source_id?: string;               // Optional source identifier
+  source_id: string;                // Import source identifier (required)
+  batch_id?: string;                // Unique batch identifier for tracking
   sync_to_search?: boolean;         // Auto-sync to Solr (default: true)
   update_existing?: boolean;        // Update if entity_code exists (default: true)
   validation_mode?: 'strict' | 'lenient';  // Validation level (default: 'strict')
+
+  // For large batches split into multiple requests
+  batch_metadata?: {
+    batch_id: string;               // Unique ID for the entire batch
+    batch_part: number;             // Current part number (1-based)
+    batch_total_parts: number;      // Total number of parts
+    batch_total_items: number;      // Total items across all parts
+  };
 }
 ```
 
-**Example Batch Request:**
+**Example Batch Request (Simple):**
 ```json
 {
+  "source_id": "wholesale-import",
+  "batch_id": "batch_20251121_001",
   "products": [
     {
       "entity_code": "PROD-001",
@@ -61,9 +72,24 @@ interface BatchImportRequest {
       "stock_quantity": 50
     }
   ],
-  "source_id": "wholesale-import-2025",
   "sync_to_search": true,
   "update_existing": true
+}
+```
+
+**Example Batch Request (Multi-Part for Large Batches):**
+```json
+{
+  "source_id": "wholesale-import",
+  "batch_metadata": {
+    "batch_id": "batch_20251121_large",
+    "batch_part": 1,
+    "batch_total_parts": 5,
+    "batch_total_items": 2500
+  },
+  "products": [
+    // 500 products in this part
+  ]
 }
 ```
 
@@ -153,6 +179,59 @@ The batch import automatically handles both creating new products and updating e
 }
 ```
 This updates only price and stock for the existing product, leaving other fields unchanged.
+
+### Batch Tracking and Querying
+
+Every product imported via batch is tagged with the `batch_id`, allowing you to track and manage products by batch.
+
+**Query Products by Batch ID:**
+
+```bash
+# Get all products from a specific batch
+curl -X GET "https://your-domain.com/api/b2b/pim/products?batch_id=batch_20251121_001" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Query Parameters:**
+- `batch_id` - Filter by batch identifier (supports partial matching)
+- `source_id` - Filter by import source
+- `date_from` - Filter by import date (from)
+- `date_to` - Filter by import date (to)
+- `status` - Filter by product status (draft, published, archived)
+- `page` - Page number for pagination
+- `limit` - Items per page (default: 50)
+
+**Example Response:**
+```json
+{
+  "products": [
+    {
+      "entity_code": "PROD-001",
+      "sku": "SKU-001",
+      "name": { "it": "Product 1" },
+      "source": {
+        "source_id": "wholesale-import",
+        "source_name": "Wholesale Import",
+        "batch_id": "batch_20251121_001",
+        "imported_at": "2025-11-21T10:00:00Z"
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 2,
+    "pages": 1
+  }
+}
+```
+
+**Use Cases for Batch Tracking:**
+- Track which products were imported in a specific batch
+- Rollback or delete products from a failed import
+- Audit and trace product origins
+- Compare different batches from the same source
+- Monitor import quality over time
 
 ---
 
@@ -486,6 +565,8 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
+  "source_id": "wholesale-import",
+  "batch_id": "batch_20251121_123",
   "products": [
     {
       "entity_code": "PRODUCT-001",
@@ -551,6 +632,8 @@ curl -X POST https://your-domain.com/api/b2b/pim/import \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "source_id": "wholesale-import",
+    "batch_id": "batch_20251121_456",
     "products": [
       {
         "entity_code": "TOOL-001",
@@ -570,6 +653,10 @@ curl -X POST https://your-domain.com/api/b2b/pim/import \
       }
     ]
   }'
+
+# 3. Track batch progress
+curl -X GET "https://your-domain.com/api/b2b/pim/products?batch_id=batch_20251121_456" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
