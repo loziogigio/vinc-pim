@@ -93,20 +93,31 @@ interface BatchImportRequest {
 }
 ```
 
-### Batch Size Recommendations
+### Batch Size Limits and Recommendations
 
-| Batch Size | Processing Time | Use Case |
-|------------|----------------|----------|
-| **1-100 products** | 2-5 seconds | Quick updates, testing |
-| **100-500 products** | 10-30 seconds | Regular imports (recommended) |
-| **500-1000 products** | 30-60 seconds | Large imports |
-| **1000+ products** | 1+ minutes | Split into multiple batches |
+**Hard Limits:**
+- **Maximum batch size:** 10,000 products per request (hard limit)
+- **Warning threshold:** 5,000 products (triggers warning, still processes)
+- Batches exceeding 10,000 products will be rejected with an error
+
+**Performance Recommendations:**
+
+| Batch Size | Processing Time | Status | Use Case |
+|------------|----------------|--------|----------|
+| **1-100** | 2-5 seconds | ✅ Optimal | Quick updates, testing |
+| **100-500** | 10-30 seconds | ✅ Recommended | Regular imports |
+| **500-1,000** | 30-60 seconds | ✅ Good | Large imports |
+| **1,000-5,000** | 1-5 minutes | ⚠️ Acceptable | Very large imports |
+| **5,000-10,000** | 5-10 minutes | ⚠️ Warning | Maximum size batches |
+| **10,000+** | N/A | ❌ Rejected | Split into multiple batches |
 
 **Best Practices:**
 - ✅ **Recommended:** 100-500 products per batch for optimal performance
-- ✅ Split large datasets into multiple batch requests
-- ✅ Use job tracking for batches over 100 products
-- ⚠️ **Avoid:** Single requests with 5000+ products (may timeout)
+- ✅ **Large datasets:** Split into multiple batches under 5,000 products each
+- ✅ Use `batch_metadata` for multi-part imports over 5,000 products
+- ✅ Use job tracking API to monitor progress
+- ⚠️ **Warning zone:** 5,000-10,000 products (slower, but allowed)
+- ❌ **Hard limit:** Maximum 10,000 products per single request
 
 ### Batch Validation
 
@@ -133,7 +144,24 @@ Each product in the batch is validated before processing:
 
 ### Error Handling
 
-If validation fails, you'll receive detailed errors:
+**Batch Size Exceeded Error:**
+
+If your batch exceeds the 10,000 product limit:
+
+```json
+{
+  "success": false,
+  "error": "Batch size limit exceeded",
+  "message": "Batch size 15,000 exceeds maximum allowed 10,000. Please split into smaller batches or contact support to increase the limit for this source.",
+  "batch_size": 15000,
+  "max_allowed": 10000,
+  "suggestion": "Split into 2 batches of 7,500 products each"
+}
+```
+
+**Validation Errors:**
+
+If validation fails for products in the batch:
 
 ```json
 {
@@ -152,6 +180,15 @@ If validation fails, you'll receive detailed errors:
   "valid_count": 8,
   "invalid_count": 2
 }
+```
+
+**Warning (5,000+ products):**
+
+Batches between 5,000-10,000 products will log a warning but still process:
+
+```
+⚠️ Large batch detected: 7,500 items (threshold: 5,000)
+Processing may take longer than usual. Consider splitting into smaller batches.
 ```
 
 ### Update vs Create
@@ -754,7 +791,7 @@ A: Yes! Each product can have different language combinations.
 
 **Q: What's the maximum batch size?**
 
-A: There's no hard limit, but we recommend batches of 500 products for optimal performance.
+A: The **hard limit is 10,000 products per request**. Batches over 5,000 products trigger a warning. For optimal performance, we recommend **100-500 products per batch**. For larger datasets, split into multiple batches using `batch_metadata`.
 
 **Q: How do I update existing products?**
 
