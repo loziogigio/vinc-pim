@@ -477,25 +477,37 @@ type AttributeValue = string | number | boolean | string[] | MultilingualString;
 
 #### Brand Entity
 
-When referencing brands in products (`brands?: string[]`), they refer to Brand entities with this structure:
+**Supports two embedding modes:**
+- **Minimal:** Only essential fields (brand_id, label, slug)
+- **Self-contained:** Full object with all metadata
 
 ```typescript
-interface Brand {
+interface BrandEmbedded {
+  // Required fields
   brand_id: string;              // Unique brand identifier (required)
   label: string;                 // Brand name/label (required)
   slug: string;                  // URL-friendly slug (required)
+
+  // Optional fields (for self-contained mode)
   description?: string;          // Brand description
   logo_url?: string;             // Logo image URL
   website_url?: string;          // Brand website URL
-  is_active: boolean;            // Active status (default: true)
-  product_count: number;         // Number of products (cached, default: 0)
-  display_order: number;         // Display order (default: 0)
-  created_at: Date;              // Creation timestamp
-  updated_at: Date;              // Last update timestamp
+  is_active?: boolean;           // Active status
+  product_count?: number;        // Number of products (cached)
+  display_order?: number;        // Display order
 }
 ```
 
-**Example Brand:**
+**Example - Minimal:**
+```json
+{
+  "brand_id": "bosch-professional",
+  "label": "Bosch Professional",
+  "slug": "bosch-professional"
+}
+```
+
+**Example - Self-contained (Full):**
 ```json
 {
   "brand_id": "bosch-professional",
@@ -512,54 +524,113 @@ interface Brand {
 
 #### Category Entity
 
-When products reference a category, it uses this structure:
+**Supports two embedding modes:**
+- **Minimal:** Only essential fields (category_id, name, slug)
+- **Self-contained:** Full object with hierarchy (parent_id, level, path) and metadata
 
 ```typescript
 interface CategoryEmbedded {
+  // Required fields
   category_id: string;           // Unique category identifier
   name: MultilingualText;        // Multilingual: { "it": "Trapani", "de": "Bohrer", ... }
   slug: MultilingualText;        // Multilingual: { "it": "trapani", "de": "bohrer", ... }
+
+  // Optional fields (for self-contained mode)
   details?: MultilingualText;    // Multilingual details/description
+  description?: string;          // Description
+  parent_id?: string;            // Parent category ID (for hierarchy)
+  level?: number;                // Hierarchy level (0 = root, 1 = child, etc.)
+  path?: string[];               // Hierarchy path (e.g., ["tools", "power-tools"])
   image?: {
     id: string;
     thumbnail: string;
     original: string;
   };
   icon?: string;                 // Icon class or SVG
+  is_active?: boolean;           // Active status
+  product_count?: number;        // Number of products (cached)
+  display_order?: number;        // Display order
 }
 ```
 
-**Example Category:**
+**Example - Minimal:**
 ```json
 {
-  "category_id": "power-tools",
+  "category_id": "drills",
   "name": {
-    "it": "Utensili Elettrici",
-    "en": "Power Tools",
-    "de": "Elektrowerkzeuge"
+    "it": "Trapani",
+    "en": "Drills",
+    "de": "Bohrer"
   },
   "slug": {
-    "it": "utensili-elettrici",
-    "en": "power-tools",
-    "de": "elektrowerkzeuge"
+    "it": "trapani",
+    "en": "drills",
+    "de": "bohrer"
+  }
+}
+```
+
+**Example - Self-contained with Hierarchy:**
+```json
+{
+  "category_id": "drills",
+  "name": {
+    "it": "Trapani",
+    "en": "Drills",
+    "de": "Bohrer"
   },
-  "icon": "tool-icon"
+  "slug": {
+    "it": "trapani",
+    "en": "drills",
+    "de": "bohrer"
+  },
+  "parent_id": "power-tools",
+  "level": 2,
+  "path": ["tools", "power-tools"],
+  "description": "All types of drills",
+  "is_active": true,
+  "product_count": 450,
+  "display_order": 1
 }
 ```
 
 #### Collection Entity
 
-Products can belong to multiple collections:
+**Supports two embedding modes:**
+- **Minimal:** Only essential fields (collection_id, name, slug)
+- **Self-contained:** Full object with metadata
 
 ```typescript
 interface CollectionEmbedded {
+  // Required fields
   collection_id: string;         // Unique collection identifier
   name: MultilingualText;        // Multilingual: { "it": "Novità", "en": "New Arrivals", ... }
   slug: MultilingualText;        // Multilingual: { "it": "novita", "en": "new-arrivals", ... }
+
+  // Optional fields (for self-contained mode)
+  description?: string;          // Description
+  is_active?: boolean;           // Active status
+  product_count?: number;        // Number of products (cached)
+  display_order?: number;        // Display order
 }
 ```
 
-**Example Collection:**
+**Example - Minimal:**
+```json
+{
+  "collection_id": "summer-2024",
+  "name": {
+    "it": "Estate 2024",
+    "en": "Summer 2024"
+  },
+  "slug": {
+    "it": "estate-2024",
+    "en": "summer-2024"
+  }
+}
+```
+
+**Example - Self-contained (Full):**
 ```json
 {
   "collection_id": "summer-2024",
@@ -570,29 +641,57 @@ interface CollectionEmbedded {
   "slug": {
     "it": "estate-2024",
     "en": "summer-2024"
-  }
+  },
+  "description": "Summer seasonal collection",
+  "is_active": true,
+  "product_count": 320,
+  "display_order": 1
 }
 ```
 
 #### Product Type Entity
 
-Product types define technical features and attributes:
+**Supports two embedding modes:**
+- **Minimal:** Only essential fields (product_type_id, name, slug)
+- **Self-contained:** Full object with features and metadata
 
 ```typescript
 interface ProductTypeEmbedded {
+  // Required fields
   product_type_id: string;       // Unique product type identifier
   name: MultilingualText;        // Multilingual: { "it": "Trapano", "de": "Bohrmaschine", ... }
   slug: MultilingualText;        // Multilingual: { "it": "trapano", "de": "bohrmaschine", ... }
+
+  // Optional fields (for self-contained mode)
   features?: {
     key: string;                 // Feature key (e.g., "power")
     label: MultilingualText;     // Multilingual label
     value: string | number | boolean | string[];
     unit?: string;               // Unit of measure (e.g., "W", "mm")
   }[];
+  description?: string;          // Description
+  is_active?: boolean;           // Active status
+  product_count?: number;        // Number of products (cached)
+  display_order?: number;        // Display order
 }
 ```
 
-**Example Product Type:**
+**Example - Minimal:**
+```json
+{
+  "product_type_id": "cordless-drill",
+  "name": {
+    "it": "Trapano a Batteria",
+    "en": "Cordless Drill"
+  },
+  "slug": {
+    "it": "trapano-batteria",
+    "en": "cordless-drill"
+  }
+}
+```
+
+**Example - Self-contained with Features:**
 ```json
 {
   "product_type_id": "cordless-drill",
@@ -610,24 +709,44 @@ interface ProductTypeEmbedded {
       "label": { "it": "Potenza", "en": "Power" },
       "value": 750,
       "unit": "W"
+    },
+    {
+      "key": "battery_voltage",
+      "label": { "it": "Voltaggio Batteria", "en": "Battery Voltage" },
+      "value": 18,
+      "unit": "V"
     }
-  ]
+  ],
+  "description": "Cordless drills for professional use",
+  "is_active": true,
+  "product_count": 85,
+  "display_order": 1
 }
 ```
 
 #### Tag Entity
 
-Tags for marketing, SEO, and filtering:
+**Supports two embedding modes:**
+- **Minimal:** Only essential fields (tag_id, name, slug)
+- **Self-contained:** Full object with metadata
 
 ```typescript
 interface TagEmbedded {
+  // Required fields
   tag_id: string;                // Unique tag identifier
   name: MultilingualText;        // Multilingual: { "it": "Più venduto", "en": "Bestseller", ... }
   slug: string;                  // Universal slug (e.g., "bestseller")
+
+  // Optional fields (for self-contained mode)
+  description?: string;          // Description
+  color?: string;                // Tag color (for UI)
+  is_active?: boolean;           // Active status
+  product_count?: number;        // Number of products (cached)
+  display_order?: number;        // Display order
 }
 ```
 
-**Example Tag:**
+**Example - Minimal:**
 ```json
 {
   "tag_id": "bestseller",
@@ -637,6 +756,24 @@ interface TagEmbedded {
     "de": "Bestseller"
   },
   "slug": "bestseller"
+}
+```
+
+**Example - Self-contained (Full):**
+```json
+{
+  "tag_id": "bestseller",
+  "name": {
+    "it": "Più venduto",
+    "en": "Bestseller",
+    "de": "Bestseller"
+  },
+  "slug": "bestseller",
+  "description": "Top selling products",
+  "color": "#FFD700",
+  "is_active": true,
+  "product_count": 150,
+  "display_order": 1
 }
 ```
 

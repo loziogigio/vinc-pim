@@ -1,6 +1,10 @@
 /**
  * Shared Collection Types
  * Used by both Collection model and PIM Product model
+ *
+ * Supports both minimal and self-contained (full) embedding:
+ * - Minimal: Only required fields (collection_id, name, slug)
+ * - Self-contained: All fields including metadata
  */
 
 import { MultilingualText } from "../pim-product";
@@ -10,9 +14,13 @@ export interface CollectionBase {
   collection_id: string;
   name: MultilingualText;
   slug: MultilingualText;
+  description?: string;       // Optional: Include for self-contained
+  is_active?: boolean;        // Optional: Include for self-contained
+  product_count?: number;     // Optional: Include for self-contained
+  display_order?: number;     // Optional: Include for self-contained
 }
 
-// Collection embedded in products (denormalized snapshot)
+// Collection embedded in products (supports both minimal and full)
 export type CollectionEmbedded = CollectionBase;
 
 // Full collection document (with metadata)

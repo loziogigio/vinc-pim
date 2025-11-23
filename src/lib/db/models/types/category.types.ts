@@ -1,6 +1,10 @@
 /**
  * Shared Category Types
  * Used by both Category model and PIM Product model
+ *
+ * Supports both minimal and self-contained (full) embedding:
+ * - Minimal: Only required fields (category_id, name, slug)
+ * - Self-contained: All fields including hierarchy (parent_id, level, path)
  */
 
 import { MultilingualText } from "../pim-product";
@@ -11,15 +15,22 @@ export interface CategoryBase {
   name: MultilingualText;
   slug: MultilingualText;
   details?: MultilingualText;
+  description?: string;       // Optional: Include for self-contained
+  parent_id?: string;         // Optional: Include for hierarchy
+  level?: number;             // Optional: Include for hierarchy
+  path?: string[];            // Optional: Include for hierarchy (e.g., ["tools", "power-tools", "drills"])
   image?: {
     id: string;
     thumbnail: string;
     original: string;
   };
   icon?: string;
+  is_active?: boolean;        // Optional: Include for self-contained
+  product_count?: number;     // Optional: Include for self-contained
+  display_order?: number;     // Optional: Include for self-contained
 }
 
-// Category embedded in products (denormalized snapshot)
+// Category embedded in products (supports both minimal and full with hierarchy)
 export type CategoryEmbedded = CategoryBase;
 
 // Full category document (with metadata and hierarchy)
