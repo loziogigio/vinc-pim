@@ -9,6 +9,13 @@
  */
 
 import mongoose, { Schema, Document } from "mongoose";
+import {
+  BrandEmbedded,
+  CategoryEmbedded,
+  CollectionEmbedded,
+  ProductTypeEmbedded,
+  TagEmbedded,
+} from "./types";
 
 // Dynamic Multilingual Text Field (supports any language - validated at runtime)
 export type MultilingualText = Record<string, string>;
@@ -107,6 +114,28 @@ export interface IPIMProduct extends Document {
   slug: MultilingualText;           // Multilingual: "it": "trapano-battente...", "de": "schlagbohrmaschine...", etc.
   description?: MultilingualText;   // Multilingual: "it": "Il trapano...", "de": "Die Bosch...", etc.
 
+  // Main Product Image (displayed as primary/cover image)
+  image?: {
+    id: string;
+    thumbnail: string;
+    medium?: string;
+    large?: string;
+    original: string;
+    blur?: string;
+  };
+
+  // Product Images Array (gallery of all product photos)
+  images?: {
+    url: string;
+    cdn_key: string;
+    position: number;
+    file_name?: string;
+    file_type?: string;
+    size_bytes?: number;
+    uploaded_at: Date;
+    uploaded_by: string;
+  }[];
+
   // Gallery Images (product photos - first image [position 0] is the cover/main image)
   gallery?: (IImageAsset & {
     label?: string;
@@ -134,51 +163,17 @@ export interface IPIMProduct extends Document {
   sold: number;
   unit: string;
 
-  // Brand (Brand type)
-  brand?: {
-    id: string;
-    name: string;           // Brand name can be universal (e.g., "Bosch Professional")
-    slug: string;
-    image?: {
-      id: string;
-      thumbnail: string;
-      original: string;
-    };
-  };
+  // Brand (Brand type - matches Brand model)
+  brand?: BrandEmbedded;
 
   // Category (Category type)
-  category?: {
-    id: string;
-    name: MultilingualText;   // Multilingual: "it": "Trapani Battenti", "de": "Schlagbohrmaschinen", etc.
-    slug: MultilingualText;   // Multilingual: "it": "trapani-battenti", "de": "schlagbohrmaschinen", etc.
-    details?: MultilingualText; // Multilingual details/description
-    image?: {
-      id: string;
-      thumbnail: string;
-      original: string;
-    };
-    icon?: string;
-  };
+  category?: CategoryEmbedded;
 
   // Collections (can have multiple)
-  collections?: {
-    id: string;
-    name: MultilingualText;   // Multilingual: "it": "Utensili Elettrici", "de": "Elektrowerkzeuge", etc.
-    slug: MultilingualText;   // Multilingual: "it": "utensili-elettrici", "de": "elektrowerkzeuge", etc.
-  }[];
+  collections?: CollectionEmbedded[];
 
   // Product Type (with features)
-  product_type?: {
-    id: string;
-    name: MultilingualText;   // Multilingual: "it": "Trapano", "de": "Bohrmaschine", etc.
-    slug: MultilingualText;   // Multilingual: "it": "trapano", "de": "bohrmaschine", etc.
-    features?: {
-      key: string;
-      label: MultilingualText; // Multilingual label
-      value: string | number | boolean | string[];
-      unit?: string;
-    }[];
-  };
+  product_type?: ProductTypeEmbedded;
 
   // Attributes (Product properties with labels)
   // Multilingual structure: attributes organized by language
@@ -191,11 +186,7 @@ export interface IPIMProduct extends Document {
   };
 
   // Tags (for marketing, SEO, filtering - e.g., "bestseller", "featured", "eco-friendly")
-  tags?: {
-    id: string;
-    name: MultilingualText;   // Multilingual: "it": "Più venduto", "de": "Bestseller", etc.
-    slug: string;             // Slug can be universal (e.g., "bestseller")
-  }[];
+  tags?: TagEmbedded[];
 
   // Features (Marketing highlights - "Caratteristiche")
   // Multilingual structure: features organized by language
@@ -223,11 +214,29 @@ export interface IPIMProduct extends Document {
     value: string;
   }[];
 
-  // Variations
+  // Variations & Faceting Control
   parent_sku?: string;
   parent_entity_code?: string;
   variations_sku?: string[]; // Array of child SKUs
   variations_entity_code?: string[]; // Array of child entity_codes
+
+  /**
+   * Indicates if this product is a parent product
+   * - Single products (no variants): is_parent = true
+   * - Parent products with variants: is_parent = true
+   * - Variant products (children): is_parent = false
+   * Default: true
+   */
+  is_parent?: boolean;
+
+  /**
+   * Controls whether this product should be included in Solr faceting/filtering
+   * - Single products (no variants): include_faceting = true
+   * - Parent products with variants: include_faceting = false (exclude from facets, group only)
+   * - Variant products (children): include_faceting = true (include in facets)
+   * Default: true
+   */
+  include_faceting?: boolean;
 
   // Additional Product Fields
   product_model?: string;
@@ -396,6 +405,30 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     slug: MultilingualTextSchema,
     description: MultilingualTextSchema,
 
+    // Main Product Image (displayed as primary/cover image)
+    image: {
+      id: { type: String },
+      thumbnail: { type: String },
+      medium: { type: String },
+      large: { type: String },
+      original: { type: String },
+      blur: { type: String },
+    },
+
+    // Product Images Array (gallery of all product photos)
+    images: [
+      {
+        url: { type: String, required: true },
+        cdn_key: { type: String, required: true },
+        position: { type: Number, required: true, default: 0 },
+        file_name: { type: String },
+        file_type: { type: String },
+        size_bytes: { type: Number },
+        uploaded_at: { type: Date },
+        uploaded_by: { type: String },
+      },
+    ],
+
     // Gallery Images (product photos - first image [position 0] is the cover/main image)
     gallery: [
       {
@@ -427,18 +460,17 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     unit: { type: String, required: true, default: "pcs" },
 
     brand: {
-      id: { type: String },
-      name: { type: String },
+      brand_id: { type: String },
+      label: { type: String },
       slug: { type: String },
-      image: {
-        id: { type: String },
-        thumbnail: { type: String },
-        original: { type: String },
-      },
+      description: { type: String },
+      logo_url: { type: String },
+      website_url: { type: String },
+      is_active: { type: Boolean },
     },
 
     category: {
-      id: { type: String },
+      category_id: { type: String },
       name: MultilingualTextSchema,
       slug: MultilingualTextSchema,
       details: MultilingualTextSchema,
@@ -452,14 +484,14 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     collections: [
       {
-        id: { type: String },
+        collection_id: { type: String },
         name: MultilingualTextSchema,
         slug: MultilingualTextSchema,
       },
     ],
 
     product_type: {
-      id: { type: String },
+      product_type_id: { type: String },
       name: MultilingualTextSchema,
       slug: MultilingualTextSchema,
       features: [
@@ -478,7 +510,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     // Tags (for marketing, SEO, filtering)
     tags: [
       {
-        id: { type: String, required: true },
+        tag_id: { type: String, required: true },
         name: MultilingualTextSchema,
         slug: { type: String, required: true },
       },
@@ -501,6 +533,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     parent_entity_code: { type: String },
     variations_sku: [{ type: String }],
     variations_entity_code: [{ type: String }],
+    is_parent: { type: Boolean, default: true },
+    include_faceting: { type: Boolean, default: true },
 
     product_model: { type: String },
     ean: [{ type: String }],

@@ -380,12 +380,12 @@ interface PIMProduct {
   manage_stock?: boolean;           // Enable stock management
   stock_status?: 'in_stock' | 'out_of_stock' | 'on_backorder';
 
-  // Classification
-  product_type?: string;            // Product type ID
-  categories?: string[];            // Array of category IDs
-  brands?: string[];                // Array of brand IDs
-  collections?: string[];           // Array of collection IDs
-  tags?: string[];                  // Array of tag IDs
+  // Classification (Embedded entities - see Entity Schemas section below)
+  brand?: BrandEmbedded;            // Brand object with brand_id, label, slug, etc.
+  category?: CategoryEmbedded;      // Category object with category_id, name, slug, etc.
+  collections?: CollectionEmbedded[]; // Array of collection objects
+  product_type?: ProductTypeEmbedded; // Product type with product_type_id, name, features, etc.
+  tags?: TagEmbedded[];             // Array of tag objects
 
   // Physical attributes
   weight?: number;                  // Product weight
@@ -473,6 +473,173 @@ interface ProductMedia {
 type AttributeValue = string | number | boolean | string[] | MultilingualString;
 ```
 
+### Entity Schemas
+
+#### Brand Entity
+
+When referencing brands in products (`brands?: string[]`), they refer to Brand entities with this structure:
+
+```typescript
+interface Brand {
+  brand_id: string;              // Unique brand identifier (required)
+  label: string;                 // Brand name/label (required)
+  slug: string;                  // URL-friendly slug (required)
+  description?: string;          // Brand description
+  logo_url?: string;             // Logo image URL
+  website_url?: string;          // Brand website URL
+  is_active: boolean;            // Active status (default: true)
+  product_count: number;         // Number of products (cached, default: 0)
+  display_order: number;         // Display order (default: 0)
+  created_at: Date;              // Creation timestamp
+  updated_at: Date;              // Last update timestamp
+}
+```
+
+**Example Brand:**
+```json
+{
+  "brand_id": "bosch-professional",
+  "label": "Bosch Professional",
+  "slug": "bosch-professional",
+  "description": "Professional power tools and accessories",
+  "logo_url": "https://cdn.example.com/brands/bosch-logo.png",
+  "website_url": "https://www.bosch-professional.com",
+  "is_active": true,
+  "product_count": 1250,
+  "display_order": 1
+}
+```
+
+#### Category Entity
+
+When products reference a category, it uses this structure:
+
+```typescript
+interface CategoryEmbedded {
+  category_id: string;           // Unique category identifier
+  name: MultilingualText;        // Multilingual: { "it": "Trapani", "de": "Bohrer", ... }
+  slug: MultilingualText;        // Multilingual: { "it": "trapani", "de": "bohrer", ... }
+  details?: MultilingualText;    // Multilingual details/description
+  image?: {
+    id: string;
+    thumbnail: string;
+    original: string;
+  };
+  icon?: string;                 // Icon class or SVG
+}
+```
+
+**Example Category:**
+```json
+{
+  "category_id": "power-tools",
+  "name": {
+    "it": "Utensili Elettrici",
+    "en": "Power Tools",
+    "de": "Elektrowerkzeuge"
+  },
+  "slug": {
+    "it": "utensili-elettrici",
+    "en": "power-tools",
+    "de": "elektrowerkzeuge"
+  },
+  "icon": "tool-icon"
+}
+```
+
+#### Collection Entity
+
+Products can belong to multiple collections:
+
+```typescript
+interface CollectionEmbedded {
+  collection_id: string;         // Unique collection identifier
+  name: MultilingualText;        // Multilingual: { "it": "Novità", "en": "New Arrivals", ... }
+  slug: MultilingualText;        // Multilingual: { "it": "novita", "en": "new-arrivals", ... }
+}
+```
+
+**Example Collection:**
+```json
+{
+  "collection_id": "summer-2024",
+  "name": {
+    "it": "Collezione Estate 2024",
+    "en": "Summer Collection 2024"
+  },
+  "slug": {
+    "it": "estate-2024",
+    "en": "summer-2024"
+  }
+}
+```
+
+#### Product Type Entity
+
+Product types define technical features and attributes:
+
+```typescript
+interface ProductTypeEmbedded {
+  product_type_id: string;       // Unique product type identifier
+  name: MultilingualText;        // Multilingual: { "it": "Trapano", "de": "Bohrmaschine", ... }
+  slug: MultilingualText;        // Multilingual: { "it": "trapano", "de": "bohrmaschine", ... }
+  features?: {
+    key: string;                 // Feature key (e.g., "power")
+    label: MultilingualText;     // Multilingual label
+    value: string | number | boolean | string[];
+    unit?: string;               // Unit of measure (e.g., "W", "mm")
+  }[];
+}
+```
+
+**Example Product Type:**
+```json
+{
+  "product_type_id": "cordless-drill",
+  "name": {
+    "it": "Trapano a Batteria",
+    "en": "Cordless Drill"
+  },
+  "slug": {
+    "it": "trapano-batteria",
+    "en": "cordless-drill"
+  },
+  "features": [
+    {
+      "key": "power",
+      "label": { "it": "Potenza", "en": "Power" },
+      "value": 750,
+      "unit": "W"
+    }
+  ]
+}
+```
+
+#### Tag Entity
+
+Tags for marketing, SEO, and filtering:
+
+```typescript
+interface TagEmbedded {
+  tag_id: string;                // Unique tag identifier
+  name: MultilingualText;        // Multilingual: { "it": "Più venduto", "en": "Bestseller", ... }
+  slug: string;                  // Universal slug (e.g., "bestseller")
+}
+```
+
+**Example Tag:**
+```json
+{
+  "tag_id": "bestseller",
+  "name": {
+    "it": "Più venduto",
+    "en": "Bestseller",
+    "de": "Bestseller"
+  },
+  "slug": "bestseller"
+}
+```
+
 ---
 
 ## 📋 Complete Product Example (Multilingual)
@@ -508,11 +675,94 @@ Full product example with multiple languages:
   "stock_quantity": 150,
   "manage_stock": true,
   "stock_status": "in_stock",
-  "product_type": "tool",
-  "categories": ["hand-tools", "screwdrivers"],
-  "brands": ["professional-tools"],
-  "collections": ["workshop-essentials"],
-  "tags": ["magnetic", "ergonomic", "professional"],
+  "brand": {
+    "brand_id": "professional-tools",
+    "label": "Professional Tools",
+    "slug": "professional-tools",
+    "logo_url": "https://cdn.example.com/brands/professional-tools.png",
+    "is_active": true
+  },
+  "category": {
+    "category_id": "hand-tools",
+    "name": {
+      "it": "Utensili Manuali",
+      "en": "Hand Tools",
+      "de": "Handwerkzeuge"
+    },
+    "slug": {
+      "it": "utensili-manuali",
+      "en": "hand-tools",
+      "de": "handwerkzeuge"
+    }
+  },
+  "collections": [
+    {
+      "collection_id": "workshop-essentials",
+      "name": {
+        "it": "Essenziali per Officina",
+        "en": "Workshop Essentials"
+      },
+      "slug": {
+        "it": "essenziali-officina",
+        "en": "workshop-essentials"
+      }
+    }
+  ],
+  "product_type": {
+    "product_type_id": "screwdriver",
+    "name": {
+      "it": "Cacciavite",
+      "en": "Screwdriver",
+      "de": "Schraubendreher"
+    },
+    "slug": {
+      "it": "cacciavite",
+      "en": "screwdriver",
+      "de": "schraubendreher"
+    },
+    "features": [
+      {
+        "key": "tip_type",
+        "label": { "it": "Tipo Punta", "en": "Tip Type" },
+        "value": "PH2"
+      },
+      {
+        "key": "length",
+        "label": { "it": "Lunghezza", "en": "Length" },
+        "value": 150,
+        "unit": "mm"
+      }
+    ]
+  },
+  "tags": [
+    {
+      "tag_id": "magnetic",
+      "name": {
+        "it": "Magnetico",
+        "en": "Magnetic",
+        "de": "Magnetisch"
+      },
+      "slug": "magnetic"
+    },
+    {
+      "tag_id": "ergonomic",
+      "name": {
+        "it": "Ergonomico",
+        "en": "Ergonomic",
+        "de": "Ergonomisch"
+      },
+      "slug": "ergonomic"
+    },
+    {
+      "tag_id": "professional",
+      "name": {
+        "it": "Professionale",
+        "en": "Professional",
+        "de": "Professionell"
+      },
+      "slug": "professional"
+    }
+  ],
   "weight": 0.15,
   "weight_unit": "kg",
   "dimensions": {
