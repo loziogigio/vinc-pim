@@ -507,14 +507,25 @@ interface BrandEmbedded {
 }
 ```
 
-**Example - Self-contained (Full):**
+**Example - Self-contained with Brand Family (Recommended for Brand Hierarchies):**
 ```json
 {
   "brand_id": "bosch-professional",
   "label": "Bosch Professional",
   "slug": "bosch-professional",
+  "parent_brand_id": "bosch",
+  "brand_family": "Bosch",
+  "level": 1,
+  "hierarchy": [
+    {
+      "brand_id": "bosch",
+      "label": "Bosch",
+      "slug": "bosch",
+      "level": 0
+    }
+  ],
   "description": "Professional power tools and accessories",
-  "logo_url": "https://cdn.example.com/brands/bosch-logo.png",
+  "logo_url": "https://cdn.example.com/brands/bosch-professional-logo.png",
   "website_url": "https://www.bosch-professional.com",
   "is_active": true,
   "product_count": 1250,
@@ -522,11 +533,15 @@ interface BrandEmbedded {
 }
 ```
 
+> **Note:** All entity types (Brand, Category, Collection, Product Type, Tag) support the self-contained hierarchy pattern. See type definitions in `src/lib/db/models/types/` for complete schemas.
+
 #### Category Entity
 
 **Supports two embedding modes:**
-- **Minimal:** Only essential fields (category_id, name, slug)
-- **Self-contained:** Full object with hierarchy (parent_id, level, path) and metadata
+- **Minimal:** Only essential fields (category_id, name, slug) - for simple references
+- **Self-contained:** Full object with hierarchy data - **CRITICAL for faceting, breadcrumbs, and external imports**
+
+> **Why Self-Contained?** When data comes from external systems (not PIM), products must be self-sustainable. Faceting and listing views cannot perform database lookups. The `hierarchy` field embeds full ancestor data, enabling breadcrumb navigation and hierarchical faceting without any database queries.
 
 ```typescript
 interface CategoryEmbedded {
@@ -538,9 +553,16 @@ interface CategoryEmbedded {
   // Optional fields (for self-contained mode)
   details?: MultilingualText;    // Multilingual details/description
   description?: string;          // Description
-  parent_id?: string;            // Parent category ID (for hierarchy)
+  parent_id?: string;            // Parent category ID (for hierarchy reference)
   level?: number;                // Hierarchy level (0 = root, 1 = child, etc.)
-  path?: string[];               // Hierarchy path (e.g., ["tools", "power-tools"])
+  path?: string[];               // Ancestor IDs (e.g., ["1245", "1244"])
+
+  /**
+   * SELF-CONTAINED: Full hierarchy with ancestor data
+   * Critical for faceting and breadcrumbs without database lookups
+   */
+  hierarchy?: CategoryHierarchyItem[];  // Full ancestor data (see example below)
+
   image?: {
     id: string;
     thumbnail: string;
@@ -551,48 +573,97 @@ interface CategoryEmbedded {
   product_count?: number;        // Number of products (cached)
   display_order?: number;        // Display order
 }
+
+interface CategoryHierarchyItem {
+  category_id: string;
+  name: MultilingualText;
+  slug: MultilingualText;
+  level: number;
+  description?: string;
+  image?: {
+    id: string;
+    thumbnail: string;
+    original: string;
+  };
+  icon?: string;
+}
 ```
 
-**Example - Minimal:**
+**Example - Minimal (Simple Reference):**
 ```json
 {
-  "category_id": "drills",
+  "category_id": "644",
   "name": {
     "it": "Trapani",
-    "en": "Drills",
-    "de": "Bohrer"
+    "en": "Drills"
   },
   "slug": {
     "it": "trapani",
-    "en": "drills",
-    "de": "bohrer"
+    "en": "drills"
   }
 }
 ```
 
-**Example - Self-contained with Hierarchy:**
+**Example - Self-contained with Full Hierarchy (Recommended for External Systems):**
 ```json
 {
-  "category_id": "drills",
+  "category_id": "644",
   "name": {
-    "it": "Trapani",
-    "en": "Drills",
-    "de": "Bohrer"
+    "it": "Ferramenta",
+    "en": "Hardware"
   },
   "slug": {
-    "it": "trapani",
-    "en": "drills",
-    "de": "bohrer"
+    "it": "ferramenta",
+    "en": "hardware"
   },
-  "parent_id": "power-tools",
+  "parent_id": "1244",
   "level": 2,
-  "path": ["tools", "power-tools"],
-  "description": "All types of drills",
+  "path": ["1245", "1244"],
+  "hierarchy": [
+    {
+      "category_id": "1245",
+      "name": {
+        "it": "Utensili",
+        "en": "Tools"
+      },
+      "slug": {
+        "it": "utensili",
+        "en": "tools"
+      },
+      "level": 0,
+      "description": "All types of tools"
+    },
+    {
+      "category_id": "1244",
+      "name": {
+        "it": "Elettroutensili",
+        "en": "Power Tools"
+      },
+      "slug": {
+        "it": "elettroutensili",
+        "en": "power-tools"
+      },
+      "level": 1,
+      "description": "Electric and battery powered tools"
+    }
+  ],
+  "description": "General hardware and metal fittings",
   "is_active": true,
-  "product_count": 450,
+  "product_count": 850,
   "display_order": 1
 }
 ```
+
+**Benefits of Self-Contained Categories:**
+- ✅ **Faceting:** Solr can build hierarchical facets without MongoDB lookups
+- ✅ **Breadcrumbs:** Full category path available for display (Utensili > Elettroutensili > Ferramenta)
+- ✅ **External Imports:** Products from external systems don't need PIM category references
+- ✅ **Performance:** No database queries needed for listing/faceting views
+- ✅ **Consistency:** Data remains consistent regardless of source (PIM, wholesaler, manual import)
+
+**When to Use Each Mode:**
+- **Minimal:** When importing from PIM where category data is managed centrally
+- **Self-contained:** When importing from external systems, for faceting-heavy views, or when category data updates infrequently
 
 #### Collection Entity
 
@@ -1279,6 +1350,195 @@ curl -X GET https://your-domain.com/api/b2b/pim/jobs/import-job-123456 \
   "created_at": "2025-11-21T10:00:00Z",
   "completed_at": "2025-11-21T10:02:15Z"
 }
+```
+
+---
+
+## 🔍 Solr Faceting with Category Hierarchy
+
+When products are indexed to Solr, the self-contained category hierarchy enables powerful faceting without database lookups.
+
+### Solr Document Structure
+
+When a product with a self-contained category is indexed, Solr receives:
+
+```json
+{
+  "id": "PROD-001",
+  "sku": "SKU-001",
+  "name_text_it": "Trapano Professionale",
+
+  // Category faceting fields (language-independent)
+  "category_id": "644",
+  "category_path": [
+    "1245",
+    "1245/1244",
+    "1245/1244/644"
+  ],
+  "category_ancestors": ["1245", "1244", "644"],
+  "category_level": 2,
+
+  // Category breadcrumb (language-specific)
+  "category_breadcrumb_it": ["Utensili", "Elettroutensili", "Ferramenta"],
+  "category_breadcrumb_en": ["Tools", "Power Tools", "Hardware"],
+
+  // Category display fields
+  "category_name_text_it": "Ferramenta",
+  "category_name_text_en": "Hardware",
+  "category_slug_text_it": "ferramenta",
+  "category_slug_text_en": "hardware",
+
+  // Full category object for display
+  "category_json": "{...}"
+}
+```
+
+### Faceting Examples
+
+#### 1. Hierarchical Faceting (Drill-down Navigation)
+
+**Query all products and get category hierarchy facets:**
+```http
+GET /solr/mycore/select?
+  q=*:*&
+  facet=true&
+  facet.field=category_path&
+  facet.limit=50
+```
+
+**Response:**
+```json
+{
+  "facets": {
+    "category_path": {
+      "1245": 5000,                    // All products under "Utensili"
+      "1245/1244": 3500,               // All products under "Elettroutensili"
+      "1245/1244/644": 850,            // All products under "Ferramenta"
+      "1245/1244/645": 1200,           // All products under another subcategory
+      "1246": 2000                     // Different root category
+    }
+  }
+}
+```
+
+#### 2. Breadcrumb Faceting (Named Categories)
+
+**Italian breadcrumb faceting:**
+```http
+GET /solr/mycore/select?
+  q=*:*&
+  facet=true&
+  facet.field=category_breadcrumb_it&
+  rows=20
+```
+
+**Response:**
+```json
+{
+  "facets": {
+    "category_breadcrumb_it": [
+      ["Utensili"],                                      // Root level
+      ["Utensili", "Elettroutensili"],                  // Second level
+      ["Utensili", "Elettroutensili", "Ferramenta"]    // Third level
+    ]
+  }
+}
+```
+
+#### 3. Filter by Ancestor Category
+
+**Show all products under "Utensili" (category 1245) and subcategories:**
+```http
+GET /solr/mycore/select?
+  q=*:*&
+  fq=category_ancestors:1245&
+  facet=true&
+  facet.field=category_path&
+  facet.prefix=1245/
+```
+
+This returns all products in "Utensili" and any of its descendants.
+
+#### 4. Filter by Specific Category Level
+
+**Get only root categories (level 0):**
+```http
+GET /solr/mycore/select?
+  q=*:*&
+  facet=true&
+  facet.query=category_level:0&
+  facet.query=category_level:1&
+  facet.query=category_level:2
+```
+
+### Frontend Integration Example
+
+**Building breadcrumb navigation from Solr results:**
+
+```javascript
+// From Solr response
+const product = {
+  category_breadcrumb_it: ["Utensili", "Elettroutensili", "Ferramenta"],
+  category_ancestors: ["1245", "1244", "644"],
+  category_json: JSON.parse(categoryJsonString)
+};
+
+// Build breadcrumb links
+const breadcrumbs = product.category_breadcrumb_it.map((name, index) => ({
+  name: name,
+  category_id: product.category_ancestors[index],
+  url: `/categories/${product.category_ancestors[index]}`
+}));
+
+// Render: Utensili > Elettroutensili > Ferramenta
+```
+
+**Building faceted navigation:**
+
+```javascript
+// From Solr facet response
+const facets = {
+  category_path: {
+    "1245": 5000,
+    "1245/1244": 3500,
+    "1245/1244/644": 850
+  }
+};
+
+// Parse hierarchy
+const hierarchyTree = buildTreeFromPaths(facets.category_path);
+// Result:
+// - Utensili (5000)
+//   - Elettroutensili (3500)
+//     - Ferramenta (850)
+```
+
+### Benefits of Self-Contained Faceting
+
+✅ **No Database Lookups:** All category data is in Solr, enabling fast faceting
+✅ **Multilingual Support:** Breadcrumbs available in all languages
+✅ **Hierarchical Navigation:** Users can drill down or up the category tree
+✅ **Consistent Data:** External imports work identically to PIM imports
+✅ **Performance:** Faceting is instant, even with millions of products
+
+### Solr Schema Requirements
+
+Add these fields to your `managed-schema`:
+
+```xml
+<!-- Category hierarchy for faceting -->
+<field name="category_id" type="string" indexed="true" stored="true"/>
+<field name="category_path" type="strings" indexed="true" stored="true" multiValued="true"/>
+<field name="category_ancestors" type="strings" indexed="true" stored="true" multiValued="true"/>
+<field name="category_level" type="pint" indexed="true" stored="true"/>
+
+<!-- Dynamic fields for language-specific breadcrumbs -->
+<dynamicField name="category_breadcrumb_*" type="strings" indexed="true" stored="true" multiValued="true"/>
+<dynamicField name="category_name_text_*" type="text_general" indexed="true" stored="true"/>
+<dynamicField name="category_slug_text_*" type="text_general" indexed="true" stored="true"/>
+
+<!-- Full category object for display -->
+<field name="category_json" type="string" indexed="false" stored="true"/>
 ```
 
 ---

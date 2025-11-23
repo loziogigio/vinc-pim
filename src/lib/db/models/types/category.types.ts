@@ -4,10 +4,28 @@
  *
  * Supports both minimal and self-contained (full) embedding:
  * - Minimal: Only required fields (category_id, name, slug)
- * - Self-contained: All fields including hierarchy (parent_id, level, path)
+ * - Self-contained: All fields including hierarchy with full ancestor data
  */
 
 import { MultilingualText } from "../pim-product";
+
+/**
+ * Category hierarchy ancestor item
+ * Contains full data for each ancestor in the category tree
+ */
+export interface CategoryHierarchyItem {
+  category_id: string;
+  name: MultilingualText;
+  slug: MultilingualText;
+  level: number;
+  description?: string;
+  image?: {
+    id: string;
+    thumbnail: string;
+    original: string;
+  };
+  icon?: string;
+}
 
 // Base category fields (for embedding in products)
 export interface CategoryBase {
@@ -16,9 +34,22 @@ export interface CategoryBase {
   slug: MultilingualText;
   details?: MultilingualText;
   description?: string;       // Optional: Include for self-contained
-  parent_id?: string;         // Optional: Include for hierarchy
-  level?: number;             // Optional: Include for hierarchy
-  path?: string[];            // Optional: Include for hierarchy (e.g., ["tools", "power-tools", "drills"])
+  parent_id?: string;         // Optional: Include for hierarchy reference
+  level?: number;             // Optional: Category depth (0 = root, 1 = child, etc.)
+  path?: string[];            // Optional: Ancestor IDs (e.g., ["1245", "1244"])
+
+  /**
+   * SELF-CONTAINED: Full hierarchy with ancestor data
+   * Critical for faceting and breadcrumbs without database lookups
+   *
+   * Example:
+   * hierarchy: [
+   *   { category_id: "1245", name: { it: "Utensili" }, slug: { it: "utensili" }, level: 0 },
+   *   { category_id: "1244", name: { it: "Elettroutensili" }, slug: { it: "elettroutensili" }, level: 1 }
+   * ]
+   */
+  hierarchy?: CategoryHierarchyItem[];  // Optional: Include for self-contained mode
+
   image?: {
     id: string;
     thumbnail: string;

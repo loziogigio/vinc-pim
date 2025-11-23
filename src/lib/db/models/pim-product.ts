@@ -221,6 +221,38 @@ export interface IPIMProduct extends Document {
   variations_entity_code?: string[]; // Array of child entity_codes
 
   /**
+   * SELF-CONTAINED: Full parent product data
+   * Critical for variant listing views without database lookups
+   * Enables displaying parent context in search results and variant selectors
+   */
+  parent_product?: {
+    entity_code: string;
+    sku: string;
+    name: MultilingualText;
+    slug: MultilingualText;
+    cover_image_url?: string;
+    price?: number;
+    brand?: BrandEmbedded;
+    category?: CategoryEmbedded;
+  };
+
+  /**
+   * SELF-CONTAINED: Sibling variants data
+   * Enables "other colors/sizes" display without additional queries
+   * Only includes other variants (excludes current product)
+   */
+  sibling_variants?: Array<{
+    entity_code: string;
+    sku: string;
+    name: MultilingualText;
+    variation_attributes?: Record<string, any>; // color, size, etc.
+    cover_image_url?: string;
+    price?: number;
+    stock_status?: string;
+    is_active?: boolean;
+  }>;
+
+  /**
    * Indicates if this product is a parent product
    * - Single products (no variants): is_parent = true
    * - Parent products with variants: is_parent = true
@@ -533,6 +565,41 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     parent_entity_code: { type: String },
     variations_sku: [{ type: String }],
     variations_entity_code: [{ type: String }],
+
+    // Parent product data (self-contained)
+    parent_product: {
+      entity_code: { type: String },
+      sku: { type: String },
+      name: MultilingualTextSchema,
+      slug: MultilingualTextSchema,
+      cover_image_url: { type: String },
+      price: { type: Number },
+      brand: {
+        brand_id: { type: String },
+        label: { type: String },
+        slug: { type: String },
+      },
+      category: {
+        category_id: { type: String },
+        name: MultilingualTextSchema,
+        slug: MultilingualTextSchema,
+      },
+    },
+
+    // Sibling variants (self-contained)
+    sibling_variants: [
+      {
+        entity_code: { type: String },
+        sku: { type: String },
+        name: MultilingualTextSchema,
+        variation_attributes: { type: Schema.Types.Mixed },
+        cover_image_url: { type: String },
+        price: { type: Number },
+        stock_status: { type: String },
+        is_active: { type: Boolean },
+      },
+    ],
+
     is_parent: { type: Boolean, default: true },
     include_faceting: { type: Boolean, default: true },
 

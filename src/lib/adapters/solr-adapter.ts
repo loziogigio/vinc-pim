@@ -59,6 +59,29 @@ interface SolrMultilingualDocument {
   product_type_id?: string;
   collection_ids?: string[];
 
+  // Category hierarchy for faceting (self-contained, no lookups needed)
+  category_path?: string[];          // Hierarchical ID path: ["1245", "1245/1244", "1245/1244/644"]
+  category_ancestors?: string[];     // All ancestor IDs: ["1245", "1244", "644"]
+  category_level?: number;           // Category depth level (0 = root)
+
+  // Brand hierarchy for faceting (brand families)
+  brand_path?: string[];             // Hierarchical ID path: ["bosch", "bosch/bosch-professional"]
+  brand_ancestors?: string[];        // All ancestor brand IDs
+  brand_family?: string;             // Brand family name
+
+  // Product Type hierarchy for faceting
+  product_type_path?: string[];      // Hierarchical ID path: ["tools", "tools/power-tools"]
+  product_type_ancestors?: string[]; // All ancestor type IDs
+  product_type_level?: number;       // Type hierarchy level
+
+  // Collection hierarchy for faceting
+  collection_paths?: string[][];     // Multiple collection paths (product can be in multiple collections)
+  collection_ancestors?: string[];   // All collection IDs (flat array)
+
+  // Tag groups for grouped faceting
+  tag_groups?: string[];             // Tag group IDs: ["promotions", "features"]
+  tag_categories?: string[];         // Tag categories: ["promotion", "seo"]
+
   // Promotions
   promo_codes?: string[];
   has_active_promo?: boolean;
@@ -68,10 +91,11 @@ interface SolrMultilingualDocument {
   image_count?: number;
   cover_image_url?: string;
 
-  // Variations
+  // Variations & Faceting
   is_parent?: boolean;
   parent_sku?: string;
   parent_entity_code?: string;
+  include_faceting?: boolean; // Controls if product is included in faceting
 
   // Complex objects stored as JSON (for frontend display)
   specifications_json?: string;
@@ -156,6 +180,305 @@ export class SolrAdapter extends MarketplaceAdapter {
   }
 
   /**
+   * Calculate include_faceting based on product variant structure
+   * Logic:
+   * - Single products (no variants): true
+   * - Parent products with variants: false (exclude from facets, group only)
+   * - Variant products (children): true (include in facets)
+   */
+  private calculateIncludeFaceting(product: PIMProduct): boolean {
+    const hasVariants = (product.variations_sku && product.variations_sku.length > 0) ||
+                       (product.variations_entity_code && product.variations_entity_code.length > 0);
+    const isChild = !!product.parent_sku || !!product.parent_entity_code;
+
+    // If has variants (is parent with children) → exclude from faceting
+    if (hasVariants) {
+      return false;
+    }
+
+    // If is child or single product → include in faceting
+    return true;
+  }
+
+  /**
+   * Build self-contained category hierarchy paths for faceting
+   * Creates breadcrumb-style paths that work without database lookups
+   *
+   * @param category - Category with optional hierarchy field
+   * @returns Object with paths for ID-based and named faceting
+   */
+  private buildCategoryPaths(category: any): {
+    category_path: string[];        // ID-based hierarchical paths
+    category_ancestors: string[];   // All ancestor IDs for filtering
+    category_level: number;         // Category depth
+  } {
+    if (!category) {
+      return {
+        category_path: [],
+        category_ancestors: [],
+        category_level: 0
+      };
+    }
+
+    const categoryId = category.category_id;
+    const level = category.level ?? 0;
+
+    // Use hierarchy field if available (self-contained mode)
+    if (category.hierarchy && Array.isArray(category.hierarchy)) {
+      const ancestors: string[] = [];
+      const paths: string[] = [];
+      let currentPath = '';
+
+      // Build paths from hierarchy
+      for (const ancestor of category.hierarchy) {
+        ancestors.push(ancestor.category_id);
+        currentPath = currentPath ? `${currentPath}/${ancestor.category_id}` : ancestor.category_id;
+        paths.push(currentPath);
+      }
+
+      // Add current category
+      ancestors.push(categoryId);
+      currentPath = currentPath ? `${currentPath}/${categoryId}` : categoryId;
+      paths.push(currentPath);
+
+      return {
+        category_path: paths,
+        category_ancestors: ancestors,
+        category_level: level
+      };
+    }
+
+    // Fallback: Use path array if available (minimal mode)
+    if (category.path && Array.isArray(category.path)) {
+      const ancestors = category.path;
+      const paths: string[] = [];
+      let currentPath = '';
+
+      for (const ancestorId of ancestors) {
+        currentPath = currentPath ? `${currentPath}/${ancestorId}` : ancestorId;
+        paths.push(currentPath);
+      }
+
+      // Add current category
+      currentPath = currentPath ? `${currentPath}/${categoryId}` : categoryId;
+      paths.push(currentPath);
+
+      return {
+        category_path: paths,
+        category_ancestors: [...ancestors, categoryId],
+        category_level: level
+      };
+    }
+
+    // Single category (no ancestors)
+    return {
+      category_path: [categoryId],
+      category_ancestors: [categoryId],
+      category_level: level
+    };
+  }
+
+  /**
+   * Build language-specific named category paths for breadcrumb display
+   * Uses hierarchy field for self-contained data
+   *
+   * @param category - Category with hierarchy field
+   * @param lang - Language code (e.g., 'it', 'en')
+   * @returns Named path array for breadcrumb display
+   */
+  private buildNamedCategoryPath(category: any, lang: string): string[] {
+    if (!category || !category.hierarchy || !Array.isArray(category.hierarchy)) {
+      // Fallback: Just return current category name
+      const categoryName = category?.name?.[lang] || category?.category_id || '';
+      return categoryName ? [categoryName] : [];
+    }
+
+    const namedPath: string[] = [];
+
+    // Build breadcrumb from hierarchy
+    for (const ancestor of category.hierarchy) {
+      const ancestorName = ancestor.name?.[lang] || ancestor.category_id;
+      namedPath.push(ancestorName);
+    }
+
+    // Add current category
+    const categoryName = category.name?.[lang] || category.category_id;
+    namedPath.push(categoryName);
+
+    return namedPath;
+  }
+
+  /**
+   * Build brand hierarchy paths for faceting (brand families)
+   */
+  private buildBrandPaths(brand: any): {
+    brand_path: string[];
+    brand_ancestors: string[];
+    brand_family?: string;
+  } {
+    if (!brand) {
+      return { brand_path: [], brand_ancestors: [] };
+    }
+
+    const brandId = brand.brand_id;
+
+    // Use hierarchy field if available (self-contained mode)
+    if (brand.hierarchy && Array.isArray(brand.hierarchy)) {
+      const ancestors: string[] = [];
+      const paths: string[] = [];
+      let currentPath = '';
+
+      for (const ancestor of brand.hierarchy) {
+        ancestors.push(ancestor.brand_id);
+        currentPath = currentPath ? `${currentPath}/${ancestor.brand_id}` : ancestor.brand_id;
+        paths.push(currentPath);
+      }
+
+      ancestors.push(brandId);
+      currentPath = currentPath ? `${currentPath}/${brandId}` : brandId;
+      paths.push(currentPath);
+
+      return {
+        brand_path: paths,
+        brand_ancestors: ancestors,
+        brand_family: brand.brand_family || (brand.hierarchy[0]?.label)
+      };
+    }
+
+    // Single brand (no hierarchy)
+    return {
+      brand_path: [brandId],
+      brand_ancestors: [brandId],
+      brand_family: brand.brand_family
+    };
+  }
+
+  /**
+   * Build product type hierarchy paths for faceting
+   */
+  private buildProductTypePaths(productType: any): {
+    product_type_path: string[];
+    product_type_ancestors: string[];
+    product_type_level: number;
+  } {
+    if (!productType) {
+      return { product_type_path: [], product_type_ancestors: [], product_type_level: 0 };
+    }
+
+    const typeId = productType.product_type_id;
+    const level = productType.level ?? 0;
+
+    // Use hierarchy field if available (self-contained mode)
+    if (productType.hierarchy && Array.isArray(productType.hierarchy)) {
+      const ancestors: string[] = [];
+      const paths: string[] = [];
+      let currentPath = '';
+
+      for (const ancestor of productType.hierarchy) {
+        ancestors.push(ancestor.product_type_id);
+        currentPath = currentPath ? `${currentPath}/${ancestor.product_type_id}` : ancestor.product_type_id;
+        paths.push(currentPath);
+      }
+
+      ancestors.push(typeId);
+      currentPath = currentPath ? `${currentPath}/${typeId}` : typeId;
+      paths.push(currentPath);
+
+      return {
+        product_type_path: paths,
+        product_type_ancestors: ancestors,
+        product_type_level: level
+      };
+    }
+
+    // Single type (no hierarchy)
+    return {
+      product_type_path: [typeId],
+      product_type_ancestors: [typeId],
+      product_type_level: level
+    };
+  }
+
+  /**
+   * Build collection hierarchy paths for faceting
+   * Products can be in multiple collections
+   */
+  private buildCollectionPaths(collections: any[]): {
+    collection_paths: string[][];
+    collection_ancestors: string[];
+  } {
+    if (!collections || collections.length === 0) {
+      return { collection_paths: [], collection_ancestors: [] };
+    }
+
+    const allPaths: string[][] = [];
+    const allAncestors = new Set<string>();
+
+    for (const collection of collections) {
+      const collectionId = collection.collection_id;
+
+      if (collection.hierarchy && Array.isArray(collection.hierarchy)) {
+        const paths: string[] = [];
+        let currentPath = '';
+
+        for (const ancestor of collection.hierarchy) {
+          allAncestors.add(ancestor.collection_id);
+          currentPath = currentPath ? `${currentPath}/${ancestor.collection_id}` : ancestor.collection_id;
+          paths.push(currentPath);
+        }
+
+        allAncestors.add(collectionId);
+        currentPath = currentPath ? `${currentPath}/${collectionId}` : collectionId;
+        paths.push(currentPath);
+
+        allPaths.push(paths);
+      } else {
+        // Single collection (no hierarchy)
+        allAncestors.add(collectionId);
+        allPaths.push([collectionId]);
+      }
+    }
+
+    return {
+      collection_paths: allPaths,
+      collection_ancestors: Array.from(allAncestors)
+    };
+  }
+
+  /**
+   * Extract tag groups and categories for faceting
+   */
+  private buildTagFacetData(tags: any[]): {
+    tag_groups: string[];
+    tag_categories: string[];
+  } {
+    if (!tags || tags.length === 0) {
+      return { tag_groups: [], tag_categories: [] };
+    }
+
+    const groups = new Set<string>();
+    const categories = new Set<string>();
+
+    for (const tag of tags) {
+      if (tag.tag_group) {
+        groups.add(tag.tag_group);
+      }
+      if (tag.tag_category) {
+        categories.add(tag.tag_category);
+      }
+      // Also extract from tag_group_data if available
+      if (tag.tag_group_data?.group_id) {
+        groups.add(tag.tag_group_data.group_id);
+      }
+    }
+
+    return {
+      tag_groups: Array.from(groups),
+      tag_categories: Array.from(categories)
+    };
+  }
+
+  /**
    * Transform PIM product to Solr multilingual document
    * Converts MongoDB multilingual structure to Solr language-specific fields
    */
@@ -164,6 +487,13 @@ export class SolrAdapter extends MarketplaceAdapter {
     options?: TransformOptions
   ): Promise<SolrMultilingualDocument> {
     const lang = options?.language; // Optional: index only specific language
+
+    // Build all entity hierarchy paths (self-contained, no DB lookups)
+    const categoryPaths = this.buildCategoryPaths(product.category);
+    const brandPaths = this.buildBrandPaths(product.brand);
+    const productTypePaths = this.buildProductTypePaths(product.product_type);
+    const collectionPaths = this.buildCollectionPaths(product.collections);
+    const tagFacetData = this.buildTagFacetData(product.tags);
 
     // Base document with language-independent fields
     const doc: SolrMultilingualDocument = {
@@ -201,10 +531,33 @@ export class SolrAdapter extends MarketplaceAdapter {
       priority_score: product.analytics?.priority_score,
 
       // Relationships (IDs)
-      category_id: product.category?.id,
-      brand_id: product.brand?.id,
-      product_type_id: product.product_type?.id,
-      collection_ids: product.collections?.map(c => c.id),
+      category_id: product.category?.category_id,
+      brand_id: product.brand?.brand_id,
+      product_type_id: product.product_type?.product_type_id,
+      collection_ids: product.collections?.map(c => c.collection_id),
+
+      // Category hierarchy for faceting (self-contained)
+      category_path: categoryPaths.category_path,
+      category_ancestors: categoryPaths.category_ancestors,
+      category_level: categoryPaths.category_level,
+
+      // Brand hierarchy for faceting (brand families)
+      brand_path: brandPaths.brand_path,
+      brand_ancestors: brandPaths.brand_ancestors,
+      brand_family: brandPaths.brand_family,
+
+      // Product Type hierarchy for faceting
+      product_type_path: productTypePaths.product_type_path,
+      product_type_ancestors: productTypePaths.product_type_ancestors,
+      product_type_level: productTypePaths.product_type_level,
+
+      // Collection hierarchy for faceting
+      collection_paths: collectionPaths.collection_paths,
+      collection_ancestors: collectionPaths.collection_ancestors,
+
+      // Tag groups for grouped faceting
+      tag_groups: tagFacetData.tag_groups,
+      tag_categories: tagFacetData.tag_categories,
 
       // Promotions
       promo_codes: product.promotions?.filter(p => p.is_active).map(p => p.promo_code).filter(Boolean) as string[],
@@ -215,10 +568,12 @@ export class SolrAdapter extends MarketplaceAdapter {
       image_count: product.gallery?.length || 0,
       cover_image_url: product.gallery?.[0]?.url,
 
-      // Variations
-      is_parent: !!product.variations && product.variations.length > 0,
+      // Variations & Faceting
+      // Use product's explicit values, or calculate based on variant structure
+      is_parent: product.is_parent ?? (!product.parent_sku && !product.parent_entity_code),
       parent_sku: product.parent_sku,
       parent_entity_code: product.parent_entity_code,
+      include_faceting: product.include_faceting ?? this.calculateIncludeFaceting(product),
 
       // Complex objects stored as JSON (for frontend display, not faceting)
       specifications_json: product.specifications ? JSON.stringify(product.specifications) : undefined,
@@ -324,6 +679,13 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
       if (product.category?.slug?.[l]) {
         doc[`category_slug_text_${l}`] = product.category.slug[l];
+      }
+
+      // Category breadcrumb path (self-contained, for faceting display)
+      // Example: ["Utensili", "Elettroutensili", "Ferramenta"]
+      const namedPath = this.buildNamedCategoryPath(product.category, l);
+      if (namedPath.length > 0) {
+        doc[`category_breadcrumb_${l}`] = namedPath;
       }
 
       // Collection names and slugs
