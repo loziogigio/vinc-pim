@@ -188,19 +188,19 @@ async function processAssociationJob(
 
       try {
         if (action === "add") {
-          // Associate products with brand
+          // Associate products with brand (using BrandBase field names)
           const updateData: any = {
-            "brand.id": brandId,
-            "brand.name": brand.label,
+            "brand.brand_id": brandId,
+            "brand.label": brand.label,
             "brand.slug": brand.slug,
+            "brand.is_active": brand.is_active ?? true,
           };
 
           if (brand.logo_url) {
-            updateData["brand.image"] = {
-              id: brandId,
-              thumbnail: brand.logo_url,
-              original: brand.logo_url,
-            };
+            updateData["brand.logo_url"] = brand.logo_url;
+          }
+          if (brand.description) {
+            updateData["brand.description"] = brand.description;
           }
 
           const result = await PIMProductModel.updateMany(
@@ -220,7 +220,7 @@ async function processAssociationJob(
               entity_code: { $in: batch },
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "brand.id": brandId,
+              "brand.brand_id": brandId,
             },
             { $unset: { brand: "" } }
           );
@@ -253,7 +253,7 @@ async function processAssociationJob(
     const productCount = await PIMProductModel.countDocuments({
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "brand.id": brandId,
+      "brand.brand_id": brandId,
     });
 
     await BrandModel.updateOne(

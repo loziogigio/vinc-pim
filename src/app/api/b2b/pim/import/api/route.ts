@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/db/connection";
 import { ImportSourceModel } from "@/lib/db/models/import-source";
 import { ImportJobModel } from "@/lib/db/models/import-job";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { LanguageModel } from "@/lib/db/models/language";
+import { syncQueue } from "@/lib/queue/queues";
 import {
   calculateCompletenessScore,
   findCriticalIssues,
@@ -12,6 +14,44 @@ import {
   checkAutoPublishEligibility,
   mergeWithLockedFields,
 } from "@/lib/pim/auto-publish";
+import { projectConfig } from "@/config/project.config";
+
+/**
+ * Multilingual fields that should have language suffixes
+ */
+const MULTILINGUAL_FIELDS = [
+  "name",
+  "description",
+  "short_description",
+  "features",
+  "specifications",
+  "meta_title",
+  "meta_description",
+  "keywords",
+];
+
+/**
+ * Apply default language to multilingual fields
+ * Converts plain strings to {lang: value} objects
+ */
+function applyDefaultLanguageToData(data: any): void {
+  const defaultLang = projectConfig.defaultLanguage;
+
+  for (const field of MULTILINGUAL_FIELDS) {
+    if (data[field] !== undefined && data[field] !== null && data[field] !== "") {
+      const isLanguageObject = typeof data[field] === "object" &&
+                                !Array.isArray(data[field]) &&
+                                data[field] !== null;
+
+      if (!isLanguageObject) {
+        const plainValue = data[field];
+        data[field] = {
+          [defaultLang]: plainValue
+        };
+      }
+    }
+  }
+}
 
 /**
  * POST /api/b2b/pim/import/api
@@ -130,6 +170,7 @@ export async function POST(req: NextRequest) {
     let failed = 0;
     let autoPublished = 0;
     const errors: any[] = [];
+    const successfulEntityCodes: string[] = []; // Track for Solr sync
     let debugProductSource: any = null; // For debugging first product
 
     for (const productData of products) {
@@ -155,6 +196,9 @@ export async function POST(req: NextRequest) {
           // No field mappings, use data as-is (1:1 mapping)
           mappedData = { ...productData };
         }
+
+        // Apply default language to multilingual fields (convert plain strings to {lang: value})
+        applyDefaultLanguageToData(mappedData);
 
         const entity_code = mappedData.entity_code || mappedData.sku;
 
@@ -266,6 +310,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        successfulEntityCodes.push(entity_code);
         successful++;
       } catch (error: any) {
         errors.push({
@@ -311,6 +356,56 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ API import completed: ${successful} successful, ${failed} failed`);
 
+    // ========== QUEUE SOLR SYNC ==========
+    // Queue batch sync jobs if Solr is enabled and language has searchEnabled=true
+    let syncQueued = 0;
+    if (successfulEntityCodes.length > 0 && process.env.SOLR_ENABLED === 'true') {
+      try {
+        // Get default language (or first enabled language with searchEnabled)
+        const defaultLanguage = await LanguageModel.findOne({
+          isDefault: true,
+          isEnabled: true,
+          searchEnabled: true
+        });
+
+        if (defaultLanguage) {
+          console.log(`\n📤 Queuing batch Solr sync for ${successfulEntityCodes.length} products (language: ${defaultLanguage.code})`);
+
+          // Batch the products (50 per batch for optimal performance)
+          const SYNC_BATCH_SIZE = 50;
+          const batchCount = Math.ceil(successfulEntityCodes.length / SYNC_BATCH_SIZE);
+
+          for (let i = 0; i < successfulEntityCodes.length; i += SYNC_BATCH_SIZE) {
+            const batchIds = successfulEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
+            const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
+
+            await syncQueue.add('bulk-sync-batch', {
+              product_id: `batch-${jobId}-${batchNumber}`,
+              product_ids: batchIds,
+              operation: 'bulk-sync',
+              channels: ['solr'],
+              tenant_id: process.env.VINC_TENANT_ID || 'default',
+              priority: 'high',
+            }, {
+              priority: 1, // High priority for search indexing
+            });
+
+            console.log(`   ✓ Queued batch ${batchNumber}/${batchCount} (${batchIds.length} products)`);
+          }
+
+          syncQueued = batchCount;
+          console.log(`✅ Queued ${batchCount} batch sync jobs for Solr indexing`);
+        } else {
+          console.log(`⚠️ No search-enabled default language found - skipping Solr sync`);
+        }
+      } catch (syncError: any) {
+        console.error(`⚠️ Failed to queue batch sync: ${syncError.message}`);
+        // Don't fail the import if sync queueing fails
+      }
+    } else if (successfulEntityCodes.length > 0) {
+      console.log(`ℹ️ Solr sync skipped (SOLR_ENABLED=${process.env.SOLR_ENABLED})`);
+    }
+
     return NextResponse.json({
       success: true,
       job_id: jobId,
@@ -326,9 +421,10 @@ export async function POST(req: NextRequest) {
         failed,
         auto_published: autoPublished,
         duration_seconds: durationSeconds,
+        sync_batches_queued: syncQueued,
       },
       errors: errors.slice(0, 100), // Return first 100 errors
-      message: `Imported ${successful} of ${processed} products successfully`,
+      message: `Imported ${successful} of ${processed} products successfully${syncQueued > 0 ? `, queued ${syncQueued} Solr sync batches` : ''}`,
     });
   } catch (error: any) {
     console.error("Error processing API import:", error);

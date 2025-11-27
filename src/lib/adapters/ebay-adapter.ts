@@ -230,9 +230,9 @@ export class EbayAdapter extends MarketplaceAdapter {
     // Collect image URLs
     const imageUrls: string[] = [];
     if (product.image?.original) imageUrls.push(product.image.original);
-    if (product.images && Array.isArray(product.images)) {
-      product.images.forEach((img: any) => {
-        if (img.original) imageUrls.push(img.original);
+    if (product.gallery && Array.isArray(product.gallery)) {
+      product.gallery.forEach((img: any) => {
+        if (img.url) imageUrls.push(img.url);
       });
     }
 
@@ -575,14 +575,53 @@ export class EbayAdapter extends MarketplaceAdapter {
     }
   }
 
-  private transformAttributes(attributes: any): Record<string, string[]> {
+  private transformAttributes(attributes: any, lang: string = 'it'): Record<string, string[]> {
     const aspects: Record<string, string[]> = {};
 
-    Object.entries(attributes).forEach(([key, value]) => {
-      // Convert attribute to eBay aspect format
-      const aspectName = this.formatAspectName(key);
-      const aspectValue = Array.isArray(value) ? value : [String(value)];
-      aspects[aspectName] = aspectValue;
+    // Helper to extract string from multilingual or simple value
+    const extractString = (value: any, fallback: string = ''): string => {
+      if (!value) return fallback;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number') return String(value);
+      if (typeof value === 'object') {
+        // Try common languages in order
+        return value.en || value.it || value.de || Object.values(value)[0] || fallback;
+      }
+      return fallback;
+    };
+
+    // Attributes are language-keyed: { it: { slug: {...} }, en: {...} }
+    // Get the language-specific attributes, fallback to it, en, or first available
+    const langAttributes = attributes[lang] || attributes.it || attributes.en ||
+      (typeof attributes === 'object' ? Object.values(attributes)[0] : null);
+
+    if (!langAttributes || typeof langAttributes !== 'object') {
+      return aspects;
+    }
+
+    Object.entries(langAttributes).forEach(([slug, attrData]) => {
+      // Handle new format: { label, value, uom }
+      if (typeof attrData === 'object' && attrData !== null && 'value' in attrData) {
+        // Extract label (multilingual or simple string)
+        const labelStr = extractString(attrData.label, this.formatAspectName(slug));
+        const aspectName = labelStr;
+
+        // Extract value (multilingual or simple string/number)
+        let aspectValue = extractString(attrData.value, '');
+
+        // Append unit of measurement if available
+        if (attrData.uom) {
+          aspectValue = `${aspectValue} ${attrData.uom}`;
+        }
+
+        aspects[aspectName] = [aspectValue];
+      }
+      // Handle legacy format: simple value or array
+      else {
+        const aspectName = this.formatAspectName(slug);
+        const aspectValue = Array.isArray(attrData) ? attrData : [String(attrData)];
+        aspects[aspectName] = aspectValue;
+      }
     });
 
     return aspects;

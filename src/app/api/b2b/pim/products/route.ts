@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     // Advanced filters
     const entityCode = searchParams.get("entity_code");
     const sku = searchParams.get("sku");
+    const parentSku = searchParams.get("parent_sku");
     const brand = searchParams.get("brand");
     const category = searchParams.get("category");
     const currency = searchParams.get("currency");
@@ -71,6 +72,9 @@ export async function GET(req: NextRequest) {
     }
     if (sku) {
       query.sku = { $regex: sku, $options: "i" };
+    }
+    if (parentSku) {
+      query.parent_sku = { $regex: parentSku, $options: "i" };
     }
     if (brand) {
       query["brand.name"] = { $regex: brand, $options: "i" };

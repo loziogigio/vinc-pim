@@ -7,7 +7,7 @@
  * - Self-contained: All fields including hierarchy with full ancestor data
  */
 
-import { MultilingualText } from "../pim-product";
+import { MultilingualText } from "../pim";
 
 /**
  * Category hierarchy ancestor item

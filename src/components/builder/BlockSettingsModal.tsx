@@ -103,6 +103,8 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
     if (!selectedBlock || !draft) return;
 
     console.log('[BlockSettingsModal] Applying settings - zone:', zone, 'tabLabel:', tabLabel);
+    console.log('[BlockSettingsModal] Draft title:', (draft as any)?.title);
+    console.log('[BlockSettingsModal] Full draft:', JSON.stringify(draft, null, 2));
 
     // Update config
     updateBlockConfig(selectedBlock.id, draft as Partial<PageBlock["config"]>);
@@ -340,6 +342,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
                 blockId={selectedBlock.id}
                 config={draft as any}
                 onSave={(newConfig) => {
+                  console.log('[BlockSettingsModal] Received onSave from ProductCarouselSettings, title:', (newConfig as any)?.title);
                   setDraft(newConfig as unknown as DraftConfig);
                   setHasLocalChanges(true);
                   setAdvancedDraft(JSON.stringify(newConfig, null, 2));

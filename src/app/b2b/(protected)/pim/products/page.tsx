@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { BulkUpdateModal, BulkUpdateData } from "@/components/pim/BulkUpdateModal";
+import { ProductImage } from "@/lib/types/pim";
 import { LanguageStatusBadge } from "@/components/pim/LanguageStatusBadge";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import {
@@ -33,16 +34,13 @@ type Product = {
   description?: string | Record<string, string>; // Can be string or multilingual
   price: number;
   currency: string;
-  image: {
-    id: string;
-    thumbnail: string;    // 50x50 for lists
-    medium?: string;      // 300x300 for cards
-    large?: string;       // 1000x1000 for detail views
-    original: string;     // 2000x2000+ for zoom/download
-    blur?: string;        // Base64 blur placeholder
-  };
+  images?: ProductImage[];
   brand?: { id: string; name: string | Record<string, string> };
   category?: { id: string; name: string | Record<string, string> };
+  // Variant/Parent relationships
+  parent_sku?: string;
+  parent_entity_code?: string;
+  is_parent?: boolean;
   completeness_score: number;
   status: "draft" | "published" | "archived";
   critical_issues: string[];
@@ -81,6 +79,7 @@ type FilterState = {
   score_max: string;
   entity_code: string;
   sku: string;
+  parent_sku: string;
 };
 
 /**
@@ -143,6 +142,7 @@ export default function ProductsListPage() {
     score_max: searchParams?.get("score_max") || "",
     entity_code: searchParams?.get("entity_code") || "",
     sku: searchParams?.get("sku") || "",
+    parent_sku: searchParams?.get("parent_sku") || "",
   });
 
   // Selection handlers
@@ -652,7 +652,7 @@ export default function ProductsListPage() {
 
         {/* Active Filters */}
         {(filters.batch_id || filters.status || filters.search || filters.date_from || filters.date_to ||
-          filters.has_conflict || filters.entity_code || filters.sku || filters.brand || filters.category || filters.currency ||
+          filters.has_conflict || filters.entity_code || filters.sku || filters.parent_sku || filters.brand || filters.category || filters.currency ||
           filters.price_min || filters.price_max || filters.score_min || filters.score_max) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Active filters:</span>
@@ -736,6 +736,17 @@ export default function ProductsListPage() {
                 </button>
               </div>
             )}
+            {filters.parent_sku && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-full text-sm">
+                <span>Parent: {filters.parent_sku}</span>
+                <button
+                  onClick={() => updateFilters({ parent_sku: "" })}
+                  className="hover:bg-purple-200 dark:hover:bg-purple-800/30 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
             {filters.brand && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
                 <span>Brand: {filters.brand}</span>
@@ -798,7 +809,7 @@ export default function ProductsListPage() {
             <button
               onClick={() => updateFilters({
                 batch_id: "", status: "", search: "", date_from: "", date_to: "", has_conflict: "",
-                entity_code: "", sku: "", brand: "", category: "", currency: "",
+                entity_code: "", sku: "", parent_sku: "", brand: "", category: "", currency: "",
                 price_min: "", price_max: "", score_min: "", score_max: ""
               })}
               className="text-sm text-muted-foreground hover:text-foreground underline"
@@ -882,10 +893,7 @@ export default function ProductsListPage() {
                       Product
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Brand
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Category
+                      Parent SKU
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
                       Quality
@@ -939,17 +947,15 @@ export default function ProductsListPage() {
                           className="flex items-center gap-3 group"
                         >
                           <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
-                            {product.image?.thumbnail ? (
+                            {product.images?.[0]?.url ? (
                               <Image
-                                src={product.image.thumbnail}
+                                src={product.images[0].url}
                                 alt={getMultilingualText(product.name, defaultLanguageCode, "Product image")}
                                 width={48}
                                 height={48}
                                 quality={75}
                                 sizes="48px"
                                 priority={index < 5}
-                                placeholder={product.image.blur ? "blur" : "empty"}
-                                blurDataURL={product.image.blur}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
@@ -958,31 +964,32 @@ export default function ProductsListPage() {
                               </div>
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-foreground group-hover:text-primary truncate">
+                          <div className="min-w-0 max-w-[280px]">
+                            <div className="text-sm font-medium text-foreground group-hover:text-primary line-clamp-2">
                               {getMultilingualText(product.name, defaultLanguageCode, "Untitled")}
                             </div>
-                            <div className="text-xs text-muted-foreground font-mono">
+                            <div className="text-xs text-muted-foreground font-mono truncate">
                               SKU: {product.sku}
                             </div>
                           </div>
                         </Link>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-sm text-foreground">
-                          {product.brand?.name ? (
-                            getMultilingualText(product.brand.name, defaultLanguageCode, "")
+                        <div className="text-sm">
+                          {product.parent_sku ? (
+                            <button
+                              onClick={() => updateFilters({ parent_sku: product.parent_sku })}
+                              className="font-mono text-primary hover:underline text-left"
+                              title="Click to filter by this parent"
+                            >
+                              {product.parent_sku}
+                            </button>
+                          ) : product.is_parent ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                              Parent
+                            </span>
                           ) : (
-                            <span className="text-muted-foreground italic">No brand</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm text-foreground">
-                          {product.category?.name ? (
-                            getMultilingualText(product.category.name, defaultLanguageCode, "")
-                          ) : (
-                            <span className="text-muted-foreground italic">No category</span>
+                            <span className="text-muted-foreground italic">—</span>
                           )}
                         </div>
                       </td>

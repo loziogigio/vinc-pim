@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 interface ProductCarouselSettingsProps {
   blockId: string;
@@ -62,6 +61,48 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
   const [previewProducts, setPreviewProducts] = useState<any[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Mark as initialized after first render
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
+
+  // Auto-save whenever any setting changes (skip initial mount)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const payload: any = {
+      title: title.trim() || 'Featured Products',
+      searchQuery: searchQuery.trim(),
+      limit: clamp(limit, 1, 50),
+      dataSource,
+      breakpointMode,
+      autoplay,
+      autoplaySpeed: clamp(autoplaySpeed, 1000, 20000),
+      loop,
+      showDots,
+      showArrows,
+      className: config.className || 'mb-12 xl:mb-14 pt-1'
+    };
+
+    if (breakpointMode === 'simplified') {
+      payload.itemsToShow = {
+        desktop: clamp(Number(itemsToShow.desktop), 1, 6),
+        tablet: clamp(Number(itemsToShow.tablet), 1, 6),
+        mobile: clamp(Number(itemsToShow.mobile), 1, 4)
+      };
+    } else {
+      try {
+        payload.breakpointsJSON = JSON.parse(breakpointsJSON || '{}');
+      } catch {
+        payload.breakpointsJSON = config.breakpointsJSON || {};
+      }
+    }
+
+    console.log('[ProductCarouselSettings] Auto-save triggered, title:', payload.title);
+    onSave(payload);
+  }, [isInitialized, title, searchQuery, limit, dataSource, breakpointMode, autoplay, autoplaySpeed, loop, showDots, showArrows, itemsToShow, breakpointsJSON]);
 
   const parsedSearchSummary = useMemo(() => {
     if (dataSource !== "search") return null;
@@ -171,37 +212,6 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
     };
   }, [searchQuery, limit, dataSource]);
 
-  const handleSave = () => {
-    try {
-      const payload: any = {
-        title: title.trim() || 'Featured Products',
-        searchQuery: searchQuery.trim(),
-        limit: clamp(limit, 1, 50),
-        dataSource,
-        breakpointMode,
-        autoplay,
-        autoplaySpeed: clamp(autoplaySpeed, 1000, 20000),
-        loop,
-        showDots,
-        showArrows,
-        className: config.className || 'mb-12 xl:mb-14 pt-1'
-      };
-
-      if (breakpointMode === 'simplified') {
-        payload.itemsToShow = {
-          desktop: clamp(Number(itemsToShow.desktop), 1, 6),
-          tablet: clamp(Number(itemsToShow.tablet), 1, 6),
-          mobile: clamp(Number(itemsToShow.mobile), 1, 4)
-        };
-      } else {
-        payload.breakpointsJSON = JSON.parse(breakpointsJSON || '{}');
-      }
-
-      onSave(payload);
-    } catch (error) {
-      alert('Invalid breakpoint configuration. Please check your inputs.');
-    }
-  };
 
   const previewContent = useMemo(() => {
     if (dataSource !== "search") {
@@ -455,9 +465,6 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
         )}
       </div>
 
-      <Button onClick={handleSave} className="w-full">
-        Save settings
-      </Button>
     </div>
   );
 }

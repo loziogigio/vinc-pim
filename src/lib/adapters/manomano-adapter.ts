@@ -104,7 +104,7 @@ export class ManoManoAdapter extends MarketplaceAdapter {
       stock: product.stock_quantity || 0,
       images: [
         product.image?.original,
-        ...(product.images?.map((img: any) => img.original) || []),
+        ...(product.gallery?.map((img: any) => img.url) || []),
       ].filter(Boolean),
       category: product.category?.name,
       attributes: product.attributes || {},

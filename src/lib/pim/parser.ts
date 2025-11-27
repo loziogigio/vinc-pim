@@ -377,7 +377,7 @@ export function createSampleMapping(): IImportSource["field_mapping"] {
     { source_field: "BrandCode", pim_field: "brand.cprec_darti" },
     { source_field: "Category", pim_field: "category.name" },
     { source_field: "CategoryCode", pim_field: "category.code" },
-    { source_field: "Image1", pim_field: "images[0].url" },
+    { source_field: "Image1", pim_field: "gallery[0].url" },
     { source_field: "Model", pim_field: "model" },
   ];
 }

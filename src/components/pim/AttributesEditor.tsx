@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 
 type Attribute = {
-  key: string;
-  value: string;
-  uom?: string;
+  slug: string;
+  label: Record<string, string> | string;  // Multilingual or simple string
+  value: Record<string, string> | string;  // Multilingual or simple string
+  uom?: string;  // UOM stays language-independent
 };
 
 type Props = {
@@ -16,19 +18,54 @@ type Props = {
 };
 
 export function AttributesEditor({ value, onChange, disabled }: Props) {
+  const { currentLanguage } = useLanguageStore();
+  const currentLangCode = currentLanguage || 'en';
+
+  // Helper function to extract text for current language
+  const getLocalizedText = (text: string | Record<string, string> | boolean | number | undefined | null, fallback: string = ''): string => {
+    if (text === null || text === undefined) return fallback;
+    // Handle booleans and numbers - convert to string
+    if (typeof text === 'boolean' || typeof text === 'number') return String(text);
+    if (typeof text === 'string') return text;
+    if (typeof text === 'object') {
+      return text[currentLangCode] || text.en || Object.values(text)[0] || fallback;
+    }
+    return fallback;
+  };
+
+  // Helper function to update multilingual text
+  const setLocalizedText = (
+    existingText: string | Record<string, string> | undefined,
+    newValue: string
+  ): string | Record<string, string> => {
+    // If existing text is an object (multilingual), update only the current language
+    if (existingText && typeof existingText === 'object') {
+      return {
+        ...existingText,
+        [currentLangCode]: newValue,
+      };
+    }
+    // If we have multiple enabled languages, create multilingual object
+    // Otherwise, keep it as a simple string
+    return newValue;
+  };
+
   // Convert object to array for easier editing
   const [attributesArray, setAttributesArray] = useState<Attribute[]>(() =>
-    Object.entries(value || {}).map(([key, val]) => {
-      // Handle both simple values and objects with value/uom
+    Object.entries(value || {}).map(([slug, val]) => {
+      // Handle objects with label, value, and uom
       if (typeof val === 'object' && val !== null && 'value' in val) {
         return {
-          key,
-          value: String(val.value),
+          slug,
+          label: val.label || slug,
+          value: val.value || '',
           uom: val.uom || undefined,
         };
       }
+      // Legacy: Handle simple values (convert to new structure)
       return {
-        key,
+        slug,
+        label: slug,
         value: String(val),
         uom: undefined,
       };
@@ -46,17 +83,20 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
     }
 
     setAttributesArray(
-      Object.entries(value || {}).map(([key, val]) => {
-        // Handle both simple values and objects with value/uom
+      Object.entries(value || {}).map(([slug, val]) => {
+        // Handle objects with label, value, and uom
         if (typeof val === 'object' && val !== null && 'value' in val) {
           return {
-            key,
-            value: String(val.value),
+            slug,
+            label: val.label || slug,
+            value: val.value || '',
             uom: val.uom || undefined,
           };
         }
+        // Legacy: Handle simple values (convert to new structure)
         return {
-          key,
+          slug,
+          label: slug,
           value: String(val),
           uom: undefined,
         };
@@ -65,7 +105,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
   }, [value]);
 
   function handleAdd() {
-    const newAttributes = [...attributesArray, { key: "", value: "", uom: undefined }];
+    const newAttributes = [...attributesArray, { slug: "", label: "", value: "", uom: undefined }];
     setAttributesArray(newAttributes);
     updateAttributes(newAttributes);
   }
@@ -76,16 +116,23 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
     updateAttributes(newAttributes);
   }
 
-  function handleKeyChange(index: number, newKey: string) {
+  function handleSlugChange(index: number, newSlug: string) {
     const newAttributes = [...attributesArray];
-    newAttributes[index].key = newKey;
+    newAttributes[index].slug = newSlug;
+    setAttributesArray(newAttributes);
+    updateAttributes(newAttributes);
+  }
+
+  function handleLabelChange(index: number, newLabel: string) {
+    const newAttributes = [...attributesArray];
+    newAttributes[index].label = setLocalizedText(newAttributes[index].label, newLabel);
     setAttributesArray(newAttributes);
     updateAttributes(newAttributes);
   }
 
   function handleValueChange(index: number, newValue: string) {
     const newAttributes = [...attributesArray];
-    newAttributes[index].value = newValue;
+    newAttributes[index].value = setLocalizedText(newAttributes[index].value, newValue);
     setAttributesArray(newAttributes);
     updateAttributes(newAttributes);
   }
@@ -98,24 +145,25 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
   }
 
   function updateAttributes(attrs: Attribute[]) {
-    // Convert array back to object, filtering out empty keys
+    // Convert array back to object, filtering out empty slugs
+    // Store using slug as key, with label, value, and uom in the object
     const obj: Record<string, any> = {};
     attrs.forEach((attr) => {
-      if (attr.key.trim()) {
-        // Try to parse as number if possible
-        const numValue = Number(attr.value);
-        const parsedValue = isNaN(numValue) ? attr.value : numValue;
-
-        // If UOM is provided, store as object with value and uom
-        if (attr.uom && attr.uom.trim()) {
-          obj[attr.key.trim()] = {
-            value: parsedValue,
-            uom: attr.uom.trim(),
-          };
-        } else {
-          // Store as simple value
-          obj[attr.key.trim()] = parsedValue;
+      if (attr.slug.trim()) {
+        // For value: try to parse as number if it's a simple string and looks like a number
+        let processedValue: any = attr.value;
+        if (typeof attr.value === 'string') {
+          const numValue = Number(attr.value);
+          processedValue = isNaN(numValue) ? attr.value : numValue;
         }
+
+        // Store as object with label, value, and optional uom
+        // Label and value can be multilingual objects or simple strings
+        obj[attr.slug.trim()] = {
+          label: attr.label,
+          value: processedValue,
+          ...(attr.uom && attr.uom.trim() ? { uom: attr.uom.trim() } : {}),
+        };
       }
     });
 
@@ -160,12 +208,22 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
         <div className="space-y-2">
           {attributesArray.map((attr, index) => (
             <div key={index} className="flex items-center gap-2">
-              {/* Key Input */}
+              {/* Slug Input */}
               <input
                 type="text"
-                value={attr.key}
-                onChange={(e) => handleKeyChange(index, e.target.value)}
-                placeholder="Attribute name (e.g., color)"
+                value={attr.slug}
+                onChange={(e) => handleSlugChange(index, e.target.value)}
+                placeholder="Slug (e.g., material)"
+                disabled={disabled}
+                className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none disabled:opacity-50"
+              />
+
+              {/* Label Input */}
+              <input
+                type="text"
+                value={getLocalizedText(attr.label, '')}
+                onChange={(e) => handleLabelChange(index, e.target.value)}
+                placeholder={`Label (e.g., Material) [${currentLangCode.toUpperCase()}]`}
                 disabled={disabled}
                 className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
@@ -173,9 +231,9 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
               {/* Value Input */}
               <input
                 type="text"
-                value={attr.value}
+                value={getLocalizedText(attr.value, '')}
                 onChange={(e) => handleValueChange(index, e.target.value)}
-                placeholder="Value (e.g., blue)"
+                placeholder={`Value (e.g., Cotton) [${currentLangCode.toUpperCase()}]`}
                 disabled={disabled}
                 className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
@@ -208,7 +266,9 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
       {/* Helper Text */}
       {attributesArray.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Tip: Numeric values will be automatically detected (e.g., "16" becomes a number). Unit (UOM) is optional.
+          Tip: <strong>Slug</strong> is language-independent and used for faceting (e.g., "material").
+          <strong> Label</strong> and <strong>Value</strong> are multilingual - switch languages to edit different translations.
+          Numeric values are auto-detected. Unit (UOM) is optional and language-independent.
         </p>
       )}
     </div>

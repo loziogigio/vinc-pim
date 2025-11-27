@@ -366,11 +366,11 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
   },
   {
     name: "attributes",
-    type: "multilingual_array",
+    type: "object",
     category: "features",
     required: false,
-    description: "Product attributes (multilingual array of objects with key, label, value, uom, type, order)",
-    example: '{"it": [{"key": "colore", "label": "Colore", "value": "Nero"}], "en": [{"key": "color", "label": "Color", "value": "Black"}]}'
+    description: "Product attributes with multilingual support. Each attribute uses slug as key (for faceting) and stores label (multilingual), value (multilingual), and optional uom (language-independent). Label and value can be either simple strings or multilingual objects.",
+    example: '{"material": {"label": {"en": "Material", "it": "Materiale"}, "value": {"en": "Cotton", "it": "Cotone"}, "uom": "g/m²"}, "color": {"label": "Color", "value": "Blue"}}'
   },
   {
     name: "meta",

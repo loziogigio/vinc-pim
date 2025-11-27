@@ -125,59 +125,80 @@ export async function upsertHomeSettings(
   await ensureConnection();
 
   try {
-    let doc = await B2BHomeSettingsModel.findOne(
-      { customerId: GLOBAL_HOME_SETTINGS_ID },
-      null,
-      { sort: { updatedAt: -1 } }
-    ).exec();
+    // Check if document exists
+    const existingDoc = await B2BHomeSettingsModel.findOne(
+      { customerId: GLOBAL_HOME_SETTINGS_ID }
+    ).lean();
 
-    if (!doc) {
-      const migrated = await migrateLegacyHomeSettings(GLOBAL_HOME_SETTINGS_ID);
-      if (migrated) {
-        doc = await B2BHomeSettingsModel.findOne(
-          { customerId: GLOBAL_HOME_SETTINGS_ID },
-          null,
-          { sort: { updatedAt: -1 } }
-        ).exec();
-      }
+    // Try legacy migration if no document
+    if (!existingDoc) {
+      await migrateLegacyHomeSettings(GLOBAL_HOME_SETTINGS_ID);
     }
 
-    const brandingUpdate = data.branding ? { ...(data.branding as Partial<CompanyBranding>) } : undefined;
-    const cardStyleUpdate = data.cardStyle ? { ...(data.cardStyle as Partial<ProductCardStyle>) } : undefined;
-    const cdnUpdate = data.cdn ? { ...(data.cdn as Partial<CDNConfiguration>) } : undefined;
+    // Re-check after migration attempt
+    const docExists = existingDoc || await B2BHomeSettingsModel.exists(
+      { customerId: GLOBAL_HOME_SETTINGS_ID }
+    );
 
-    if (!doc) {
-      doc = new B2BHomeSettingsModel({
+    if (docExists) {
+      // UPDATE: Use dot notation for partial updates
+      const updateFields: Record<string, any> = {};
+
+      if (data.branding) {
+        const brandingUpdate = data.branding as Partial<CompanyBranding>;
+        Object.entries(brandingUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`branding.${key}`] = value;
+          }
+        });
+      }
+
+      if (data.cardStyle) {
+        const cardStyleUpdate = data.cardStyle as Partial<ProductCardStyle>;
+        Object.entries(cardStyleUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`cardStyle.${key}`] = value;
+          }
+        });
+      }
+
+      if (data.cdn) {
+        const cdnUpdate = data.cdn as Partial<CDNConfiguration>;
+        Object.entries(cdnUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`cdn.${key}`] = value;
+          }
+        });
+      }
+
+      if (data.defaultCardVariant) {
+        updateFields.defaultCardVariant = data.defaultCardVariant;
+      }
+
+      if (data.lastModifiedBy) {
+        updateFields.lastModifiedBy = data.lastModifiedBy;
+      }
+
+      const result = await B2BHomeSettingsModel.findOneAndUpdate(
+        { customerId: GLOBAL_HOME_SETTINGS_ID },
+        { $set: updateFields },
+        { new: true, runValidators: true }
+      ).lean<HomeSettingsDocument>();
+
+      return result;
+    } else {
+      // INSERT: Create new document with full objects
+      const newDoc = await B2BHomeSettingsModel.create({
         customerId: GLOBAL_HOME_SETTINGS_ID,
-        branding: mergeBranding(undefined, brandingUpdate),
+        branding: mergeBranding(undefined, data.branding as Partial<CompanyBranding>),
         defaultCardVariant: data.defaultCardVariant ?? "b2b",
-        cardStyle: mergeCardStyle(undefined, cardStyleUpdate),
-        cdn: cdnUpdate,
+        cardStyle: mergeCardStyle(undefined, data.cardStyle as Partial<ProductCardStyle>),
+        cdn: data.cdn,
         lastModifiedBy: data.lastModifiedBy
       });
-    } else {
-      if (brandingUpdate) {
-        const currentBranding = typeof doc.branding?.toObject === "function" ? doc.branding.toObject() : doc.branding;
-        doc.branding = mergeBranding(currentBranding, brandingUpdate);
-      }
-      if (cardStyleUpdate) {
-        const currentCardStyle = typeof doc.cardStyle?.toObject === "function" ? doc.cardStyle.toObject() : doc.cardStyle;
-        doc.cardStyle = mergeCardStyle(currentCardStyle, cardStyleUpdate);
-      }
-      if (cdnUpdate) {
-        const currentCdn = typeof doc.cdn?.toObject === "function" ? doc.cdn.toObject() : doc.cdn;
-        doc.cdn = { ...(currentCdn || {}), ...cdnUpdate };
-      }
-      if (data.defaultCardVariant) {
-        doc.defaultCardVariant = data.defaultCardVariant;
-      }
-      if (data.lastModifiedBy) {
-        doc.lastModifiedBy = data.lastModifiedBy;
-      }
-    }
 
-    const saved = await doc.save();
-    return saved.toObject() as HomeSettingsDocument;
+      return newDoc.toObject() as HomeSettingsDocument;
+    }
   } catch (error) {
     console.error("Error upserting home settings:", error);
     return null;

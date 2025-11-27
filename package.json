@@ -9,9 +9,11 @@
     "start": "PORT=3001 next start",
     "lint": "next lint",
     "test": "vitest --run",
-    "worker:pim": "tsx workers/pim-import.ts",
-    "worker:sync": "tsx workers/sync-marketplace.ts",
-    "worker:all": "concurrently \"pnpm worker:pim\" \"pnpm worker:sync\""
+    "worker:pim": "dotenv -e .env.local -- vite-node workers/pim-import.ts",
+    "worker:sync": "dotenv -e .env.local -- vite-node workers/sync-marketplace.ts",
+    "worker:all": "concurrently \"pnpm worker:pim\" \"pnpm worker:sync\"",
+    "solr:resync": "dotenv -e .env.local -- vite-node src/scripts/resync-solr.ts",
+    "solr:schema": "dotenv -e .env.local -- vite-node src/scripts/sync-solr-schema.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.908.0",
@@ -74,14 +76,19 @@
     "autoprefixer": "^10.4.19",
     "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.9.0",
     "eslint-config-next": "^15.0.0",
+    "jiti": "^2.6.1",
     "jsdom": "^22.1.0",
     "mongodb-memory-server": "^9.1.4",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.6",
     "typescript": "^5.4.5",
+    "vite": "^7.2.4",
+    "vite-node": "^5.2.0",
     "vitest": "^0.34.6"
   },
   "packageManager": "pnpm@9.5.0+sha512.140036830124618d624a2187b50d04289d5a087f326c9edfc0ccd733d76c4f52c3a313d4fc148794a2a9d81553016004e6742e8cf850670268a7387fc220c903"

@@ -7,7 +7,7 @@
  * - Self-contained: All fields including tag group/category metadata
  */
 
-import { MultilingualText } from "../pim-product";
+import { MultilingualText } from "../pim";
 
 /**
  * Tag group/category data

@@ -7,7 +7,7 @@
  * - Self-contained: All fields including hierarchy (for nested collections)
  */
 
-import { MultilingualText } from "../pim-product";
+import { MultilingualText } from "../pim";
 
 /**
  * Collection hierarchy ancestor item

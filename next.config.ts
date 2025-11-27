@@ -8,6 +8,14 @@ type RemotePattern = {
 const remotePatterns: RemotePattern[] = [
   {
     protocol: "https",
+    hostname: "**"  // Allow all HTTPS hostnames
+  },
+  {
+    protocol: "http",
+    hostname: "**"  // Allow all HTTP hostnames
+  },
+  {
+    protocol: "https",
     hostname: "images.unsplash.com"
   },
   {

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { projectConfig } from "@/config/project.config";
 
 interface TenantConnection {
   conn: typeof mongoose | null;
@@ -26,23 +27,10 @@ export const connectToDatabase = async (tenantDbName?: string) => {
   // Read env vars inside function, not at module level!
   const MIN_POOL = Number(process.env.VINC_MONGO_MIN_POOL_SIZE ?? "0");
   const MAX_POOL = Number(process.env.VINC_MONGO_MAX_POOL_SIZE ?? "50");
-  const mongoUri =
-    process.env.VINC_MONGO_URL ??
-    "mongodb://admin:admin@localhost:27017/?authSource=admin";
 
-  // Determine which database to connect to
-  let mongoDbName: string;
-
-  if (tenantDbName) {
-    // Explicit tenant database provided
-    mongoDbName = tenantDbName;
-  } else if (process.env.VINC_TENANT_ID) {
-    // Build database name from tenant ID
-    mongoDbName = `vinc-${process.env.VINC_TENANT_ID}`;
-  } else {
-    // Fallback to VINC_MONGO_DB
-    mongoDbName = process.env.VINC_MONGO_DB ?? "app";
-  }
+  // Use projectConfig as single source of truth
+  const mongoUri = projectConfig.mongoUrl;
+  const mongoDbName = tenantDbName || projectConfig.mongoDatabase;
 
   const cache = globalForMongoose._mongoose!;
   let tenantCache = cache.connections.get(mongoDbName);

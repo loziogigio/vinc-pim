@@ -1,29 +1,21 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env vite-node
 /**
  * Marketplace Sync Worker
  * Standalone worker process for syncing products to marketplaces
  *
- * Usage:
- *   pnpm worker:sync
- *   or
- *   tsx workers/sync-marketplace.ts
+ * Usage: pnpm worker:sync
  */
 
-// IMPORTANT: Load environment variables BEFORE any other imports
-import dotenv from 'dotenv';
-import { resolve } from 'path';
-
-// Load .env.local first, then .env as fallback (BEFORE other imports)
-dotenv.config({ path: resolve(process.cwd(), '.env.local') });
-dotenv.config({ path: resolve(process.cwd(), '.env') });
-
-// Now import modules that depend on environment variables
 import { connectToDatabase } from '../src/lib/db/connection';
 import { syncWorker } from '../src/lib/queue/sync-worker';
-import { AdapterFactory } from '../src/lib/adapters';
+import { AdapterFactory, loadAdapterConfigs } from '../src/lib/adapters';
 
-// Clear any cached adapter instances to ensure fresh initialization with current env vars
+// Clear any cached adapter instances to ensure fresh initialization
 AdapterFactory.clearInstances();
+
+// Get adapter configs (single source of truth)
+const adapterConfigs = loadAdapterConfigs();
+const solrConfig = adapterConfigs.solr?.custom_config;
 
 console.log('🚀 Marketplace Sync Worker starting...');
 console.log(`📍 Redis: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
@@ -32,15 +24,15 @@ console.log('');
 
 // Show enabled marketplaces
 console.log('📦 Enabled Marketplaces:');
-if (process.env.SOLR_ENABLED === 'true') {
+if (adapterConfigs.solr?.enabled) {
   console.log('   ✓ Solr 9 (Search Indexing)');
-  console.log(`      URL: ${process.env.SOLR_URL || 'http://localhost:8983/solr'}`);
-  console.log(`      Core: ${process.env.SOLR_CORE || 'mycore'}`);
+  console.log(`      URL: ${solrConfig?.solr_url}`);
+  console.log(`      Core: ${solrConfig?.solr_core}`);
 }
-if (process.env.EBAY_ENABLED === 'true') console.log('   ✓ eBay');
-if (process.env.AMAZON_ENABLED === 'true') console.log('   ✓ Amazon SP-API');
-if (process.env.TROVAPREZZI_ENABLED === 'true') console.log('   ✓ Trovaprezzi');
-if (process.env.MANOMANO_ENABLED === 'true') console.log('   ✓ ManoMano');
+if (adapterConfigs.ebay?.enabled) console.log('   ✓ eBay');
+if (adapterConfigs.amazon?.enabled) console.log('   ✓ Amazon SP-API');
+if (adapterConfigs.trovaprezzi?.enabled) console.log('   ✓ Trovaprezzi');
+if (adapterConfigs.manomano?.enabled) console.log('   ✓ ManoMano');
 console.log('');
 
 // Initialize database connection before worker starts

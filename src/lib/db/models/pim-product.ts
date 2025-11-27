@@ -15,22 +15,14 @@ import {
   CollectionEmbedded,
   ProductTypeEmbedded,
   TagEmbedded,
-} from "./types";
+} from "@/lib/types/entities";
+import { MultilingualText } from "@/lib/types/pim";
 
-// Dynamic Multilingual Text Field (supports any language - validated at runtime)
-export type MultilingualText = Record<string, string>;
+// Re-export for backwards compatibility
+export { MultilingualText };
 
 // Helper type for language codes (for stricter typing in function params)
 export type SupportedLanguage = string;
-
-// Shared Image Asset Type
-export interface IImageAsset {
-  id: string;
-  url: string;
-  s3_key?: string;
-  uploaded_at?: Date;
-  uploaded_by?: string;
-}
 
 export interface IPIMProduct extends Document {
   // ============================================
@@ -114,17 +106,7 @@ export interface IPIMProduct extends Document {
   slug: MultilingualText;           // Multilingual: "it": "trapano-battente...", "de": "schlagbohrmaschine...", etc.
   description?: MultilingualText;   // Multilingual: "it": "Il trapano...", "de": "Die Bosch...", etc.
 
-  // Main Product Image (displayed as primary/cover image)
-  image?: {
-    id: string;
-    thumbnail: string;
-    medium?: string;
-    large?: string;
-    original: string;
-    blur?: string;
-  };
-
-  // Product Images Array (gallery of all product photos)
+  // Product Images Array (first image [position 0] is the cover/main image)
   images?: {
     url: string;
     cdn_key: string;
@@ -135,12 +117,6 @@ export interface IPIMProduct extends Document {
     uploaded_at: Date;
     uploaded_by: string;
   }[];
-
-  // Gallery Images (product photos - first image [position 0] is the cover/main image)
-  gallery?: (IImageAsset & {
-    label?: string;
-    position: number;
-  })[];
 
   // Media Files (documents, videos, 3D models, URLs with labels)
   // Supports both uploaded files and external URLs (YouTube, Vimeo, etc.)
@@ -295,9 +271,10 @@ export interface IPIMProduct extends Document {
   // Promotions (Denormalized for faceting/search - filtered at query time)
   // Each promotion is language-specific with translated label
   promotions?: {
-    promo_code?: string;            // Promotion code (not promotion_id)
+    promo_code?: string;            // Promotion code (e.g., "016")
     is_active: boolean;
-    promo_type?: "percentage" | "fixed_amount" | "amount" | "buy_x_get_y" | "bundle" | "free_shipping";
+    promo_type?: string;            // Business category (ctipo_dtpro: STD, XXX, OMG, EOL, etc.)
+    calc_method?: string;           // Calculation method (ctipo_dprom: RPNQMIN, RQCSC, RVMSC, RCNA, RQCOE)
     label: MultilingualText;        // Multilingual: "it": "Promozione di Natale", "de": "Weihnachtsaktion", etc.
     language?: SupportedLanguage;   // Primary language of the promotion (optional)
     discount_percentage?: number;   // Percentage discount (e.g., 20 for 20% off)
@@ -312,6 +289,11 @@ export interface IPIMProduct extends Document {
     min_order_value?: number;       // Minimum order value to qualify
   }[];
 
+  // Product-level promotion fields (for faceting/filtering)
+  promo_code?: string[];            // Array of active promotion codes (e.g., ["016", "017"])
+  promo_type?: string[];            // Array of business categories (ctipo_dtpro: STD, XXX, OMG, EOL, etc.)
+  has_active_promo?: boolean;       // Has any active promotion
+
   // SEO
   meta_title?: MultilingualText;        // Multilingual: "it": "Bosch PSB 750 - Trapano...", etc.
   meta_description?: MultilingualText;  // Multilingual: "it": "Acquista il trapano...", etc.
@@ -322,15 +304,6 @@ export interface IPIMProduct extends Document {
   created_at: Date;
   updated_at: Date;
 }
-
-// Shared Image Asset Schema
-const ImageAssetSchema = {
-  id: { type: String, required: true },
-  url: { type: String, required: true },
-  s3_key: { type: String },
-  uploaded_at: { type: Date },
-  uploaded_by: { type: String },
-};
 
 // Dynamic Multilingual Text Schema Helper
 // Uses Mixed type to support all languages (validated at runtime via middleware)
@@ -437,17 +410,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     slug: MultilingualTextSchema,
     description: MultilingualTextSchema,
 
-    // Main Product Image (displayed as primary/cover image)
-    image: {
-      id: { type: String },
-      thumbnail: { type: String },
-      medium: { type: String },
-      large: { type: String },
-      original: { type: String },
-      blur: { type: String },
-    },
-
-    // Product Images Array (gallery of all product photos)
+    // Product Images Array (first image [position 0] is the cover/main image)
     images: [
       {
         url: { type: String, required: true },
@@ -458,15 +421,6 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         size_bytes: { type: Number },
         uploaded_at: { type: Date },
         uploaded_by: { type: String },
-      },
-    ],
-
-    // Gallery Images (product photos - first image [position 0] is the cover/main image)
-    gallery: [
-      {
-        ...ImageAssetSchema,
-        label: { type: String },
-        position: { type: Number, required: true, default: 0 },
       },
     ],
 
@@ -499,6 +453,22 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       logo_url: { type: String },
       website_url: { type: String },
       is_active: { type: Boolean },
+      product_count: { type: Number },
+      display_order: { type: Number },
+      // SELF-CONTAINED: Brand hierarchy fields (for brand families)
+      parent_brand_id: { type: String },
+      brand_family: { type: String },
+      level: { type: Number },
+      path: [{ type: String }],
+      hierarchy: [
+        {
+          brand_id: { type: String },
+          label: { type: String },
+          slug: { type: String },
+          logo_url: { type: String },
+          level: { type: Number },
+        },
+      ],
     },
 
     category: {
@@ -512,6 +482,29 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         original: { type: String },
       },
       icon: { type: String },
+      // SELF-CONTAINED: Hierarchy fields
+      parent_id: { type: String },
+      level: { type: Number },
+      path: [{ type: String }],
+      hierarchy: [
+        {
+          category_id: { type: String },
+          name: MultilingualTextSchema,
+          slug: MultilingualTextSchema,
+          level: { type: Number },
+          description: { type: String },
+          image: {
+            id: { type: String },
+            thumbnail: { type: String },
+            original: { type: String },
+          },
+          icon: { type: String },
+        },
+      ],
+      description: { type: String },
+      is_active: { type: Boolean },
+      product_count: { type: Number },
+      display_order: { type: Number },
     },
 
     collections: [
@@ -519,6 +512,23 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         collection_id: { type: String },
         name: MultilingualTextSchema,
         slug: MultilingualTextSchema,
+        description: { type: String },
+        is_active: { type: Boolean },
+        product_count: { type: Number },
+        display_order: { type: Number },
+        // SELF-CONTAINED: Collection hierarchy fields
+        parent_collection_id: { type: String },
+        level: { type: Number },
+        path: [{ type: String }],
+        hierarchy: [
+          {
+            collection_id: { type: String },
+            name: MultilingualTextSchema,
+            slug: MultilingualTextSchema,
+            level: { type: Number },
+            description: { type: String },
+          },
+        ],
       },
     ],
 
@@ -534,6 +544,38 @@ const PIMProductSchema = new Schema<IPIMProduct>(
           unit: { type: String },
         },
       ],
+      description: { type: String },
+      is_active: { type: Boolean },
+      product_count: { type: Number },
+      display_order: { type: Number },
+      // SELF-CONTAINED: Product type hierarchy fields
+      parent_type_id: { type: String },
+      level: { type: Number },
+      path: [{ type: String }],
+      hierarchy: [
+        {
+          product_type_id: { type: String },
+          name: MultilingualTextSchema,
+          slug: MultilingualTextSchema,
+          level: { type: Number },
+          description: { type: String },
+          features: [
+            {
+              key: { type: String },
+              label: MultilingualTextSchema,
+              unit: { type: String },
+            },
+          ],
+        },
+      ],
+      // Accumulated features from all parent types
+      inherited_features: [
+        {
+          key: { type: String },
+          label: MultilingualTextSchema,
+          unit: { type: String },
+        },
+      ],
     },
 
     // Attributes (Product properties with labels) - dynamically organized by language
@@ -545,6 +587,21 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         tag_id: { type: String, required: true },
         name: MultilingualTextSchema,
         slug: { type: String, required: true },
+        description: { type: String },
+        color: { type: String },
+        is_active: { type: Boolean },
+        product_count: { type: Number },
+        display_order: { type: Number },
+        // SELF-CONTAINED: Tag categorization
+        tag_category: { type: String },
+        tag_group: { type: String },
+        tag_group_data: {
+          group_id: { type: String },
+          group_name: MultilingualTextSchema,
+          group_slug: { type: String },
+          group_type: { type: String },
+          display_order: { type: Number },
+        },
       },
     ],
 
@@ -632,10 +689,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       {
         promo_code: { type: String },
         is_active: { type: Boolean, required: true, default: true },
-        promo_type: {
-          type: String,
-          enum: ["percentage", "fixed_amount", "amount", "buy_x_get_y", "bundle", "free_shipping"],
-        },
+        promo_type: { type: String },             // Business category (STD, XXX, OMG, EOL, etc.)
+        calc_method: { type: String },            // Calculation method (RPNQMIN, RQCSC, RVMSC, etc.)
         label: MultilingualTextSchema,
         language: { type: String }, // Validated at runtime via middleware
         discount_percentage: { type: Number },
@@ -650,6 +705,11 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         min_order_value: { type: Number },
       },
     ],
+
+    // Product-level promotion fields (for faceting/filtering)
+    promo_code: [{ type: String }],               // Array of active promotion codes
+    promo_type: [{ type: String }],               // Array of business categories for faceting
+    has_active_promo: { type: Boolean, default: false },
 
     meta_title: MultilingualTextSchema,
     meta_description: MultilingualTextSchema,

@@ -4,7 +4,7 @@
  */
 
 import { MarketplaceAdapter } from './marketplace-adapter';
-import { PIMProduct } from '../db/models/pim-product';
+import { IPIMProduct as PIMProduct } from '../db/models/pim-product';
 import {
   ValidationResult,
   SyncResult,
@@ -83,7 +83,8 @@ interface SolrMultilingualDocument {
   tag_categories?: string[];         // Tag categories: ["promotion", "seo"]
 
   // Promotions
-  promo_codes?: string[];
+  promo_code?: string[];
+  promo_type?: string[];
   has_active_promo?: boolean;
 
   // Media
@@ -96,6 +97,13 @@ interface SolrMultilingualDocument {
   parent_sku?: string;
   parent_entity_code?: string;
   include_faceting?: boolean; // Controls if product is included in faceting
+
+  // Variations
+  variations_sku?: string[];
+  variations_entity_code?: string[];
+
+  // Product model
+  product_model?: string;
 
   // Complex objects stored as JSON (for frontend display)
   specifications_json?: string;
@@ -111,6 +119,15 @@ interface SolrMultilingualDocument {
   collections_json?: string;
   product_type_json?: string;
 
+  // Additional JSON fields for enriched response
+  tags_json?: string;
+  image_json?: string;
+  images_json?: string;
+  gallery_json?: string;
+  parent_product_json?: string;
+  sibling_variants_json?: string;
+  source_json?: string;
+
   // Language-specific fields (added dynamically)
   [key: string]: any;
 }
@@ -125,8 +142,9 @@ export class SolrAdapter extends MarketplaceAdapter {
 
   constructor(config: any) {
     super(config);
-    this.solrUrl = config.custom_config?.solr_url || 'http://localhost:8983/solr';
-    this.solrCore = config.custom_config?.solr_core || 'mycore';
+    // Config comes from loadAdapterConfigs() - single source of truth
+    this.solrUrl = config.custom_config?.solr_url;
+    this.solrCore = config.custom_config?.solr_core;
   }
 
   async initialize(): Promise<void> {
@@ -198,6 +216,30 @@ export class SolrAdapter extends MarketplaceAdapter {
 
     // If is child or single product → include in faceting
     return true;
+  }
+
+  /**
+   * Determine Solr field suffix and typed value based on attribute value type
+   * - Strings → _s suffix
+   * - Numbers → _f suffix (float)
+   * - Booleans → _b suffix
+   */
+  private getAttributeTypeSuffix(value: any): { suffix: string; value: any } {
+    if (typeof value === 'boolean') {
+      return { suffix: 'b', value };
+    }
+    if (typeof value === 'number' && !isNaN(value)) {
+      return { suffix: 'f', value };
+    }
+    // Check if string is a parseable number
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      if (!isNaN(num) && value.trim() !== '' && /^-?\d*\.?\d+$/.test(value.trim())) {
+        return { suffix: 'f', value: num };
+      }
+    }
+    // Default to string
+    return { suffix: 's', value: String(value) };
   }
 
   /**
@@ -492,8 +534,8 @@ export class SolrAdapter extends MarketplaceAdapter {
     const categoryPaths = this.buildCategoryPaths(product.category);
     const brandPaths = this.buildBrandPaths(product.brand);
     const productTypePaths = this.buildProductTypePaths(product.product_type);
-    const collectionPaths = this.buildCollectionPaths(product.collections);
-    const tagFacetData = this.buildTagFacetData(product.tags);
+    const collectionPaths = this.buildCollectionPaths(product.collections || []);
+    const tagFacetData = this.buildTagFacetData(product.tags || []);
 
     // Base document with language-independent fields
     const doc: SolrMultilingualDocument = {
@@ -560,13 +602,14 @@ export class SolrAdapter extends MarketplaceAdapter {
       tag_categories: tagFacetData.tag_categories,
 
       // Promotions
-      promo_codes: product.promotions?.filter(p => p.is_active).map(p => p.promo_code).filter(Boolean) as string[],
-      has_active_promo: product.promotions?.some(p => p.is_active) || false,
+      promo_code: product.promo_code || product.promotions?.filter(p => p.is_active).map(p => p.promo_code).filter(Boolean) as string[],
+      promo_type: product.promo_type || [...new Set(product.promotions?.filter(p => p.is_active).map(p => p.promo_type).filter(Boolean))] as string[],
+      has_active_promo: product.has_active_promo || product.promotions?.some(p => p.is_active) || false,
 
       // Media
       has_video: product.media?.some(m => m.type === 'video'),
-      image_count: product.gallery?.length || 0,
-      cover_image_url: product.gallery?.[0]?.url,
+      image_count: product.images?.length || 0,
+      cover_image_url: product.images?.[0]?.url,
 
       // Variations & Faceting
       // Use product's explicit values, or calculate based on variant structure
@@ -575,19 +618,35 @@ export class SolrAdapter extends MarketplaceAdapter {
       parent_entity_code: product.parent_entity_code,
       include_faceting: product.include_faceting ?? this.calculateIncludeFaceting(product),
 
+      // Variations
+      variations_sku: product.variations_sku,
+      variations_entity_code: product.variations_entity_code,
+
+      // Product model
+      product_model: product.product_model,
+
       // Complex objects stored as JSON (for frontend display, not faceting)
       specifications_json: product.specifications ? JSON.stringify(product.specifications) : undefined,
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
       media_json: product.media ? JSON.stringify(product.media) : undefined,
       packaging_json: product.packaging_options ? JSON.stringify(product.packaging_options) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
-      product_type_features_json: product.product_type_features ? JSON.stringify(product.product_type_features) : undefined,
+      product_type_features_json: product.product_type?.features ? JSON.stringify(product.product_type.features) : undefined,
 
       // Relationship objects with multilingual content (stored as JSON)
       category_json: product.category ? JSON.stringify(product.category) : undefined,
       brand_json: product.brand ? JSON.stringify(product.brand) : undefined,
       collections_json: product.collections ? JSON.stringify(product.collections) : undefined,
       product_type_json: product.product_type ? JSON.stringify(product.product_type) : undefined,
+
+      // Additional JSON fields for enriched response
+      tags_json: product.tags ? JSON.stringify(product.tags) : undefined,
+      image_json: product.image ? JSON.stringify(product.image) : undefined,
+      images_json: product.images ? JSON.stringify(product.images) : undefined,
+      gallery_json: product.gallery ? JSON.stringify(product.gallery) : undefined,
+      parent_product_json: product.parent_product ? JSON.stringify(product.parent_product) : undefined,
+      sibling_variants_json: product.sibling_variants ? JSON.stringify(product.sibling_variants) : undefined,
+      source_json: product.source ? JSON.stringify(product.source) : undefined,
     };
 
     // Add multilingual fields for each language
@@ -624,7 +683,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       // Specification labels (extract from nested array)
       if (product.specifications?.[l]) {
         // Handle both array format and JSON string format
-        let specs = product.specifications[l];
+        let specs: any = product.specifications[l];
         if (typeof specs === 'string') {
           try {
             specs = JSON.parse(specs);
@@ -635,31 +694,38 @@ export class SolrAdapter extends MarketplaceAdapter {
         }
 
         if (Array.isArray(specs)) {
-          const specLabels = specs.map(spec => spec.label).filter(Boolean);
+          const specLabels = specs.map((spec: any) => spec.label).filter(Boolean);
           if (specLabels.length > 0) {
             doc[`spec_labels_text_${l}`] = specLabels;
           }
         }
       }
 
-      // Attribute labels (extract from nested array)
-      if (product.attributes?.[l]) {
-        // Handle both array format and JSON string format
-        let attrs = product.attributes[l];
-        if (typeof attrs === 'string') {
-          try {
-            attrs = JSON.parse(attrs);
-          } catch (e) {
-            // If parsing fails, skip this field
-            attrs = null;
-          }
-        }
+      // Attribute labels (extract from object with slug keys)
+      // Also index individual attribute values for faceting
+      // Attributes are language-keyed: { it: { is_new: {...}, colore: {...} }, en: {...} }
+      if (product.attributes?.[l] && typeof product.attributes[l] === 'object') {
+        const attrLabels: string[] = [];
 
-        if (Array.isArray(attrs)) {
-          const attrLabels = attrs.map(attr => attr.label).filter(Boolean);
-          if (attrLabels.length > 0) {
-            doc[`attr_labels_text_${l}`] = attrLabels;
+        Object.entries(product.attributes[l]).forEach(([attrKey, attrData]: [string, any]) => {
+          if (attrData && typeof attrData === 'object') {
+            // Extract labels for text search
+            if (attrData.label) {
+              attrLabels.push(attrData.label);
+            }
+
+            // Index individual attribute values for faceting with type-specific suffixes
+            // This creates fields like: attribute_colore_s, attribute_peso_f, attribute_is_new_b
+            if (attrData.value !== undefined && attrData.value !== null && attrData.value !== '') {
+              const sanitizedKey = attrKey.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+              const { suffix, value: typedValue } = this.getAttributeTypeSuffix(attrData.value);
+              doc[`attribute_${sanitizedKey}_${suffix}`] = typedValue;
+            }
           }
+        });
+
+        if (attrLabels.length > 0) {
+          doc[`attr_labels_text_${l}`] = attrLabels;
         }
       }
 
@@ -790,7 +856,8 @@ export class SolrAdapter extends MarketplaceAdapter {
       Object.keys(product.specifications).forEach(lang => languageSet.add(lang));
     }
 
-    // Check attributes
+    // Note: Attributes ARE language-keyed: { it: { slug: { label, value, uom } }, en: {...} }
+    // But we don't need to check them here since name/description already provide languages
     if (product.attributes && typeof product.attributes === 'object') {
       Object.keys(product.attributes).forEach(lang => languageSet.add(lang));
     }
@@ -971,6 +1038,51 @@ export class SolrAdapter extends MarketplaceAdapter {
   }
 
   /**
+   * Ensure Solr collection exists (SolrCloud mode), create if needed
+   */
+  async ensureCollection(): Promise<{ exists: boolean; created: boolean }> {
+    try {
+      // Check if collection exists via Collections API (SolrCloud)
+      const listUrl = `${this.solrUrl}/admin/collections?action=LIST&wt=json`;
+      const listResponse = await fetch(listUrl);
+
+      if (!listResponse.ok) {
+        // Fallback: try pinging the core directly (standalone mode)
+        const pingOk = await this.testConnection();
+        return { exists: pingOk, created: false };
+      }
+
+      const data = await listResponse.json();
+
+      if (data.collections?.includes(this.solrCore)) {
+        this.log(`Collection '${this.solrCore}' exists`);
+        return { exists: true, created: false };
+      }
+
+      // Collection doesn't exist, create it
+      this.log(`Creating collection '${this.solrCore}'...`);
+      const createUrl = `${this.solrUrl}/admin/collections?action=CREATE&name=${this.solrCore}&numShards=1&replicationFactor=1&collection.configName=_default&wt=json`;
+      const createResponse = await fetch(createUrl);
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        throw new Error(`Failed to create collection: ${createResponse.status} - ${errorText}`);
+      }
+
+      const createData = await createResponse.json();
+      if (createData.error) {
+        throw new Error(createData.error.msg || JSON.stringify(createData.error));
+      }
+
+      this.log(`Collection '${this.solrCore}' created successfully`);
+      return { exists: true, created: true };
+    } catch (error: any) {
+      this.log(`Warning: Could not verify/create collection: ${error.message}`, 'warn');
+      throw error;
+    }
+  }
+
+  /**
    * Bulk index multiple products
    */
   async bulkIndexProducts(
@@ -1004,7 +1116,8 @@ export class SolrAdapter extends MarketplaceAdapter {
       });
 
       if (!response.ok) {
-        throw new Error(`Bulk index failed: ${response.status}`);
+        const errorBody = await response.text();
+        throw new Error(`Bulk index failed: ${response.status} - ${errorBody}`);
       }
 
       results.success = products.length;

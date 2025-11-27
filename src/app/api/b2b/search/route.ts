@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
 
     // Filters
     if (filters) {
-      // Brand filter
+      // Brand filter (use brand.brand_id per BrandBase standard)
       if (filters.brand && Array.isArray(filters.brand) && filters.brand.length > 0) {
-        query['brand.cprec_darti'] = { $in: filters.brand };
+        query['brand.brand_id'] = { $in: filters.brand };
       }
 
       // Category filter

@@ -141,8 +141,8 @@ export class AmazonAdapter extends MarketplaceAdapter {
       currency: product.currency || 'EUR',
       quantity: product.stock_quantity || 0,
       main_image_url: product.image?.original,
-      other_image_url1: product.images?.[0]?.original,
-      other_image_url2: product.images?.[1]?.original,
+      other_image_url1: product.gallery?.[0]?.url,
+      other_image_url2: product.gallery?.[1]?.url,
       product_tax_code: 'A_GEN_NOTAX', // Default, should be configurable
     };
   }

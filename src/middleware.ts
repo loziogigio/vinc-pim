@@ -5,13 +5,19 @@ const rateLimitMap = new Map<string, { tokens: number; lastRefill: number }>();
 const RATE_LIMIT = 60;
 const INTERVAL = 60 * 1000;
 
+// CORS headers for cross-origin API requests
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With",
+  "Access-Control-Max-Age": "86400", // 24 hours
+};
+
 const securityHeaders: Record<string, string> = {
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-  "Cross-Origin-Opener-Policy": "same-origin",
-  "Cross-Origin-Embedder-Policy": "require-corp"
 };
 
 const getClientIp = (request: NextRequest) =>
@@ -66,6 +72,16 @@ const consumeToken = (ip: string) => {
 };
 
 export async function middleware(request: NextRequest) {
+  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+
+  // Handle CORS preflight (OPTIONS) requests for all API routes
+  if (isApiRoute && request.method === "OPTIONS") {
+    return new NextResponse(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   // Extract tenant ID for B2B routes
   const isB2BRoute = request.nextUrl.pathname.startsWith("/api/b2b");
 
@@ -79,7 +95,7 @@ export async function middleware(request: NextRequest) {
           error: "Tenant ID required for B2B access",
           hint: "Use subdomain (e.g., tenant-id.domain.com), query param (?tenant=tenant-id), or X-Tenant-ID header"
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -99,10 +115,18 @@ export async function middleware(request: NextRequest) {
       response.headers.set(key, value);
     });
 
+    // Add CORS headers for API routes
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
     // Rate limiting
     const ip = getClientIp(request);
     if (!consumeToken(ip)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: corsHeaders }
+      );
     }
 
     return response;
@@ -115,9 +139,19 @@ export async function middleware(request: NextRequest) {
     response.headers.set(key, value);
   });
 
+  // Add CORS headers for API routes
+  if (isApiRoute) {
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+  }
+
   const ip = getClientIp(request);
   if (!consumeToken(ip)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: isApiRoute ? corsHeaders : undefined }
+    );
   }
 
   return response;

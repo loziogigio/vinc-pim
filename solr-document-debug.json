@@ -1,0 +1,159 @@
+{
+  "id": "DRILL-BOSCH-001",
+  "sku": "BOSCH-GSB-18V-750",
+  "entity_code": "DRILL-BOSCH-001",
+  "ean": [],
+  "version": 1,
+  "isCurrent": true,
+  "isCurrentPublished": false,
+  "status": "published",
+  "created_at": "2025-11-24T05:19:26.034Z",
+  "updated_at": "2025-11-24T05:19:26.034Z",
+  "quantity": 45,
+  "sold": 0,
+  "unit": "pcs",
+  "completeness_score": 0,
+  "views_30d": 0,
+  "clicks_30d": 0,
+  "add_to_cart_30d": 0,
+  "conversions_30d": 0,
+  "priority_score": 0,
+  "category_id": "644",
+  "brand_id": "bosch-professional",
+  "product_type_id": "cordless-drill-driver",
+  "collection_ids": [
+    "professional-series",
+    "black-friday-2024"
+  ],
+  "category_path": [
+    "1245",
+    "1245/1244",
+    "1245/1244/644"
+  ],
+  "category_ancestors": [
+    "1245",
+    "1244",
+    "644"
+  ],
+  "category_level": 2,
+  "brand_path": [
+    "bosch",
+    "bosch/bosch-professional"
+  ],
+  "brand_ancestors": [
+    "bosch",
+    "bosch-professional"
+  ],
+  "brand_family": "Bosch",
+  "product_type_path": [
+    "tools",
+    "tools/power-tools",
+    "tools/power-tools/cordless-drill-driver"
+  ],
+  "product_type_ancestors": [
+    "tools",
+    "power-tools",
+    "cordless-drill-driver"
+  ],
+  "product_type_level": 2,
+  "collection_paths": [
+    [
+      "featured",
+      "featured/professional-series"
+    ],
+    [
+      "promotions",
+      "promotions/black-friday-2024"
+    ]
+  ],
+  "collection_ancestors": [
+    "featured",
+    "professional-series",
+    "promotions",
+    "black-friday-2024"
+  ],
+  "tag_groups": [
+    "marketing",
+    "technical-specs",
+    "active-promotions"
+  ],
+  "tag_categories": [
+    "seo",
+    "feature",
+    "promotion"
+  ],
+  "promo_codes": [],
+  "has_active_promo": false,
+  "has_video": false,
+  "image_count": 1,
+  "cover_image_url": "https://cdn.example.com/products/bosch-gsb-18v-main.jpg",
+  "is_parent": true,
+  "include_faceting": true,
+  "media_json": "[]",
+  "packaging_json": "[]",
+  "promotions_json": "[]",
+  "category_json": "{\"category_id\":\"644\",\"name\":{\"it\":\"Trapani Avvitatori\",\"en\":\"Drill Drivers\"},\"slug\":{\"it\":\"trapani-avvitatori\",\"en\":\"drill-drivers\"},\"parent_id\":\"1244\",\"level\":2,\"path\":[\"1245\",\"1244\"],\"hierarchy\":[{\"category_id\":\"1245\",\"name\":{\"it\":\"Utensili\",\"en\":\"Tools\"},\"slug\":{\"it\":\"utensili\",\"en\":\"tools\"},\"level\":0,\"description\":\"All types of tools\",\"_id\":\"6923eadefe8290dc05f089f2\"},{\"category_id\":\"1244\",\"name\":{\"it\":\"Elettroutensili\",\"en\":\"Power Tools\"},\"slug\":{\"it\":\"elettroutensili\",\"en\":\"power-tools\"},\"level\":1,\"description\":\"Electric and battery powered tools\",\"_id\":\"6923eadefe8290dc05f089f3\"}],\"description\":\"Cordless and corded drill drivers\",\"is_active\":true,\"product_count\":850,\"display_order\":1}",
+  "brand_json": "{\"brand_id\":\"bosch-professional\",\"label\":\"Bosch Professional\",\"slug\":\"bosch-professional\",\"parent_brand_id\":\"bosch\",\"brand_family\":\"Bosch\",\"level\":1,\"path\":[\"bosch\"],\"hierarchy\":[{\"brand_id\":\"bosch\",\"label\":\"Bosch\",\"slug\":\"bosch\",\"logo_url\":\"https://cdn.example.com/brands/bosch-logo.png\",\"level\":0,\"_id\":\"6923eadefe8290dc05f089f1\"}],\"description\":\"Professional power tools and accessories\",\"logo_url\":\"https://cdn.example.com/brands/bosch-professional-logo.png\",\"website_url\":\"https://www.bosch-professional.com\",\"is_active\":true,\"product_count\":1250,\"display_order\":1}",
+  "collections_json": "[{\"collection_id\":\"professional-series\",\"name\":{\"it\":\"Serie Professionale\",\"en\":\"Professional Series\"},\"slug\":{\"it\":\"serie-professionale\",\"en\":\"professional-series\"},\"description\":\"Professional grade tools for demanding applications\",\"is_active\":true,\"product_count\":320,\"display_order\":1,\"parent_collection_id\":\"featured\",\"level\":1,\"path\":[\"featured\"],\"hierarchy\":[{\"collection_id\":\"featured\",\"name\":{\"it\":\"In Evidenza\",\"en\":\"Featured\"},\"slug\":{\"it\":\"in-evidenza\",\"en\":\"featured\"},\"level\":0,\"description\":\"Featured products\",\"_id\":\"6923eadefe8290dc05f08a00\"}],\"_id\":\"6923eadefe8290dc05f089ff\"},{\"collection_id\":\"black-friday-2024\",\"name\":{\"it\":\"Black Friday 2024\",\"en\":\"Black Friday 2024\"},\"slug\":{\"it\":\"black-friday-2024\",\"en\":\"black-friday-2024\"},\"is_active\":true,\"product_count\":150,\"parent_collection_id\":\"promotions\",\"level\":1,\"path\":[\"promotions\"],\"hierarchy\":[{\"collection_id\":\"promotions\",\"name\":{\"it\":\"Promozioni\",\"en\":\"Promotions\"},\"slug\":{\"it\":\"promozioni\",\"en\":\"promotions\"},\"level\":0,\"_id\":\"6923eadefe8290dc05f08a02\"}],\"_id\":\"6923eadefe8290dc05f08a01\"}]",
+  "product_type_json": "{\"product_type_id\":\"cordless-drill-driver\",\"name\":{\"it\":\"Trapano Avvitatore a Batteria\",\"en\":\"Cordless Drill Driver\"},\"slug\":{\"it\":\"trapano-avvitatore-batteria\",\"en\":\"cordless-drill-driver\"},\"parent_type_id\":\"power-tools\",\"level\":2,\"path\":[\"tools\",\"power-tools\"],\"hierarchy\":[{\"product_type_id\":\"tools\",\"name\":{\"it\":\"Utensili\",\"en\":\"Tools\"},\"slug\":{\"it\":\"utensili\",\"en\":\"tools\"},\"level\":0,\"features\":[{\"key\":\"warranty\",\"label\":{\"it\":\"Garanzia\",\"en\":\"Warranty\"},\"unit\":\"years\",\"_id\":\"6923eadefe8290dc05f089fb\"}],\"_id\":\"6923eadefe8290dc05f089fa\"},{\"product_type_id\":\"power-tools\",\"name\":{\"it\":\"Elettroutensili\",\"en\":\"Power Tools\"},\"slug\":{\"it\":\"elettroutensili\",\"en\":\"power-tools\"},\"level\":1,\"features\":[{\"key\":\"voltage\",\"label\":{\"it\":\"Voltaggio\",\"en\":\"Voltage\"},\"unit\":\"V\",\"_id\":\"6923eadefe8290dc05f089fd\"},{\"key\":\"battery_type\",\"label\":{\"it\":\"Tipo Batteria\",\"en\":\"Battery Type\"},\"_id\":\"6923eadefe8290dc05f089fe\"}],\"_id\":\"6923eadefe8290dc05f089fc\"}],\"features\":[{\"key\":\"torque\",\"label\":{\"it\":\"Coppia\",\"en\":\"Torque\"},\"unit\":\"Nm\",\"_id\":\"6923eadefe8290dc05f089f7\"},{\"key\":\"speed\",\"label\":{\"it\":\"Velocità\",\"en\":\"Speed\"},\"unit\":\"rpm\",\"_id\":\"6923eadefe8290dc05f089f8\"},{\"key\":\"chuck_size\",\"label\":{\"it\":\"Capacità Mandrino\",\"en\":\"Chuck Size\"},\"unit\":\"mm\",\"_id\":\"6923eadefe8290dc05f089f9\"}],\"inherited_features\":[{\"key\":\"warranty\",\"label\":{\"it\":\"Garanzia\",\"en\":\"Warranty\"},\"unit\":\"years\",\"_id\":\"6923eadefe8290dc05f089f4\"},{\"key\":\"voltage\",\"label\":{\"it\":\"Voltaggio\",\"en\":\"Voltage\"},\"unit\":\"V\",\"_id\":\"6923eadefe8290dc05f089f5\"},{\"key\":\"battery_type\",\"label\":{\"it\":\"Tipo Batteria\",\"en\":\"Battery Type\"},\"_id\":\"6923eadefe8290dc05f089f6\"}],\"description\":\"Cordless drill drivers with battery power\",\"is_active\":true,\"product_count\":450,\"display_order\":1}",
+  "name_text_it": "Trapano Avvitatore Bosch Professional GSB 18V-750",
+  "slug_text_it": "trapano-bosch-professional-gsb-18v",
+  "description_text_it": "Trapano avvitatore professionale a batteria 18V con coppia massima di 75Nm",
+  "category_name_text_it": "Trapani Avvitatori",
+  "category_slug_text_it": "trapani-avvitatori",
+  "category_breadcrumb_it": [
+    "Utensili",
+    "Elettroutensili",
+    "Trapani Avvitatori"
+  ],
+  "collection_names_text_it": [
+    "Serie Professionale",
+    "Black Friday 2024"
+  ],
+  "collection_slugs_text_it": [
+    "serie-professionale",
+    "black-friday-2024"
+  ],
+  "tag_names_text_it": [
+    "Più Venduto",
+    "Senza Filo",
+    "Sconto 20%"
+  ],
+  "product_type_name_text_it": "Trapano Avvitatore a Batteria",
+  "product_type_slug_text_it": "trapano-avvitatore-batteria",
+  "product_type_feature_labels_text_it": [
+    "Coppia",
+    "Velocità",
+    "Capacità Mandrino"
+  ],
+  "name_text_en": "Bosch Professional GSB 18V-750 Drill Driver",
+  "slug_text_en": "bosch-professional-gsb-18v-drill",
+  "description_text_en": "Professional 18V cordless drill driver with max torque of 75Nm",
+  "category_name_text_en": "Drill Drivers",
+  "category_slug_text_en": "drill-drivers",
+  "category_breadcrumb_en": [
+    "Tools",
+    "Power Tools",
+    "Drill Drivers"
+  ],
+  "collection_names_text_en": [
+    "Professional Series",
+    "Black Friday 2024"
+  ],
+  "collection_slugs_text_en": [
+    "professional-series",
+    "black-friday-2024"
+  ],
+  "tag_names_text_en": [
+    "Best Seller",
+    "Cordless",
+    "20% Off"
+  ],
+  "product_type_name_text_en": "Cordless Drill Driver",
+  "product_type_slug_text_en": "cordless-drill-driver",
+  "product_type_feature_labels_text_en": [
+    "Torque",
+    "Speed",
+    "Chuck Size"
+  ]
+}

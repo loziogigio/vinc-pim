@@ -2,34 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { Search, X, Tag } from "lucide-react";
+import { BrandEmbedded } from "@/lib/types/entities/brand.types";
 
-type Brand = {
-  brand_id: string;
-  label: string;
-  slug: string;
-  logo_url?: string;
-  is_active: boolean;
-};
-
-type BrandReference = {
-  id: string;
-  name: string;
-  slug: string;
-  image?: {
-    id: string;
-    thumbnail: string;
-    original: string;
-  };
-};
+/**
+ * Brand from API includes is_active as required
+ */
+type BrandFromAPI = BrandEmbedded & { is_active: boolean };
 
 type Props = {
-  value: BrandReference | null;
-  onChange: (brand: BrandReference | null) => void;
+  value: BrandEmbedded | null;
+  onChange: (brand: BrandEmbedded | null) => void;
   disabled?: boolean;
 };
 
 export function BrandSelector({ value, onChange, disabled }: Props) {
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brands, setBrands] = useState<BrandFromAPI[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -56,18 +43,14 @@ export function BrandSelector({ value, onChange, disabled }: Props) {
     }
   }
 
-  function selectBrand(brand: Brand) {
+  function selectBrand(brand: BrandFromAPI) {
     onChange({
-      id: brand.brand_id,
-      name: brand.label,
+      brand_id: brand.brand_id,
+      label: brand.label,
       slug: brand.slug,
-      image: brand.logo_url
-        ? {
-            id: brand.brand_id,
-            thumbnail: brand.logo_url,
-            original: brand.logo_url,
-          }
-        : undefined,
+      logo_url: brand.logo_url,
+      description: brand.description,
+      is_active: brand.is_active,
     });
     setShowDropdown(false);
     setSearch("");
@@ -82,10 +65,10 @@ export function BrandSelector({ value, onChange, disabled }: Props) {
       {/* Selected Brand Display */}
       {value ? (
         <div className="flex items-center gap-3 p-3 border border-input rounded-lg bg-background">
-          {value.image ? (
+          {value.logo_url ? (
             <img
-              src={value.image.thumbnail}
-              alt={value.name}
+              src={value.logo_url}
+              alt={value.label}
               className="w-10 h-10 object-contain rounded"
             />
           ) : (
@@ -94,7 +77,7 @@ export function BrandSelector({ value, onChange, disabled }: Props) {
             </div>
           )}
           <div className="flex-1">
-            <div className="font-medium text-foreground">{value.name}</div>
+            <div className="font-medium text-foreground">{value.label}</div>
             <div className="text-sm text-muted-foreground">{value.slug}</div>
           </div>
           {!disabled && (

@@ -12,6 +12,7 @@ import { TrovaprezziAdapter } from './trovaprezzi-adapter';
 import { ManoManoAdapter } from './manomano-adapter';
 import { B2BAdapter } from './b2b-adapter';
 import { B2CAdapter } from './b2c-adapter';
+import { projectConfig } from '@/config/project.config';
 
 /**
  * Adapter registry type mapping
@@ -94,8 +95,9 @@ export function loadAdapterConfigs(): Record<string, MarketplaceConfig> {
     solr: {
       enabled: process.env.SOLR_ENABLED === 'true',
       custom_config: {
-        solr_url: process.env.SOLR_URL || 'http://localhost:8983/solr',
-        solr_core: process.env.SOLR_CORE || 'mycore',
+        // Single source of truth: projectConfig
+        solr_url: projectConfig.solrUrl,
+        solr_core: projectConfig.solrCore,
       },
     },
     ebay: {

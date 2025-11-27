@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { SolrAdapter } from "@/lib/adapters/solr-adapter";
+import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 
 export async function POST(
   request: NextRequest,
@@ -19,7 +19,7 @@ export async function POST(
     await connectToDatabase();
 
     // Get the current version of the product
-    const product = await PIMProductModel.findOne({
+    const product: any = await PIMProductModel.findOne({
       entity_code,
       isCurrent: true,
     }).lean();
@@ -43,16 +43,9 @@ export async function POST(
       );
     }
 
-    // Initialize Solr adapter
-    // Core name matches MongoDB database name
-    const solrAdapter = new SolrAdapter({
-      enabled: true,
-      custom_config: {
-        solr_url: process.env.SOLR_URL || "http://localhost:8983/solr",
-        solr_core: process.env.SOLR_CORE || process.env.MONGODB_DATABASE || "mycore",
-      },
-    });
-
+    // Initialize Solr adapter (config from loadAdapterConfigs - single source of truth)
+    const adapterConfigs = loadAdapterConfigs();
+    const solrAdapter = new SolrAdapter(adapterConfigs.solr);
     await solrAdapter.initialize();
 
     // Perform direct sync to Solr

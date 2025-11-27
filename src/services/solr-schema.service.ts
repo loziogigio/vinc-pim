@@ -521,7 +521,8 @@ const BASE_FIELDS = [
   { name: "priority_score", type: "pint", stored: true, indexed: true },
 
   // Promotions
-  { name: "promo_codes", type: "strings", stored: true, indexed: true },
+  { name: "promo_code", type: "strings", stored: true, indexed: true },
+  { name: "promo_type", type: "strings", stored: true, indexed: true },    // Business categories for faceting (STD, XXX, OMG, etc.)
   { name: "has_active_promo", type: "boolean", stored: true, indexed: true },
 
   // Media
@@ -540,6 +541,29 @@ const BASE_FIELDS = [
   { name: "product_type_id", type: "string", stored: true, indexed: true },
   { name: "collection_ids", type: "strings", stored: true, indexed: true },
 
+  // Variations & Faceting Control
+  { name: "include_faceting", type: "boolean", stored: true, indexed: true },
+  { name: "variations_sku", type: "strings", stored: true, indexed: true },
+  { name: "variations_entity_code", type: "strings", stored: true, indexed: true },
+  { name: "product_model", type: "string", stored: true, indexed: true },
+
+  // Hierarchy paths for faceting
+  { name: "category_path", type: "strings", stored: true, indexed: true },
+  { name: "category_ancestors", type: "strings", stored: true, indexed: true },
+  { name: "category_level", type: "pint", stored: true, indexed: true },
+  { name: "brand_path", type: "strings", stored: true, indexed: true },
+  { name: "brand_ancestors", type: "strings", stored: true, indexed: true },
+  { name: "brand_family", type: "string", stored: true, indexed: true },
+  { name: "product_type_path", type: "strings", stored: true, indexed: true },
+  { name: "product_type_ancestors", type: "strings", stored: true, indexed: true },
+  { name: "product_type_level", type: "pint", stored: true, indexed: true },
+  { name: "collection_paths", type: "strings", stored: true, indexed: true },
+  { name: "collection_ancestors", type: "strings", stored: true, indexed: true },
+
+  // Tags for faceting
+  { name: "tag_groups", type: "strings", stored: true, indexed: true },
+  { name: "tag_categories", type: "strings", stored: true, indexed: true },
+
   // Complex objects stored as JSON (for frontend display, not faceting)
   { name: "specifications_json", type: "string", stored: true, indexed: false },
   { name: "attributes_json", type: "string", stored: true, indexed: false },
@@ -553,7 +577,28 @@ const BASE_FIELDS = [
   { name: "brand_json", type: "string", stored: true, indexed: false },
   { name: "collections_json", type: "string", stored: true, indexed: false },
   { name: "product_type_json", type: "string", stored: true, indexed: false },
+
+  // Additional JSON fields for enriched response
+  { name: "tags_json", type: "string", stored: true, indexed: false },
+  { name: "image_json", type: "string", stored: true, indexed: false },
+  { name: "images_json", type: "string", stored: true, indexed: false },
+  { name: "gallery_json", type: "string", stored: true, indexed: false },
+  { name: "parent_product_json", type: "string", stored: true, indexed: false },
+  { name: "sibling_variants_json", type: "string", stored: true, indexed: false },
+  { name: "source_json", type: "string", stored: true, indexed: false },
 ];
+
+/**
+ * Dynamic fields for attribute faceting
+ * These use Solr's built-in dynamic field patterns with type-specific suffixes:
+ * - attribute_{key}_s → string values (e.g., attribute_colore_s = "ROSSO")
+ * - attribute_{key}_f → float values (e.g., attribute_peso_f = 12.5)
+ * - attribute_{key}_b → boolean values (e.g., attribute_disponibile_b = true)
+ *
+ * The dynamic field patterns (*_s, *_f, *_b) are built into Solr and don't
+ * need explicit creation. The adapter automatically detects the value type
+ * and indexes attributes using the appropriate suffix when syncing products.
+ */
 
 /**
  * Ensure base non-language fields exist in Solr schema

@@ -44,7 +44,7 @@ interface MediaItem {
   file_type: string;
   url: string;
   cdn_key: string;
-  label?: string;
+  label?: string | Record<string, string>; // Can be string or MultilingualText object
   size_bytes?: number; // Optional for external links
   uploaded_at: string;
   is_external_link?: boolean; // true for URLs, false for uploads
@@ -59,6 +59,17 @@ interface MediaGalleryProps {
   onLabelUpdate?: (cdn_key: string, newLabel: string) => Promise<void>;
   onReorder?: (type: MediaType, newOrder: string[]) => Promise<void>;
   disabled?: boolean;
+}
+
+/**
+ * Convert label to string format
+ * If label is MultilingualText object, extract default language (it, en, or first available)
+ */
+function getLabelAsString(label?: string | Record<string, string>): string {
+  if (!label) return "Untitled";
+  if (typeof label === "string") return label;
+  // If it's an object (MultilingualText), try to get Italian, English, or first available
+  return label.it || label.en || Object.values(label)[0] || "Untitled";
 }
 
 function getMediaIcon(type: MediaType, isExternalLink?: boolean) {
@@ -126,12 +137,12 @@ function MediaFileItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: 1,
   };
 
   const Icon = getMediaIcon(media.type, media.is_external_link);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
-  const [editedLabel, setEditedLabel] = useState(media.label || "Untitled");
+  const [editedLabel, setEditedLabel] = useState(getLabelAsString(media.label));
   const [showPreview, setShowPreview] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modelViewerLoaded, setModelViewerLoaded] = useState(false);
@@ -142,17 +153,18 @@ function MediaFileItem({
   const modalModelViewerRef = useRef<any>(null);
 
   const canPreview =
-    !media.is_external_link && (media.type === "video" || media.type === "3d-model");
+    !media.is_external_link && (media.type === "video" || media.type === "3d-model" || media.type === "document");
 
   const handleSaveLabel = () => {
-    if (onLabelUpdate && editedLabel.trim() !== media.label) {
+    const currentLabel = getLabelAsString(media.label);
+    if (onLabelUpdate && editedLabel.trim() !== currentLabel) {
       onLabelUpdate(media.cdn_key, editedLabel.trim());
     }
     setIsEditingLabel(false);
   };
 
   const handleCancelLabel = () => {
-    setEditedLabel(media.label || "Untitled");
+    setEditedLabel(getLabelAsString(media.label));
     setIsEditingLabel(false);
   };
 
@@ -301,7 +313,7 @@ function MediaFileItem({
           <model-viewer
             ref={modelViewerRef}
             src={media.url}
-            alt={media.label || "3D Model"}
+            alt={getLabelAsString(media.label) || "3D Model"}
             auto-rotate
             camera-controls
             style={{
@@ -311,6 +323,30 @@ function MediaFileItem({
               borderRadius: "0.375rem",
             }}
           ></model-viewer>
+        </div>
+      );
+    }
+
+    if (media.type === "document") {
+      // For PDF files, show an embedded viewer
+      if (media.file_type === "application/pdf" || media.url.toLowerCase().endsWith(".pdf")) {
+        return (
+          <div className="mt-2">
+            <iframe
+              src={media.url}
+              className="w-full h-96 rounded border border-gray-200"
+              title={getLabelAsString(media.label) || "Document preview"}
+            />
+          </div>
+        );
+      }
+
+      // For other document types, show a message
+      return (
+        <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+          <p className="text-sm text-blue-800">
+            Preview not available for this document type. Click download to view the file.
+          </p>
         </div>
       );
     }
@@ -328,15 +364,20 @@ function MediaFileItem({
     >
       <div className="flex items-center gap-3">
         {/* Drag Handle */}
-        <button
-          type="button"
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
-          {...attributes}
-          {...listeners}
-          disabled={disabled}
-        >
-          <GripVertical className="h-5 w-5 text-gray-400" />
-        </button>
+        {disabled ? (
+          <div className="p-1 cursor-not-allowed opacity-50">
+            <GripVertical className="h-5 w-5 text-gray-400" />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="p-1 hover:bg-gray-100 rounded cursor-grab active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-5 w-5 text-gray-400" />
+          </button>
+        )}
 
         {/* Icon */}
         <div className="flex-shrink-0">
@@ -386,7 +427,7 @@ function MediaFileItem({
           ) : (
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {media.label || "Untitled"}
+                {getLabelAsString(media.label)}
               </p>
               {onLabelUpdate && (
                 <button
@@ -500,7 +541,7 @@ function MediaFileItem({
       {/* Fullscreen Modal for 3D Models */}
       {showModal && media.type === "3d-model" && !media.is_external_link && (
         <div
-          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black flex items-center justify-center p-4"
           onClick={() => setShowModal(false)}
         >
           <button
@@ -516,7 +557,7 @@ function MediaFileItem({
             onClick={(e) => e.stopPropagation()}
           >
             {isModalModelLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-lg z-10">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-lg z-10">
                 <div className="text-white">Loading 3D model...</div>
               </div>
             )}
@@ -530,7 +571,7 @@ function MediaFileItem({
               <model-viewer
                 ref={modalModelViewerRef}
                 src={media.url}
-                alt={media.label || "3D Model"}
+                alt={getLabelAsString(media.label) || "3D Model"}
                 auto-rotate
                 camera-controls
                 style={{
@@ -567,7 +608,7 @@ function AddLinkDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-black flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Add {getMediaTypeLabel(type).slice(0, -1)} Link
@@ -640,9 +681,18 @@ export function MediaGallery({
     null
   );
 
+  // Sync local state when initialMedia prop changes (e.g., after upload)
+  useEffect(() => {
+    setMedia(initialMedia);
+  }, [initialMedia]);
+
   // Setup drag-and-drop sensors
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement to start dragging
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -801,9 +851,9 @@ export function MediaGallery({
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-2">
-                {items.map((item) => (
+                {items.map((item, index) => (
                   <MediaFileItem
-                    key={item.cdn_key}
+                    key={item.cdn_key || `${type}-${index}`}
                     media={item}
                     onDelete={handleDelete}
                     onLabelUpdate={onLabelUpdate}

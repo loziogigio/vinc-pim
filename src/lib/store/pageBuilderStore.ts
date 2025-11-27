@@ -223,19 +223,25 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
     }));
   },
   updateBlockConfig: (blockId, config) => {
-    set((state) => ({
-      blocks: state.blocks.map((block) =>
+    console.log('[Store] updateBlockConfig called, blockId:', blockId, 'config title:', (config as any)?.title);
+    set((state) => {
+      const updatedBlocks = state.blocks.map((block) =>
         block.id === blockId ? { ...block, config: { ...block.config, ...config } as BlockConfig } : block
-      ),
-      isDirty: true,
-      history: {
-        past: [
-          ...state.history.past.slice(-19),
-          { blocks: cloneBlocks(state.blocks), selectedBlockId: state.selectedBlockId }
-        ],
-        future: []
-      }
-    }));
+      );
+      const updatedBlock = updatedBlocks.find(b => b.id === blockId);
+      console.log('[Store] After update, block title:', (updatedBlock?.config as any)?.title);
+      return {
+        blocks: updatedBlocks,
+        isDirty: true,
+        history: {
+          past: [
+            ...state.history.past.slice(-19),
+            { blocks: cloneBlocks(state.blocks), selectedBlockId: state.selectedBlockId }
+          ],
+          future: []
+        }
+      };
+    });
   },
   selectBlock: (blockId) => set({ selectedBlockId: blockId }),
   undo: () =>
@@ -283,6 +289,11 @@ export const usePageBuilderStore = create<PageBuilderState>((set, get) => ({
   getPagePayload: () => {
     const state = get();
     console.log('[getPagePayload] Current blocks in store:', state.blocks.map(b => ({ id: b.id, type: b.type, zone: b.zone })));
+    // Log carousel-products block titles
+    const carouselBlocks = state.blocks.filter(b => b.type === 'carousel-products');
+    carouselBlocks.forEach((b, i) => {
+      console.log(`[getPagePayload] carousel-products[${i}] title:`, (b.config as any)?.title);
+    });
     const payload = {
       slug: state.pageDetails.slug,
       blocks: state.blocks.map((block, index) => ({

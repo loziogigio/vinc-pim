@@ -66,7 +66,7 @@ export async function POST(
       );
     }
 
-    // Get current max position
+    // Get current max position from images
     const currentImages = product.images || [];
     const maxPosition =
       currentImages.length > 0
@@ -86,10 +86,8 @@ export async function POST(
     }));
 
     // Check if we should update the main image
-    // Update if: no images exist yet OR current main image is the placeholder
-    const shouldUpdateMainImage =
-      currentImages.length === 0 ||
-      product.image?.id === "placeholder";
+    // Update if: no images exist yet
+    const shouldUpdateMainImage = currentImages.length === 0;
 
     // Build update object
     const updateData: any = {
@@ -100,18 +98,9 @@ export async function POST(
       },
     };
 
-    // If this is the first real image, set it as the main product image
+    // If this is the first image, remove "Missing product image" from critical issues
     if (shouldUpdateMainImage && newImages.length > 0) {
-      const firstImage = newImages[0];
-      updateData.$set.image = {
-        id: firstImage.cdn_key,
-        thumbnail: firstImage.url,
-        original: firstImage.url,
-        medium: firstImage.url,
-        large: firstImage.url,
-      };
-      // Remove "Missing product image" from critical issues
-      updateData.$pull = { critical_issues: "Missing product image" };
+      updateData.$pull = { critical_issues: "Missing primary product image" };
     }
 
     // Update product with new images
@@ -139,6 +128,127 @@ export async function POST(
     return NextResponse.json(
       {
         error: "Failed to upload images",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/b2b/pim/products/[entity_code]/images
+ * Set a specific image as the primary product image
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ entity_code: string }> }
+) {
+  try {
+    // Check authentication
+    const session = await getB2BSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const { entity_code } = resolvedParams;
+
+    // Parse request body
+    const body = await req.json();
+    const { cdn_key } = body;
+
+    if (!cdn_key) {
+      return NextResponse.json(
+        { error: "Missing cdn_key in request body" },
+        { status: 400 }
+      );
+    }
+
+    // Connect to database
+    await connectToDatabase();
+
+    // Find the product and the image
+    const product = await PIMProductModel.findOne({
+      entity_code,
+      isCurrent: true,
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    // Find the image in the images array
+    const images = product.images || [];
+    const imageIndex = images.findIndex(
+      (img: any) => img.cdn_key === cdn_key
+    );
+
+    if (imageIndex === -1) {
+      return NextResponse.json(
+        { error: "Image not found" },
+        { status: 404 }
+      );
+    }
+
+    const imageToSetAsPrimary = images[imageIndex];
+
+    // Convert Mongoose document to plain object if needed
+    const imageObj = typeof (imageToSetAsPrimary as any).toObject === 'function'
+      ? (imageToSetAsPrimary as any).toObject()
+      : imageToSetAsPrimary;
+
+    // Reorder images: move selected image to position 0
+    const reorderedImages = [
+      {
+        ...imageObj,
+        position: 0,
+      },
+      ...images
+        .filter((_: any, idx: number) => idx !== imageIndex)
+        .map((img: any, idx: number) => {
+          const imgObj = typeof (img as any).toObject === 'function' ? (img as any).toObject() : img;
+          return {
+            ...imgObj,
+            position: idx + 1,
+          };
+        }),
+    ];
+
+    // Update the images array
+    const updatedProduct = await PIMProductModel.findOneAndUpdate(
+      {
+        entity_code,
+        isCurrent: true,
+      },
+      {
+        $set: {
+          images: reorderedImages,
+          updated_at: new Date(),
+          last_updated_by: "manual",
+        },
+        $pull: { critical_issues: "Missing primary product image" },
+      },
+      { new: true }
+    ).lean();
+
+    console.log(`✓ Primary image updated for ${entity_code}:`, {
+      new_primary_cdn_key: cdn_key,
+      images_count: reorderedImages.length,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Primary image updated successfully",
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Error setting primary image:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to set primary image",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
@@ -191,18 +301,18 @@ export async function DELETE(
       );
     }
 
-    // Check if the image being deleted is the main image
-    const isDeletingMainImage = product.image?.id === cdn_key;
+    // Check if we're deleting the first (primary) image
+    const currentImages = product.images || [];
+    const isDeletingPrimary = currentImages.length > 0 && currentImages[0]?.cdn_key === cdn_key;
 
-    // Remove image from product
+    // Remove image from images array
     const result = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
       {
-        $pull: { images: { cdn_key } },
+        $pull: { images: { cdn_key: cdn_key } },
         $set: {
           updated_at: new Date(),
           last_updated_by: "manual",
@@ -218,43 +328,15 @@ export async function DELETE(
       );
     }
 
-    // If we deleted the main image, update to the next image or placeholder
-    if (isDeletingMainImage) {
-      const remainingImages = result.images || [];
-
-      if (remainingImages.length > 0) {
-        // Set first remaining image as main
-        const firstImage = remainingImages[0];
-        await PIMProductModel.updateOne(
-          { entity_code, isCurrent: true },
-          {
-            $set: {
-              image: {
-                id: firstImage.cdn_key,
-                thumbnail: firstImage.url,
-                original: firstImage.url,
-                medium: firstImage.url,
-                large: firstImage.url,
-              },
-            },
-          }
-        );
-      } else {
-        // No images left - revert to placeholder and add critical issue
-        await PIMProductModel.updateOne(
-          { entity_code, isCurrent: true },
-          {
-            $set: {
-              image: {
-                id: "placeholder",
-                thumbnail: "/placeholder-product.png",
-                original: "/placeholder-product.png",
-              },
-            },
-            $addToSet: { critical_issues: "Missing product image" },
-          }
-        );
-      }
+    // If we deleted all images, add critical issue
+    const remainingImages = result.images || [];
+    if (remainingImages.length === 0) {
+      await PIMProductModel.updateOne(
+        { entity_code, isCurrent: true },
+        {
+          $addToSet: { critical_issues: "Missing primary product image" },
+        }
+      );
     }
 
     return NextResponse.json({

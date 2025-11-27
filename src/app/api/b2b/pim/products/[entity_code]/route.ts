@@ -5,6 +5,7 @@ import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { ProductTypeModel } from "@/lib/db/models/product-type";
 import { FeatureModel } from "@/lib/db/models/feature";
 import { TagModel } from "@/lib/db/models/tag";
+import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -31,8 +32,8 @@ export async function GET(
     const searchParams = req.nextUrl.searchParams;
     const versionParam = searchParams.get("version");
 
-    let product;
-    let currentVersion;
+    let product: any;
+    let currentVersion: any;
 
     if (versionParam) {
       // Fetch specific version
@@ -41,7 +42,7 @@ export async function GET(
         entity_code,
         // No wholesaler_id - database provides isolation
         version,
-      }).lean();
+      }).lean() as any;
 
       // Also fetch current version info for comparison
       currentVersion = await PIMProductModel.findOne({
@@ -50,14 +51,14 @@ export async function GET(
         isCurrent: true,
       })
         .select("version")
-        .lean();
+        .lean() as any;
     } else {
       // Fetch current version
       product = await PIMProductModel.findOne({
         entity_code,
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-      }).lean();
+      }).lean() as any;
     }
 
     if (!product) {
@@ -69,24 +70,24 @@ export async function GET(
       const productType = await ProductTypeModel.findOne({
         product_type_id: product.product_type.id,
         // No wholesaler_id - database provides isolation
-      }).lean();
+      }).lean() as any;
 
       if (productType && productType.features && productType.features.length > 0) {
         // Get all feature IDs
-        const featureIds = productType.features.map((f) => f.feature_id);
+        const featureIds = productType.features.map((f: any) => f.feature_id);
 
         // Fetch full feature definitions
         const features = await FeatureModel.find({
           feature_id: { $in: featureIds },
           // No wholesaler_id - database provides isolation
-        }).lean();
+        }).lean() as any[];
 
         // Create a map for quick lookup
-        const featureMap = new Map(features.map((f) => [f.feature_id, f]));
+        const featureMap = new Map(features.map((f: any) => [f.feature_id, f]));
 
         // Combine feature definitions with product type metadata
         const featureDetails = productType.features
-          .map((ptFeature) => {
+          .map((ptFeature: any) => {
             const feature = featureMap.get(ptFeature.feature_id);
             if (!feature) return null;
 
@@ -100,10 +101,10 @@ export async function GET(
               required: ptFeature.required,
             };
           })
-          .filter((f) => f !== null)
-          .sort((a, b) => {
-            const aOrder = productType.features.find((f) => f.feature_id === a.feature_id)?.display_order || 0;
-            const bOrder = productType.features.find((f) => f.feature_id === b.feature_id)?.display_order || 0;
+          .filter((f: any) => f !== null)
+          .sort((a: any, b: any) => {
+            const aOrder = productType.features.find((f: any) => f.feature_id === a.feature_id)?.display_order || 0;
+            const bOrder = productType.features.find((f: any) => f.feature_id === b.feature_id)?.display_order || 0;
             return aOrder - bOrder;
           });
 
@@ -168,6 +169,7 @@ export async function PATCH(
     // Allow updating specific fields
     const allowedFields = [
       "name",
+      "product_model",
       "description",
       "short_description",
       "price",
@@ -248,7 +250,7 @@ export async function PATCH(
       },
       { $set: updateDoc },
       { new: true }
-    ).lean();
+    ).lean() as any;
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -263,7 +265,7 @@ export async function PATCH(
         const oldBrandCount = await PIMProductModel.countDocuments({
           // No wholesaler_id - database provides isolation
           isCurrent: true,
-          "brand.id": oldBrandId,
+          "brand.brand_id": oldBrandId,
         });
         // No wholesaler_id - database provides isolation
         await BrandModel.updateOne(
@@ -277,7 +279,7 @@ export async function PATCH(
         const newBrandCount = await PIMProductModel.countDocuments({
           // No wholesaler_id - database provides isolation
           isCurrent: true,
-          "brand.id": newBrandId,
+          "brand.brand_id": newBrandId,
         });
         // No wholesaler_id - database provides isolation
         await BrandModel.updateOne(
@@ -323,6 +325,64 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("Error updating product:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/b2b/pim/products/[entity_code]
+ * Delete a product (all versions) and remove from Solr
+ */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ entity_code: string }> }
+) {
+  try {
+    const session = await getB2BSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectToDatabase();
+
+    const resolvedParams = await params;
+    const { entity_code } = resolvedParams;
+
+    // Remove from Solr first (if enabled)
+    let solrDeleted = false;
+    const adapterConfigs = loadAdapterConfigs();
+    if (adapterConfigs.solr?.enabled) {
+      try {
+        const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+        const result = await solrAdapter.deleteProduct(entity_code);
+        solrDeleted = result.success;
+        console.log(`🔍 Solr delete result for ${entity_code}:`, result);
+      } catch (solrError: any) {
+        console.error(`⚠️ Failed to delete from Solr: ${solrError.message}`);
+        // Continue with delete even if Solr delete fails
+      }
+    }
+
+    // Delete all versions of the product from MongoDB
+    const result = await PIMProductModel.deleteMany({ entity_code });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    console.log(`🗑️ Deleted product ${entity_code} (${result.deletedCount} version(s))${solrDeleted ? " (removed from Solr)" : ""}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Product ${entity_code} deleted successfully`,
+      deletedCount: result.deletedCount,
+      solr_deleted: solrDeleted,
+    });
+  } catch (error) {
+    console.error("Error deleting product:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

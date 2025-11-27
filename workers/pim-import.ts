@@ -1,22 +1,13 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env vite-node
 /**
  * PIM Import Worker
  * Standalone worker process for handling product imports
  *
- * Usage:
- *   pnpm worker:pim
- *   or
- *   tsx workers/pim-import.ts
+ * Usage: pnpm worker:pim
  */
 
-import dotenv from 'dotenv';
-import { resolve } from 'path';
 import { connectToDatabase } from '../src/lib/db/connection';
 import { importWorker } from '../src/lib/queue/import-worker';
-
-// Load .env.local first, then .env as fallback
-dotenv.config({ path: resolve(process.cwd(), '.env.local') });
-dotenv.config({ path: resolve(process.cwd(), '.env') });
 
 console.log('🚀 PIM Import Worker starting...');
 console.log(`📍 Redis: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);

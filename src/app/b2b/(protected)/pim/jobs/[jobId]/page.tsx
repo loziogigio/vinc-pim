@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { MultiLangString, getLocalizedString, ProductImage } from "@/lib/types/pim";
 import {
   CheckCircle2,
   XCircle,
@@ -25,17 +26,13 @@ type Product = {
   _id: string;
   entity_code: string;
   sku: string;
-  name: string;
-  long_description?: string;
+  name: MultiLangString;
+  long_description?: MultiLangString;
   price?: any;
   category?: any;
   brand?: any;
   quantity?: number;
-  image?: {
-    id?: string;
-    thumbnail?: string;
-    original?: string;
-  };
+  images?: ProductImage[];
   status: string;
   completeness_score?: number;
   created_at: string;
@@ -579,10 +576,10 @@ export default function ImportJobDetailPage() {
                   </div>
 
                   {/* Product Image */}
-                  {product.image?.thumbnail && (
+                  {product.images?.[0]?.url && (
                     <img
-                      src={product.image.thumbnail}
-                      alt={product.name}
+                      src={product.images[0].url}
+                      alt={getLocalizedString(product.name, product.entity_code)}
                       className="w-12 h-12 rounded object-cover flex-shrink-0"
                     />
                   )}
@@ -592,7 +589,7 @@ export default function ImportJobDetailPage() {
                     <div className="flex items-start justify-between mb-1">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground truncate">
-                          {product.name || product.entity_code}
+                          {getLocalizedString(product.name, product.entity_code)}
                         </h3>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                           <span>Entity: {product.entity_code}</span>
@@ -639,7 +636,7 @@ export default function ImportJobDetailPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">Name:</span>
-                            <div className="font-medium">{product.name || "—"}</div>
+                            <div className="font-medium">{getLocalizedString(product.name)}</div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Quantity:</span>
@@ -653,7 +650,7 @@ export default function ImportJobDetailPage() {
                         <div>
                           <h4 className="text-sm font-semibold mb-2">Description</h4>
                           <p className="text-sm text-muted-foreground">
-                            {product.long_description}
+                            {getLocalizedString(product.long_description, "")}
                           </p>
                         </div>
                       )}

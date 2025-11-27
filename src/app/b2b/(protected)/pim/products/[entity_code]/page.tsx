@@ -9,7 +9,6 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ImageGallery } from "@/components/pim/ImageGallery";
 import { MediaGallery } from "@/components/pim/MediaGallery";
 import { ConflictResolver } from "@/components/pim/ConflictResolver";
-import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { ProductTypeSelector } from "@/components/pim/ProductTypeSelector";
 import { CollectionsSelector } from "@/components/pim/CollectionsSelector";
 import { CategorySelector } from "@/components/pim/CategorySelector";
@@ -21,6 +20,7 @@ import { MultilingualInput } from "@/components/pim/MultilingualInput";
 import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
 import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { ProductImage, extractAttributesForLanguage, mergeAttributesToMultilingual } from "@/lib/types/pim";
 import {
   ArrowLeft,
   Save,
@@ -31,6 +31,12 @@ import {
   CheckCircle2,
   History,
   RefreshCw,
+  Code2,
+  List,
+  Globe,
+  GlobeLock,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 type Product = {
@@ -38,6 +44,7 @@ type Product = {
   entity_code: string;
   sku: string;
   name: string | Record<string, string>;
+  product_model?: string;
   version: number;
   updated_at?: string;
   edited_at?: string;
@@ -49,23 +56,7 @@ type Product = {
   currency?: string;
   quantity: number;
   status: "draft" | "published" | "archived";
-  image: {
-    id: string;
-    thumbnail: string;
-    medium?: string;
-    large?: string;
-    original: string;
-    blur?: string;
-  };
-  images?: {
-    url: string;
-    cdn_key: string;
-    position: number;
-    file_name?: string;
-    size_bytes?: number;
-    uploaded_at: string;
-    uploaded_by: string;
-  }[];
+  images?: ProductImage[];
   media?: {
     type: "document" | "video" | "3d-model";
     file_type: string;
@@ -103,7 +94,6 @@ type Product = {
   tags?: string[];
   completeness_score: number;
   critical_issues: string[];
-  updated_at: string;
   // Conflict tracking
   has_conflict?: boolean;
   conflict_data?: {
@@ -112,8 +102,6 @@ type Product = {
     api_value: any;
     detected_at: Date;
   }[];
-  last_api_update_at?: string;
-  last_manual_update_at?: string;
   // Analytics
   analytics?: {
     views_30d?: number;
@@ -123,10 +111,18 @@ type Product = {
     priority_score?: number;
     last_synced_at?: string;
   };
+  // Variant/Parent relationships
+  parent_sku?: string;
+  parent_entity_code?: string;
+  is_parent?: boolean;
+  include_faceting?: boolean;
+  variations_sku?: string[];
+  variations_entity_code?: string[];
 };
 
 type FormData = {
   name: Record<string, string>;
+  product_model: string;
   description: Record<string, string>;
   short_description: Record<string, string>;
   stock_quantity: string;
@@ -189,6 +185,9 @@ export default function ProductDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isOldVersion, setIsOldVersion] = useState(false);
@@ -196,6 +195,7 @@ export default function ProductDetailPage({
 
   const [formData, setFormData] = useState<FormData>({
     name: {},
+    product_model: "",
     description: {},
     short_description: {},
     stock_quantity: "",
@@ -210,9 +210,17 @@ export default function ProductDetailPage({
   const [productType, setProductType] = useState<any>(null);
   const [collections, setCollections] = useState<{ id: string; name: string | Record<string, string>; slug: string }[]>([]);
   const [category, setCategory] = useState<{ id: string; name: string | Record<string, string>; slug: string } | null>(null);
-  const [brand, setBrand] = useState<{ id: string; name: string | Record<string, string>; slug: string; image?: any } | null>(null);
+  const [brand, setBrand] = useState<{ brand_id: string; label: string; slug: string; logo_url?: string; description?: string; is_active?: boolean } | null>(null);
   const [featureValues, setFeatureValues] = useState<any[]>([]);
+
+  // View mode toggles for self-contained data
+  const [showProductTypeJSON, setShowProductTypeJSON] = useState(false);
+  const [showCategoryJSON, setShowCategoryJSON] = useState(false);
+  const [showCollectionsJSON, setShowCollectionsJSON] = useState(false);
+  const [showBrandJSON, setShowBrandJSON] = useState(false);
+  const [showTagsJSON, setShowTagsJSON] = useState(false);
   const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({});
+  const [rawMultilingualAttributes, setRawMultilingualAttributes] = useState<Record<string, any>>({});
   const [tagRefs, setTagRefs] = useState<TagReference[]>([]);
 
   // Original values for comparison
@@ -316,6 +324,7 @@ export default function ProductDetailPage({
           name: (typeof data.product.name === 'object' && data.product.name !== null)
             ? data.product.name
             : { [defaultLanguageCode]: data.product.name || "" },
+          product_model: data.product.product_model || "",
           description: (typeof data.product.description === 'object' && data.product.description !== null)
             ? data.product.description
             : { [defaultLanguageCode]: data.product.description || "" },
@@ -336,24 +345,26 @@ export default function ProductDetailPage({
         const loadedCollections = data.product.collections || [];
         const loadedCategory = data.product.category || null;
         const loadedBrand = data.product.brand || null;
-        const loadedAttributes = data.product.attributes || {};
+        // Extract attributes for current language (converts multilingual to flat format)
+        const rawAttributes = data.product.attributes || {};
+        const loadedAttributes = extractAttributesForLanguage(rawAttributes, defaultLanguageCode);
         const loadedTagRefs: TagReference[] = Array.isArray(data.product.tag)
           ? data.product.tag.map((tag: any) => {
-              // Extract string from multilingual name if needed
-              let tagNameString = '';
-              if (typeof tag.name === 'string') {
-                tagNameString = tag.name;
-              } else if (tag.name && typeof tag.name === 'object') {
-                tagNameString = tag.name.it || tag.name.en || Object.values(tag.name)[0] || '';
-              }
+            // Extract string from multilingual name if needed
+            let tagNameString = '';
+            if (typeof tag.name === 'string') {
+              tagNameString = tag.name;
+            } else if (tag.name && typeof tag.name === 'object') {
+              tagNameString = tag.name.it || tag.name.en || Object.values(tag.name)[0] || '';
+            }
 
-              return {
-                id: tag.id || tag.tag_id || tag.slug || tagNameString,
-                name: tag.name,
-                slug: tag.slug || (tagNameString ? tagNameString.toLowerCase().replace(/\s+/g, "-") : ""),
-                color: tag.color,
-              };
-            })
+            return {
+              id: tag.id || tag.tag_id || tag.slug || tagNameString,
+              name: tag.name,
+              slug: tag.slug || (tagNameString ? tagNameString.toLowerCase().replace(/\s+/g, "-") : ""),
+              color: tag.color,
+            };
+          })
           : [];
 
         if (loadedTagRefs.length === 0 && Array.isArray(data.product.tags)) {
@@ -388,7 +399,25 @@ export default function ProductDetailPage({
         setCategory(loadedCategory);
         setBrand(loadedBrand);
         setCustomAttributes(loadedAttributes);
+        setRawMultilingualAttributes(rawAttributes);
         setTagRefs(loadedTagRefs);
+
+        // Auto-enable JSON view for self-contained data (only if arrays have content)
+        if (loadedProductType && ((loadedProductType.hierarchy && loadedProductType.hierarchy.length > 0) || (loadedProductType.inherited_features && loadedProductType.inherited_features.length > 0))) {
+          setShowProductTypeJSON(true);
+        }
+        if (loadedCategory && (loadedCategory as any).hierarchy && (loadedCategory as any).hierarchy.length > 0) {
+          setShowCategoryJSON(true);
+        }
+        if (loadedCollections && loadedCollections.length > 0 && loadedCollections.some((c: any) => c.hierarchy && c.hierarchy.length > 0)) {
+          setShowCollectionsJSON(true);
+        }
+        if (loadedBrand && (loadedBrand as any).hierarchy && (loadedBrand as any).hierarchy.length > 0) {
+          setShowBrandJSON(true);
+        }
+        if (loadedTagRefs && loadedTagRefs.length > 0 && loadedTagRefs.some((t: any) => t.tag_group_data && Object.keys(t.tag_group_data).length > 0)) {
+          setShowTagsJSON(true);
+        }
 
         // Set original values for change detection
         setOriginalProductType(loadedProductType);
@@ -417,6 +446,7 @@ export default function ProductDetailPage({
     try {
       const updates: any = {
         name: formData.name,
+        product_model: formData.product_model,
         description: formData.description,
         short_description: formData.short_description,
         status: formData.status,
@@ -431,10 +461,10 @@ export default function ProductDetailPage({
       if (formData.brand_name !== originalData?.brand_name) {
         updates.brand = formData.brand_name
           ? {
-              name: formData.brand_name,
-              id: product?.brand?.id || formData.brand_name.toLowerCase().replace(/\s+/g, "-"),
-              slug: formData.brand_name.toLowerCase().replace(/\s+/g, "-"),
-            }
+            name: formData.brand_name,
+            id: product?.brand?.id || formData.brand_name.toLowerCase().replace(/\s+/g, "-"),
+            slug: formData.brand_name.toLowerCase().replace(/\s+/g, "-"),
+          }
           : null;
       }
 
@@ -456,18 +486,20 @@ export default function ProductDetailPage({
       // Add collections
       updates.collections = collections;
 
-      // Add brand
+      // Add brand (using BrandBase field names)
       if (brand) {
         updates.brand = {
-          id: brand.id,
-          name: brand.name,
+          brand_id: brand.brand_id,
+          label: brand.label,
           slug: brand.slug,
-          image: brand.image,
+          logo_url: brand.logo_url,
+          description: brand.description,
+          is_active: brand.is_active ?? true,
         };
       }
 
-      // Add custom attributes
-      updates.attributes = customAttributes;
+      // Add custom attributes (merge back into multilingual format)
+      updates.attributes = mergeAttributesToMultilingual(customAttributes, rawMultilingualAttributes, defaultLanguageCode);
 
       // Add tags
       updates.tag = tagRefs;
@@ -498,6 +530,7 @@ export default function ProductDetailPage({
           name: (typeof data.product.name === 'object' && data.product.name !== null)
             ? data.product.name
             : { [defaultLanguageCode]: data.product.name || "" },
+          product_model: data.product.product_model || "",
           description: (typeof data.product.description === 'object' && data.product.description !== null)
             ? data.product.description
             : { [defaultLanguageCode]: data.product.description || "" },
@@ -519,6 +552,7 @@ export default function ProductDetailPage({
         setOriginalBrand(brand);
         setOriginalFeatureValues(featureValues);
         setOriginalCustomAttributes(customAttributes);
+        setRawMultilingualAttributes(updates.attributes);
         setOriginalTagRefs(tagRefs);
 
         setHasChanges(false);
@@ -543,24 +577,110 @@ export default function ProductDetailPage({
     }
   }
 
+  async function handlePublish() {
+    if (!product) return;
+    setIsPublishing(true);
+    try {
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}/publish`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProduct(data.product);
+        setFormData((prev) => ({ ...prev, status: "published" }));
+        toast.success("Product published!");
+      } else {
+        const error = await res.json();
+        toast.error("Failed to publish", { description: error.error });
+      }
+    } catch (error) {
+      toast.error("Failed to publish product");
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
+  async function handleUnpublish() {
+    if (!product) return;
+    setIsPublishing(true);
+    try {
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}/unpublish`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProduct(data.product);
+        setFormData((prev) => ({ ...prev, status: "draft" }));
+        toast.success("Product unpublished");
+      } else {
+        const error = await res.json();
+        toast.error("Failed to unpublish", { description: error.error });
+      }
+    } catch (error) {
+      toast.error("Failed to unpublish product");
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!product) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this product?\n\nThis action cannot be undone.`
+    );
+    if (!confirmed) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Product deleted");
+        router.push("/b2b/pim/products");
+      } else {
+        const error = await res.json();
+        toast.error("Failed to delete", { description: error.error });
+      }
+    } catch (error) {
+      toast.error("Failed to delete product");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   async function handleImageUpload(files: File[]) {
-    const formData = new FormData();
-    files.forEach((file) => {
-      formData.append("images", file);
-    });
+    setIsUploadingImages(true);
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("images", file);
+      });
 
-    const res = await fetch(`/api/b2b/pim/products/${entity_code}/images`, {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}/images`, {
+        method: "POST",
+        body: formData,
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      // Refresh product data to get new images
-      await fetchProduct();
-    } else {
-      const error = await res.json();
-      throw new Error(error.error || "Upload failed");
+      if (res.ok) {
+        const data = await res.json();
+        // Update local state with new images without reloading page
+        if (data.product && product) {
+          setProduct({
+            ...product,
+            images: data.product.images,
+          });
+
+          // Show success notification
+          toast.success("Images uploaded successfully!", {
+            description: `${data.uploaded} image(s) added`,
+          });
+        }
+      } else {
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
+      }
+    } finally {
+      setIsUploadingImages(false);
     }
   }
 
@@ -572,7 +692,19 @@ export default function ProductDetailPage({
       }
     );
 
-    if (!res.ok) {
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with updated images without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          images: data.product.images,
+        });
+
+        // Show success notification
+        toast.success("Image deleted successfully!");
+      }
+    } else {
       const error = await res.json();
       throw new Error(error.error || "Delete failed");
     }
@@ -587,9 +719,59 @@ export default function ProductDetailPage({
       body: JSON.stringify({ imageOrder: newOrder }),
     });
 
-    if (!res.ok) {
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with reordered images without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          images: data.product.images,
+        });
+      }
+    } else {
       const error = await res.json();
       throw new Error(error.error || "Reorder failed");
+    }
+  }
+
+  async function handleImageSetPrimary(cdn_key: string) {
+    console.log("Setting primary image:", cdn_key);
+
+    const res = await fetch(`/api/b2b/pim/products/${entity_code}/images`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ cdn_key }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log("Primary image response:", data);
+
+      // Update local state with updated images
+      if (data.product) {
+        // Force a complete state update
+        setProduct((prev) => ({
+          ...prev,
+          images: data.product.images,
+          updated_at: data.product.updated_at,
+        }));
+
+        // Show success notification
+        toast.success("Primary image updated!", {
+          description: "Image moved to first position",
+        });
+
+        console.log("State updated with new primary:", cdn_key);
+      }
+    } else {
+      const error = await res.json();
+      console.error("Failed to set primary:", error);
+      toast.error("Failed to set primary image", {
+        description: error.error || "Please try again",
+      });
+      throw new Error(error.error || "Failed to set primary image");
     }
   }
 
@@ -916,6 +1098,52 @@ export default function ProductDetailPage({
                   : "Save Changes"
             }
           </button>
+
+          {/* Publish/Unpublish Button */}
+          {formData.status === "published" ? (
+            <button
+              onClick={handleUnpublish}
+              disabled={isOldVersion || isPublishing}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+              title="Unpublish product"
+            >
+              {isPublishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <GlobeLock className="h-4 w-4" />
+              )}
+              {isPublishing ? "Unpublishing..." : "Unpublish"}
+            </button>
+          ) : (
+            <button
+              onClick={handlePublish}
+              disabled={isOldVersion || isPublishing}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+              title="Publish product"
+            >
+              {isPublishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Globe className="h-4 w-4" />
+              )}
+              {isPublishing ? "Publishing..." : "Publish"}
+            </button>
+          )}
+
+          {/* Delete Button */}
+          <button
+            onClick={handleDelete}
+            disabled={isOldVersion || isDeleting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+            title="Delete product"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
         </div>
       </div>
 
@@ -960,13 +1188,12 @@ export default function ProductDetailPage({
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <div
-                className={`inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${
-                  product.completeness_score >= 80
+                className={`inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${product.completeness_score >= 80
                     ? "bg-emerald-100 text-emerald-700"
                     : product.completeness_score >= 50
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-red-100 text-red-700"
-                }`}
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
               >
                 {product.completeness_score}
               </div>
@@ -976,8 +1203,8 @@ export default function ProductDetailPage({
                   {product.completeness_score >= 80
                     ? "Excellent quality"
                     : product.completeness_score >= 50
-                    ? "Good, needs improvement"
-                    : "Needs attention"}
+                      ? "Good, needs improvement"
+                      : "Needs attention"}
                 </div>
               </div>
             </div>
@@ -1003,13 +1230,12 @@ export default function ProductDetailPage({
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Status:</span>
               <span
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                  product.status === "published"
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${product.status === "published"
                     ? "bg-emerald-100 text-emerald-700"
                     : product.status === "draft"
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-gray-100 text-gray-700"
-                }`}
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
               >
                 {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
                 {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
@@ -1044,13 +1270,12 @@ export default function ProductDetailPage({
                   return (
                     <>
                       {/* Sync Status Badge */}
-                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${
-                        isSynced
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${isSynced
                           ? "bg-green-50 text-green-700 border border-green-200"
                           : needsSync
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-gray-50 text-gray-600 border border-gray-200"
-                      }`}>
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-gray-50 text-gray-600 border border-gray-200"
+                        }`}>
                         {isSynced && <CheckCircle2 className="h-3 w-3" />}
                         {needsSync && <AlertTriangle className="h-3 w-3" />}
                         {isSynced && "Search index up to date"}
@@ -1087,19 +1312,23 @@ export default function ProductDetailPage({
         {/* Left Column - Product Image */}
         <div className="lg:col-span-1">
           <div className="rounded-lg bg-card p-4 shadow-sm sticky top-6">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Product Image</h3>
-            <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-              {product.image?.large || product.image?.original ? (
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground">Product Image</h3>
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
+                PRIMARY
+              </span>
+            </div>
+            <div className="aspect-square rounded-lg overflow-hidden bg-muted ring-2 ring-yellow-400 ring-offset-2">
+              {product.images?.[0]?.url ? (
                 <Image
-                  src={product.image.large || product.image.original}
+                  key={product.images[0].cdn_key}
+                  src={product.images[0].url}
                   alt={getMultilingualText(product.name, defaultLanguageCode, "Product image")}
                   width={400}
                   height={400}
                   quality={90}
                   sizes="(max-width: 1024px) 100vw, 33vw"
                   priority
-                  placeholder={product.image.blur ? "blur" : "empty"}
-                  blurDataURL={product.image.blur}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -1120,6 +1349,73 @@ export default function ProductDetailPage({
           <div className="rounded-lg bg-card p-4 shadow-sm">
             <LanguageSwitcher variant="compact" showLabel={true} />
           </div>
+          {(product.parent_entity_code || product.is_parent || (product.variations_entity_code && product.variations_entity_code.length > 0)) && (
+            <div className="rounded-lg bg-card p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Variant Information</h3>
+              <div className="space-y-3">
+                {/* Parent/Child Status */}
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_parent
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                      : product.parent_entity_code
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    }`}>
+                    {product.is_parent ? "Parent Product" : product.parent_entity_code ? "Child Variant" : "Single Product"}
+                  </span>
+                  {product.include_faceting !== undefined && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.include_faceting
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                        : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+                      }`}>
+                      {product.include_faceting ? "In Facets" : "Excluded from Facets"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Parent Reference */}
+                {product.parent_entity_code && (
+                  <div className="p-3 bg-muted/50 rounded-lg border">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Parent Product</div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/b2b/pim/products/${product.parent_entity_code}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        {product.parent_entity_code}
+                      </Link>
+                      {product.parent_sku && product.parent_sku !== product.parent_entity_code && (
+                        <span className="text-xs text-muted-foreground">(SKU: {product.parent_sku})</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Child Variants */}
+                {product.variations_entity_code && product.variations_entity_code.length > 0 && (
+                  <div className="p-3 bg-muted/50 rounded-lg border">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">
+                      Child Variants ({product.variations_entity_code.length})
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {product.variations_entity_code.map((code, idx) => (
+                        <Link
+                          key={code}
+                          href={`/b2b/pim/products/${code}`}
+                          className="px-2 py-1 text-xs bg-background rounded border hover:bg-muted transition-colors"
+                        >
+                          {code}
+                          {product.variations_sku?.[idx] && product.variations_sku[idx] !== code && (
+                            <span className="text-muted-foreground ml-1">({product.variations_sku[idx]})</span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Basic Information */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -1134,6 +1430,21 @@ export default function ProductDetailPage({
                 variant="reference"
                 showReference={true}
               />
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Model
+                </label>
+                <input
+                  type="text"
+                  value={formData.product_model}
+                  onChange={(e) => handleInputChange("product_model", e.target.value)}
+                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="Enter product model"
+                />
+              </div>
+              {/* Variant Information */}
+
 
               <MultilingualInput
                 label="Short Description"
@@ -1155,6 +1466,7 @@ export default function ProductDetailPage({
               />
             </div>
           </div>
+
 
           {/* Inventory */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -1192,51 +1504,137 @@ export default function ProductDetailPage({
 
           {/* Product Type */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Product Type</h3>
-            <ProductTypeSelector
-              value={productType ? {
-                id: productType.product_type_id || productType.id,
-                name: productType.name,
-                slug: productType.slug,
-              } : undefined}
-              onChange={(selectedType) => {
-                setProductType(selectedType);
-                // Clear feature values when product type changes
-                if (!selectedType) {
-                  setFeatureValues([]);
-                }
-              }}
-              disabled={isOldVersion}
-            />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Product Type</h3>
+              {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_features && productType.inherited_features.length > 0)) && (
+                <button
+                  onClick={() => setShowProductTypeJSON(!showProductTypeJSON)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors"
+                  title={showProductTypeJSON ? "Switch to selector" : "View JSON"}
+                >
+                  {showProductTypeJSON ? <List className="h-3.5 w-3.5" /> : <Code2 className="h-3.5 w-3.5" />}
+                  {showProductTypeJSON ? "Use Selector" : "View JSON"}
+                </button>
+              )}
+            </div>
+            {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_features && productType.inherited_features.length > 0)) && showProductTypeJSON ? (
+              <div className="p-3 bg-muted/50 rounded border">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <pre className="text-xs overflow-auto max-h-64">
+                  {JSON.stringify(productType, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <ProductTypeSelector
+                value={productType ? {
+                  id: productType.product_type_id || productType.id,
+                  name: productType.name,
+                  slug: productType.slug,
+                } : undefined}
+                onChange={(selectedType) => {
+                  setProductType(selectedType);
+                  // Clear feature values when product type changes
+                  if (!selectedType) {
+                    setFeatureValues([]);
+                  }
+                }}
+                disabled={isOldVersion}
+              />
+            )}
           </div>
+
+
 
           {/* Category */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Category</h3>
-            <CategorySelector
-              value={category || undefined}
-              onChange={setCategory}
-              disabled={isOldVersion}
-            />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Category</h3>
+              {category && (category as any).hierarchy && (category as any).hierarchy.length > 0 && (
+                <button
+                  onClick={() => setShowCategoryJSON(!showCategoryJSON)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors"
+                  title={showCategoryJSON ? "Switch to selector" : "View JSON"}
+                >
+                  {showCategoryJSON ? <List className="h-3.5 w-3.5" /> : <Code2 className="h-3.5 w-3.5" />}
+                  {showCategoryJSON ? "Use Selector" : "View JSON"}
+                </button>
+              )}
+            </div>
+            {category && (category as any).hierarchy && (category as any).hierarchy.length > 0 && showCategoryJSON ? (
+              <div className="p-3 bg-muted/50 rounded border">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <pre className="text-xs overflow-auto max-h-64">
+                  {JSON.stringify(category, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <CategorySelector
+                value={category || undefined}
+                onChange={setCategory}
+                disabled={isOldVersion}
+              />
+            )}
           </div>
 
           {/* Collections */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Collections</h3>
-            <CollectionsSelector
-              value={collections}
-              onChange={setCollections}
-              disabled={isOldVersion}
-            />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Collections</h3>
+              {collections && collections.length > 0 && collections.some((c: any) => c.hierarchy && c.hierarchy.length > 0) && (
+                <button
+                  onClick={() => setShowCollectionsJSON(!showCollectionsJSON)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors"
+                  title={showCollectionsJSON ? "Switch to selector" : "View JSON"}
+                >
+                  {showCollectionsJSON ? <List className="h-3.5 w-3.5" /> : <Code2 className="h-3.5 w-3.5" />}
+                  {showCollectionsJSON ? "Use Selector" : "View JSON"}
+                </button>
+              )}
+            </div>
+            {collections && collections.length > 0 && collections.some((c: any) => c.hierarchy && c.hierarchy.length > 0) && showCollectionsJSON ? (
+              <div className="p-3 bg-muted/50 rounded border">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <pre className="text-xs overflow-auto max-h-64">
+                  {JSON.stringify(collections, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <CollectionsSelector
+                value={collections}
+                onChange={setCollections}
+                disabled={isOldVersion}
+              />
+            )}
           </div>
 
           {/* Brand */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Brand</h3>
-            <BrandSelector
-              value={brand}
-              onChange={setBrand}
-            />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Brand</h3>
+              {brand && (brand as any).hierarchy && (brand as any).hierarchy.length > 0 && (
+                <button
+                  onClick={() => setShowBrandJSON(!showBrandJSON)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors"
+                  title={showBrandJSON ? "Switch to selector" : "View JSON"}
+                >
+                  {showBrandJSON ? <List className="h-3.5 w-3.5" /> : <Code2 className="h-3.5 w-3.5" />}
+                  {showBrandJSON ? "Use Selector" : "View JSON"}
+                </button>
+              )}
+            </div>
+            {brand && (brand as any).hierarchy && (brand as any).hierarchy.length > 0 && showBrandJSON ? (
+              <div className="p-3 bg-muted/50 rounded border">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <pre className="text-xs overflow-auto max-h-64">
+                  {JSON.stringify(brand, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <BrandSelector
+                value={brand}
+                onChange={setBrand}
+              />
+            )}
           </div>
 
           {/* Features - Only shown when product type is selected */}
@@ -1267,8 +1665,29 @@ export default function ProductDetailPage({
 
           {/* Tags */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Tags</h3>
-            <TagSelector value={tagRefs} onChange={setTagRefs} disabled={isOldVersion} />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Tags</h3>
+              {tagRefs && tagRefs.length > 0 && tagRefs.some((t: any) => t.tag_group_data && Object.keys(t.tag_group_data).length > 0) && (
+                <button
+                  onClick={() => setShowTagsJSON(!showTagsJSON)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors"
+                  title={showTagsJSON ? "Switch to selector" : "View JSON"}
+                >
+                  {showTagsJSON ? <List className="h-3.5 w-3.5" /> : <Code2 className="h-3.5 w-3.5" />}
+                  {showTagsJSON ? "Use Selector" : "View JSON"}
+                </button>
+              )}
+            </div>
+            {tagRefs && tagRefs.length > 0 && tagRefs.some((t: any) => t.tag_group_data && Object.keys(t.tag_group_data).length > 0) && showTagsJSON ? (
+              <div className="p-3 bg-muted/50 rounded border">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <pre className="text-xs overflow-auto max-h-64">
+                  {JSON.stringify(tagRefs, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <TagSelector value={tagRefs} onChange={setTagRefs} disabled={isOldVersion} />
+            )}
           </div>
         </div>
       </div>
@@ -1280,7 +1699,9 @@ export default function ProductDetailPage({
           onReorder={handleImageReorder}
           onDelete={handleImageDelete}
           onUpload={handleImageUpload}
-          disabled={isSaving}
+          onSetPrimary={handleImageSetPrimary}
+          primaryImageKey={product.images?.[0]?.cdn_key}
+          disabled={isSaving || isUploadingImages}
         />
       </div>
 
@@ -1349,15 +1770,13 @@ export default function ProductDetailPage({
             </div>
             <div className="p-6 space-y-4">
               <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                {product.image?.large || product.image?.original ? (
+                {product.images?.[0]?.url ? (
                   <Image
-                    src={product.image.large || product.image.original}
+                    src={product.images[0].url}
                     alt={getMultilingualText(formData.name, defaultLanguageCode, "Product")}
                     width={600}
                     height={600}
                     quality={90}
-                    placeholder={product.image.blur ? "blur" : "empty"}
-                    blurDataURL={product.image.blur}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -1399,7 +1818,7 @@ export default function ProductDetailPage({
                 {brand && (
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Brand</div>
-                    <div className="text-sm font-medium text-foreground">{brand.name}</div>
+                    <div className="text-sm font-medium text-foreground">{brand.label}</div>
                   </div>
                 )}
                 {formData.category_name && (

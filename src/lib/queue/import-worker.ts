@@ -371,56 +371,96 @@ async function processImport(job: Job<ImportJobData>) {
           autoPublished++;
         }
 
-        // Mark old versions as not current
-        if (latestProduct) {
-          await PIMProductModel.updateMany(
-            { entity_code, isCurrent: true },
-            { isCurrent: false, isCurrentPublished: false }
-          );
-        }
-
         // Exclude fields that are calculated/managed by the system
         const { status: _status, ...safeProductData } = productData;
 
-        // Create new version
-        await PIMProductModel.create({
-          entity_code,
-          sku: productData.sku || entity_code,
-          version: newVersion,
-          isCurrent: true,
-          isCurrentPublished: autoPublishResult.eligible,
-          status,
-          published_at,
-          source: {
-            source_id: source.source_id,
-            source_name: source.source_name,
-            ...(job.data.batch_metadata?.batch_id && { batch_id: job.data.batch_metadata.batch_id }),
-            ...(job.data.batch_metadata && { batch_metadata: job.data.batch_metadata }),
-            imported_at: new Date(),
-          },
-          completeness_score: completenessScore,
-          critical_issues: criticalIssues,
-          auto_publish_eligible: autoPublishResult.eligible,
-          auto_publish_reason: autoPublishResult.reason,
-          analytics: {
-            views_30d: 0,
-            clicks_30d: 0,
-            add_to_cart_30d: 0,
-            conversions_30d: 0,
-            priority_score: 0,
-            last_synced_at: new Date(),
-          },
-          // Conflict tracking
-          last_api_update_at: new Date(),
-          has_conflict: conflictDetection.hasConflicts,
-          conflict_data: conflictDetection.conflictData,
-          // Preserve manual edit tracking from previous version
-          manually_edited: latestProduct?.manually_edited || false,
-          manually_edited_fields: latestProduct?.manually_edited_fields || [],
-          last_manual_update_at: latestProduct?.last_manual_update_at,
-          locked_fields: latestProduct?.locked_fields || [],
-          ...safeProductData,
-        });
+        // Calculate variant and faceting flags
+        const hasVariants = (productData.variations_sku && productData.variations_sku.length > 0) ||
+                           (productData.variations_entity_code && productData.variations_entity_code.length > 0);
+        const isChild = !!productData.parent_sku || !!productData.parent_entity_code;
+
+        // Set is_parent (default true unless explicitly a child)
+        const is_parent = productData.is_parent ?? !isChild;
+
+        // Set include_faceting based on variant structure
+        // - Single products: true (default)
+        // - Parent with variants: false (exclude from facets)
+        // - Child variants: true (include in facets)
+        const include_faceting = productData.include_faceting ?? (hasVariants ? false : true);
+
+        if (latestProduct) {
+          // ========== UPDATE EXISTING PRODUCT ==========
+          // Build $set document for partial update
+          const updateDoc: Record<string, any> = {
+            updated_at: new Date(),
+            last_api_update_at: new Date(),
+            has_conflict: conflictDetection.hasConflicts,
+            conflict_data: conflictDetection.conflictData,
+            "source.imported_at": new Date(),
+          };
+
+          // For API imports: Replace entire attributes object (not merge)
+          // This allows API to remove attributes by not including them
+          // Manual UI edits handle granular add/remove separately
+          if (safeProductData.attributes) {
+            updateDoc.attributes = safeProductData.attributes;
+            delete safeProductData.attributes;
+          }
+
+          // Copy other fields directly
+          for (const [key, value] of Object.entries(safeProductData)) {
+            if (value !== undefined) {
+              updateDoc[key] = value;
+            }
+          }
+
+          await PIMProductModel.findOneAndUpdate(
+            { entity_code, isCurrent: true },
+            { $set: updateDoc }
+          );
+        } else {
+          // ========== CREATE NEW PRODUCT ==========
+          await PIMProductModel.create({
+            entity_code,
+            sku: productData.sku || entity_code,
+            version: newVersion,
+            isCurrent: true,
+            isCurrentPublished: autoPublishResult.eligible,
+            status,
+            published_at,
+            source: {
+              source_id: source.source_id,
+              source_name: source.source_name,
+              ...(job.data.batch_metadata?.batch_id && { batch_id: job.data.batch_metadata.batch_id }),
+              ...(job.data.batch_metadata && { batch_metadata: job.data.batch_metadata }),
+              imported_at: new Date(),
+            },
+            completeness_score: completenessScore,
+            critical_issues: criticalIssues,
+            auto_publish_eligible: autoPublishResult.eligible,
+            auto_publish_reason: autoPublishResult.reason,
+            analytics: {
+              views_30d: 0,
+              clicks_30d: 0,
+              add_to_cart_30d: 0,
+              conversions_30d: 0,
+              priority_score: 0,
+              last_synced_at: new Date(),
+            },
+            // Conflict tracking
+            last_api_update_at: new Date(),
+            has_conflict: conflictDetection.hasConflicts,
+            conflict_data: conflictDetection.conflictData,
+            // Manual edit tracking (new product)
+            manually_edited: false,
+            manually_edited_fields: [],
+            locked_fields: [],
+            // Variant and faceting flags
+            is_parent,
+            include_faceting,
+            ...safeProductData,
+          });
+        }
 
         // Collect successful products for batch sync later
         successfulEntityCodes.push(entity_code);
@@ -640,7 +680,8 @@ async function processBulkUpdate(job: Job<any>) {
       updateDoc.status = updates.status;
     }
     if (updates.brand) {
-      updateDoc["brand.name"] = updates.brand;
+      // Use BrandBase field names: brand.label instead of brand.name
+      updateDoc["brand.label"] = updates.brand;
     }
     if (updates.category) {
       updateDoc["category.name"] = updates.category;
@@ -682,6 +723,61 @@ async function processBulkUpdate(job: Job<any>) {
     console.log(`   Matched: ${result.matchedCount}`);
     console.log(`   Modified: ${result.modifiedCount}`);
     console.log(`   Duration: ${durationSeconds}s`);
+
+    // ========== QUEUE SOLR SYNC FOR BULK UPDATE ==========
+    if (result.modifiedCount > 0 && process.env.SOLR_ENABLED === 'true') {
+      try {
+        // Get default language with searchEnabled
+        const defaultLanguage = await LanguageModel.findOne({
+          isDefault: true,
+          isEnabled: true,
+          searchEnabled: true
+        });
+
+        if (defaultLanguage) {
+          // Fetch entity_codes for updated products
+          const updatedProducts = await PIMProductModel.find({
+            _id: { $in: product_ids },
+            isCurrent: true,
+          }).select('entity_code').lean();
+
+          const entityCodes = updatedProducts.map((p: any) => p.entity_code).filter(Boolean);
+
+          if (entityCodes.length > 0) {
+            console.log(`\n📤 Queuing Solr sync for ${entityCodes.length} bulk-updated products`);
+
+            // Batch the products (50 per batch)
+            const SYNC_BATCH_SIZE = 50;
+            const batchCount = Math.ceil(entityCodes.length / SYNC_BATCH_SIZE);
+
+            for (let i = 0; i < entityCodes.length; i += SYNC_BATCH_SIZE) {
+              const batchIds = entityCodes.slice(i, i + SYNC_BATCH_SIZE);
+              const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
+
+              await syncQueue.add('bulk-sync-batch', {
+                product_id: `bulk-update-${job_id}-${batchNumber}`,
+                product_ids: batchIds,
+                operation: 'bulk-sync',
+                channels: ['solr'],
+                tenant_id: process.env.VINC_TENANT_ID || 'default',
+                priority: 'high',
+              }, {
+                priority: 1,
+              });
+
+              console.log(`   ✓ Queued batch ${batchNumber}/${batchCount} (${batchIds.length} products)`);
+            }
+
+            console.log(`✅ Queued ${batchCount} sync jobs for Solr indexing`);
+          }
+        } else {
+          console.log(`⚠️ No search-enabled default language found - skipping Solr sync`);
+        }
+      } catch (syncError: any) {
+        console.error(`⚠️ Failed to queue Solr sync: ${syncError.message}`);
+        // Don't fail the bulk update if sync queueing fails
+      }
+    }
 
     return { matched: result.matchedCount, modified: result.modifiedCount };
   } catch (error: any) {

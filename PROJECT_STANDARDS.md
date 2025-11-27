@@ -9,6 +9,7 @@ This document defines the coding standards, naming conventions, and architectura
 1. [MongoDB & Database Standards](#mongodb--database-standards)
 2. [File & Directory Structure](#file--directory-structure)
 3. [TypeScript & Code Style](#typescript--code-style)
+   - [Shared Types Location](#shared-types-location)
 4. [API Route Conventions](#api-route-conventions)
 5. [Component Standards](#component-standards)
 
@@ -200,6 +201,91 @@ const { source_id } = params;  // Error in Next.js 15
 ---
 
 ## TypeScript & Code Style
+
+### Shared Types Location
+
+**ALL shared types live in `src/lib/types/`** - this is the single source of truth.
+
+```
+src/lib/types/
+  ├── index.ts              ← Barrel export (import from "@/lib/types")
+  ├── pim.ts                ← PIM types: MultiLangString, ProductImage, etc.
+  ├── search.ts             ← Search/Solr types: SearchRequest, FacetResults, etc.
+  └── entities/             ← Entity types for embedding in products
+      ├── index.ts
+      ├── brand.types.ts    ← BrandEmbedded, BrandDocument
+      ├── category.types.ts ← CategoryEmbedded, CategoryDocument
+      ├── collection.types.ts
+      ├── product-type.types.ts
+      └── tag.types.ts
+```
+
+**Exception:** Mongoose document interfaces (`I*`) stay with their schemas in `src/lib/db/models/*.ts`.
+
+| Type Category | Location | Description |
+|--------------|----------|-------------|
+| **PIM types** | `src/lib/types/pim.ts` | `MultiLangString`, `MultilingualText`, `ProductImage`, `getLocalizedString()` |
+| **Search types** | `src/lib/types/search.ts` | `SearchRequest`, `FacetResults`, `SolrProduct`, etc. |
+| **Entity types** | `src/lib/types/entities/` | `BrandEmbedded`, `CategoryEmbedded`, `CollectionEmbedded`, etc. |
+| **Mongoose interfaces** | `src/lib/db/models/*.ts` | `IPIMProduct`, `IImportJob`, etc. (stay with schemas) |
+
+#### Example: Correct Usage
+
+```typescript
+// ✅ CORRECT: Import from centralized location
+import { MultiLangString, getLocalizedString, ProductImage } from "@/lib/types/pim";
+import { SearchRequest, FacetResults } from "@/lib/types/search";
+import { BrandEmbedded, CategoryEmbedded } from "@/lib/types/entities";
+
+// OR use barrel export
+import { MultiLangString, SearchRequest, BrandEmbedded } from "@/lib/types";
+
+type Product = {
+  _id: string;
+  name: MultiLangString;
+  images?: ProductImage[];
+};
+```
+
+#### Example: Incorrect Usage
+
+```typescript
+// ❌ INCORRECT: Defining types inline in page component
+type MultiLangString = string | { [lang: string]: string };  // Don't redefine!
+
+// ❌ INCORRECT: Importing from old locations
+import { SearchRequest } from "@/lib/search/types";           // OLD - use @/lib/types/search
+import { BrandEmbedded } from "@/lib/db/models/types";        // OLD - use @/lib/types/entities
+```
+
+#### Key Shared Types
+
+**`src/lib/types/pim.ts`:**
+| Type | Description |
+|------|-------------|
+| `MultiLangString` | `string \| { [lang: string]: string }` - flexible multilingual |
+| `MultilingualText` | `Record<string, string>` - strict multilingual (always object) |
+| `getLocalizedString()` | Helper to extract localized string (it → en → first value) |
+| `ProductImage` | Product image with url, cdn_key, position, etc. |
+| `ProductStatus` | `"draft" \| "published" \| "archived"` |
+
+**`src/lib/types/search.ts`:**
+| Type | Description |
+|------|-------------|
+| `SearchRequest` | Search API request parameters |
+| `SearchResponse` | Search API response with results |
+| `FacetRequest` | Facet-only request parameters |
+| `FacetResults` | Facet values with counts |
+| `SolrProduct` | Enriched product from Solr |
+
+**`src/lib/types/entities/`:**
+| Type | Description |
+|------|-------------|
+| `BrandEmbedded` | Brand data embedded in products |
+| `CategoryEmbedded` | Category with hierarchy |
+| `CollectionEmbedded` | Collection with hierarchy |
+| `ProductTypeEmbedded` | Product type with features |
+| `TagEmbedded` | Tag with group data |
 
 ### Interfaces
 

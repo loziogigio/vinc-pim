@@ -6,6 +6,32 @@
  */
 
 // ============================================
+// MULTILINGUAL TYPES
+// ============================================
+
+/**
+ * Multilingual string - can be a plain string or an object with language keys
+ * Use for fields that may come from different sources (API might return string or object)
+ */
+export type MultiLangString = string | { [lang: string]: string };
+
+/**
+ * Strict multilingual text - always an object with language keys
+ * Use for PIM internal storage where we always want the object format
+ */
+export type MultilingualText = Record<string, string>;
+
+/**
+ * Extract string from multilingual field
+ */
+export function getLocalizedString(value: MultiLangString | undefined | null, fallback = "—"): string {
+  if (!value) return fallback;
+  if (typeof value === "string") return value;
+  // Try common languages in order of preference
+  return value.it || value.en || Object.values(value)[0] || fallback;
+}
+
+// ============================================
 // CORE SHARED TYPES (matching customer_web)
 // ============================================
 
@@ -148,11 +174,28 @@ export type ProductInventory = {
 };
 
 /**
+ * Product image item (used in images[] array)
+ * Primary image is always images[0] (position 0)
+ */
+export type ProductImage = {
+  _id?: string;
+  url: string;
+  cdn_key: string;
+  position: number;
+  label?: string;
+  file_name?: string;
+  file_type?: string;
+  size_bytes?: number;
+  uploaded_at?: string;
+  uploaded_by?: string;
+};
+
+/**
  * Product images
+ * Uses images[] array - primary image is images[0]
  */
 export type ProductImages = {
-  image: Attachment; // Primary image
-  gallery?: Attachment[]; // Additional images
+  images?: ProductImage[];
 };
 
 /**
@@ -237,7 +280,7 @@ export type PIMProductListItem = {
   entity_code: string;
   sku: string;
   name: string;
-  image: Attachment;
+  images?: ProductImage[];
   price: number;
   completeness_score: number;
   status: ProductStatus;
@@ -311,3 +354,102 @@ export type AutoPublishResult = {
   score?: number;
   missing_fields?: string[];
 };
+
+// ============================================
+// ATTRIBUTE TYPES & HELPERS
+// ============================================
+
+/**
+ * Attribute in the format expected by AttributesEditor
+ * Flat structure: { slug: { label, value, uom } }
+ */
+export type FlatAttribute = {
+  label: string | Record<string, string>;
+  value: any;
+  uom?: string;
+};
+
+/**
+ * Attribute in the multilingual format stored in MongoDB
+ * Nested structure: { lang: { slug: { key, label, value } } }
+ */
+export type MultilingualAttribute = {
+  key: string;
+  label: string;
+  value: any;
+  uom?: string;
+};
+
+/**
+ * Extract attributes for a specific language from multilingual structure
+ * Converts: { it: { attr1: {...}, attr2: {...} }, de: {...} }
+ * To: { attr1: { label, value, uom }, attr2: {...} }
+ * This format is expected by AttributesEditor
+ */
+export function extractAttributesForLanguage(
+  attributes: Record<string, any> | undefined,
+  languageCode: string
+): Record<string, FlatAttribute> {
+  if (!attributes) return {};
+
+  // Check if attributes are already in flat format (legacy or non-multilingual)
+  // Flat format: { slug: { label, value, uom } }
+  const firstKey = Object.keys(attributes)[0];
+  if (firstKey && attributes[firstKey]) {
+    const firstValue = attributes[firstKey];
+    // If first value has 'label' and 'value' directly (and no 'key'), it's flat format
+    if (typeof firstValue === 'object' && 'value' in firstValue && !('key' in firstValue)) {
+      return attributes as Record<string, FlatAttribute>;
+    }
+    // If first value is an object with nested attributes (multilingual format)
+    // Check if it looks like a language code (2-3 chars)
+    if (firstKey.length <= 3 && typeof firstValue === 'object') {
+      // Multilingual format: { it: { attr1: {...} }, de: {...} }
+      const langAttributes = attributes[languageCode] || {};
+      // Convert from { key, label, value } to { label, value, uom }
+      const result: Record<string, FlatAttribute> = {};
+      for (const [slug, attrData] of Object.entries(langAttributes)) {
+        if (typeof attrData === 'object' && attrData !== null) {
+          const attr = attrData as MultilingualAttribute;
+          result[slug] = {
+            label: attr.label || slug,
+            value: attr.value,
+            ...(attr.uom && { uom: attr.uom }),
+          };
+        }
+      }
+      return result;
+    }
+  }
+
+  return attributes as Record<string, FlatAttribute>;
+}
+
+/**
+ * Merge flat attributes back into multilingual structure
+ * Converts: { attr1: { label, value, uom } }
+ * To: { [lang]: { attr1: { key, label, value, uom } } }
+ */
+export function mergeAttributesToMultilingual(
+  flatAttributes: Record<string, FlatAttribute>,
+  existingAttributes: Record<string, any> | undefined,
+  languageCode: string
+): Record<string, Record<string, MultilingualAttribute>> {
+  const result = { ...(existingAttributes || {}) } as Record<string, Record<string, MultilingualAttribute>>;
+
+  // Convert flat format to multilingual
+  const langAttributes: Record<string, MultilingualAttribute> = {};
+  for (const [slug, attrData] of Object.entries(flatAttributes)) {
+    if (typeof attrData === 'object' && attrData !== null) {
+      langAttributes[slug] = {
+        key: slug,
+        label: typeof attrData.label === 'string' ? attrData.label : (attrData.label?.[languageCode] || slug),
+        value: attrData.value,
+        ...(attrData.uom && { uom: attrData.uom }),
+      };
+    }
+  }
+
+  result[languageCode] = langAttributes;
+  return result;
+}

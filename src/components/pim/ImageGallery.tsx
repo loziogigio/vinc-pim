@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -14,25 +14,20 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, Upload, Image as ImageIcon, X, ZoomIn } from "lucide-react";
-
-interface ImageItem {
-  url: string;
-  cdn_key: string;
-  position: number;
-  file_name?: string;
-  size_bytes?: number;
-}
+import { GripVertical, Trash2, Upload, Image as ImageIcon, X, ZoomIn, Star } from "lucide-react";
+import { ProductImage } from "@/lib/types/pim";
 
 interface ImageGalleryProps {
-  images: ImageItem[];
+  images: ProductImage[];
   onReorder: (newOrder: string[]) => Promise<void>;
   onDelete: (cdn_key: string) => Promise<void>;
   onUpload: (files: File[]) => Promise<void>;
+  onSetPrimary?: (cdn_key: string) => Promise<void>;
+  primaryImageKey?: string;
   disabled?: boolean;
 }
 
@@ -40,11 +35,15 @@ function SortableImageItem({
   image,
   onDelete,
   onPreview,
+  onSetPrimary,
+  isPrimary,
   disabled,
 }: {
-  image: ImageItem;
+  image: ProductImage;
   onDelete: (cdn_key: string) => void;
-  onPreview: (image: ImageItem) => void;
+  onPreview: (image: ProductImage) => void;
+  onSetPrimary?: (cdn_key: string) => void;
+  isPrimary?: boolean;
   disabled?: boolean;
 }) {
   const {
@@ -67,60 +66,90 @@ function SortableImageItem({
       ref={setNodeRef}
       style={style}
       className={`
-        flex items-center gap-3 p-3 bg-white border rounded-lg
-        ${isDragging ? "shadow-lg z-50" : "shadow-sm"}
+        relative bg-white border-2 rounded-lg overflow-hidden
+        ${isDragging ? "shadow-2xl z-50 border-blue-400" : "shadow-md border-gray-200"}
+        ${isPrimary ? "ring-2 ring-yellow-400" : ""}
         ${disabled ? "opacity-60" : ""}
       `}
     >
+      {/* Position Badge */}
+      <div className="absolute top-2 left-2 z-10 bg-gray-900 bg-opacity-75 text-white text-xs font-bold px-2 py-1 rounded">
+        #{image.position + 1}
+      </div>
+
+      {/* Primary Badge */}
+      {isPrimary && (
+        <div className="absolute top-2 right-2 z-10 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+          <Star className="h-3 w-3 fill-current" />
+          PRIMARY
+        </div>
+      )}
+
       {/* Drag Handle */}
-      <button
-        type="button"
-        className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+      <div
+        className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 cursor-grab active:cursor-grabbing bg-white bg-opacity-90 rounded-full p-1 shadow-md"
         {...attributes}
         {...listeners}
-        disabled={disabled}
       >
-        <GripVertical className="h-5 w-5 text-gray-400" />
-      </button>
+        <GripVertical className="h-4 w-4 text-gray-600" />
+      </div>
 
       {/* Image Preview - Clickable */}
       <button
         type="button"
         onClick={() => onPreview(image)}
-        className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden relative group"
+        className="w-full aspect-square bg-gray-100 relative group"
       >
         <img
           src={image.url}
           alt={image.file_name || "Product image"}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition flex items-center justify-center">
-          <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition" />
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition flex items-center justify-center">
+          <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition" />
         </div>
       </button>
 
-      {/* Image Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">
+      {/* Image Info Footer */}
+      <div className="p-3 bg-gray-50">
+        <p className="text-xs font-medium text-gray-900 truncate mb-1">
           {image.file_name || "Untitled"}
         </p>
         {image.size_bytes && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 mb-2">
             {formatFileSize(image.size_bytes)}
           </p>
         )}
-      </div>
 
-      {/* Delete Button */}
-      <button
-        type="button"
-        onClick={() => onDelete(image.cdn_key)}
-        disabled={disabled}
-        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Delete image"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          {/* Set as Primary Button */}
+          {onSetPrimary && !isPrimary && (
+            <button
+              type="button"
+              onClick={() => onSetPrimary(image.cdn_key)}
+              disabled={disabled}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-yellow-500 text-white text-xs font-medium rounded hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Set as primary image"
+            >
+              <Star className="h-3 w-3" />
+              Set Primary
+            </button>
+          )}
+
+          {/* Delete Button */}
+          <button
+            type="button"
+            onClick={() => onDelete(image.cdn_key)}
+            disabled={disabled}
+            className={`${onSetPrimary && !isPrimary ? '' : 'flex-1'} flex items-center justify-center gap-1 px-2 py-1.5 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+            title="Delete image"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -130,12 +159,20 @@ export function ImageGallery({
   onReorder,
   onDelete,
   onUpload,
+  onSetPrimary,
+  primaryImageKey,
   disabled = false,
 }: ImageGalleryProps) {
   const [images, setImages] = useState(initialImages);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<ImageItem | null>(null);
+  const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<ProductImage | null>(null);
+
+  // Sync local state when initialImages prop changes (e.g., after upload)
+  useEffect(() => {
+    setImages(initialImages);
+  }, [initialImages]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -164,20 +201,34 @@ export function ImageGallery({
     }
   };
 
-  const handleDelete = async (cdn_key: string) => {
+  const handleDelete = async (s3_key: string) => {
     if (!confirm("Are you sure you want to delete this image?")) {
       return;
     }
 
-    setDeleting(cdn_key);
+    setDeleting(s3_key);
     try {
-      await onDelete(cdn_key);
-      setImages(images.filter((img) => img.cdn_key !== cdn_key));
+      await onDelete(s3_key);
+      setImages(images.filter((img) => img.cdn_key !== s3_key));
     } catch (error) {
       console.error("Failed to delete image:", error);
       alert("Failed to delete image. Please try again.");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleSetPrimary = async (s3_key: string) => {
+    if (!onSetPrimary) return;
+
+    setSettingPrimary(s3_key);
+    try {
+      await onSetPrimary(s3_key);
+    } catch (error) {
+      console.error("Failed to set primary image:", error);
+      alert("Failed to set primary image. Please try again.");
+    } finally {
+      setSettingPrimary(null);
     }
   };
 
@@ -244,16 +295,18 @@ export function ImageGallery({
         >
           <SortableContext
             items={images.map((img) => img.cdn_key)}
-            strategy={verticalListSortingStrategy}
+            strategy={rectSortingStrategy}
           >
-            <div className="space-y-2">
-              {images.map((image) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {images.map((image, index) => (
                 <SortableImageItem
-                  key={image.cdn_key}
+                  key={image.cdn_key || image._id || `image-${index}`}
                   image={image}
                   onDelete={handleDelete}
                   onPreview={setPreviewImage}
-                  disabled={disabled || uploading || deleting === image.cdn_key}
+                  onSetPrimary={onSetPrimary ? handleSetPrimary : undefined}
+                  isPrimary={primaryImageKey === image.cdn_key || image.position === 0}
+                  disabled={disabled || uploading || deleting === image.cdn_key || settingPrimary === image.cdn_key}
                 />
               ))}
             </div>
@@ -262,10 +315,18 @@ export function ImageGallery({
       )}
 
       {/* Help Text */}
-      <p className="text-xs text-gray-500">
-        Drag and drop images to reorder them. The first image will be the main
-        product image.
-      </p>
+      <div className="flex items-start gap-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <ImageIcon className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium text-blue-900 mb-1">Image Management Guide:</p>
+          <ul className="space-y-1">
+            <li>• <strong>Position #{'\u0023'}1</strong> is always the primary/main product image</li>
+            <li>• <strong>Drag</strong> the handle at the top to reorder images</li>
+            <li>• Click <strong>"Set Primary"</strong> to move any image to position #1</li>
+            <li>• Click on an image to <strong>preview</strong> it in full screen</li>
+          </ul>
+        </div>
+      </div>
 
       {/* Image Preview Lightbox */}
       {previewImage && (

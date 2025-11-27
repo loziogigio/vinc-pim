@@ -7,7 +7,7 @@
  * - Self-contained: All fields including hierarchy, features, and inherited features
  */
 
-import { MultilingualText } from "../pim-product";
+import { MultilingualText } from "../pim";
 
 // Product Type Feature
 export interface ProductTypeFeature {
