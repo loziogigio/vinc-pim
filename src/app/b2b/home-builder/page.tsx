@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Tablet,
   Upload,
-  ArrowLeft,
+  Home,
   History
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -219,12 +219,12 @@ function HomeBuilderContent() {
     setPublishForm(defaultPublishForm);
   };
 
-  const handleBackToCatalog = () => {
+  const handleBackToHome = () => {
     if (isDirty) {
       const confirmLeave = window.confirm("You have unsaved changes. Are you sure you want to leave?");
       if (!confirmLeave) return;
     }
-    router.push("/b2b/dashboard");
+    router.push("/");
   };
 
   const handlePublishButtonClick = () => {
@@ -632,11 +632,12 @@ function HomeBuilderContent() {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={handleBackToCatalog}
+            onClick={handleBackToHome}
             className={cn(iconButtonClass, "border border-[#ebe9f1]")}
-            aria-label="Back to dashboard"
+            aria-label="Back to App Launcher"
+            title="Back to App Launcher"
           >
-            <ArrowLeft className="h-[1.1rem] w-[1.1rem]" />
+            <Home className="h-[1.1rem] w-[1.1rem]" />
           </button>
 
           <button

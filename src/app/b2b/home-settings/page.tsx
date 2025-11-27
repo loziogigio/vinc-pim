@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef, useCallback, ChangeEvent } from "
 import { useRouter } from "next/navigation";
 import { Public_Sans } from "next/font/google";
 import {
-  ArrowLeft,
+  Home,
   Eye,
   Loader2,
   Monitor,
@@ -335,10 +335,11 @@ export default function HomeSettingsPage() {
               variant="ghost"
               size="icon"
               className="text-slate-500 hover:text-slate-900"
-              onClick={() => router.push("/b2b/home-builder")}
+              onClick={() => router.push("/")}
+              title="Back to App Launcher"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back to builder</span>
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Back to App Launcher</span>
             </Button>
             <div>
               <div className="flex items-center gap-3">

@@ -10,9 +10,9 @@ export const metadata = {
 export default async function B2BLoginPage() {
   const session = await getB2BSession();
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect to main page
   if (session.isLoggedIn) {
-    redirect("/b2b/dashboard");
+    redirect("/");
   }
 
   return (

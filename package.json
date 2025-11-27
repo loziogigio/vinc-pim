@@ -13,7 +13,8 @@
     "worker:sync": "dotenv -e .env.local -- vite-node workers/sync-marketplace.ts",
     "worker:all": "concurrently \"pnpm worker:pim\" \"pnpm worker:sync\"",
     "solr:resync": "dotenv -e .env.local -- vite-node src/scripts/resync-solr.ts",
-    "solr:schema": "dotenv -e .env.local -- vite-node src/scripts/sync-solr-schema.ts"
+    "solr:schema": "dotenv -e .env.local -- vite-node src/scripts/sync-solr-schema.ts",
+    "bulk-publish": "dotenv -e .env.local -- vite-node scripts/bulk-publish.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.908.0",

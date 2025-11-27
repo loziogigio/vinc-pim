@@ -1,43 +1,23 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Bell,
-  LogOut,
-  User,
-  LayoutDashboard,
-  Package,
-  Settings,
-  FileText,
-  Upload,
-  Layers
-} from "lucide-react";
+import { Bell, LogOut, User, Home } from "lucide-react";
 import type { B2BSessionData } from "@/lib/types/b2b";
-import { cn } from "@/components/ui/utils";
 
 type DashboardHeaderProps = {
   session: B2BSessionData;
   notificationCount?: number;
 };
 
-const navItems = [
-  { label: "Dashboard", href: "/b2b/dashboard", icon: LayoutDashboard },
-  { label: "PIM", href: "/b2b/pim", icon: Layers },
-  { label: "Catalog", href: "/b2b/catalog", icon: Package },
-  { label: "Import", href: "/b2b/import", icon: Upload },
-  { label: "Activity", href: "/b2b/activity", icon: FileText },
-  { label: "Settings", href: "/b2b/settings", icon: Settings },
-];
 
 export function DashboardHeader({ session, notificationCount = 0 }: DashboardHeaderProps) {
   const router = useRouter();
-  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
       await fetch("/api/b2b/logout", { method: "POST" });
-      router.push("/b2b/login");
+      router.push("/");
       router.refresh();
     } catch (error) {
       console.error("Logout failed:", error);
@@ -52,6 +32,13 @@ export function DashboardHeader({ session, notificationCount = 0 }: DashboardHea
       <div className="mx-auto max-w-[1600px] px-6">
         <div className="flex h-[64px] items-center justify-between">
           <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex h-10 w-10 items-center justify-center rounded-[0.428rem] bg-[#6e6b7b] text-white transition hover:bg-[#5e5873] shadow-[0_4px_12px_rgba(110,107,123,0.25)]"
+              title="Back to App Launcher"
+            >
+              <Home className="h-5 w-5" />
+            </Link>
             <div className="flex h-10 w-10 items-center justify-center rounded-[0.428rem] bg-[#009688] text-white shadow-[0_4px_12px_rgba(0,150,136,0.25)]">
               <span className="text-[0.95rem] font-semibold">B2B</span>
             </div>
@@ -86,28 +73,6 @@ export function DashboardHeader({ session, notificationCount = 0 }: DashboardHea
             </button>
           </div>
         </div>
-
-        <nav className="flex items-center gap-2 pb-4 pt-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2 rounded-[0.358rem] px-3 py-1.5 text-[0.85rem] font-medium transition",
-                  isActive
-                    ? "bg-[rgba(0,150,136,0.12)] text-[#009688] shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
-                    : "text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
-                )}
-              >
-                <Icon className="h-[0.95rem] w-[0.95rem]" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
     </header>
   );

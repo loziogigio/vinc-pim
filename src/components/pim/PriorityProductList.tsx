@@ -5,46 +5,38 @@ import Link from "next/link";
 import Image from "next/image";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import type { MultiLangString, ProductImage, ProductAnalytics } from "@/lib/types/pim";
 
+// CDN base URL from environment variable
+const CDN_BASE_URL = process.env.NEXT_PUBLIC_CDN_ENDPOINT && process.env.NEXT_PUBLIC_CDN_BUCKET
+  ? `${process.env.NEXT_PUBLIC_CDN_ENDPOINT}/${process.env.NEXT_PUBLIC_CDN_BUCKET}`
+  : "";
+
+/**
+ * Construct full CDN URL from relative path
+ */
+function constructCDNUrl(relativePath?: string): string {
+  if (!relativePath) return "";
+  if (relativePath.startsWith("http")) return relativePath;
+  if (!CDN_BASE_URL) return relativePath;
+  const normalizedPath = relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
+  return `${CDN_BASE_URL}${normalizedPath}`;
+}
+
+/**
+ * PIM Product for priority list display
+ * Uses shared types from @/lib/types/pim
+ */
 type PriorityProduct = {
   _id: string;
   entity_code: string;
   sku: string;
-  name: string | Record<string, string>;
+  name: MultiLangString;
   completeness_score: number;
   critical_issues: string[];
-  analytics: {
-    views_30d: number;
-    priority_score: number;
-  };
-  image: { id: string; thumbnail: string; original: string };
-  gallery?: { id: string; thumbnail: string; original: string }[];
+  analytics: ProductAnalytics;
+  images?: ProductImage[];
 };
-
-/**
- * Helper function to extract text from multilingual objects
- * Uses default language first, then fallback chain
- * IMPORTANT: This function MUST always return a string, never an object
- */
-function getMultilingualText(
-  text: string | Record<string, string> | undefined | null | any,
-  defaultLanguageCode: string = "it",
-  fallback: string = ""
-): string {
-  if (!text) return fallback;
-  if (typeof text === "string") return text;
-  if (typeof text !== "object") return String(text);
-
-  try {
-    const result = text[defaultLanguageCode] || text.en || Object.values(text)[0];
-    if (typeof result === "string" && result) return result;
-    if (result) return String(result);
-    return fallback;
-  } catch (error) {
-    console.error("Error extracting multilingual text:", error, text);
-    return fallback;
-  }
-}
 
 export function PriorityProductList() {
   const [products, setProducts] = useState<PriorityProduct[]>([]);
@@ -73,6 +65,24 @@ export function PriorityProductList() {
 
     fetchPriorityProducts();
   }, []);
+
+  /**
+   * Get localized product name with fallback to SKU
+   */
+  const getProductName = (name: MultiLangString, sku: string): string => {
+    if (!name) return sku;
+    if (typeof name === "string") return name;
+    return name[defaultLanguageCode] || name.it || name.en || Object.values(name)[0] || sku;
+  };
+
+  /**
+   * Get cover image URL (position 0) with CDN prefix
+   */
+  const getCoverImageUrl = (images?: ProductImage[]): string | null => {
+    if (!images || images.length === 0) return null;
+    const coverImage = images.find(img => img.position === 0) || images[0];
+    return coverImage?.url ? constructCDNUrl(coverImage.url) : null;
+  };
 
   if (isLoading) {
     return (
@@ -122,66 +132,71 @@ export function PriorityProductList() {
       </p>
 
       <div className="space-y-2">
-        {products.map((product) => (
-          <Link
-            key={product._id}
-            href={`/b2b/pim/products/${product.entity_code}`}
-            className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition"
-          >
-            {/* Image */}
-            <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
-              {product.image?.thumbnail ? (
-                <Image
-                  src={product.image.thumbnail}
-                  alt={getMultilingualText(product.name, defaultLanguageCode, product.sku)}
-                  width={48}
-                  height={48}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                  No img
+        {products.map((product) => {
+          const coverImageUrl = getCoverImageUrl(product.images);
+          const productName = getProductName(product.name, product.sku);
+
+          return (
+            <Link
+              key={product._id}
+              href={`/b2b/pim/products/${product.entity_code}`}
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition"
+            >
+              {/* Image */}
+              <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+                {coverImageUrl ? (
+                  <Image
+                    src={coverImageUrl}
+                    alt={productName}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                    No img
+                  </div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs font-mono text-muted-foreground">{product.sku}</span>
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
+                    Priority: {product.analytics.priority_score.toFixed(1)}
+                  </span>
                 </div>
-              )}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-xs font-mono text-muted-foreground">{product.sku}</span>
-                <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
-                  Priority: {product.analytics.priority_score.toFixed(1)}
-                </span>
-              </div>
-              <div className="text-sm font-medium text-foreground truncate">{getMultilingualText(product.name, defaultLanguageCode, product.sku)}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {product.analytics.views_30d} views · {product.completeness_score}% complete
-              </div>
-            </div>
-
-            {/* Issues & Score */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {product.critical_issues.length > 0 && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded text-xs">
-                  <AlertTriangle className="h-3 w-3" />
-                  {product.critical_issues.length}
+                <div className="text-sm font-medium text-foreground truncate">{productName}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {product.analytics.views_30d} views · {product.completeness_score}% complete
                 </div>
-              )}
-
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                  product.completeness_score >= 80
-                    ? "bg-emerald-100 text-emerald-700"
-                    : product.completeness_score >= 50
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {product.completeness_score}
               </div>
-            </div>
-          </Link>
-        ))}
+
+              {/* Issues & Score */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {product.critical_issues.length > 0 && (
+                  <div className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded text-xs">
+                    <AlertTriangle className="h-3 w-3" />
+                    {product.critical_issues.length}
+                  </div>
+                )}
+
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                    product.completeness_score >= 80
+                      ? "bg-emerald-100 text-emerald-700"
+                      : product.completeness_score >= 50
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {product.completeness_score}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

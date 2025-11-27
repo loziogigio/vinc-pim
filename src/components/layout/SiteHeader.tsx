@@ -131,7 +131,7 @@ export const SiteHeader = () => {
   const { isDark, toggle, initialized } = useTheme();
   const listRef = useRef<HTMLDivElement | null>(null);
   const isAdminRoute = pathname?.startsWith("/admin");
-  const isB2BRoute = pathname?.startsWith("/b2b");
+  const isB2BRoute = pathname?.startsWith("/b2b") || pathname === "/";
   const isEmbeddedPreview = pathname === "/preview" && searchParams?.get("embed") === "true";
   if (isAdminRoute || isB2BRoute || isEmbeddedPreview) {
     return null;

@@ -6,6 +6,7 @@ import { ProductTypeModel } from "@/lib/db/models/product-type";
 import { FeatureModel } from "@/lib/db/models/feature";
 import { TagModel } from "@/lib/db/models/tag";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
+import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -63,6 +64,31 @@ export async function GET(
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Recalculate completeness score on fetch to ensure accuracy
+    const currentScore = calculateCompletenessScore(product);
+    const currentIssues = findCriticalIssues(product);
+
+    // Update stored score if it differs (only for current version)
+    if (!versionParam && (product.completeness_score !== currentScore ||
+        JSON.stringify(product.critical_issues) !== JSON.stringify(currentIssues))) {
+      await PIMProductModel.updateOne(
+        { entity_code, isCurrent: true },
+        {
+          $set: {
+            completeness_score: currentScore,
+            critical_issues: currentIssues
+          }
+        }
+      );
+      // Update local product object
+      product.completeness_score = currentScore;
+      product.critical_issues = currentIssues;
+    } else {
+      // For old versions, just update local object (don't save to DB)
+      product.completeness_score = currentScore;
+      product.critical_issues = currentIssues;
     }
 
     // Populate product type feature details if product has a product_type
@@ -242,7 +268,7 @@ export async function PATCH(
       ? oldProduct.tag.map((tag: any) => tag.id).filter(Boolean)
       : [];
 
-    const product = await PIMProductModel.findOneAndUpdate(
+    let product = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
         // No wholesaler_id - database provides isolation
@@ -254,6 +280,30 @@ export async function PATCH(
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Recalculate completeness score after update
+    const newScore = calculateCompletenessScore(product);
+    const newIssues = findCriticalIssues(product);
+
+    // Update with recalculated score if changed
+    if (product.completeness_score !== newScore ||
+        JSON.stringify(product.critical_issues) !== JSON.stringify(newIssues)) {
+      product = await PIMProductModel.findOneAndUpdate(
+        {
+          entity_code,
+          isCurrent: true,
+        },
+        {
+          $set: {
+            completeness_score: newScore,
+            critical_issues: newIssues
+          }
+        },
+        { new: true }
+      ).lean() as any;
+
+      console.log(`📊 Recalculated score for ${entity_code}: ${newScore} (was ${product.completeness_score || 0})`);
     }
 
     // Update brand product counts if brand changed

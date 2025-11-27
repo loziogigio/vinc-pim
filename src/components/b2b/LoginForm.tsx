@@ -34,7 +34,7 @@ export function B2BLoginForm() {
         return;
       }
 
-      router.push("/b2b/dashboard");
+      router.push("/");
       router.refresh();
     } catch (err) {
       setError("An unexpected error occurred");
