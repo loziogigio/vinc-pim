@@ -30,8 +30,11 @@ export function buildSearchQuery(request: SearchRequest): SolrJsonQuery {
   const config = getSolrConfig();
   const lang = request.lang || 'it';
 
-  // Build main query
-  const query = buildMainQuery(request.text, lang);
+  // Build main query with fuzzy options (like dfl-api)
+  const query = buildMainQuery(request.text, lang, {
+    fuzzy: request.fuzzy,
+    fuzzyNum: request.fuzzy_num,
+  });
 
   // Build filter queries
   const filters = buildFilterQueries(request.filters, request);
@@ -132,46 +135,176 @@ export function buildFacetOnlyQuery(request: FacetRequest): SolrJsonQuery {
 }
 
 // ============================================
+// SEARCH FIELD CONFIGURATION (inspired by dfl-api)
+// ============================================
+
+/**
+ * Search fields with their boost weights (higher = more important)
+ * Order matters: earlier fields get higher base weight
+ *
+ * Two types of name/description fields:
+ * - _text_{lang}: Tokenized text fields for full-text search (matches terms anywhere)
+ * - _sort_{lang}: Lowercase string fields for true "starts with" prefix matching
+ */
+const SEARCH_FIELDS_CONFIG = [
+  // Exact match fields (highest weight)
+  { field: 'entity_code', weight: 1000, noWildcard: true },
+  { field: 'ean', weight: 900, noWildcard: true },
+  { field: 'sku', weight: 800, wildcardWeight: 600 }, // Allow prefix matching on SKU
+  // Name sort field - for "starts with" prefix matching (NOT stemmed)
+  { field: 'name_sort_{lang}', weight: 0, wildcardWeight: 10000, noExact: true, noContains: true },
+  // Name tokenized text - HIGHEST PRIORITY (much higher than other fields)
+  { field: 'name_text_{lang}', weight: 5000, wildcardWeight: 2000, containsWeight: 800 },
+  // Brand/Model (medium weight)
+  { field: 'brand_label', weight: 200, wildcardWeight: 80 },
+  { field: 'product_model', weight: 150, wildcardWeight: 50 },
+  // Short description sort - LOW (avoid double boost)
+  { field: 'short_description_sort_{lang}', weight: 0, wildcardWeight: 50, noExact: true, noContains: true },
+  // Short description text - VERY LOW weight (avoid double boost with name)
+  { field: 'short_description_text_{lang}', weight: 20, wildcardWeight: 8, containsWeight: 3 },
+  // Description sort - LOW
+  { field: 'description_sort_{lang}', weight: 0, wildcardWeight: 30, noExact: true, noContains: true },
+  // Description tokenized text - LOW weight
+  { field: 'description_text_{lang}', weight: 20, wildcardWeight: 8, containsWeight: 3 },
+  // Features (lower weight)
+  { field: 'features_text_{lang}', weight: 30, wildcardWeight: 10 },
+  // Attribute labels and values (searchable dynamic attributes)
+  { field: 'attr_values_text_{lang}', weight: 80, wildcardWeight: 30 }, // Attribute values (CROMATO, PEGASO, NT300)
+  { field: 'attr_labels_text_{lang}', weight: 25, wildcardWeight: 8 },  // Attribute labels (Colore, Materiale)
+  // Specification labels
+  { field: 'spec_labels_text_{lang}', weight: 20, wildcardWeight: 6 },
+  // Category/Collection/Product Type names
+  { field: 'category_name_text_{lang}', weight: 40, wildcardWeight: 12 },
+  { field: 'collection_names_text_{lang}', weight: 15, wildcardWeight: 5 },
+  { field: 'product_type_name_text_{lang}', weight: 20, wildcardWeight: 6 },
+  // Meta fields (SEO)
+  { field: 'meta_title_text_{lang}', weight: 35, wildcardWeight: 10 },
+  { field: 'meta_description_text_{lang}', weight: 15, wildcardWeight: 5 },
+  { field: 'meta_keywords_text_{lang}', weight: 20, wildcardWeight: 8 },
+  // Tag names
+  { field: 'tag_names_text_{lang}', weight: 10, wildcardWeight: 3 },
+];
+
+// ============================================
 // MAIN QUERY BUILDER
 // ============================================
 
 /**
- * Build the main query clause
+ * Build the main query clause with boosting (like dfl-api)
+ * Features:
+ * - Field-based boosting (name fields weighted highest)
+ * - Term position boosting (earlier terms get higher boost)
+ * - Wildcard patterns: term*, *term*
+ * - Fuzzy search support (optional)
+ *
+ * Note: Stop word filtering removed - Solr text analyzers handle this at index time.
+ * Italian prepositions (da, di, per) are often meaningful in product names
+ * (e.g., "tavolo da pranzo", "scarpe da corsa").
  */
-function buildMainQuery(text: string | undefined, lang: string): string {
+function buildMainQuery(
+  text: string | undefined,
+  lang: string,
+  options?: { fuzzy?: boolean; fuzzyNum?: number }
+): string {
   if (!text || text.trim() === '') {
     return '*:*';
   }
 
-  const searchText = escapeQueryChars(text.trim());
-  const searchTerms = searchText.split(/\s+/).filter(Boolean);
+  // Split into terms - no stop word filtering (Solr handles this)
+  const searchTerms = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
-  // Build query across multilingual text fields
-  const searchFields = [
-    'name',
-    'description',
-    'short_description',
-    'features',
-    'sku',
-  ];
-
-  const clauses: string[] = [];
-
-  for (const field of searchFields) {
-    const solrField = MULTILINGUAL_TEXT_FIELDS.includes(field)
-      ? `${field}_text_${lang}`
-      : field;
-
-    // Match all terms (AND) or any term (OR)
-    const termClauses = searchTerms.map((term) => `${solrField}:*${term}*`);
-    clauses.push(`(${termClauses.join(' AND ')})`);
+  if (searchTerms.length === 0) {
+    return '*:*';
   }
 
-  // Also search in entity_code and ean for exact matches
-  clauses.push(`entity_code:${searchText}`);
-  clauses.push(`ean:${searchText}`);
+  const numTerms = searchTerms.length;
+  const fuzzy = options?.fuzzy ?? false;
+  const fuzzyNum = options?.fuzzyNum ?? 1;
 
-  return clauses.join(' OR ');
+  // Build query for each term
+  const termQueries: string[] = [];
+
+  for (let termIndex = 0; termIndex < searchTerms.length; termIndex++) {
+    const term = escapeQueryChars(searchTerms[termIndex]);
+    const termBoost = getTermPositionBoost(termIndex, numTerms);
+
+    const fieldQueries: string[] = [];
+
+    for (const fieldConfig of SEARCH_FIELDS_CONFIG) {
+      // Replace {lang} placeholder with actual language
+      const solrField = fieldConfig.field.replace('{lang}', lang);
+
+      // 1. Exact/Fuzzy match (highest weight for this field)
+      // Skip if noExact is set (for sort fields used only for prefix matching)
+      if (fieldConfig.weight > 0 && !(fieldConfig as any).noExact) {
+        if (fuzzy && !fieldConfig.noWildcard) {
+          fieldQueries.push(`${solrField}:${term}~${fuzzyNum}^${fieldConfig.weight}`);
+        } else {
+          fieldQueries.push(`${solrField}:${term}^${fieldConfig.weight}`);
+        }
+        // For brand_label, also try UPPERCASE (brand field is case-sensitive)
+        if (solrField === 'brand_label') {
+          fieldQueries.push(`${solrField}:${term.toUpperCase()}^${fieldConfig.weight}`);
+        }
+      }
+
+      // 2. Prefix wildcard: term* (medium weight)
+      if (fieldConfig.wildcardWeight && fieldConfig.wildcardWeight > 0 && !fieldConfig.noWildcard) {
+        fieldQueries.push(`${solrField}:${term}*^${fieldConfig.wildcardWeight}`);
+      }
+
+      // 3. Contains wildcard: *term* (lower weight)
+      // Skip if noContains is set (for sort fields - contains doesn't work on string fields)
+      if (fieldConfig.containsWeight && fieldConfig.containsWeight > 0 && !fieldConfig.noWildcard && !(fieldConfig as any).noContains) {
+        fieldQueries.push(`${solrField}:*${term}*^${fieldConfig.containsWeight}`);
+      }
+    }
+
+    // Combine all field queries for this term with OR, apply term boost
+    const termQuery = `((${fieldQueries.join(' ')})^${termBoost})`;
+
+    // First term uses implicit AND, subsequent terms use +
+    if (termIndex === 0) {
+      termQueries.push(termQuery);
+    } else {
+      termQueries.push(`+${termQuery}`);
+    }
+  }
+
+  // Add POSITION BOOST - each term appearing EARLY in name gets boost
+  // For "vaso wc sospeso geberit": terms can be in name/brand/description
+  // But products with terms early in NAME rank highest
+  for (const term of searchTerms) {
+    const escapedTerm = escapeQueryChars(term);
+    // Term appears in first 25 chars of name → high boost
+    termQueries.push(`(name_sort_${lang}:/.{0,25}${escapedTerm}.*/^500000)`);
+  }
+
+  // Add PHRASE BOOST for consecutive terms in name (2-term combinations)
+  if (searchTerms.length >= 2) {
+    // Boost consecutive pairs: "vaso wc", "wc sospeso", "sospeso geberit"
+    for (let i = 0; i < searchTerms.length - 1; i++) {
+      const pair = `${searchTerms[i]} ${searchTerms[i + 1]}`;
+      // Exact pair in name (not stemmed)
+      termQueries.push(`(name_sort_${lang}:/.*${pair}.*/^1000000)`);
+      // Pair early in name
+      termQueries.push(`(name_sort_${lang}:/.{0,20}${pair}.*/^2000000)`);
+    }
+  }
+
+  return termQueries.join(' ');
+}
+
+/**
+ * Calculate boost factor based on term position (earlier terms get higher boost)
+ * Based on dfl-api get_boost_from_array_position
+ */
+function getTermPositionBoost(position: number, totalTerms: number): number {
+  if (totalTerms <= 1) {
+    return 1;
+  }
+  // Earlier terms get higher boost: 1.5 * (numTerms - position)
+  return 1.5 * (totalTerms - position);
 }
 
 /**
