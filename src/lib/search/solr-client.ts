@@ -3,7 +3,7 @@
  * Handles communication with Solr search engine
  */
 
-import { getSolrConfig } from './facet-config';
+import { getSolrConfig } from '@/config/project.config';
 import { SolrSearchResponse } from '@/lib/types/search';
 
 export class SolrClient {

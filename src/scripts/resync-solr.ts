@@ -10,6 +10,8 @@ import mongoose from 'mongoose';
 import { PIMProductModel } from '../lib/db/models/pim-product';
 import { SolrAdapter, loadAdapterConfigs } from '../lib/adapters';
 import { connectToDatabase, disconnectAll } from '../lib/db/connection';
+import { LanguageModel } from '../lib/db/models/language';
+import { syncSolrSchemaWithLanguages } from '../services/solr-schema.service';
 
 const BATCH_SIZE = 100;
 
@@ -43,7 +45,16 @@ async function main() {
     if (created) {
       console.log(`✓ Created Solr collection: ${solrCore}`);
     } else if (exists) {
-      console.log('✓ Solr collection exists\n');
+      console.log('✓ Solr collection exists');
+    }
+
+    // Ensure schema is properly set up (creates fields with correct types)
+    console.log('\n📋 Ensuring Solr schema is up to date...');
+    const enabledLanguages = await LanguageModel.find({ isEnabled: true }).sort({ order: 1 });
+    if (enabledLanguages.length > 0) {
+      await syncSolrSchemaWithLanguages(enabledLanguages);
+    } else {
+      console.log('  ⚠️  No enabled languages found - run seed-languages first');
     }
   } catch (error: any) {
     console.error('❌ Failed to connect to Solr:', error.message);

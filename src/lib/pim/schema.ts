@@ -475,19 +475,19 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     description: "Parent product SKU"
   },
   {
-    name: "variations_sku",
+    name: "variants_sku",
     type: "array",
     category: "additional",
     required: false,
-    description: "Child variation SKUs (array of SKU strings)",
+    description: "Child variant SKUs (array of SKU strings)",
     example: '["SKU-VAR-001", "SKU-VAR-002", "SKU-VAR-003"]'
   },
   {
-    name: "variations_entity_code",
+    name: "variants_entity_code",
     type: "array",
     category: "additional",
     required: false,
-    description: "Child variation entity_codes (array of entity_code strings)",
+    description: "Child variant entity_codes (array of entity_code strings)",
     example: '["PROD-VAR-001", "PROD-VAR-002", "PROD-VAR-003"]'
   },
 

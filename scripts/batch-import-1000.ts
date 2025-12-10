@@ -56,7 +56,7 @@ function generateProducts(count: number): any[] {
  * Apply default language to multilingual fields
  */
 function applyDefaultLanguage(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+  const defaultLang = projectConfig().defaultLanguage;
   const MULTILINGUAL_FIELDS = ["name", "description", "short_description", "features", "specifications"];
 
   for (const field of MULTILINGUAL_FIELDS) {

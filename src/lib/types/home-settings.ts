@@ -38,6 +38,29 @@ export interface CDNConfiguration {
   enabled?: boolean;
 }
 
+/**
+ * CDN Credentials for file uploads
+ * Stored in MongoDB homesettings for global access
+ */
+export interface CDNCredentials {
+  /** CDN endpoint URL (e.g., cloud-object-storage.appdomain.cloud) */
+  cdn_url?: string;
+  /** CDN bucket region (e.g., eu-de) */
+  bucket_region?: string;
+  /** Bucket name (e.g., hidros) */
+  bucket_name?: string;
+  /** Folder path within the bucket (e.g., eshop) */
+  folder_name?: string;
+  /** CDN access key ID */
+  cdn_key?: string;
+  /** CDN secret access key */
+  cdn_secret?: string;
+  /** Signed URL expiry time in seconds (0 = no expiry/public) */
+  signed_url_expiry?: number;
+  /** Delete files from cloud when removed from database */
+  delete_from_cloud?: boolean;
+}
+
 export interface HomeSettings {
   _id: string;
   customerId: string;
@@ -45,6 +68,7 @@ export interface HomeSettings {
   defaultCardVariant: "b2b" | "horizontal" | "compact" | "detailed";
   cardStyle: ProductCardStyle;
   cdn?: CDNConfiguration;
+  cdn_credentials?: CDNCredentials;
   createdAt: string | Date;
   updatedAt: string | Date;
   lastModifiedBy?: string;

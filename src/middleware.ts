@@ -23,6 +23,11 @@ const securityHeaders: Record<string, string> = {
 const getClientIp = (request: NextRequest) =>
   request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
 
+const isLocalhost = (request: NextRequest) => {
+  const host = request.headers.get("host") || "";
+  return host.startsWith("localhost") || host.startsWith("127.0.0.1");
+};
+
 /**
  * Extract tenant ID from request
  * Priority: X-Tenant-ID header > query param > subdomain > env var
@@ -120,13 +125,15 @@ export async function middleware(request: NextRequest) {
       response.headers.set(key, value);
     });
 
-    // Rate limiting
-    const ip = getClientIp(request);
-    if (!consumeToken(ip)) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: corsHeaders }
-      );
+    // Rate limiting (skip for localhost)
+    if (!isLocalhost(request)) {
+      const ip = getClientIp(request);
+      if (!consumeToken(ip)) {
+        return NextResponse.json(
+          { error: "Too many requests" },
+          { status: 429, headers: corsHeaders }
+        );
+      }
     }
 
     return response;
@@ -146,12 +153,15 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  const ip = getClientIp(request);
-  if (!consumeToken(ip)) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: isApiRoute ? corsHeaders : undefined }
-    );
+  // Rate limiting (skip for localhost)
+  if (!isLocalhost(request)) {
+    const ip = getClientIp(request);
+    if (!consumeToken(ip)) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: isApiRoute ? corsHeaders : undefined }
+      );
+    }
   }
 
   return response;

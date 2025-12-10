@@ -8,7 +8,8 @@ import { getSolrClient, SolrError } from '@/lib/search/solr-client';
 import { buildFacetOnlyQuery } from '@/lib/search/query-builder';
 import { transformFacetResponse } from '@/lib/search/response-transformer';
 import { FacetRequest } from '@/lib/types/search';
-import { getSolrConfig, isSolrEnabled, DEFAULT_FACET_FIELDS } from '@/lib/search/facet-config';
+import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
+import { DEFAULT_FACET_FIELDS } from '@/lib/search/facet-config';
 
 export async function POST(request: NextRequest) {
   try {

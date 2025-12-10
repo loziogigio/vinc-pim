@@ -97,10 +97,11 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
         reference_id: formData.reference_id || undefined,
         label: formData.label || undefined,
         url: formData.url || undefined,
-        icon: formData.icon || undefined,
+        // For image fields, send empty string explicitly to clear them (not undefined)
+        icon: formData.icon,
         rich_text: formData.rich_text || undefined,
-        image_url: formData.image_url || undefined,
-        mobile_image_url: formData.mobile_image_url || undefined,
+        image_url: formData.image_url,
+        mobile_image_url: formData.mobile_image_url,
         parent_id: formData.parent_id || undefined,
         include_children: formData.include_children,
         max_depth: formData.max_depth ? parseInt(formData.max_depth) : undefined,
@@ -142,15 +143,25 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           {/* Header */}
-          <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-xl font-bold text-foreground">
-              {item ? "Edit Menu Item" : "Create Menu Item"}
-            </h2>
-            {parentItem && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Parent: {parentItem.label || parentItem.reference_id}
-              </p>
-            )}
+          <div className="px-6 py-4 border-b border-border flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">
+                {item ? "Edit Menu Item" : "Create Menu Item"}
+              </h2>
+              {parentItem && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Parent: {parentItem.label || parentItem.reference_id}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded hover:bg-muted transition text-muted-foreground hover:text-foreground"
+              title="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           {/* Form Fields */}
@@ -208,12 +219,12 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
                   URL *
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   value={formData.url}
                   onChange={(e) =>
                     setFormData({ ...formData, url: e.target.value })
                   }
-                  placeholder="https://example.com"
+                  placeholder="/page or https://example.com"
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   required
                 />
@@ -229,7 +240,7 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
                     Search URL *
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     value={formData.url}
                     onChange={(e) =>
                       setFormData({ ...formData, url: e.target.value })

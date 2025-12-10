@@ -16,41 +16,50 @@ export interface ProjectConfig {
 }
 
 /**
+ * Helper to read env var at runtime (prevents webpack inlining)
+ */
+function getEnv(key: string): string | undefined {
+  return process.env[key];
+}
+
+/**
  * Get resolved instance name from environment
  * Priority: VINC_TENANT_ID → vinc-${VINC_TENANT_ID}, else VINC_MONGO_DB
  */
 export function getInstanceName(): string {
-  if (process.env.VINC_TENANT_ID) {
-    return `vinc-${process.env.VINC_TENANT_ID}`;
+  const tenantId = getEnv('VINC_TENANT_ID');
+  if (tenantId) {
+    return `vinc-${tenantId}`;
   }
-  return process.env.VINC_MONGO_DB ?? 'app';
+  return getEnv('VINC_MONGO_DB') ?? 'app';
 }
 
 /**
  * Get project configuration from environment or defaults
+ * Uses getEnv() to prevent webpack from inlining env vars at build time
  */
 export function getProjectConfig(): ProjectConfig {
-  const tenantId = process.env.VINC_TENANT_ID || 'default';
-  const projectId = process.env.PROJECT_ID || 'default';
+  const tenantId = getEnv('VINC_TENANT_ID') || 'default';
+  const projectId = getEnv('PROJECT_ID') || 'default';
 
   // Single source of truth: instance name used for both MongoDB and Solr
   const instanceName = getInstanceName();
 
   // MongoDB database name (can be overridden with VINC_MONGO_DB_OVERRIDE)
-  const mongoDatabase = process.env.VINC_MONGO_DB_OVERRIDE || instanceName;
+  const mongoDatabase = getEnv('VINC_MONGO_DB_OVERRIDE') || instanceName;
 
   // Solr collection (can be overridden with SOLR_CORE)
-  const solrCore = process.env.SOLR_CORE || instanceName;
+  const solrCore = getEnv('SOLR_CORE') || instanceName;
 
   // Connection URLs
-  const solrUrl = process.env.SOLR_URL || 'http://localhost:8983/solr';
-  const mongoUrl = process.env.VINC_MONGO_URL || 'mongodb://admin:admin@localhost:27017/?authSource=admin';
+  const solrUrl = getEnv('SOLR_URL') || 'http://localhost:8983/solr';
+  const mongoUrl = getEnv('VINC_MONGO_URL') || 'mongodb://admin:admin@localhost:27017/?authSource=admin';
 
   // Default language is Italian
-  const defaultLanguage = process.env.DEFAULT_LANGUAGE || "it";
+  const defaultLanguage = getEnv('DEFAULT_LANGUAGE') || "it";
 
   // Initially enabled languages (can be changed via admin)
-  const enabledLanguages = process.env.ENABLED_LANGUAGES?.split(",") || ["it"];
+  const enabledLanguages = getEnv('ENABLED_LANGUAGES')?.split(",") || ["it"];
 
   return {
     tenantId,
@@ -119,9 +128,70 @@ async function ensureSolrCore(config: ProjectConfig): Promise<void> {
   }
 }
 
-// Export singleton instance
-export const projectConfig = getProjectConfig();
-validateProjectConfig(projectConfig);
+/**
+ * Get project config - call this function to read env vars at RUNTIME
+ * DO NOT use a singleton - values must be read fresh for Docker deployments
+ */
+export function projectConfig(): ProjectConfig {
+  const config = getProjectConfig();
+  validateProjectConfig(config);
+  return config;
+}
 
 // Export ensureSolrCore for use in enable-search endpoint
 export { ensureSolrCore };
+
+// ============================================
+// SOLR CONFIGURATION
+// ============================================
+
+export interface SolrConfig {
+  url: string;
+  core: string;
+  defaultRows: number;
+  maxRows: number;
+  facetLimit: number;
+  facetMinCount: number;
+}
+
+/**
+ * Get Solr configuration - single source of truth
+ */
+export function getSolrConfig(): SolrConfig {
+  const config = getProjectConfig();
+
+  return {
+    url: config.solrUrl,
+    core: config.solrCore,
+    defaultRows: parseInt(getEnv('SEARCH_DEFAULT_ROWS') || '20', 10),
+    maxRows: parseInt(getEnv('SEARCH_MAX_ROWS') || '100', 10),
+    facetLimit: parseInt(getEnv('FACET_DEFAULT_LIMIT') || '100', 10),
+    facetMinCount: parseInt(getEnv('FACET_MIN_COUNT') || '1', 10),
+  };
+}
+
+/**
+ * Check if Solr is enabled
+ */
+export function isSolrEnabled(): boolean {
+  return getEnv('SOLR_ENABLED') === 'true';
+}
+
+/**
+ * MULTILINGUAL_FIELDS - Single source of truth
+ * Fields that support multilingual data (language-keyed objects)
+ * Used by: parser.ts, import API routes, transformers
+ */
+export const MULTILINGUAL_FIELDS = [
+  "name",
+  "description",
+  "short_description",
+  "features",
+  "specifications",
+  "attributes",
+  "meta_title",
+  "meta_description",
+  "keywords",
+] as const;
+
+export type MultilingualField = typeof MULTILINGUAL_FIELDS[number];

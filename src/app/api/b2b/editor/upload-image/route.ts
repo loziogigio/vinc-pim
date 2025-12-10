@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdnClient";
+import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdn-upload.service";
 
 /**
  * POST /api/b2b/editor/upload-image
@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isCdnConfigured()) {
+    const cdnConfigured = await isCdnConfigured();
+    if (!cdnConfigured) {
       return NextResponse.json(
         { error: "CDN is not configured" },
         { status: 500 }
@@ -54,8 +55,8 @@ export async function POST(req: NextRequest) {
     // Upload to CDN
     const result = await uploadToCdn({
       buffer,
-      contentType: file.type,
-      fileName: file.name,
+      content_type: file.type,
+      file_name: file.name,
     });
 
     return NextResponse.json({

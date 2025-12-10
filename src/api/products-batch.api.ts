@@ -467,7 +467,7 @@ router.post("/reindex", async (req: Request, res: Response) => {
     const solrDocuments = await convertProductsToSolrDocs(products);
 
     // Index to Solr
-    const solrUrl = `http://${projectConfig.solrCore}:8983/solr/${projectConfig.solrCore}/update?commit=true`;
+    const solrUrl = `http://${projectConfig().solrCore}:8983/solr/${projectConfig().solrCore}/update?commit=true`;
     await axios.post(solrUrl, solrDocuments, {
       headers: { "Content-Type": "application/json" }
     });
@@ -567,7 +567,7 @@ async function reindexProductsToSolr(skus: string[]): Promise<void> {
 
   const solrDocuments = await convertProductsToSolrDocs(products);
 
-  const solrUrl = `http://${process.env.SOLR_HOST || "localhost"}:${process.env.SOLR_PORT || 8983}/solr/${projectConfig.solrCore}/update?commit=true`;
+  const solrUrl = `http://${process.env.SOLR_HOST || "localhost"}:${process.env.SOLR_PORT || 8983}/solr/${projectConfig().solrCore}/update?commit=true`;
 
   await axios.post(solrUrl, solrDocuments, {
     headers: { "Content-Type": "application/json" }

@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { uploadMultipleImages } from "@/lib/cdn/image-upload";
+import { deleteFromCdn } from "@/lib/services/cdn-upload.service";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/images
@@ -259,6 +260,7 @@ export async function PATCH(
 /**
  * DELETE /api/b2b/pim/products/[entity_code]/images?cdn_key=...
  * Delete a specific image from a product
+ * Supports cdn_key, _id, or URL as identifier
  */
 export async function DELETE(
   req: NextRequest,
@@ -274,11 +276,11 @@ export async function DELETE(
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;
 
-    // Get image CDN key from query params
+    // Get image identifier from query params (supports cdn_key, _id, or URL)
     const { searchParams } = new URL(req.url);
-    const cdn_key = searchParams.get("cdn_key");
+    const imageId = searchParams.get("cdn_key");
 
-    if (!cdn_key) {
+    if (!imageId) {
       return NextResponse.json(
         { error: "Missing cdn_key parameter" },
         { status: 400 }
@@ -301,9 +303,35 @@ export async function DELETE(
       );
     }
 
-    // Check if we're deleting the first (primary) image
+    // Find the image by cdn_key, _id, or URL
     const currentImages = product.images || [];
-    const isDeletingPrimary = currentImages.length > 0 && currentImages[0]?.cdn_key === cdn_key;
+    const imageItem = currentImages.find((img: any) =>
+      img.cdn_key === imageId ||
+      img._id?.toString() === imageId ||
+      img.url === imageId
+    );
+
+    if (!imageItem) {
+      return NextResponse.json(
+        { error: "Image not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if we're deleting the first (primary) image
+    const isDeletingPrimary = currentImages.length > 0 &&
+      (currentImages[0]?.cdn_key === imageItem.cdn_key ||
+       currentImages[0]?._id?.toString() === imageItem._id?.toString());
+
+    // Build the $pull query based on available identifier
+    let pullQuery: any;
+    if (imageItem.cdn_key) {
+      pullQuery = { cdn_key: imageItem.cdn_key };
+    } else if (imageItem._id) {
+      pullQuery = { _id: imageItem._id };
+    } else {
+      pullQuery = { url: imageItem.url };
+    }
 
     // Remove image from images array
     const result = await PIMProductModel.findOneAndUpdate(
@@ -312,7 +340,7 @@ export async function DELETE(
         isCurrent: true,
       },
       {
-        $pull: { images: { cdn_key: cdn_key } },
+        $pull: { images: pullQuery },
         $set: {
           updated_at: new Date(),
           last_updated_by: "manual",
@@ -339,9 +367,45 @@ export async function DELETE(
       );
     }
 
+    // Derive cdn_key from URL if not available (for CDN deletion)
+    let cdnKeyForDeletion = imageItem.cdn_key;
+    if (!cdnKeyForDeletion && imageItem.url) {
+      // Try to extract key from URL
+      try {
+        const url = new URL(imageItem.url);
+        const pathParts = url.pathname.split('/');
+        if (pathParts.length > 2) {
+          cdnKeyForDeletion = pathParts.slice(2).join('/');
+        }
+      } catch {
+        // URL parsing failed, skip CDN deletion
+      }
+    }
+
+    // Try to delete from CDN (if delete_from_cloud is enabled in settings)
+    // CDN deletion is best-effort - DB record is already deleted, so we continue even if this fails
+    let cdnDeleted = false;
+    let cdnError: string | null = null;
+
+    if (cdnKeyForDeletion) {
+      try {
+        cdnDeleted = await deleteFromCdn(cdnKeyForDeletion);
+        if (!cdnDeleted) {
+          cdnError = "CDN deletion skipped (disabled or not configured)";
+        }
+      } catch (err) {
+        cdnError = err instanceof Error ? err.message : "CDN deletion failed (permission denied or network error)";
+        console.warn("[images] CDN deletion failed, but DB record already removed:", cdnError);
+      }
+    } else {
+      cdnError = "CDN deletion skipped (no cdn_key available)";
+    }
+
     return NextResponse.json({
       success: true,
       message: "Image deleted successfully",
+      cdn_deleted: cdnDeleted,
+      cdn_error: cdnError,
       product: result,
     });
   } catch (error) {

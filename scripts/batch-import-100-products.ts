@@ -180,7 +180,7 @@ function generateProducts(): any[] {
  * Apply default language (same as import worker)
  */
 function applyDefaultLanguage(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+  const defaultLang = projectConfig().defaultLanguage;
   const MULTILINGUAL_FIELDS = [
     "name", "description", "short_description", "features",
     "specifications", "meta_title", "meta_description", "keywords"

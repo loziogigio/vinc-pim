@@ -40,11 +40,11 @@ async function syncTestProducts() {
       marketplace_name: "Solr",
       custom_config: {
         solr_url: solrUrl,
-        solr_core: projectConfig.solrCore,
+        solr_core: projectConfig().solrCore,
       },
     });
 
-    console.log(`🔍 Solr URL: ${solrUrl}/${projectConfig.solrCore}\n`);
+    console.log(`🔍 Solr URL: ${solrUrl}/${projectConfig().solrCore}\n`);
     console.log("🔄 Indexing products to Solr...\n");
 
     // Sync products
@@ -72,7 +72,7 @@ async function syncTestProducts() {
     console.log("=".repeat(60) + "\n");
 
     // Get one product from Solr to inspect its structure
-    const verifyUrl = `${solrUrl}/${projectConfig.solrCore}/select?q=entity_code:DRILL-BOSCH-001&rows=1&wt=json`;
+    const verifyUrl = `${solrUrl}/${projectConfig().solrCore}/select?q=entity_code:DRILL-BOSCH-001&rows=1&wt=json`;
     const response = await fetch(verifyUrl);
     const data = await response.json();
 
@@ -134,7 +134,7 @@ async function syncTestProducts() {
     }
 
     // Count total docs in Solr
-    const countUrl = `${solrUrl}/${projectConfig.solrCore}/select?q=*:*&rows=0&wt=json`;
+    const countUrl = `${solrUrl}/${projectConfig().solrCore}/select?q=*:*&rows=0&wt=json`;
     const countResponse = await fetch(countUrl);
     const countData = await countResponse.json();
 

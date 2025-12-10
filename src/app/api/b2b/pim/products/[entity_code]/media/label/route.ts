@@ -19,11 +19,14 @@ export async function PATCH(
     }
 
     const { entity_code } = await params;
-    const { cdn_key, label } = await req.json();
+    const { cdn_key, media_id, label } = await req.json();
 
-    if (!cdn_key || typeof label !== "string") {
+    // Support both cdn_key (legacy) and media_id (new)
+    const mediaIdentifier = media_id || cdn_key;
+
+    if (!mediaIdentifier || typeof label !== "string") {
       return NextResponse.json(
-        { error: "cdn_key and label are required" },
+        { error: "media_id (or cdn_key) and label are required" },
         { status: 400 }
       );
     }
@@ -42,9 +45,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Find and update the media item
+    // Find and update the media item by _id (primary) or cdn_key (fallback)
     const media = product.media || [];
-    const mediaIndex = media.findIndex((m: any) => m.cdn_key === cdn_key);
+    const mediaIndex = media.findIndex((m: any) =>
+      m._id?.toString() === mediaIdentifier || m.cdn_key === mediaIdentifier
+    );
 
     if (mediaIndex === -1) {
       return NextResponse.json({ error: "Media file not found" }, { status: 404 });
@@ -71,7 +76,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       message: "Label updated successfully",
-      cdn_key,
+      media_id: mediaIdentifier,
       label: label.trim(),
       product: updatedProduct,
     });

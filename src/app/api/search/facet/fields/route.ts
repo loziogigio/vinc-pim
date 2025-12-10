@@ -4,7 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSolrConfig, isSolrEnabled, FACET_FIELDS_CONFIG } from '@/lib/search/facet-config';
+import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
+import { FACET_FIELDS_CONFIG } from '@/lib/search/facet-config';
 
 interface FieldInfo {
   name: string;

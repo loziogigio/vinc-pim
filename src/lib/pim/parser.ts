@@ -7,7 +7,7 @@ import { parse } from "csv-parse/sync";
 import * as XLSX from "xlsx";
 import { IImportSource } from "../db/models/import-source";
 import { IPIMProduct } from "../db/models/pim-product";
-import { projectConfig } from "../../config/project.config";
+import { projectConfig, MULTILINGUAL_FIELDS } from "../../config/project.config";
 
 export interface ParsedRow {
   entity_code: string;
@@ -16,27 +16,27 @@ export interface ParsedRow {
 }
 
 /**
- * Multilingual fields that should have language suffixes
- * If these fields are provided without a language suffix (e.g., "name" instead of "name.it"),
- * they will be automatically mapped to the default language
+ * Check if an object is already in multilingual format (has language keys at root level)
+ * @param obj - The object to check
+ * @param languageCodes - Array of valid language codes from database
  */
-const MULTILINGUAL_FIELDS = [
-  "name",
-  "description",
-  "short_description",
-  "features",
-  "specifications",
-  "meta_title",
-  "meta_description",
-  "keywords",
-];
+function isMultilingualObject(obj: any, languageCodes: string[]): boolean {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    return false;
+  }
+  const keys = Object.keys(obj);
+  // Check if all keys are language codes (e.g., { it: ..., en: ... })
+  return keys.length > 0 && keys.every(key => languageCodes.includes(key));
+}
 
 /**
  * Parse CSV file
+ * @param languageCodes - Optional array of language codes for multilingual detection
  */
 export async function parseCSV(
   fileBuffer: Buffer,
-  source: IImportSource
+  source: IImportSource,
+  languageCodes?: string[]
 ): Promise<ParsedRow[]> {
   try {
     const records = parse(fileBuffer, {
@@ -46,7 +46,7 @@ export async function parseCSV(
       relaxColumnCount: true,
     });
 
-    return records.map((row: any) => mapRowToProduct(row, source));
+    return records.map((row: any) => mapRowToProduct(row, source, languageCodes));
   } catch (error: any) {
     throw new Error(`CSV parse error: ${error.message}`);
   }
@@ -54,11 +54,13 @@ export async function parseCSV(
 
 /**
  * Parse Excel file
+ * @param languageCodes - Optional array of language codes for multilingual detection
  */
 export async function parseExcel(
   fileBuffer: Buffer,
   source: IImportSource,
-  sheetName?: string
+  sheetName?: string,
+  languageCodes?: string[]
 ): Promise<ParsedRow[]> {
   try {
     const workbook = XLSX.read(fileBuffer, { type: "buffer" });
@@ -74,7 +76,7 @@ export async function parseExcel(
 
     const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-    return jsonData.map((row: any) => mapRowToProduct(row, source));
+    return jsonData.map((row: any) => mapRowToProduct(row, source, languageCodes));
   } catch (error: any) {
     throw new Error(`Excel parse error: ${error.message}`);
   }
@@ -82,10 +84,12 @@ export async function parseExcel(
 
 /**
  * Map raw row to PIM product structure using source field mapping
+ * @param languageCodes - Optional array of language codes for multilingual detection
  */
 function mapRowToProduct(
   row: Record<string, any>,
-  source: IImportSource
+  source: IImportSource,
+  languageCodes?: string[]
 ): ParsedRow {
   const data: Partial<IPIMProduct> = {};
 
@@ -131,7 +135,7 @@ function mapRowToProduct(
   cleanupIncompleteArrays(data);
 
   // Apply default language to multilingual fields
-  applyDefaultLanguage(data);
+  applyDefaultLanguage(data, languageCodes);
 
   return {
     entity_code,
@@ -144,19 +148,20 @@ function mapRowToProduct(
  * Apply default language to multilingual fields
  * If a multilingual field is provided without a language suffix,
  * move its value to the default language key
+ * @param languageCodes - Optional array of language codes for multilingual detection
  */
-function applyDefaultLanguage(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+function applyDefaultLanguage(data: any, languageCodes?: string[]): void {
+  const defaultLang = projectConfig().defaultLanguage;
 
   for (const field of MULTILINGUAL_FIELDS) {
     // Check if the field exists without language suffix
     if (data[field] !== undefined && data[field] !== null && data[field] !== "") {
-      // Check if it's already a language object (e.g., { it: "...", en: "..." })
-      const isLanguageObject = typeof data[field] === "object" &&
-                                !Array.isArray(data[field]) &&
-                                data[field] !== null;
+      // Check if already in multilingual format (keys are language codes)
+      const alreadyMultilingual = languageCodes
+        ? isMultilingualObject(data[field], languageCodes)
+        : false; // If no language codes provided, assume not multilingual
 
-      if (!isLanguageObject) {
+      if (!alreadyMultilingual) {
         // Move the plain value to the default language
         const plainValue = data[field];
         data[field] = {

@@ -31,7 +31,6 @@ import {
   Check,
   X as XIcon,
   Maximize2,
-  Plus,
   GripVertical,
   ExternalLink,
   Link as LinkIcon,
@@ -40,15 +39,24 @@ import {
 type MediaType = "document" | "video" | "3d-model";
 
 interface MediaItem {
+  _id?: string; // MongoDB ID - used as fallback when cdn_key is missing
   type: MediaType;
   file_type: string;
   url: string;
-  cdn_key: string;
+  cdn_key?: string; // May be missing for older uploads
   label?: string | Record<string, string>; // Can be string or MultilingualText object
   size_bytes?: number; // Optional for external links
   uploaded_at: string;
   is_external_link?: boolean; // true for URLs, false for uploads
   position: number; // Order within type group
+}
+
+/**
+ * Get a unique identifier for a media item
+ * Prefers cdn_key, falls back to _id, then URL
+ */
+function getMediaId(media: MediaItem): string {
+  return media.cdn_key || media._id || media.url;
 }
 
 interface MediaGalleryProps {
@@ -132,7 +140,7 @@ function MediaFileItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: media.cdn_key, disabled });
+  } = useSortable({ id: getMediaId(media), disabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -158,7 +166,7 @@ function MediaFileItem({
   const handleSaveLabel = () => {
     const currentLabel = getLabelAsString(media.label);
     if (onLabelUpdate && editedLabel.trim() !== currentLabel) {
-      onLabelUpdate(media.cdn_key, editedLabel.trim());
+      onLabelUpdate(getMediaId(media), editedLabel.trim());
     }
     setIsEditingLabel(false);
   };
@@ -524,7 +532,7 @@ function MediaFileItem({
 
           <button
             type="button"
-            onClick={() => onDelete(media.cdn_key)}
+            onClick={() => onDelete(getMediaId(media))}
             disabled={disabled}
             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete"
@@ -710,15 +718,15 @@ export function MediaGallery({
     setMedia(initialMedia);
   }, [initialMedia]);
 
-  const handleDelete = async (cdn_key: string) => {
+  const handleDelete = async (mediaId: string) => {
     if (!confirm("Are you sure you want to delete this file?")) {
       return;
     }
 
-    setDeleting(cdn_key);
+    setDeleting(mediaId);
     try {
-      await onDelete(cdn_key);
-      setMedia(media.filter((m) => m.cdn_key !== cdn_key));
+      await onDelete(mediaId);
+      setMedia(media.filter((m) => getMediaId(m) !== mediaId));
     } catch (error) {
       console.error("Failed to delete media:", error);
       alert("Failed to delete file. Please try again.");
@@ -766,8 +774,8 @@ export function MediaGallery({
     }
 
     const items = groupedMedia[type];
-    const oldIndex = items.findIndex((item) => item.cdn_key === active.id);
-    const newIndex = items.findIndex((item) => item.cdn_key === over.id);
+    const oldIndex = items.findIndex((item) => getMediaId(item) === active.id);
+    const newIndex = items.findIndex((item) => getMediaId(item) === over.id);
 
     if (oldIndex === -1 || newIndex === -1) {
       return;
@@ -775,10 +783,20 @@ export function MediaGallery({
 
     const newOrder = arrayMove(items, oldIndex, newIndex);
 
+    // Optimistically update local state with new positions
+    const updatedMedia = media.map((m) => {
+      if (m.type !== type) return m;
+      const newPosition = newOrder.findIndex((item) => getMediaId(item) === getMediaId(m));
+      return newPosition >= 0 ? { ...m, position: newPosition } : m;
+    });
+    setMedia(updatedMedia);
+
     try {
-      await onReorder(type, newOrder.map((m) => m.cdn_key));
+      await onReorder(type, newOrder.map((m) => getMediaId(m)));
     } catch (error) {
       console.error("Failed to reorder:", error);
+      // Revert on error
+      setMedia(media);
     }
   };
 
@@ -847,17 +865,17 @@ export function MediaGallery({
             onDragEnd={(event) => handleDragEnd(event, type)}
           >
             <SortableContext
-              items={items.map((item) => item.cdn_key)}
+              items={items.map((item) => getMediaId(item))}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-2">
                 {items.map((item, index) => (
                   <MediaFileItem
-                    key={item.cdn_key || `${type}-${index}`}
+                    key={getMediaId(item)}
                     media={item}
                     onDelete={handleDelete}
                     onLabelUpdate={onLabelUpdate}
-                    disabled={disabled || uploading || deleting === item.cdn_key}
+                    disabled={disabled || uploading || deleting === getMediaId(item)}
                   />
                 ))}
               </div>

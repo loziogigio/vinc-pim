@@ -11,6 +11,482 @@ The PIM search system provides:
 - **Faceted filtering** with hierarchical support (categories, brands, product types)
 - **Variant handling** with `include_faceting` control
 - **Response enrichment** from MongoDB (source of truth)
+- **Automatic schema management** with language-aware field types
+- **Weighted field boosting** for relevance ranking
+
+---
+
+## 1. Solr Schema Management
+
+### Automatic Schema Creation
+
+The PIM system automatically manages Solr schema fields when languages are enabled/disabled. This ensures proper multilingual support with language-specific analyzers.
+
+#### Base Fields
+
+Non-language fields are created automatically:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `entity_code` | string | Product identifier |
+| `sku` | string | Stock keeping unit |
+| `ean` | strings | EAN barcodes (multi-valued) |
+| `price` | pdouble | Product price |
+| `quantity` | pint | Stock quantity |
+| `stock_status` | string | in_stock, out_of_stock, pre_order |
+| `brand_id` | string | Brand identifier |
+| `category_id` | string | Category identifier |
+| `category_ancestors` | strings | Hierarchy path for faceting |
+| `has_active_promo` | boolean | Has active promotion |
+| `completeness_score` | pint | Quality score (0-100) |
+
+#### Multilingual Fields
+
+For each enabled language, text fields are created with proper analyzers:
+
+```
+name_text_{lang}           → Full-text search (tokenized)
+name_sort_{lang}           → Prefix matching (lowercase string)
+description_text_{lang}    → Full-text search
+short_description_text_{lang}
+features_text_{lang}       → Multi-valued features
+attr_values_text_{lang}    → Attribute values for search
+attr_labels_text_{lang}    → Attribute labels
+category_name_text_{lang}  → Category name search
+```
+
+**Naming Convention:**
+- `*_text_{lang}` - Tokenized text fields (e.g., `name_text_it`)
+- `*_sort_{lang}` - Lowercase string fields for prefix matching (e.g., `name_sort_it`)
+
+#### Language-Specific Analyzers
+
+Each language uses appropriate Solr analyzers:
+
+| Language | Analyzer | Features |
+|----------|----------|----------|
+| `text_it` | Italian | Lowercase, stopwords, light stemming |
+| `text_de` | German | Normalization, light stemming |
+| `text_en` | English | Porter stemming |
+| `text_fr` | French | Elision, light stemming |
+| `text_es` | Spanish | Light stemming |
+| `text_cjk` | Chinese/Japanese/Korean | CJK bigram tokenization |
+| `text_ar` | Arabic | Normalization, stemming |
+| `text_general` | Generic | Lowercase only |
+
+#### Dynamic Attribute Fields
+
+Product attributes are indexed using Solr's dynamic field patterns:
+
+| Pattern | Type | Example |
+|---------|------|---------|
+| `attribute_{key}_s` | String | `attribute_colore_s = "ROSSO"` |
+| `attribute_{key}_f` | Float | `attribute_peso_f = 12.5` |
+| `attribute_{key}_b` | Boolean | `attribute_disponibile_b = true` |
+| `attribute_{key}_ss` | String array | `attribute_taglie_ss = ["S", "M", "L"]` |
+
+### Schema Initialization
+
+```bash
+# Schema is automatically initialized when enabling search for a language
+POST /api/admin/languages/{code}/enable-search
+
+# Example: Enable Italian search indexing
+curl -X POST http://localhost:3001/api/admin/languages/it/enable-search
+```
+
+**What happens:**
+1. Creates `text_{lang}` field type with language-specific analyzer
+2. Creates all multilingual fields (`name_text_{lang}`, etc.)
+3. Creates base fields if missing
+4. Replaces existing fields with correct types
+
+---
+
+## 2. Language Sync & Indexing
+
+### Language Configuration
+
+Languages are managed in the `languages` MongoDB collection:
+
+```typescript
+interface Language {
+  code: string;              // ISO 639-1 (e.g., "it", "de", "en")
+  name: string;              // Display name
+  nativeName: string;        // Native name
+  flag?: string;             // Flag emoji
+  isDefault: boolean;        // Default/fallback language
+  isEnabled: boolean;        // Active for data entry
+  searchEnabled: boolean;    // Solr indexing enabled ⭐
+  solrAnalyzer: string;      // Solr field type (e.g., "text_it")
+  direction: "ltr" | "rtl";
+  order: number;
+}
+```
+
+### Enabling Search for a Language
+
+```bash
+# Enable search indexing for German
+POST /api/admin/languages/de/enable-search
+```
+
+**What happens:**
+1. Sets `searchEnabled: true` in MongoDB
+2. Creates `text_de` field type in Solr
+3. Creates all German text fields (`name_text_de`, etc.)
+4. Triggers reindexing of products with German content
+
+### Sync Flow
+
+```
+┌─────────────────────────────────────────────────────┐
+│  1. Enable Language Search                           │
+│     POST /api/admin/languages/{code}/enable-search  │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│  2. Create Solr Schema                               │
+│     - Add field type (text_{lang})                   │
+│     - Add multilingual fields                        │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│  3. Reindex Products                                 │
+│     - Extract content for new language               │
+│     - Index to new fields                            │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│  4. Search Available                                 │
+│     POST /api/search/search { lang: "{code}" }      │
+└─────────────────────────────────────────────────────┘
+```
+
+### Localization Fallback
+
+When searching, content falls back through the language chain:
+
+1. **Requested language** (`lang` parameter)
+2. **Default language** (`isDefault: true`)
+3. **First enabled language** (by `order`)
+4. **First available value**
+
+---
+
+## 3. Text Search & Boosting
+
+### Search Field Weights
+
+The search engine uses weighted field boosting for relevance ranking. **Code fields have the highest priority** so exact code matches always appear first:
+
+| Field | Exact Match | Prefix (term*) | Contains (*term*) |
+|-------|-------------|----------------|-------------------|
+| `entity_code` | **50,000** ⭐ | - | - |
+| `ean` | **45,000** ⭐ | - | - |
+| `sku` | **40,000** ⭐ | 30,000 | - |
+| `parent_entity_code` | **35,000** | - | - |
+| `parent_sku` | **30,000** | 20,000 | - |
+| `name_sort_{lang}` | - | 10,000 | - |
+| `name_text_{lang}` | 5,000 | 2,000 | 800 |
+| `brand_label` | 200 | 80 | - |
+| `product_model` | 150 | 50 | - |
+| `attr_values_text_{lang}` | 80 | 30 | - |
+| `category_name_text_{lang}` | 40 | 12 | - |
+| `short_description_text_{lang}` | 20 | 8 | 3 |
+| `description_text_{lang}` | 20 | 8 | 3 |
+
+**Key points:**
+- **Code fields rank highest** - searching "F9998260" will always show exact SKU/entity_code/EAN matches first
+- **Parent code search** - searching "F20071" finds all child products with that `parent_entity_code`
+- Code fields (`sku`, `entity_code`, `ean`) use `lowercase` type for **case-insensitive** search
+- `name_sort_{lang}` has high prefix weight (10,000) for "starts with" matching
+- Text fields use tokenized search + wildcard patterns
+
+### Query Building Strategy
+
+For search text `"caldaia economica"`:
+
+```
+Query: caldaia economica
+
+Step 1: Split into terms → ["caldaia", "economica"]
+
+Step 2: For each term, build weighted field queries:
+  - entity_code:caldaia^1000
+  - sku:caldaia^800
+  - sku:caldaia*^600
+  - name_sort_it:caldaia*^2000    ← Prefix on string field
+  - name_text_it:caldaia^500      ← Tokenized exact
+  - name_text_it:caldaia*^200     ← Tokenized prefix
+  - name_text_it:*caldaia*^50     ← Contains
+  - brand_label:caldaia^350
+  - ...
+
+Step 3: Apply term position boost (earlier terms weighted higher):
+  - caldaia: boost × 1.5 × (2 - 0) = 3.0
+  - economica: boost × 1.5 × (2 - 1) = 1.5
+
+Step 4: Combine with implicit AND:
+  ((field queries for caldaia)^3.0) +((field queries for economica)^1.5)
+```
+
+### Fuzzy Search
+
+Enable fuzzy matching for typo tolerance:
+
+```json
+{
+  "text": "caldaie",
+  "lang": "it",
+  "fuzzy": true,
+  "fuzzy_num": 1
+}
+```
+
+With `fuzzy: true`:
+- `name_text_it:caldaie~1^500` matches "caldaia", "caldaie", "caladie"
+- Works on text fields, not exact match fields (entity_code, ean)
+
+### Search Examples
+
+#### Basic Text Search
+
+```bash
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "caldaia economica",
+    "lang": "it",
+    "rows": 20
+  }'
+```
+
+#### Prefix Search (starts with)
+
+Products starting with "cald":
+```bash
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "cald",
+    "lang": "it"
+  }'
+```
+
+The `name_sort_it:cald*^2000` query ensures "starts with" matches rank highest.
+
+#### Fuzzy Search with Typo Tolerance
+
+```bash
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "cadaia",
+    "lang": "it",
+    "fuzzy": true,
+    "fuzzy_num": 2
+  }'
+```
+
+Matches "caldaia" despite typo (edit distance ≤ 2).
+
+---
+
+## 4. Variant Grouping
+
+Group search results by parent product to show variants together.
+
+### Simple Variant Grouping (`group_variants`)
+
+**Recommended approach** - automatically groups by `parent_entity_code` and returns each product with its variants as a nested array:
+
+```bash
+# POST
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "caldaia",
+    "lang": "it",
+    "group_variants": true,
+    "rows": 10
+  }'
+
+# GET
+curl "http://localhost:3001/api/search/search?lang=it&text=caldaia&group_variants=true&rows=10"
+```
+
+### `group_variants` Response Structure
+
+Each result has a `variants` array containing sibling products:
+
+```json
+{
+  "success": true,
+  "data": {
+    "numFound": 366,
+    "results": [
+      {
+        "entity_code": "079496",
+        "sku": "0010038405",
+        "name": "Caldaia a condensazione modello thematek condens",
+        "is_parent": false,
+        "parent_entity_code": "F20071",
+        "brand": { "brand_id": "HER", "label": "HERMANN SAUNIER DUVAL" },
+        "variants": [
+          {
+            "entity_code": "073214",
+            "sku": "0010026147",
+            "name": "Caldaia a condensazione modello thematek condens",
+            "is_parent": false,
+            "parent_entity_code": "F20071",
+            "price": 1250.00,
+            ...
+          }
+        ],
+        ...
+      },
+      {
+        "entity_code": "F20112",
+        "sku": "F20112",
+        "name": "Caldaia murale ...",
+        "is_parent": true,
+        "variants": [
+          { "entity_code": "081234", "sku": "...", ... },
+          { "entity_code": "081235", "sku": "...", ... }
+        ],
+        ...
+      }
+    ],
+    "grouped": {
+      "field": "parent_entity_code",
+      "ngroups": 366,
+      "matches": 707,
+      "groups": [...]
+    }
+  }
+}
+```
+
+**Key behaviors:**
+- Groups by `parent_entity_code` with unlimited variants (`group.limit: -1`)
+- If parent product (`is_parent: true`) is in the group, it becomes the representative
+- If no parent in group, first child becomes the representative
+- Other products in the group become the `variants` array
+- `numFound` returns number of groups (unique products), not total documents
+
+### Manual Grouping (`group`)
+
+For more control over grouping behavior:
+
+```bash
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "caldaia",
+    "lang": "it",
+    "rows": 10,
+    "group": {
+      "field": "parent_entity_code",
+      "limit": 3
+    }
+  }'
+```
+
+### Group Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `field` | string | required | Field to group by (e.g., `parent_entity_code`) |
+| `limit` | number | 3 | Max products per group (-1 for all) |
+| `sort` | string | - | Sort within group (e.g., `price asc`) |
+| `ngroups` | boolean | true | Return total number of groups |
+
+### Manual Group Response Structure
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [...],           // Flat array (backwards compatible)
+    "grouped": {
+      "field": "parent_entity_code",
+      "ngroups": 366,           // Total unique groups
+      "matches": 707,           // Total matching documents
+      "groups": [
+        {
+          "groupValue": "F20071",   // Parent entity code
+          "numFound": 2,            // Variants in this group
+          "docs": [                 // Products (max = group.limit)
+            {
+              "sku": "0010038405",
+              "name": "Caldaia a condensazione modello thematek condens",
+              "parent_sku": "F20071",
+              "parent_entity_code": "F20071",
+              "brand": { "brand_id": "HER", "label": "HERMANN SAUNIER DUVAL" },
+              ...
+            },
+            {
+              "sku": "0010026147",
+              "name": "Caldaia a condensazione modello thematek condens",
+              "parent_sku": "F20071",
+              ...
+            }
+          ]
+        },
+        {
+          "groupValue": "F20112",
+          "numFound": 2,
+          "docs": [...]
+        }
+      ]
+    },
+    "numFound": 707,
+    "start": 0
+  }
+}
+```
+
+### Comparison: `group_variants` vs `group`
+
+| Feature | `group_variants: true` | `group: {...}` |
+|---------|------------------------|----------------|
+| Configuration | Single flag | Full options object |
+| Variants location | Nested in `variants` array | In `grouped.groups[].docs` |
+| Group limit | Unlimited (-1) | Configurable |
+| Representative | Auto-selects parent or first child | First doc in group |
+| Use case | E-commerce product listing | Custom grouping scenarios |
+
+### Filter by Parent
+
+Get all variants of a specific parent product:
+
+```bash
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lang": "it",
+    "filters": {
+      "parent_entity_code": "F20071"
+    }
+  }'
+```
+
+Or filter by parent SKU:
+
+```bash
+curl -X POST http://localhost:3001/api/search/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lang": "it",
+    "filters": {
+      "parent_sku": "F20071"
+    }
+  }'
+```
 
 ---
 
@@ -54,8 +530,23 @@ Search products with filters, pagination, and sorting.
     order: 'asc' | 'desc';
   };
 
+  // Variant Grouping (recommended)
+  group_variants?: boolean;          // Group by parent_entity_code with variants array (default: false)
+
+  // Manual Grouping (advanced)
+  group?: {
+    field: string;                   // Field to group by
+    limit?: number;                  // Max products per group (default: 3, -1 for unlimited)
+    sort?: string;                   // Sort within group (e.g., "price asc")
+    ngroups?: boolean;               // Return total group count (default: true)
+  };
+
   // Facets (optional, include with search)
   facet_fields?: string[];
+
+  // Fuzzy search
+  fuzzy?: boolean;                   // Enable typo tolerance (default: false)
+  fuzzy_num?: number;                // Edit distance 1-2 (default: 1)
 }
 ```
 
@@ -680,5 +1171,5 @@ FACET_MIN_COUNT=1
 
 ---
 
-**Last Updated**: 2025-11-27
-**Version**: 2.3
+**Last Updated**: 2025-12-05
+**Version**: 3.1

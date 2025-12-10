@@ -26,8 +26,8 @@ interface SolrMultilingualDocument {
 
   // Versioning & status
   version?: number;
-  isCurrent?: boolean;
-  isCurrentPublished?: boolean;
+  is_current?: boolean;
+  is_current_published?: boolean;
   status: string;
   product_status?: string;
 
@@ -42,6 +42,16 @@ interface SolrMultilingualDocument {
   unit?: string;
   price?: number;
   stock_status?: string;
+
+  // Physical Attributes
+  weight?: number;
+  weight_uom?: string;
+  volume?: number;
+  volume_uom?: string;
+  dimension_height?: number;
+  dimension_width?: number;
+  dimension_length?: number;
+  dimension_uom?: string;
 
   // Quality
   completeness_score?: number;
@@ -68,6 +78,7 @@ interface SolrMultilingualDocument {
   brand_path?: string[];             // Hierarchical ID path: ["bosch", "bosch/bosch-professional"]
   brand_ancestors?: string[];        // All ancestor brand IDs
   brand_family?: string;             // Brand family name
+  brand_label?: string;              // Brand label for faceting/display
 
   // Product Type hierarchy for faceting
   product_type_path?: string[];      // Hierarchical ID path: ["tools", "tools/power-tools"]
@@ -98,9 +109,9 @@ interface SolrMultilingualDocument {
   parent_entity_code?: string;
   include_faceting?: boolean; // Controls if product is included in faceting
 
-  // Variations
-  variations_sku?: string[];
-  variations_entity_code?: string[];
+  // Variants
+  variants_sku?: string[];
+  variants_entity_code?: string[];
 
   // Product model
   product_model?: string;
@@ -108,8 +119,6 @@ interface SolrMultilingualDocument {
   // Complex objects stored as JSON (for frontend display)
   specifications_json?: string;
   attributes_json?: string;
-  media_json?: string;
-  packaging_json?: string;
   promotions_json?: string;
   product_type_features_json?: string;
 
@@ -118,15 +127,7 @@ interface SolrMultilingualDocument {
   brand_json?: string;
   collections_json?: string;
   product_type_json?: string;
-
-  // Additional JSON fields for enriched response
   tags_json?: string;
-  image_json?: string;
-  images_json?: string;
-  gallery_json?: string;
-  parent_product_json?: string;
-  sibling_variants_json?: string;
-  source_json?: string;
 
   // Language-specific fields (added dynamically)
   [key: string]: any;
@@ -205,8 +206,8 @@ export class SolrAdapter extends MarketplaceAdapter {
    * - Variant products (children): true (include in facets)
    */
   private calculateIncludeFaceting(product: PIMProduct): boolean {
-    const hasVariants = (product.variations_sku && product.variations_sku.length > 0) ||
-                       (product.variations_entity_code && product.variations_entity_code.length > 0);
+    const hasVariants = (product.variants_sku && product.variants_sku.length > 0) ||
+                       (product.variants_entity_code && product.variants_entity_code.length > 0);
     const isChild = !!product.parent_sku || !!product.parent_entity_code;
 
     // If has variants (is parent with children) → exclude from faceting
@@ -220,25 +221,41 @@ export class SolrAdapter extends MarketplaceAdapter {
 
   /**
    * Determine Solr field suffix and typed value based on attribute value type
-   * - Strings → _s suffix
-   * - Numbers → _f suffix (float)
-   * - Booleans → _b suffix
+   * Uses Solr's built-in dynamic field patterns:
+   * - Strings → _s suffix (single value)
+   * - Numbers → _f suffix (float, single value)
+   * - Booleans → _b suffix (single value)
+   * - String arrays → _ss suffix (multiValued strings)
+   * - Number arrays → _fs suffix (multiValued floats)
+   *
+   * IMPORTANT: Only actual numbers (typeof === 'number') are treated as numeric.
+   * Numeric strings like "30" stay as strings to preserve data integrity.
    */
   private getAttributeTypeSuffix(value: any): { suffix: string; value: any } {
+    // Handle arrays
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return { suffix: 'ss', value: [] };
+      }
+      // Check if ALL elements are actual numbers (not just numeric strings)
+      const allNumbers = value.every(v => typeof v === 'number' && !isNaN(v));
+      if (allNumbers) {
+        // Number array - use _fs (multiValued floats)
+        return { suffix: 'fs', value: value };
+      }
+      // String array (default for arrays) - use _ss (multiValued strings)
+      // Preserve string values as-is, don't auto-convert numeric strings
+      return { suffix: 'ss', value: value.map(v => String(v)) };
+    }
+
     if (typeof value === 'boolean') {
       return { suffix: 'b', value };
     }
+    // Only actual numbers get _f suffix, not numeric strings
     if (typeof value === 'number' && !isNaN(value)) {
       return { suffix: 'f', value };
     }
-    // Check if string is a parseable number
-    if (typeof value === 'string') {
-      const num = parseFloat(value);
-      if (!isNaN(num) && value.trim() !== '' && /^-?\d*\.?\d+$/.test(value.trim())) {
-        return { suffix: 'f', value: num };
-      }
-    }
-    // Default to string
+    // Default to string - preserve all string values as strings
     return { suffix: 's', value: String(value) };
   }
 
@@ -546,8 +563,8 @@ export class SolrAdapter extends MarketplaceAdapter {
 
       // Versioning
       version: product.version,
-      isCurrent: product.isCurrent,
-      isCurrentPublished: product.isCurrentPublished,
+      is_current: product.isCurrent,
+      is_current_published: product.isCurrentPublished,
       status: product.status,
       product_status: product.product_status,
 
@@ -561,6 +578,16 @@ export class SolrAdapter extends MarketplaceAdapter {
       sold: product.sold,
       unit: product.unit,
       stock_status: product.stock_status,
+
+      // Physical Attributes
+      weight: product.weight,
+      weight_uom: product.weight_uom,
+      volume: product.volume,
+      volume_uom: product.volume_uom,
+      dimension_height: product.dimension_height,
+      dimension_width: product.dimension_width,
+      dimension_length: product.dimension_length,
+      dimension_uom: product.dimension_uom,
 
       // Quality
       completeness_score: product.completeness_score,
@@ -587,6 +614,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       brand_path: brandPaths.brand_path,
       brand_ancestors: brandPaths.brand_ancestors,
       brand_family: brandPaths.brand_family,
+      brand_label: product.brand?.label,
 
       // Product Type hierarchy for faceting
       product_type_path: productTypePaths.product_type_path,
@@ -618,9 +646,9 @@ export class SolrAdapter extends MarketplaceAdapter {
       parent_entity_code: product.parent_entity_code,
       include_faceting: product.include_faceting ?? this.calculateIncludeFaceting(product),
 
-      // Variations
-      variations_sku: product.variations_sku,
-      variations_entity_code: product.variations_entity_code,
+      // Variants
+      variants_sku: product.variants_sku,
+      variants_entity_code: product.variants_entity_code,
 
       // Product model
       product_model: product.product_model,
@@ -628,8 +656,6 @@ export class SolrAdapter extends MarketplaceAdapter {
       // Complex objects stored as JSON (for frontend display, not faceting)
       specifications_json: product.specifications ? JSON.stringify(product.specifications) : undefined,
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
-      media_json: product.media ? JSON.stringify(product.media) : undefined,
-      packaging_json: product.packaging_options ? JSON.stringify(product.packaging_options) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
       product_type_features_json: product.product_type?.features ? JSON.stringify(product.product_type.features) : undefined,
 
@@ -638,33 +664,31 @@ export class SolrAdapter extends MarketplaceAdapter {
       brand_json: product.brand ? JSON.stringify(product.brand) : undefined,
       collections_json: product.collections ? JSON.stringify(product.collections) : undefined,
       product_type_json: product.product_type ? JSON.stringify(product.product_type) : undefined,
-
-      // Additional JSON fields for enriched response
       tags_json: product.tags ? JSON.stringify(product.tags) : undefined,
-      image_json: product.image ? JSON.stringify(product.image) : undefined,
-      images_json: product.images ? JSON.stringify(product.images) : undefined,
-      gallery_json: product.gallery ? JSON.stringify(product.gallery) : undefined,
-      parent_product_json: product.parent_product ? JSON.stringify(product.parent_product) : undefined,
-      sibling_variants_json: product.sibling_variants ? JSON.stringify(product.sibling_variants) : undefined,
-      source_json: product.source ? JSON.stringify(product.source) : undefined,
     };
 
     // Add multilingual fields for each language
     const languages = lang ? [lang] : this.detectLanguages(product);
 
     for (const l of languages) {
-      // Core product fields
+      // Core product fields - text fields for full-text search
       if (product.name?.[l]) {
         doc[`name_text_${l}`] = product.name[l];
+        // Lowercase string field for "starts with" prefix matching
+        doc[`name_sort_${l}`] = product.name[l].toLowerCase();
       }
       if (product.slug?.[l]) {
         doc[`slug_text_${l}`] = product.slug[l];
       }
       if (product.description?.[l]) {
         doc[`description_text_${l}`] = product.description[l];
+        // Lowercase string field for "starts with" prefix matching
+        doc[`description_sort_${l}`] = product.description[l].toLowerCase();
       }
       if (product.short_description?.[l]) {
         doc[`short_description_text_${l}`] = product.short_description[l];
+        // Lowercase string field for "starts with" prefix matching
+        doc[`short_description_sort_${l}`] = product.short_description[l].toLowerCase();
       }
 
       // Features (array of strings)
@@ -701,31 +725,49 @@ export class SolrAdapter extends MarketplaceAdapter {
         }
       }
 
-      // Attribute labels (extract from object with slug keys)
-      // Also index individual attribute values for faceting
-      // Attributes are language-keyed: { it: { is_new: {...}, colore: {...} }, en: {...} }
-      if (product.attributes?.[l] && typeof product.attributes[l] === 'object') {
+      // Attribute labels AND values for text search
+      // Attributes are multilingual: { it: { "colore": { label: "Colore", value: "ROSSO", order: 0 }, ... } }
+      const langAttrs = product.attributes?.[l];
+      if (langAttrs && typeof langAttrs === 'object' && !Array.isArray(langAttrs)) {
         const attrLabels: string[] = [];
+        const attrValues: string[] = [];
 
-        Object.entries(product.attributes[l]).forEach(([attrKey, attrData]: [string, any]) => {
+        for (const [attrKey, attrData] of Object.entries(langAttrs)) {
           if (attrData && typeof attrData === 'object') {
-            // Extract labels for text search
-            if (attrData.label) {
-              attrLabels.push(attrData.label);
+            // Collect labels for text search
+            if ((attrData as any).label) {
+              attrLabels.push((attrData as any).label);
             }
-
-            // Index individual attribute values for faceting with type-specific suffixes
-            // This creates fields like: attribute_colore_s, attribute_peso_f, attribute_is_new_b
-            if (attrData.value !== undefined && attrData.value !== null && attrData.value !== '') {
-              const sanitizedKey = attrKey.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-              const { suffix, value: typedValue } = this.getAttributeTypeSuffix(attrData.value);
-              doc[`attribute_${sanitizedKey}_${suffix}`] = typedValue;
+            // Collect string values for text search (e.g., "CROMATO", "PEGASO", "NT300")
+            const value = (attrData as any).value;
+            if (value !== undefined && value !== null && value !== '') {
+              if (typeof value === 'string') {
+                attrValues.push(value);
+              } else if (Array.isArray(value)) {
+                attrValues.push(...value.filter((v: any) => typeof v === 'string'));
+              }
             }
           }
-        });
+        }
 
         if (attrLabels.length > 0) {
           doc[`attr_labels_text_${l}`] = attrLabels;
+        }
+        if (attrValues.length > 0) {
+          doc[`attr_values_text_${l}`] = attrValues;
+        }
+
+        // Dynamic attribute fields for faceting/filtering
+        // Creates: attribute_{slug}_s, attribute_{slug}_f, attribute_{slug}_ss, etc.
+        for (const [attrKey, attrData] of Object.entries(langAttrs)) {
+          if (attrData && typeof attrData === 'object') {
+            const value = (attrData as any).value;
+            if (value !== undefined && value !== null && value !== '') {
+              const { suffix, value: typedValue } = this.getAttributeTypeSuffix(value);
+              // Use attribute slug as field name: attribute_colore_s = "ROSSO"
+              doc[`attribute_${attrKey}_${suffix}`] = typedValue;
+            }
+          }
         }
       }
 

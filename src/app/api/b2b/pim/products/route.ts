@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { safeRegexQuery, sanitizeMongoQuery } from "@/lib/security";
 import crypto from "crypto";
 
 /**
@@ -45,11 +46,11 @@ export async function GET(req: NextRequest) {
       isCurrent: true,
     };
 
-    if (status) query.status = status;
-    if (sourceId) query["source.source_id"] = sourceId;
+    if (status) query.status = sanitizeMongoQuery(status);
+    if (sourceId) query["source.source_id"] = sanitizeMongoQuery(sourceId);
     if (batchId) {
-      // Support partial matching for batch ID
-      query["source.batch_id"] = { $regex: batchId, $options: "i" };
+      // Support partial matching for batch ID (sanitized)
+      query["source.batch_id"] = safeRegexQuery(batchId);
     }
 
     // Date range filter
@@ -66,24 +67,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Advanced filters
+    // Advanced filters (all sanitized to prevent NoSQL injection)
     if (entityCode) {
-      query.entity_code = { $regex: entityCode, $options: "i" };
+      query.entity_code = safeRegexQuery(entityCode);
     }
     if (sku) {
-      query.sku = { $regex: sku, $options: "i" };
+      query.sku = safeRegexQuery(sku);
     }
     if (parentSku) {
-      query.parent_sku = { $regex: parentSku, $options: "i" };
+      query.parent_sku = safeRegexQuery(parentSku);
     }
     if (brand) {
-      query["brand.name"] = { $regex: brand, $options: "i" };
+      query["brand.name"] = safeRegexQuery(brand);
     }
     if (category) {
-      query["category.name"] = { $regex: category, $options: "i" };
+      query["category.name"] = safeRegexQuery(category);
     }
     if (currency) {
-      query.currency = currency;
+      query.currency = sanitizeMongoQuery(currency);
     }
 
     // Price range filter

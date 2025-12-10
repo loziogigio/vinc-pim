@@ -83,9 +83,38 @@ export type ProductMeta = {
 };
 
 export type PackagingOption = {
-  packaging_uom: string;
-  packaging_qty: number;
-  ean?: string;
+  id?: string;              // Optional unique ID
+  code: string;             // Packaging code (e.g., "MV", "IM", "CF", "PALLET")
+  label: MultilingualText;  // Multilingual label
+  qty: number;              // Quantity per packaging unit
+  uom: string;              // Unit of measure (e.g., "PZ")
+  is_default: boolean;      // Is this the default packaging?
+  is_smallest: boolean;     // Is this the smallest unit?
+  ean?: string;             // EAN barcode (optional)
+  position?: number;        // Display order (optional)
+};
+
+/**
+ * Promotion data for product-level discounts
+ * Supports multilingual labels and various discount types
+ */
+export type Promotion = {
+  promo_code?: string;            // Promotion code (e.g., "016")
+  is_active: boolean;
+  promo_type?: string;            // Business category (STD, XXX, OMG, EOL, etc.)
+  calc_method?: string;           // Calculation method (RPNQMIN, RQCSC, RVMSC, RCNA, RQCOE)
+  label: MultilingualText;        // Multilingual promotion label
+  language?: string;              // Primary language of the promotion
+  discount_percentage?: number;   // Percentage discount (e.g., 20 for 20% off)
+  discount_amount?: number;       // Fixed amount discount (e.g., 10.00 for €10 off)
+  buy_x?: number;                 // Buy X quantity (for buy_x_get_y type)
+  get_y?: number;                 // Get Y quantity (for buy_x_get_y type)
+  is_stackable: boolean;          // Can be combined with other promotions
+  priority: number;               // Priority order (higher = more important)
+  start_date?: Date;              // Promotion start date
+  end_date?: Date;                // Promotion end date
+  min_quantity?: number;          // Minimum quantity to qualify
+  min_order_value?: number;       // Minimum order value to qualify
 };
 
 // ============================================
@@ -216,13 +245,14 @@ export type ProductData = ProductCore &
     docs?: ProductDocument[];
     meta?: ProductMeta[];
 
-    // Variations
+    // Variants
     parent_sku?: string;
     parent_entity_code?: string;
-    variations?: string[];
+    variants?: string[];
 
     // Additional
     product_model?: string;
+    ean?: string[];  // EAN barcodes (array for multiple codes)
     short_description?: string;
     long_description?: string;
     product_status?: string;
@@ -230,6 +260,12 @@ export type ProductData = ProductCore &
 
     // ERP
     packaging_options?: PackagingOption[];
+
+    // Promotions
+    promotions?: Promotion[];
+    promo_code?: string[];          // Array of active promotion codes
+    promo_type?: string[];          // Array of business categories for faceting
+    has_active_promo?: boolean;     // Has any active promotion
 
     // SEO
     meta_title?: string;
@@ -286,6 +322,12 @@ export type PIMProductListItem = {
   status: ProductStatus;
   critical_issues: string[];
   analytics: ProductAnalytics;
+  // Variant/Parent relationships
+  parent_sku?: string;
+  parent_entity_code?: string;
+  is_parent?: boolean;
+  variants_entity_code?: string[];
+  variants_sku?: string[];
 };
 
 export type PIMDashboardStats = {

@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth/session";
-import { isCdnConfigured, uploadToCdn } from "@/lib/services/cdnClient";
+import { isCdnConfigured, uploadToCdn } from "@/lib/services/cdn-upload.service";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -11,9 +11,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isCdnConfigured()) {
+  const cdnConfigured = await isCdnConfigured();
+  if (!cdnConfigured) {
     return NextResponse.json(
-      { error: "CDN is not configured. Set CDN environment variables first." },
+      { error: "CDN is not configured. Configure CDN credentials in settings or environment variables." },
       { status: 500 }
     );
   }
@@ -40,8 +41,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const result = await uploadToCdn({
       buffer,
-      contentType: file.type || "application/octet-stream",
-      fileName: file.name
+      content_type: file.type || "application/octet-stream",
+      file_name: file.name
     });
 
     return NextResponse.json(

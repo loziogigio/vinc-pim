@@ -559,7 +559,7 @@ async function reindexAllProducts(): Promise<void> {
     return doc;
   });
 
-  const solrUrl = `http://${process.env.SOLR_HOST || "localhost"}:${process.env.SOLR_PORT || 8983}/solr/${projectConfig.solrCore}/update?commit=true`;
+  const solrUrl = `http://${process.env.SOLR_HOST || "localhost"}:${process.env.SOLR_PORT || 8983}/solr/${projectConfig().solrCore}/update?commit=true`;
 
   await axios.post(solrUrl, solrDocuments, {
     headers: { "Content-Type": "application/json" }

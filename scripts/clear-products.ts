@@ -3,6 +3,16 @@
  * WARNING: This will delete all PIM products!
  */
 
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from project root
+dotenv.config({ path: path.join(__dirname, "../.env") });
+
 import { connectToDatabase } from "../src/lib/db/connection";
 import { PIMProductModel } from "../src/lib/db/models/pim-product";
 
@@ -21,8 +31,10 @@ async function clearProducts() {
     // Clear Solr
     console.log("🔍 Clearing Solr search index...");
     const solrUrl = process.env.SOLR_URL || "http://localhost:8983/solr";
-    // Core name matches MongoDB database name
-    const coreName = process.env.SOLR_CORE || process.env.MONGODB_DATABASE || "mycore";
+    // Core name derived from VINC_TENANT_ID (same as project.config.ts)
+    const tenantId = process.env.VINC_TENANT_ID;
+    const instanceName = tenantId ? `vinc-${tenantId}` : (process.env.VINC_MONGO_DB || "vinc-hidros-it");
+    const coreName = process.env.SOLR_CORE || instanceName;
 
     console.log(`   Solr URL: ${solrUrl}`);
     console.log(`   Core: ${coreName}`);

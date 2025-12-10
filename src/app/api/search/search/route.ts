@@ -6,10 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSolrClient, SolrError } from '@/lib/search/solr-client';
 import { buildSearchQuery } from '@/lib/search/query-builder';
-import { transformSearchResponse, enrichFacetResults } from '@/lib/search/response-transformer';
-import { enrichSearchResults } from '@/lib/search/response-enricher';
+import { transformSearchResponse, enrichFacetResults, enrichProductsWithVariants } from '@/lib/search/response-transformer';
+import { enrichSearchResults, enrichVariantGroupedResults } from '@/lib/search/response-enricher';
 import { SearchRequest } from '@/lib/types/search';
-import { getSolrConfig, isSolrEnabled } from '@/lib/search/facet-config';
+import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +46,9 @@ export async function POST(request: NextRequest) {
       rows: Math.min(body.rows || config.defaultRows, config.maxRows),
       filters: body.filters || {},
       sort: body.sort,
+      // Fuzzy search options (like dfl-api)
+      fuzzy: body.fuzzy ?? false,
+      fuzzy_num: body.fuzzy_num ?? 1,
       include_faceting: body.include_faceting ?? true,
       include_variants: body.include_variants ?? true,
       group_variants: body.group_variants ?? false,
@@ -61,14 +64,27 @@ export async function POST(request: NextRequest) {
     const solrResponse = await solrClient.search(solrQuery);
 
     // Transform response (pass group field if grouping is enabled)
+    // group_variants: true → uses parent_entity_code grouping with variant structure
+    const groupField = searchRequest.group_variants
+      ? 'parent_entity_code'
+      : searchRequest.group?.field;
+
     const response = transformSearchResponse(
       solrResponse,
       searchRequest.lang,
-      searchRequest.group?.field
+      groupField,
+      searchRequest.group_variants
     );
 
-    // Enrich results with fresh data from MongoDB (brands, etc.)
-    response.results = await enrichSearchResults(response.results, searchRequest.lang);
+    // Enrich results with fresh data from MongoDB
+    if (searchRequest.group_variants) {
+      // For variant grouped: fetch parent from MongoDB + enrich all variants
+      response.results = await enrichVariantGroupedResults(response.results, searchRequest.lang);
+    } else {
+      // Standard enrichment
+      response.results = await enrichSearchResults(response.results, searchRequest.lang);
+      response.results = await enrichProductsWithVariants(response.results, searchRequest.lang);
+    }
 
     // Enrich facets with full entity data
     if (response.facet_results) {
@@ -80,21 +96,36 @@ export async function POST(request: NextRequest) {
       data: response,
     });
   } catch (error) {
-    console.error('Search error:', error);
-
     if (error instanceof SolrError) {
+      // Parse Solr error details to get the actual error message
+      let solrErrorMsg = error.message;
+      try {
+        const solrErrorJson = JSON.parse(error.details);
+        if (solrErrorJson.error?.msg) {
+          solrErrorMsg = solrErrorJson.error.msg;
+        }
+      } catch {
+        // details might not be JSON, use as-is
+      }
+
+      console.error('[Search API] Solr error:', solrErrorMsg);
+      console.error('[Search API] Solr details:', error.details);
+
       return NextResponse.json(
         {
           error: 'Search query failed',
           details: {
             code: 'SOLR_ERROR',
             message: error.message,
+            solr_error: solrErrorMsg,
             statusCode: error.statusCode,
           },
         },
         { status: error.statusCode >= 400 ? error.statusCode : 500 }
       );
     }
+
+    console.error('[Search API] Error:', error);
 
     return NextResponse.json(
       {
@@ -136,13 +167,18 @@ export async function GET(request: NextRequest) {
     const text = searchParams.get('text') || searchParams.get('q') || undefined;
     const start = parseInt(searchParams.get('start') || '0', 10);
     const rows = parseInt(searchParams.get('rows') || '20', 10);
-    const sortField = searchParams.get('sort_field') as SearchRequest['sort']['field'] | null;
+    const sortField = searchParams.get('sort_field') as NonNullable<SearchRequest['sort']>['field'] | null;
     const sortOrder = searchParams.get('sort_order') as 'asc' | 'desc' | null;
+
+    // Fuzzy search parameters (like dfl-api)
+    const fuzzy = searchParams.get('fuzzy') === 'true';
+    const fuzzyNum = parseInt(searchParams.get('fuzzy_num') || '1', 10);
 
     // Grouping parameters
     const groupField = searchParams.get('group_field');
     const groupLimit = searchParams.get('group_limit');
     const groupSort = searchParams.get('group_sort');
+    const groupVariants = searchParams.get('group_variants') === 'true';
 
     // Build filters from query params
     // Supports multiple formats:
@@ -190,7 +226,11 @@ export async function GET(request: NextRequest) {
       sort: sortField
         ? { field: sortField, order: sortOrder || 'desc' }
         : undefined,
+      // Fuzzy search options (like dfl-api)
+      fuzzy,
+      fuzzy_num: fuzzyNum,
       include_faceting: searchParams.get('include_faceting') !== 'false',
+      group_variants: groupVariants,
       group: groupField
         ? {
             field: groupField,
@@ -206,10 +246,27 @@ export async function GET(request: NextRequest) {
     const solrResponse = await solrClient.search(solrQuery);
 
     // Transform response
-    const response = transformSearchResponse(solrResponse, lang, groupField || undefined);
+    // group_variants: true → uses parent_entity_code grouping with variant structure
+    const effectiveGroupField = groupVariants
+      ? 'parent_entity_code'
+      : groupField || undefined;
 
-    // Enrich results with fresh data from MongoDB (brands, etc.)
-    response.results = await enrichSearchResults(response.results, lang);
+    const response = transformSearchResponse(
+      solrResponse,
+      lang,
+      effectiveGroupField,
+      groupVariants
+    );
+
+    // Enrich results with fresh data from MongoDB
+    if (groupVariants) {
+      // For variant grouped: fetch parent from MongoDB + enrich all variants
+      response.results = await enrichVariantGroupedResults(response.results, lang);
+    } else {
+      // Standard enrichment
+      response.results = await enrichSearchResults(response.results, lang);
+      response.results = await enrichProductsWithVariants(response.results, lang);
+    }
 
     // Enrich facets with full entity data
     if (response.facet_results) {
@@ -221,7 +278,36 @@ export async function GET(request: NextRequest) {
       data: response,
     });
   } catch (error) {
-    console.error('Search error:', error);
+    if (error instanceof SolrError) {
+      // Parse Solr error details to get the actual error message
+      let solrErrorMsg = error.message;
+      try {
+        const solrErrorJson = JSON.parse(error.details);
+        if (solrErrorJson.error?.msg) {
+          solrErrorMsg = solrErrorJson.error.msg;
+        }
+      } catch {
+        // details might not be JSON, use as-is
+      }
+
+      console.error('[Search API GET] Solr error:', solrErrorMsg);
+      console.error('[Search API GET] Solr details:', error.details);
+
+      return NextResponse.json(
+        {
+          error: 'Search query failed',
+          details: {
+            code: 'SOLR_ERROR',
+            message: error.message,
+            solr_error: solrErrorMsg,
+            statusCode: error.statusCode,
+          },
+        },
+        { status: error.statusCode >= 400 ? error.statusCode : 500 }
+      );
+    }
+
+    console.error('[Search API GET] Error:', error);
 
     return NextResponse.json(
       {

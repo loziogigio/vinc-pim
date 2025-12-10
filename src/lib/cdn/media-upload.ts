@@ -1,4 +1,4 @@
-import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdnClient";
+import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdn-upload.service";
 
 /**
  * Media file type categories
@@ -70,11 +70,12 @@ export function getMediaTypeFromMime(mimeType: string): MediaType | null {
 /**
  * Validate media file
  */
-export function validateMediaFile(
+export async function validateMediaFile(
   file: File
-): { valid: boolean; error?: string; mediaType?: MediaType } {
+): Promise<{ valid: boolean; error?: string; mediaType?: MediaType }> {
   // Check if CDN is configured
-  if (!isCdnConfigured()) {
+  const cdnConfigured = await isCdnConfigured();
+  if (!cdnConfigured) {
     return { valid: false, error: "CDN is not configured" };
   }
 
@@ -116,7 +117,7 @@ export async function uploadMedia(
   folder = "media"
 ): Promise<MediaUploadResult> {
   // Validate file
-  const validation = validateMediaFile(file);
+  const validation = await validateMediaFile(file);
   if (!validation.valid || !validation.mediaType) {
     throw new Error(validation.error);
   }
@@ -138,8 +139,8 @@ export async function uploadMedia(
   // Upload to CDN
   const result = await uploadToCdn({
     buffer,
-    contentType: file.type || "application/octet-stream",
-    fileName,
+    content_type: file.type || "application/octet-stream",
+    file_name: fileName,
   });
 
   return {

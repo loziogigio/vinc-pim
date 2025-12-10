@@ -28,3 +28,4 @@ test-*.json
 test-*.html
 sample-*.csv
 sample-*.json
+.env.local

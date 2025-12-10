@@ -31,7 +31,7 @@ async function debugTransform() {
       marketplace_name: "Solr",
       custom_config: {
         solr_url: solrUrl,
-        solr_core: projectConfig.solrCore,
+        solr_core: projectConfig().solrCore,
       },
     });
 
@@ -59,7 +59,7 @@ async function debugTransform() {
 
     // Try to index just this one document
     console.log("\n🔄 Attempting to index to Solr...");
-    const updateUrl = `${solrUrl}/${projectConfig.solrCore}/update?commit=true`;
+    const updateUrl = `${solrUrl}/${projectConfig().solrCore}/update?commit=true`;
     const response = await fetch(updateUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

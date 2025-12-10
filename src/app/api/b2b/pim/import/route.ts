@@ -3,7 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { ImportSourceModel } from "@/lib/db/models/import-source";
 import { ImportJobModel } from "@/lib/db/models/import-job";
-import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdnClient";
+import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdn-upload.service";
 
 /**
  * POST /api/b2b/pim/import
@@ -60,7 +60,8 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Upload to CDN (required)
-    if (!isCdnConfigured()) {
+    const cdnConfigured = await isCdnConfigured();
+    if (!cdnConfigured) {
       return NextResponse.json(
         { error: "CDN is not configured. File upload requires CDN to be set up." },
         { status: 500 }
@@ -73,8 +74,8 @@ export async function POST(req: NextRequest) {
     try {
       const uploadResult = await uploadToCdn({
         buffer,
-        contentType: file.type || "application/octet-stream",
-        fileName: `pim-imports/${file.name}`,
+        content_type: file.type || "application/octet-stream",
+        file_name: `pim-imports/${file.name}`,
       });
       fileUrl = uploadResult.url;
       console.log(`✅ File uploaded to CDN: ${fileUrl}`);

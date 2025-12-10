@@ -5,6 +5,7 @@ type RemotePattern = {
   hostname: string;
 };
 
+// Allow all hostnames - CDN URL is configured dynamically from MongoDB
 const remotePatterns: RemotePattern[] = [
   {
     protocol: "https",
@@ -13,39 +14,8 @@ const remotePatterns: RemotePattern[] = [
   {
     protocol: "http",
     hostname: "**"  // Allow all HTTP hostnames
-  },
-  {
-    protocol: "https",
-    hostname: "images.unsplash.com"
-  },
-  {
-    protocol: "https",
-    hostname: "via.placeholder.com"
-  },
-  {
-    protocol: "https",
-    hostname: "b2b.hidros.com"
   }
 ];
-
-const cdnEndpoint =
-  process.env.NEXT_PUBLIC_CDN_ENDPOINT ??
-  process.env.NEXT_PUBLIC_CDN_HOSTNAME ??
-  process.env.CDN_ENDPOINT ??
-  process.env.CDN_HOSTNAME ??
-  "";
-
-if (cdnEndpoint) {
-  try {
-    const cdnUrl = new URL(cdnEndpoint.startsWith("http") ? cdnEndpoint : `https://${cdnEndpoint}`);
-    remotePatterns.push({
-      protocol: cdnUrl.protocol.replace(":", "") as "http" | "https",
-      hostname: cdnUrl.hostname
-    });
-  } catch {
-    // ignore invalid CDN endpoint
-  }
-}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

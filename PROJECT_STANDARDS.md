@@ -11,7 +11,10 @@ This document defines the coding standards, naming conventions, and architectura
 3. [TypeScript & Code Style](#typescript--code-style)
    - [Shared Types Location](#shared-types-location)
 4. [API Route Conventions](#api-route-conventions)
-5. [Component Standards](#component-standards)
+5. [Public API Endpoints](#public-api-endpoints)
+6. [Component Standards](#component-standards)
+7. [Environment Variables](#environment-variables)
+8. [Solr Configuration](#solr-configuration)
 
 ---
 
@@ -69,18 +72,37 @@ collection: "import_jobs"     // ❌
 | `PIMProductModel` | `pimproducts` | `models/pim-product.ts` | |
 | `ProductTemplateModel` | `producttemplates` | `models/product-template.ts` | |
 
-### Database Name
+### Database & Solr Core Naming
 
-**Production Database**: `hdr-api-it`
+**Single Source of Truth**: `@/config/project.config.ts`
 
-All scripts, models, and connections should use this database unless explicitly configured otherwise.
+Both MongoDB database and Solr core use the same instance name derived from `VINC_TENANT_ID`:
+
+```
+Instance Name = vinc-${VINC_TENANT_ID}
+Example: VINC_TENANT_ID=hidros-it → vinc-hidros-it
+```
+
+| Component | Name Resolution | Override |
+|-----------|----------------|----------|
+| MongoDB   | `vinc-${VINC_TENANT_ID}` | `VINC_MONGO_DB_OVERRIDE` |
+| Solr Core | `vinc-${VINC_TENANT_ID}` | `SOLR_CORE` |
+
+```bash
+# .env.local
+VINC_TENANT_ID=hidros-it          # → MongoDB: vinc-hidros-it, Solr: vinc-hidros-it
+VINC_MONGO_URL=mongodb://...
+SOLR_URL=http://localhost:8983/solr
+SOLR_ENABLED=true
+```
 
 ```typescript
-// ✅ Correct
-const db = client.db('hdr-api-it');
+// ✅ Correct - use project.config.ts
+import { projectConfig, getSolrConfig } from '@/config/project.config';
 
-// In .env.local
-VINC_MONGO_DB=hdr-api-it
+const config = projectConfig();
+console.log(config.mongoDatabase);  // vinc-hidros-it
+console.log(config.solrCore);       // vinc-hidros-it
 ```
 
 ### Schema Field Naming
@@ -360,6 +382,74 @@ return NextResponse.json(
 
 ---
 
+## Public API Endpoints
+
+Public endpoints are accessible without authentication and are intended for storefront consumption.
+
+### Location
+
+All public endpoints are located at: `src/app/api/public/`
+
+### Available Public Endpoints
+
+#### Menu API
+
+**Endpoint**: `GET /api/public/menu`
+
+Returns navigation menu items for storefront rendering.
+
+**Query Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `location` | `"header" \| "footer" \| "mobile"` | No | Filter by menu location |
+
+**Response**:
+```typescript
+{
+  success: boolean;
+  menuItems: MenuTreeItem[];  // Hierarchical tree structure
+  flat: MenuItem[];           // Flat list for flexibility
+}
+
+interface MenuTreeItem {
+  id: string;
+  type: "collection" | "category" | "brand" | "tag" | "product_type" | "product" | "page" | "url" | "search" | "divider";
+  label: string;
+  reference_id?: string;
+  url?: string;
+  icon?: string;              // Custom icon/image URL
+  rich_text?: string;         // HTML content (for search type)
+  image_url?: string;         // Desktop promotional image
+  mobile_image_url?: string;  // Mobile promotional image
+  include_children: boolean;
+  max_depth?: number;
+  open_in_new_tab: boolean;
+  css_class?: string;
+  level: number;
+  children: MenuTreeItem[];   // Nested children
+}
+```
+
+**Example Usage**:
+```bash
+# Get all menus
+curl "http://localhost:3001/api/public/menu"
+
+# Get header menu only
+curl "http://localhost:3001/api/public/menu?location=header"
+
+# Get footer menu only
+curl "http://localhost:3001/api/public/menu?location=footer"
+```
+
+**Features**:
+- Only returns active menu items (`is_active: true`)
+- Respects time-bound visibility (`start_date`, `end_date`)
+- Returns hierarchical tree structure with nested `children`
+- Also provides flat list for alternative rendering approaches
+
+---
+
 ## Component Standards
 
 ### React Components
@@ -423,6 +513,87 @@ REDIS_PORT=6379
 NEXTAUTH_SECRET=
 NEXTAUTH_URL=http://localhost:3000
 ```
+
+---
+
+## Solr Configuration
+
+### Single Source of Truth
+
+**All Solr configuration lives in `@/config/project.config.ts`** - this is the single source of truth.
+
+```typescript
+// ✅ CORRECT: Import Solr config from project.config
+import { getSolrConfig, isSolrEnabled, SolrConfig } from '@/config/project.config';
+
+// Check if Solr is enabled
+if (isSolrEnabled()) {
+  const config = getSolrConfig();
+  console.log(`Solr URL: ${config.url}`);
+  console.log(`Solr Core: ${config.core}`);
+}
+```
+
+```typescript
+// ❌ INCORRECT: Don't import from facet-config (old location)
+import { getSolrConfig } from '@/lib/search/facet-config';  // OLD - moved to project.config
+```
+
+### Configuration Functions
+
+| Function | Location | Description |
+|----------|----------|-------------|
+| `getSolrConfig()` | `@/config/project.config` | Returns Solr URL, core, and search settings |
+| `isSolrEnabled()` | `@/config/project.config` | Checks if `SOLR_ENABLED=true` |
+
+### SolrConfig Interface
+
+```typescript
+interface SolrConfig {
+  url: string;         // SOLR_URL or default
+  core: string;        // SOLR_CORE or derived from VINC_TENANT_ID
+  defaultRows: number; // SEARCH_DEFAULT_ROWS (default: 20)
+  maxRows: number;     // SEARCH_MAX_ROWS (default: 100)
+  facetLimit: number;  // FACET_DEFAULT_LIMIT (default: 100)
+  facetMinCount: number; // FACET_MIN_COUNT (default: 1)
+}
+```
+
+### Environment Variables
+
+```bash
+# Core Solr settings
+SOLR_ENABLED=true
+SOLR_URL=http://localhost:8983/solr
+SOLR_CORE=vinc-hidros-it  # Optional - auto-derived from VINC_TENANT_ID
+
+# Search tuning
+SEARCH_DEFAULT_ROWS=20
+SEARCH_MAX_ROWS=100
+FACET_DEFAULT_LIMIT=100
+FACET_MIN_COUNT=1
+```
+
+### Core Name Resolution
+
+The Solr core name is resolved in this order:
+1. `SOLR_CORE` environment variable (if set)
+2. `vinc-${VINC_TENANT_ID}` (derived from tenant)
+3. Falls back to instance name
+
+```bash
+# Example: VINC_TENANT_ID=hidros-it → core = "vinc-hidros-it"
+VINC_TENANT_ID=hidros-it
+```
+
+### File Organization
+
+| File | Purpose |
+|------|---------|
+| `@/config/project.config.ts` | Solr connection config (`getSolrConfig`, `isSolrEnabled`) |
+| `@/lib/search/facet-config.ts` | Facet field definitions, sort/filter mappings |
+| `@/lib/search/solr-client.ts` | HTTP client for Solr queries |
+| `@/lib/search/query-builder.ts` | Build Solr queries from search requests |
 
 ---
 
@@ -624,6 +795,106 @@ const products = await PIMProductModel.find({});
 
 ---
 
+## Utility Scripts
+
+### Location
+
+Scripts are located in `scripts/` directory.
+
+### Available Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| `clear-products.ts` | `npx tsx scripts/clear-products.ts` | Clear all products from MongoDB and Solr |
+| `seed-b2b-user.ts` | `npx tsx scripts/seed-b2b-user.ts` | Create B2B admin user |
+| `create-test-source.ts` | `npx tsx scripts/create-test-source.ts` | Create test import source |
+| `enable-italian-search.ts` | `npx tsx scripts/enable-italian-search.ts` | Enable Italian language for search |
+
+### Clear Products Script
+
+Deletes all products from MongoDB and Solr index:
+
+```bash
+cd vinc-apps/vinc-pim
+npx tsx scripts/clear-products.ts
+```
+
+**What it clears:**
+- MongoDB `pimproducts` collection
+- Solr search index (all documents)
+
+**Environment Variables:**
+- `SOLR_URL` - Solr base URL (default: `http://localhost:8983/solr`)
+- `SOLR_CORE` - Override Solr core name (default: `vinc-${VINC_TENANT_ID}`)
+- `VINC_TENANT_ID` - Tenant ID used to derive database and Solr core names
+
+---
+
+## BMS to PIM Sync
+
+### Location
+
+Sync scripts are in `doc/export/bms-to-pim/`.
+
+### Quick Start
+
+```bash
+cd doc/export/bms-to-pim
+
+# Full sync (all steps)
+./sync-all.sh
+
+# With limit
+./sync-all.sh --limit 100
+
+# Single product
+./sync-all.sh --entity-code 093412
+```
+
+### Sync Scripts
+
+| Script | Source Table | PIM Fields |
+|--------|--------------|------------|
+| `01-sync-core.ts` | `myartmag`, `supervisor_*` | sku, name, description, variants |
+| `02-sync-media.ts` | CDN/S3 | images, media |
+| `03-sync-attributes.ts` | `myartcar` (FRET/FREV) | attributes |
+| `04-sync-price-promo.ts` | `mypromor`, `mypromot` | promotions, promo_code, promo_type |
+
+### Merge Modes
+
+The PIM import API supports two modes:
+
+- **`replace`** (default): Replaces entire product
+- **`partial`**: Merges with existing data (delta update)
+
+Scripts 03 and 04 use `partial` mode to preserve existing fields.
+
+```typescript
+// Partial update example
+{
+  source_id: "test-api-source",
+  merge_mode: "partial",
+  products: [{ entity_code: "093412", attributes: {...} }]
+}
+```
+
+### Configuration
+
+`config/connections.json`:
+```json
+{
+  "projects": {
+    "hidros-cloud": {
+      "mysql": { "host": "...", "database": "mymb_hidros" },
+      "mongodb": { "dbName": "hdr-api-it" }
+    }
+  },
+  "defaultProject": "hidros-cloud"
+}
+```
+
+---
+
 ## Maintenance
 
 ### Updating Standards
@@ -644,5 +915,5 @@ For questions about these standards, refer to:
 
 ---
 
-**Last Updated**: 2025-10-31
-**Version**: 1.0
+**Last Updated**: 2025-12-04
+**Version**: 1.2

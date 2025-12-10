@@ -1,5 +1,5 @@
 import { B2BHomeSettingsModel, HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectToDatabase } from "./connection";
 
@@ -116,6 +116,7 @@ type HomeSettingsUpdate = {
   defaultCardVariant?: "b2b" | "horizontal" | "compact" | "detailed";
   cardStyle?: Partial<ProductCardStyle> | ProductCardStyle;
   cdn?: Partial<CDNConfiguration> | CDNConfiguration;
+  cdn_credentials?: Partial<CDNCredentials> | CDNCredentials;
   lastModifiedBy?: string;
 };
 
@@ -171,6 +172,15 @@ export async function upsertHomeSettings(
         });
       }
 
+      if (data.cdn_credentials) {
+        const cdnCredsUpdate = data.cdn_credentials as Partial<CDNCredentials>;
+        Object.entries(cdnCredsUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`cdn_credentials.${key}`] = value;
+          }
+        });
+      }
+
       if (data.defaultCardVariant) {
         updateFields.defaultCardVariant = data.defaultCardVariant;
       }
@@ -194,6 +204,7 @@ export async function upsertHomeSettings(
         defaultCardVariant: data.defaultCardVariant ?? "b2b",
         cardStyle: mergeCardStyle(undefined, data.cardStyle as Partial<ProductCardStyle>),
         cdn: data.cdn,
+        cdn_credentials: data.cdn_credentials,
         lastModifiedBy: data.lastModifiedBy
       });
 
@@ -256,7 +267,30 @@ export async function updateCDNConfiguration(
 }
 
 /**
- * Get CDN base URL from database settings with fallback to environment variables
+ * Update CDN credentials for file uploads
+ */
+export async function updateCDNCredentials(
+  cdn_credentials: Partial<CDNCredentials>,
+  lastModifiedBy?: string
+): Promise<HomeSettingsDocument | null> {
+  return upsertHomeSettings({ cdn_credentials, lastModifiedBy });
+}
+
+/**
+ * Get CDN credentials from database
+ */
+export async function getCDNCredentials(): Promise<CDNCredentials | null> {
+  try {
+    const settings = await getHomeSettings();
+    return settings?.cdn_credentials ?? null;
+  } catch (error) {
+    console.error("Error fetching CDN credentials:", error);
+    return null;
+  }
+}
+
+/**
+ * Get CDN base URL from database settings
  * @returns CDN base URL or empty string if not configured
  */
 export async function getCDNBaseUrl(): Promise<string> {
@@ -268,29 +302,16 @@ export async function getCDNBaseUrl(): Promise<string> {
       return settings.cdn.baseUrl;
     }
 
-    // Fallback to environment variables
-    const cdnEndpoint = process.env.CDN_ENDPOINT ?? process.env.NEXT_PUBLIC_CDN_ENDPOINT;
-    const cdnBucket = process.env.CDN_BUCKET ?? process.env.NEXT_PUBLIC_CDN_BUCKET;
-
-    if (cdnEndpoint && cdnBucket) {
-      // Normalize endpoint (remove trailing slash)
-      const normalizedEndpoint = cdnEndpoint.replace(/\/+$/, '');
-      return `${normalizedEndpoint}/${cdnBucket}`;
+    // Build URL from cdn_credentials if available
+    const creds = settings?.cdn_credentials;
+    if (creds?.cdn_url && creds?.bucket_name) {
+      const normalizedEndpoint = creds.cdn_url.replace(/\/+$/, '');
+      return `${normalizedEndpoint}/${creds.bucket_name}`;
     }
 
     return '';
   } catch (error) {
     console.error("Error fetching CDN base URL:", error);
-
-    // On error, try environment variables as last resort
-    const cdnEndpoint = process.env.CDN_ENDPOINT ?? process.env.NEXT_PUBLIC_CDN_ENDPOINT;
-    const cdnBucket = process.env.CDN_BUCKET ?? process.env.NEXT_PUBLIC_CDN_BUCKET;
-
-    if (cdnEndpoint && cdnBucket) {
-      const normalizedEndpoint = cdnEndpoint.replace(/\/+$/, '');
-      return `${normalizedEndpoint}/${cdnBucket}`;
-    }
-
     return '';
   }
 }

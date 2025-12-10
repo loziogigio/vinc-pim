@@ -325,6 +325,182 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
 }
 
 // ============================================
+// VARIANT GROUPED RESULTS ENRICHMENT
+// ============================================
+
+/**
+ * Enrich variant grouped search results
+ * For group_variants: true - fetch parent from MongoDB and enrich variants
+ *
+ * @param results - Results with _needs_parent_enrichment flag and variants array
+ * @param lang - Language code for localized fields
+ */
+export async function enrichVariantGroupedResults(results: any[], lang: string = 'it'): Promise<any[]> {
+  if (!results?.length) {
+    return results;
+  }
+
+  try {
+    // Collect ALL entity_codes: parents + all variants
+    const parentEntityCodes: string[] = [];
+    const variantEntityCodes: string[] = [];
+
+    for (const result of results) {
+      if (result.entity_code) {
+        parentEntityCodes.push(result.entity_code);
+      }
+      if (result.variants?.length) {
+        for (const variant of result.variants) {
+          if (variant.entity_code) {
+            variantEntityCodes.push(variant.entity_code);
+          }
+        }
+      }
+    }
+
+    const allEntityCodes = [...parentEntityCodes, ...variantEntityCodes];
+
+    // Load entity caches and ALL product data in parallel
+    const [brandsMap, categoriesMap, collectionsMap, productTypesMap, tagsMap, productDataMap] = await Promise.all([
+      loadBrands(),
+      loadCategories(),
+      loadCollections(),
+      loadProductTypes(),
+      loadTags(),
+      loadFullProductData(allEntityCodes),
+    ]);
+
+    // Helper to enrich a single product
+    const enrichProduct = (product: any) => {
+      const productData = productDataMap.get(product.entity_code);
+
+      if (!productData) {
+        // No MongoDB data found, return as-is with entity enrichment
+        return {
+          ...product,
+          brand: enrichBrand(product.brand, brandsMap),
+          category: enrichCategory(product.category, categoriesMap),
+          collections: enrichCollections(product.collections, collectionsMap),
+          product_type: enrichProductType(product.product_type, productTypesMap),
+          tags: enrichTags(product.tags, tagsMap),
+        };
+      }
+
+      // Get localized data from MongoDB
+      const mongoAttributes = productData.attributes
+        ? getLocalizedAttributes(productData.attributes, lang)
+        : undefined;
+      const mongoMedia = productData.media
+        ? getLocalizedMedia(productData.media, lang)
+        : undefined;
+
+      // Merge MongoDB data into product
+      return {
+        ...product,
+        // Core fields from MongoDB
+        sku: productData.sku || product.sku,
+        ean: productData.ean || product.ean,
+        name: getLocalizedName(productData, lang) || product.name,
+        short_description: getLocalizedShortDescription(productData, lang) || product.short_description,
+        description: getLocalizedDescription(productData, lang) || product.description,
+        slug: productData.slug || product.slug,
+        // Pricing from MongoDB
+        price: productData.sell_price ?? product.price,
+        list_price: productData.list_price ?? product.list_price,
+        // Parent/variant info
+        is_parent: productData.is_parent ?? product.is_parent,
+        parent_entity_code: productData.parent_entity_code || product.parent_entity_code,
+        parent_sku: productData.parent_sku || product.parent_sku,
+        variants_entity_code: productData.variants_entity_code || product.variants_entity_code,
+        variants_sku: productData.variants_sku || product.variants_sku,
+        // Media
+        cover_image_url: productData.cover_image_url || product.cover_image_url,
+        images: productData.images || product.images,
+        media: mongoMedia || product.media,
+        // Attributes
+        attributes: mongoAttributes || product.attributes,
+        // Entity relations enriched
+        brand: enrichBrand(productData.brand || product.brand, brandsMap),
+        category: enrichCategory(productData.category || product.category, categoriesMap),
+        collections: enrichCollections(productData.collections || product.collections, collectionsMap),
+        product_type: enrichProductType(productData.product_type || product.product_type, productTypesMap),
+        tags: enrichTags(productData.tags || product.tags, tagsMap),
+        // Clean up
+        gallery: undefined,
+        _needs_parent_enrichment: undefined,
+      };
+    };
+
+    // Enrich each result (parent) and its variants
+    return results.map(result => {
+      // Enrich the parent
+      const enrichedParent = enrichProduct(result);
+
+      // Enrich variants if present
+      if (result.variants?.length) {
+        enrichedParent.variants = result.variants.map((variant: any) => enrichProduct(variant));
+      }
+
+      return enrichedParent;
+    });
+  } catch (error) {
+    console.error('[Enricher] Failed to enrich variant grouped results:', error);
+    return results;
+  }
+}
+
+/**
+ * Load full product data from MongoDB (all fields needed for parent enrichment)
+ */
+async function loadFullProductData(entityCodes: string[]): Promise<Map<string, any>> {
+  if (!entityCodes.length) {
+    return new Map();
+  }
+
+  await connectToDatabase();
+  const db = mongoose.connection.db;
+
+  if (!db) {
+    console.warn('[Enricher] MongoDB not connected, skipping full product data enrichment');
+    return new Map();
+  }
+
+  const products = await db.collection('pimproducts')
+    .find({ entity_code: { $in: entityCodes }, isCurrent: true })
+    .toArray();
+
+  const map = new Map<string, any>();
+  for (const product of products) {
+    if (product.entity_code) {
+      map.set(product.entity_code, product);
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Get localized name from product
+ */
+function getLocalizedName(product: any, lang: string): string | undefined {
+  return product.name?.[lang] || product.name?.it || Object.values(product.name || {})[0] as string;
+}
+
+/**
+ * Get localized short description from product
+ */
+function getLocalizedShortDescription(product: any, lang: string): string | undefined {
+  return product.short_description?.[lang] || product.short_description?.it;
+}
+
+/**
+ * Get localized description from product
+ */
+function getLocalizedDescription(product: any, lang: string): string | undefined {
+  return product.description?.[lang] || product.description?.it;
+}
+
+// ============================================
 // CACHE MANAGEMENT
 // ============================================
 

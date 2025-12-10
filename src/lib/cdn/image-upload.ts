@@ -1,4 +1,4 @@
-import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdnClient";
+import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdn-upload.service";
 
 /**
  * Allowed image MIME types
@@ -31,11 +31,12 @@ export interface ImageValidationError {
 /**
  * Validate image file
  */
-export function validateImageFile(
+export async function validateImageFile(
   file: File
-): { valid: boolean; error?: string } {
+): Promise<{ valid: boolean; error?: string }> {
   // Check if CDN is configured
-  if (!isCdnConfigured()) {
+  const cdnConfigured = await isCdnConfigured();
+  if (!cdnConfigured) {
     return { valid: false, error: "CDN is not configured" };
   }
 
@@ -66,7 +67,7 @@ export async function uploadImage(
   folder = "products"
 ): Promise<ImageUploadResult> {
   // Validate file
-  const validation = validateImageFile(file);
+  const validation = await validateImageFile(file);
   if (!validation.valid) {
     throw new Error(validation.error);
   }
@@ -86,8 +87,8 @@ export async function uploadImage(
   // Upload to CDN
   const result = await uploadToCdn({
     buffer,
-    contentType: file.type,
-    fileName,
+    content_type: file.type,
+    file_name: fileName,
   });
 
   return {

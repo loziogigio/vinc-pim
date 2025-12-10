@@ -6,10 +6,11 @@
 // Types (re-export from centralized location)
 export * from '@/lib/types/search';
 
-// Configuration
+// Solr Configuration (from project.config - single source of truth)
+export { getSolrConfig, isSolrEnabled, SolrConfig } from '@/config/project.config';
+
+// Facet Configuration
 export {
-  getSolrConfig,
-  isSolrEnabled,
   FACET_FIELDS_CONFIG,
   DEFAULT_FACET_FIELDS,
   PIM_FACET_FIELDS,
@@ -42,3 +43,6 @@ export {
   transformDocument,
   getMultilingualValue,
 } from './response-transformer';
+
+// Search Service
+export { searchProducts, type SearchParams, type SearchResult } from './search.service';

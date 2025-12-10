@@ -47,10 +47,10 @@ async function syncProducts() {
 
     const solrAdapter = new SolrAdapter({
       solrUrl,
-      solrCore: projectConfig.solrCore,
+      solrCore: projectConfig().solrCore,
     });
 
-    console.log(`🔍 Solr URL: ${solrUrl}/${projectConfig.solrCore}\n`);
+    console.log(`🔍 Solr URL: ${solrUrl}/${projectConfig().solrCore}\n`);
     console.log("🔄 Syncing products to Solr using bulk index...\n");
 
     // Use bulkIndexProducts method
@@ -74,7 +74,7 @@ async function syncProducts() {
     // Verify in Solr
     console.log("\n🔍 Verifying in Solr...");
     const query = "*:*";
-    const verifyUrl = `${solrUrl}/${projectConfig.solrCore}/select?q=${query}&rows=0`;
+    const verifyUrl = `${solrUrl}/${projectConfig().solrCore}/select?q=${query}&rows=0`;
     const response = await fetch(verifyUrl);
     const data = await response.json();
 

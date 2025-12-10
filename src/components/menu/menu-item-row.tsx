@@ -10,9 +10,9 @@ import {
   ChevronRight,
   ChevronDown,
   Plus,
-  Menu,
 } from "lucide-react";
 import { MenuItem } from "./menu-builder";
+import Image from "next/image";
 
 interface MenuItemRowProps {
   item: MenuItem;
@@ -117,9 +117,19 @@ export function MenuItemRow({
           )}
         </button>
 
-        {/* Type Icon */}
-        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0 text-lg">
-          {getTypeIcon(item.type)}
+        {/* Type Icon or Custom Image */}
+        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0 text-lg overflow-hidden">
+          {item.icon ? (
+            <Image
+              src={item.icon}
+              alt=""
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            getTypeIcon(item.type)
+          )}
         </div>
 
         {/* Menu Item Info */}

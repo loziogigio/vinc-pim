@@ -11,7 +11,8 @@ Product Information Management system with multilingual support and multi-tenant
 - Installation and setup
 - First product tutorial
 
-### [02. API](02-api/)
+### [02. API](02-api/) ⭐
+- **[ELIA AI Search](02-api/elia-api.md)** - Natural language product search with Claude AI
 - REST API documentation
 - Authentication
 - API endpoints reference
@@ -28,6 +29,7 @@ Product Information Management system with multilingual support and multi-tenant
 - Product associations
 
 ### [05. Integrations](05-integrations/) ⭐
+- **[Search & Faceting](05-integrations/SEARCH_AND_FACETING.md)** - Solr schema, multilingual sync, text search & boosting
 - **[Multichannel Sync Guide](05-integrations/MULTICHANNEL_SYNC.md)** - Sync to eBay, Amazon, B2B, B2C, and more
 - Marketplace sync (eBay, Amazon, ManoMano, Trovaprezzi)
 - B2B and B2C storefronts
@@ -63,6 +65,10 @@ Product Information Management system with multilingual support and multi-tenant
 
 **API Integration?** → [API Documentation](02-api/)
 
+**AI Search?** → [ELIA AI Search](02-api/elia-api.md) ⭐
+
+**Solr Search?** → [Search & Faceting](05-integrations/SEARCH_AND_FACETING.md) ⭐
+
 **Multi-language?** → [Features - Multilingual](04-features/)
 
 ---
@@ -74,8 +80,10 @@ Product Information Management system with multilingual support and multi-tenant
 - Apache Solr 9.x
 - BullMQ + Redis
 - JWT Authentication
+- Claude AI (ELIA Search)
 
 ---
 
-**Version:** 2.0
+**Version:** 2.1
+**Last Updated:** 2025-12-03
 **GitHub:** https://github.com/loziogigio/vinc-pim

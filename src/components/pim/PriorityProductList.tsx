@@ -7,20 +7,16 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import type { MultiLangString, ProductImage, ProductAnalytics } from "@/lib/types/pim";
 
-// CDN base URL from environment variable
-const CDN_BASE_URL = process.env.NEXT_PUBLIC_CDN_ENDPOINT && process.env.NEXT_PUBLIC_CDN_BUCKET
-  ? `${process.env.NEXT_PUBLIC_CDN_ENDPOINT}/${process.env.NEXT_PUBLIC_CDN_BUCKET}`
-  : "";
-
 /**
- * Construct full CDN URL from relative path
+ * Get image URL - handles both absolute and relative paths
+ * CDN base URL is configured via MongoDB homeSettings
  */
-function constructCDNUrl(relativePath?: string): string {
+function getImageUrl(relativePath?: string): string {
   if (!relativePath) return "";
+  // If already a full URL, use as-is
   if (relativePath.startsWith("http")) return relativePath;
-  if (!CDN_BASE_URL) return relativePath;
-  const normalizedPath = relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
-  return `${CDN_BASE_URL}${normalizedPath}`;
+  // Return relative path - product images should have full CDN URLs stored
+  return relativePath;
 }
 
 /**
@@ -81,7 +77,7 @@ export function PriorityProductList() {
   const getCoverImageUrl = (images?: ProductImage[]): string | null => {
     if (!images || images.length === 0) return null;
     const coverImage = images.find(img => img.position === 0) || images[0];
-    return coverImage?.url ? constructCDNUrl(coverImage.url) : null;
+    return coverImage?.url ? getImageUrl(coverImage.url) : null;
   };
 
   if (isLoading) {

@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { uploadMultipleMedia } from "@/lib/cdn/media-upload";
+import { deleteFromCdn } from "@/lib/services/cdn-upload.service";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/media
@@ -138,6 +139,7 @@ export async function POST(
 /**
  * DELETE /api/b2b/pim/products/[entity_code]/media?cdn_key=...
  * Delete a specific media file from a product
+ * Supports cdn_key, _id, or URL as identifier
  */
 export async function DELETE(
   req: NextRequest,
@@ -153,11 +155,11 @@ export async function DELETE(
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;
 
-    // Get media CDN key from query params
+    // Get media identifier from query params (supports cdn_key, _id, or URL)
     const { searchParams } = new URL(req.url);
-    const cdn_key = searchParams.get("cdn_key");
+    const mediaId = searchParams.get("cdn_key");
 
-    if (!cdn_key) {
+    if (!mediaId) {
       return NextResponse.json(
         { error: "Missing cdn_key parameter" },
         { status: 400 }
@@ -167,15 +169,52 @@ export async function DELETE(
     // Connect to database
     await connectToDatabase();
 
+    // First, find the product and the media item to get cdn_key for CDN deletion
+    const product = await PIMProductModel.findOne({
+      entity_code,
+      isCurrent: true,
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    // Find the media item by cdn_key, _id, or URL
+    const mediaItems = product.media || [];
+    const mediaItem = mediaItems.find((m: any) =>
+      m.cdn_key === mediaId ||
+      m._id?.toString() === mediaId ||
+      m.url === mediaId
+    );
+
+    if (!mediaItem) {
+      return NextResponse.json(
+        { error: "Media item not found" },
+        { status: 404 }
+      );
+    }
+
+    // Build the $pull query based on available identifier
+    let pullQuery: any;
+    if (mediaItem.cdn_key) {
+      pullQuery = { cdn_key: mediaItem.cdn_key };
+    } else if (mediaItem._id) {
+      pullQuery = { _id: mediaItem._id };
+    } else {
+      pullQuery = { url: mediaItem.url };
+    }
+
     // Remove media from product
     const result = await PIMProductModel.findOneAndUpdate(
       {
         entity_code,
-        // No wholesaler_id - database provides isolation
         isCurrent: true,
       },
       {
-        $pull: { media: { cdn_key } },
+        $pull: { media: pullQuery },
         $set: {
           updated_at: new Date(),
           last_updated_by: "manual",
@@ -184,16 +223,48 @@ export async function DELETE(
       { new: true }
     ).lean();
 
-    if (!result) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+    // Derive cdn_key from URL if not available (for CDN deletion)
+    let cdnKeyForDeletion = mediaItem.cdn_key;
+    if (!cdnKeyForDeletion && mediaItem.url && !mediaItem.is_external_link) {
+      // Try to extract key from URL (e.g., "https://s3.../bucket/key" -> "key")
+      try {
+        const url = new URL(mediaItem.url);
+        const pathParts = url.pathname.split('/');
+        // Skip first empty part and bucket name, get the rest
+        if (pathParts.length > 2) {
+          cdnKeyForDeletion = pathParts.slice(2).join('/');
+        }
+      } catch {
+        // URL parsing failed, skip CDN deletion
+      }
+    }
+
+    // Try to delete from CDN (if delete_from_cloud is enabled in settings)
+    // CDN deletion is best-effort - DB record is already deleted, so we continue even if this fails
+    let cdnDeleted = false;
+    let cdnError: string | null = null;
+
+    if (cdnKeyForDeletion && !mediaItem.is_external_link) {
+      try {
+        cdnDeleted = await deleteFromCdn(cdnKeyForDeletion);
+        if (!cdnDeleted) {
+          cdnError = "CDN deletion skipped (disabled or not configured)";
+        }
+      } catch (err) {
+        cdnError = err instanceof Error ? err.message : "CDN deletion failed (permission denied or network error)";
+        console.warn("[media] CDN deletion failed, but DB record already removed:", cdnError);
+      }
+    } else if (mediaItem.is_external_link) {
+      cdnError = "CDN deletion skipped (external link)";
+    } else {
+      cdnError = "CDN deletion skipped (no cdn_key available)";
     }
 
     return NextResponse.json({
       success: true,
       message: "Media file deleted successfully",
+      cdn_deleted: cdnDeleted,
+      cdn_error: cdnError,
       product: result,
     });
   } catch (error) {

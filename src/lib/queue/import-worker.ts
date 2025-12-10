@@ -10,7 +10,7 @@ import { ImportJobModel } from "../db/models/import-job";
 import { PIMProductModel } from "../db/models/pim-product";
 import { LanguageModel } from "../db/models/language";
 import { parseCSV, parseExcel, detectFileType } from "../pim/parser";
-import { projectConfig } from "../../config/project.config";
+import { projectConfig, MULTILINGUAL_FIELDS } from "../../config/project.config";
 import {
   calculateCompletenessScore,
   findCriticalIssues,
@@ -51,33 +51,26 @@ interface ImportJobData {
 }
 
 /**
- * Multilingual fields that should have language suffixes
+ * Check if an object is already in multilingual format (has language keys at root level)
  */
-const MULTILINGUAL_FIELDS = [
-  "name",
-  "description",
-  "short_description",
-  "features",
-  "specifications",
-  "meta_title",
-  "meta_description",
-  "keywords",
-];
+function isMultilingualObject(obj: any, languageCodes: string[]): boolean {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    return false;
+  }
+  const keys = Object.keys(obj);
+  return keys.length > 0 && keys.every(key => languageCodes.includes(key));
+}
 
 /**
  * Apply default language to multilingual fields
- * Same logic as parser.ts but for API imports
+ * @param languageCodes - Array of valid language codes from database
  */
-function applyDefaultLanguageToData(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+function applyDefaultLanguageToData(data: any, languageCodes: string[]): void {
+  const defaultLang = projectConfig().defaultLanguage;
 
   for (const field of MULTILINGUAL_FIELDS) {
     if (data[field] !== undefined && data[field] !== null && data[field] !== "") {
-      const isLanguageObject = typeof data[field] === "object" &&
-                                !Array.isArray(data[field]) &&
-                                data[field] !== null;
-
-      if (!isLanguageObject) {
+      if (!isMultilingualObject(data[field], languageCodes)) {
         const plainValue = data[field];
         data[field] = {
           [defaultLang]: plainValue
@@ -107,6 +100,10 @@ async function processImport(job: Job<ImportJobData>) {
   }
 
   await connectToDatabase();
+
+  // Fetch language codes from database for multilingual detection
+  const languages = await LanguageModel.find({}, { code: 1 }).lean();
+  const languageCodes = languages.map(l => l.code);
 
   try {
     // ========== PHASE 3: HANDLE BATCH METADATA ==========
@@ -210,7 +207,7 @@ async function processImport(job: Job<ImportJobData>) {
         }
 
         // Apply default language to multilingual fields (same as CSV parser)
-        applyDefaultLanguageToData(mappedData);
+        applyDefaultLanguageToData(mappedData, languageCodes);
 
         return {
           entity_code: mappedData.entity_code || mappedData.id || String(Math.random()),
@@ -247,9 +244,9 @@ async function processImport(job: Job<ImportJobData>) {
       const fileType = detectFileType(buffer, file_name!);
 
       if (fileType === "excel") {
-        rows = await parseExcel(buffer, source);
+        rows = await parseExcel(buffer, source, undefined, languageCodes);
       } else if (fileType === "csv") {
-        rows = await parseCSV(buffer, source);
+        rows = await parseCSV(buffer, source, languageCodes);
       } else {
         throw new Error("Unsupported file type");
       }
@@ -375,8 +372,8 @@ async function processImport(job: Job<ImportJobData>) {
         const { status: _status, ...safeProductData } = productData;
 
         // Calculate variant and faceting flags
-        const hasVariants = (productData.variations_sku && productData.variations_sku.length > 0) ||
-                           (productData.variations_entity_code && productData.variations_entity_code.length > 0);
+        const hasVariants = (productData.variants_sku && productData.variants_sku.length > 0) ||
+                           (productData.variants_entity_code && productData.variants_entity_code.length > 0);
         const isChild = !!productData.parent_sku || !!productData.parent_entity_code;
 
         // Set is_parent (default true unless explicitly a child)

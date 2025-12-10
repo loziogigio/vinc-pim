@@ -35,7 +35,7 @@ export async function PATCH(
 
     if (!Array.isArray(order) || order.length === 0) {
       return NextResponse.json(
-        { error: "Invalid or missing order parameter (must be array of cdn_keys)" },
+        { error: "Invalid or missing order parameter (must be array of media IDs)" },
         { status: 400 }
       );
     }
@@ -63,13 +63,13 @@ export async function PATCH(
     const mediaOfType = allMedia.filter((m: any) => m.type === type);
     const mediaOfOtherTypes = allMedia.filter((m: any) => m.type !== type);
 
-    // Create a map for quick lookup
-    const mediaMap = new Map(mediaOfType.map((m: any) => [m.cdn_key, m]));
+    // Create a map for quick lookup using _id (primary) or cdn_key (fallback)
+    const mediaMap = new Map(mediaOfType.map((m: any) => [m._id?.toString(), m]));
 
-    // Reorder media based on the provided order
+    // Reorder media based on the provided order (order contains _id values)
     const reorderedMedia = order
-      .map((cdn_key, index) => {
-        const mediaItem = mediaMap.get(cdn_key);
+      .map((mediaId, index) => {
+        const mediaItem = mediaMap.get(mediaId);
         if (mediaItem) {
           return {
             ...mediaItem,
@@ -81,9 +81,9 @@ export async function PATCH(
       .filter(Boolean);
 
     // Add any media items not in the order array at the end
-    const orderedKeys = new Set(order);
+    const orderedIds = new Set(order);
     const remainingMedia = mediaOfType
-      .filter((m: any) => !orderedKeys.has(m.cdn_key))
+      .filter((m: any) => !orderedIds.has(m._id?.toString()))
       .map((m: any, index: number) => ({
         ...m,
         position: reorderedMedia.length + index,

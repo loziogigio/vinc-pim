@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { BulkUpdateModal, BulkUpdateData } from "@/components/pim/BulkUpdateModal";
-import { ProductImage } from "@/lib/types/pim";
+import { ProductImage, PIMProductListItem } from "@/lib/types/pim";
 import { LanguageStatusBadge } from "@/components/pim/LanguageStatusBadge";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import {
@@ -26,24 +26,13 @@ import {
   Plus,
 } from "lucide-react";
 
-type Product = {
-  _id: string;
-  entity_code: string;
-  sku: string;
-  name: string | Record<string, string>; // Can be string or multilingual
-  description?: string | Record<string, string>; // Can be string or multilingual
-  price: number;
+// Extend PIMProductListItem with page-specific fields
+type Product = PIMProductListItem & {
+  name: string | Record<string, string>; // Override to support multilingual
+  description?: string | Record<string, string>;
   currency: string;
-  images?: ProductImage[];
   brand?: { id: string; name: string | Record<string, string> };
   category?: { id: string; name: string | Record<string, string> };
-  // Variant/Parent relationships
-  parent_sku?: string;
-  parent_entity_code?: string;
-  is_parent?: boolean;
-  completeness_score: number;
-  status: "draft" | "published" | "archived";
-  critical_issues: string[];
   has_conflict?: boolean;
   source?: {
     source_id: string;
@@ -51,14 +40,9 @@ type Product = {
     batch_id?: string;
     imported_at: string;
   };
-  analytics: {
-    views_30d: number;
-    priority_score: number;
-  };
   updated_at: string;
-  // Language information
-  _available_languages?: string[]; // Array of language codes with translations
-  _language?: string; // Current language if API returned single-language response
+  _available_languages?: string[];
+  _language?: string;
 };
 
 type FilterState = {
@@ -968,8 +952,13 @@ export default function ProductsListPage() {
                             <div className="text-sm font-medium text-foreground group-hover:text-primary line-clamp-2">
                               {getMultilingualText(product.name, defaultLanguageCode, "Untitled")}
                             </div>
-                            <div className="text-xs text-muted-foreground font-mono truncate">
-                              SKU: {product.sku}
+                            <div className="text-xs text-muted-foreground font-mono truncate flex items-center gap-2">
+                              <span>SKU: {product.sku}</span>
+                              {product.is_parent && product.variants_entity_code && product.variants_entity_code.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                  Parent
+                                </span>
+                              )}
                             </div>
                           </div>
                         </Link>
@@ -984,10 +973,6 @@ export default function ProductsListPage() {
                             >
                               {product.parent_sku}
                             </button>
-                          ) : product.is_parent ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                              Parent
-                            </span>
                           ) : (
                             <span className="text-muted-foreground italic">—</span>
                           )}

@@ -7,6 +7,7 @@ import type {
   ProductDataTableBlockConfig,
   ProductDataTableRowConfig
 } from "@/lib/types/blocks";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 const GRID_WIDTH_CLASS_MAP: Record<number, string> = {
   120: "sm:grid-cols-[120px,1fr]",
@@ -99,7 +100,7 @@ const renderLeftContent = (row: ProductDataTableRowConfig) => {
     return (
       <div
         className="prose prose-xs max-w-none text-slate-700"
-        dangerouslySetInnerHTML={{ __html: row.leftHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(row.leftHtml) }}
       />
     );
   }
@@ -157,7 +158,7 @@ const renderRowValue = (row: ProductDataTableRowConfig) => {
     return (
       <div
         className="prose prose-sm max-w-none text-slate-700"
-        dangerouslySetInnerHTML={{ __html: row.html }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(row.html) }}
       />
     );
   }

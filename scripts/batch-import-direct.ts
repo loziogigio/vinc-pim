@@ -26,7 +26,7 @@ const products = [
  * Apply default language (same logic as import worker)
  */
 function applyDefaultLanguage(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+  const defaultLang = projectConfig().defaultLanguage;
   const MULTILINGUAL_FIELDS = ["name", "description", "short_description", "features", "specifications"];
 
   for (const field of MULTILINGUAL_FIELDS) {
@@ -108,7 +108,7 @@ async function batchImport() {
           ...productData,
         });
 
-        console.log(`✅ ${productData.entity_code}: ${productData.name[projectConfig.defaultLanguage]}`);
+        console.log(`✅ ${productData.entity_code}: ${productData.name[projectConfig().defaultLanguage]}`);
         successCount++;
 
         // Sync to Solr

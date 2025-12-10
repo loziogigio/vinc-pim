@@ -247,7 +247,7 @@ export default function ProductDetailPage({
     );
 
     // Check if product type changed
-    const productTypeChanged = productType?.id !== originalProductType?.id;
+    const productTypeChanged = productType?.product_type_id !== originalProductType?.product_type_id;
 
     // Check if collections changed
     const collectionsChanged = JSON.stringify(collections) !== JSON.stringify(originalCollections);
@@ -256,7 +256,7 @@ export default function ProductDetailPage({
     const categoryChanged = category?.id !== originalCategory?.id;
 
     // Check if brand changed
-    const brandChanged = brand?.id !== originalBrand?.id;
+    const brandChanged = brand?.brand_id !== originalBrand?.brand_id;
 
     // Check if feature values changed
     const featuresChanged = JSON.stringify(featureValues) !== JSON.stringify(originalFeatureValues);

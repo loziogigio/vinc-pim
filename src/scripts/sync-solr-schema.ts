@@ -9,8 +9,9 @@ import 'dotenv/config';
 import mongoose from "mongoose";
 import { LanguageModel } from "../lib/db/models/language";
 import { syncSolrSchemaWithLanguages } from "../services/solr-schema.service";
-import { SolrAdapter, loadAdapterConfigs } from "../lib/adapters";
+import { SolrAdapter } from "../lib/adapters";
 import { connectToDatabase, disconnectAll } from "../lib/db/connection";
+import { getSolrConfig, isSolrEnabled } from "../config/project.config";
 
 async function main() {
   try {
@@ -21,21 +22,27 @@ async function main() {
     const dbName = mongoose.connection.db?.databaseName;
     console.log(`✓ Connected to MongoDB: ${dbName}\n`);
 
-    // Initialize Solr adapter (config from loadAdapterConfigs - single source of truth)
-    const adapterConfigs = loadAdapterConfigs();
-    const solrConfig = adapterConfigs.solr;
-
-    if (!solrConfig?.enabled) {
+    // Check if Solr is enabled
+    if (!isSolrEnabled()) {
       console.error('❌ Solr adapter is not enabled. Set SOLR_ENABLED=true');
       process.exit(1);
     }
 
-    const solrUrl = solrConfig.custom_config?.solr_url;
-    const solrCore = solrConfig.custom_config?.solr_core;
+    // Get Solr config from projectConfig (single source of truth)
+    const config = getSolrConfig();
+    const solrUrl = config.url;
+    const solrCore = config.core;
     console.log(`  Solr URL: ${solrUrl}`);
     console.log(`  Solr Core: ${solrCore}`);
 
-    const solrAdapter = new SolrAdapter(solrConfig);
+    // Create adapter with proper config
+    const solrAdapter = new SolrAdapter({
+      enabled: true,
+      custom_config: {
+        solr_url: solrUrl,
+        solr_core: solrCore,
+      },
+    });
 
     // Ensure Solr collection exists (creates if missing)
     try {

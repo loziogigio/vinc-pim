@@ -9,8 +9,6 @@ import {
   FileText,
   Settings,
   Sparkles,
-  FolderOpen,
-  Image,
   FolderTree,
   Layers,
   Cpu,
@@ -34,8 +32,6 @@ const navItems = [
   { label: "Product Types", href: "/b2b/pim/product-types", icon: Cpu, description: "Features" },
   { label: "Features", href: "/b2b/pim/features", icon: Sliders, description: "Reusable attributes" },
   { label: "AI Enhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, description: "Generate content" },
-  { label: "Attributes", href: "/b2b/pim/attributes", icon: FolderOpen, description: "Schema & mapping" },
-  { label: "Media", href: "/b2b/pim/media", icon: Image, description: "Product images" },
   { label: "Import", href: "/b2b/pim/import", icon: Upload, description: "CSV/API for products" },
   { label: "Jobs", href: "/b2b/pim/jobs", icon: FileText, description: "AI / Import / Sync tasks" },
   { label: "Sources", href: "/b2b/pim/sources", icon: Settings, description: "Data origins" }

@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Lock, User } from "lucide-react";
+import { Lock, User } from "lucide-react";
 
 export function B2BLoginForm() {
   const router = useRouter();
@@ -45,13 +46,17 @@ export function B2BLoginForm() {
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="space-y-2 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="rounded-full bg-primary p-4">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
-          </div>
+        <div className="mb-2 flex justify-center">
+          <Image
+            src="/vinc-bc.png"
+            alt="VINC Logo"
+            width={220}
+            height={220}
+            priority
+          />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">B2B Portal</h1>
-        <p className="text-muted-foreground">Product Catalog Manager</p>
+        <h1 className="text-2xl font-bold tracking-tight whitespace-nowrap">Welcome to VendereInCloud - CommerceSuite</h1>
+        <p className="text-muted-foreground">Sign in to continue</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

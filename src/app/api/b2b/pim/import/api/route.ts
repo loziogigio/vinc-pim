@@ -14,36 +14,35 @@ import {
   checkAutoPublishEligibility,
   mergeWithLockedFields,
 } from "@/lib/pim/auto-publish";
-import { projectConfig } from "@/config/project.config";
+import { projectConfig, MULTILINGUAL_FIELDS } from "@/config/project.config";
 
 /**
- * Multilingual fields that should have language suffixes
+ * Check if an object is already in multilingual format (has language keys at root level)
+ * @param obj - The object to check
+ * @param languageCodes - Array of valid language codes from database
  */
-const MULTILINGUAL_FIELDS = [
-  "name",
-  "description",
-  "short_description",
-  "features",
-  "specifications",
-  "meta_title",
-  "meta_description",
-  "keywords",
-];
+function isMultilingualObject(obj: any, languageCodes: string[]): boolean {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    return false;
+  }
+  const keys = Object.keys(obj);
+  // Check if all keys are language codes (e.g., { it: ..., en: ... })
+  return keys.length > 0 && keys.every(key => languageCodes.includes(key));
+}
 
 /**
  * Apply default language to multilingual fields
- * Converts plain strings to {lang: value} objects
+ * Converts plain strings/objects to {lang: value} format
+ * @param data - Product data to transform
+ * @param languageCodes - Array of valid language codes from database
  */
-function applyDefaultLanguageToData(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+function applyDefaultLanguageToData(data: any, languageCodes: string[]): void {
+  const defaultLang = projectConfig().defaultLanguage;
 
   for (const field of MULTILINGUAL_FIELDS) {
     if (data[field] !== undefined && data[field] !== null && data[field] !== "") {
-      const isLanguageObject = typeof data[field] === "object" &&
-                                !Array.isArray(data[field]) &&
-                                data[field] !== null;
-
-      if (!isLanguageObject) {
+      // Check if already in multilingual format (keys are language codes)
+      if (!isMultilingualObject(data[field], languageCodes)) {
         const plainValue = data[field];
         data[field] = {
           [defaultLang]: plainValue
@@ -54,12 +53,52 @@ function applyDefaultLanguageToData(data: any): void {
 }
 
 /**
+ * Deep merge two objects, with source values overriding target values
+ * Arrays are replaced, not merged
+ */
+function deepMerge(target: any, source: any): any {
+  const result = { ...target };
+
+  for (const key of Object.keys(source)) {
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    // Skip undefined/null source values (don't override with empty)
+    if (sourceValue === undefined || sourceValue === null) {
+      continue;
+    }
+
+    // If source value is an object (but not array, Date, or ObjectId)
+    if (
+      typeof sourceValue === 'object' &&
+      !Array.isArray(sourceValue) &&
+      !(sourceValue instanceof Date) &&
+      sourceValue.constructor === Object &&
+      typeof targetValue === 'object' &&
+      targetValue !== null &&
+      !Array.isArray(targetValue) &&
+      !(targetValue instanceof Date) &&
+      targetValue.constructor === Object
+    ) {
+      // Recursively merge objects
+      result[key] = deepMerge(targetValue, sourceValue);
+    } else {
+      // Replace value (including arrays)
+      result[key] = sourceValue;
+    }
+  }
+
+  return result;
+}
+
+/**
  * POST /api/b2b/pim/import/api
  * Import products directly via API request (JSON payload)
  *
  * Example request body:
  * {
  *   "source_id": "api-source-1",
+ *   "merge_mode": "partial",  // "replace" (default) or "partial" for delta updates
  *   "products": [
  *     {
  *       "entity_code": "SKU001",
@@ -84,6 +123,10 @@ function applyDefaultLanguageToData(data: any): void {
  *     "b2c": { "store_id": "store_001" }
  *   }
  * }
+ *
+ * merge_mode options:
+ * - "replace" (default): New data replaces existing product entirely
+ * - "partial": New data is merged with existing product (delta updates)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -95,14 +138,19 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
+    // Fetch language codes from database for multilingual detection
+    const languages = await LanguageModel.find({}, { code: 1 }).lean();
+    const languageCodes = languages.map(l => l.code);
+
     const body = await req.json();
-    const { source_id, products, batch_id, batch_metadata, channel_metadata } = body;
+    const { source_id, products, batch_id, batch_metadata, channel_metadata, merge_mode = 'replace' } = body;
 
     console.log('📦 Request params:', {
       source_id,
       batch_id,
       batch_metadata,
       channel_metadata,
+      merge_mode,
       product_count: products?.length
     });
 
@@ -198,7 +246,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Apply default language to multilingual fields (convert plain strings to {lang: value})
-        applyDefaultLanguageToData(mappedData);
+        applyDefaultLanguageToData(mappedData, languageCodes);
 
         const entity_code = mappedData.entity_code || mappedData.sku;
 
@@ -223,10 +271,36 @@ export async function POST(req: NextRequest) {
 
         const newVersion = latestProduct ? latestProduct.version + 1 : 1;
 
-        // Merge with locked fields if product exists
+        // Merge with existing product data based on merge_mode
         let finalProductData = mappedData;
-        if (latestProduct && latestProduct.locked_fields.length > 0) {
-          finalProductData = mergeWithLockedFields(latestProduct, mappedData);
+
+        if (latestProduct) {
+          if (merge_mode === 'partial') {
+            // Partial update: merge incoming data with existing product data
+            // Get existing product data (exclude PIM metadata fields)
+            const existingData = latestProduct.toObject();
+            const pimMetaFields = [
+              '_id', '__v', 'version', 'isCurrent', 'isCurrentPublished',
+              'status', 'published_at', 'source', 'completeness_score',
+              'critical_issues', 'auto_publish_eligible', 'auto_publish_reason',
+              'analytics', 'locked_fields', 'manually_edited', 'edited_by',
+              'edited_at', 'created_at', 'updated_at'
+            ];
+
+            // Remove PIM metadata from existing data
+            for (const field of pimMetaFields) {
+              delete existingData[field];
+            }
+
+            // Deep merge: existing data + incoming data (incoming wins)
+            finalProductData = deepMerge(existingData, mappedData);
+            console.log(`   ℹ️ Partial merge: keeping existing data, adding/updating incoming fields`);
+          }
+
+          // Also apply locked fields protection
+          if (latestProduct.locked_fields.length > 0) {
+            finalProductData = mergeWithLockedFields(latestProduct, finalProductData);
+          }
         }
 
         // Calculate quality metrics

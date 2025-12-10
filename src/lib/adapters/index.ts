@@ -12,7 +12,7 @@ import { TrovaprezziAdapter } from './trovaprezzi-adapter';
 import { ManoManoAdapter } from './manomano-adapter';
 import { B2BAdapter } from './b2b-adapter';
 import { B2CAdapter } from './b2c-adapter';
-import { projectConfig } from '@/config/project.config';
+import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
 
 /**
  * Adapter registry type mapping
@@ -89,15 +89,18 @@ export class AdapterFactory {
 
 /**
  * Load adapter configurations from environment variables
+ *
+ * Solr config uses getSolrConfig() from '@/config/project.config' as single source of truth.
  */
 export function loadAdapterConfigs(): Record<string, MarketplaceConfig> {
+  const solrConfig = getSolrConfig();
+
   return {
     solr: {
-      enabled: process.env.SOLR_ENABLED === 'true',
+      enabled: isSolrEnabled(),
       custom_config: {
-        // Single source of truth: projectConfig
-        solr_url: projectConfig.solrUrl,
-        solr_core: projectConfig.solrCore,
+        solr_url: solrConfig.url,
+        solr_core: solrConfig.core,
       },
     },
     ebay: {

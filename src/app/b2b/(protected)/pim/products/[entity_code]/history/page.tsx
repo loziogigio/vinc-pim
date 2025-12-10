@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { VersionComparison } from "@/components/pim/VersionComparison";
+import { getLocalizedString } from "@/lib/types/pim";
 
 type ProductVersion = {
   _id: string;
@@ -34,7 +35,7 @@ type ProductVersion = {
   isCurrentPublished: boolean;
   status: "draft" | "published" | "archived";
   published_at?: string;
-  image: { id: string; thumbnail: string; original: string };
+  images?: { url: string; cdn_key?: string; position?: number }[];
   brand?: { id: string; name: string; slug: string };
   category?: { id: string; name: string; slug: string };
   completeness_score: number;
@@ -206,8 +207,8 @@ export default function ProductHistoryPage({
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const matchesName = version.name.toLowerCase().includes(query);
-        const matchesDescription = version.description?.toLowerCase().includes(query);
+        const matchesName = getLocalizedString(version.name).toLowerCase().includes(query);
+        const matchesDescription = getLocalizedString(version.description).toLowerCase().includes(query);
         const matchesSku = version.sku.toLowerCase().includes(query);
         if (!matchesName && !matchesDescription && !matchesSku) {
           return false;
@@ -301,7 +302,7 @@ export default function ProductHistoryPage({
           <div>
             <h1 className="text-2xl font-bold text-foreground">Version History</h1>
             <p className="text-sm text-muted-foreground">
-              {currentProduct?.name} • {filteredVersions.length} of {versions.length} version
+              {getLocalizedString(currentProduct?.name)} • {filteredVersions.length} of {versions.length} version
               {versions.length !== 1 ? "s" : ""}
             </p>
           </div>
@@ -443,10 +444,10 @@ export default function ProductHistoryPage({
         <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded overflow-hidden bg-white flex-shrink-0">
-              {currentProduct.image?.thumbnail && (
+              {currentProduct.images?.[0]?.url && (
                 <Image
-                  src={currentProduct.image.thumbnail}
-                  alt={currentProduct.name}
+                  src={currentProduct.images[0].url}
+                  alt={getLocalizedString(currentProduct.name)}
                   width={64}
                   height={64}
                   className="w-full h-full object-cover"
@@ -456,7 +457,7 @@ export default function ProductHistoryPage({
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-foreground">{currentProduct.name}</h3>
+                  <h3 className="font-semibold text-foreground">{getLocalizedString(currentProduct.name)}</h3>
                   <p className="text-sm text-muted-foreground">
                     SKU: {currentProduct.sku} • Version {currentProduct.version}
                   </p>
@@ -581,10 +582,10 @@ export default function ProductHistoryPage({
 
                   {/* Product Thumbnail */}
                   <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
-                    {version.image?.thumbnail && (
+                    {version.images?.[0]?.url && (
                       <Image
-                        src={version.image.thumbnail}
-                        alt={version.name}
+                        src={version.images[0].url}
+                        alt={getLocalizedString(version.name)}
                         width={48}
                         height={48}
                         className="w-full h-full object-cover"
@@ -596,7 +597,7 @@ export default function ProductHistoryPage({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-semibold text-foreground">{version.name}</h3>
+                        <h3 className="font-semibold text-foreground">{getLocalizedString(version.name)}</h3>
                         <p className="text-xs text-muted-foreground">{version.sku}</p>
                       </div>
                       <div className="flex items-center gap-2">

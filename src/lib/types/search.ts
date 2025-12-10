@@ -25,6 +25,10 @@ export interface SearchRequest {
     order: 'asc' | 'desc';
   };
 
+  // Fuzzy search options (like dfl-api)
+  fuzzy?: boolean; // Enable fuzzy matching (default: false)
+  fuzzy_num?: number; // Fuzzy distance 1-2 (default: 1)
+
   // Variant control
   include_faceting?: boolean; // Only products meant for faceting (default: true)
   include_variants?: boolean; // Include variant products (default: true)
@@ -102,7 +106,8 @@ export interface FacetRequest {
 
 export interface SearchResponse {
   results: SolrProduct[];
-  numFound: number;
+  numFound: number; // Number of groups (unique products) when grouped, or total docs
+  matches?: number; // Total matching documents (only present when grouped)
   start: number;
   facet_results?: FacetResults;
   // Grouped response fields (when group option is used)
@@ -175,11 +180,12 @@ export interface SolrProduct {
   is_parent?: boolean;
   parent_entity_code?: string;
   parent_sku?: string;
-  variations_sku?: string[];
-  variations_entity_code?: string[];
+  variants_sku?: string[];
+  variants_entity_code?: string[];
   parent_product?: ParentProductData;
   sibling_variants?: SiblingVariantData[];
   include_faceting?: boolean;
+  variants?: SolrProduct[]; // Enriched variant products (fetched from Solr)
 
   // Versioning & Status
   version?: number;
@@ -331,7 +337,7 @@ export interface SiblingVariantData {
   entity_code: string;
   sku: string;
   name?: string;
-  variation_attributes?: Record<string, any>;
+  variant_attributes?: Record<string, any>;
   cover_image_url?: string;
   price?: number;
   stock_status?: string;
@@ -560,8 +566,8 @@ export interface SolrRawDocument {
   parent_sku?: string;
   parent_entity_code?: string;
   include_faceting?: boolean;
-  variations_sku?: string[];
-  variations_entity_code?: string[];
+  variants_sku?: string[];
+  variants_entity_code?: string[];
 
   // Product model
   product_model?: string;

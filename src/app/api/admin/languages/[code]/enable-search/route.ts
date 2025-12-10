@@ -83,8 +83,9 @@ export async function POST(
 
     // Ensure Solr core exists (create if needed)
     try {
-      console.log(`🔍 Ensuring Solr core exists: ${projectConfig.solrCore}`);
-      await ensureSolrCore(projectConfig);
+      const config = projectConfig();
+      console.log(`🔍 Ensuring Solr core exists: ${config.solrCore}`);
+      await ensureSolrCore(config);
     } catch (coreError: any) {
       console.error(`❌ Failed to ensure Solr core exists:`, coreError);
       return NextResponse.json(

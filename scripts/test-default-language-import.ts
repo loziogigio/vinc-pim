@@ -169,11 +169,11 @@ async function testDefaultLanguageImport() {
     const solrAdapter = new SolrAdapter({
       custom_config: {
         solr_url: solrUrl,
-        solr_core: projectConfig.solrCore,
+        solr_core: projectConfig().solrCore,
       }
     });
 
-    console.log(`🔍 Solr: ${solrUrl}/${projectConfig.solrCore}\n`);
+    console.log(`🔍 Solr: ${solrUrl}/${projectConfig().solrCore}\n`);
 
     let successCount = 0;
     let failedCount = 0;
@@ -200,13 +200,13 @@ async function testDefaultLanguageImport() {
 
     // Step 6: Verify in Solr
     console.log("\n📋 Step 6: Verifying in Solr...");
-    const verifyUrl = `${solrUrl}/${projectConfig.solrCore}/select?q=*:*&rows=0`;
+    const verifyUrl = `${solrUrl}/${projectConfig().solrCore}/select?q=*:*&rows=0`;
     const response = await fetch(verifyUrl);
     const data = await response.json();
     console.log(`✅ Total documents in Solr: ${data.response.numFound}`);
 
     // Query for test products
-    const testQuery = `${solrUrl}/${projectConfig.solrCore}/select?q=entity_code:TEST*&rows=10&wt=json`;
+    const testQuery = `${solrUrl}/${projectConfig().solrCore}/select?q=entity_code:TEST*&rows=10&wt=json`;
     const testResponse = await fetch(testQuery);
     const testData = await testResponse.json();
 

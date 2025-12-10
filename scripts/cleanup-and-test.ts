@@ -21,7 +21,7 @@ async function cleanup() {
     const SOLR_HOST = process.env.SOLR_HOST || "localhost";
     const SOLR_PORT = process.env.SOLR_PORT || "8983";
     const solrUrl = `http://${SOLR_HOST}:${SOLR_PORT}/solr`;
-    const solrCore = projectConfig.solrCore;
+    const solrCore = projectConfig().solrCore;
 
     try {
       // Delete all documents

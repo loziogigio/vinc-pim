@@ -16,10 +16,10 @@ import {
   ProductTypeEmbedded,
   TagEmbedded,
 } from "@/lib/types/entities";
-import { MultilingualText } from "@/lib/types/pim";
+import type { MultilingualText } from "@/lib/types/pim";
 
 // Re-export for backwards compatibility
-export { MultilingualText };
+export type { MultilingualText };
 
 // Helper type for language codes (for stricter typing in function params)
 export type SupportedLanguage = string;
@@ -193,8 +193,8 @@ export interface IPIMProduct extends Document {
   // Variations & Faceting Control
   parent_sku?: string;
   parent_entity_code?: string;
-  variations_sku?: string[]; // Array of child SKUs
-  variations_entity_code?: string[]; // Array of child entity_codes
+  variants_sku?: string[]; // Array of child SKUs
+  variants_entity_code?: string[]; // Array of child entity_codes
 
   /**
    * SELF-CONTAINED: Full parent product data
@@ -221,7 +221,7 @@ export interface IPIMProduct extends Document {
     entity_code: string;
     sku: string;
     name: MultilingualText;
-    variation_attributes?: Record<string, any>; // color, size, etc.
+    variant_attributes?: Record<string, any>; // color, size, etc.
     cover_image_url?: string;
     price?: number;
     stock_status?: string;
@@ -254,6 +254,16 @@ export interface IPIMProduct extends Document {
   product_status?: string;
   product_status_description?: MultilingualText; // Multilingual: "it": "Disponibile", "de": "Verfügbar", etc.
   stock_status?: "in_stock" | "out_of_stock" | "pre_order";
+
+  // Physical Attributes
+  weight?: number;           // Weight value (e.g., 0.12)
+  weight_uom?: string;       // Weight unit of measure (e.g., "KG", "G", "LB")
+  volume?: number;           // Volume value (e.g., 420)
+  volume_uom?: string;       // Volume unit of measure (e.g., "CM3", "L", "ML")
+  dimension_height?: number; // Height (e.g., 3.5)
+  dimension_width?: number;  // Width (e.g., 4.5)
+  dimension_length?: number; // Length (e.g., 26.8)
+  dimension_uom?: string;    // Dimension unit of measure (e.g., "CM", "MM", "M")
 
   // ERP Specific - Packaging Options
   packaging_options?: {
@@ -620,8 +630,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     parent_sku: { type: String },
     parent_entity_code: { type: String },
-    variations_sku: [{ type: String }],
-    variations_entity_code: [{ type: String }],
+    variants_sku: [{ type: String }],
+    variants_entity_code: [{ type: String }],
 
     // Parent product data (self-contained)
     parent_product: {
@@ -649,7 +659,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         entity_code: { type: String },
         sku: { type: String },
         name: MultilingualTextSchema,
-        variation_attributes: { type: Schema.Types.Mixed },
+        variant_attributes: { type: Schema.Types.Mixed },
         cover_image_url: { type: String },
         price: { type: Number },
         stock_status: { type: String },
@@ -670,6 +680,16 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       type: String,
       enum: ["in_stock", "out_of_stock", "pre_order"],
     },
+
+    // Physical Attributes
+    weight: { type: Number },
+    weight_uom: { type: String },
+    volume: { type: Number },
+    volume_uom: { type: String },
+    dimension_height: { type: Number },
+    dimension_width: { type: Number },
+    dimension_length: { type: Number },
+    dimension_uom: { type: String },
 
     packaging_options: [
       {

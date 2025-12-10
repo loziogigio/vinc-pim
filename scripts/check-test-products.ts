@@ -127,7 +127,7 @@ async function checkTestProducts() {
 
     if (allHaveItalian) {
       console.log("✅ All products have Italian (IT) content for name and description");
-      console.log(`   Default language '${projectConfig.defaultLanguage}' was applied correctly!`);
+      console.log(`   Default language '${projectConfig().defaultLanguage}' was applied correctly!`);
     } else {
       console.log("❌ Some products are missing Italian content");
       console.log("   The default language logic may not be working correctly");
@@ -140,7 +140,7 @@ async function checkTestProducts() {
     const solrUrl = `http://${SOLR_HOST}:${SOLR_PORT}/solr`;
 
     try {
-      const testQuery = `${solrUrl}/${projectConfig.solrCore}/select?q=entity_code:TEST*&rows=10&wt=json`;
+      const testQuery = `${solrUrl}/${projectConfig().solrCore}/select?q=entity_code:TEST*&rows=10&wt=json`;
       const response = await fetch(testQuery);
       const data = await response.json();
 

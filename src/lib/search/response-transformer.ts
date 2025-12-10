@@ -218,16 +218,25 @@ function extractEntityLabel(entity: any, lang?: string): string | undefined {
 /**
  * Transform Solr search response to API response
  * Handles both regular and grouped responses
+ *
+ * @param groupField - Field used for grouping (e.g., 'parent_entity_code')
+ * @param groupVariants - If true, uses variant grouping mode (parent + variants structure)
  */
 export function transformSearchResponse(
   solrResponse: SolrSearchResponse,
   lang: string,
-  groupField?: string
+  groupField?: string,
+  groupVariants?: boolean
 ): SearchResponse {
   const { response, grouped, facets, facet_counts } = solrResponse;
 
   // Handle grouped response
   if (grouped && groupField && grouped[groupField]) {
+    // Variant grouping mode (like dfl-api): returns parent with variants array
+    if (groupVariants && groupField === 'parent_entity_code') {
+      return transformVariantGroupedResponse(solrResponse, lang);
+    }
+    // Generic grouping mode
     return transformGroupedResponse(solrResponse, lang, groupField);
   }
 
@@ -270,10 +279,70 @@ function transformGroupedResponse(
 
   return {
     results: flatResults,
-    numFound: groupData.matches,
+    numFound: groupData.ngroups ?? groupData.groups.length,
+    matches: groupData.matches, // Total matching documents
     start: response?.start ?? 0,
     facet_results: transformFacets(facets, facet_counts, lang),
     grouped: groupedResults,
+  };
+}
+
+/**
+ * Transform variant grouped response (like dfl-api)
+ * Groups by parent_entity_code and returns parent with variants array
+ *
+ * Logic:
+ * - groupValue IS the parent's entity_code
+ * - All docs in the group are variants (children)
+ * - Parent product is fetched from MongoDB by entity_code in enrichment step
+ * - Returns: { entity_code: groupValue, variants: [...all docs...] }
+ */
+function transformVariantGroupedResponse(
+  solrResponse: SolrSearchResponse,
+  lang: string
+): SearchResponse {
+  const { grouped, facets, facet_counts, response } = solrResponse;
+  const groupData = grouped!['parent_entity_code'];
+
+  const results: SolrProduct[] = [];
+
+  for (const group of groupData.groups) {
+    const docs = group.doclist.docs;
+    const parentEntityCode = group.groupValue;
+
+    if (docs.length === 0) continue;
+
+    // Transform all docs as variants
+    const variants = docs.map((doc) => transformDocument(doc, lang));
+
+    // Create parent placeholder - will be enriched from MongoDB
+    // The groupValue IS the parent_entity_code
+    const parentPlaceholder: SolrProduct = {
+      entity_code: parentEntityCode ?? '',
+      is_parent: true,
+      _needs_parent_enrichment: true, // Flag for enricher
+      variants,
+    } as SolrProduct & { _needs_parent_enrichment: boolean };
+
+    results.push(parentPlaceholder);
+  }
+
+  return {
+    results,
+    numFound: groupData.ngroups ?? groupData.groups.length,
+    matches: groupData.matches, // Total matching documents
+    start: response?.start ?? 0,
+    facet_results: transformFacets(facets, facet_counts, lang),
+    grouped: {
+      field: 'parent_entity_code',
+      ngroups: groupData.ngroups ?? groupData.groups.length,
+      matches: groupData.matches,
+      groups: groupData.groups.map((group): ProductGroup => ({
+        groupValue: group.groupValue ?? 'null',
+        numFound: group.doclist.numFound,
+        docs: group.doclist.docs.map((doc) => transformDocument(doc, lang)),
+      })),
+    },
   };
 }
 
@@ -545,7 +614,7 @@ export function transformDocument(
           entity_code: s.entity_code,
           sku: s.sku,
           name: getMultilingualValue(s.name, lang),
-          variation_attributes: s.variation_attributes,
+          variant_attributes: s.variant_attributes,
           cover_image_url: s.cover_image_url,
           price: s.price,
           stock_status: s.stock_status,
@@ -624,16 +693,16 @@ export function transformDocument(
     is_parent: getBooleanValue(doc.is_parent),
     parent_entity_code: doc.parent_entity_code,
     parent_sku: doc.parent_sku,
-    variations_sku: doc.variations_sku,
-    variations_entity_code: doc.variations_entity_code,
+    variants_sku: doc.variants_sku,
+    variants_entity_code: doc.variants_entity_code,
     parent_product: parentProduct,
     sibling_variants: siblingVariants,
     include_faceting: getBooleanValue(doc.include_faceting),
 
     // Versioning & Status
     version: doc.version,
-    isCurrent: getBooleanValue(doc.isCurrent),
-    isCurrentPublished: getBooleanValue(doc.isCurrentPublished),
+    isCurrent: getBooleanValue(doc.is_current),
+    isCurrentPublished: getBooleanValue(doc.is_current_published),
     status: doc.status,
     product_status: doc.product_status,
     product_status_description: productStatusDescription,
@@ -930,4 +999,75 @@ export function getMultilingualValue(
   }
 
   return value[lang] || value.it || value.en || Object.values(value)[0];
+}
+
+// ============================================
+// VARIANT ENRICHMENT
+// ============================================
+
+/**
+ * Enrich products with their variant data from Solr
+ * For products with variants_entity_code, fetches full variant products
+ * and attaches them as a `variants` array
+ *
+ * Optimized: Uses filter query (fq) for efficient Solr lookup
+ */
+export async function enrichProductsWithVariants(
+  products: SolrProduct[],
+  lang: string
+): Promise<SolrProduct[]> {
+  // Collect all variant entity codes from parent products
+  const allVariantCodes = new Set<string>();
+
+  for (const product of products) {
+    if (product.variants_entity_code?.length) {
+      product.variants_entity_code.forEach(code => allVariantCodes.add(code));
+    }
+  }
+
+  // No variants to fetch
+  if (allVariantCodes.size === 0) {
+    return products;
+  }
+
+  try {
+    const solrClient = getSolrClient();
+    const uniqueEntityCodes = Array.from(allVariantCodes);
+
+    // Use filter query (fq) for efficient lookup - cached by Solr
+    const response = await solrClient.search({
+      query: '*:*',
+      filter: [`entity_code:(${uniqueEntityCodes.join(' OR ')})`],
+      limit: uniqueEntityCodes.length,
+      fields: '*',
+    });
+
+    if (!response.response?.docs?.length) {
+      return products;
+    }
+
+    // Build map: entity_code → transformed variant
+    const variantsMap = new Map<string, SolrProduct>();
+    for (const doc of response.response.docs) {
+      variantsMap.set(doc.entity_code, transformDocument(doc, lang));
+    }
+
+    // Attach variants to parent products
+    return products.map(product => {
+      if (!product.variants_entity_code?.length) {
+        return product;
+      }
+
+      const variants = product.variants_entity_code
+        .map(code => variantsMap.get(code))
+        .filter((v): v is SolrProduct => v !== undefined);
+
+      return variants.length > 0
+        ? { ...product, variants }
+        : product;
+    });
+  } catch (error) {
+    console.error('[VariantEnricher] Failed to fetch variants:', error);
+    return products;
+  }
 }

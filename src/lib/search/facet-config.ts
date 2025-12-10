@@ -2,42 +2,10 @@
  * Facet Field Configuration
  * Defines available facets and their behavior
  *
- * IMPORTANT: Solr configuration is sourced from the adapters module
- * to maintain a single source of truth with sync operations.
+ * NOTE: Solr connection config (getSolrConfig, isSolrEnabled) is in @/config/project.config
  */
 
-import { FacetFieldConfig, SolrConfig } from '@/lib/types/search';
-import { loadAdapterConfigs } from '@/lib/adapters';
-
-// ============================================
-// SOLR CONFIGURATION (Single Source of Truth)
-// ============================================
-
-/**
- * Get Solr configuration from the adapters module
- * This ensures search uses the same Solr instance as sync operations
- */
-export function getSolrConfig(): SolrConfig {
-  const adapterConfigs = loadAdapterConfigs();
-  const solrConfig = adapterConfigs.solr?.custom_config || {};
-
-  // All Solr config comes from adapter config (single source of truth)
-  return {
-    url: solrConfig.solr_url,
-    core: solrConfig.solr_core,
-    defaultRows: parseInt(process.env.SEARCH_DEFAULT_ROWS || '20', 10),
-    maxRows: parseInt(process.env.SEARCH_MAX_ROWS || '100', 10),
-    facetLimit: parseInt(process.env.FACET_DEFAULT_LIMIT || '100', 10),
-    facetMinCount: parseInt(process.env.FACET_MIN_COUNT || '1', 10),
-  };
-}
-
-/**
- * Check if Solr is enabled
- */
-export function isSolrEnabled(): boolean {
-  return process.env.SOLR_ENABLED === 'true';
-}
+import { FacetFieldConfig } from '@/lib/types/search';
 
 // ============================================
 // FACET FIELD CONFIGURATION
@@ -238,6 +206,7 @@ export function getMultilingualField(field: string, lang: string): string {
 
 /**
  * Map sort field names to Solr field names
+ * Note: 'completeness' removed due to Solr SORTED_NUMERIC type mismatch issues
  */
 export function getSortField(field: string, lang: string): string {
   const sortFieldMap: Record<string, string> = {
@@ -245,7 +214,7 @@ export function getSortField(field: string, lang: string): string {
     relevance: 'score',
     newest: 'created_at',
     popularity: 'priority_score',
-    completeness: 'completeness_score',
+    quality: 'priority_score', // Use priority_score for quality sort
     name: `name_text_${lang}`,
     priority: 'priority_score',
   };
@@ -279,6 +248,8 @@ export const FILTER_FIELD_MAP: Record<string, string> = {
   sku: 'sku',
   ean: 'ean',
   entity_code: 'entity_code',
+  parent_sku: 'parent_sku',
+  parent_entity_code: 'parent_entity_code',
   is_parent: 'is_parent',
   include_faceting: 'include_faceting',
   // Attribute filters (map friendly names to Solr dynamic fields)

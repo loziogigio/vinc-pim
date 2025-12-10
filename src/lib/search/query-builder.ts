@@ -10,8 +10,8 @@ import {
   SearchFilters,
   GroupOptions,
 } from '@/lib/types/search';
+import { getSolrConfig } from '@/config/project.config';
 import {
-  getSolrConfig,
   getMultilingualField,
   getSortField,
   getFilterField,
@@ -51,15 +51,32 @@ export function buildSearchQuery(request: SearchRequest): SolrJsonQuery {
     ? buildFacetQuery(request.facet_fields)
     : undefined;
 
-  // Build grouping params if requested
-  const params = request.group
-    ? buildGroupParams(request.group, sort)
-    : undefined;
+  // Build grouping params
+  // group_variants: true → auto-group by parent_entity_code with unlimited children (like dfl-api)
+  // group: GroupOptions → manual grouping configuration
+  let params: Record<string, any> | undefined;
+  let isGrouping = false;
+
+  if (request.group_variants) {
+    // Auto variant grouping like dfl-api: group by parent_entity_code with all children
+    params = buildGroupParams(
+      {
+        field: 'parent_entity_code',
+        limit: -1, // Get ALL variants in each group
+        ngroups: true,
+      },
+      sort
+    );
+    isGrouping = true;
+  } else if (request.group) {
+    params = buildGroupParams(request.group, sort);
+    isGrouping = true;
+  }
 
   return {
     query,
     filter: filters.length > 0 ? filters : undefined,
-    sort: request.group ? undefined : sort, // Sort is handled in group params when grouping
+    sort: isGrouping ? undefined : sort, // Sort is handled in group params when grouping
     offset,
     limit,
     fields: '*',
@@ -147,13 +164,16 @@ export function buildFacetOnlyQuery(request: FacetRequest): SolrJsonQuery {
  * - _sort_{lang}: Lowercase string fields for true "starts with" prefix matching
  */
 const SEARCH_FIELDS_CONFIG = [
-  // Exact match fields (highest weight)
-  { field: 'entity_code', weight: 1000, noWildcard: true },
-  { field: 'ean', weight: 900, noWildcard: true },
-  { field: 'sku', weight: 800, wildcardWeight: 600 }, // Allow prefix matching on SKU
+  // Exact match fields (HIGHEST weight - codes should always come first)
+  { field: 'entity_code', weight: 50000, noWildcard: true },
+  { field: 'ean', weight: 45000, noWildcard: true },
+  { field: 'sku', weight: 40000, wildcardWeight: 30000 }, // Allow prefix matching on SKU
+  // Parent codes - find children by parent's code
+  { field: 'parent_entity_code', weight: 35000, noWildcard: true },
+  { field: 'parent_sku', weight: 30000, wildcardWeight: 20000 },
   // Name sort field - for "starts with" prefix matching (NOT stemmed)
   { field: 'name_sort_{lang}', weight: 0, wildcardWeight: 10000, noExact: true, noContains: true },
-  // Name tokenized text - HIGHEST PRIORITY (much higher than other fields)
+  // Name tokenized text - HIGH PRIORITY (but lower than codes)
   { field: 'name_text_{lang}', weight: 5000, wildcardWeight: 2000, containsWeight: 800 },
   // Brand/Model (medium weight)
   { field: 'brand_label', weight: 200, wildcardWeight: 80 },

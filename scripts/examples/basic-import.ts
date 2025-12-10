@@ -120,7 +120,7 @@ const products = [
  * Apply default language to multilingual fields
  */
 function applyDefaultLanguage(data: any): void {
-  const defaultLang = projectConfig.defaultLanguage;
+  const defaultLang = projectConfig().defaultLanguage;
   const MULTILINGUAL_FIELDS = [
     "name",
     "description",
@@ -209,7 +209,7 @@ async function importProducts() {
           ...productData,
         });
 
-        console.log(`✅ ${productData.entity_code}: ${productData.name[projectConfig.defaultLanguage]}`);
+        console.log(`✅ ${productData.entity_code}: ${productData.name[projectConfig().defaultLanguage]}`);
         successCount++;
 
         // Sync to Solr
@@ -243,7 +243,7 @@ async function importProducts() {
     console.log(`   Failed: ${failedCount}`);
 
     console.log(`\n✅ Import complete!`);
-    console.log(`📝 All products have ${projectConfig.defaultLanguage.toUpperCase()} as default language`);
+    console.log(`📝 All products have ${projectConfig().defaultLanguage.toUpperCase()} as default language`);
     console.log(`🔍 ${syncedCount} of ${successCount} products synced to Search Engine`);
 
     process.exit(0);

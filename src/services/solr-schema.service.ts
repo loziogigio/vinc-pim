@@ -4,24 +4,24 @@
  */
 
 import { ILanguage } from "../lib/db/models/language";
-import { projectConfig } from "../config/project.config";
+import { getSolrConfig as getCommonSolrConfig } from "../config/project.config";
 
-export interface SolrConfig {
-  host: string;
-  port: number;
+export interface SolrSchemaConfig {
+  url: string;   // Full Solr base URL (e.g., "http://localhost:8983/solr")
   core: string;
 }
 
 /**
- * Solr configuration
- * IMPORTANT: Solr core name MUST match MongoDB database name (project-specific)
+ * Get Solr configuration for schema operations
+ * Uses the common getSolrConfig from facet-config (single source of truth)
  */
-const DEFAULT_SOLR_CONFIG: SolrConfig = {
-  host: process.env.SOLR_HOST || "localhost",
-  port: parseInt(process.env.SOLR_PORT || "8983"),
-  // Solr core name matches MongoDB database name
-  core: projectConfig.solrCore,
-};
+function getSolrSchemaConfig(): SolrSchemaConfig {
+  const config = getCommonSolrConfig();
+  return {
+    url: config.url,
+    core: config.core,
+  };
+}
 
 /**
  * Product fields that need multilingual versions in Solr
@@ -29,12 +29,16 @@ const DEFAULT_SOLR_CONFIG: SolrConfig = {
  * Based on product-full-multilingual-structure.json
  */
 const MULTILINGUAL_FIELDS = [
-  // Core product fields
+  // Core product fields - text fields for full-text search
   { name: "name", multiValued: false },
   { name: "slug", multiValued: false },
   { name: "description", multiValued: false },
   { name: "short_description", multiValued: false },
   { name: "features", multiValued: true },
+  // String fields for "starts with" prefix matching (lowercase, non-tokenized)
+  { name: "name_sort", multiValued: false, type: "lowercase" },
+  { name: "short_description_sort", multiValued: false, type: "lowercase" },
+  { name: "description_sort", multiValued: false, type: "lowercase" },
 
   // SEO fields
   { name: "meta_title", multiValued: false },
@@ -44,6 +48,7 @@ const MULTILINGUAL_FIELDS = [
   // Nested object labels (extracted for search)
   { name: "spec_labels", multiValued: true },     // Specification labels
   { name: "attr_labels", multiValued: true },     // Attribute labels
+  { name: "attr_values", multiValued: true },     // Attribute values for text search (CROMATO, PEGASO, etc.)
   { name: "media_labels", multiValued: true },    // Media labels
 
   // Relationship fields (names and slugs)
@@ -64,8 +69,8 @@ const MULTILINGUAL_FIELDS = [
 /**
  * Get Solr Schema API base URL
  */
-function getSolrSchemaUrl(config: SolrConfig = DEFAULT_SOLR_CONFIG): string {
-  return `http://${config.host}:${config.port}/solr/${config.core}/schema`;
+function getSolrSchemaUrl(config: SolrSchemaConfig = getSolrSchemaConfig()): string {
+  return `${config.url}/${config.core}/schema`;
 }
 
 /**
@@ -73,7 +78,7 @@ function getSolrSchemaUrl(config: SolrConfig = DEFAULT_SOLR_CONFIG): string {
  */
 export async function solrFieldExists(
   fieldName: string,
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<boolean> {
   try {
     const url = `${getSolrSchemaUrl(config)}/fields/${fieldName}`;
@@ -98,7 +103,7 @@ export async function solrFieldExists(
  */
 export async function solrFieldTypeExists(
   typeName: string,
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<boolean> {
   try {
     const url = `${getSolrSchemaUrl(config)}/fieldtypes/${typeName}`;
@@ -123,7 +128,7 @@ export async function solrFieldTypeExists(
  */
 export async function ensureSolrFieldType(
   language: ILanguage,
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<void> {
   const typeName = language.solrAnalyzer;
 
@@ -344,7 +349,7 @@ export async function ensureSolrFieldType(
 /**
  * Verify Solr schema API is accessible
  */
-async function verifySolrSchemaApi(config: SolrConfig = DEFAULT_SOLR_CONFIG): Promise<boolean> {
+async function verifySolrSchemaApi(config: SolrSchemaConfig = getSolrSchemaConfig()): Promise<boolean> {
   try {
     const url = getSolrSchemaUrl(config);
     console.log(`  🔍 Verifying Solr schema API at: ${url}`);
@@ -373,7 +378,7 @@ async function verifySolrSchemaApi(config: SolrConfig = DEFAULT_SOLR_CONFIG): Pr
  */
 export async function addLanguageFieldsToSolr(
   language: ILanguage,
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<void> {
   console.log(`\n📝 Adding Solr fields for ${language.code} (${language.name})...`);
 
@@ -394,7 +399,11 @@ export async function addLanguageFieldsToSolr(
   const fieldsToAdd: any[] = [];
 
   for (const field of MULTILINGUAL_FIELDS) {
-    const fieldName = `${field.name}_${language.solrAnalyzer}`;
+    // For custom type fields (like lowercase), use language code suffix
+    // For text fields, use language analyzer suffix (e.g., text_it)
+    const fieldName = field.type
+      ? `${field.name}_${language.code}` // e.g., name_sort_it (lowercase field)
+      : `${field.name}_${language.solrAnalyzer}`; // e.g., name_text_it (text field)
 
     // Check if field already exists
     const exists = await solrFieldExists(fieldName, config);
@@ -405,7 +414,7 @@ export async function addLanguageFieldsToSolr(
 
     fieldsToAdd.push({
       name: fieldName,
-      type: language.solrAnalyzer,
+      type: field.type || language.solrAnalyzer, // Use custom type if specified
       stored: true,
       indexed: true,
       multiValued: field.multiValued,
@@ -448,11 +457,10 @@ export async function addLanguageFieldsToSolr(
  */
 export async function removeLanguageFieldsFromSolr(
   language: ILanguage,
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<void> {
   console.log(`\n🗑️  Removing Solr fields for ${language.code} (${language.name})...`);
 
-  const url = `${getSolrSchemaUrl(config)}/fields`;
   const fieldsToRemove: string[] = [];
 
   for (const field of MULTILINGUAL_FIELDS) {
@@ -486,15 +494,15 @@ export async function removeLanguageFieldsFromSolr(
  * Base non-language fields that all collections need
  */
 const BASE_FIELDS = [
-  // Core identifiers
-  { name: "sku", type: "string", stored: true, indexed: true },
-  { name: "entity_code", type: "string", stored: true, indexed: true },
-  { name: "ean", type: "strings", stored: true, indexed: true },
+  // Core identifiers - use lowercase type for case-insensitive search
+  { name: "sku", type: "lowercase", stored: true, indexed: true },
+  { name: "entity_code", type: "lowercase", stored: true, indexed: true },
+  { name: "ean", type: "lowercase", stored: true, indexed: true, multiValued: true },
 
   // Versioning & status
   { name: "version", type: "pint", stored: true, indexed: true },
-  { name: "isCurrent", type: "boolean", stored: true, indexed: true },
-  { name: "isCurrentPublished", type: "boolean", stored: true, indexed: true },
+  { name: "is_current", type: "boolean", stored: true, indexed: true },
+  { name: "is_current_published", type: "boolean", stored: true, indexed: true },
   { name: "status", type: "string", stored: true, indexed: true, docValues: true },
   { name: "product_status", type: "string", stored: true, indexed: true },
 
@@ -509,6 +517,16 @@ const BASE_FIELDS = [
   { name: "sold", type: "pint", stored: true, indexed: true },
   { name: "unit", type: "string", stored: true, indexed: true },
   { name: "stock_status", type: "string", stored: true, indexed: true, docValues: true },
+
+  // Physical Attributes
+  { name: "weight", type: "pfloat", stored: true, indexed: true },
+  { name: "weight_uom", type: "string", stored: true, indexed: false },
+  { name: "volume", type: "pfloat", stored: true, indexed: true },
+  { name: "volume_uom", type: "string", stored: true, indexed: false },
+  { name: "dimension_height", type: "pfloat", stored: true, indexed: true },
+  { name: "dimension_width", type: "pfloat", stored: true, indexed: true },
+  { name: "dimension_length", type: "pfloat", stored: true, indexed: true },
+  { name: "dimension_uom", type: "string", stored: true, indexed: false },
 
   // Quality
   { name: "completeness_score", type: "pint", stored: true, indexed: true },
@@ -532,8 +550,8 @@ const BASE_FIELDS = [
 
   // Variations
   { name: "is_parent", type: "boolean", stored: true, indexed: true },
-  { name: "parent_sku", type: "string", stored: true, indexed: true },
-  { name: "parent_entity_code", type: "string", stored: true, indexed: true },
+  { name: "parent_sku", type: "lowercase", stored: true, indexed: true },
+  { name: "parent_entity_code", type: "string", stored: true, indexed: true, docValues: true },
 
   // Relationships (IDs)
   { name: "category_id", type: "string", stored: true, indexed: true },
@@ -543,8 +561,8 @@ const BASE_FIELDS = [
 
   // Variations & Faceting Control
   { name: "include_faceting", type: "boolean", stored: true, indexed: true },
-  { name: "variations_sku", type: "strings", stored: true, indexed: true },
-  { name: "variations_entity_code", type: "strings", stored: true, indexed: true },
+  { name: "variants_sku", type: "strings", stored: true, indexed: true },
+  { name: "variants_entity_code", type: "strings", stored: true, indexed: true },
   { name: "product_model", type: "string", stored: true, indexed: true },
 
   // Hierarchy paths for faceting
@@ -554,6 +572,7 @@ const BASE_FIELDS = [
   { name: "brand_path", type: "strings", stored: true, indexed: true },
   { name: "brand_ancestors", type: "strings", stored: true, indexed: true },
   { name: "brand_family", type: "string", stored: true, indexed: true },
+  { name: "brand_label", type: "lowercase", stored: true, indexed: true },
   { name: "product_type_path", type: "strings", stored: true, indexed: true },
   { name: "product_type_ancestors", type: "strings", stored: true, indexed: true },
   { name: "product_type_level", type: "pint", stored: true, indexed: true },
@@ -567,8 +586,6 @@ const BASE_FIELDS = [
   // Complex objects stored as JSON (for frontend display, not faceting)
   { name: "specifications_json", type: "string", stored: true, indexed: false },
   { name: "attributes_json", type: "string", stored: true, indexed: false },
-  { name: "media_json", type: "string", stored: true, indexed: false },
-  { name: "packaging_json", type: "string", stored: true, indexed: false },
   { name: "promotions_json", type: "string", stored: true, indexed: false },
   { name: "product_type_features_json", type: "string", stored: true, indexed: false },
 
@@ -577,58 +594,62 @@ const BASE_FIELDS = [
   { name: "brand_json", type: "string", stored: true, indexed: false },
   { name: "collections_json", type: "string", stored: true, indexed: false },
   { name: "product_type_json", type: "string", stored: true, indexed: false },
-
-  // Additional JSON fields for enriched response
   { name: "tags_json", type: "string", stored: true, indexed: false },
-  { name: "image_json", type: "string", stored: true, indexed: false },
-  { name: "images_json", type: "string", stored: true, indexed: false },
-  { name: "gallery_json", type: "string", stored: true, indexed: false },
-  { name: "parent_product_json", type: "string", stored: true, indexed: false },
-  { name: "sibling_variants_json", type: "string", stored: true, indexed: false },
-  { name: "source_json", type: "string", stored: true, indexed: false },
 ];
 
 /**
  * Dynamic fields for attribute faceting
  * These use Solr's built-in dynamic field patterns with type-specific suffixes:
+ *
+ * Single values:
  * - attribute_{key}_s → string values (e.g., attribute_colore_s = "ROSSO")
  * - attribute_{key}_f → float values (e.g., attribute_peso_f = 12.5)
  * - attribute_{key}_b → boolean values (e.g., attribute_disponibile_b = true)
  *
- * The dynamic field patterns (*_s, *_f, *_b) are built into Solr and don't
- * need explicit creation. The adapter automatically detects the value type
- * and indexes attributes using the appropriate suffix when syncing products.
+ * Multi-valued (arrays):
+ * - attribute_{key}_ss → string arrays (e.g., attribute_taglie_ss = ["S", "M", "L"])
+ * - attribute_{key}_fs → float arrays (e.g., attribute_pesi_fs = [1.5, 2.0, 3.5])
+ *
+ * The dynamic field patterns (*_s, *_f, *_b, *_ss, *_fs) are built into Solr's
+ * default managed schema and don't need explicit creation. The adapter automatically
+ * detects the value type and indexes attributes using the appropriate suffix.
  */
 
 /**
  * Ensure base non-language fields exist in Solr schema
+ * Uses replace-field for existing fields to fix wrong types from data-driven schema
  */
 export async function ensureBaseFields(
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<void> {
   console.log("\n📋 Ensuring base fields in Solr schema...");
 
   const url = getSolrSchemaUrl(config);
-  const fieldsToAdd: any[] = [];
+  let added = 0;
+  let replaced = 0;
+  let unchanged = 0;
 
   for (const field of BASE_FIELDS) {
     const exists = await solrFieldExists(field.name, config);
+
     if (exists) {
-      console.log(`  ✓ Field '${field.name}' already exists`);
-      continue;
-    }
+      // Field exists - use replace-field to ensure correct type
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ "replace-field": field }),
+      });
 
-    fieldsToAdd.push(field);
-  }
-
-  if (fieldsToAdd.length === 0) {
-    console.log("  ✓ All base fields already exist");
-    return;
-  }
-
-  try {
-    // Add fields one by one
-    for (const field of fieldsToAdd) {
+      if (!response.ok) {
+        // Replace may fail if field has same definition - that's ok
+        console.log(`  ✓ Field '${field.name}' already exists (unchanged)`);
+        unchanged++;
+      } else {
+        console.log(`  🔄 Replaced field '${field.name}' with correct type`);
+        replaced++;
+      }
+    } else {
+      // Field doesn't exist - add it
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -637,17 +658,15 @@ export async function ensureBaseFields(
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`Failed to add field ${field.name}: ${response.statusText} - ${errorData}`);
+        console.error(`  ❌ Failed to add field ${field.name}: ${errorData}`);
+      } else {
+        console.log(`  ✅ Added field '${field.name}'`);
+        added++;
       }
-
-      console.log(`  ✅ Added field '${field.name}'`);
     }
-
-    console.log(`✅ Successfully added ${fieldsToAdd.length} base fields`);
-  } catch (error: any) {
-    console.error(`❌ Failed to add base fields:`, error.message);
-    throw error;
   }
+
+  console.log(`✅ Base fields: ${added} added, ${replaced} replaced, ${unchanged} unchanged`);
 }
 
 /**
@@ -655,7 +674,7 @@ export async function ensureBaseFields(
  */
 export async function syncSolrSchemaWithLanguages(
   languages: ILanguage[],
-  config: SolrConfig = DEFAULT_SOLR_CONFIG
+  config: SolrSchemaConfig = getSolrSchemaConfig()
 ): Promise<void> {
   console.log("\n🔄 Syncing Solr schema with enabled languages...\n");
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useRef, useCallback, ChangeEvent } from "
 import { useRouter } from "next/navigation";
 import { Public_Sans } from "next/font/google";
 import {
+  Cloud,
   Home,
   Eye,
   Loader2,
@@ -11,13 +12,12 @@ import {
   Palette,
   RefreshCcw,
   Save,
-  Server,
   Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNCredentials } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
 const publicSans = Public_Sans({
@@ -48,12 +48,6 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   hoverBackgroundColor: undefined
 };
 
-const DEFAULT_CDN_CONFIG: CDNConfiguration = {
-  baseUrl: "",
-  description: "",
-  enabled: true
-};
-
 const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: string }> = [
   {
     value: "b2b",
@@ -68,6 +62,17 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
 ];
 
 type ActiveSection = "branding" | "product" | "cdn";
+
+const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
+  cdn_url: "",
+  bucket_region: "",
+  bucket_name: "",
+  folder_name: "",
+  cdn_key: "",
+  cdn_secret: "",
+  signed_url_expiry: 0,
+  delete_from_cloud: false
+};
 
 interface BrandingFormProps {
   branding: CompanyBranding;
@@ -85,10 +90,6 @@ interface CardStyleFormProps {
   onStyleChange: <K extends keyof ProductCardStyle>(key: K, value: ProductCardStyle[K]) => void;
 }
 
-interface CDNFormProps {
-  cdnConfig: CDNConfiguration;
-  onChange: (key: keyof CDNConfiguration, value: string | boolean) => void;
-}
 
 const SectionCard: React.FC<{ title: string; description: string; children: React.ReactNode }> = ({
   title,
@@ -161,7 +162,7 @@ export default function HomeSettingsPage() {
   const [branding, setBranding] = useState<CompanyBranding>(DEFAULT_BRANDING);
   const [cardVariant, setCardVariant] = useState<PreviewVariant>("b2b");
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
-  const [cdnConfig, setCdnConfig] = useState<CDNConfiguration>(DEFAULT_CDN_CONFIG);
+  const [cdnCredentials, setCdnCredentials] = useState<CDNCredentials>(DEFAULT_CDN_CREDENTIALS);
   const [activeSection, setActiveSection] = useState<ActiveSection>("branding");
   const [previewVariant, setPreviewVariant] = useState<PreviewVariant>("b2b");
 
@@ -186,7 +187,7 @@ export default function HomeSettingsPage() {
       if (response.status === 404) {
         setBranding(DEFAULT_BRANDING);
         setCardStyle(DEFAULT_CARD_STYLE);
-        setCdnConfig(DEFAULT_CDN_CONFIG);
+        setCdnCredentials(DEFAULT_CDN_CREDENTIALS);
         setCardVariant("b2b");
         setPreviewVariant("b2b");
         setDirty(false);
@@ -211,9 +212,9 @@ export default function HomeSettingsPage() {
         ...DEFAULT_CARD_STYLE,
         ...(data.cardStyle ?? {})
       });
-      setCdnConfig({
-        ...DEFAULT_CDN_CONFIG,
-        ...(data.cdn ?? {})
+      setCdnCredentials({
+        ...DEFAULT_CDN_CREDENTIALS,
+        ...(data.cdn_credentials ?? {})
       });
       setDirty(false);
       setToast("Settings loaded.");
@@ -269,8 +270,8 @@ export default function HomeSettingsPage() {
     setDirty(true);
   };
 
-  const updateCdnConfig = (key: keyof CDNConfiguration, value: string | boolean) => {
-    setCdnConfig((prev: CDNConfiguration) => ({ ...prev, [key]: value }));
+  const updateCdnCredentials = <K extends keyof CDNCredentials>(key: K, value: CDNCredentials[K]) => {
+    setCdnCredentials((prev: CDNCredentials) => ({ ...prev, [key]: value }));
     setDirty(true);
   };
 
@@ -286,7 +287,7 @@ export default function HomeSettingsPage() {
           branding,
           defaultCardVariant: cardVariant,
           cardStyle,
-          cdn: cdnConfig,
+          cdn_credentials: cdnCredentials,
           lastModifiedBy: "admin"
         })
       });
@@ -437,9 +438,9 @@ export default function HomeSettingsPage() {
               onClick={() => setActiveSection("product")}
             />
             <SidebarItem
-              icon={Server}
+              icon={Cloud}
               label="CDN Configuration"
-              description="Media delivery settings"
+              description="Storage credentials for uploads"
               active={activeSection === "cdn"}
               onClick={() => setActiveSection("cdn")}
             />
@@ -447,21 +448,17 @@ export default function HomeSettingsPage() {
         </aside>
 
         <main className="flex-1 space-y-6">
-          {activeSection === "branding" ? (
+          {activeSection === "branding" && (
             <BrandingForm
               branding={branding}
               onChange={updateBranding}
               onUploadLogo={handleLogoUpload}
-            onUploadFavicon={handleFaviconUpload}
-            logoUpload={logoUploader.uploadState}
-            faviconUpload={faviconUploader.uploadState}
-          />
-          ) : activeSection === "cdn" ? (
-            <CDNForm
-              cdnConfig={cdnConfig}
-              onChange={updateCdnConfig}
+              onUploadFavicon={handleFaviconUpload}
+              logoUpload={logoUploader.uploadState}
+              faviconUpload={faviconUploader.uploadState}
             />
-          ) : (
+          )}
+          {activeSection === "product" && (
             <CardStyleForm
               cardStyle={cardStyle}
               cardVariant={cardVariant}
@@ -470,6 +467,12 @@ export default function HomeSettingsPage() {
                 setDirty(true);
               }}
               onStyleChange={updateCardStyle}
+            />
+          )}
+          {activeSection === "cdn" && (
+            <CDNForm
+              cdnCredentials={cdnCredentials}
+              onChange={updateCdnCredentials}
             />
           )}
         </main>
@@ -822,77 +825,6 @@ function BrandingForm({
   );
 }
 
-function CDNForm({ cdnConfig, onChange }: CDNFormProps) {
-  return (
-    <SectionCard
-      title="CDN Configuration"
-      description="Configure content delivery network settings for product images and media."
-    >
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <label htmlFor="cdn-enabled" className="flex items-center gap-2 text-sm font-medium text-slate-600">
-            <input
-              id="cdn-enabled"
-              type="checkbox"
-              checked={cdnConfig.enabled ?? true}
-              onChange={(e) => onChange("enabled", e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary/20"
-            />
-            Enable CDN
-          </label>
-          <p className="text-xs text-slate-500">
-            When disabled, image paths will fall back to environment variable configuration.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="cdn-base-url" className="text-sm font-medium text-slate-600">
-            CDN Base URL
-          </label>
-          <input
-            id="cdn-base-url"
-            type="url"
-            value={cdnConfig.baseUrl || ""}
-            onChange={(e) => onChange("baseUrl", e.target.value)}
-            placeholder="https://s3.eu-de.cloud-object-storage.appdomain.cloud/eatit"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-xs text-slate-500">
-            Base URL for serving product images and media files. Relative paths from the database will be prepended with this URL.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="cdn-description" className="text-sm font-medium text-slate-600">
-            Description (optional)
-          </label>
-          <input
-            id="cdn-description"
-            type="text"
-            value={cdnConfig.description || ""}
-            onChange={(e) => onChange("description", e.target.value)}
-            placeholder="IBM Cloud Object Storage - EU Region"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-xs text-slate-500">
-            Admin reference note for this CDN configuration.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <h4 className="text-sm font-semibold text-blue-900 mb-2">How it works</h4>
-          <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
-            <li>Product images store relative paths: <code className="bg-blue-100 px-1 py-0.5 rounded">/product_images/10076/main_image.jpg</code></li>
-            <li>Full URLs are constructed at runtime: <code className="bg-blue-100 px-1 py-0.5 rounded">CDN_URL + relative_path</code></li>
-            <li>Change CDN providers without updating database records</li>
-            <li>Supports multiple CDN regions and environments</li>
-          </ul>
-        </div>
-      </div>
-    </SectionCard>
-  );
-}
-
 function CardStyleForm({
   cardStyle,
   cardVariant,
@@ -1148,6 +1080,250 @@ function CardStyleForm({
         >
           Reset style to defaults
         </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
+interface CDNFormProps {
+  cdnCredentials: CDNCredentials;
+  onChange: <K extends keyof CDNCredentials>(key: K, value: CDNCredentials[K]) => void;
+}
+
+function CDNForm({ cdnCredentials, onChange }: CDNFormProps) {
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch("/api/b2b/home-settings/test-cdn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cdn_url: cdnCredentials.cdn_url,
+          bucket_region: cdnCredentials.bucket_region,
+          bucket_name: cdnCredentials.bucket_name,
+          folder_name: cdnCredentials.folder_name,
+          cdn_key: cdnCredentials.cdn_key,
+          cdn_secret: cdnCredentials.cdn_secret,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTestResult({ success: true, message: data.message || "Connection successful!" });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error + (data.details ? `: ${data.details}` : ""),
+        });
+      }
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: "Failed to test connection. Please check your network.",
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const canTest = cdnCredentials.cdn_url && cdnCredentials.bucket_region &&
+                  cdnCredentials.bucket_name && cdnCredentials.cdn_key && cdnCredentials.cdn_secret;
+
+  return (
+    <SectionCard
+      title="CDN Configuration"
+      description="Configure S3-compatible storage credentials for file uploads."
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="md:col-span-2 space-y-2">
+          <label htmlFor="cdn-url" className="text-sm font-medium text-slate-600">
+            CDN Endpoint URL
+          </label>
+          <input
+            id="cdn-url"
+            type="text"
+            value={cdnCredentials.cdn_url || ""}
+            onChange={(e) => onChange("cdn_url", e.target.value)}
+            placeholder="https://s3.eu-de.cloud-object-storage.appdomain.cloud"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            S3-compatible endpoint URL (e.g., IBM Cloud Object Storage, AWS S3, MinIO)
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="bucket-region" className="text-sm font-medium text-slate-600">
+            Bucket Region
+          </label>
+          <input
+            id="bucket-region"
+            type="text"
+            value={cdnCredentials.bucket_region || ""}
+            onChange={(e) => onChange("bucket_region", e.target.value)}
+            placeholder="eu-de"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="bucket-name" className="text-sm font-medium text-slate-600">
+            Bucket Name
+          </label>
+          <input
+            id="bucket-name"
+            type="text"
+            value={cdnCredentials.bucket_name || ""}
+            onChange={(e) => onChange("bucket_name", e.target.value)}
+            placeholder="my-bucket"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="folder-name" className="text-sm font-medium text-slate-600">
+            Folder Name (optional)
+          </label>
+          <input
+            id="folder-name"
+            type="text"
+            value={cdnCredentials.folder_name || ""}
+            onChange={(e) => onChange("folder_name", e.target.value)}
+            placeholder="uploads"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            Prefix folder for all uploaded files
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="cdn-key" className="text-sm font-medium text-slate-600">
+            Access Key ID
+          </label>
+          <input
+            id="cdn-key"
+            type="password"
+            value={cdnCredentials.cdn_key || ""}
+            onChange={(e) => onChange("cdn_key", e.target.value)}
+            placeholder="••••••••••••••••"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="cdn-secret" className="text-sm font-medium text-slate-600">
+            Secret Access Key
+          </label>
+          <input
+            id="cdn-secret"
+            type="password"
+            value={cdnCredentials.cdn_secret || ""}
+            onChange={(e) => onChange("cdn_secret", e.target.value)}
+            placeholder="••••••••••••••••••••••••••••••••"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-slate-200 pt-6 mt-6">
+        <h3 className="text-sm font-semibold text-slate-900 mb-4">Advanced Settings</h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="signed-url-expiry" className="text-sm font-medium text-slate-600">
+              Signed URL Expiry (seconds)
+            </label>
+            <input
+              id="signed-url-expiry"
+              type="number"
+              min={0}
+              value={cdnCredentials.signed_url_expiry || 0}
+              onChange={(e) => onChange("signed_url_expiry", Number(e.target.value))}
+              placeholder="0"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-slate-500">
+              0 = public URLs (no expiry)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-600">
+              Delete from Cloud
+            </label>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => onChange("delete_from_cloud", !cdnCredentials.delete_from_cloud)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                  cdnCredentials.delete_from_cloud ? "bg-primary" : "bg-slate-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    cdnCredentials.delete_from_cloud ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+              <span className="text-sm text-slate-600">
+                {cdnCredentials.delete_from_cloud ? "Enabled" : "Disabled"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Delete files from cloud storage when removed from database
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Test Connection */}
+      <div className="border-t border-slate-200 pt-6 mt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Test Connection</h3>
+            <p className="text-xs text-slate-500">
+              Verify credentials by uploading and deleting a test file
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTestConnection}
+            disabled={!canTest || isTesting}
+            className="gap-2"
+          >
+            {isTesting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Testing...
+              </>
+            ) : (
+              "Test Connection"
+            )}
+          </Button>
+        </div>
+
+        {testResult && (
+          <div
+            className={cn(
+              "mt-4 rounded-lg border px-4 py-3 text-sm",
+              testResult.success
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-rose-200 bg-rose-50 text-rose-700"
+            )}
+          >
+            {testResult.message}
+          </div>
+        )}
       </div>
     </SectionCard>
   );

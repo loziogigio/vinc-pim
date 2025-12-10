@@ -85,6 +85,9 @@ export async function PATCH(
       "label",
       "url",
       "icon",
+      "image_url",
+      "mobile_image_url",
+      "rich_text",
       "include_children",
       "max_depth",
       "position",
@@ -95,10 +98,16 @@ export async function PATCH(
       "css_class",
     ];
 
+    // Optional string fields that should be cleared (set to null) when empty
+    const clearableFields = ["label", "url", "icon", "image_url", "mobile_image_url", "rich_text", "css_class"];
+
     allowedFields.forEach((field) => {
       if (body[field] !== undefined) {
         if (field === "start_date" || field === "end_date") {
           updateData[field] = body[field] ? new Date(body[field]) : null;
+        } else if (clearableFields.includes(field)) {
+          // Convert empty string to null for optional string fields
+          updateData[field] = body[field] || null;
         } else {
           updateData[field] = body[field];
         }

@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -67,6 +67,21 @@ const CDNConfigurationSchema = new Schema(
   { _id: false }
 );
 
+// CDN credentials schema for file uploads
+const CDNCredentialsSchema = new Schema(
+  {
+    cdn_url: { type: String },
+    bucket_region: { type: String },
+    bucket_name: { type: String },
+    folder_name: { type: String },
+    cdn_key: { type: String },
+    cdn_secret: { type: String },
+    signed_url_expiry: { type: Number, default: 0 },
+    delete_from_cloud: { type: Boolean, default: false }
+  },
+  { _id: false }
+);
+
 // Home settings schema
 const HomeSettingsSchema = new Schema(
   {
@@ -91,6 +106,9 @@ const HomeSettingsSchema = new Schema(
     },
     cdn: {
       type: CDNConfigurationSchema
+    },
+    cdn_credentials: {
+      type: CDNCredentialsSchema
     },
     lastModifiedBy: { type: String }
   },
