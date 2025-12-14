@@ -43,7 +43,45 @@ ENV VINC_ANTHROPIC_API_KEY=$VINC_ANTHROPIC_API_KEY
 RUN --mount=type=cache,id=next-cache,target=/app/.next/cache \
     echo "Building with VINC_TENANT_ID=${VINC_TENANT_ID}" && pnpm build
 
-# Production runtime using Next.js standalone output
+# BullMQ Worker runtime (separate container for workers)
+FROM base AS worker
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+# Re-declare args for worker environment
+ARG VINC_TENANT_ID
+ARG VINC_MONGO_URL
+ARG SOLR_URL
+ARG SOLR_ENABLED
+ARG REDIS_HOST
+ARG REDIS_PORT
+
+ENV VINC_TENANT_ID=$VINC_TENANT_ID
+ENV VINC_MONGO_URL=$VINC_MONGO_URL
+ENV SOLR_URL=$SOLR_URL
+ENV SOLR_ENABLED=$SOLR_ENABLED
+ENV REDIS_HOST=$REDIS_HOST
+ENV REDIS_PORT=$REDIS_PORT
+
+# Copy node_modules and source files needed for workers
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/workers ./workers
+COPY --from=build /app/src ./src
+COPY --from=build /app/config ./config
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/tsconfig.json ./tsconfig.json
+COPY --from=build /app/vite.config.ts ./vite.config.ts
+
+# Run as non-root user for security
+RUN addgroup -S worker && adduser -S worker -G worker
+RUN chown -R worker:worker /app
+USER worker
+
+CMD ["pnpm", "worker:all:prod"]
+
+# Production runtime using Next.js standalone output (DEFAULT)
 FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 ENV NODE_ENV=production

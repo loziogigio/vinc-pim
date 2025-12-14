@@ -4,8 +4,8 @@
  */
 
 import { Worker, Job } from "bullmq";
-import { processQueuedEmail } from "@/lib/email";
-import { connectToDatabase } from "@/lib/db/mongoose";
+import { processQueuedEmail } from "../src/lib/email";
+import { connectToDatabase } from "../src/lib/db/connection";
 
 const redisHost = process.env.REDIS_HOST || "localhost";
 const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
