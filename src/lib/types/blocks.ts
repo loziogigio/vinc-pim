@@ -411,7 +411,8 @@ export interface PageVersionAttributes {
   region?: string;
   language?: string;
   device?: string;
-  [key: string]: string | undefined;
+  addressStates?: string[];
+  [key: string]: string | string[] | undefined;
 }
 
 export interface PageVersionTags {

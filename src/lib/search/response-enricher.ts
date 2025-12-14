@@ -302,8 +302,13 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
         ? getLocalizedMedia(productData.media, lang)
         : undefined;
 
+      // Determine has_active_promo (prefer Solr value, which is indexed)
+      const hasActivePromo = result.has_active_promo ?? false;
+
       return {
         ...result,
+        // Ensure has_active_promo is always set
+        has_active_promo: hasActivePromo,
         brand: enrichBrand(result.brand, brandsMap),
         category: enrichCategory(result.category, categoriesMap),
         collections: enrichCollections(result.collections, collectionsMap),
@@ -376,8 +381,10 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
 
       if (!productData) {
         // No MongoDB data found, return as-is with entity enrichment
+        // Keep has_active_promo from Solr or default to false
         return {
           ...product,
+          has_active_promo: product.has_active_promo ?? false,
           brand: enrichBrand(product.brand, brandsMap),
           category: enrichCategory(product.category, categoriesMap),
           collections: enrichCollections(product.collections, collectionsMap),
@@ -393,6 +400,12 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
       const mongoMedia = productData.media
         ? getLocalizedMedia(productData.media, lang)
         : undefined;
+
+      // Determine has_active_promo from MongoDB (check promotions array if not explicitly set)
+      const hasActivePromo = productData.has_active_promo
+        ?? productData.promotions?.some((p: any) => p.is_active)
+        ?? product.has_active_promo
+        ?? false;
 
       // Merge MongoDB data into product
       return {
@@ -413,6 +426,9 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
         parent_sku: productData.parent_sku || product.parent_sku,
         variants_entity_code: productData.variants_entity_code || product.variants_entity_code,
         variants_sku: productData.variants_sku || product.variants_sku,
+        // Promotions
+        has_active_promo: hasActivePromo,
+        promotions: productData.promotions || product.promotions,
         // Media
         cover_image_url: productData.cover_image_url || product.cover_image_url,
         images: productData.images || product.images,
@@ -439,6 +455,12 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
       // Enrich variants if present
       if (result.variants?.length) {
         enrichedParent.variants = result.variants.map((variant: any) => enrichProduct(variant));
+
+        // Propagate has_active_promo: if any child has promo, parent has promo
+        const childHasActivePromo = enrichedParent.variants.some((v: any) => v.has_active_promo === true);
+        if (childHasActivePromo) {
+          enrichedParent.has_active_promo = true;
+        }
       }
 
       return enrichedParent;

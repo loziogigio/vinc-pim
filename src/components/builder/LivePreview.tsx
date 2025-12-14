@@ -85,12 +85,20 @@ export const LivePreview = ({
       const resolvedTarget = resolveOrigin();
       console.log('[LivePreview] Target origin:', resolvedTarget);
 
+      // Add position information to each block for preview display
+      const blocksWithPosition = blocks.map((block, index) => ({
+        ...block,
+        _builderPosition: index + 1, // 1-based position matching the builder UI
+        _builderIndex: index,        // 0-based index
+      }));
+
       const payload = {
         type: 'PREVIEW_UPDATE',
-        blocks: blocks,
+        blocks: blocksWithPosition,
         productId: productId,
         timestamp: Date.now(),
-        isDirty
+        isDirty,
+        showPositionIndicators: true, // Flag to enable position badges in preview
       } as const;
 
       try {

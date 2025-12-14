@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { safeRegexQuery, sanitizeMongoQuery } from "@/lib/security";
+import { safeRegexQuery, safeRegexQueryWithMatchMode, sanitizeMongoQuery, type MatchMode } from "@/lib/security";
 import crypto from "crypto";
 
 /**
@@ -22,19 +22,24 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const status = searchParams.get("status");
+    const search = searchParams.get("search");
     const sourceId = searchParams.get("source_id");
     const batchId = searchParams.get("batch_id");
     const dateFrom = searchParams.get("date_from");
     const dateTo = searchParams.get("date_to");
-    const sortBy = searchParams.get("sort") || "priority"; // priority | score | updated
+    const sortBy = searchParams.get("sort") || "priority"; // priority | score | updated | name
+
+    // Default language for multilingual fields (name, description)
+    const defaultLang = "it";
 
     // Advanced filters
     const entityCode = searchParams.get("entity_code");
     const sku = searchParams.get("sku");
+    const skuMatch = (searchParams.get("sku_match") || "exact") as MatchMode;
     const parentSku = searchParams.get("parent_sku");
+    const parentSkuMatch = (searchParams.get("parent_sku_match") || "exact") as MatchMode;
     const brand = searchParams.get("brand");
     const category = searchParams.get("category");
-    const currency = searchParams.get("currency");
     const priceMin = searchParams.get("price_min");
     const priceMax = searchParams.get("price_max");
     const scoreMin = searchParams.get("score_min");
@@ -51,6 +56,16 @@ export async function GET(req: NextRequest) {
     if (batchId) {
       // Support partial matching for batch ID (sanitized)
       query["source.batch_id"] = safeRegexQuery(batchId);
+    }
+
+    // Search by title (multilingual field - search in default language)
+    // Supports both string name and multilingual object name.it
+    if (search) {
+      const searchRegex = safeRegexQuery(search);
+      query.$or = [
+        { [`name.${defaultLang}`]: searchRegex }, // Multilingual: name.it
+        { name: searchRegex }, // Simple string name (fallback)
+      ];
     }
 
     // Date range filter
@@ -72,19 +87,18 @@ export async function GET(req: NextRequest) {
       query.entity_code = safeRegexQuery(entityCode);
     }
     if (sku) {
-      query.sku = safeRegexQuery(sku);
+      // Use match mode for SKU (handles special chars like *, /, ,, +, &, $)
+      query.sku = safeRegexQueryWithMatchMode(sku, skuMatch);
     }
     if (parentSku) {
-      query.parent_sku = safeRegexQuery(parentSku);
+      // Use match mode for parent_sku (handles special chars like *, /, ,, +, &, $)
+      query.parent_sku = safeRegexQueryWithMatchMode(parentSku, parentSkuMatch);
     }
     if (brand) {
       query["brand.name"] = safeRegexQuery(brand);
     }
     if (category) {
       query["category.name"] = safeRegexQuery(category);
-    }
-    if (currency) {
-      query.currency = sanitizeMongoQuery(currency);
     }
 
     // Price range filter
@@ -115,6 +129,11 @@ export async function GET(req: NextRequest) {
       sort = { "analytics.priority_score": -1 };
     } else if (sortBy === "score") {
       sort = { completeness_score: 1 }; // Lowest first (needs most work)
+    } else if (sortBy === "name") {
+      // Sort by title (multilingual field - use default language)
+      sort = { [`name.${defaultLang}`]: 1 };
+    } else if (sortBy === "updated") {
+      sort = { updated_at: -1 };
     } else {
       sort = { updated_at: -1 };
     }

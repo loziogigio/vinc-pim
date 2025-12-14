@@ -895,6 +895,99 @@ Scripts 03 and 04 use `partial` mode to preserve existing fields.
 
 ---
 
+## Email Configuration
+
+### SMTP Settings
+
+Email sending uses nodemailer with SMTP. Configuration is managed via environment variables.
+
+**Environment Variables:**
+
+```bash
+# SMTP Configuration
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=noreply@example.com
+MAIL_PASSWORD=your-password-here
+MAIL_FROM=noreply@example.com
+MAIL_FROM_NAME=Your Company Name
+
+# Default recipient (for system notifications)
+MAIL_TO=info@example.com
+```
+
+### Email Service Usage
+
+The email service supports two modes:
+
+1. **Queued (default)** - Emails are added to BullMQ queue for background processing
+2. **Immediate** - Emails are sent synchronously
+
+```typescript
+import { sendEmail } from "@/lib/email";
+
+// Queued (default) - recommended for most use cases
+await sendEmail({
+  to: "customer@example.com",
+  subject: "Order Confirmation",
+  html: "<h1>Your order has been confirmed</h1>",
+});
+
+// Immediate - for critical emails that must send now
+await sendEmail({
+  to: "customer@example.com",
+  subject: "Password Reset",
+  html: "<h1>Reset your password</h1>",
+  immediate: true,
+});
+```
+
+### Email Tracking
+
+Emails have open and click tracking enabled by default:
+
+```typescript
+// Disable tracking for a specific email
+await sendEmail({
+  to: "customer@example.com",
+  subject: "Privacy-sensitive email",
+  html: "<p>Content</p>",
+  tracking: false,
+});
+```
+
+Tracking endpoints:
+
+- Open tracking: `GET /api/email/track/open/[emailId]` (returns 1x1 pixel)
+- Click tracking: `GET /api/email/track/click/[emailId]?url=...` (redirects to URL)
+
+### Email Worker
+
+Run the email worker to process queued emails:
+
+```bash
+# Development
+pnpm worker:email
+
+# Production
+pnpm worker:email:prod
+
+# All workers together
+pnpm worker:all
+```
+
+### Email Log Model
+
+All emails are logged in the `emaillogs` collection with:
+
+- Delivery status (queued, sending, sent, failed, bounced)
+- Open tracking (count, timestamps, IP, user agent)
+- Click tracking (URLs clicked, timestamps, IP, user agent)
+- Metadata and tags for filtering
+
+---
+
 ## Maintenance
 
 ### Updating Standards

@@ -27,6 +27,10 @@ export interface CompanyBranding {
   favicon?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  /** Shop/Storefront URL for email redirects (e.g., https://shop.hidros.com) */
+  shopUrl?: string;
+  /** Company website URL (e.g., https://www.hidros.com) */
+  websiteUrl?: string;
 }
 
 export interface CDNConfiguration {
@@ -61,6 +65,28 @@ export interface CDNCredentials {
   delete_from_cloud?: boolean;
 }
 
+/**
+ * SMTP Settings for email sending
+ */
+export interface SMTPSettings {
+  /** SMTP host (e.g., smtp.hostinger.com) */
+  host?: string;
+  /** SMTP port (e.g., 587) */
+  port?: number;
+  /** Use secure connection (TLS) */
+  secure?: boolean;
+  /** SMTP username */
+  user?: string;
+  /** SMTP password */
+  password?: string;
+  /** From email address */
+  from?: string;
+  /** From display name */
+  from_name?: string;
+  /** Default recipient for system notifications */
+  default_to?: string;
+}
+
 export interface HomeSettings {
   _id: string;
   customerId: string;
@@ -69,6 +95,7 @@ export interface HomeSettings {
   cardStyle: ProductCardStyle;
   cdn?: CDNConfiguration;
   cdn_credentials?: CDNCredentials;
+  smtp_settings?: SMTPSettings;
   createdAt: string | Date;
   updatedAt: string | Date;
   lastModifiedBy?: string;

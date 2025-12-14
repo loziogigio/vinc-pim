@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -52,7 +52,9 @@ const CompanyBrandingSchema = new Schema(
     logo: { type: String },
     favicon: { type: String },
     primaryColor: { type: String, default: "#009f7f" },
-    secondaryColor: { type: String, default: "#02b290" }
+    secondaryColor: { type: String, default: "#02b290" },
+    shopUrl: { type: String },
+    websiteUrl: { type: String }
   },
   { _id: false }
 );
@@ -78,6 +80,21 @@ const CDNCredentialsSchema = new Schema(
     cdn_secret: { type: String },
     signed_url_expiry: { type: Number, default: 0 },
     delete_from_cloud: { type: Boolean, default: false }
+  },
+  { _id: false }
+);
+
+// SMTP settings schema for email configuration
+const SMTPSettingsSchema = new Schema(
+  {
+    host: { type: String },
+    port: { type: Number, default: 587 },
+    secure: { type: Boolean, default: false },
+    user: { type: String },
+    password: { type: String },
+    from: { type: String },
+    from_name: { type: String },
+    default_to: { type: String }
   },
   { _id: false }
 );
@@ -109,6 +126,9 @@ const HomeSettingsSchema = new Schema(
     },
     cdn_credentials: {
       type: CDNCredentialsSchema
+    },
+    smtp_settings: {
+      type: SMTPSettingsSchema
     },
     lastModifiedBy: { type: String }
   },

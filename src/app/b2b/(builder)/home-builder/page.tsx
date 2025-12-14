@@ -17,9 +17,10 @@ import {
   Tablet,
   Upload,
   Home,
-  History
+  History,
+  Settings2
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Public_Sans } from "next/font/google";
 import { BlockLibrary } from "@/components/builder/BlockLibrary";
 import { Canvas } from "@/components/builder/Canvas";
@@ -61,6 +62,7 @@ const defaultPublishForm: PublishFormValues = {
   region: "",
   language: "",
   device: "",
+  addressStates: "",
   priority: 0,
   isDefault: false,
   activeFrom: undefined,
@@ -97,12 +99,28 @@ const normalizeTextInput = (value?: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const parseAddressStates = (value?: string): string[] | null => {
+  if (!value) return null;
+  const states = value
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter((s) => s.length > 0);
+  return states.length > 0 ? states : null;
+};
+
 const buildPublishPayload = (form: PublishFormValues) => {
-  const attributes = {
+  const addressStates = parseAddressStates(form.addressStates);
+
+  const attributes: Record<string, any> = {
     region: normalizeTextInput(form.region),
     language: normalizeTextInput(form.language),
     device: normalizeTextInput(form.device)
   };
+
+  // Add addressStates as an array if provided
+  if (addressStates) {
+    attributes.addressStates = addressStates;
+  }
 
   return {
     campaign: normalizeTextInput(form.campaign),
@@ -118,6 +136,8 @@ const buildPublishPayload = (form: PublishFormValues) => {
 
 function HomeBuilderContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlVersion = searchParams.get("v");
 
   const blocks = usePageBuilderStore((state) => state.blocks);
   const isDirty = usePageBuilderStore((state) => state.isDirty);
@@ -149,15 +169,46 @@ function HomeBuilderContent() {
   const currentVersion = usePageBuilderStore((state) => state.currentVersion);
   const currentPublishedVersion = usePageBuilderStore((state) => state.currentPublishedVersion);
 
-  const isEditingPublishedVersion = currentVersion === currentPublishedVersion;
+  // Check if the version being edited has "published" status (includes conditional published versions)
+  const currentVersionData = versions.find((v) => v.version === currentVersion);
+  const isEditingPublishedVersion = currentVersionData?.status === "published";
+
+  // Check if version has conditional settings (tags with campaign, segment, or attributes)
+  const versionTags = currentVersionData?.tags as { campaign?: string; segment?: string; attributes?: Record<string, string | string[]> } | undefined;
+  const hasConditionalSettings = !!(
+    versionTags?.campaign ||
+    versionTags?.segment ||
+    (versionTags?.attributes && Object.keys(versionTags.attributes).length > 0)
+  );
+
+  // It's "default published" only if it's the current published AND has no conditional settings
+  const isDefaultPublishedVersion = currentVersion === currentPublishedVersion && !hasConditionalSettings;
+  const isConditionalPublishedVersion = isEditingPublishedVersion && hasConditionalSettings;
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
 
+  // Helper to update URL with version (without triggering navigation)
+  const updateUrlVersion = (version: number) => {
+    const url = new URL(window.location.href);
+    const currentUrlVersion = url.searchParams.get("v");
+
+    // Only update if version is different to avoid unnecessary history entries
+    if (currentUrlVersion !== String(version)) {
+      url.searchParams.set("v", String(version));
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
+  };
+
   useEffect(() => {
-    // Load home page template
+    // Load home page template (only runs once on mount)
     const loadTemplate = async () => {
       try {
-        const response = await fetch(`/api/home-template`, { cache: "no-store" });
+        // Build URL with version param if provided in initial URL
+        const apiUrl = urlVersion
+          ? `/api/home-template?v=${urlVersion}`
+          : `/api/home-template`;
+
+        const response = await fetch(apiUrl, { cache: "no-store" });
 
         if (!response.ok) {
           throw new Error("Failed to load home page template");
@@ -166,6 +217,11 @@ function HomeBuilderContent() {
         const config = await response.json();
         console.log("Loaded home page template:", config);
         loadPageConfig(config);
+
+        // Update URL to reflect the loaded version
+        if (config.currentVersion) {
+          updateUrlVersion(config.currentVersion);
+        }
       } catch (loadError) {
         console.error(loadError);
         setError("Failed to load home page configuration");
@@ -175,7 +231,8 @@ function HomeBuilderContent() {
     };
 
     loadTemplate();
-  }, [loadPageConfig]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPageConfig]); // Only run on mount, urlVersion is read once
 
   useEffect(() => {
     if (selectedBlockId) {
@@ -197,6 +254,12 @@ function HomeBuilderContent() {
 
   const openPublishDialog = (version: number) => {
     const target = versions.find((v) => v.version === version);
+    // Convert addressStates array back to comma-separated string for the form
+    const addressStatesArray = target?.tags?.attributes?.addressStates;
+    const addressStatesString = Array.isArray(addressStatesArray)
+      ? addressStatesArray.join(", ")
+      : "";
+
     setPublishTargetVersion(version);
     setPublishForm({
       campaign: target?.tags?.campaign ?? "",
@@ -204,6 +267,7 @@ function HomeBuilderContent() {
       region: target?.tags?.attributes?.region ?? "",
       language: target?.tags?.attributes?.language ?? "",
       device: target?.tags?.attributes?.device ?? "",
+      addressStates: addressStatesString,
       priority: target?.priority ?? 0,
       isDefault: Boolean(target?.isDefault),
       activeFrom: formatDateTimeLocal(target?.activeFrom),
@@ -385,12 +449,12 @@ function HomeBuilderContent() {
     setInfo(null);
     try {
       const payload = buildPublishPayload(formValues);
-      const isCurrentVersion = targetVersion === currentVersion;
+      const isCurrentVersionMatch = targetVersion === currentVersion;
       const isCurrentlyPublished = targetVersion === currentPublishedVersion;
       const versionData = versions.find((version) => version.version === targetVersion);
       const versionStatus = versionData?.status;
       const shouldUsePublishVersionEndpoint =
-        !isCurrentVersion || isCurrentlyPublished || versionStatus === "published";
+        !isCurrentVersionMatch || isCurrentlyPublished || versionStatus === "published";
 
       const endpoint = shouldUsePublishVersionEndpoint
         ? "/api/home-template/publish-version"
@@ -399,6 +463,10 @@ function HomeBuilderContent() {
       const body = shouldUsePublishVersionEndpoint
         ? { version: targetVersion, ...payload }
         : payload;
+
+      console.log("[executePublish] Publishing version:", targetVersion);
+      console.log("[executePublish] Endpoint:", endpoint);
+      console.log("[executePublish] Payload:", JSON.stringify(body, null, 2));
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -412,8 +480,21 @@ function HomeBuilderContent() {
       }
 
       const updated = await response.json();
+      console.log("[executePublish] Response received:", JSON.stringify(updated, null, 2));
+
+      // Check if the version was actually published
+      const publishedVersion = updated.versions?.find((v: any) => v.version === targetVersion);
+      console.log("[executePublish] Published version status:", publishedVersion?.status);
+      console.log("[executePublish] Published version tags:", publishedVersion?.tags);
+
       loadPageConfig(updated);
-      setInfo(`Version ${targetVersion} published successfully.`);
+
+      // Update URL to reflect the current version
+      if (updated.currentVersion) {
+        updateUrlVersion(updated.currentVersion);
+      }
+
+      setInfo(`Version ${targetVersion} published successfully as ${publishedVersion?.status || "unknown"}.`);
       closePublishDialog();
     } catch (publishError) {
       console.error(publishError);
@@ -450,6 +531,12 @@ function HomeBuilderContent() {
 
       const config = await response.json();
       loadPageConfig(config);
+
+      // Update URL to reflect the new version
+      if (config.currentVersion) {
+        updateUrlVersion(config.currentVersion);
+      }
+
       setInfo(`New draft version v${config?.currentVersion} created. Make your changes and save.`);
     } catch (err) {
       console.error(err);
@@ -473,6 +560,10 @@ function HomeBuilderContent() {
       const config = await response.json();
       loadPageConfig(config);
       setIsVersionHistoryOpen(false);
+
+      // Update URL to reflect the loaded version
+      updateUrlVersion(config.currentVersion);
+
       setInfo(`Loaded version v${version}. Now editing as version v${config.currentVersion}.`);
     } catch (err) {
       console.error(err);
@@ -495,6 +586,12 @@ function HomeBuilderContent() {
 
       const config = await response.json();
       loadPageConfig(config);
+
+      // Update URL to reflect the current version
+      if (config.currentVersion) {
+        updateUrlVersion(config.currentVersion);
+      }
+
       setInfo(`Deleted version v${version}.`);
     } catch (err) {
       console.error(err);
@@ -519,6 +616,12 @@ function HomeBuilderContent() {
       const config = await response.json();
       loadPageConfig(config);
       setIsVersionHistoryOpen(false);
+
+      // Update URL to reflect the new version
+      if (config.currentVersion) {
+        updateUrlVersion(config.currentVersion);
+      }
+
       setInfo(`Duplicated version v${version} as v${config.currentVersion}.`);
     } catch (err) {
       console.error(err);
@@ -613,15 +716,26 @@ function HomeBuilderContent() {
                   <span
                     className={cn(
                       "rounded-[0.358rem] px-[0.714rem] py-[0.286rem] text-[0.786rem] font-semibold",
-                      isEditingPublishedVersion
+                      isDefaultPublishedVersion
                         ? "bg-[rgba(0,150,136,0.12)] text-[#00796b]"
-                        : "bg-[rgba(255,152,0,0.12)] text-[#e65100]"
+                        : isConditionalPublishedVersion
+                          ? "bg-[rgba(33,150,243,0.12)] text-[#1565c0]"
+                          : isEditingPublishedVersion
+                            ? "bg-[rgba(156,39,176,0.12)] text-[#7b1fa2]"
+                            : "bg-[rgba(255,152,0,0.12)] text-[#e65100]"
                     )}
                   >
-                    {isEditingPublishedVersion ? "✓ Published" : "Draft"} · v{currentVersion}
+                    {isDefaultPublishedVersion
+                      ? "✓ Default Published"
+                      : isConditionalPublishedVersion
+                        ? "✓ Published (Conditional)"
+                        : isEditingPublishedVersion
+                          ? "✓ Published"
+                          : "Draft"}{" "}
+                    · v{currentVersion}
                   </span>
                   {currentPublishedVersion && currentPublishedVersion !== currentVersion ? (
-                    <span className="text-[0.786rem] text-[#b9b9c3]">latest published: v{currentPublishedVersion}</span>
+                    <span className="text-[0.786rem] text-[#b9b9c3]">default: v{currentPublishedVersion}</span>
                   ) : null}
                 </>
               ) : null}
@@ -712,15 +826,28 @@ function HomeBuilderContent() {
             Block Builder
           </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
-            onClick={handlePreview}
-          >
-            <Eye className="h-4 w-4" />
-            Preview
-          </Button>
+          {isEditingPublishedVersion ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="flex items-center gap-2 rounded-[0.358rem] border border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#1565c0] transition hover:bg-[rgba(33,150,243,0.15)]"
+              onClick={handlePublishButtonClick}
+              title="Edit conditional settings for this published version"
+            >
+              <Settings2 className="h-4 w-4" />
+              Condition
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
+              onClick={handlePreview}
+            >
+              <Eye className="h-4 w-4" />
+              Preview
+            </Button>
+          )}
 
           <Button
             type="button"
@@ -794,9 +921,9 @@ function HomeBuilderContent() {
           {info}
         </div>
       ) : null}
-      {currentVersion === currentPublishedVersion && !isDirty ? (
+      {isEditingPublishedVersion && !isDirty ? (
         <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-[0.857rem] text-[#1976d2]">
-          <strong>Viewing published version {currentVersion}.</strong> Make changes and click <strong>Hot Fix</strong> to update this version directly, or click <strong>New Version</strong> to create a new draft.
+          <strong>Viewing {isConditionalPublishedVersion ? "conditional" : isDefaultPublishedVersion ? "default" : ""} published version {currentVersion}.</strong> Make changes and click <strong>Hot Fix</strong> to update this version directly, or click <strong>New Version</strong> to create a new draft.
         </div>
       ) : null}
 

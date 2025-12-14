@@ -104,7 +104,6 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
     console.log('[BlockSettingsModal] Applying settings - zone:', zone, 'tabLabel:', tabLabel);
     console.log('[BlockSettingsModal] Draft title:', (draft as any)?.title);
-    console.log('[BlockSettingsModal] Full draft:', JSON.stringify(draft, null, 2));
 
     // Update config
     updateBlockConfig(selectedBlock.id, draft as Partial<PageBlock["config"]>);
@@ -123,8 +122,6 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
       ),
       isDirty: true // Mark as dirty when zone changes
     }));
-
-    console.log('[BlockSettingsModal] Block updated, new state:', usePageBuilderStore.getState().blocks.find(b => b.id === selectedBlock.id));
 
     setHasLocalChanges(false);
     closeModal();
@@ -228,7 +225,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
         onClick={closeModal}
         aria-hidden="true"
       />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-start justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Block Settings</h2>
@@ -301,6 +298,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             {/* Hero With Widgets Block Custom UI */}
             {selectedBlock.type === "hero-with-widgets" ? (
               <HeroWithWidgetsSettings
+                key={selectedBlock.id}
                 blockId={selectedBlock.id}
                 config={draft as any}
                 onSave={(newConfig) => {
@@ -313,6 +311,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             {/* Hero Carousel Block Custom UI */}
             {selectedBlock.type === "carousel-hero" ? (
               <HeroCarouselSettings
+                key={selectedBlock.id}
                 blockId={selectedBlock.id}
                 config={draft as any}
                 onSave={(newConfig) => {
@@ -326,6 +325,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             {/* Media Carousel Block Custom UI (promo/brand/flyer) */}
             {["carousel-promo", "carousel-brand", "carousel-flyer"].includes(selectedBlock.type) ? (
               <MediaCarouselSettings
+                key={selectedBlock.id}
                 blockId={selectedBlock.id}
                 config={draft as any}
                 onSave={(newConfig) => {
@@ -339,6 +339,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             {/* Product Carousel Block Custom UI */}
             {selectedBlock.type === "carousel-products" ? (
               <ProductCarouselSettings
+                key={selectedBlock.id}
                 blockId={selectedBlock.id}
                 config={draft as any}
                 onSave={(newConfig) => {
@@ -352,6 +353,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
             {selectedBlock.type === "carousel-gallery" ? (
               <ProductGallerySettings
+                key={selectedBlock.id}
                 blockId={selectedBlock.id}
                 config={draft as any}
                 onSave={(newConfig) => {
@@ -795,7 +797,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             onClick={handleApply}
             disabled={!hasLocalChanges}
           >
-            Save changes
+            Save
           </Button>
         </footer>
       </div>

@@ -117,6 +117,12 @@ function ImageUploadField({
 }
 
 export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarouselSettingsProps) {
+  // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
   const defaultCardStyle: CarouselCardStyle = {
     borderWidth: 0,
     borderColor: "#EAEEF2",
@@ -223,36 +229,16 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
     });
   };
 
-  useEffect(() => {
-    setItems(config.items || []);
-    setVariant(config.variant || "promo");
-    setBreakpointMode(config.breakpointMode || "simplified");
-    setItemsToShow({
-      desktop: config.itemsToShow?.desktop || 5.5,
-      tablet: config.itemsToShow?.tablet || 4.5,
-      mobile: config.itemsToShow?.mobile || 2.5
-    });
-    setBreakpointsJSON(
-      JSON.stringify(
-        config.breakpointsJSON || {
-          "1536": { slidesPerView: 5.5, spaceBetween: 20 },
-          "768": { slidesPerView: 4.5, spaceBetween: 16 },
-          "520": { slidesPerView: 2.5, spaceBetween: 12 },
-          "0": { slidesPerView: 1.5, spaceBetween: 5 }
-        },
-        null,
-        2
-      )
-    );
-    setAutoplay(config.autoplay ?? false);
-    setLoop(config.loop ?? false);
-    setCardStyle({
-      ...defaultCardStyle,
-      ...(config.cardStyle || {})
-    });
-  }, [config]);
+  // Track if this is the initial mount to avoid triggering onSave on first render
+  const isInitialMount = useRef(true);
 
-  const handleSave = () => {
+  // Auto-sync settings to parent whenever they change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     try {
       const baseConfig: any = {
         items,
@@ -264,15 +250,22 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
         className: config.className || "mb-12 xl:mb-14 pt-1"
       };
 
-      const finalConfig = breakpointMode === "simplified"
-        ? { ...baseConfig, itemsToShow }
-        : { ...baseConfig, breakpointsJSON: JSON.parse(breakpointsJSON) };
+      let finalConfig;
+      if (breakpointMode === "simplified") {
+        finalConfig = { ...baseConfig, itemsToShow };
+      } else {
+        try {
+          finalConfig = { ...baseConfig, breakpointsJSON: JSON.parse(breakpointsJSON) };
+        } catch {
+          finalConfig = { ...baseConfig, breakpointsJSON: config.breakpointsJSON };
+        }
+      }
 
-      onSave(finalConfig);
+      onSaveRef.current(finalConfig);
     } catch (error) {
-      alert("Invalid breakpoints JSON");
+      console.error("Error syncing config:", error);
     }
-  };
+  }, [items, variant, breakpointMode, autoplay, loop, cardStyle, config.className, config.breakpointsJSON, itemsToShow, breakpointsJSON]);
 
   return (
     <div className="space-y-6">
@@ -312,11 +305,8 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
       {/* Items Management */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3">
           <Label className="text-base font-semibold">Media Items</Label>
-          <Button type="button" onClick={addItem} size="sm" variant="outline">
-            <Plus className="mr-1 h-4 w-4" /> Add Item
-          </Button>
         </div>
 
         <div className="space-y-4">
@@ -497,6 +487,10 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
             ))
           )}
         </div>
+
+        <Button type="button" onClick={addItem} size="sm" variant="outline" className="mt-4">
+          <Plus className="mr-1 h-4 w-4" /> Add Item
+        </Button>
       </div>
 
       {/* Breakpoint Mode */}
@@ -800,9 +794,6 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
         </div>
       </div>
 
-      <Button onClick={handleSave} className="w-full">
-        Save Settings
-      </Button>
     </div>
   );
 }

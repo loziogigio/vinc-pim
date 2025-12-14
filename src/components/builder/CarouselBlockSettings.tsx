@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,12 @@ interface CarouselBlockSettingsProps {
 }
 
 export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlockSettingsProps) {
+  // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
   const [apiEndpoint, setApiEndpoint] = useState(config.apiEndpoint || "");
   const [autoplay, setAutoplay] = useState(config.autoplay ?? false);
   const [loop, setLoop] = useState(config.loop ?? false);
@@ -42,10 +48,25 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
     }
   };
 
-  const handleSave = () => {
+  // Track if this is the initial mount to avoid triggering onSave on first render
+  const isInitialMount = useRef(true);
+
+  // Auto-sync settings to parent whenever they change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     try {
-      const parsedBreakpoints = JSON.parse(breakpoints);
-      onSave({
+      let parsedBreakpoints;
+      try {
+        parsedBreakpoints = JSON.parse(breakpoints);
+      } catch {
+        parsedBreakpoints = config.breakpoints || {};
+      }
+
+      onSaveRef.current({
         apiEndpoint,
         autoplay,
         loop,
@@ -53,9 +74,9 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
         breakpoints: parsedBreakpoints
       });
     } catch (error) {
-      alert("Invalid breakpoints JSON");
+      console.error("Error syncing config:", error);
     }
-  };
+  }, [apiEndpoint, autoplay, loop, className, breakpoints, config.breakpoints]);
 
   return (
     <div className="space-y-4">
@@ -155,9 +176,6 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
         </p>
       </div>
 
-      <Button onClick={handleSave} className="w-full">
-        Save Settings
-      </Button>
     </div>
   );
 }

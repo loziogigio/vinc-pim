@@ -8,6 +8,7 @@ import {
   Home,
   Eye,
   Loader2,
+  Mail,
   Monitor,
   Palette,
   RefreshCcw,
@@ -17,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle, CDNCredentials } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
 const publicSans = Public_Sans({
@@ -31,7 +32,9 @@ const DEFAULT_BRANDING: CompanyBranding = {
   logo: "",
   favicon: "",
   primaryColor: "#009f7f",
-  secondaryColor: "#02b290"
+  secondaryColor: "#02b290",
+  shopUrl: "",
+  websiteUrl: ""
 };
 
 const DEFAULT_CARD_STYLE: ProductCardStyle = {
@@ -61,7 +64,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product" | "cdn";
+type ActiveSection = "branding" | "product" | "cdn" | "smtp";
 
 const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_url: "",
@@ -72,6 +75,17 @@ const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_secret: "",
   signed_url_expiry: 0,
   delete_from_cloud: false
+};
+
+const DEFAULT_SMTP_SETTINGS: SMTPSettings = {
+  host: "",
+  port: 587,
+  secure: false,
+  user: "",
+  password: "",
+  from: "",
+  from_name: "",
+  default_to: ""
 };
 
 interface BrandingFormProps {
@@ -163,6 +177,7 @@ export default function HomeSettingsPage() {
   const [cardVariant, setCardVariant] = useState<PreviewVariant>("b2b");
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
   const [cdnCredentials, setCdnCredentials] = useState<CDNCredentials>(DEFAULT_CDN_CREDENTIALS);
+  const [smtpSettings, setSmtpSettings] = useState<SMTPSettings>(DEFAULT_SMTP_SETTINGS);
   const [activeSection, setActiveSection] = useState<ActiveSection>("branding");
   const [previewVariant, setPreviewVariant] = useState<PreviewVariant>("b2b");
 
@@ -188,6 +203,7 @@ export default function HomeSettingsPage() {
         setBranding(DEFAULT_BRANDING);
         setCardStyle(DEFAULT_CARD_STYLE);
         setCdnCredentials(DEFAULT_CDN_CREDENTIALS);
+        setSmtpSettings(DEFAULT_SMTP_SETTINGS);
         setCardVariant("b2b");
         setPreviewVariant("b2b");
         setDirty(false);
@@ -215,6 +231,10 @@ export default function HomeSettingsPage() {
       setCdnCredentials({
         ...DEFAULT_CDN_CREDENTIALS,
         ...(data.cdn_credentials ?? {})
+      });
+      setSmtpSettings({
+        ...DEFAULT_SMTP_SETTINGS,
+        ...(data.smtp_settings ?? {})
       });
       setDirty(false);
       setToast("Settings loaded.");
@@ -275,6 +295,11 @@ export default function HomeSettingsPage() {
     setDirty(true);
   };
 
+  const updateSmtpSettings = <K extends keyof SMTPSettings>(key: K, value: SMTPSettings[K]) => {
+    setSmtpSettings((prev: SMTPSettings) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
@@ -288,6 +313,7 @@ export default function HomeSettingsPage() {
           defaultCardVariant: cardVariant,
           cardStyle,
           cdn_credentials: cdnCredentials,
+          smtp_settings: smtpSettings,
           lastModifiedBy: "admin"
         })
       });
@@ -444,6 +470,13 @@ export default function HomeSettingsPage() {
               active={activeSection === "cdn"}
               onClick={() => setActiveSection("cdn")}
             />
+            <SidebarItem
+              icon={Mail}
+              label="SMTP Settings"
+              description="Email sending configuration"
+              active={activeSection === "smtp"}
+              onClick={() => setActiveSection("smtp")}
+            />
           </nav>
         </aside>
 
@@ -473,6 +506,12 @@ export default function HomeSettingsPage() {
             <CDNForm
               cdnCredentials={cdnCredentials}
               onChange={updateCdnCredentials}
+            />
+          )}
+          {activeSection === "smtp" && (
+            <SMTPForm
+              smtpSettings={smtpSettings}
+              onChange={updateSmtpSettings}
             />
           )}
         </main>
@@ -802,6 +841,36 @@ function BrandingForm({
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">Square image (32×32 or 64×64) for browser tabs.</p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="shop-url" className="text-sm font-medium text-slate-600">
+            Shop URL
+          </label>
+          <input
+            id="shop-url"
+            type="url"
+            value={branding.shopUrl || ""}
+            onChange={(event) => onChange("shopUrl", event.target.value)}
+            placeholder="https://shop.example.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">Storefront URL for email links and redirects.</p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="website-url" className="text-sm font-medium text-slate-600">
+            Company Website
+          </label>
+          <input
+            id="website-url"
+            type="url"
+            value={branding.websiteUrl || ""}
+            onChange={(event) => onChange("websiteUrl", event.target.value)}
+            placeholder="https://www.example.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">Main company website URL.</p>
         </div>
       </div>
 
@@ -1310,6 +1379,257 @@ function CDNForm({ cdnCredentials, onChange }: CDNFormProps) {
               "Test Connection"
             )}
           </Button>
+        </div>
+
+        {testResult && (
+          <div
+            className={cn(
+              "mt-4 rounded-lg border px-4 py-3 text-sm",
+              testResult.success
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-rose-200 bg-rose-50 text-rose-700"
+            )}
+          >
+            {testResult.message}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+interface SMTPFormProps {
+  smtpSettings: SMTPSettings;
+  onChange: <K extends keyof SMTPSettings>(key: K, value: SMTPSettings[K]) => void;
+}
+
+function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
+  const [isTesting, setIsTesting] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch("/api/b2b/home-settings/test-smtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          host: smtpSettings.host,
+          port: smtpSettings.port,
+          secure: smtpSettings.secure,
+          user: smtpSettings.user,
+          password: smtpSettings.password,
+          from: smtpSettings.from,
+          from_name: smtpSettings.from_name,
+          default_to: testEmail || smtpSettings.default_to,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTestResult({ success: true, message: data.message || "Connection successful! Test email sent." });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error + (data.details ? `: ${data.details}` : ""),
+        });
+      }
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: "Failed to test connection. Please check your network.",
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const canTest = smtpSettings.host && smtpSettings.port && smtpSettings.user &&
+                  smtpSettings.password && smtpSettings.from;
+
+  return (
+    <SectionCard
+      title="SMTP Settings"
+      description="Configure email sending for notifications and transactional emails."
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <label htmlFor="smtp-host" className="text-sm font-medium text-slate-600">
+            SMTP Host
+          </label>
+          <input
+            id="smtp-host"
+            type="text"
+            value={smtpSettings.host || ""}
+            onChange={(e) => onChange("host", e.target.value)}
+            placeholder="smtp.example.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="smtp-port" className="text-sm font-medium text-slate-600">
+            Port
+          </label>
+          <input
+            id="smtp-port"
+            type="number"
+            value={smtpSettings.port || 587}
+            onChange={(e) => onChange("port", Number(e.target.value))}
+            placeholder="587"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            Common ports: 587 (STARTTLS), 465 (SSL/TLS)
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="smtp-user" className="text-sm font-medium text-slate-600">
+            Username
+          </label>
+          <input
+            id="smtp-user"
+            type="text"
+            value={smtpSettings.user || ""}
+            onChange={(e) => onChange("user", e.target.value)}
+            placeholder="noreply@example.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="smtp-password" className="text-sm font-medium text-slate-600">
+            Password
+          </label>
+          <input
+            id="smtp-password"
+            type="password"
+            value={smtpSettings.password || ""}
+            onChange={(e) => onChange("password", e.target.value)}
+            placeholder="••••••••••••"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="smtp-from" className="text-sm font-medium text-slate-600">
+            From Email
+          </label>
+          <input
+            id="smtp-from"
+            type="email"
+            value={smtpSettings.from || ""}
+            onChange={(e) => onChange("from", e.target.value)}
+            placeholder="noreply@example.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="smtp-from-name" className="text-sm font-medium text-slate-600">
+            From Name
+          </label>
+          <input
+            id="smtp-from-name"
+            type="text"
+            value={smtpSettings.from_name || ""}
+            onChange={(e) => onChange("from_name", e.target.value)}
+            placeholder="My Company"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="smtp-default-to" className="text-sm font-medium text-slate-600">
+            Default Recipient
+          </label>
+          <input
+            id="smtp-default-to"
+            type="email"
+            value={smtpSettings.default_to || ""}
+            onChange={(e) => onChange("default_to", e.target.value)}
+            placeholder="info@example.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            For system notifications and alerts
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600">
+            Secure Connection (TLS)
+          </label>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => onChange("secure", !smtpSettings.secure)}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                smtpSettings.secure ? "bg-primary" : "bg-slate-200"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  smtpSettings.secure ? "translate-x-6" : "translate-x-1"
+                )}
+              />
+            </button>
+            <span className="text-sm text-slate-600">
+              {smtpSettings.secure ? "Enabled (port 465)" : "Disabled (port 587)"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Test Connection */}
+      <div className="border-t border-slate-200 pt-6 mt-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Test Connection</h3>
+            <p className="text-xs text-slate-500">
+              Send a test email to verify SMTP credentials
+            </p>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <div className="flex-1 space-y-2">
+              <label htmlFor="test-email" className="text-sm font-medium text-slate-600">
+                Send test to
+              </label>
+              <input
+                id="test-email"
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder={smtpSettings.default_to || smtpSettings.from || "test@example.com"}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleTestConnection}
+              disabled={!canTest || isTesting}
+              className="gap-2 h-[38px]"
+            >
+              {isTesting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send Test Email"
+              )}
+            </Button>
+          </div>
         </div>
 
         {testResult && (

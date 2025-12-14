@@ -226,8 +226,17 @@ function buildMainQuery(
   lang: string,
   options?: { fuzzy?: boolean; fuzzyNum?: number }
 ): string {
+  // IMAGE COUNT BOOST - applied to ALL searches (text and free browse)
+  // Products with images rank higher as a tie-breaker
+  const imageBoost = [
+    '(image_count:[1 TO 2]^5000)',   // 1-2 images: +5000
+    '(image_count:[2 TO 4]^5500)',   // 2-4 images: +5500
+    '(image_count:[5 TO *]^6000)',   // 5+ images: +6000
+  ].join(' ');
+
   if (!text || text.trim() === '') {
-    return '*:*';
+    // Free search (no text) - just match all with image boost
+    return `*:* ${imageBoost}`;
   }
 
   // Split into terms - no stop word filtering (Solr handles this)
@@ -311,6 +320,9 @@ function buildMainQuery(
       termQueries.push(`(name_sort_${lang}:/.{0,20}${pair}.*/^2000000)`);
     }
   }
+
+  // Add image boost (same as free search)
+  termQueries.push(imageBoost);
 
   return termQueries.join(' ');
 }

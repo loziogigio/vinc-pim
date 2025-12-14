@@ -1052,7 +1052,7 @@ export async function enrichProductsWithVariants(
       variantsMap.set(doc.entity_code, transformDocument(doc, lang));
     }
 
-    // Attach variants to parent products
+    // Attach variants to parent products and propagate has_active_promo
     return products.map(product => {
       if (!product.variants_entity_code?.length) {
         return product;
@@ -1062,9 +1062,19 @@ export async function enrichProductsWithVariants(
         .map(code => variantsMap.get(code))
         .filter((v): v is SolrProduct => v !== undefined);
 
-      return variants.length > 0
-        ? { ...product, variants }
-        : product;
+      if (variants.length === 0) {
+        return product;
+      }
+
+      // Propagate has_active_promo: if any child has promo, parent has promo
+      const childHasActivePromo = variants.some(v => v.has_active_promo === true);
+      const hasActivePromo = product.has_active_promo || childHasActivePromo;
+
+      return {
+        ...product,
+        variants,
+        has_active_promo: hasActivePromo,
+      };
     });
   } catch (error) {
     console.error('[VariantEnricher] Failed to fetch variants:', error);

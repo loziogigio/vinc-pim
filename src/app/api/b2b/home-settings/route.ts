@@ -33,13 +33,14 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { branding, defaultCardVariant, cardStyle, cdn_credentials, lastModifiedBy } = body;
+    const { branding, defaultCardVariant, cardStyle, cdn_credentials, smtp_settings, lastModifiedBy } = body;
 
     const settings = await upsertHomeSettings({
       branding,
       defaultCardVariant,
       cardStyle,
       cdn_credentials,
+      smtp_settings,
       lastModifiedBy
     });
 

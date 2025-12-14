@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 interface ProductGallerySettingsProps {
   blockId: string;
@@ -25,6 +24,12 @@ const PreviewPlaceholder = ({ message }: { message: string }) => (
 );
 
 export function ProductGallerySettings({ config, onSave }: ProductGallerySettingsProps) {
+  // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
   const [title, setTitle] = useState<string>(config.title || "Product Gallery");
   const [searchQuery, setSearchQuery] = useState<string>(config.searchQuery || "");
   const [limit, setLimit] = useState<number>(config.limit || 12);
@@ -82,7 +87,16 @@ export function ProductGallerySettings({ config, onSave }: ProductGallerySetting
     };
   }, [searchQuery, limit]);
 
-  const handleSave = () => {
+  // Track if this is the initial mount to avoid triggering onSave on first render
+  const isInitialMount = useRef(true);
+
+  // Auto-sync settings to parent whenever they change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     const payload = {
       title: title.trim() || 'Product Gallery',
       searchQuery: searchQuery.trim(),
@@ -99,8 +113,8 @@ export function ProductGallerySettings({ config, onSave }: ProductGallerySetting
       className: config.className || 'mb-12 xl:mb-14 pt-1'
     };
 
-    onSave(payload);
-  };
+    onSaveRef.current(payload);
+  }, [title, searchQuery, limit, columns.desktop, columns.tablet, columns.mobile, gap, showPrice, showBadge, showAddToCart, config.className]);
 
   const previewContent = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -256,10 +270,6 @@ export function ProductGallerySettings({ config, onSave }: ProductGallerySetting
           Show add to cart button
         </label>
       </div>
-
-      <Button onClick={handleSave} className="w-full">
-        Save settings
-      </Button>
     </div>
   );
 }

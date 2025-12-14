@@ -144,6 +144,12 @@ function ImageUploadField({
 }
 
 export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSettingsProps) {
+  // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
   const defaultCardStyle: HeroCardStyle = {
     borderWidth: 0,
     borderColor: "#EAEEF2",
@@ -193,41 +199,6 @@ export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSe
   const [sectionClassName, setSectionClassName] = useState(
     config.className || SECTION_CLASS_FALLBACK
   );
-
-  useEffect(() => {
-    setSlides((config.slides || []).map(normalizeSlide));
-    setBreakpointMode(config.breakpointMode || "simplified");
-    setItemsToShow({
-      desktop: config.itemsToShow?.desktop || 2,
-      tablet: config.itemsToShow?.tablet || 2,
-      mobile: config.itemsToShow?.mobile || 1
-    });
-    setBreakpointsJSON(
-      JSON.stringify(
-        config.breakpointsJSON || {
-          "1536": { slidesPerView: 2, spaceBetween: 20 },
-          "1280": { slidesPerView: 2, spaceBetween: 16 },
-          "1024": { slidesPerView: 2, spaceBetween: 16 },
-          "768": { slidesPerView: 2, spaceBetween: 16 },
-          "520": { slidesPerView: 2, spaceBetween: 12 },
-          "0": { slidesPerView: 1, spaceBetween: 5 }
-        },
-        null,
-        2
-      )
-    );
-    setAutoplay(config.autoplay ?? true);
-    setAutoplaySpeed(config.autoplaySpeed || 5000);
-    setLoop(config.loop ?? true);
-    setShowDots(config.showDots ?? true);
-    setShowArrows(config.showArrows ?? true);
-    setCardStyle({
-      ...defaultCardStyle,
-      ...(config.cardStyle || {})
-    });
-    setSectionTitle(config.title || "");
-    setSectionClassName(config.className || SECTION_CLASS_FALLBACK);
-  }, [config]);
 
   const addSlide = () => {
     const newSlide: HeroSlide = {
@@ -290,7 +261,16 @@ export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSe
     });
   };
 
-  const handleSave = () => {
+  // Track if this is the initial mount to avoid triggering onSave on first render
+  const isInitialMount = useRef(true);
+
+  // Auto-sync settings to parent whenever they change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     try {
       const normalizedSlides = slides.map(normalizeSlide);
       const trimmedTitle = sectionTitle.trim();
@@ -298,24 +278,35 @@ export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSe
         title: trimmedTitle,
         slides: normalizedSlides,
         breakpointMode,
-      autoplay,
-      autoplaySpeed,
-      loop,
-      showDots,
-      showArrows,
-      cardStyle,
-      className: sectionClassName?.trim() || SECTION_CLASS_FALLBACK
-    };
+        autoplay,
+        autoplaySpeed,
+        loop,
+        showDots,
+        showArrows,
+        cardStyle,
+        className: sectionClassName?.trim() || SECTION_CLASS_FALLBACK
+      };
 
-      const finalConfig = breakpointMode === "simplified"
-        ? { ...baseConfig, itemsToShow }
-        : { ...baseConfig, breakpointsJSON: JSON.parse(breakpointsJSON) };
+      let finalConfig;
+      if (breakpointMode === "simplified") {
+        finalConfig = { ...baseConfig, itemsToShow };
+      } else {
+        try {
+          finalConfig = { ...baseConfig, breakpointsJSON: JSON.parse(breakpointsJSON) };
+        } catch {
+          finalConfig = { ...baseConfig, breakpointsJSON: config.breakpointsJSON };
+        }
+      }
 
-      onSave(finalConfig);
+      onSaveRef.current(finalConfig);
     } catch (error) {
-      alert("Invalid breakpoints JSON");
+      console.error("Error syncing config:", error);
     }
-  };
+  }, [
+    slides, sectionTitle, breakpointMode, autoplay, autoplaySpeed, loop,
+    showDots, showArrows, cardStyle, sectionClassName, itemsToShow, breakpointsJSON,
+    config.breakpointsJSON
+  ]);
 
   return (
     <div className="space-y-6">
@@ -351,11 +342,8 @@ export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSe
 
       {/* Slides Management */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3">
           <Label className="text-base font-semibold">Hero Slides</Label>
-          <Button type="button" onClick={addSlide} size="sm" variant="outline">
-            <Plus className="mr-1 h-4 w-4" /> Add Slide
-          </Button>
         </div>
 
         <div className="space-y-4">
@@ -569,6 +557,10 @@ export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSe
             })
           )}
         </div>
+
+        <Button type="button" onClick={addSlide} size="sm" variant="outline" className="mt-4">
+          <Plus className="mr-1 h-4 w-4" /> Add Slide
+        </Button>
       </div>
 
       {/* Breakpoint Mode */}
@@ -925,9 +917,6 @@ export function HeroCarouselSettings({ blockId, config, onSave }: HeroCarouselSe
         ) : null}
       </div>
 
-      <Button onClick={handleSave} className="w-full">
-        Save Settings
-      </Button>
     </div>
   );
 }

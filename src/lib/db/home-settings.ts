@@ -1,5 +1,5 @@
 import { B2BHomeSettingsModel, HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectToDatabase } from "./connection";
 
@@ -117,6 +117,7 @@ type HomeSettingsUpdate = {
   cardStyle?: Partial<ProductCardStyle> | ProductCardStyle;
   cdn?: Partial<CDNConfiguration> | CDNConfiguration;
   cdn_credentials?: Partial<CDNCredentials> | CDNCredentials;
+  smtp_settings?: Partial<SMTPSettings> | SMTPSettings;
   lastModifiedBy?: string;
 };
 
@@ -181,6 +182,15 @@ export async function upsertHomeSettings(
         });
       }
 
+      if (data.smtp_settings) {
+        const smtpUpdate = data.smtp_settings as Partial<SMTPSettings>;
+        Object.entries(smtpUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`smtp_settings.${key}`] = value;
+          }
+        });
+      }
+
       if (data.defaultCardVariant) {
         updateFields.defaultCardVariant = data.defaultCardVariant;
       }
@@ -205,6 +215,7 @@ export async function upsertHomeSettings(
         cardStyle: mergeCardStyle(undefined, data.cardStyle as Partial<ProductCardStyle>),
         cdn: data.cdn,
         cdn_credentials: data.cdn_credentials,
+        smtp_settings: data.smtp_settings,
         lastModifiedBy: data.lastModifiedBy
       });
 

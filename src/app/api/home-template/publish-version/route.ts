@@ -20,12 +20,12 @@ const extractMetadata = (body: any): PublishMetadataInput | undefined => {
     hasField = true;
   }
 
-  let attributesSource: Record<string, string | null | undefined> | undefined;
-  if (body.attributes && typeof body.attributes === "object") {
-    attributesSource = body.attributes as Record<string, string | null | undefined>;
+  let attributesSource: Record<string, string | string[] | null | undefined> | undefined;
+  if (body.attributes && typeof body.attributes === "object" && !Array.isArray(body.attributes)) {
+    attributesSource = body.attributes as Record<string, string | string[] | null | undefined>;
   } else {
-    const fallback: Record<string, string | null | undefined> = {};
-    ["region", "language", "device"].forEach((key) => {
+    const fallback: Record<string, string | string[] | null | undefined> = {};
+    ["region", "language", "device", "addressStates"].forEach((key) => {
       if (body[key] !== undefined) {
         fallback[key] = body[key];
       }

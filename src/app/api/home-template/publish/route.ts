@@ -20,12 +20,12 @@ const extractMetadata = (body: any): PublishMetadataInput | undefined => {
     hasField = true;
   }
 
-  let attributesSource: Record<string, string | null | undefined> | undefined;
-  if (body.attributes && typeof body.attributes === "object") {
-    attributesSource = body.attributes as Record<string, string | null | undefined>;
+  let attributesSource: Record<string, string | string[] | null | undefined> | undefined;
+  if (body.attributes && typeof body.attributes === "object" && !Array.isArray(body.attributes)) {
+    attributesSource = body.attributes as Record<string, string | string[] | null | undefined>;
   } else {
-    const fallback: Record<string, string | null | undefined> = {};
-    ["region", "language", "device"].forEach((key) => {
+    const fallback: Record<string, string | string[] | null | undefined> = {};
+    ["region", "language", "device", "addressStates"].forEach((key) => {
       if (body[key] !== undefined) {
         fallback[key] = body[key];
       }
@@ -75,14 +75,19 @@ export async function POST(request: Request) {
     }
 
     let payload: PublishMetadataInput | undefined;
+    let rawBody: any;
     try {
-      const body = await request.json();
-      payload = extractMetadata(body);
-    } catch {
+      rawBody = await request.json();
+      console.log("[publish API] Raw body received:", JSON.stringify(rawBody, null, 2));
+      payload = extractMetadata(rawBody);
+      console.log("[publish API] Extracted metadata:", JSON.stringify(payload, null, 2));
+    } catch (parseError) {
+      console.error("[publish API] Failed to parse body:", parseError);
       payload = undefined;
     }
 
     const published = await publishHomeTemplate(payload);
+    console.log("[publish API] Published result currentVersion:", published.currentVersion);
 
     revalidatePath("/");
     revalidatePath("/preview");

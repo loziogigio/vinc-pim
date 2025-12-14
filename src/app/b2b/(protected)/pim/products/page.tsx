@@ -56,14 +56,15 @@ type FilterState = {
   // Advanced filters
   brand: string;
   category: string;
-  currency: string;
   price_min: string;
   price_max: string;
   score_min: string;
   score_max: string;
   entity_code: string;
   sku: string;
+  sku_match: "exact" | "starts" | "includes" | "ends";
   parent_sku: string;
+  parent_sku_match: "exact" | "starts" | "includes" | "ends";
 };
 
 /**
@@ -97,7 +98,6 @@ export default function ProductsListPage() {
   const [batchSuggestions, setBatchSuggestions] = useState<string[]>([]);
   const [brandSuggestions, setBrandSuggestions] = useState<string[]>([]);
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
-  const [currencySuggestions, setCurrencySuggestions] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -119,14 +119,15 @@ export default function ProductsListPage() {
     // Advanced filters
     brand: searchParams?.get("brand") || "",
     category: searchParams?.get("category") || "",
-    currency: searchParams?.get("currency") || "",
     price_min: searchParams?.get("price_min") || "",
     price_max: searchParams?.get("price_max") || "",
     score_min: searchParams?.get("score_min") || "",
     score_max: searchParams?.get("score_max") || "",
     entity_code: searchParams?.get("entity_code") || "",
     sku: searchParams?.get("sku") || "",
+    sku_match: (searchParams?.get("sku_match") as FilterState["sku_match"]) || "exact",
     parent_sku: searchParams?.get("parent_sku") || "",
+    parent_sku_match: (searchParams?.get("parent_sku_match") as FilterState["parent_sku_match"]) || "exact",
   });
 
   // Selection handlers
@@ -230,7 +231,6 @@ export default function ProductsListPage() {
     fetchBatchSuggestions();
     fetchBrandSuggestions();
     fetchCategorySuggestions();
-    fetchCurrencySuggestions();
   }, []);
 
   async function fetchBatchSuggestions(search: string = "") {
@@ -277,22 +277,6 @@ export default function ProductsListPage() {
       }
     } catch (error) {
       console.error("Error fetching category suggestions:", error);
-    }
-  }
-
-  async function fetchCurrencySuggestions(search: string = "") {
-    try {
-      const params = new URLSearchParams();
-      params.set("type", "currency");
-      if (search) params.set("search", search);
-
-      const res = await fetch(`/api/b2b/pim/filters?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCurrencySuggestions(data.currencys || []);
-      }
-    } catch (error) {
-      console.error("Error fetching currency suggestions:", error);
     }
   }
 
@@ -393,7 +377,7 @@ export default function ProductsListPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search products by name, SKU, or brand..."
+              placeholder="Search products by title..."
               value={filters.search}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="w-full rounded border border-border bg-background px-9 py-2 text-sm focus:border-primary focus:outline-none"
@@ -432,7 +416,7 @@ export default function ProductsListPage() {
             <option value="priority">Priority (High to Low)</option>
             <option value="score">Score (Low to High)</option>
             <option value="updated">Recently Updated</option>
-            <option value="name">Name (A-Z)</option>
+            <option value="name">Title (A-Z)</option>
           </select>
         </div>
 
@@ -512,13 +496,47 @@ export default function ProductsListPage() {
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">SKU</label>
-                <input
-                  type="text"
-                  placeholder="Filter by SKU"
-                  value={filters.sku}
-                  onChange={(e) => updateFilters({ sku: e.target.value })}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={filters.sku_match}
+                    onChange={(e) => updateFilters({ sku_match: e.target.value as FilterState["sku_match"] })}
+                    className="rounded border border-border bg-background px-2 py-2 text-xs"
+                  >
+                    <option value="exact">Exact</option>
+                    <option value="starts">Starts with</option>
+                    <option value="includes">Includes</option>
+                    <option value="ends">Ends with</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Filter by SKU"
+                    value={filters.sku}
+                    onChange={(e) => updateFilters({ sku: e.target.value })}
+                    className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Parent SKU</label>
+                <div className="flex gap-2">
+                  <select
+                    value={filters.parent_sku_match}
+                    onChange={(e) => updateFilters({ parent_sku_match: e.target.value as FilterState["parent_sku_match"] })}
+                    className="rounded border border-border bg-background px-2 py-2 text-xs"
+                  >
+                    <option value="exact">Exact</option>
+                    <option value="starts">Starts with</option>
+                    <option value="includes">Includes</option>
+                    <option value="ends">Ends with</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Filter by parent SKU"
+                    value={filters.parent_sku}
+                    onChange={(e) => updateFilters({ parent_sku: e.target.value })}
+                    className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Brand</label>
@@ -561,28 +579,6 @@ export default function ProductsListPage() {
                 <datalist id="category-suggestions">
                   {categorySuggestions.map((category) => (
                     <option key={category} value={category} />
-                  ))}
-                </datalist>
-              </div>
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Currency</label>
-                <input
-                  type="text"
-                  placeholder="e.g. USD, EUR"
-                  value={filters.currency}
-                  onChange={(e) => {
-                    updateFilters({ currency: e.target.value });
-                    // Fetch suggestions as user types
-                    if (e.target.value.length > 0) {
-                      fetchCurrencySuggestions(e.target.value);
-                    }
-                  }}
-                  list="currency-suggestions"
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-                <datalist id="currency-suggestions">
-                  {currencySuggestions.map((currency) => (
-                    <option key={currency} value={currency} />
                   ))}
                 </datalist>
               </div>
@@ -636,7 +632,7 @@ export default function ProductsListPage() {
 
         {/* Active Filters */}
         {(filters.batch_id || filters.status || filters.search || filters.date_from || filters.date_to ||
-          filters.has_conflict || filters.entity_code || filters.sku || filters.parent_sku || filters.brand || filters.category || filters.currency ||
+          filters.has_conflict || filters.entity_code || filters.sku || filters.parent_sku || filters.brand || filters.category ||
           filters.price_min || filters.price_max || filters.score_min || filters.score_max) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Active filters:</span>
@@ -711,9 +707,9 @@ export default function ProductsListPage() {
             )}
             {filters.sku && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>SKU: {filters.sku}</span>
+                <span>SKU: {filters.sku} ({filters.sku_match})</span>
                 <button
-                  onClick={() => updateFilters({ sku: "" })}
+                  onClick={() => updateFilters({ sku: "", sku_match: "exact" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
@@ -722,9 +718,9 @@ export default function ProductsListPage() {
             )}
             {filters.parent_sku && (
               <div className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-full text-sm">
-                <span>Parent: {filters.parent_sku}</span>
+                <span>Parent: {filters.parent_sku} ({filters.parent_sku_match})</span>
                 <button
-                  onClick={() => updateFilters({ parent_sku: "" })}
+                  onClick={() => updateFilters({ parent_sku: "", parent_sku_match: "exact" })}
                   className="hover:bg-purple-200 dark:hover:bg-purple-800/30 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
@@ -747,17 +743,6 @@ export default function ProductsListPage() {
                 <span>Category: {filters.category}</span>
                 <button
                   onClick={() => updateFilters({ category: "" })}
-                  className="hover:bg-primary/20 rounded-full p-0.5"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            )}
-            {filters.currency && (
-              <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>Currency: {filters.currency}</span>
-                <button
-                  onClick={() => updateFilters({ currency: "" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
@@ -793,8 +778,8 @@ export default function ProductsListPage() {
             <button
               onClick={() => updateFilters({
                 batch_id: "", status: "", search: "", date_from: "", date_to: "", has_conflict: "",
-                entity_code: "", sku: "", parent_sku: "", brand: "", category: "", currency: "",
-                price_min: "", price_max: "", score_min: "", score_max: ""
+                entity_code: "", sku: "", sku_match: "exact", parent_sku: "", parent_sku_match: "exact",
+                brand: "", category: "", price_min: "", price_max: "", score_min: "", score_max: ""
               })}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >

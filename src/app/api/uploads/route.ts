@@ -1,13 +1,19 @@
 import { Buffer } from "node:buffer";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth/session";
+import { getB2BSession } from "@/lib/auth/b2b-session";
 import { isCdnConfigured, uploadToCdn } from "@/lib/services/cdn-upload.service";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
 export async function POST(request: NextRequest) {
-  const session = await requireAdminSession();
-  if (!session) {
+  // Check for admin session OR B2B session (both are valid)
+  const adminSession = await requireAdminSession();
+  const b2bSession = await getB2BSession();
+
+  const isAuthenticated = adminSession?.isLoggedIn || b2bSession?.isLoggedIn;
+
+  if (!isAuthenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

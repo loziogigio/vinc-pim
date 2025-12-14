@@ -8,6 +8,7 @@ export interface PublishFormValues {
   region?: string;
   language?: string;
   device?: string;
+  addressStates?: string; // Comma-separated list of states (e.g., "CA, NY, TX")
   priority: number;
   isDefault: boolean;
   activeFrom?: string;
@@ -117,6 +118,19 @@ export function PublishSettingsDialog({
                 />
               </Field>
             </div>
+
+            <Field label="Address States (filter by customer delivery state)">
+              <input
+                type="text"
+                value={values.addressStates ?? ""}
+                onChange={(event) => onChange("addressStates", event.target.value)}
+                placeholder="CA, NY, TX (comma-separated state codes)"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </Field>
+            <p className="text-xs text-slate-500">
+              Enter state codes separated by commas. The home page will only show for customers whose delivery address matches one of these states.
+            </p>
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Priority">

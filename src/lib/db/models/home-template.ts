@@ -105,7 +105,7 @@ const HomeTemplateSchema = new Schema(
       segment: { type: String },
       attributes: {
         type: Map,
-        of: String,
+        of: Schema.Types.Mixed, // Supports both String and [String] for addressStates
         default: undefined
       }
     },

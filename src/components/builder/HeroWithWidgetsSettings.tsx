@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -179,7 +179,22 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
     setSlides(newSlides);
   };
 
-  const handleSave = () => {
+  // Track if this is the initial mount to avoid triggering onSave on first render
+  const isInitialMount = useRef(true);
+
+  // Use a ref to store the latest onSave callback to avoid infinite loops
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
+  // Auto-sync settings to parent whenever they change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     try {
       const finalConfig: any = {
         slides,
@@ -211,32 +226,34 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
       if (breakpointMode === "simplified") {
         finalConfig.itemsToShow = itemsToShow;
       } else {
-        finalConfig.breakpointsJSON = JSON.parse(breakpointsJSON);
+        // Only parse if valid JSON
+        try {
+          finalConfig.breakpointsJSON = JSON.parse(breakpointsJSON);
+        } catch {
+          // Keep existing breakpointsJSON if parse fails
+          finalConfig.breakpointsJSON = config.breakpointsJSON;
+        }
       }
 
-      onSave(finalConfig);
+      onSaveRef.current(finalConfig);
     } catch (error) {
-      alert("Invalid JSON in carousel breakpoints");
+      console.error("Error syncing config:", error);
     }
-  };
+  }, [
+    slides, autoplay, autoplaySpeed, loop, showDots, showArrows, breakpointMode,
+    clockEnabled, clockTimezone, showWeather, weatherLocation,
+    calendarEnabled, highlightToday, itemsToShow, breakpointsJSON,
+    config.className, config.breakpointsJSON
+  ]);
 
   return (
     <div className="space-y-6 p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Hero with Widgets Settings</h3>
-        <Button onClick={handleSave} size="sm">
-          Save
-        </Button>
-      </div>
+      <h3 className="text-lg font-semibold">Hero with Widgets Settings</h3>
 
       {/* Carousel Slides Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div>
           <h4 className="font-medium">Carousel Slides (80% Left)</h4>
-          <Button onClick={addSlide} size="sm" variant="outline">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Slide
-          </Button>
         </div>
 
         {slides.length === 0 && (
@@ -332,6 +349,11 @@ export function HeroWithWidgetsSettings({ blockId, config, onSave }: HeroWithWid
             </div>
           </div>
         ))}
+
+        <Button onClick={addSlide} size="sm" variant="outline" className="mt-2">
+          <Plus className="mr-2 h-4 w-4" />
+          Add Slide
+        </Button>
       </div>
 
       {/* Responsive Settings */}

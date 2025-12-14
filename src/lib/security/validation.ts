@@ -41,6 +41,47 @@ export function safeRegexQuery(
 }
 
 /**
+ * Match mode types for SKU filtering
+ */
+export type MatchMode = "exact" | "starts" | "includes" | "ends";
+
+/**
+ * Create a safe MongoDB regex query with match mode support
+ * Handles special characters in SKUs like *, /, ,, +, &, $
+ *
+ * @param input - The search value
+ * @param mode - Match mode: exact, starts, includes, ends
+ * @param options - Regex options (default: "i" for case-insensitive)
+ */
+export function safeRegexQueryWithMatchMode(
+  input: string,
+  mode: MatchMode = "exact",
+  options: string = "i"
+): { $regex: string; $options: string } {
+  const sanitized = sanitizeMongoQuery(input);
+  const escaped = escapeRegex(String(sanitized));
+
+  let pattern: string;
+  switch (mode) {
+    case "exact":
+      pattern = `^${escaped}$`;
+      break;
+    case "starts":
+      pattern = `^${escaped}`;
+      break;
+    case "ends":
+      pattern = `${escaped}$`;
+      break;
+    case "includes":
+    default:
+      pattern = escaped;
+      break;
+  }
+
+  return { $regex: pattern, $options: options };
+}
+
+/**
  * Create a safe text search query
  */
 export function safeTextSearch(input: string): { $search: string } {

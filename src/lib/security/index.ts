@@ -13,6 +13,7 @@ export {
   sanitizeMongoQuery,
   escapeRegex,
   safeRegexQuery,
+  safeRegexQueryWithMatchMode,
   safeTextSearch,
   // Zod schemas
   safeString,
@@ -30,4 +31,5 @@ export {
   type ProductListQuery,
   type ProductFilter,
   type PaginationParams,
+  type MatchMode,
 } from "./validation";
