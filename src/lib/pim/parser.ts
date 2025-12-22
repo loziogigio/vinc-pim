@@ -117,6 +117,11 @@ function mapRowToProduct(
         }
       }
 
+      // Parse boolean values for hide_in_commerce fields
+      if (mapping.pim_field.endsWith('.hide_in_commerce')) {
+        value = parseBoolean(value) ?? false;  // Default to false (visible)
+      }
+
       // Set nested values (e.g., "brand.cprec_darti")
       setNestedValue(data, mapping.pim_field, value);
     }
@@ -172,6 +177,22 @@ function applyDefaultLanguage(data: any, languageCodes?: string[]): void {
       }
     }
   }
+}
+
+/**
+ * Parse boolean values from CSV/Excel
+ * Handles: true, false, 1, 0, "true", "false", "yes", "no", "y", "n"
+ */
+function parseBoolean(value: any): boolean | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim();
+    if (lower === 'true' || lower === '1' || lower === 'yes' || lower === 'y') return true;
+    if (lower === 'false' || lower === '0' || lower === 'no' || lower === 'n') return false;
+  }
+  return undefined;
 }
 
 /**

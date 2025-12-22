@@ -8,3 +8,4 @@ export * from './category.types';
 export * from './collection.types';
 export * from './product-type.types';
 export * from './tag.types';
+export * from './synonym-dictionary.types';

@@ -29,7 +29,7 @@ type ProductVersion = {
   entity_code: string;
   sku: string;
   name: string | Record<string, string>;
-  description?: string;
+  description?: string | Record<string, string>;
   version: number;
   isCurrent: boolean;
   isCurrentPublished: boolean;
@@ -38,9 +38,9 @@ type ProductVersion = {
   images?: { url: string; cdn_key?: string; position?: number }[];
   brand?: { id: string; name: string; slug: string };
   category?: { id: string; name: string; slug: string };
-  completeness_score: number;
-  critical_issues: string[];
-  source: {
+  completeness_score?: number;
+  critical_issues?: string[];
+  source?: {
     source_id: string;
     source_name: string;
     imported_at: string;
@@ -633,18 +633,22 @@ export default function ProductHistoryPage({
                           <span>Edited by {version.edited_by}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1">
-                        <span>Source: {version.source.source_name}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>Quality: {version.completeness_score}%</span>
-                      </div>
+                      {version.source?.source_name && (
+                        <div className="flex items-center gap-1">
+                          <span>Source: {version.source.source_name}</span>
+                        </div>
+                      )}
+                      {version.completeness_score !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <span>Quality: {version.completeness_score}%</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Description Preview */}
                     {version.description && (
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {version.description}
+                        {getLocalizedString(version.description)}
                       </p>
                     )}
 

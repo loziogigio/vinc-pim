@@ -5,6 +5,7 @@
 
 import { MarketplaceAdapter } from './marketplace-adapter';
 import { IPIMProduct as PIMProduct } from '../db/models/pim-product';
+import { SynonymDictionaryModel } from '../db/models/synonym-dictionary';
 import {
   ValidationResult,
   SyncResult,
@@ -68,6 +69,7 @@ interface SolrMultilingualDocument {
   brand_id?: string;
   product_type_id?: string;
   collection_ids?: string[];
+  collection_slugs?: string[];
 
   // Category hierarchy for faceting (self-contained, no lookups needed)
   category_path?: string[];          // Hierarchical ID path: ["1245", "1245/1244", "1245/1244/644"]
@@ -92,6 +94,10 @@ interface SolrMultilingualDocument {
   // Tag groups for grouped faceting
   tag_groups?: string[];             // Tag group IDs: ["promotions", "features"]
   tag_categories?: string[];         // Tag categories: ["promotion", "seo"]
+
+  // Synonym dictionaries for search enhancement
+  synonym_keys?: string[];           // Dictionary keys: ["climatizzatore", "inverter"]
+  // synonym_terms_text_{lang} added dynamically per language
 
   // Promotions
   promo_code?: string[];
@@ -603,7 +609,15 @@ export class SolrAdapter extends MarketplaceAdapter {
       category_id: product.category?.category_id,
       brand_id: product.brand?.brand_id,
       product_type_id: product.product_type?.product_type_id,
-      collection_ids: product.collections?.map(c => c.collection_id),
+      collection_ids: product.collections?.length ? [...new Set(product.collections.map(c => c.collection_id).filter(Boolean))] : [],
+      // Extract slugs from multilingual objects (e.g., { it: "test-nuovo" } -> ["test-nuovo"])
+      collection_slugs: product.collections?.length
+        ? [...new Set(product.collections.flatMap(c => {
+            if (!c.slug) return [];
+            if (typeof c.slug === 'string') return [c.slug];
+            return Object.values(c.slug).filter(Boolean);
+          }))]
+        : [],
 
       // Category hierarchy for faceting (self-contained)
       category_path: categoryPaths.category_path,
@@ -628,6 +642,10 @@ export class SolrAdapter extends MarketplaceAdapter {
       // Tag groups for grouped faceting
       tag_groups: tagFacetData.tag_groups,
       tag_categories: tagFacetData.tag_categories,
+
+      // Synonym dictionaries for search enhancement
+      synonym_keys: product.synonym_keys || [],
+      // synonym_terms are added per-language in the loop below as synonym_terms_text_{lang}
 
       // Promotions
       promo_code: product.promo_code || product.promotions?.filter(p => p.is_active).map(p => p.promo_code).filter(Boolean) as string[],
@@ -796,22 +814,16 @@ export class SolrAdapter extends MarketplaceAdapter {
         doc[`category_breadcrumb_${l}`] = namedPath;
       }
 
-      // Collection names and slugs
-      if (product.collections) {
-        const collectionNames = product.collections
-          .map(c => c.name?.[l])
-          .filter(Boolean) as string[];
-        if (collectionNames.length > 0) {
-          doc[`collection_names_text_${l}`] = collectionNames;
-        }
+      // Collection names and slugs (always set to ensure removal works)
+      const collectionNames = product.collections
+        ?.map(c => c.name?.[l])
+        .filter(Boolean) as string[] || [];
+      doc[`collection_names_text_${l}`] = collectionNames;
 
-        const collectionSlugs = product.collections
-          .map(c => c.slug?.[l])
-          .filter(Boolean) as string[];
-        if (collectionSlugs.length > 0) {
-          doc[`collection_slugs_text_${l}`] = collectionSlugs;
-        }
-      }
+      const collectionSlugs = product.collections
+        ?.map(c => c.slug?.[l])
+        .filter(Boolean) as string[] || [];
+      doc[`collection_slugs_text_${l}`] = collectionSlugs;
 
       // Tag names
       if (product.tags) {
@@ -859,6 +871,25 @@ export class SolrAdapter extends MarketplaceAdapter {
           .filter(Boolean) as string[];
         if (featureLabels.length > 0) {
           doc[`product_type_feature_labels_text_${l}`] = featureLabels;
+        }
+      }
+
+      // Synonym terms for search enhancement (per language)
+      if (product.synonym_keys && product.synonym_keys.length > 0) {
+        try {
+          const dictionaries = await SynonymDictionaryModel.find({
+            key: { $in: product.synonym_keys },
+            locale: l,
+            is_active: true,
+          }).select('terms').lean();
+
+          const allTerms = dictionaries.flatMap((d: any) => d.terms || []);
+          if (allTerms.length > 0) {
+            doc[`synonym_terms_text_${l}`] = [...new Set(allTerms)]; // Deduplicate
+          }
+        } catch (error) {
+          // Log but don't fail the indexing if synonym lookup fails
+          console.warn(`Failed to fetch synonym terms for locale ${l}:`, error);
         }
       }
     }

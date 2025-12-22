@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { CollectionModel } from "@/lib/db/models/collection";
+import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 
 // GET /api/b2b/pim/collections/[collectionId]/products - Get products for a collection
 export async function GET(
@@ -36,7 +37,7 @@ export async function GET(
     // Build query - products that have this collection in their collections array
     const query: any = {
       isCurrent: true,
-      "collections.id": collectionId,
+      "collections.collection_id": collectionId,
     };
 
     // Add search filter
@@ -51,7 +52,7 @@ export async function GET(
     // Get products
     const [products, total] = await Promise.all([
       PIMProductModel.find(query)
-        .select("entity_code sku name image status quantity")
+        .select("entity_code sku name image images status quantity")
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(limit)
@@ -119,17 +120,19 @@ export async function POST(
 
     if (action === "add") {
       // Add collection to products' collections array
+      // Store name and slug as multilingual objects using collection's locale
+      const locale = collection.locale || "it";
       const collectionData = {
-        id: collectionId,
-        name: collection.name,
-        slug: collection.slug,
+        collection_id: collectionId,
+        name: { [locale]: collection.name },
+        slug: { [locale]: collection.slug },
       };
 
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
           isCurrent: true,
-          "collections.id": { $ne: collectionId }, // Only if not already in array
+          "collections.collection_id": { $ne: collectionId }, // Only if not already in array
         },
         { $push: { collections: collectionData } }
       );
@@ -137,13 +140,28 @@ export async function POST(
       // Update collection product count
       const productCount = await PIMProductModel.countDocuments({
         isCurrent: true,
-        "collections.id": collectionId,
+        "collections.collection_id": collectionId,
       });
 
       await CollectionModel.updateOne(
         { collection_id: collectionId },
         { $set: { product_count: productCount } }
       );
+
+      // Sync affected products to Solr
+      const adapterConfigs = loadAdapterConfigs();
+      if (adapterConfigs.solr?.enabled) {
+        const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+        const productsToSync = await PIMProductModel.find({
+          entity_code: { $in: entity_codes },
+          isCurrent: true,
+        }).lean();
+
+        for (const product of productsToSync) {
+          await solrAdapter.syncProduct(product as any);
+        }
+        console.log(`🔄 Synced ${productsToSync.length} products to Solr after adding to collection`);
+      }
 
       return NextResponse.json({
         message: `Successfully associated ${result.modifiedCount} product(s)`,
@@ -151,25 +169,60 @@ export async function POST(
       });
     } else {
       // Remove collection from products' collections array
+      // Match by collection_id OR slug (for backwards compatibility with old data)
+      const locale = collection.locale || "it";
       const result = await PIMProductModel.updateMany(
         {
           entity_code: { $in: entity_codes },
           isCurrent: true,
-          "collections.id": collectionId,
+          $or: [
+            { "collections.collection_id": collectionId },
+            { "collections.slug": collection.slug },
+            { [`collections.slug.${locale}`]: collection.slug },
+          ],
         },
-        { $pull: { collections: { id: collectionId } } }
+        {
+          $pull: {
+            collections: {
+              $or: [
+                { collection_id: collectionId },
+                { slug: collection.slug },
+                { [`slug.${locale}`]: collection.slug },
+              ],
+            },
+          },
+        }
       );
 
       // Update collection product count
       const productCount = await PIMProductModel.countDocuments({
         isCurrent: true,
-        "collections.id": collectionId,
+        $or: [
+          { "collections.collection_id": collectionId },
+          { "collections.slug": collection.slug },
+          { [`collections.slug.${locale}`]: collection.slug },
+        ],
       });
 
       await CollectionModel.updateOne(
         { collection_id: collectionId },
         { $set: { product_count: productCount } }
       );
+
+      // Sync affected products to Solr (will have updated/empty collection_slugs)
+      const adapterConfigs = loadAdapterConfigs();
+      if (adapterConfigs.solr?.enabled) {
+        const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+        const productsToSync = await PIMProductModel.find({
+          entity_code: { $in: entity_codes },
+          isCurrent: true,
+        }).lean();
+
+        for (const product of productsToSync) {
+          await solrAdapter.syncProduct(product as any);
+        }
+        console.log(`🔄 Synced ${productsToSync.length} products to Solr after removing from collection`);
+      }
 
       return NextResponse.json({
         message: `Successfully removed ${result.modifiedCount} product(s)`,

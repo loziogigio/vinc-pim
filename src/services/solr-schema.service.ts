@@ -64,6 +64,9 @@ const MULTILINGUAL_FIELDS = [
   { name: "packaging_labels", multiValued: true },
   { name: "promo_labels", multiValued: true },
   { name: "product_type_feature_labels", multiValued: true },
+
+  // Synonym search fields
+  { name: "synonym_terms", multiValued: true },
 ];
 
 /**
@@ -558,6 +561,7 @@ const BASE_FIELDS = [
   { name: "brand_id", type: "string", stored: true, indexed: true },
   { name: "product_type_id", type: "string", stored: true, indexed: true },
   { name: "collection_ids", type: "strings", stored: true, indexed: true },
+  { name: "collection_slugs", type: "strings", stored: true, indexed: true },
 
   // Variations & Faceting Control
   { name: "include_faceting", type: "boolean", stored: true, indexed: true },

@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/db/connection";
 import { PIMProductModel } from "@/lib/db/models/pim-product";
 import { CollectionModel } from "@/lib/db/models/collection";
 import { AssociationJobModel } from "@/lib/db/models/association-job";
+import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { nanoid } from "nanoid";
 
 // POST /api/b2b/pim/collections/[id]/import - Import products from file
@@ -192,10 +193,12 @@ async function processCollectionImportJob(
       try {
         if (action === "add") {
           // Add collection to products' collections array
+          // Store name and slug as multilingual objects using collection's locale
+          const locale = collection.locale || "it";
           const collectionData = {
-            id: id,
-            name: collection.name,
-            slug: collection.slug,
+            collection_id: id,
+            name: { [locale]: collection.name },
+            slug: { [locale]: collection.slug },
           };
 
           const result = await PIMProductModel.updateMany(
@@ -203,7 +206,7 @@ async function processCollectionImportJob(
               entity_code: { $in: batch },
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "collections.id": { $ne: id }, // Only if not already in array
+              "collections.collection_id": { $ne: id }, // Only if not already in array
             },
             { $push: { collections: collectionData } }
           );
@@ -217,9 +220,9 @@ async function processCollectionImportJob(
               entity_code: { $in: batch },
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "collections.id": id,
+              "collections.collection_id": id,
             },
-            { $pull: { collections: { id: id } } }
+            { $pull: { collections: { collection_id: id } } }
           );
 
           successfulItems += result.modifiedCount;
@@ -260,13 +263,40 @@ async function processCollectionImportJob(
     // Update collection product count (no wholesaler_id - database provides isolation)
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "collections.id": id,
+      "collections.collection_id": id,
     });
 
     await CollectionModel.updateOne(
       { collection_id: id },
       { $set: { product_count: productCount } }
     );
+
+    // Sync affected products to Solr
+    let solrSynced = 0;
+    const adapterConfigs = loadAdapterConfigs();
+    if (adapterConfigs.solr?.enabled && successfulItems > 0) {
+      console.log(`🔄 Starting Solr sync for ${entityCodes.length} products after collection import`);
+
+      const products = await PIMProductModel.find({
+        entity_code: { $in: entityCodes },
+        isCurrent: true,
+      }).lean();
+
+      const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+
+      for (const product of products) {
+        try {
+          const result = await solrAdapter.syncProduct(product as any);
+          if (result.success) {
+            solrSynced++;
+          }
+        } catch (error: any) {
+          console.error(`Solr sync error for ${product.entity_code}:`, error.message);
+        }
+      }
+
+      console.log(`✅ Synced ${solrSynced}/${products.length} products to Solr after ${action === "add" ? "adding to" : "removing from"} collection "${collection.name}"`);
+    }
 
     // Mark job as completed
     await AssociationJobModel.updateOne(
@@ -276,6 +306,7 @@ async function processCollectionImportJob(
           status: errors.length > 0 ? "failed" : "completed",
           completed_at: new Date(),
           error_message: errors.length > 0 ? errors.join("; ") : undefined,
+          "metadata.solr_synced": solrSynced,
         },
       }
     );

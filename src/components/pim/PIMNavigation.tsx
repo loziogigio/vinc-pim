@@ -16,7 +16,8 @@ import {
   Tag,
   Tags as TagsIcon,
   Menu,
-  Languages
+  Languages,
+  BookA
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -25,6 +26,7 @@ const navItems = [
   { label: "Products", href: "/b2b/pim/products", icon: Package, description: "Master list (CRUD)" },
   { label: "Categories", href: "/b2b/pim/categories", icon: FolderTree, description: "Hierarchical structure" },
   { label: "Collections", href: "/b2b/pim/collections", icon: Layers, description: "Flexible grouping" },
+  { label: "Synonyms", href: "/b2b/pim/synonym-dictionaries", icon: BookA, description: "Search synonyms" },
   { label: "Brands", href: "/b2b/pim/brands", icon: Tag, description: "Product brands" },
   { label: "Tags", href: "/b2b/pim/tags", icon: TagsIcon, description: "Reusable labels" },
   { label: "Menu Settings", href: "/b2b/pim/menu-settings", icon: Menu, description: "Navigation builder" },

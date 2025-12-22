@@ -41,18 +41,18 @@ export async function GET(req: NextRequest) {
             $match: {
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "collections.id": { $in: collectionIds },
+              "collections.collection_id": { $in: collectionIds },
             },
           },
           { $unwind: "$collections" },
           {
             $match: {
-              "collections.id": { $in: collectionIds },
+              "collections.collection_id": { $in: collectionIds },
             },
           },
           {
             $group: {
-              _id: "$collections.id",
+              _id: "$collections.collection_id",
               count: { $sum: 1 },
             },
           },
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const body = await req.json();
-    const { name, slug, description, hero_image, seo, display_order } = body;
+    const { name, slug, locale, description, hero_image, seo, display_order } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -116,6 +116,7 @@ export async function POST(req: NextRequest) {
       // No wholesaler_id - database provides isolation
       name,
       slug,
+      locale: locale || "it",
       description,
       hero_image,
       seo: seo || {},

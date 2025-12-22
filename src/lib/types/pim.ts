@@ -409,6 +409,7 @@ export type FlatAttribute = {
   label: string | Record<string, string>;
   value: any;
   uom?: string;
+  hide_in_commerce?: boolean; // Hide from commerce storefront (default: false)
 };
 
 /**
@@ -420,6 +421,7 @@ export type MultilingualAttribute = {
   label: string;
   value: any;
   uom?: string;
+  hide_in_commerce?: boolean; // Hide from commerce storefront (default: false)
 };
 
 /**
@@ -457,6 +459,7 @@ export function extractAttributesForLanguage(
             label: attr.label || slug,
             value: attr.value,
             ...(attr.uom && { uom: attr.uom }),
+            ...(attr.hide_in_commerce !== undefined && { hide_in_commerce: attr.hide_in_commerce }),
           };
         }
       }
@@ -488,6 +491,7 @@ export function mergeAttributesToMultilingual(
         label: typeof attrData.label === 'string' ? attrData.label : (attrData.label?.[languageCode] || slug),
         value: attrData.value,
         ...(attrData.uom && { uom: attrData.uom }),
+        ...(attrData.hide_in_commerce !== undefined && { hide_in_commerce: attrData.hide_in_commerce }),
       };
     }
   }

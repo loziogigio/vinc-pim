@@ -16,6 +16,7 @@ import { BrandSelector } from "@/components/pim/BrandSelector";
 import { FeaturesForm } from "@/components/pim/FeaturesForm";
 import { AttributesEditor } from "@/components/pim/AttributesEditor";
 import { TagSelector, TagReference } from "@/components/pim/TagSelector";
+import { SynonymDictionarySelector } from "@/components/pim/SynonymDictionarySelector";
 import { MultilingualInput } from "@/components/pim/MultilingualInput";
 import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
 import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
@@ -90,8 +91,13 @@ type Product = {
     name: string | Record<string, string>;
     slug: string;
   };
-  tag?: TagReference[];
-  tags?: string[];
+  tags?: {
+    tag_id: string;
+    name: string | Record<string, string>;
+    slug: string;
+    color?: string;
+    is_active?: boolean;
+  }[];
   completeness_score: number;
   critical_issues: string[];
   // Conflict tracking
@@ -222,6 +228,7 @@ export default function ProductDetailPage({
   const [customAttributes, setCustomAttributes] = useState<Record<string, any>>({});
   const [rawMultilingualAttributes, setRawMultilingualAttributes] = useState<Record<string, any>>({});
   const [tagRefs, setTagRefs] = useState<TagReference[]>([]);
+  const [synonymKeys, setSynonymKeys] = useState<string[]>([]);
 
   // Original values for comparison
   const [originalProductType, setOriginalProductType] = useState<any>(null);
@@ -231,6 +238,7 @@ export default function ProductDetailPage({
   const [originalFeatureValues, setOriginalFeatureValues] = useState<any[]>([]);
   const [originalCustomAttributes, setOriginalCustomAttributes] = useState<Record<string, any>>({});
   const [originalTagRefs, setOriginalTagRefs] = useState<TagReference[]>([]);
+  const [originalSynonymKeys, setOriginalSynonymKeys] = useState<string[]>([]);
 
   useEffect(() => {
     if (entity_code) {
@@ -267,6 +275,9 @@ export default function ProductDetailPage({
     // Check if tags changed
     const tagsChanged = JSON.stringify(tagRefs) !== JSON.stringify(originalTagRefs);
 
+    // Check if synonym keys changed
+    const synonymsChanged = JSON.stringify(synonymKeys) !== JSON.stringify(originalSynonymKeys);
+
     const hasAnyChanges =
       formChanged ||
       productTypeChanged ||
@@ -275,7 +286,8 @@ export default function ProductDetailPage({
       brandChanged ||
       featuresChanged ||
       attributesChanged ||
-      tagsChanged;
+      tagsChanged ||
+      synonymsChanged;
 
     setHasChanges(hasAnyChanges);
   }, [
@@ -294,7 +306,9 @@ export default function ProductDetailPage({
     customAttributes,
     originalCustomAttributes,
     tagRefs,
-    originalTagRefs
+    originalTagRefs,
+    synonymKeys,
+    originalSynonymKeys
   ]);
 
   async function fetchProduct() {
@@ -348,50 +362,27 @@ export default function ProductDetailPage({
         // Extract attributes for current language (converts multilingual to flat format)
         const rawAttributes = data.product.attributes || {};
         const loadedAttributes = extractAttributesForLanguage(rawAttributes, defaultLanguageCode);
-        const loadedTagRefs: TagReference[] = Array.isArray(data.product.tag)
-          ? data.product.tag.map((tag: any) => {
-            // Extract string from multilingual name if needed
-            let tagNameString = '';
-            if (typeof tag.name === 'string') {
-              tagNameString = tag.name;
-            } else if (tag.name && typeof tag.name === 'object') {
-              tagNameString = tag.name.it || tag.name.en || Object.values(tag.name)[0] || '';
-            }
+        // Load tags from the 'tags' field (TagEmbedded format)
+        const loadedTagRefs: TagReference[] = Array.isArray(data.product.tags)
+          ? data.product.tags
+              .filter((tag: any) => tag && tag.name)
+              .map((tag: any) => {
+                // Extract string from multilingual name if needed
+                let tagNameString = '';
+                if (typeof tag.name === 'string') {
+                  tagNameString = tag.name;
+                } else if (tag.name && typeof tag.name === 'object') {
+                  tagNameString = tag.name.it || tag.name.en || Object.values(tag.name)[0] || '';
+                }
 
-            return {
-              id: tag.id || tag.tag_id || tag.slug || tagNameString,
-              name: tag.name,
-              slug: tag.slug || (tagNameString ? tagNameString.toLowerCase().replace(/\s+/g, "-") : ""),
-              color: tag.color,
-            };
-          })
+                return {
+                  id: tag.tag_id || tag.id || tag.slug || tagNameString,
+                  name: tag.name,
+                  slug: tag.slug || (tagNameString ? tagNameString.toLowerCase().replace(/\s+/g, "-") : ""),
+                  color: tag.color,
+                };
+              })
           : [];
-
-        if (loadedTagRefs.length === 0 && Array.isArray(data.product.tags)) {
-          data.product.tags.forEach((tag: any) => {
-            if (!tag) return;
-
-            // Handle both string tags and tag objects with multilingual names
-            let tagName: string;
-            if (typeof tag === 'string') {
-              tagName = tag;
-            } else if (tag.name) {
-              // Extract name from multilingual object or use string directly
-              tagName = typeof tag.name === 'string'
-                ? tag.name
-                : (tag.name.it || tag.name.en || Object.values(tag.name)[0] || '');
-            } else {
-              return;
-            }
-
-            const slug = tag.slug || tagName.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
-            loadedTagRefs.push({
-              id: tag.id || slug,
-              name: tag.name || tagName,
-              slug,
-            });
-          });
-        }
 
         setProductType(loadedProductType);
         setFeatureValues(loadedFeatures);
@@ -401,6 +392,10 @@ export default function ProductDetailPage({
         setCustomAttributes(loadedAttributes);
         setRawMultilingualAttributes(rawAttributes);
         setTagRefs(loadedTagRefs);
+
+        // Load synonym keys
+        const loadedSynonymKeys = data.product.synonym_keys || [];
+        setSynonymKeys(loadedSynonymKeys);
 
         // Auto-enable JSON view for self-contained data (only if arrays have content)
         if (loadedProductType && ((loadedProductType.hierarchy && loadedProductType.hierarchy.length > 0) || (loadedProductType.inherited_features && loadedProductType.inherited_features.length > 0))) {
@@ -427,6 +422,7 @@ export default function ProductDetailPage({
         setOriginalBrand(loadedBrand);
         setOriginalCustomAttributes(loadedAttributes);
         setOriginalTagRefs(loadedTagRefs);
+        setOriginalSynonymKeys(loadedSynonymKeys);
       } else if (res.status === 404) {
         setProduct(null);
       } else {
@@ -501,16 +497,19 @@ export default function ProductDetailPage({
       // Add custom attributes (merge back into multilingual format)
       updates.attributes = mergeAttributesToMultilingual(customAttributes, rawMultilingualAttributes, defaultLanguageCode);
 
-      // Add tags
+      // Add tags - send as 'tag' array, API will convert to proper 'tags' format
       updates.tag = tagRefs;
-      updates.tags = tagRefs.map((tag) => tag.name);
+
+      // Add synonym keys
+      updates.synonym_keys = synonymKeys;
 
       console.log("💾 Saving product with updates:", {
         product_type: updates.product_type,
         collections: updates.collections,
         brand: updates.brand,
         attributes: updates.attributes,
-        tags: updates.tags,
+        tag: updates.tag,
+        synonym_keys: updates.synonym_keys,
       });
 
       const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
@@ -554,6 +553,7 @@ export default function ProductDetailPage({
         setOriginalCustomAttributes(customAttributes);
         setRawMultilingualAttributes(updates.attributes);
         setOriginalTagRefs(tagRefs);
+        setOriginalSynonymKeys(synonymKeys);
 
         setHasChanges(false);
 
@@ -977,6 +977,7 @@ export default function ProductDetailPage({
       setFeatureValues(originalFeatureValues);
       setCustomAttributes(originalCustomAttributes);
       setTagRefs(originalTagRefs);
+      setSynonymKeys(originalSynonymKeys);
       setHasChanges(false);
     }
   }
@@ -1688,6 +1689,19 @@ export default function ProductDetailPage({
             ) : (
               <TagSelector value={tagRefs} onChange={setTagRefs} disabled={isOldVersion} />
             )}
+          </div>
+
+          {/* Synonym Dictionaries */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Synonym Dictionaries</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Associate this product with synonym dictionaries to improve search results
+            </p>
+            <SynonymDictionarySelector
+              value={synonymKeys}
+              onChange={setSynonymKeys}
+              disabled={isOldVersion}
+            />
           </div>
         </div>
       </div>

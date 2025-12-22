@@ -35,7 +35,7 @@ export async function GET(
 
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "collections.id": id,
+      "collections.collection_id": id,
     });
 
     return NextResponse.json({
@@ -162,7 +162,7 @@ export async function DELETE(
     // Check if collection has products
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "collections.id": id,
+      "collections.collection_id": id,
     });
 
     if (productCount > 0) {

@@ -253,6 +253,34 @@ function getLocalizedAttributes(attributes: any, lang: string): any {
 }
 
 /**
+ * Filter attributes to remove those marked hide_in_commerce
+ * Only visible attributes (hide_in_commerce !== true) are returned
+ */
+function filterVisibleAttributes(attributes: any): any {
+  if (!attributes || typeof attributes !== 'object') return attributes;
+
+  const filtered: any = {};
+
+  for (const [slug, attrData] of Object.entries(attributes)) {
+    if (!attrData || typeof attrData !== 'object') {
+      filtered[slug] = attrData;
+      continue;
+    }
+
+    // Check hide_in_commerce flag (default: false = visible)
+    const hideInCommerce = (attrData as any).hide_in_commerce ?? false;
+
+    if (!hideInCommerce) {
+      // Remove hide_in_commerce from output (internal PIM only)
+      const { hide_in_commerce, ...cleanAttr } = attrData as any;
+      filtered[slug] = cleanAttr;
+    }
+  }
+
+  return Object.keys(filtered).length > 0 ? filtered : undefined;
+}
+
+/**
  * Localize media array - extract labels for requested language
  */
 function getLocalizedMedia(media: any[], lang: string): any[] {
@@ -296,7 +324,7 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
 
       // Get localized data from MongoDB
       const mongoAttributes = productData?.attributes
-        ? getLocalizedAttributes(productData.attributes, lang)
+        ? filterVisibleAttributes(getLocalizedAttributes(productData.attributes, lang))
         : undefined;
       const mongoMedia = productData?.media
         ? getLocalizedMedia(productData.media, lang)
@@ -395,7 +423,7 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
 
       // Get localized data from MongoDB
       const mongoAttributes = productData.attributes
-        ? getLocalizedAttributes(productData.attributes, lang)
+        ? filterVisibleAttributes(getLocalizedAttributes(productData.attributes, lang))
         : undefined;
       const mongoMedia = productData.media
         ? getLocalizedMedia(productData.media, lang)

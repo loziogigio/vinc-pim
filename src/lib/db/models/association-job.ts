@@ -10,8 +10,8 @@ export interface IAssociationJob extends Document {
   // wholesaler_id removed - database per wholesaler provides isolation
 
   // Job details
-  job_type: "brand_import" | "collection_import" | "category_import" | "product_type_import";
-  entity_type: "brand" | "collection" | "category" | "product_type";
+  job_type: "brand_import" | "collection_import" | "category_import" | "product_type_import" | "synonym_dictionary_import";
+  entity_type: "brand" | "collection" | "category" | "product_type" | "synonym_dictionary";
   entity_id: string;
   entity_name: string;
 
@@ -48,13 +48,13 @@ const AssociationJobSchema = new Schema<IAssociationJob>(
 
     job_type: {
       type: String,
-      enum: ["brand_import", "collection_import", "category_import", "product_type_import"],
+      enum: ["brand_import", "collection_import", "category_import", "product_type_import", "synonym_dictionary_import"],
       required: true,
       index: true,
     },
     entity_type: {
       type: String,
-      enum: ["brand", "collection", "category", "product_type"],
+      enum: ["brand", "collection", "category", "product_type", "synonym_dictionary"],
       required: true,
     },
     entity_id: { type: String, required: true, index: true },

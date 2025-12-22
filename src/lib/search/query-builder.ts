@@ -175,6 +175,8 @@ const SEARCH_FIELDS_CONFIG = [
   { field: 'name_sort_{lang}', weight: 0, wildcardWeight: 10000, noExact: true, noContains: true },
   // Name tokenized text - HIGH PRIORITY (but lower than codes)
   { field: 'name_text_{lang}', weight: 5000, wildcardWeight: 2000, containsWeight: 800 },
+  // Synonym terms for enhanced search (500 = less than name_text_ 5000, but high priority)
+  { field: 'synonym_terms_text_{lang}', weight: 4500, wildcardWeight: 1800, containsWeight: 600 }, // Synonym dictionary terms
   // Brand/Model (medium weight)
   { field: 'brand_label', weight: 200, wildcardWeight: 80 },
   { field: 'product_model', weight: 150, wildcardWeight: 50 },
@@ -292,12 +294,8 @@ function buildMainQuery(
     // Combine all field queries for this term with OR, apply term boost
     const termQuery = `((${fieldQueries.join(' ')})^${termBoost})`;
 
-    // First term uses implicit AND, subsequent terms use +
-    if (termIndex === 0) {
-      termQueries.push(termQuery);
-    } else {
-      termQueries.push(`+${termQuery}`);
-    }
+    // All terms are REQUIRED (AND logic) - use + prefix
+    termQueries.push(`+${termQuery}`);
   }
 
   // Add POSITION BOOST - each term appearing EARLY in name gets boost

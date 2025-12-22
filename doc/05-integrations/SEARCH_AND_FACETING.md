@@ -53,6 +53,7 @@ features_text_{lang}       → Multi-valued features
 attr_values_text_{lang}    → Attribute values for search
 attr_labels_text_{lang}    → Attribute labels
 category_name_text_{lang}  → Category name search
+synonym_terms_text_{lang}  → Synonym dictionary terms for enhanced search
 ```
 
 **Naming Convention:**
@@ -192,6 +193,7 @@ The search engine uses weighted field boosting for relevance ranking. **Code fie
 | `parent_sku` | **30,000** | 20,000 | - |
 | `name_sort_{lang}` | - | 10,000 | - |
 | `name_text_{lang}` | 5,000 | 2,000 | 800 |
+| `synonym_terms_text_{lang}` | 4,500 | 1,800 | 700 |
 | `brand_label` | 200 | 80 | - |
 | `product_model` | 150 | 50 | - |
 | `attr_values_text_{lang}` | 80 | 30 | - |
@@ -204,7 +206,9 @@ The search engine uses weighted field boosting for relevance ranking. **Code fie
 - **Parent code search** - searching "F20071" finds all child products with that `parent_entity_code`
 - Code fields (`sku`, `entity_code`, `ean`) use `lowercase` type for **case-insensitive** search
 - `name_sort_{lang}` has high prefix weight (10,000) for "starts with" matching
+- **Synonym search** - products associated with synonym dictionaries are found via `synonym_terms_text_{lang}`
 - Text fields use tokenized search + wildcard patterns
+- **AND logic** - All search terms are required (no false positives)
 
 ### Query Building Strategy
 
@@ -230,8 +234,11 @@ Step 3: Apply term position boost (earlier terms weighted higher):
   - caldaia: boost × 1.5 × (2 - 0) = 3.0
   - economica: boost × 1.5 × (2 - 1) = 1.5
 
-Step 4: Combine with implicit AND:
-  ((field queries for caldaia)^3.0) +((field queries for economica)^1.5)
+Step 4: Combine with AND (all terms required):
+  +((field queries for caldaia)^3.0) +((field queries for economica)^1.5)
+
+Note: All terms use the + prefix to ensure ALL terms must match.
+This prevents false positives (e.g., "foo bar" won't match if only "bar" exists).
 ```
 
 ### Fuzzy Search
@@ -250,6 +257,55 @@ Enable fuzzy matching for typo tolerance:
 With `fuzzy: true`:
 - `name_text_it:caldaie~1^500` matches "caldaia", "caldaie", "caladie"
 - Works on text fields, not exact match fields (entity_code, ean)
+
+### Synonym Search
+
+Synonym Dictionaries enhance search by associating products with groups of related terms. When a user searches for any term in a dictionary, products associated with that dictionary are found.
+
+#### How It Works
+
+1. **Synonym Dictionary**: A collection of related terms (e.g., "split", "condizionatore", "clima", "climatizzatore")
+2. **Product Association**: Products are linked to dictionaries via `synonym_keys` array
+3. **Solr Indexing**: All dictionary terms are expanded into `synonym_terms_text_{lang}` field
+4. **Search Matching**: Searching any term finds all associated products
+
+#### Example
+
+**Dictionary "climatizzatore" (Italian):**
+```json
+{
+  "key": "climatizzatore",
+  "locale": "it",
+  "terms": ["split", "condizionatore", "clima", "climatizzatore", "aria condizionata"]
+}
+```
+
+**Product association:**
+```json
+{
+  "entity_code": "084211",
+  "synonym_keys": ["climatizzatore"]
+}
+```
+
+**Indexed in Solr:**
+
+```text
+synonym_terms_text_it: ["split", "condizionatore", "clima", "climatizzatore", "aria condizionata"]
+```
+
+**Search behavior:**
+- Searching "split" → finds product 084211 (via synonym_terms_text_it)
+- Searching "aria condizionata" → finds product 084211
+- Searching "climatizzatore" → finds product 084211
+
+#### Synonym Terms Field Weight
+
+The `synonym_terms_text_{lang}` field has weight **4,500** for exact match, placing it just below `name_text_{lang}` but above other descriptive fields. This ensures:
+
+- Synonym matches appear prominently in results
+- Product name matches still rank slightly higher
+- Synonym search doesn't overshadow code/SKU exact matches
 
 ### Search Examples
 
@@ -1171,5 +1227,5 @@ FACET_MIN_COUNT=1
 
 ---
 
-**Last Updated**: 2025-12-05
-**Version**: 3.1
+**Last Updated**: 2025-12-18
+**Version**: 3.2

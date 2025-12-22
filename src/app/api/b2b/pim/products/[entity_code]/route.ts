@@ -185,6 +185,7 @@ export async function PATCH(
       collections: updates.collections,
       attributes: updates.attributes,
       tags: updates.tags,
+      synonym_keys: updates.synonym_keys,
     });
 
     // Build update document
@@ -210,6 +211,7 @@ export async function PATCH(
       "dimensions",
       "weight",
       "tags",
+      "synonym_keys",
     ];
 
     allowedFields.forEach((field) => {
@@ -223,18 +225,26 @@ export async function PATCH(
       sanitizedTagRefs = Array.isArray(updates.tag)
         ? updates.tag
             .filter((tag: any) => tag && tag.name)
-            .map((tag: any) => ({
-              id: tag.id || tag.tag_id || tag.slug || tag.name,
-              name: tag.name,
-              slug:
-                tag.slug ||
-                tag.name?.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, ""),
-              color: tag.color,
-            }))
+            .map((tag: any) => {
+              // Extract string from multilingual name if needed
+              const tagName = typeof tag.name === 'string'
+                ? tag.name
+                : (tag.name?.it || tag.name?.en || Object.values(tag.name || {})[0] || '');
+              const tagSlug = tag.slug ||
+                tagName.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+
+              return {
+                tag_id: tag.id || tag.tag_id || tagSlug,
+                name: tag.name, // Keep multilingual name
+                slug: tagSlug,
+                color: tag.color,
+                is_active: tag.is_active ?? true,
+              };
+            })
         : [];
 
-      updateDoc.tag = sanitizedTagRefs;
-      updateDoc.tags = (sanitizedTagRefs || []).map((tag) => tag.name);
+      // Store as 'tags' field (matches schema) instead of 'tag'
+      updateDoc.tags = sanitizedTagRefs;
     }
 
     // Handle stock_quantity -> quantity field mapping
@@ -247,8 +257,8 @@ export async function PATCH(
       product_type: updateDoc.product_type,
       collections: updateDoc.collections,
       attributes: updateDoc.attributes,
-      tag: updateDoc.tag,
       tags: updateDoc.tags,
+      synonym_keys: updateDoc.synonym_keys,
     });
 
     // Get the old product to check if brand changed
@@ -264,8 +274,8 @@ export async function PATCH(
 
     const oldBrandId = oldProduct.brand?.id;
     const newBrandId = updates.brand?.id;
-    const oldTagIds = Array.isArray(oldProduct.tag)
-      ? oldProduct.tag.map((tag: any) => tag.id).filter(Boolean)
+    const oldTagIds = Array.isArray(oldProduct.tags)
+      ? oldProduct.tags.map((tag: any) => tag.tag_id).filter(Boolean)
       : [];
 
     let product = await PIMProductModel.findOneAndUpdate(
@@ -340,7 +350,7 @@ export async function PATCH(
     }
 
     if (sanitizedTagRefs) {
-      const newTagIds = sanitizedTagRefs.map((tag) => tag.id).filter(Boolean);
+      const newTagIds = sanitizedTagRefs.map((tag) => tag.tag_id).filter(Boolean);
       const affectedTagIds = Array.from(new Set([...oldTagIds, ...newTagIds]));
 
       await Promise.all(
@@ -348,7 +358,7 @@ export async function PATCH(
           const tagCount = await PIMProductModel.countDocuments({
             // No wholesaler_id - database provides isolation
             isCurrent: true,
-            "tag.id": tagId,
+            "tags.tag_id": tagId,
           });
 
           // No wholesaler_id - database provides isolation
@@ -364,8 +374,8 @@ export async function PATCH(
       product_type: product.product_type,
       collections: product.collections,
       attributes: product.attributes,
-      tag: product.tag,
       tags: product.tags,
+      synonym_keys: product.synonym_keys,
     });
 
     return NextResponse.json({

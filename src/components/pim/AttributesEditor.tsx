@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 
 type Attribute = {
@@ -9,6 +9,7 @@ type Attribute = {
   label: Record<string, string> | string;  // Multilingual or simple string
   value: Record<string, string> | string;  // Multilingual or simple string
   uom?: string;  // UOM stays language-independent
+  hide_in_commerce?: boolean;  // Hide from commerce storefront (default: false)
 };
 
 type Props = {
@@ -60,6 +61,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
           label: val.label || slug,
           value: val.value || '',
           uom: val.uom || undefined,
+          hide_in_commerce: val.hide_in_commerce ?? false,
         };
       }
       // Legacy: Handle simple values (convert to new structure)
@@ -68,6 +70,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
         label: slug,
         value: String(val),
         uom: undefined,
+        hide_in_commerce: false,
       };
     })
   );
@@ -91,6 +94,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
             label: val.label || slug,
             value: val.value || '',
             uom: val.uom || undefined,
+            hide_in_commerce: val.hide_in_commerce ?? false,
           };
         }
         // Legacy: Handle simple values (convert to new structure)
@@ -99,13 +103,14 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
           label: slug,
           value: String(val),
           uom: undefined,
+          hide_in_commerce: false,
         };
       })
     );
   }, [value]);
 
   function handleAdd() {
-    const newAttributes = [...attributesArray, { slug: "", label: "", value: "", uom: undefined }];
+    const newAttributes = [...attributesArray, { slug: "", label: "", value: "", uom: undefined, hide_in_commerce: false }];
     setAttributesArray(newAttributes);
     updateAttributes(newAttributes);
   }
@@ -144,6 +149,13 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
     updateAttributes(newAttributes);
   }
 
+  function handleHideInCommerceChange(index: number, newValue: boolean) {
+    const newAttributes = [...attributesArray];
+    newAttributes[index].hide_in_commerce = newValue;
+    setAttributesArray(newAttributes);
+    updateAttributes(newAttributes);
+  }
+
   function updateAttributes(attrs: Attribute[]) {
     // Convert array back to object, filtering out empty slugs
     // Store using slug as key, with label, value, and uom in the object
@@ -163,6 +175,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
           label: attr.label,
           value: processedValue,
           ...(attr.uom && attr.uom.trim() ? { uom: attr.uom.trim() } : {}),
+          ...(attr.hide_in_commerce !== undefined ? { hide_in_commerce: attr.hide_in_commerce } : {}),
         };
       }
     });
@@ -237,6 +250,27 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
                 disabled={disabled}
                 className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
+
+              {/* Hide in Commerce Toggle */}
+              <div className="flex items-center justify-center w-10">
+                <button
+                  type="button"
+                  onClick={() => handleHideInCommerceChange(index, !attr.hide_in_commerce)}
+                  disabled={disabled}
+                  className={`p-2 rounded transition ${
+                    attr.hide_in_commerce
+                      ? 'text-orange-600 bg-orange-50 hover:bg-orange-100'
+                      : 'text-gray-400 hover:bg-gray-100'
+                  } disabled:opacity-50`}
+                  title={attr.hide_in_commerce ? "Hidden in commerce" : "Visible in commerce"}
+                >
+                  {attr.hide_in_commerce ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
 
               {/* UOM Input */}
               <input

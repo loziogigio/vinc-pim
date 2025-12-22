@@ -122,12 +122,13 @@ export function TagSelector({ value, onChange, disabled }: Props) {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return tags.filter((tag) => {
       if (!normalizedQuery) return true;
+      const tagName = getMultilingualText(tag.name, defaultLanguageCode, "");
       return (
-        tag.name.toLowerCase().includes(normalizedQuery) ||
+        tagName.toLowerCase().includes(normalizedQuery) ||
         tag.slug.toLowerCase().includes(normalizedQuery)
       );
     });
-  }, [tags, searchQuery]);
+  }, [tags, searchQuery, defaultLanguageCode]);
 
   const selectedIds = useMemo(() => new Set(value.map((tag) => tag.id)), [value]);
 

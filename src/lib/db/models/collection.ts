@@ -5,6 +5,7 @@ export interface ICollection extends Document {
   // wholesaler_id removed - database per wholesaler provides isolation
   name: string;
   slug: string;
+  locale: string;  // Language code: "it", "en", etc.
   description?: string;
 
   // Hero/Cover Image
@@ -54,6 +55,11 @@ const CollectionSchema = new Schema<ICollection>(
       required: true,
       trim: true,
       lowercase: true,
+    },
+    locale: {
+      type: String,
+      required: true,
+      default: "it",
     },
     description: {
       type: String,

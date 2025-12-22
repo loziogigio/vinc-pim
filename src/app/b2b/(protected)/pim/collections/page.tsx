@@ -21,6 +21,7 @@ type Collection = {
   collection_id: string;
   name: string;
   slug: string;
+  locale: string;
   description?: string;
   hero_image?: {
     url: string;
@@ -311,6 +312,7 @@ function CollectionModal({
   const [formData, setFormData] = useState({
     name: collection?.name || "",
     slug: collection?.slug || "",
+    locale: collection?.locale || "it",
     description: collection?.description || "",
     hero_image_url: collection?.hero_image?.url || "",
     hero_image_alt: collection?.hero_image?.alt_text || "",
@@ -323,6 +325,8 @@ function CollectionModal({
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  // Track if slug was manually edited (don't auto-update if so)
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!collection?.slug);
 
   function generateSlug(name: string) {
     return name
@@ -341,6 +345,7 @@ function CollectionModal({
       const payload: any = {
         name: formData.name,
         slug: formData.slug,
+        locale: formData.locale,
         description: formData.description,
         display_order: formData.display_order,
         is_active: formData.is_active,
@@ -399,6 +404,29 @@ function CollectionModal({
 
           {/* Body */}
           <div className="px-6 py-4 space-y-4">
+            {/* Locale */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Locale *</label>
+              <select
+                required
+                value={formData.locale}
+                onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
+                disabled={!!collection}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="it">Italiano (IT)</option>
+                <option value="en">English (EN)</option>
+                <option value="de">Deutsch (DE)</option>
+                <option value="fr">Français (FR)</option>
+                <option value="es">Español (ES)</option>
+              </select>
+              {collection && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Locale cannot be changed after creation
+                </p>
+              )}
+            </div>
+
             {/* Name & Slug */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -412,7 +440,8 @@ function CollectionModal({
                     setFormData({
                       ...formData,
                       name,
-                      slug: formData.slug || generateSlug(name),
+                      // Auto-generate slug only if not manually edited
+                      slug: slugManuallyEdited ? formData.slug : generateSlug(name),
                     });
                   }}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -425,7 +454,10 @@ function CollectionModal({
                   type="text"
                   required
                   value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, slug: e.target.value });
+                    setSlugManuallyEdited(true);
+                  }}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder="summer-collection"
                 />

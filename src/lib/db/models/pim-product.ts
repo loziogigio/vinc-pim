@@ -164,6 +164,9 @@ export interface IPIMProduct extends Document {
   // Tags (for marketing, SEO, filtering - e.g., "bestseller", "featured", "eco-friendly")
   tags?: TagEmbedded[];
 
+  // Synonym dictionary keys (for search synonyms - references SynonymDictionary.key)
+  synonym_keys?: string[];
+
   // Features (Marketing highlights - "Caratteristiche")
   // Multilingual structure: features organized by language
   // Example: { "it": ["Ricarica wireless", "Resistente all'acqua IP68"], "de": [...] }
@@ -614,6 +617,9 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         },
       },
     ],
+
+    // Synonym dictionary keys (for search synonyms)
+    synonym_keys: [{ type: String }],
 
     // Features (Marketing highlights - dynamically organized by language)
     features: FeaturesSchema,
