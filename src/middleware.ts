@@ -30,30 +30,31 @@ const isLocalhost = (request: NextRequest) => {
 
 /**
  * Extract tenant ID from request
- * Priority: X-Tenant-ID header > query param > subdomain > env var
+ * Priority: URL path > X-Tenant-ID header > query param > env var
  */
-const getTenantId = (request: NextRequest): string | null => {
-  // 1. Check X-Tenant-ID header
-  const headerTenantId = request.headers.get("x-tenant-id");
-  if (headerTenantId) return headerTenantId;
-
-  // 2. Check query parameter
-  const url = new URL(request.url);
-  const queryTenantId = url.searchParams.get("tenant");
-  if (queryTenantId) return queryTenantId;
-
-  // 3. Extract from subdomain
-  const hostname = request.headers.get("host") || "";
-  const hostnameWithoutPort = hostname.split(":")[0];
-  const parts = hostnameWithoutPort.split(".");
-
-  // If subdomain exists and is not 'www', use it as tenant ID
-  if (parts.length >= 2 && parts[0] !== "www") {
-    return parts[0];
+const getTenantId = (request: NextRequest): { tenantId: string | null; rewritePath: string | null } => {
+  // 1. Check URL path: /{tenant}/api/...
+  const pathname = request.nextUrl.pathname;
+  const pathMatch = pathname.match(/^\/([^\/]+)(\/api\/.*)$/);
+  if (pathMatch) {
+    const [, tenantId, remainingPath] = pathMatch;
+    // Avoid matching reserved paths
+    if (!['api', '_next', 'static', 'favicon.ico'].includes(tenantId)) {
+      return { tenantId, rewritePath: remainingPath };
+    }
   }
 
+  // 2. Check X-Tenant-ID header
+  const headerTenantId = request.headers.get("x-tenant-id");
+  if (headerTenantId) return { tenantId: headerTenantId, rewritePath: null };
+
+  // 3. Check query parameter
+  const url = new URL(request.url);
+  const queryTenantId = url.searchParams.get("tenant");
+  if (queryTenantId) return { tenantId: queryTenantId, rewritePath: null };
+
   // 4. Fall back to environment variable
-  return process.env.VINC_TENANT_ID || null;
+  return { tenantId: process.env.VINC_TENANT_ID || null, rewritePath: null };
 };
 
 const consumeToken = (ip: string) => {
@@ -77,7 +78,16 @@ const consumeToken = (ip: string) => {
 };
 
 export async function middleware(request: NextRequest) {
-  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+  const pathname = request.nextUrl.pathname;
+
+  // Extract tenant and check for path rewrite
+  const { tenantId, rewritePath } = getTenantId(request);
+
+  // Determine actual path (after tenant prefix removal)
+  const actualPath = rewritePath || pathname;
+  const isApiRoute = actualPath.startsWith("/api");
+  const isB2BRoute = actualPath.startsWith("/api/b2b");
+  const isImportRoute = actualPath.startsWith("/api/b2b/pim/import");
 
   // Handle CORS preflight (OPTIONS) requests for all API routes
   if (isApiRoute && request.method === "OPTIONS") {
@@ -87,18 +97,13 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // Extract tenant ID for B2B routes
-  const isB2BRoute = request.nextUrl.pathname.startsWith("/api/b2b");
-
   if (isB2BRoute) {
-    const tenantId = getTenantId(request);
-
     // For B2B routes, tenant ID is required
     if (!tenantId) {
       return NextResponse.json(
         {
           error: "Tenant ID required for B2B access",
-          hint: "Use subdomain (e.g., tenant-id.domain.com), query param (?tenant=tenant-id), or X-Tenant-ID header"
+          hint: "Use path (/{tenant}/api/...), header (X-Tenant-ID), or query (?tenant=...)"
         },
         { status: 400, headers: corsHeaders }
       );
@@ -109,24 +114,8 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-resolved-tenant-id", tenantId);
     requestHeaders.set("x-resolved-tenant-db", `vinc-${tenantId}`);
 
-    const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
-
-    // Add security headers
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-
-    // Add CORS headers for API routes
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-
-    // Rate limiting (skip for localhost)
-    if (!isLocalhost(request)) {
+    // Rate limiting (skip for localhost and import paths)
+    if (!isLocalhost(request) && !isImportRoute) {
       const ip = getClientIp(request);
       if (!consumeToken(ip)) {
         return NextResponse.json(
@@ -135,6 +124,37 @@ export async function middleware(request: NextRequest) {
         );
       }
     }
+
+    // Rewrite URL if tenant was in path
+    if (rewritePath) {
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      const response = NextResponse.rewrite(url, {
+        request: { headers: requestHeaders }
+      });
+
+      // Add security and CORS headers
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+
+      return response;
+    }
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+
+    // Add security and CORS headers
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
 
     return response;
   }
@@ -153,8 +173,8 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // Rate limiting (skip for localhost)
-  if (!isLocalhost(request)) {
+  // Rate limiting (skip for localhost and import paths)
+  if (!isLocalhost(request) && !isImportRoute) {
     const ip = getClientIp(request);
     if (!consumeToken(ip)) {
       return NextResponse.json(
@@ -168,5 +188,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*"]
+  matcher: [
+    "/api/:path*",
+    "/:tenant/api/:path*"
+  ]
 };
