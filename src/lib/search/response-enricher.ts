@@ -560,9 +560,10 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         variants_sku: productData.variants_sku || product.variants_sku,
         share_images_with_variants: productData.share_images_with_variants ?? product.share_images_with_variants,
         share_media_with_variants: productData.share_media_with_variants ?? product.share_media_with_variants,
-        // Promotions
+        // Promotions & Packaging
         has_active_promo: hasActivePromo,
         promotions: productData.promotions || product.promotions,
+        packaging_options: productData.packaging_options || product.packaging_options,
         // Media
         cover_image_url: productData.cover_image_url || product.cover_image_url,
         images: productData.images || product.images,

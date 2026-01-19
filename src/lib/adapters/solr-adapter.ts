@@ -678,6 +678,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
       product_type_features_json: product.product_type?.features ? JSON.stringify(product.product_type.features) : undefined,
+      packaging_json: product.packaging_options ? JSON.stringify(product.packaging_options) : undefined,
 
       // Relationship objects with multilingual content (stored as JSON)
       category_json: product.category ? JSON.stringify(product.category) : undefined,
