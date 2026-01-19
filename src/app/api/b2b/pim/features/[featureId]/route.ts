@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { FeatureModel } from "@/lib/db/models/feature";
-import { ProductTypeModel } from "@/lib/db/models/product-type";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * PATCH /api/b2b/pim/features/[featureId]
@@ -10,22 +8,23 @@ import { ProductTypeModel } from "@/lib/db/models/product-type";
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { featureId: string } }
+  { params }: { params: Promise<{ featureId: string }> }
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Feature } = await connectWithModels(tenantDb);
 
-    const { featureId } = params;
+    const { featureId } = await params;
     const body = await req.json();
     const { key, label, type, unit, options, default_required, display_order, is_active } = body;
 
     // Check if feature exists and belongs to wholesaler
-    const feature = await FeatureModel.findOne({
+    const feature = await Feature.findOne({
       feature_id: featureId,
       // No wholesaler_id - database provides isolation
     });
@@ -39,7 +38,7 @@ export async function PATCH(
 
     // If key is changing, check for duplicates
     if (key && key !== feature.key) {
-      const existing = await FeatureModel.findOne({
+      const existing = await Feature.findOne({
         // No wholesaler_id - database provides isolation
         key,
         feature_id: { $ne: featureId },
@@ -68,7 +67,7 @@ export async function PATCH(
     if (is_active !== undefined) updateData.is_active = is_active;
 
     // No wholesaler_id - database provides isolation
-    const updatedFeature = await FeatureModel.findOneAndUpdate(
+    const updatedFeature = await Feature.findOneAndUpdate(
       { feature_id: featureId },
       updateData,
       { new: true }
@@ -90,20 +89,21 @@ export async function PATCH(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { featureId: string } }
+  { params }: { params: Promise<{ featureId: string }> }
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Feature, ProductType } = await connectWithModels(tenantDb);
 
-    const { featureId } = params;
+    const { featureId } = await params;
 
     // Check if feature exists and belongs to wholesaler
-    const feature = await FeatureModel.findOne({
+    const feature = await Feature.findOne({
       feature_id: featureId,
       // No wholesaler_id - database provides isolation
     });
@@ -116,7 +116,7 @@ export async function DELETE(
     }
 
     // Check if feature is being used by any product types
-    const productTypesUsingFeature = await ProductTypeModel.countDocuments({
+    const productTypesUsingFeature = await ProductType.countDocuments({
       // No wholesaler_id - database provides isolation
       "features.feature_id": featureId,
     });
@@ -131,7 +131,7 @@ export async function DELETE(
     }
 
     // Delete feature
-    await FeatureModel.deleteOne({
+    await Feature.deleteOne({
       feature_id: featureId,
       // No wholesaler_id - database provides isolation
     });

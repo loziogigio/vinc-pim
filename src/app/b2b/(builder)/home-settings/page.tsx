@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef, useCallback, ChangeEvent } from "react";
-import { useRouter } from "next/navigation";
-import { Public_Sans } from "next/font/google";
 import {
   Cloud,
-  Home,
   Eye,
   Loader2,
   Mail,
@@ -13,19 +10,19 @@ import {
   Palette,
   RefreshCcw,
   Save,
-  Upload
+  Upload,
+  Key,
+  Copy,
+  Check,
+  Trash2,
+  Plus,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
 import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
-
-const publicSans = Public_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap"
-});
 
 const DEFAULT_BRANDING: CompanyBranding = {
   title: "My Company",
@@ -64,7 +61,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product" | "cdn" | "smtp";
+type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "apikeys";
 
 const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_url: "",
@@ -172,7 +169,6 @@ const ColorInput = ({
 );
 
 export default function HomeSettingsPage() {
-  const router = useRouter();
   const [branding, setBranding] = useState<CompanyBranding>(DEFAULT_BRANDING);
   const [cardVariant, setCardVariant] = useState<PreviewVariant>("b2b");
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
@@ -347,44 +343,33 @@ export default function HomeSettingsPage() {
   );
 
   return showInitialLoader ? (
-    <div className="flex min-h-screen items-center justify-center bg-[#f5f6fa]">
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center">
       <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
         <span className="text-sm font-medium text-slate-700">Loading home settings…</span>
       </div>
     </div>
   ) : (
-    <div className={cn("min-h-screen bg-[#f5f6fa] text-slate-900", publicSans.className)}>
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <>
+      {/* Sub-header with page title and actions */}
+      <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-slate-500 hover:text-slate-900"
-              onClick={() => router.push("/")}
-              title="Back to App Launcher"
-            >
-              <Home className="h-4 w-4" />
-              <span className="sr-only">Back to App Launcher</span>
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-lg font-semibold text-slate-900">Home Settings</h1>
-                {dirty ? (
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                    Unsaved changes
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                    Synced
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-slate-500">
-                Configure company branding and product card styles for customer storefronts.
-              </p>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-semibold text-slate-900">Home Settings</h1>
+              {dirty ? (
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                  Unsaved changes
+                </span>
+              ) : (
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                  Synced
+                </span>
+              )}
             </div>
+            <p className="text-sm text-slate-500">
+              Configure company branding and product card styles for customer storefronts.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -402,7 +387,12 @@ export default function HomeSettingsPage() {
               variant="ghost"
               size="sm"
               className="gap-2 text-slate-500 hover:text-slate-900"
-              onClick={() => window.open("/preview?slug=home", "_blank", "noreferrer")}
+              onClick={() => {
+                const url = branding.shopUrl || "/preview?slug=home";
+                window.open(url, "_blank", "noreferrer");
+              }}
+              disabled={!branding.shopUrl}
+              title={branding.shopUrl || "Set Shop URL in Branding section"}
             >
               <Eye className="h-4 w-4" />
               Preview storefront
@@ -428,7 +418,7 @@ export default function HomeSettingsPage() {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {error ? (
         <div className="mx-auto mt-4 w-full max-w-[1500px] px-6">
@@ -477,6 +467,13 @@ export default function HomeSettingsPage() {
               active={activeSection === "smtp"}
               onClick={() => setActiveSection("smtp")}
             />
+            <SidebarItem
+              icon={Key}
+              label="API Keys"
+              description="Manage programmatic access"
+              active={activeSection === "apikeys"}
+              onClick={() => setActiveSection("apikeys")}
+            />
           </nav>
         </aside>
 
@@ -514,6 +511,7 @@ export default function HomeSettingsPage() {
               onChange={updateSmtpSettings}
             />
           )}
+          {activeSection === "apikeys" && <APIKeysForm />}
         </main>
 
         <aside className="w-full shrink-0 space-y-5 lg:w-[400px]">
@@ -603,7 +601,7 @@ export default function HomeSettingsPage() {
           </div>
         </aside>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1645,6 +1643,510 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
           </div>
         )}
       </div>
+    </SectionCard>
+  );
+}
+
+// API Key types
+interface APIKeyData {
+  _id: string;
+  key_id: string;
+  name: string;
+  permissions: string[];
+  is_active: boolean;
+  last_used_at?: string;
+  created_at: string;
+  created_by: string;
+}
+
+interface APIKeyPermission {
+  value: string;
+  label: string;
+  description: string;
+}
+
+function APIKeysForm() {
+  const [keys, setKeys] = useState<APIKeyData[]>([]);
+  const [permissions, setPermissions] = useState<APIKeyPermission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Create key modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyPermissions, setNewKeyPermissions] = useState<string[]>(["*"]);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Created key display state (shown after creation)
+  const [createdKey, setCreatedKey] = useState<{ key_id: string; secret: string } | null>(null);
+  const [copiedField, setCopiedField] = useState<"key" | "secret" | null>(null);
+
+  // Delete confirmation state
+  const [keyToDelete, setKeyToDelete] = useState<APIKeyData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const loadKeys = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/b2b/api-keys");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load API keys");
+      }
+
+      setKeys(data.keys || []);
+      setPermissions(data.permissions || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load API keys");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadKeys();
+  }, [loadKeys]);
+
+  const handleCreateKey = async () => {
+    if (!newKeyName.trim()) return;
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/b2b/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newKeyName.trim(),
+          permissions: newKeyPermissions,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create API key");
+      }
+
+      // Show the created key with secret
+      setCreatedKey({
+        key_id: data.key.key_id,
+        secret: data.secret,
+      });
+
+      // Reset form and close modal
+      setShowCreateModal(false);
+      setNewKeyName("");
+      setNewKeyPermissions(["*"]);
+
+      // Reload keys list
+      loadKeys();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create API key");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleToggleActive = async (key: APIKeyData) => {
+    try {
+      const response = await fetch(`/api/b2b/api-keys/${key._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !key.is_active }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update API key");
+      }
+
+      loadKeys();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update API key");
+    }
+  };
+
+  const handleDeleteKey = async () => {
+    if (!keyToDelete) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/b2b/api-keys/${keyToDelete._id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete API key");
+      }
+
+      setKeyToDelete(null);
+      loadKeys();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete API key");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string, field: "key" | "secret") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Never";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <SectionCard
+      title="API Keys"
+      description="Manage API keys for programmatic access to your B2B APIs."
+    >
+      {error && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
+      {/* Created Key Display */}
+      {createdKey && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-3">
+              <div>
+                <h4 className="font-semibold text-amber-800">Save your API credentials now!</h4>
+                <p className="text-sm text-amber-700">
+                  The secret will not be shown again. Store it securely.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-amber-700">API Key</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-amber-200">
+                      {createdKey.key_id}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(createdKey.key_id, "key")}
+                      className="shrink-0"
+                    >
+                      {copiedField === "key" ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-amber-700">API Secret</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-amber-200">
+                      {createdKey.secret}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(createdKey.secret, "secret")}
+                      className="shrink-0"
+                    >
+                      {copiedField === "secret" ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCreatedKey(null)}
+                className="text-amber-700 border-amber-300 hover:bg-amber-100"
+              >
+                I&apos;ve saved the credentials
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keys List */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">Your API Keys</h3>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowCreateModal(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create New Key
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        ) : keys.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-8 text-center">
+            <Key className="mx-auto h-8 w-8 text-slate-400" />
+            <p className="mt-2 text-sm text-slate-600">No API keys yet</p>
+            <p className="text-xs text-slate-500">Create your first API key to enable programmatic access</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {keys.map((key) => (
+              <div
+                key={key._id}
+                className={cn(
+                  "rounded-lg border p-4",
+                  key.is_active
+                    ? "border-slate-200 bg-white"
+                    : "border-slate-200 bg-slate-50 opacity-60"
+                )}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-slate-900">{key.name}</h4>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-medium",
+                          key.is_active
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-slate-200 text-slate-600"
+                        )}
+                      >
+                        {key.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs font-mono text-slate-500 truncate">
+                      {key.key_id}
+                    </p>
+                    <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
+                      <span>Created: {formatDate(key.created_at)}</span>
+                      <span>Last used: {formatDate(key.last_used_at)}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {key.permissions.map((perm) => (
+                        <span
+                          key={perm}
+                          className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                        >
+                          {perm === "*" ? "Full Access" : perm}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(key)}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                        key.is_active ? "bg-emerald-500" : "bg-slate-300"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                          key.is_active ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setKeyToDelete(key)}
+                      className="text-slate-400 hover:text-rose-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Key Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Create New API Key</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Generate a new API key for programmatic access.
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="key-name" className="text-sm font-medium text-slate-600">
+                  Key Name
+                </label>
+                <input
+                  id="key-name"
+                  type="text"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="e.g., ERP Integration"
+                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600">Permissions</label>
+                <div className="space-y-2">
+                  {permissions.map((perm) => (
+                    <label key={perm.value} className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newKeyPermissions.includes(perm.value)}
+                        onChange={(e) => {
+                          if (perm.value === "*") {
+                            setNewKeyPermissions(e.target.checked ? ["*"] : []);
+                          } else {
+                            if (e.target.checked) {
+                              setNewKeyPermissions((prev) =>
+                                prev.filter((p) => p !== "*").concat(perm.value)
+                              );
+                            } else {
+                              setNewKeyPermissions((prev) =>
+                                prev.filter((p) => p !== perm.value)
+                              );
+                            }
+                          }
+                        }}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">{perm.label}</p>
+                        <p className="text-xs text-slate-500">{perm.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewKeyName("");
+                  setNewKeyPermissions(["*"]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreateKey}
+                disabled={!newKeyName.trim() || isCreating}
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Key"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {keyToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+                <AlertTriangle className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Delete API Key</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Are you sure you want to delete <strong>{keyToDelete.name}</strong>? This action
+                  cannot be undone and any systems using this key will lose access.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setKeyToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleDeleteKey}
+                disabled={isDeleting}
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Key"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </SectionCard>
   );
 }

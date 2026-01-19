@@ -107,5 +107,8 @@ CollectionSchema.index({ slug: 1 }, { unique: true });
 // Index for sorting
 CollectionSchema.index({ display_order: 1 });
 
+// Export schema for model-registry
+export { CollectionSchema };
+
 export const CollectionModel =
   mongoose.models.Collection || mongoose.model<ICollection>("Collection", CollectionSchema);

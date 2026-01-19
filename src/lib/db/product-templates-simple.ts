@@ -1,5 +1,6 @@
-import { connectToDatabase } from "./connection";
-import { ProductTemplateModel, type ProductTemplateDocument } from "./models/product-template-simple";
+import { connectWithModels, autoDetectTenantDb } from "./connection";
+import type { ProductTemplateDocument } from "./models/product-template-simple";
+import type mongoose from "mongoose";
 
 /**
  * Get priority value for match type
@@ -11,15 +12,26 @@ function getPriorityForType(type: "sku" | "parentSku" | "standard"): number {
 }
 
 /**
+ * Get the ProductTemplateSimple model for the current tenant database
+ * Uses auto-detection from headers/session if tenantDb not provided
+ */
+async function getProductTemplateSimpleModel(tenantDb?: string): Promise<mongoose.Model<ProductTemplateDocument>> {
+  const dbName = tenantDb ?? await autoDetectTenantDb();
+  const models = await connectWithModels(dbName);
+  return models.ProductTemplateSimple as mongoose.Model<ProductTemplateDocument>;
+}
+
+/**
  * Get or create a product template
  * @param matchType - "sku" for specific SKU, "parentSku" for variant family, "standard" for default
  * @param value - The SKU or parentSKU value (use "default" for standard)
  */
 export async function getOrCreateTemplate(
   matchType: "sku" | "parentSku" | "standard",
-  value: string
+  value: string,
+  tenantDb?: string
 ): Promise<ProductTemplateDocument> {
-  await connectToDatabase();
+  const ProductTemplateModel = await getProductTemplateSimpleModel(tenantDb);
 
   const priority = getPriorityForType(matchType);
 
@@ -85,9 +97,10 @@ export async function getOrCreateTemplate(
  */
 export async function getTemplateConfig(
   matchType: "sku" | "parentSku" | "standard",
-  value: string
+  value: string,
+  tenantDb?: string
 ): Promise<any> {
-  const template = await getOrCreateTemplate(matchType, value);
+  const template = await getOrCreateTemplate(matchType, value, tenantDb);
 
   // Convert to PageConfig format expected by builder
   return {
@@ -109,8 +122,8 @@ export async function saveTemplateDraft(input: {
   value: string;
   blocks: any[];
   seo?: any;
-}): Promise<any> {
-  await connectToDatabase();
+}, tenantDb?: string): Promise<any> {
+  const ProductTemplateModel = await getProductTemplateSimpleModel(tenantDb);
 
   const { matchType, value, blocks, seo } = input;
 
@@ -119,7 +132,7 @@ export async function saveTemplateDraft(input: {
   console.log(`[saveTemplateDraft] Blocks count: ${blocks.length}`);
   console.log(`[saveTemplateDraft] First block:`, JSON.stringify(blocks[0], null, 2));
 
-  const template = await getOrCreateTemplate(matchType, value);
+  const template = await getOrCreateTemplate(matchType, value, tenantDb);
 
   console.log(`[saveTemplateDraft] Existing template found/created, current versions: ${template.versions?.length || 0}`);
 
@@ -238,7 +251,7 @@ export async function saveTemplateDraft(input: {
   console.log(`[saveTemplateDraft] Update result:`, updateResult);
 
   // Return updated config
-  const finalConfig = await getTemplateConfig(matchType, value);
+  const finalConfig = await getTemplateConfig(matchType, value, tenantDb);
   console.log(`[saveTemplateDraft] Final config versions: ${finalConfig.versions.length}`);
 
   return finalConfig;
@@ -249,9 +262,10 @@ export async function saveTemplateDraft(input: {
  */
 export async function publishTemplate(
   matchType: "sku" | "parentSku" | "standard",
-  value: string
+  value: string,
+  tenantDb?: string
 ): Promise<any> {
-  await connectToDatabase();
+  const ProductTemplateModel = await getProductTemplateSimpleModel(tenantDb);
 
   const template = await ProductTemplateModel.findOne({
     "matchRules.type": matchType,
@@ -300,5 +314,5 @@ export async function publishTemplate(
     }
   );
 
-  return getTemplateConfig(matchType, value);
+  return getTemplateConfig(matchType, value, tenantDb);
 }

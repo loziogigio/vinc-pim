@@ -4,11 +4,7 @@
  */
 
 import { Worker, Job } from "bullmq";
-import { connectToDatabase } from "../db/connection";
-import { ImportSourceModel } from "../db/models/import-source";
-import { ImportJobModel } from "../db/models/import-job";
-import { PIMProductModel } from "../db/models/pim-product";
-import { LanguageModel } from "../db/models/language";
+import { connectWithModels } from "../db/connection";
 import { parseCSV, parseExcel, detectFileType } from "../pim/parser";
 import { projectConfig, MULTILINGUAL_FIELDS } from "../../config/project.config";
 import {
@@ -26,6 +22,7 @@ import { syncQueue } from "./queues";
 interface ImportJobData {
   job_id: string;
   source_id: string;
+  tenant_id?: string; // Tenant ID for multi-tenant database access
   // wholesaler_id removed - database per wholesaler provides isolation
   file_url?: string; // CDN URL (for file imports)
   file_name?: string;
@@ -85,13 +82,16 @@ function applyDefaultLanguageToData(data: any, languageCodes: string[]): void {
  * Process import job
  */
 async function processImport(job: Job<ImportJobData>) {
-  const { job_id, source_id, file_url, file_name, api_config } = job.data;
+  const { job_id, source_id, file_url, file_name, api_config, tenant_id } = job.data;
 
   const isApiImport = !!api_config;
 
   console.log(`\n🔄 Processing import job: ${job_id}`);
   console.log(`   Type: ${isApiImport ? 'API Import' : 'File Import'}`);
   console.log(`   Source: ${source_id}`);
+  if (tenant_id) {
+    console.log(`   Tenant: ${tenant_id}`);
+  }
   if (isApiImport) {
     console.log(`   API Endpoint: ${api_config.endpoint}`);
   } else {
@@ -99,11 +99,24 @@ async function processImport(job: Job<ImportJobData>) {
     console.log(`   CDN URL: ${file_url}`);
   }
 
-  await connectToDatabase();
+  // Determine tenant database - use tenant_id from job data or fallback to env
+  const effectiveTenantId = tenant_id || process.env.VINC_TENANT_ID;
+  if (!effectiveTenantId) {
+    throw new Error('Import job requires tenant_id - cannot process without tenant context');
+  }
+  const tenantDb = `vinc-${effectiveTenantId}`;
+
+  // Get all needed models via connectWithModels
+  const {
+    ImportSource: ImportSourceModel,
+    ImportJob: ImportJobModel,
+    PIMProduct: PIMProductModel,
+    Language: LanguageModel,
+  } = await connectWithModels(tenantDb);
 
   // Fetch language codes from database for multilingual detection
   const languages = await LanguageModel.find({}, { code: 1 }).lean();
-  const languageCodes = languages.map(l => l.code);
+  const languageCodes = languages.map((l: any) => l.code);
 
   try {
     // ========== PHASE 3: HANDLE BATCH METADATA ==========
@@ -648,13 +661,28 @@ console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
  * Process bulk update job
  */
 async function processBulkUpdate(job: Job<any>) {
-  const { job_id, product_ids, updates } = job.data;
+  const { job_id, product_ids, updates, tenant_id } = job.data;
 
   console.log(`\n🔄 Processing bulk update job: ${job_id}`);
   console.log(`   Products: ${product_ids.length}`);
   console.log(`   Updates:`, updates);
+  if (tenant_id) {
+    console.log(`   Tenant: ${tenant_id}`);
+  }
 
-  await connectToDatabase();
+  // Determine tenant database - use tenant_id from job data or fallback to env
+  const effectiveTenantId = tenant_id || process.env.VINC_TENANT_ID;
+  if (!effectiveTenantId) {
+    throw new Error('Bulk update job requires tenant_id - cannot process without tenant context');
+  }
+  const tenantDb = `vinc-${effectiveTenantId}`;
+
+  // Get all needed models via connectWithModels
+  const {
+    ImportJob: ImportJobModel,
+    PIMProduct: PIMProductModel,
+    Language: LanguageModel,
+  } = await connectWithModels(tenantDb);
 
   try {
     // Update job status

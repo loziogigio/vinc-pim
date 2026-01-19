@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { SynonymDictionaryModel } from "@/lib/db/models/synonym-dictionary";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 // GET /api/b2b/pim/synonym-dictionaries - List dictionaries
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -75,11 +75,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { key, description, terms, locale, is_active, display_order } = body;

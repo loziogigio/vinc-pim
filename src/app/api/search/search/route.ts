@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSolrClient, SolrError } from '@/lib/search/solr-client';
+import { SolrError } from '@/lib/search/solr-client';
 import { buildSearchQuery } from '@/lib/search/query-builder';
 import { transformSearchResponse, enrichFacetResults, enrichProductsWithVariants } from '@/lib/search/response-transformer';
 import { enrichSearchResults, enrichVariantGroupedResults } from '@/lib/search/response-enricher';
@@ -37,6 +37,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get tenant-specific Solr collection from headers (set by middleware)
+    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    if (!tenantDb) {
+      return NextResponse.json(
+        {
+          error: 'Tenant not specified',
+          details: {
+            code: 'NO_TENANT',
+            message: 'Tenant must be provided via X-Tenant-ID header or URL path',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     // Build search request with defaults
     const config = getSolrConfig();
     const searchRequest: SearchRequest = {
@@ -59,8 +74,9 @@ export async function POST(request: NextRequest) {
     // Build Solr query
     const solrQuery = buildSearchQuery(searchRequest);
 
-    // Execute search
-    const solrClient = getSolrClient();
+    // Execute search with tenant-specific core
+    const { SolrClient } = await import('@/lib/search/solr-client');
+    const solrClient = new SolrClient(config.url, tenantDb);
     const solrResponse = await solrClient.search(solrQuery);
 
     // Transform response (pass group field if grouping is enabled)
@@ -79,16 +95,16 @@ export async function POST(request: NextRequest) {
     // Enrich results with fresh data from MongoDB
     if (searchRequest.group_variants) {
       // For variant grouped: fetch parent from MongoDB + enrich all variants
-      response.results = await enrichVariantGroupedResults(response.results, searchRequest.lang);
+      response.results = await enrichVariantGroupedResults(tenantDb, response.results, searchRequest.lang);
     } else {
       // Standard enrichment
-      response.results = await enrichSearchResults(response.results, searchRequest.lang);
+      response.results = await enrichSearchResults(tenantDb, response.results, searchRequest.lang);
       response.results = await enrichProductsWithVariants(response.results, searchRequest.lang);
     }
 
     // Enrich facets with full entity data
     if (response.facet_results) {
-      response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang);
+      response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, tenantDb);
     }
 
     return NextResponse.json({
@@ -157,6 +173,21 @@ export async function GET(request: NextRequest) {
           },
         },
         { status: 503 }
+      );
+    }
+
+    // Get tenant-specific Solr collection from headers (set by middleware)
+    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    if (!tenantDb) {
+      return NextResponse.json(
+        {
+          error: 'Tenant not specified',
+          details: {
+            code: 'NO_TENANT',
+            message: 'Tenant must be provided via X-Tenant-ID header or URL path',
+          },
+        },
+        { status: 400 }
       );
     }
 
@@ -240,9 +271,10 @@ export async function GET(request: NextRequest) {
         : undefined,
     };
 
-    // Build and execute query
+    // Build and execute query with tenant-specific Solr collection
     const solrQuery = buildSearchQuery(searchRequest);
-    const solrClient = getSolrClient();
+    const { SolrClient } = await import('@/lib/search/solr-client');
+    const solrClient = new SolrClient(config.url, tenantDb);
     const solrResponse = await solrClient.search(solrQuery);
 
     // Transform response
@@ -261,16 +293,16 @@ export async function GET(request: NextRequest) {
     // Enrich results with fresh data from MongoDB
     if (groupVariants) {
       // For variant grouped: fetch parent from MongoDB + enrich all variants
-      response.results = await enrichVariantGroupedResults(response.results, lang);
+      response.results = await enrichVariantGroupedResults(tenantDb, response.results, lang);
     } else {
       // Standard enrichment
-      response.results = await enrichSearchResults(response.results, lang);
+      response.results = await enrichSearchResults(tenantDb, response.results, lang);
       response.results = await enrichProductsWithVariants(response.results, lang);
     }
 
     // Enrich facets with full entity data
     if (response.facet_results) {
-      response.facet_results = await enrichFacetResults(response.facet_results, lang);
+      response.facet_results = await enrichFacetResults(response.facet_results, lang, tenantDb);
     }
 
     return NextResponse.json({

@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { TagModel } from "@/lib/db/models/tag";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 // GET /api/b2b/pim/tags - List tags
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Tag: TagModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -70,11 +70,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Tag: TagModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { name, slug, description, color, is_active, display_order } = body;

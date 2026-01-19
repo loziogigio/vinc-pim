@@ -1,4 +1,4 @@
-import { Schema, model, models, Document } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface ISynonymDictionary extends Document {
   dictionary_id: string;
@@ -91,6 +91,8 @@ SynonymDictionarySchema.pre("save", function (next) {
   next();
 });
 
+export { SynonymDictionarySchema };
+
 export const SynonymDictionaryModel =
-  models.SynonymDictionary ||
-  model<ISynonymDictionary>("SynonymDictionary", SynonymDictionarySchema);
+  mongoose.models.SynonymDictionary ||
+  mongoose.model<ISynonymDictionary>("SynonymDictionary", SynonymDictionarySchema);

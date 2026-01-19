@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { MenuItemModel, MenuLocation } from "@/lib/db/models/menu";
+import { connectWithModels } from "@/lib/db/connection";
+import { MenuLocation } from "@/lib/db/models/menu";
 import { nanoid } from "nanoid";
 
 /**
@@ -11,11 +11,12 @@ import { nanoid } from "nanoid";
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location") as MenuLocation | null;
@@ -62,11 +63,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const {

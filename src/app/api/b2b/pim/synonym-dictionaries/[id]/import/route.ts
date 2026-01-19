@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { SynonymDictionaryModel } from "@/lib/db/models/synonym-dictionary";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { AssociationJobModel } from "@/lib/db/models/association-job";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { nanoid } from "nanoid";
 import * as XLSX from "xlsx";
@@ -15,11 +12,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
 
@@ -135,7 +133,7 @@ export async function POST(
     await AssociationJobModel.create(job);
 
     // Process the job asynchronously
-    processAssociationJob(jobId, id, dictionary.key, entityCodes, action).catch(err => {
+    processAssociationJob(tenantDb, jobId, id, dictionary.key, entityCodes, action).catch(err => {
       console.error("Error processing synonym dictionary association job:", err);
     });
 
@@ -155,6 +153,7 @@ export async function POST(
 
 // Background job processor
 async function processAssociationJob(
+  tenantDb: string,
   jobId: string,
   dictionaryId: string,
   dictionaryKey: string,
@@ -162,7 +161,11 @@ async function processAssociationJob(
   action: string
 ) {
   try {
-    await connectToDatabase();
+    const {
+      SynonymDictionary: SynonymDictionaryModel,
+      PIMProduct: PIMProductModel,
+      AssociationJob: AssociationJobModel,
+    } = await connectWithModels(tenantDb);
 
     // Update job status to processing
     await AssociationJobModel.updateOne(
@@ -245,7 +248,7 @@ async function processAssociationJob(
     let solrSynced = 0;
     const adapterConfigs = loadAdapterConfigs();
     if (adapterConfigs.solr?.enabled && successful > 0) {
-      console.log(`🔄 Starting Solr sync for ${entityCodes.length} products after synonym dictionary import`);
+      console.log(`Starting Solr sync for ${entityCodes.length} products after synonym dictionary import`);
 
       const products = await PIMProductModel.find({
         entity_code: { $in: entityCodes },
@@ -265,7 +268,7 @@ async function processAssociationJob(
         }
       }
 
-      console.log(`✅ Synced ${solrSynced}/${products.length} products to Solr after ${action === "add" ? "adding to" : "removing from"} dictionary "${dictionaryKey}"`);
+      console.log(`Synced ${solrSynced}/${products.length} products to Solr after ${action === "add" ? "adding to" : "removing from"} dictionary "${dictionaryKey}"`);
     }
 
     // Mark job as completed
@@ -284,6 +287,9 @@ async function processAssociationJob(
     );
   } catch (error: any) {
     console.error("Error in processAssociationJob:", error);
+
+    // Get models again for error handling
+    const { AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     await AssociationJobModel.updateOne(
       { job_id: jobId },

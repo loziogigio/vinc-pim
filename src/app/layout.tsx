@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
-import { Suspense } from "react";
 import clsx from "clsx";
 import "./globals.css";
-import { SiteHeader } from "@/components/layout/SiteHeader";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,9 +44,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <body className={clsx(inter.className, "bg-background text-foreground")}>
         <Script id="theme-initializer" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <Suspense fallback={null}>
-          <SiteHeader />
-        </Suspense>
         {children}
       </body>
     </html>

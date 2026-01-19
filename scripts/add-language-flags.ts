@@ -1,10 +1,26 @@
 /**
  * Migration Script: Add Flag Emojis to Languages
- * Run with: npx tsx scripts/add-language-flags.ts
+ * Usage:
+ *   npx tsx scripts/add-language-flags.ts --tenant dfl-eventi-it
+ *   npx tsx scripts/add-language-flags.ts --tenant hidros-it
  */
 
 import { connectToDatabase } from "../src/lib/db/connection";
 import { LanguageModel } from "../src/lib/db/models/language";
+
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf('--tenant');
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
 
 // Map of ISO 639-1 language codes to flag emojis
 const languageFlags: Record<string, string> = {
@@ -60,8 +76,22 @@ const languageFlags: Record<string, string> = {
 
 async function addLanguageFlags() {
   try {
+    const { tenant } = parseArgs();
+
+    if (!tenant) {
+      console.log('\n❌ Error: --tenant parameter is required');
+      console.log('\nUsage:');
+      console.log('  npx tsx scripts/add-language-flags.ts --tenant dfl-eventi-it');
+      console.log('  npx tsx scripts/add-language-flags.ts --tenant hidros-it');
+      process.exit(1);
+    }
+
+    const tenantDb = `vinc-${tenant}`;
+    console.log(`\n🚩 Adding Language Flags`);
+    console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})\n`);
+
     console.log("🔌 Connecting to database...");
-    await connectToDatabase();
+    await connectToDatabase(tenantDb);
 
     console.log("📝 Fetching all languages...");
     const languages = await LanguageModel.find({});

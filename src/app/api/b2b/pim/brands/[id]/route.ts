@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { BrandModel } from "@/lib/db/models/brand";
+import { connectWithModels } from "@/lib/db/connection";
 
 // GET /api/b2b/pim/brands/[id] - Get single brand
 export async function GET(
@@ -10,11 +9,12 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const brand = await BrandModel.findOne({
       brand_id: params.id,
@@ -42,11 +42,12 @@ export async function PATCH(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { label, slug, description, logo_url, website_url, is_active, display_order } = body;
@@ -106,11 +107,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const brand = await BrandModel.findOne({
       brand_id: params.id,

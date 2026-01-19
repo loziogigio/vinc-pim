@@ -16,12 +16,10 @@ import {
   ChevronRight,
   Tablet,
   Upload,
-  Home,
   History,
   Settings2
 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Public_Sans } from "next/font/google";
+import { useSearchParams } from "next/navigation";
 import { BlockLibrary } from "@/components/builder/BlockLibrary";
 import { Canvas } from "@/components/builder/Canvas";
 import { BlockSettingsModal } from "@/components/builder/BlockSettingsModal";
@@ -32,12 +30,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { usePageBuilderStore, type DeviceMode } from "@/lib/store/pageBuilderStore";
 import type { PageConfig } from "@/lib/types/blocks";
-
-const publicSans = Public_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap"
-});
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -135,7 +127,6 @@ const buildPublishPayload = (form: PublishFormValues) => {
 };
 
 function HomeBuilderContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const urlVersion = searchParams.get("v");
 
@@ -165,6 +156,7 @@ function HomeBuilderContent() {
   const [publishForm, setPublishForm] = useState<PublishFormValues>(defaultPublishForm);
   const [isHotfixing, setIsHotfixing] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [shopUrl, setShopUrl] = useState<string>("");
 
   const currentVersion = usePageBuilderStore((state) => state.currentVersion);
   const currentPublishedVersion = usePageBuilderStore((state) => state.currentPublishedVersion);
@@ -234,6 +226,24 @@ function HomeBuilderContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPageConfig]); // Only run on mount, urlVersion is read once
 
+  // Fetch home settings to get shopUrl for LivePreview
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/b2b/home-settings");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.branding?.shopUrl) {
+            setShopUrl(data.branding.shopUrl);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch home settings for shopUrl:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   useEffect(() => {
     if (selectedBlockId) {
       setIsSettingsOpen(true);
@@ -281,14 +291,6 @@ function HomeBuilderContent() {
     setIsPublishModalOpen(false);
     setPublishTargetVersion(null);
     setPublishForm(defaultPublishForm);
-  };
-
-  const handleBackToHome = () => {
-    if (isDirty) {
-      const confirmLeave = window.confirm("You have unsaved changes. Are you sure you want to leave?");
-      if (!confirmLeave) return;
-    }
-    router.push("/");
   };
 
   const handlePublishButtonClick = () => {
@@ -695,8 +697,9 @@ function HomeBuilderContent() {
   }
 
   return (
-    <div className={cn(publicSans.className, "flex h-screen flex-col bg-[#f8f7fa] text-[#5e5873]")}>
-      <header className="flex h-[64px] items-center bg-white px-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
+    <div className="flex h-[calc(100vh-64px)] flex-col">
+      {/* Builder Toolbar */}
+      <div className="flex h-[56px] items-center border-b border-slate-200 bg-white px-6">
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -708,8 +711,7 @@ function HomeBuilderContent() {
           </button>
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[1rem] font-semibold text-[#5e5873]">B2B Portal</span>
-              <span className="text-[0.857rem] text-[#b9b9c3]">Home Page Builder</span>
+              <span className="text-[1rem] font-semibold text-[#5e5873]">Home Page Builder</span>
 
               {currentVersion > 0 ? (
                 <>
@@ -744,16 +746,6 @@ function HomeBuilderContent() {
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleBackToHome}
-            className={cn(iconButtonClass, "border border-[#ebe9f1]")}
-            aria-label="Back to App Launcher"
-            title="Back to App Launcher"
-          >
-            <Home className="h-[1.1rem] w-[1.1rem]" />
-          </button>
-
           <button
             type="button"
             onClick={undo}
@@ -911,7 +903,7 @@ function HomeBuilderContent() {
             New Version
           </Button>
         </div>
-      </header>
+      </div>
 
       {error ? (
         <div className="border-l-4 border-red-500 bg-red-50 px-6 py-3 text-[0.857rem] text-red-600">{error}</div>
@@ -971,7 +963,7 @@ function HomeBuilderContent() {
           </section>
 
           <section className="flex flex-1 flex-col bg-[#e8eaed] px-6 py-6">
-            <LivePreview device={device} blocks={blocks} pageType="home" isDirty={isDirty} />
+            <LivePreview device={device} blocks={blocks} pageType="home" isDirty={isDirty} customerWebUrl={shopUrl || undefined} />
           </section>
         </div>
       </main>

@@ -1,18 +1,29 @@
-import { connectToDatabase } from "./connection";
-import { B2BHomeTemplateModel } from "./models/home-template";
+import { connectWithModels, autoDetectTenantDb } from "./connection";
+import type { HomeTemplateDocument } from "./models/home-template";
+import type mongoose from "mongoose";
 
 const HOME_TEMPLATE_ID = "home-page";
+
+/**
+ * Get the HomeTemplate model for the current tenant database
+ * Uses auto-detection from headers/session if tenantDb not provided
+ */
+async function getHomeTemplateModel(tenantDb?: string): Promise<mongoose.Model<HomeTemplateDocument>> {
+  const dbName = tenantDb ?? await autoDetectTenantDb();
+  const models = await connectWithModels(dbName);
+  return models.HomeTemplate as mongoose.Model<HomeTemplateDocument>;
+}
 
 /**
  * Initialize empty home template without any default blocks
  * The B2B admin should manually create blocks in the builder
  * New structure: Creates a single document (version 1)
  */
-export async function initializeHomeTemplate() {
-  await connectToDatabase();
+export async function initializeHomeTemplate(tenantDb?: string) {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
   // Check if template already exists (any version)
-  const existing = await B2BHomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID });
+  const existing = await HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID });
 
   if (existing) {
     console.log("[initializeHomeTemplate] Home template already exists, skipping initialization");
@@ -24,7 +35,7 @@ export async function initializeHomeTemplate() {
   const now = new Date().toISOString();
 
   // Create empty initial version as a single document
-  const template = await B2BHomeTemplateModel.create({
+  const template = await HomeTemplateModel.create({
     templateId: HOME_TEMPLATE_ID,
     name: "Home Page",
     version: 1,

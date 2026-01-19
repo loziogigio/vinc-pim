@@ -4,9 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportSourceModel } from "@/lib/db/models/import-source";
-import { ImportJobModel } from "@/lib/db/models/import-job";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { connectWithModels } from "@/lib/db/connection";
 import { importQueue } from "@/lib/queue/queues";
 
 export async function POST(
@@ -14,9 +13,16 @@ export async function POST(
   { params }: { params: Promise<{ source_id: string }> }
 ) {
   try {
+    const session = await getB2BSession();
+    if (!session || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { source_id } = await params;
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ImportSource: ImportSourceModel, ImportJob: ImportJobModel } =
+      await connectWithModels(tenantDb);
 
     // Find the source
     const source = await ImportSourceModel.findOne({ source_id });

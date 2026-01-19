@@ -24,6 +24,41 @@ export type { MultilingualText };
 // Helper type for language codes (for stricter typing in function params)
 export type SupportedLanguage = string;
 
+// ============================================
+// REUSABLE PRICING TYPE
+// ============================================
+/**
+ * Pricing structure used for products and packaging options.
+ * - list: User's purchase/cost price (from price list)
+ * - retail: MSRP / suggested retail price (gross_price from ERP)
+ * - sale: Discounted price (price_discount from ERP)
+ * - currency: Currency code (EUR, USD, etc.)
+ * - vat_rate: VAT percentage (22, 10, 4, 0)
+ */
+export interface ProductPricing {
+  list: number;                   // User's purchase/cost price
+  retail?: number;                // MSRP / suggested retail price
+  sale?: number;                  // Discounted price (if applicable)
+  currency: string;               // Currency code (EUR, USD, etc.)
+  vat_rate?: number;              // VAT percentage (22, 10, 4, 0)
+}
+
+/**
+ * Partial pricing for packaging options (all fields optional)
+ * Supports reference-based pricing with discounts
+ */
+export interface PackagingPricing {
+  list?: number;                  // List price for this packaging
+  retail?: number;                // MSRP for this packaging
+  sale?: number;                  // Discounted price for this packaging
+  // Reference-based pricing fields
+  price_ref?: string;             // Reference packaging code (e.g., "PZ" for BOX)
+  list_discount_pct?: number;     // Percentage discount from retail to get list (e.g., 50 for -50%)
+  list_discount_amt?: number;     // Fixed amount discount from retail to get list (e.g., 5 for -€5)
+  sale_discount_pct?: number;     // Percentage discount from list to get sale (e.g., 10 for -10%)
+  sale_discount_amt?: number;     // Fixed amount discount from list to get sale (e.g., 5 for -€5)
+}
+
 export interface IPIMProduct extends Document {
   // ============================================
   // SECTION 1: PIM METADATA
@@ -55,6 +90,9 @@ export interface IPIMProduct extends Document {
     };
     imported_at: Date;
   };
+
+  // ERP Creation Date (when item was originally inserted in ERP)
+  item_creation_date?: Date;
 
   // Quality Score (0-100)
   completeness_score: number;
@@ -249,6 +287,22 @@ export interface IPIMProduct extends Document {
    */
   include_faceting?: boolean;
 
+  /**
+   * When true, this parent product's IMAGES will be
+   * appended to all child variants in search results.
+   * Only applicable to parent products (is_parent = true).
+   * Default: false
+   */
+  share_images_with_variants?: boolean;
+
+  /**
+   * When true, this parent product's ADDITIONAL MEDIA (documents, videos, 3D models)
+   * will be appended to all child variants in search results.
+   * Only applicable to parent products (is_parent = true).
+   * Default: false
+   */
+  share_media_with_variants?: boolean;
+
   // Additional Product Fields
   product_model?: string;
   ean?: string[];                         // EAN barcodes (array for multiple codes)
@@ -268,10 +322,10 @@ export interface IPIMProduct extends Document {
   dimension_length?: number; // Length (e.g., 26.8)
   dimension_uom?: string;    // Dimension unit of measure (e.g., "CM", "MM", "M")
 
-  // ERP Specific - Packaging Options
+  // ERP Specific - Packaging Options with embedded promotions
   packaging_options?: {
     id?: string;              // Optional unique ID
-    code: string;             // Packaging code (e.g., "MV", "IM", "CF", "PALLET")
+    code: string;             // Packaging code (e.g., "PZ", "BOX", "CF", "PALLET")
     label: MultilingualText;  // Multilingual: "it": "Pezzo singolo", "de": "Einzelstück", etc.
     qty: number;              // Quantity per packaging unit
     uom: string;              // Unit of measure (e.g., "PZ")
@@ -279,12 +333,34 @@ export interface IPIMProduct extends Document {
     is_smallest: boolean;     // Is this the smallest unit?
     ean?: string;             // EAN barcode (optional)
     position?: number;        // Display order (optional)
+    pricing?: PackagingPricing; // Optional pricing override for this packaging
+    // Promotions specific to this packaging option
+    promotions?: {
+      promo_code?: string;            // Promotion code (e.g., "016", "BREVE-SCAD")
+      promo_row?: number;             // Row number from ERP (for tracking/sorting)
+      is_active: boolean;
+      promo_type?: string;            // Business category (STD, XXX, OMG, EOL, BREVE-SCAD, etc.)
+      calc_method?: string;           // Calculation method (RPNQMIN, RQCSC, RVMSC, RCNA, RQCOE)
+      label: MultilingualText;        // Multilingual promotion label
+      language?: SupportedLanguage;   // Primary language of the promotion
+      discount_percentage?: number;   // Percentage discount (e.g., 20 for 20% off)
+      discount_amount?: number;       // Fixed amount discount (e.g., 10.00 for €10 off)
+      buy_x?: number;                 // Buy X quantity (for buy_x_get_y type)
+      get_y?: number;                 // Get Y quantity (for buy_x_get_y type)
+      is_stackable: boolean;          // Can be combined with other promotions
+      priority: number;               // Priority order (higher = more important)
+      start_date?: Date;              // Promotion start date
+      end_date?: Date;                // Promotion end date
+      min_quantity?: number;          // Minimum quantity to qualify
+      min_order_value?: number;       // Minimum order value to qualify
+      promo_price?: number;           // Final price when this promotion applies
+    }[];
   }[];
 
-  // Promotions (Denormalized for faceting/search - filtered at query time)
-  // Each promotion is language-specific with translated label
+  // Product-level promotions (legacy - prefer packaging-level promotions)
   promotions?: {
     promo_code?: string;            // Promotion code (e.g., "016")
+    promo_row?: number;             // Row number from ERP (for tracking/sorting)
     is_active: boolean;
     promo_type?: string;            // Business category (ctipo_dtpro: STD, XXX, OMG, EOL, etc.)
     calc_method?: string;           // Calculation method (ctipo_dprom: RPNQMIN, RQCSC, RVMSC, RCNA, RQCOE)
@@ -300,12 +376,16 @@ export interface IPIMProduct extends Document {
     end_date?: Date;                // Promotion end date
     min_quantity?: number;          // Minimum quantity to qualify
     min_order_value?: number;       // Minimum order value to qualify
+    promo_price?: number;           // Final price when this promotion applies
   }[];
 
   // Product-level promotion fields (for faceting/filtering)
   promo_code?: string[];            // Array of active promotion codes (e.g., ["016", "017"])
   promo_type?: string[];            // Array of business categories (ctipo_dtpro: STD, XXX, OMG, EOL, etc.)
   has_active_promo?: boolean;       // Has any active promotion
+
+  // Pricing (from ERP or manual entry)
+  pricing?: ProductPricing;
 
   // SEO
   meta_title?: MultilingualText;        // Multilingual: "it": "Bosch PSB 750 - Trapano...", etc.
@@ -376,6 +456,9 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     published_at: { type: Date },
 
     source: SourceSchema,
+
+    // ERP Creation Date (when item was originally inserted in ERP)
+    item_creation_date: { type: Date, index: true },
 
     completeness_score: { type: Number, min: 0, max: 100, index: true, default: 0 },
     critical_issues: [{ type: String }],
@@ -675,6 +758,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     is_parent: { type: Boolean, default: true },
     include_faceting: { type: Boolean, default: true },
+    share_images_with_variants: { type: Boolean, default: false },
+    share_media_with_variants: { type: Boolean, default: false },
 
     product_model: { type: String },
     ean: [{ type: String }],
@@ -708,17 +793,54 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         is_smallest: { type: Boolean, required: true, default: false },
         ean: { type: String },
         position: { type: Number },
+        // Pricing (PackagingPricing) with reference-based pricing support
+        pricing: {
+          list: { type: Number },
+          retail: { type: Number },
+          sale: { type: Number },
+          // Reference-based pricing fields
+          price_ref: { type: String },
+          list_discount_pct: { type: Number },
+          list_discount_amt: { type: Number },
+          sale_discount_pct: { type: Number },
+          sale_discount_amt: { type: Number },
+        },
+        // Promotions specific to this packaging option
+        promotions: [
+          {
+            promo_code: { type: String },
+            promo_row: { type: Number },             // Row number from ERP
+            is_active: { type: Boolean, required: true, default: true },
+            promo_type: { type: String },           // Business category (STD, XXX, OMG, EOL, BREVE-SCAD, etc.)
+            calc_method: { type: String },          // Calculation method (RPNQMIN, RQCSC, RVMSC, etc.)
+            label: MultilingualTextSchema,
+            language: { type: String },
+            discount_percentage: { type: Number },
+            discount_amount: { type: Number },
+            buy_x: { type: Number },
+            get_y: { type: Number },
+            is_stackable: { type: Boolean, required: true, default: false },
+            priority: { type: Number, required: true, default: 0 },
+            start_date: { type: Date },
+            end_date: { type: Date },
+            min_quantity: { type: Number },
+            min_order_value: { type: Number },
+            promo_price: { type: Number },          // Final price when this promotion applies
+          },
+        ],
       },
     ],
 
+    // Product-level promotions (legacy - prefer packaging-level promotions)
     promotions: [
       {
         promo_code: { type: String },
+        promo_row: { type: Number },                // Row number from ERP
         is_active: { type: Boolean, required: true, default: true },
-        promo_type: { type: String },             // Business category (STD, XXX, OMG, EOL, etc.)
-        calc_method: { type: String },            // Calculation method (RPNQMIN, RQCSC, RVMSC, etc.)
+        promo_type: { type: String },               // Business category (STD, XXX, OMG, EOL, etc.)
+        calc_method: { type: String },              // Calculation method (RPNQMIN, RQCSC, RVMSC, etc.)
         label: MultilingualTextSchema,
-        language: { type: String }, // Validated at runtime via middleware
+        language: { type: String },
         discount_percentage: { type: Number },
         discount_amount: { type: Number },
         buy_x: { type: Number },
@@ -729,6 +851,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         end_date: { type: Date },
         min_quantity: { type: Number },
         min_order_value: { type: Number },
+        promo_price: { type: Number },              // Final price when this promotion applies
       },
     ],
 
@@ -736,6 +859,15 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     promo_code: [{ type: String }],               // Array of active promotion codes
     promo_type: [{ type: String }],               // Array of business categories for faceting
     has_active_promo: { type: Boolean, default: false },
+
+    // Pricing (ProductPricing)
+    pricing: {
+      list: { type: Number },                     // User's purchase/cost price
+      retail: { type: Number },                   // MSRP / suggested retail price
+      sale: { type: Number },                     // Discounted price
+      currency: { type: String },                 // Currency code (EUR, USD, etc.)
+      vat_rate: { type: Number },                 // VAT percentage (22, 10, 4, 0)
+    },
 
     meta_title: MultilingualTextSchema,
     meta_description: MultilingualTextSchema,
@@ -757,6 +889,9 @@ PIMProductSchema.index({ entity_code: 1, isCurrent: 1 });
 PIMProductSchema.index({ status: 1, completeness_score: -1 });
 PIMProductSchema.index({ "analytics.priority_score": -1 });
 PIMProductSchema.index({ "source.source_id": 1, status: 1 });
+PIMProductSchema.index({ item_creation_date: -1 }); // For ERP insertion date sorting
+
+export { PIMProductSchema };
 
 export const PIMProductModel =
   mongoose.models.PIMProduct ||

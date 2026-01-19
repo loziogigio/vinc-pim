@@ -1,22 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { safeRegexQuery, safeRegexQueryWithMatchMode, sanitizeMongoQuery, type MatchMode } from "@/lib/security";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import crypto from "crypto";
 
 /**
  * GET /api/b2b/pim/products
  * List products with filtering and pagination
+ * Supports both session auth and API key auth
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      // Verify API key and secret
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "pim");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      // Require valid session authentication (no env var fallback)
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
     }
 
-    await connectToDatabase();
+    // Get tenant-specific models from connection pool
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -169,15 +189,35 @@ export async function GET(req: NextRequest) {
 /**
  * POST /api/b2b/pim/products
  * Create a new product manually
+ * Supports both session auth and API key auth
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      // Verify API key and secret
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "pim");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      // Require valid session authentication (no env var fallback)
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
     }
 
-    await connectToDatabase();
+    // Get tenant-specific models from connection pool
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { entity_code, sku, name, description, price, currency, category, brand, stock_status, quantity } = body;

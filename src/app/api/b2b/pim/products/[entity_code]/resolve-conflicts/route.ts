@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/resolve-conflicts
@@ -14,7 +13,7 @@ export async function POST(
   try {
     // Auth check
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -29,7 +28,8 @@ export async function POST(
     }
 
     // Connect to database
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // Find current product version
     const product = await PIMProductModel.findOne({

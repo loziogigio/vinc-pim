@@ -109,6 +109,8 @@ const ImportJobSchema = new Schema<IImportJob>(
 // Compound index for batch queries (no wholesaler_id - database provides isolation)
 ImportJobSchema.index({ batch_id: 1, batch_part: 1 });
 
+export { ImportJobSchema };
+
 export const ImportJobModel =
   mongoose.models.ImportJob ||
   mongoose.model<IImportJob>("ImportJob", ImportJobSchema);

@@ -98,6 +98,9 @@ const AssociationJobSchema = new Schema<IAssociationJob>(
 AssociationJobSchema.index({ status: 1 });
 AssociationJobSchema.index({ entity_type: 1, entity_id: 1 });
 
+// Export schema for model-registry
+export { AssociationJobSchema };
+
 export const AssociationJobModel =
   mongoose.models.AssociationJob ||
   mongoose.model<IAssociationJob>("AssociationJob", AssociationJobSchema);

@@ -1,4 +1,4 @@
-import { Schema, model, models, Document } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface ITag extends Document {
   tag_id: string;
@@ -82,4 +82,6 @@ TagSchema.pre("save", function (next) {
   next();
 });
 
-export const TagModel = models.Tag || model<ITag>("Tag", TagSchema);
+export { TagSchema };
+
+export const TagModel = mongoose.models.Tag || mongoose.model<ITag>("Tag", TagSchema);

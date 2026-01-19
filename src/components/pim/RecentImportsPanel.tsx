@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 type ImportJob = {
@@ -18,6 +19,9 @@ type ImportJob = {
 };
 
 export function RecentImportsPanel() {
+  const pathname = usePathname();
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
   const [jobs, setJobs] = useState<ImportJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -112,7 +116,7 @@ export function RecentImportsPanel() {
       )}
 
       <Link
-        href="/b2b/pim/jobs"
+        href={`${tenantPrefix}/b2b/pim/jobs`}
         className="mt-3 text-xs text-primary hover:underline block text-center"
       >
         View all imports →

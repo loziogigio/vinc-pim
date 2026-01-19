@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ProductTypeModel } from "@/lib/db/models/product-type";
-import { AssociationJobModel } from "@/lib/db/models/association-job";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 // POST /api/b2b/pim/product-types/[id]/import - Import product associations
@@ -12,11 +10,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ProductType: ProductTypeModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     // Await params (Next.js 15+)
     const { id } = await params;
@@ -134,7 +133,7 @@ export async function POST(
 
     // Process the job asynchronously (in background)
     // For now, we'll process immediately but in production this should use a queue
-    processAssociationJob(jobId, id, entityCodes, action, session.userId, productType).catch(err => {
+    processAssociationJob(jobId, id, entityCodes, action, tenantDb, productType).catch(err => {
       console.error("Error processing association job:", err);
     });
 
@@ -158,13 +157,11 @@ async function processAssociationJob(
   id: string,
   entityCodes: string[],
   action: string,
-  wholesalerId: string,
+  tenantDb: string,
   productType: any
 ) {
   try {
-    await connectToDatabase();
-
-    const { PIMProductModel } = await import("@/lib/db/models/pim-product");
+    const { PIMProduct: PIMProductModel, ProductType: ProductTypeModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     // Update job status to processing
     await AssociationJobModel.updateOne(
@@ -241,7 +238,6 @@ async function processAssociationJob(
     }
 
     // Update product type product count (no wholesaler_id - database provides isolation)
-    const { ProductTypeModel } = await import("@/lib/db/models/product-type");
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
       "product_type.id": id,
@@ -268,15 +264,21 @@ async function processAssociationJob(
   } catch (error: any) {
     console.error("Error in processAssociationJob:", error);
 
-    await AssociationJobModel.updateOne(
-      { job_id: jobId },
-      {
-        $set: {
-          status: "failed",
-          completed_at: new Date(),
-          errors: [{ item: "system", error: error.message }],
-        },
-      }
-    );
+    // Need to get model again for error handling
+    try {
+      const { AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
+      await AssociationJobModel.updateOne(
+        { job_id: jobId },
+        {
+          $set: {
+            status: "failed",
+            completed_at: new Date(),
+            errors: [{ item: "system", error: error.message }],
+          },
+        }
+      );
+    } catch (innerError) {
+      console.error("Failed to update job status:", innerError);
+    }
   }
 }

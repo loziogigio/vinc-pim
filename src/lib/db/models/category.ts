@@ -117,5 +117,8 @@ CategorySchema.index({ slug: 1 }, { unique: true });
 // Index for hierarchy queries
 CategorySchema.index({ parent_id: 1, display_order: 1 });
 
+// Export schema for model-registry
+export { CategorySchema };
+
 export const CategoryModel =
   mongoose.models.Category || mongoose.model<ICategory>("Category", CategorySchema);

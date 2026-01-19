@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/publish
@@ -13,11 +12,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;

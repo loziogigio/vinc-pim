@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { MenuItemModel } from "@/lib/db/models/menu";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/b2b/menu/[id]
@@ -13,11 +12,12 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
 
@@ -53,11 +53,12 @@ export async function PATCH(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const body = await req.json();
@@ -200,11 +201,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const { searchParams } = new URL(req.url);

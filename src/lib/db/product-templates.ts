@@ -1,14 +1,26 @@
-import { connectToDatabase } from "./connection";
-import { ProductTemplateModel, type ProductTemplateDocument } from "./models/product-template";
+import { connectWithModels, autoDetectTenantDb } from "./connection";
+import type { ProductTemplateDocument } from "./models/product-template";
+import type mongoose from "mongoose";
+
+/**
+ * Get the ProductTemplate model for the current tenant database
+ * Uses auto-detection from headers/session if tenantDb not provided
+ */
+async function getProductTemplateModel(tenantDb?: string): Promise<mongoose.Model<ProductTemplateDocument>> {
+  const dbName = tenantDb ?? await autoDetectTenantDb();
+  const models = await connectWithModels(dbName);
+  return models.ProductTemplate as mongoose.Model<ProductTemplateDocument>;
+}
 
 /**
  * Get or create a product-specific template
  * Used by product-builder when editing a specific product
  */
 export const getOrCreateProductTemplate = async (
-  productId: string
+  productId: string,
+  tenantDb?: string
 ): Promise<ProductTemplateDocument> => {
-  await connectToDatabase();
+  const ProductTemplateModel = await getProductTemplateModel(tenantDb);
 
   const templateId = `product-${productId}`;
 
@@ -43,8 +55,8 @@ export const getOrCreateProductTemplate = async (
 /**
  * Get or create default product template
  */
-export const getOrCreateDefaultTemplate = async (): Promise<ProductTemplateDocument> => {
-  await connectToDatabase();
+export const getOrCreateDefaultTemplate = async (tenantDb?: string): Promise<ProductTemplateDocument> => {
+  const ProductTemplateModel = await getProductTemplateModel(tenantDb);
 
   let template = await ProductTemplateModel.findOne({
     templateId: "default-product-detail",
@@ -75,10 +87,10 @@ export const getOrCreateDefaultTemplate = async (): Promise<ProductTemplateDocum
  * Get product template config for product-builder
  * Returns in PageConfig format that the builder expects
  */
-export const getProductTemplateConfig = async (productId: string): Promise<any> => {
+export const getProductTemplateConfig = async (productId: string, tenantDb?: string): Promise<any> => {
   const template = productId === "default"
-    ? await getOrCreateDefaultTemplate()
-    : await getOrCreateProductTemplate(productId);
+    ? await getOrCreateDefaultTemplate(tenantDb)
+    : await getOrCreateProductTemplate(productId, tenantDb);
 
   // Transform to PageConfig format expected by builder
   return {
@@ -99,8 +111,8 @@ export const saveProductTemplate = async (input: {
   slug: string;
   blocks: any[];
   seo?: any;
-}): Promise<any> => {
-  await connectToDatabase();
+}, tenantDb?: string): Promise<any> => {
+  const ProductTemplateModel = await getProductTemplateModel(tenantDb);
 
   const { slug, blocks, seo } = input;
 
@@ -116,8 +128,8 @@ export const saveProductTemplate = async (input: {
   }
 
   const template = productId === "default"
-    ? await getOrCreateDefaultTemplate()
-    : await getOrCreateProductTemplate(productId);
+    ? await getOrCreateDefaultTemplate(tenantDb)
+    : await getOrCreateProductTemplate(productId, tenantDb);
 
   const now = new Date().toISOString();
 
@@ -165,14 +177,14 @@ export const saveProductTemplate = async (input: {
   );
 
   // Return updated config
-  return getProductTemplateConfig(productId);
+  return getProductTemplateConfig(productId, tenantDb);
 };
 
 /**
  * Publish product template draft
  */
-export const publishProductTemplate = async (slug: string): Promise<any> => {
-  await connectToDatabase();
+export const publishProductTemplate = async (slug: string, tenantDb?: string): Promise<any> => {
+  const ProductTemplateModel = await getProductTemplateModel(tenantDb);
 
   // Extract productId from slug (same logic as saveProductTemplate)
   let productId = "default";
@@ -230,5 +242,5 @@ export const publishProductTemplate = async (slug: string): Promise<any> => {
     }
   );
 
-  return getProductTemplateConfig(productId);
+  return getProductTemplateConfig(productId, tenantDb);
 };

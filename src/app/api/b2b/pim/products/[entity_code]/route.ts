@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { ProductTypeModel } from "@/lib/db/models/product-type";
-import { FeatureModel } from "@/lib/db/models/feature";
-import { TagModel } from "@/lib/db/models/tag";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -19,12 +16,27 @@ export async function GET(
   { params }: { params: Promise<{ entity_code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantDb: string;
 
-    await connectToDatabase();
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "read");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+    const { PIMProduct: PIMProductModel, ProductType: ProductTypeModel, Feature: FeatureModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;
@@ -170,22 +182,21 @@ export async function PATCH(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel, Tag: TagModel, Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;
     const updates = await req.json();
 
-    console.log("📥 PATCH received updates for", entity_code, ":", {
-      product_type: updates.product_type,
-      collections: updates.collections,
-      attributes: updates.attributes,
-      tags: updates.tags,
-      synonym_keys: updates.synonym_keys,
+    console.log("📥 PATCH received updates for", entity_code, "- ALL keys:", Object.keys(updates));
+    console.log("📥 PATCH share flags:", {
+      share_images_with_variants: updates.share_images_with_variants,
+      share_media_with_variants: updates.share_media_with_variants,
     });
 
     // Build update document
@@ -212,6 +223,8 @@ export async function PATCH(
       "weight",
       "tags",
       "synonym_keys",
+      "share_images_with_variants",
+      "share_media_with_variants",
     ];
 
     allowedFields.forEach((field) => {
@@ -253,12 +266,10 @@ export async function PATCH(
       delete updateDoc.stock_quantity;
     }
 
-    console.log("💿 updateDoc being sent to MongoDB:", {
-      product_type: updateDoc.product_type,
-      collections: updateDoc.collections,
-      attributes: updateDoc.attributes,
-      tags: updateDoc.tags,
-      synonym_keys: updateDoc.synonym_keys,
+    console.log("💿 updateDoc keys being sent to MongoDB:", Object.keys(updateDoc));
+    console.log("💿 updateDoc share flags:", {
+      share_images_with_variants: updateDoc.share_images_with_variants,
+      share_media_with_variants: updateDoc.share_media_with_variants,
     });
 
     // Get the old product to check if brand changed
@@ -318,8 +329,6 @@ export async function PATCH(
 
     // Update brand product counts if brand changed
     if (oldBrandId !== newBrandId) {
-      const { BrandModel } = await import("@/lib/db/models/brand");
-
       // Update old brand count (decrease)
       if (oldBrandId) {
         const oldBrandCount = await PIMProductModel.countDocuments({
@@ -402,11 +411,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;

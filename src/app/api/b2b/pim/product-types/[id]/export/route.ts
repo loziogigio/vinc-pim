@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { ProductTypeModel } from "@/lib/db/models/product-type";
+import { connectWithModels } from "@/lib/db/connection";
 
 // GET /api/b2b/pim/product-types/[id]/export - Export products
 export async function GET(
@@ -11,11 +9,12 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // Await params (Next.js 15+)
     const { id } = await params;

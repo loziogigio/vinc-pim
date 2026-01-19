@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ActivityLogModel } from "@/lib/db/models/activity-log";
-import { B2BUserModel } from "@/lib/db/models/b2b-user";
+import { connectWithModels } from "@/lib/db/connection";
 
 export async function GET() {
   try {
     const session = await getB2BSession();
 
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ActivityLog: ActivityLogModel, B2BUser: B2BUserModel } = await connectWithModels(tenantDb);
 
     // Fetch recent activities with limit
     const activities = await ActivityLogModel.find()

@@ -4,15 +4,31 @@
  */
 
 import { Worker, Job } from 'bullmq';
-import { connectToDatabase } from '../db/connection';
-import { PIMProductModel } from '../db/models/pim-product';
+import { connectWithModels } from '../db/connection';
 import { initializeAdapters, MarketplaceAdapter } from '../adapters';
 import { SyncJobData, SyncOperation } from '../adapters/types';
 
 /**
- * Global adapters map (initialized once)
+ * Per-tenant adapters cache
+ * Key: tenant_id (or 'default' for no tenant)
  */
-let adapters: Map<string, MarketplaceAdapter> | null = null;
+const tenantAdapters: Map<string, Map<string, MarketplaceAdapter>> = new Map();
+
+/**
+ * Get or initialize adapters for a specific tenant
+ */
+async function getAdaptersForTenant(tenantId?: string): Promise<Map<string, MarketplaceAdapter>> {
+  const cacheKey = tenantId || 'default';
+
+  if (!tenantAdapters.has(cacheKey)) {
+    console.log(`📦 Initializing marketplace adapters for tenant: ${cacheKey}...`);
+    const adapters = await initializeAdapters(tenantId);
+    tenantAdapters.set(cacheKey, adapters);
+    console.log(`✓ Initialized ${adapters.size} adapters for tenant: ${cacheKey}`);
+  }
+
+  return tenantAdapters.get(cacheKey)!;
+}
 
 /**
  * Sync job result
@@ -44,6 +60,9 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
   console.log(`   Product${product_ids ? 's' : ''}: ${product_ids ? `${product_ids.length} products` : product_id}`);
   console.log(`   Operation: ${operation}`);
   console.log(`   Channels: ${channels.join(', ')}`);
+  if (tenant_id) {
+    console.log(`   Tenant: ${tenant_id}`);
+  }
   if (batch_id) {
     console.log(`   Batch ID: ${batch_id}`);
   }
@@ -51,20 +70,22 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
     console.log(`   Batch Part: ${batch_metadata.batch_part}/${batch_metadata.batch_total_parts}`);
   }
 
-  // Connect to database
-  await connectToDatabase();
+  // Validate tenant_id - workers must have a tenant
+  if (!tenant_id) {
+    throw new Error('Sync job requires tenant_id - cannot process without tenant context');
+  }
+
+  // Connect to database for the specific tenant
+  const tenantDb = `vinc-${tenant_id}`;
+  const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
   // Handle bulk language indexing operation specially
   if (operation === 'bulk-index-language' && language) {
     console.log(`\n🔍 Bulk indexing products for language: ${language}`);
     console.log(`   Estimated products: ${productCount || 'unknown'}`);
 
-    // Initialize adapters if not already done
-    if (!adapters) {
-      console.log('📦 Initializing marketplace adapters...');
-      adapters = await initializeAdapters();
-      console.log(`✓ Initialized ${adapters.size} adapters`);
-    }
+    // Get tenant-specific adapters
+    const adapters = await getAdaptersForTenant(tenant_id);
 
     const solrAdapter = adapters.get('solr');
     if (!solrAdapter) {
@@ -131,12 +152,8 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
   if (operation === 'bulk-sync' && product_ids && product_ids.length > 0) {
     console.log(`\n📦 Bulk syncing ${product_ids.length} products`);
 
-    // Initialize adapters if not already done
-    if (!adapters) {
-      console.log('📦 Initializing marketplace adapters...');
-      adapters = await initializeAdapters();
-      console.log(`✓ Initialized ${adapters.size} adapters`);
-    }
+    // Get tenant-specific adapters
+    const adapters = await getAdaptersForTenant(tenant_id);
 
     // Fetch all products
     const products = await PIMProductModel.find({
@@ -237,12 +254,8 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
     };
   }
 
-  // Initialize adapters if not already done
-  if (!adapters) {
-    console.log('📦 Initializing marketplace adapters...');
-    adapters = await initializeAdapters();
-    console.log(`✓ Initialized ${adapters.size} adapters`);
-  }
+  // Get tenant-specific adapters
+  const adapters = await getAdaptersForTenant(tenant_id);
 
   const results: SyncJobResult['results'] = [];
 

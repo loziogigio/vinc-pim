@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { BrandModel } from "@/lib/db/models/brand";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 // GET /api/b2b/pim/brands - List all brands with filtering
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -70,11 +70,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { label, slug, description, logo_url, website_url, is_active, display_order } = body;

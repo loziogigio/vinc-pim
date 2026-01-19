@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { CollectionModel } from "@/lib/db/models/collection";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 
 // GET /api/b2b/pim/collections/[collectionId]/products - Get products for a collection
@@ -12,11 +10,13 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Collection: CollectionModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+
     const { id: collectionId } = await params;
 
     const { searchParams } = new URL(req.url);
@@ -85,11 +85,13 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Collection: CollectionModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+
     const { id: collectionId } = await params;
 
     const body = await req.json();

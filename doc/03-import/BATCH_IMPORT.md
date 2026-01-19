@@ -375,6 +375,9 @@ interface PIMProduct {
   special_price?: number;           // Sale price
   cost?: number;                    // Cost price
 
+  // Packaging & Pricing (see Pricing & Packaging API for full details)
+  packaging_options?: PackagingOption[];  // Multiple packaging options with pricing
+
   // Inventory
   stock_quantity: number;           // Available quantity
   manage_stock?: boolean;           // Enable stock management
@@ -471,7 +474,49 @@ interface ProductMedia {
 
 // Attribute value type
 type AttributeValue = string | number | boolean | string[] | MultilingualString;
+
+// Packaging option with reference-based pricing
+interface PackagingOption {
+  code: string;                       // Packaging code (e.g., "PZ", "BOX", "CF")
+  label?: MultilingualString;         // Multilingual label
+  qty: number;                        // Quantity per packaging unit
+  uom: string;                        // Unit of measure (e.g., "PZ")
+  is_default: boolean;                // Is this the default packaging?
+  is_smallest: boolean;               // Is this the smallest unit?
+  ean?: string;                       // EAN barcode
+  position?: number;                  // Display order
+  pricing?: {
+    list?: number;                    // List price (B2B cost)
+    retail?: number;                  // Retail price (MSRP)
+    sale?: number;                    // Sale/discounted price
+    price_ref?: string;               // Reference packaging code (e.g., "PZ")
+    list_discount_pct?: number;       // % discount from retail to list
+    list_discount_amt?: number;       // Fixed discount from retail to list
+    sale_discount_pct?: number;       // % discount from list to sale
+    sale_discount_amt?: number;       // Fixed discount from list to sale
+  };
+  promotions?: PackagingPromotion[];  // Packaging-level promotions
+}
+
+// Promotion tied to packaging option
+interface PackagingPromotion {
+  promo_code: string;                 // Promotion code identifier
+  promo_row?: number;                 // Row number from ERP
+  is_active: boolean;                 // Is promotion currently active?
+  promo_type?: string;                // Business category (STD, XXX, OMG, EOL)
+  label?: MultilingualString;         // Promotion label
+  discount_percentage?: number;       // Percentage discount
+  discount_amount?: number;           // Fixed amount discount
+  promo_price?: number;               // Final promotional price
+  min_quantity?: number;              // Minimum quantity required
+  start_date?: string;                // Promotion start date (ISO 8601)
+  end_date?: string;                  // Promotion end date (ISO 8601)
+  is_stackable?: boolean;             // Can stack with same promo_code?
+  priority?: number;                  // Priority (lower = higher)
+}
 ```
+
+> **For complete Pricing & Packaging documentation, see: [Pricing & Packaging API](../02-api/pricing-packaging-api.md)**
 
 ### Entity Schemas
 
@@ -1565,6 +1610,7 @@ A: Use the same endpoint with the existing `entity_code`. The system will update
 
 ## 📚 See Also
 
+- **[Pricing & Packaging API](../02-api/pricing-packaging-api.md)** - Reference-based pricing, packaging options, and packaging-level promotions
 - **[Multichannel Sync Guide](../05-integrations/MULTICHANNEL_SYNC.md)** - Complete guide to syncing products to marketplaces (eBay, Amazon, B2B, B2C, etc.)
 - **[Channel Metadata](../05-integrations/MULTICHANNEL_SYNC.md#5-channel-specific-metadata-tenant-id-store-id)** - How to specify tenant IDs and store IDs for multi-tenant/multi-store setups
 

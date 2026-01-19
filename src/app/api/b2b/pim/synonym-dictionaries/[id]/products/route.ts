@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { SynonymDictionaryModel } from "@/lib/db/models/synonym-dictionary";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
+import { Model } from "mongoose";
 
 /**
  * Sync products to Solr after synonym_keys change
  */
-async function syncProductsToSolr(entityCodes: string[]): Promise<{ synced: number; errors: string[] }> {
+async function syncProductsToSolr(
+  entityCodes: string[],
+  PIMProductModel: Model<any>
+): Promise<{ synced: number; errors: string[] }> {
   const adapterConfigs = loadAdapterConfigs();
   if (!adapterConfigs.solr?.enabled) {
     return { synced: 0, errors: ["Solr is not enabled"] };
@@ -46,11 +48,12 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const { searchParams } = new URL(req.url);
@@ -118,11 +121,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const body = await req.json();
@@ -165,8 +169,8 @@ export async function POST(
     // Sync affected products to Solr
     let solrSync = { synced: 0, errors: [] as string[] };
     if (result.modifiedCount > 0) {
-      solrSync = await syncProductsToSolr(entity_codes);
-      console.log(`🔄 Synced ${solrSync.synced} products to Solr after adding to dictionary "${dictionary.key}"`);
+      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel);
+      console.log(`Synced ${solrSync.synced} products to Solr after adding to dictionary "${dictionary.key}"`);
     }
 
     return NextResponse.json({
@@ -194,11 +198,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const body = await req.json();
@@ -240,8 +245,8 @@ export async function DELETE(
     // Sync affected products to Solr
     let solrSync = { synced: 0, errors: [] as string[] };
     if (result.modifiedCount > 0) {
-      solrSync = await syncProductsToSolr(entity_codes);
-      console.log(`🔄 Synced ${solrSync.synced} products to Solr after removing from dictionary "${dictionary.key}"`);
+      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel);
+      console.log(`Synced ${solrSync.synced} products to Solr after removing from dictionary "${dictionary.key}"`);
     }
 
     return NextResponse.json({

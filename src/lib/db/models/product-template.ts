@@ -1,4 +1,4 @@
-import { Schema, models, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 const BlockSchema = new Schema(
   {
@@ -87,4 +87,6 @@ export type ProductTemplateDocument = InferSchemaType<typeof ProductTemplateSche
   }>;
 };
 
-export const ProductTemplateModel = models.ProductTemplate ?? model("ProductTemplate", ProductTemplateSchema);
+export { ProductTemplateSchema };
+
+export const ProductTemplateModel = mongoose.models.ProductTemplate ?? mongoose.model("ProductTemplate", ProductTemplateSchema);

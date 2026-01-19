@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { use, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -21,7 +21,14 @@ import { MultilingualInput } from "@/components/pim/MultilingualInput";
 import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
 import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { useLanguageStore } from "@/lib/stores/languageStore";
-import { ProductImage, extractAttributesForLanguage, mergeAttributesToMultilingual } from "@/lib/types/pim";
+import {
+  ProductImage,
+  extractAttributesForLanguage,
+  mergeAttributesToMultilingual,
+  PIMPricing,
+  PackagingOption,
+  Promotion,
+} from "@/lib/types/pim";
 import {
   ArrowLeft,
   Save,
@@ -55,6 +62,13 @@ type Product = {
   short_description?: string | Record<string, string>;
   price?: number;
   currency?: string;
+  // ERP pricing structure (from pim.ts)
+  pricing?: PIMPricing;
+  packaging_options?: PackagingOption[];
+  promotions?: Promotion[];
+  promo_code?: string[];
+  promo_type?: string[];
+  has_active_promo?: boolean;
   quantity: number;
   status: "draft" | "published" | "archived";
   images?: ProductImage[];
@@ -122,6 +136,8 @@ type Product = {
   parent_entity_code?: string;
   is_parent?: boolean;
   include_faceting?: boolean;
+  share_images_with_variants?: boolean;
+  share_media_with_variants?: boolean;
   variations_sku?: string[];
   variations_entity_code?: string[];
 };
@@ -181,6 +197,9 @@ export default function ProductDetailPage({
   const { entity_code } = use(params);
   const { version: versionParam } = use(searchParams);
   const router = useRouter();
+  const pathname = usePathname();
+  // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/pim/products/..." -> "/dfl-eventi-it")
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
   // Language store for getting default language from database
   const { languages } = useLanguageStore();
@@ -636,7 +655,7 @@ export default function ProductDetailPage({
       });
       if (res.ok) {
         toast.success("Product deleted");
-        router.push("/b2b/pim/products");
+        router.push(`${tenantPrefix}/b2b/pim/products`);
       } else {
         const error = await res.json();
         toast.error("Failed to delete", { description: error.error });
@@ -1020,7 +1039,7 @@ export default function ProductDetailPage({
             The product you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.
           </p>
           <Link
-            href="/b2b/pim/products"
+            href={`${tenantPrefix}/b2b/pim/products`}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -1047,7 +1066,7 @@ export default function ProductDetailPage({
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Link
-              href="/b2b/pim/products"
+              href={`${tenantPrefix}/b2b/pim/products`}
               className="text-muted-foreground hover:text-foreground transition"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -1061,7 +1080,7 @@ export default function ProductDetailPage({
 
         <div className="flex items-center gap-2">
           <Link
-            href={`/b2b/pim/products/${entity_code}/history`}
+            href={`${tenantPrefix}/b2b/pim/products/${entity_code}/history`}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
           >
             <History className="h-4 w-4" />
@@ -1164,7 +1183,7 @@ export default function ProductDetailPage({
               </div>
             </div>
             <Link
-              href={`/b2b/pim/products/${entity_code}`}
+              href={`${tenantPrefix}/b2b/pim/products/${entity_code}`}
               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium transition whitespace-nowrap"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -1350,7 +1369,7 @@ export default function ProductDetailPage({
           <div className="rounded-lg bg-card p-4 shadow-sm">
             <LanguageSwitcher variant="compact" showLabel={true} />
           </div>
-          {(product.parent_entity_code || product.is_parent || (product.variations_entity_code && product.variations_entity_code.length > 0)) && (
+          {(product.parent_entity_code || product.is_parent || (product.variations_entity_code?.length ?? 0) > 0) && (
             <div className="rounded-lg bg-card p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-foreground mb-4">Variant Information</h3>
               <div className="space-y-3">
@@ -1380,7 +1399,7 @@ export default function ProductDetailPage({
                     <div className="text-xs font-medium text-muted-foreground mb-1">Parent Product</div>
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/b2b/pim/products/${product.parent_entity_code}`}
+                        href={`${tenantPrefix}/b2b/pim/products/${product.parent_entity_code}`}
                         className="text-sm font-medium text-primary hover:underline"
                       >
                         {product.parent_entity_code}
@@ -1393,7 +1412,7 @@ export default function ProductDetailPage({
                 )}
 
                 {/* Child Variants */}
-                {product.variations_entity_code && product.variations_entity_code.length > 0 && (
+                {(product.variations_entity_code?.length ?? 0) > 0 && (
                   <div className="p-3 bg-muted/50 rounded-lg border">
                     <div className="text-xs font-medium text-muted-foreground mb-2">
                       Child Variants ({product.variations_entity_code.length})
@@ -1402,7 +1421,7 @@ export default function ProductDetailPage({
                       {product.variations_entity_code.map((code, idx) => (
                         <Link
                           key={code}
-                          href={`/b2b/pim/products/${code}`}
+                          href={`${tenantPrefix}/b2b/pim/products/${code}`}
                           className="px-2 py-1 text-xs bg-background rounded border hover:bg-muted transition-colors"
                         >
                           {code}
@@ -1411,6 +1430,326 @@ export default function ProductDetailPage({
                           )}
                         </Link>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Share with Variants - only for parents */}
+                {(product.is_parent || (product.variations_entity_code?.length ?? 0) > 0) && (
+                  <div className="mt-4 pt-4 border-t border-border space-y-3">
+                    <p className="text-sm font-medium text-foreground">Share with Variants</p>
+
+                    {/* Share Images */}
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={product.share_images_with_variants === true}
+                        onChange={async (e) => {
+                          const newValue = e.target.checked;
+                          try {
+                            const res = await fetch(`/api/b2b/pim/products/${product.entity_code}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ share_images_with_variants: newValue }),
+                            });
+                            if (res.ok) {
+                              setProduct({ ...product, share_images_with_variants: newValue });
+                              toast.success(newValue ? "Images will be shared with variants" : "Images sharing disabled");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to update setting");
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <div>
+                        <span className="text-sm text-foreground">Product Images</span>
+                        <p className="text-xs text-muted-foreground">Append parent&apos;s images to all variants</p>
+                      </div>
+                    </label>
+
+                    {/* Share Additional Media */}
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={product.share_media_with_variants === true}
+                        onChange={async (e) => {
+                          const newValue = e.target.checked;
+                          try {
+                            const res = await fetch(`/api/b2b/pim/products/${product.entity_code}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ share_media_with_variants: newValue }),
+                            });
+                            if (res.ok) {
+                              setProduct({ ...product, share_media_with_variants: newValue });
+                              toast.success(newValue ? "Media will be shared with variants" : "Media sharing disabled");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to update setting");
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <div>
+                        <span className="text-sm text-foreground">Additional Media</span>
+                        <p className="text-xs text-muted-foreground">Append parent&apos;s documents, videos, 3D models to all variants</p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Pricing & Packaging - Show if pricing or packaging data exists */}
+          {(product.pricing || (product.packaging_options && product.packaging_options.length > 0) || (product.promotions && product.promotions.length > 0)) && (
+            <div className="rounded-lg bg-card p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
+                Pricing & Packaging
+              </h3>
+              <div className="space-y-6">
+                {/* Product Pricing - Show default packaging pricing, fallback to product.pricing */}
+                {(() => {
+                  // Find default packaging option for pricing display
+                  const defaultPkg = product.packaging_options?.find((p: any) => p.is_default);
+                  const displayPricing = defaultPkg?.pricing || product.pricing;
+                  const currency = product.pricing?.currency || "EUR";
+                  const vatRate = product.pricing?.vat_rate;
+
+                  if (!displayPricing) return null;
+
+                  return (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                        Product Pricing {defaultPkg && <span className="text-xs font-normal">({defaultPkg.code})</span>}
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {displayPricing.list !== undefined && (
+                          <div className="p-3 bg-muted/50 rounded-lg border">
+                            <div className="text-xs text-muted-foreground mb-1">List Price</div>
+                            <div className="text-lg font-semibold text-foreground">
+                              {currency === "EUR" ? "€" : currency}{displayPricing.list?.toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                        {displayPricing.retail !== undefined && (
+                          <div className="p-3 bg-muted/50 rounded-lg border">
+                            <div className="text-xs text-muted-foreground mb-1">Retail (MSRP)</div>
+                            <div className="text-lg font-semibold text-foreground">
+                              {currency === "EUR" ? "€" : currency}{displayPricing.retail?.toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                        {displayPricing.sale !== undefined && (
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <div className="text-xs text-emerald-700 dark:text-emerald-400 mb-1">Sale Price</div>
+                            <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                              {currency === "EUR" ? "€" : currency}{displayPricing.sale?.toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                        <div className="p-3 bg-muted/50 rounded-lg border">
+                          <div className="text-xs text-muted-foreground mb-1">Currency</div>
+                          <div className="text-lg font-semibold text-foreground">{currency}</div>
+                        </div>
+                        {vatRate !== undefined && (
+                          <div className="p-3 bg-muted/50 rounded-lg border">
+                            <div className="text-xs text-muted-foreground mb-1">VAT Rate</div>
+                            <div className="text-lg font-semibold text-foreground">{vatRate}%</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Packaging Options */}
+                {product.packaging_options && product.packaging_options.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                      Packaging Options ({product.packaging_options.length})
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Code</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Qty</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">UOM</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">List</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Retail</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Sale</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">List Disc.</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sale Disc.</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ref</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Flags</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {product.packaging_options.map((pkg, idx) => (
+                            <tr key={pkg.code + idx} className={`border-b border-border/50 ${pkg.is_default ? "bg-primary/5" : ""}`}>
+                              <td className="py-2 px-3 font-mono text-foreground">{pkg.code}</td>
+                              <td className="py-2 px-3 text-foreground">
+                                {getMultilingualText(pkg.label, defaultLanguageCode, pkg.code)}
+                              </td>
+                              <td className="py-2 px-3 text-right text-foreground">{pkg.qty}</td>
+                              <td className="py-2 px-3 text-foreground">{pkg.uom}</td>
+                              <td className="py-2 px-3 text-right text-foreground">
+                                {pkg.pricing?.list ? `€${pkg.pricing.list.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right text-foreground">
+                                {pkg.pricing?.retail ? `€${pkg.pricing.retail.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right text-emerald-600 font-medium">
+                                {pkg.pricing?.sale ? `€${pkg.pricing.sale.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-center text-muted-foreground text-xs">
+                                {pkg.pricing?.list_discount_pct
+                                  ? `-${pkg.pricing.list_discount_pct}%`
+                                  : pkg.pricing?.list_discount_amt
+                                    ? `-€${pkg.pricing.list_discount_amt}`
+                                    : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-center text-muted-foreground text-xs">
+                                {pkg.pricing?.sale_discount_pct
+                                  ? `-${pkg.pricing.sale_discount_pct}%`
+                                  : pkg.pricing?.sale_discount_amt
+                                    ? `-€${pkg.pricing.sale_discount_amt}`
+                                    : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-center font-mono text-muted-foreground">
+                                {pkg.pricing?.price_ref || "—"}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {pkg.is_default && (
+                                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded">Default</span>
+                                  )}
+                                  {pkg.is_smallest && (
+                                    <span className="px-1.5 py-0.5 bg-muted text-muted-foreground text-xs rounded">Smallest</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Promotions Table - Collect from all packaging options */}
+                {product.packaging_options && product.packaging_options.some(pkg => pkg.promotions && pkg.promotions.filter(p => p.is_active).length > 0) && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                      Promotions ({product.packaging_options.reduce((count, pkg) => count + (pkg.promotions?.filter(p => p.is_active).length || 0), 0)})
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Packaging</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Promo Code</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Discount</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Min Qty</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Promo Price</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Start Date</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">End Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {product.packaging_options.flatMap((pkg, pkgIdx) =>
+                            (pkg.promotions || []).filter(p => p.is_active).map((promo, promoIdx) => (
+                              <tr key={`${pkg.code}-${promo.promo_code || promoIdx}`} className="border-b border-border/50">
+                                <td className="py-2 px-3 font-mono text-foreground">{pkg.code}</td>
+                                <td className="py-2 px-3">
+                                  {promo.promo_code && (
+                                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-mono rounded">
+                                      {promo.promo_code}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 text-foreground">
+                                  {promo.label
+                                    ? getMultilingualText(promo.label, defaultLanguageCode, promo.promo_type || "Promo")
+                                    : promo.promo_type || "Promo"}
+                                </td>
+                                <td className="py-2 px-3 text-right text-foreground">
+                                  {promo.discount_percentage ? `-${promo.discount_percentage}%` : "—"}
+                                </td>
+                                <td className="py-2 px-3 text-right text-foreground">
+                                  {promo.min_quantity || "—"}
+                                </td>
+                                <td className="py-2 px-3 text-right text-emerald-600 font-medium">
+                                  {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
+                                </td>
+                                <td className="py-2 px-3 text-muted-foreground">
+                                  {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}
+                                </td>
+                                <td className="py-2 px-3 text-muted-foreground">
+                                  {promo.end_date ? new Date(promo.end_date).toLocaleDateString() : "—"}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Legacy Product-level Promotions (for backwards compatibility) */}
+                {product.promotions && product.promotions.filter(p => p.is_active).length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                      Product Promotions ({product.promotions.filter(p => p.is_active).length})
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Promo Code</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Discount</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Promo Price</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Start Date</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">End Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {product.promotions.filter(p => p.is_active).map((promo, idx) => (
+                            <tr key={promo.promo_code || idx} className="border-b border-border/50">
+                              <td className="py-2 px-3">
+                                {promo.promo_code && (
+                                  <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-mono rounded">
+                                    {promo.promo_code}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-foreground">
+                                {promo.label
+                                  ? getMultilingualText(promo.label, defaultLanguageCode, promo.promo_type || "Promotion")
+                                  : promo.promo_type || "Promotion"}
+                              </td>
+                              <td className="py-2 px-3 text-right text-foreground">
+                                {promo.discount_percentage ? `-${promo.discount_percentage}%` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right text-emerald-600 font-medium">
+                                {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-muted-foreground">
+                                {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-muted-foreground">
+                                {promo.end_date ? new Date(promo.end_date).toLocaleDateString() : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}

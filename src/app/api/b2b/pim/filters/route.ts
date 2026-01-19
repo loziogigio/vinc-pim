@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/b2b/pim/filters
@@ -10,11 +9,12 @@ import { PIMProductModel } from "@/lib/db/models/pim-product";
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type"); // brand, category, currency
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     switch (type) {
       case "brand":
         // Get distinct brand names
-        const brands = await PIMProductModel.distinct("brand.name", {
+        const brands = await PIMProduct.distinct("brand.name", {
           ...query,
           "brand.name": { $exists: true, $ne: null, $nin: [""] },
           ...(search && { "brand.name": { $regex: search, $options: "i" } }),
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
       case "category":
         // Get distinct category names
-        const categories = await PIMProductModel.distinct("category.name", {
+        const categories = await PIMProduct.distinct("category.name", {
           ...query,
           "category.name": { $exists: true, $ne: null, $nin: [""] },
           ...(search && { "category.name": { $regex: search, $options: "i" } }),
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
       case "currency":
         // Get distinct currencies
-        const currencies = await PIMProductModel.distinct("currency", {
+        const currencies = await PIMProduct.distinct("currency", {
           ...query,
           currency: { $exists: true, $ne: null, $nin: [""] },
           ...(search && { currency: { $regex: search, $options: "i" } }),

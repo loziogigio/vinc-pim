@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import {
   Search,
   Trash2,
@@ -90,6 +91,9 @@ export function ProductAssociationSection({
   config,
   onProductCountChange,
 }: Props) {
+  const pathname = usePathname();
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -572,7 +576,7 @@ export function ProductAssociationSection({
                 {product.status}
               </span>
               <Link
-                href={`/b2b/pim/products/${product.entity_code}`}
+                href={`${tenantPrefix}/b2b/pim/products/${product.entity_code}`}
                 className="text-xs text-primary hover:underline"
               >
                 View

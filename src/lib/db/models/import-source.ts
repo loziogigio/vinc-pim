@@ -135,6 +135,9 @@ const ImportSourceSchema = new Schema<IImportSource>(
   }
 );
 
+// Export schema for model-registry
+export { ImportSourceSchema };
+
 export const ImportSourceModel =
   mongoose.models.ImportSource ||
   mongoose.model<IImportSource>("ImportSource", ImportSourceSchema);

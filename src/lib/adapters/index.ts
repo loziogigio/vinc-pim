@@ -60,9 +60,11 @@ export class AdapterFactory {
    */
   static getInstance(
     adapterType: string,
-    config: MarketplaceConfig
+    config: MarketplaceConfig,
+    tenantId?: string
   ): MarketplaceAdapter {
-    const cacheKey = `${adapterType}`;
+    // Include tenant_id in cache key for multi-tenant support
+    const cacheKey = tenantId ? `${adapterType}-${tenantId}` : adapterType;
 
     if (!this.instances.has(cacheKey)) {
       const adapter = this.create(adapterType, config);
@@ -91,16 +93,20 @@ export class AdapterFactory {
  * Load adapter configurations from environment variables
  *
  * Solr config uses getSolrConfig() from '@/config/project.config' as single source of truth.
+ * @param tenantId - Optional tenant ID for multi-tenant Solr core naming
  */
-export function loadAdapterConfigs(): Record<string, MarketplaceConfig> {
+export function loadAdapterConfigs(tenantId?: string): Record<string, MarketplaceConfig> {
   const solrConfig = getSolrConfig();
+
+  // Use tenant-specific Solr core if tenant_id is provided
+  const solrCore = tenantId ? `vinc-${tenantId}` : solrConfig.core;
 
   return {
     solr: {
       enabled: isSolrEnabled(),
       custom_config: {
         solr_url: solrConfig.url,
-        solr_core: solrConfig.core,
+        solr_core: solrCore,
       },
     },
     ebay: {
@@ -157,9 +163,10 @@ export function loadAdapterConfigs(): Record<string, MarketplaceConfig> {
 
 /**
  * Initialize all enabled adapters
+ * @param tenantId - Optional tenant ID for multi-tenant adapter configuration
  */
-export async function initializeAdapters(): Promise<Map<string, MarketplaceAdapter>> {
-  const configs = loadAdapterConfigs();
+export async function initializeAdapters(tenantId?: string): Promise<Map<string, MarketplaceAdapter>> {
+  const configs = loadAdapterConfigs(tenantId);
   const adapters = new Map<string, MarketplaceAdapter>();
 
   for (const [type, config] of Object.entries(configs)) {
@@ -169,7 +176,7 @@ export async function initializeAdapters(): Promise<Map<string, MarketplaceAdapt
     }
 
     try {
-      const adapter = AdapterFactory.getInstance(type, config);
+      const adapter = AdapterFactory.getInstance(type, config, tenantId);
       await adapter.initialize();
       adapters.set(type, adapter);
       console.log(`[AdapterFactory] ✓ Initialized ${adapter.name} adapter`);

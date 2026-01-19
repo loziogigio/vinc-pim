@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
+import { getPooledConnection } from "@/lib/db/connection";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 
 export async function POST(request: NextRequest) {
   try {
     // Check B2B authentication
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.isLoggedIn || !session.tenantId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
       sort = 'relevance'
     } = params;
 
-    await connectToDatabase();
-    const db = (await connectToDatabase()).connection.db;
+    const tenantDb = `vinc-${session.tenantId}`;
+    const connection = await getPooledConnection(tenantDb);
+    const db = connection.db;
     if (!db) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }

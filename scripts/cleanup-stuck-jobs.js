@@ -1,5 +1,10 @@
 /**
- * Cleanup stuck import jobs
+ * Cleanup stuck import jobs - Tenant-aware version
+ *
+ * Usage:
+ *   node scripts/cleanup-stuck-jobs.js <tenant-id>
+ *   node scripts/cleanup-stuck-jobs.js dfl-eventi-it
+ *   node scripts/cleanup-stuck-jobs.js hidros-it
  */
 
 import { MongoClient } from 'mongodb';
@@ -9,13 +14,47 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 
-const MONGO_URL = process.env.VINC_MONGO_URL || 'mongodb://root:root@localhost:27017/?authSource=admin';
-const MONGO_DB = process.env.VINC_MONGO_DB || 'hdr-api-it';
-const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
+// Get tenant ID from command line
+const tenantId = process.argv[2];
+
+if (!tenantId) {
+  console.error('❌ Error: Tenant ID is required');
+  console.error('');
+  console.error('Usage: node scripts/cleanup-stuck-jobs.js <tenant-id>');
+  console.error('');
+  console.error('Examples:');
+  console.error('  node scripts/cleanup-stuck-jobs.js dfl-eventi-it');
+  console.error('  node scripts/cleanup-stuck-jobs.js hidros-it');
+  process.exit(1);
+}
+
+// Required environment variables (no fallbacks)
+const MONGO_URL = process.env.VINC_MONGO_URL;
+const REDIS_HOST = process.env.REDIS_HOST;
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '');
+
+if (!MONGO_URL) {
+  console.error('❌ Error: VINC_MONGO_URL environment variable is required');
+  process.exit(1);
+}
+
+if (!REDIS_HOST || !REDIS_PORT) {
+  console.error('❌ Error: REDIS_HOST and REDIS_PORT environment variables are required');
+  process.exit(1);
+}
+
+// Build tenant database name
+const MONGO_DB = `vinc-${tenantId}`;
 
 async function cleanup() {
   const mongoClient = new MongoClient(MONGO_URL);
+
+  console.log('\n🧹 CLEANUP STUCK JOBS');
+  console.log('='.repeat(60));
+  console.log(`Tenant ID: ${tenantId}`);
+  console.log(`Database: ${MONGO_DB}`);
+  console.log(`Redis: ${REDIS_HOST}:${REDIS_PORT}`);
+  console.log('='.repeat(60) + '\n');
 
   try {
     // Connect to MongoDB
@@ -30,21 +69,29 @@ async function cleanup() {
         port: REDIS_PORT,
       },
     });
-    console.log('✅ Connected to Redis');
+    console.log('✅ Connected to Redis\n');
 
     // Find stuck jobs in MongoDB
-    const stuckJobs = await db.collection('import_jobs').find({
+    console.log('🔍 Checking for stuck jobs in MongoDB...');
+    const stuckJobs = await db.collection('importjobs').find({
       status: { $in: ['pending', 'processing'] }
     }).toArray();
 
-    console.log(`\n📋 Found ${stuckJobs.length} stuck jobs in MongoDB`);
+    console.log(`📋 Found ${stuckJobs.length} stuck jobs`);
 
-    // Delete from MongoDB
     if (stuckJobs.length > 0) {
-      const result = await db.collection('import_jobs').deleteMany({
+      console.log('\nStuck jobs:');
+      for (const job of stuckJobs) {
+        console.log(`  - ${job.job_id} | Status: ${job.status} | Source: ${job.source_id}`);
+      }
+
+      // Delete from MongoDB
+      const result = await db.collection('importjobs').deleteMany({
         status: { $in: ['pending', 'processing'] }
       });
-      console.log(`✅ Deleted ${result.deletedCount} jobs from MongoDB`);
+      console.log(`\n✅ Deleted ${result.deletedCount} stuck jobs from MongoDB`);
+    } else {
+      console.log('✅ No stuck jobs found in MongoDB');
     }
 
     // Clean up BullMQ
@@ -52,7 +99,7 @@ async function cleanup() {
 
     // Get all job counts
     const counts = await importQueue.getJobCounts();
-    console.log('📊 BullMQ job counts:', counts);
+    console.log('📊 Current BullMQ job counts:', counts);
 
     // Clean failed and completed jobs
     await importQueue.clean(0, 1000, 'completed');
@@ -65,16 +112,25 @@ async function cleanup() {
 
     // Final status
     const finalCounts = await importQueue.getJobCounts();
-    console.log('\n📊 Final BullMQ counts:', finalCounts);
+    console.log('📊 Final BullMQ counts:', finalCounts);
 
     await importQueue.close();
-    console.log('\n✨ Cleanup complete!');
-    console.log('\nYou can now:');
-    console.log('1. Restart the worker: pnpm worker:pim');
-    console.log('2. Upload a fresh CSV file');
+
+    console.log('\n' + '='.repeat(60));
+    console.log('✨ CLEANUP COMPLETE');
+    console.log('='.repeat(60));
+    console.log(`Tenant: ${tenantId}`);
+    console.log(`MongoDB stuck jobs removed: ${stuckJobs.length}`);
+    console.log(`BullMQ queue cleaned`);
+    console.log('='.repeat(60) + '\n');
+
+    console.log('You can now:');
+    console.log(`1. Restart the worker: pnpm worker:pim --tenant ${tenantId}`);
+    console.log('2. Upload a fresh CSV file or trigger new imports');
 
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('\n❌ Error:', error.message);
+    console.error(error);
     process.exit(1);
   } finally {
     await mongoClient.close();

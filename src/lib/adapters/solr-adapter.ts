@@ -36,6 +36,7 @@ interface SolrMultilingualDocument {
   created_at?: string;
   updated_at?: string;
   published_at?: string;
+  item_creation_date?: string;  // ERP insertion date
 
   // Inventory & pricing
   quantity?: number;
@@ -578,6 +579,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       created_at: product.created_at?.toISOString(),
       updated_at: product.updated_at?.toISOString(),
       published_at: product.published_at?.toISOString(),
+      item_creation_date: product.item_creation_date?.toISOString(),  // ERP insertion date
 
       // Inventory
       quantity: product.quantity,

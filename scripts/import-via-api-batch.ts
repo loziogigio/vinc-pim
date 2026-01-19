@@ -1,11 +1,29 @@
 /**
  * Import products via API in batches
  * Tests default language logic with direct API import
+ *
+ * Usage:
+ *   npx tsx scripts/import-via-api-batch.ts --tenant hidros-it
+ *   npx tsx scripts/import-via-api-batch.ts --tenant dfl-eventi-it
  */
 
 import { connectToDatabase } from "../src/lib/db/connection";
 import { ImportSourceModel } from "../src/lib/db/models/import-source";
 import { importQueue } from "../src/lib/queue/queues";
+
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf("--tenant");
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
 
 // 10 test products with Italian content (no language suffixes)
 const products = [
@@ -113,8 +131,17 @@ const products = [
 
 async function importViaAPI() {
   try {
-    console.log("📦 Importing 10 products via API (batch mode)...\n");
-    await connectToDatabase();
+    const { tenant } = parseArgs();
+    const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
+    console.log("📦 Importing 10 products via API (batch mode)");
+    if (tenant) {
+      console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})\n`);
+    } else {
+      console.log(`⚠️  No --tenant specified, using environment default\n`);
+    }
+
+    await connectToDatabase(tenantDb);
 
     // Get or create API import source
     let source = await ImportSourceModel.findOne({ source_id: "api-batch-import" });

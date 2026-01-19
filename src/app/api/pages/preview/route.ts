@@ -3,7 +3,6 @@ import { cache } from "@/lib/db/cache";
 import { getPageConfig } from "@/lib/db/pages";
 import { pageConfigSchema } from "@/lib/validation/blockSchemas";
 import { hasHomeBuilderAccess } from "@/lib/auth/home-builder-access";
-import { consumeRateLimit, getClientKey } from "@/lib/security/rateLimiter";
 import type { PageConfig } from "@/lib/types/blocks";
 import { getOrCreateTemplate } from "@/lib/db/product-templates-simple";
 import { ProductTemplateModel } from "@/lib/db/models/product-template-simple";
@@ -37,12 +36,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!(await hasHomeBuilderAccess())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    await consumeRateLimit(`pages-preview:${getClientKey(request)}`);
-  } catch {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const payload = await request.json();
@@ -97,12 +90,6 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   if (!(await hasHomeBuilderAccess())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    await consumeRateLimit(`pages-preview:${getClientKey(request)}:delete`);
-  } catch {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const { searchParams } = new URL(request.url);

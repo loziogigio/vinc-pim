@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { AppLauncher } from "@/components/b2b/AppLauncher";
 
 // Force dynamic rendering for auth check
 export const dynamic = 'force-dynamic';
@@ -10,8 +9,14 @@ export default async function RootPage() {
 
   // If not logged in, redirect to login
   if (!session.isLoggedIn) {
-    redirect("/b2b/login");
+    redirect("/login");
   }
 
-  return <AppLauncher />;
+  // If logged in with tenant, redirect to tenant's B2B dashboard
+  if (session.tenantId) {
+    redirect(`/${session.tenantId}/b2b`);
+  }
+
+  // Fallback to login if no tenant (shouldn't happen)
+  redirect("/login");
 }

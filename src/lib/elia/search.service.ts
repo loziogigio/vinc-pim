@@ -31,6 +31,7 @@ async function executeSearch(params: {
   text?: string;
   lang: string;
   rows: number;
+  tenantDb?: string;
 }): Promise<{ results: SolrProduct[]; numFound: number }> {
   console.log('[ELIA Search] Solr request:', JSON.stringify(params, null, 2));
 
@@ -40,6 +41,7 @@ async function executeSearch(params: {
     rows: params.rows,
     include_faceting: true, // ELIA needs facets for filtering
     group_variants: false, // No variant grouping for ELIA
+    tenantDb: params.tenantDb, // Pass tenant database
   });
 
   return {
@@ -59,6 +61,8 @@ export interface CascadeSearchOptions {
   minResults?: number;
   /** Maximum results to return (default: 20) */
   maxResults?: number;
+  /** Tenant database (e.g., vinc-hidros-it) */
+  tenantDb?: string;
 }
 
 /**
@@ -96,6 +100,7 @@ export async function cascadeSearch(
     language = 'it',
     minResults = config.minResults,
     maxResults = 20,
+    tenantDb,
   } = options;
 
   const cascadeLevels = getCascadeLevels();
@@ -122,6 +127,7 @@ export async function cascadeSearch(
       const result = await searchWithText(searchText, {
         language,
         maxResults,
+        tenantDb, // Pass tenant database
       });
 
       console.log(`[ELIA Search] Level ${cascadeLevel.level} found ${result.total_count} products`);
@@ -174,6 +180,7 @@ export async function cascadeSearch(
 interface SearchOptions {
   language: string;
   maxResults: number;
+  tenantDb?: string;
 }
 
 interface SearchResult {
@@ -190,7 +197,7 @@ async function searchWithText(
   searchText: string,
   options: SearchOptions
 ): Promise<SearchResult> {
-  const { language, maxResults } = options;
+  const { language, maxResults, tenantDb } = options;
 
   // Call searchProducts directly - text only, no filters
   // Filters (stock, price, sort) are applied later by Claude in analyze step
@@ -198,6 +205,7 @@ async function searchWithText(
     text: searchText,
     lang: language,
     rows: maxResults,
+    tenantDb, // Pass tenant database
   });
 
   return {

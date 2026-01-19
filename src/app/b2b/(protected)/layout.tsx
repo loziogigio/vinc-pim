@@ -6,6 +6,9 @@ import { DashboardHeader } from "@/components/b2b/DashboardHeader";
 import type { B2BSessionData } from "@/lib/types/b2b";
 import { cn } from "@/components/ui/utils";
 
+// Force dynamic rendering - layout uses cookies() for session
+export const dynamic = 'force-dynamic';
+
 const publicSans = Public_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -21,12 +24,13 @@ export default async function B2BProtectedLayout({
 
   // Redirect to login if not authenticated
   if (!session.isLoggedIn) {
-    redirect("/b2b/login");
+    redirect("/login");
   }
 
   // Serialize session to plain object for Client Component
   const sessionData: B2BSessionData = {
     isLoggedIn: session.isLoggedIn,
+    tenantId: session.tenantId,
     userId: session.userId,
     username: session.username,
     email: session.email,

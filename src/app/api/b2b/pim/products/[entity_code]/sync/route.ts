@@ -2,12 +2,14 @@
  * Direct Solr Sync API Route
  * POST /api/b2b/pim/products/[entity_code]/sync
  * Immediately syncs product to Solr without queueing a job
+ * Supports both B2B session and API key authentication
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 export async function POST(
   request: NextRequest,
@@ -16,7 +18,35 @@ export async function POST(
   try {
     const { entity_code } = await params;
 
-    await connectToDatabase();
+    let tenantId: string;
+    let tenantDb: string;
+
+    // Check for API key auth first
+    const authMethod = request.headers.get("x-auth-method");
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(request, "pim");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { success: false, error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantId = apiKeyResult.tenantId!;
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      // Fall back to B2B session auth
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      tenantId = session.tenantId;
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // Get the current version of the product
     const product: any = await PIMProductModel.findOne({
@@ -44,7 +74,7 @@ export async function POST(
     }
 
     // Initialize Solr adapter (config from loadAdapterConfigs - single source of truth)
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(tenantId);
     const solrAdapter = new SolrAdapter(adapterConfigs.solr);
     await solrAdapter.initialize();
 

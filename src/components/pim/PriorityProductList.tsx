@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import type { MultiLangString, ProductImage, ProductAnalytics } from "@/lib/types/pim";
@@ -35,6 +36,9 @@ type PriorityProduct = {
 };
 
 export function PriorityProductList() {
+  const pathname = usePathname();
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
   const [products, setProducts] = useState<PriorityProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -117,7 +121,7 @@ export function PriorityProductList() {
           <h2 className="text-sm font-semibold">Priority Products</h2>
         </div>
         <Link
-          href="/b2b/pim/products?sort=priority"
+          href={`${tenantPrefix}/b2b/pim/products?sort=priority`}
           className="text-xs text-primary hover:underline flex items-center gap-1"
         >
           View all <ArrowRight className="h-3 w-3" />
@@ -135,7 +139,7 @@ export function PriorityProductList() {
           return (
             <Link
               key={product._id}
-              href={`/b2b/pim/products/${product.entity_code}`}
+              href={`${tenantPrefix}/b2b/pim/products/${product.entity_code}`}
               className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition"
             >
               {/* Image */}

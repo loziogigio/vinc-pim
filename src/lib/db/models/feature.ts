@@ -90,5 +90,8 @@ FeatureSchema.index({ key: 1 }, { unique: true });
 // Index for sorting (no wholesaler_id - database provides isolation)
 FeatureSchema.index({ display_order: 1 });
 
+// Export schema for model-registry
+export { FeatureSchema };
+
 export const FeatureModel =
   mongoose.models.Features || mongoose.model<IFeature>("Features", FeatureSchema);

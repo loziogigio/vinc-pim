@@ -6,10 +6,15 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Building2 } from "lucide-react";
 
-export function B2BLoginForm() {
+interface B2BLoginFormProps {
+  tenant?: string;
+}
+
+export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
   const router = useRouter();
+  const [tenant, setTenant] = useState(initialTenant || "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,10 +23,19 @@ export function B2BLoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!tenant.trim()) {
+      setError("Please enter your tenant ID");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/b2b/login", {
+      // Always use tenant-scoped API
+      const apiUrl = `/${tenant}/api/b2b/login`;
+
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -35,9 +49,10 @@ export function B2BLoginForm() {
         return;
       }
 
-      router.push("/");
+      // Redirect to tenant-scoped B2B home
+      router.push(`/${tenant}/b2b`);
       router.refresh();
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
       setIsLoading(false);
     }
@@ -60,14 +75,33 @@ export function B2BLoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {!initialTenant && (
+          <div className="space-y-2">
+            <Label htmlFor="tenant">Tenant ID</Label>
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="tenant"
+                type="text"
+                placeholder="Enter your tenant ID (e.g., acme-corp)"
+                value={tenant}
+                onChange={(e) => setTenant(e.target.value.toLowerCase().trim())}
+                className="pl-10"
+                required
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
+          <Label htmlFor="username">Username or Email</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="username"
               type="text"
-              placeholder="Enter your username"
+              placeholder="Enter your username or email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="pl-10"

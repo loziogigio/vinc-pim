@@ -1,14 +1,41 @@
 /**
  * Create test import source for default language testing
+ *
+ * Usage:
+ *   npx tsx scripts/create-test-source.ts --tenant hidros-it
+ *   npx tsx scripts/create-test-source.ts --tenant dfl-eventi-it
  */
 
 import { connectToDatabase } from "../src/lib/db/connection";
 import { ImportSourceModel } from "../src/lib/db/models/import-source";
 
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf("--tenant");
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
+
 async function createTestSource() {
   try {
-    console.log("📋 Creating test import source...\n");
-    await connectToDatabase();
+    const { tenant } = parseArgs();
+    const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
+    console.log("📋 Creating test import source");
+    if (tenant) {
+      console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})\n`);
+    } else {
+      console.log(`⚠️  No --tenant specified, using environment default\n`);
+    }
+
+    await connectToDatabase(tenantDb);
 
     // Check if source already exists
     let source = await ImportSourceModel.findOne({

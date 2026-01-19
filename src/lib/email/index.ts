@@ -7,8 +7,8 @@
 import nodemailer from "nodemailer";
 import { Queue } from "bullmq";
 import { nanoid } from "nanoid";
-import { EmailLogModel, type IEmailLog, type EmailStatus } from "@/lib/db/models/email-log";
-import { connectToDatabase } from "@/lib/db/connection";
+import type { IEmailLog, EmailStatus } from "@/lib/db/models/email-log";
+import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
 
 // ============================================
 // CONFIGURATION
@@ -93,6 +93,34 @@ export function isEmailEnabled(): boolean {
 export async function isEmailEnabledAsync(): Promise<boolean> {
   const config = await fetchEmailConfigFromDb();
   return !!(config.host && config.user && config.password && config.from);
+}
+
+// ============================================
+// DATABASE HELPERS
+// ============================================
+
+/**
+ * Get the tenant database name from auto-detection
+ * Uses connectToDatabase's auto-detection logic and extracts dbName
+ */
+async function getTenantDbName(): Promise<string> {
+  // Use connectToDatabase for auto-detection, it returns the connection with db info
+  const conn = await connectToDatabase();
+  // Extract database name from the connection
+  const dbName = conn.connection.db?.databaseName;
+  if (!dbName) {
+    throw new Error("Could not determine tenant database name");
+  }
+  return dbName;
+}
+
+/**
+ * Get EmailLog model for the current tenant
+ */
+async function getEmailLogModel() {
+  const dbName = await getTenantDbName();
+  const { EmailLog } = await connectWithModels(dbName);
+  return EmailLog;
 }
 
 // ============================================
@@ -276,7 +304,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     };
   }
 
-  await connectToDatabase();
+  // Get EmailLog model for current tenant
+  const EmailLogModel = await getEmailLogModel();
 
   // Prepare HTML with tracking if enabled
   let html = options.html;
@@ -432,7 +461,7 @@ async function queueEmail(
  * Process a queued email (called by worker)
  */
 export async function processQueuedEmail(emailId: string): Promise<SendEmailResult> {
-  await connectToDatabase();
+  const EmailLogModel = await getEmailLogModel();
 
   const emailLog = await EmailLogModel.findOne({ email_id: emailId });
   if (!emailLog) {
@@ -447,7 +476,7 @@ export async function processQueuedEmail(emailId: string): Promise<SendEmailResu
   emailLog.status = "sending";
   await emailLog.save();
 
-  return await sendEmailNow(emailLog);
+  return await sendEmailNow(emailLog as IEmailLog);
 }
 
 // ============================================
@@ -462,7 +491,7 @@ export async function recordEmailOpen(
   ip?: string,
   userAgent?: string
 ): Promise<boolean> {
-  await connectToDatabase();
+  const EmailLogModel = await getEmailLogModel();
 
   const now = new Date();
   const result = await EmailLogModel.updateOne(
@@ -493,7 +522,7 @@ export async function recordEmailClick(
   ip?: string,
   userAgent?: string
 ): Promise<boolean> {
-  await connectToDatabase();
+  const EmailLogModel = await getEmailLogModel();
 
   const result = await EmailLogModel.updateOne(
     { email_id: emailId, tracking_enabled: true },
@@ -521,8 +550,8 @@ export async function recordEmailClick(
  * Get email log by ID
  */
 export async function getEmailLog(emailId: string): Promise<IEmailLog | null> {
-  await connectToDatabase();
-  return EmailLogModel.findOne({ email_id: emailId });
+  const EmailLogModel = await getEmailLogModel();
+  return EmailLogModel.findOne({ email_id: emailId }) as Promise<IEmailLog | null>;
 }
 
 /**
@@ -542,7 +571,7 @@ export async function getEmailStats(filter?: {
   openRate: number;
   clickRate: number;
 }> {
-  await connectToDatabase();
+  const EmailLogModel = await getEmailLogModel();
 
   const query: Record<string, any> = {};
 

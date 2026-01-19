@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportSourceModel } from "@/lib/db/models/import-source";
-import { ImportJobModel } from "@/lib/db/models/import-job";
+import { connectWithModels } from "@/lib/db/connection";
 import { importQueue } from "@/lib/queue/queues";
 
 /**
@@ -34,13 +32,13 @@ import { importQueue } from "@/lib/queue/queues";
  */
 export async function POST(req: NextRequest) {
   try {
-    // TODO: Re-enable authentication
-    // const session = await getB2BSession();
-    // if (!session || session.role !== "admin") {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    const session = await getB2BSession();
+    if (!session || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ImportSource: ImportSourceModel, ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { source_id, products, batch_metadata } = body;
@@ -168,7 +166,13 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
+    const session = await getB2BSession();
+    if (!session || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     // Get pending and processing jobs
     const pendingJobs = await ImportJobModel.find({ status: "pending" })

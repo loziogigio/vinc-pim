@@ -1,15 +1,44 @@
 /**
  * Languages API Route
  * GET /api/admin/languages - List all languages
+ * Supports both session auth and API key auth
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { LanguageModel } from "@/lib/db/models/language";
+import { connectWithModels } from "@/lib/db/connection";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    await connectToDatabase();
+    // Check for API key authentication first
+    const authMethod = request.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      // Verify API key and secret
+      const apiKeyResult = await verifyAPIKeyFromRequest(request);
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { success: false, error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      // Require valid session authentication
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    // Get models bound to the correct tenant connection
+    const { Language: LanguageModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // enabled, disabled, all

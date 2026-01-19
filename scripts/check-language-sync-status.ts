@@ -1,15 +1,47 @@
 /**
  * Check Language Sync Status
  * Shows which languages are enabled and which need Solr sync
+ *
+ * Usage:
+ *   npx tsx scripts/check-language-sync-status.ts --tenant hidros-it
+ *   npx tsx scripts/check-language-sync-status.ts --tenant test-tenant-069948
  */
+
+import { config } from "dotenv";
+config({ path: ".env" });
 
 import { connectToDatabase } from "../src/lib/db/connection";
 import { LanguageModel } from "../src/lib/db/models/language";
 import { PIMProductModel } from "../src/lib/db/models/pim-product";
 
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf('--tenant');
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
+
 async function checkLanguageSyncStatus() {
   try {
-    await connectToDatabase();
+    const { tenant } = parseArgs();
+
+    if (!tenant) {
+      console.log('\n❌ Error: --tenant parameter is required');
+      console.log('\nUsage:');
+      console.log('  npx tsx scripts/check-language-sync-status.ts --tenant hidros-it');
+      console.log('  npx tsx scripts/check-language-sync-status.ts --tenant test-tenant-069948');
+      process.exit(1);
+    }
+
+    const tenantDb = `vinc-${tenant}`;
+    await connectToDatabase(tenantDb);
 
     console.log("📋 Language Configuration & Sync Status\n");
 

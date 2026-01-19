@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { FilePreview } from "@/components/pim/FilePreview";
@@ -36,22 +36,28 @@ type FileAnalysis = {
 };
 
 type ImportProductsViewProps = {
-  breadcrumbItems?: BreadcrumbItem[];
-  redirectPath?: string;
-  sourcesHref?: string;
+  finalBreadcrumbs?: BreadcrumbItem[];
+  finalRedirectPath?: string;
+  finalSourcesHref?: string;
 };
 
-const DEFAULT_BREADCRUMBS: BreadcrumbItem[] = [
-  { label: "Product Information Management", href: "/b2b/pim" },
-  { label: "Import Products" }
-];
-
 export function ImportProductsView({
-  breadcrumbItems = DEFAULT_BREADCRUMBS,
-  redirectPath = "/b2b/pim/jobs",
-  sourcesHref = "/b2b/pim/sources"
+  finalBreadcrumbs: propBreadcrumbs,
+  finalRedirectPath: propRedirectPath,
+  finalSourcesHref: propSourcesHref
 }: ImportProductsViewProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
+  // Default values with tenant prefix
+  const defaultBreadcrumbs: BreadcrumbItem[] = [
+    { label: "Product Information Management", href: `${tenantPrefix}/b2b/pim` },
+    { label: "Import Products" }
+  ];
+  const finalBreadcrumbs = propBreadcrumbs || defaultBreadcrumbs;
+  const finalRedirectPath = propRedirectPath || `${tenantPrefix}/b2b/pim/jobs`;
+  const finalSourcesHref = propSourcesHref || `${tenantPrefix}/b2b/pim/sources`;
   const [sources, setSources] = useState<ImportSource[]>([]);
   const [selectedSource, setSelectedSource] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -218,7 +224,7 @@ export function ImportProductsView({
         setFileAnalysis(null);
 
         setTimeout(() => {
-          router.push(redirectPath);
+          router.push(finalRedirectPath);
         }, 2000);
       } else {
         const error = await res.json();
@@ -246,7 +252,7 @@ export function ImportProductsView({
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={breadcrumbItems} />
+      <Breadcrumbs items={finalBreadcrumbs} />
 
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
@@ -261,7 +267,7 @@ export function ImportProductsView({
           {sources.length === 0 ? (
             <div className="text-sm text-muted-foreground">
               No import sources configured.{" "}
-              <a href={sourcesHref} className="text-primary hover:underline">
+              <a href={finalSourcesHref} className="text-primary hover:underline">
                 Create one first
               </a>
             </div>

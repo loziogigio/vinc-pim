@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const rateLimitMap = new Map<string, { tokens: number; lastRefill: number }>();
-const RATE_LIMIT = 60;
-const INTERVAL = 60 * 1000;
-
 // CORS headers for cross-origin API requests
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Secret",
   "Access-Control-Max-Age": "86400", // 24 hours
 };
 
@@ -20,74 +16,62 @@ const securityHeaders: Record<string, string> = {
   "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
 };
 
-const getClientIp = (request: NextRequest) =>
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
-
-const isLocalhost = (request: NextRequest) => {
-  const host = request.headers.get("host") || "";
-  return host.startsWith("localhost") || host.startsWith("127.0.0.1");
+/**
+ * Extract tenant ID from API key format: "ak_{tenant-id}_{random}"
+ */
+const extractTenantFromApiKey = (apiKey: string): string | null => {
+  // Match pattern: ak_{tenant-id}_{random} where random is 12 hex chars
+  const match = apiKey.match(/^ak_(.+)_[a-f0-9]{12}$/);
+  return match ? match[1] : null;
 };
 
 /**
  * Extract tenant ID from request
- * Priority: URL path > X-Tenant-ID header > query param > env var
+ * Priority: API key > URL path > X-Tenant-ID header > query param
+ * No fallback - tenant must be explicitly provided
  */
-const getTenantId = (request: NextRequest): { tenantId: string | null; rewritePath: string | null } => {
-  // 1. Check URL path: /{tenant}/api/...
+const getTenantId = (request: NextRequest): { tenantId: string | null; rewritePath: string | null; isExplicit: boolean } => {
+  // 1. Check URL path: /{tenant}/api/... or /{tenant}/b2b/... or /{tenant}/b2b
   const pathname = request.nextUrl.pathname;
-  const pathMatch = pathname.match(/^\/([^\/]+)(\/api\/.*)$/);
-  if (pathMatch) {
-    const [, tenantId, remainingPath] = pathMatch;
+  // Match /{tenant}/api/... or /{tenant}/b2b/... (with trailing path)
+  const pathMatch = pathname.match(/^\/([^\/]+)(\/(?:api|b2b)\/.*)$/);
+  // Match /{tenant}/b2b exactly (no trailing path)
+  const b2bExactMatch = pathname.match(/^\/([^\/]+)(\/b2b)$/);
+
+  const match = pathMatch || b2bExactMatch;
+  if (match) {
+    const [, tenantId, remainingPath] = match;
     // Avoid matching reserved paths
-    if (!['api', '_next', 'static', 'favicon.ico'].includes(tenantId)) {
-      return { tenantId, rewritePath: remainingPath };
+    if (!['api', 'b2b', '_next', 'static', 'favicon.ico', 'super-admin', 'login'].includes(tenantId)) {
+      return { tenantId, rewritePath: remainingPath, isExplicit: true };
     }
   }
 
   // 2. Check X-Tenant-ID header
   const headerTenantId = request.headers.get("x-tenant-id");
-  if (headerTenantId) return { tenantId: headerTenantId, rewritePath: null };
+  if (headerTenantId) return { tenantId: headerTenantId, rewritePath: null, isExplicit: true };
 
   // 3. Check query parameter
   const url = new URL(request.url);
   const queryTenantId = url.searchParams.get("tenant");
-  if (queryTenantId) return { tenantId: queryTenantId, rewritePath: null };
+  if (queryTenantId) return { tenantId: queryTenantId, rewritePath: null, isExplicit: true };
 
-  // 4. Fall back to environment variable
-  return { tenantId: process.env.VINC_TENANT_ID || null, rewritePath: null };
-};
-
-const consumeToken = (ip: string) => {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip) ?? { tokens: RATE_LIMIT, lastRefill: now };
-  const elapsed = now - record.lastRefill;
-
-  if (elapsed >= INTERVAL) {
-    record.tokens = RATE_LIMIT;
-    record.lastRefill = now;
-  }
-
-  if (record.tokens <= 0) {
-    rateLimitMap.set(ip, record);
-    return false;
-  }
-
-  record.tokens -= 1;
-  rateLimitMap.set(ip, record);
-  return true;
+  // 4. No tenant found - return null (API key auth will be checked in route-specific logic)
+  return { tenantId: null, rewritePath: null, isExplicit: false };
 };
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Extract tenant and check for path rewrite
-  const { tenantId, rewritePath } = getTenantId(request);
+  const { tenantId, rewritePath, isExplicit } = getTenantId(request);
 
   // Determine actual path (after tenant prefix removal)
   const actualPath = rewritePath || pathname;
   const isApiRoute = actualPath.startsWith("/api");
-  const isB2BRoute = actualPath.startsWith("/api/b2b");
-  const isImportRoute = actualPath.startsWith("/api/b2b/pim/import");
+  const isB2BApiRoute = actualPath.startsWith("/api/b2b");
+  const isB2BPageRoute = actualPath === "/b2b" || actualPath.startsWith("/b2b/");
+  const isAdminRoute = actualPath.startsWith("/api/admin");
 
   // Handle CORS preflight (OPTIONS) requests for all API routes
   if (isApiRoute && request.method === "OPTIONS") {
@@ -97,31 +81,58 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  if (isB2BRoute) {
-    // For B2B routes, tenant ID is required
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          error: "Tenant ID required for B2B access",
-          hint: "Use path (/{tenant}/api/...), header (X-Tenant-ID), or query (?tenant=...)"
-        },
-        { status: 400, headers: corsHeaders }
-      );
-    }
+  // Admin routes - no tenant required (uses vinc-admin database)
+  if (isAdminRoute) {
+    const response = NextResponse.next();
 
-    // Inject tenant information into request headers for route handlers
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
+    return response;
+  }
+
+  // Handle B2B API routes (support both API key and session authentication)
+  if (isB2BApiRoute) {
+    // Check for API key authentication (used by external clients like vinc-b2b)
+    // Support both header formats: x-api-key OR x-api-key-id (for sync scripts)
+    const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
+    const apiSecret = request.headers.get("x-api-secret");
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-resolved-tenant-id", tenantId);
-    requestHeaders.set("x-resolved-tenant-db", `vinc-${tenantId}`);
 
-    // Rate limiting (skip for localhost and import paths)
-    if (!isLocalhost(request) && !isImportRoute) {
-      const ip = getClientIp(request);
-      if (!consumeToken(ip)) {
+    // If API keys are provided, validate and inject tenant context
+    if (apiKey && apiSecret) {
+      // Extract tenant from API key
+      const apiKeyTenantId = extractTenantFromApiKey(apiKey);
+      if (!apiKeyTenantId) {
         return NextResponse.json(
-          { error: "Too many requests" },
-          { status: 429, headers: corsHeaders }
+          {
+            error: "Invalid API key format",
+            details: {
+              code: "INVALID_API_KEY",
+              message: "API key must be in format: ak_{tenant-id}_{suffix}"
+            }
+          },
+          { status: 401, headers: corsHeaders }
         );
+      }
+
+      // Inject tenant headers from API key
+      requestHeaders.set("x-resolved-tenant-id", apiKeyTenantId);
+      requestHeaders.set("x-resolved-tenant-db", `vinc-${apiKeyTenantId}`);
+      requestHeaders.set("x-auth-method", "api-key");
+      requestHeaders.set("x-api-key-id", apiKey);
+    } else {
+      // No API keys - mark as session auth (route handler will validate session)
+      requestHeaders.set("x-auth-method", "session");
+
+      // Inject tenant headers from URL path if available
+      if (tenantId) {
+        requestHeaders.set("x-resolved-tenant-id", tenantId);
+        requestHeaders.set("x-resolved-tenant-db", `vinc-${tenantId}`);
       }
     }
 
@@ -132,30 +143,127 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.rewrite(url, {
         request: { headers: requestHeaders }
       });
-
-      // Add security and CORS headers
       Object.entries(securityHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
       Object.entries(corsHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
-
       return response;
     }
 
     const response = NextResponse.next({
       request: { headers: requestHeaders },
     });
-
-    // Add security and CORS headers
     Object.entries(securityHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
     Object.entries(corsHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
+    return response;
+  }
 
+  // Handle B2B page routes
+  if (isB2BPageRoute && tenantId && rewritePath) {
+    // For exact /{tenant}/b2b path, let Next.js use the dynamic route
+    if (rewritePath === "/b2b") {
+      const response = NextResponse.next();
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
+    }
+
+    // For sub-paths like /{tenant}/b2b/pim, rewrite URL and inject tenant headers
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-resolved-tenant-id", tenantId);
+    requestHeaders.set("x-resolved-tenant-db", `vinc-${tenantId}`);
+
+    // Rewrite URL to remove tenant prefix
+    const url = request.nextUrl.clone();
+    url.pathname = rewritePath;
+    const response = NextResponse.rewrite(url, {
+      request: { headers: requestHeaders }
+    });
+
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
+    return response;
+  }
+
+  // For public API routes, search routes, and ELIA routes, require API key authentication
+  const isPublicApiRoute = actualPath.startsWith("/api/public");
+  const isSearchRoute = actualPath.startsWith("/api/search");
+  const isEliaRoute = actualPath.startsWith("/api/elia");
+  if (isPublicApiRoute || isSearchRoute || isEliaRoute) {
+    // Check for API key authentication
+    // Support both header formats: x-api-key OR x-api-key-id (for sync scripts)
+    const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
+    const apiSecret = request.headers.get("x-api-secret");
+
+    if (!apiKey || !apiSecret) {
+      return NextResponse.json(
+        {
+          error: "Authentication required",
+          details: {
+            code: "NO_API_KEY",
+            message: "API key and secret are required for API routes (provide X-API-Key and X-API-Secret headers)"
+          }
+        },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Extract tenant from API key
+    const apiKeyTenantId = extractTenantFromApiKey(apiKey);
+    if (!apiKeyTenantId) {
+      return NextResponse.json(
+        {
+          error: "Invalid API key format",
+          details: {
+            code: "INVALID_API_KEY",
+            message: "API key must be in format: ak_{tenant-id}_{suffix}"
+          }
+        },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Inject tenant headers from API key
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-resolved-tenant-id", apiKeyTenantId);
+    requestHeaders.set("x-resolved-tenant-db", `vinc-${apiKeyTenantId}`);
+    requestHeaders.set("x-auth-method", "api-key");
+    requestHeaders.set("x-api-key-id", apiKey);
+
+    // Rewrite URL if tenant was in path
+    if (rewritePath) {
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      const response = NextResponse.rewrite(url, {
+        request: { headers: requestHeaders }
+      });
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
+    }
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
     return response;
   }
 
@@ -173,23 +281,15 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // Rate limiting (skip for localhost and import paths)
-  if (!isLocalhost(request) && !isImportRoute) {
-    const ip = getClientIp(request);
-    if (!consumeToken(ip)) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: isApiRoute ? corsHeaders : undefined }
-      );
-    }
-  }
-
   return response;
 }
 
 export const config = {
   matcher: [
     "/api/:path*",
-    "/:tenant/api/:path*"
+    "/:tenant/api/:path*",
+    "/:tenant/b2b",
+    "/:tenant/b2b/:path*",
+    "/b2b/:path*"
   ]
 };

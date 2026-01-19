@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { CategoryModel } from "@/lib/db/models/category";
+import { connectWithModels } from "@/lib/db/connection";
 
 // GET /api/b2b/pim/categories/[id]/products - Get products for a category
 export async function GET(
@@ -11,11 +9,12 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
     const { id: categoryId } = await params;
 
     const category = await CategoryModel.findOne({
@@ -80,11 +79,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
     const { id: categoryId } = await params;
 
     const body = await req.json();

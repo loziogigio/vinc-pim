@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { CategoryModel } from "@/lib/db/models/category";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * POST /api/b2b/pim/categories/reorder
@@ -10,11 +9,12 @@ import { CategoryModel } from "@/lib/db/models/category";
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Category: CategoryModel } = await connectWithModels(tenantDb);
 
     const { updates } = await req.json();
 

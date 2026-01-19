@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
+import { connectDB } from "@/lib/db/connection";
+import { B2BHomeSettingsModel } from "@/lib/db/models/home-settings";
 
-const CUSTOMER_WEB_BASE = (process.env.NEXT_PUBLIC_CUSTOMER_WEB_URL || "http://localhost:3000").replace(/\/$/, "");
+async function getCustomerWebBase(): Promise<string | null> {
+  try {
+    await connectDB();
+    const settings = await B2BHomeSettingsModel.findOne({}).lean();
+    const shopUrl = settings?.branding?.shopUrl;
+    if (shopUrl) {
+      return shopUrl.replace(/\/$/, "");
+    }
+  } catch (err) {
+    console.warn("[customer-web/product-search] Failed to fetch shopUrl from settings:", err);
+  }
+  return null;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +27,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const targetUrl = new URL(`${CUSTOMER_WEB_BASE}/api/b2b/product-search`);
+    const customerWebBase = await getCustomerWebBase();
+
+    if (!customerWebBase) {
+      return NextResponse.json({ items: [], error: "Shop URL not configured. Set it in Home Settings." }, { status: 500 });
+    }
+
+    const targetUrl = new URL(`${customerWebBase}/api/b2b/product-search`);
     targetUrl.searchParams.set("limit", limit);
     if (query) {
       targetUrl.searchParams.set("query", query);

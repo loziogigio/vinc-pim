@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, type AdminSessionData } from "@/lib/auth/session";
-import { consumeRateLimit, getClientKey } from "@/lib/security/rateLimiter";
 
 const DEFAULT_USERNAME = "admin";
 const DEFAULT_PASSWORD = "admin";
@@ -17,12 +16,6 @@ export async function POST(request: Request) {
     username?: string;
     password?: string;
   };
-
-  try {
-    await consumeRateLimit(`admin-login:${getClientKey(request)}`);
-  } catch {
-    return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
-  }
 
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

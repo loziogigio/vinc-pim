@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { B2BLoginForm } from "@/components/b2b/LoginForm";
 
+// Force dynamic rendering - uses cookies() for session
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "B2B Login - VINC Storefront",
   description: "Sign in to the B2B Product Catalog Manager",

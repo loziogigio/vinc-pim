@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
+import { getPooledConnection } from "@/lib/db/connection";
 import { getTenantDbFromRequest } from "@/lib/utils/tenant";
 import { verifyB2BSession } from "./b2b-session";
 
@@ -29,7 +29,8 @@ export async function connectToTenantDb(request: NextRequest): Promise<string | 
   }
 
   try {
-    await connectToDatabase(tenantDb);
+    // Use getPooledConnection for proper connection pooling
+    await getPooledConnection(tenantDb);
     return tenantDb;
   } catch (error) {
     console.error("Failed to connect to tenant database:", error);

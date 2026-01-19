@@ -38,8 +38,10 @@ import {
   loadCollections,
   loadProductTypes,
   loadTags,
+  mergeMediaFromParent,
 } from './response-enricher';
-import { getSolrClient } from './solr-client';
+import { getSolrClient, SolrClient } from './solr-client';
+import { getSolrConfig } from '@/config/project.config';
 
 // ============================================
 // ENTITY CACHES FOR FACET ENRICHMENT
@@ -66,7 +68,7 @@ const ATTRIBUTE_CACHE_TTL = 60000; // 1 minute
  * Load attribute labels from Solr by fetching one document's attributes_json
  * Returns a map of attribute slug → multilingual labels
  */
-async function loadAttributeLabels(lang: string): Promise<Map<string, string>> {
+async function loadAttributeLabels(lang: string, tenantDb?: string): Promise<Map<string, string>> {
   const now = Date.now();
   const labelMap = new Map<string, string>();
 
@@ -82,7 +84,11 @@ async function loadAttributeLabels(lang: string): Promise<Map<string, string>> {
 
   try {
     // Query Solr for ONE document that has attributes_json
-    const solrClient = getSolrClient();
+    // Use tenant-specific collection if provided
+    const config = getSolrConfig();
+    const solrClient = tenantDb
+      ? new SolrClient(config.url, tenantDb)
+      : getSolrClient();
     const response = await solrClient.search({
       query: '*:*',
       filter: ['attributes_json:*'], // Only docs with attributes
@@ -152,14 +158,15 @@ function extractAttributeSlug(fieldName: string): string | null {
 
 /**
  * Load all entity caches for facet enrichment
+ * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
  */
-async function loadEntityCaches(): Promise<EntityCaches> {
+async function loadEntityCaches(tenantDb: string): Promise<EntityCaches> {
   const [brands, categories, collections, productTypes, tags] = await Promise.all([
-    loadBrands(),
-    loadCategories(),
-    loadCollections(),
-    loadProductTypes(),
-    loadTags(),
+    loadBrands(tenantDb),
+    loadCategories(tenantDb),
+    loadCollections(tenantDb),
+    loadProductTypes(tenantDb),
+    loadTags(tenantDb),
   ]);
 
   return { brands, categories, collections, productTypes, tags };
@@ -774,12 +781,22 @@ export function transformFacetResponse(
  * Enrich facet results with full entity data from MongoDB
  * Adds entity object to each facet value for brand, category, product_type, collection, tag
  * Also enriches dynamic attribute facets with labels from Solr attributes_json
+ * @param facetResults - Facet results to enrich
+ * @param lang - Language code for localized fields
+ * @param tenantDb - Tenant database name (required for entity lookups)
  */
 export async function enrichFacetResults(
   facetResults: FacetResults,
-  lang?: string
+  lang?: string,
+  tenantDb?: string
 ): Promise<FacetResults> {
   if (!facetResults || Object.keys(facetResults).length === 0) {
+    return facetResults;
+  }
+
+  // tenantDb is required for entity lookups
+  if (!tenantDb) {
+    console.warn('[FacetEnricher] No tenantDb provided, returning facets without entity enrichment');
     return facetResults;
   }
 
@@ -793,8 +810,8 @@ export async function enrichFacetResults(
 
     // Load entity caches and attribute labels in parallel
     const [caches, attributeLabels] = await Promise.all([
-      loadEntityCaches(),
-      hasAttributeFacets ? loadAttributeLabels(effectiveLang) : Promise.resolve(new Map<string, string>()),
+      loadEntityCaches(tenantDb),
+      hasAttributeFacets ? loadAttributeLabels(effectiveLang, tenantDb) : Promise.resolve(new Map<string, string>()),
     ]);
 
     // Enrich each facet field
@@ -1070,9 +1087,17 @@ export async function enrichProductsWithVariants(
       const childHasActivePromo = variants.some(v => v.has_active_promo === true);
       const hasActivePromo = product.has_active_promo || childHasActivePromo;
 
+      // Merge parent media with variants if enabled
+      const shouldShareImages = product.share_images_with_variants === true;
+      const shouldShareMedia = product.share_media_with_variants === true;
+
+      const mergedVariants = (shouldShareImages || shouldShareMedia)
+        ? variants.map(v => mergeMediaFromParent(v, product, shouldShareImages, shouldShareMedia))
+        : variants;
+
       return {
         ...product,
-        variants,
+        variants: mergedVariants,
         has_active_promo: hasActivePromo,
       };
     });

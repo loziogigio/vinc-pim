@@ -1,20 +1,42 @@
 /**
  * Email Worker
  * Processes queued emails from BullMQ
+ *
+ * Usage:
+ *   pnpm worker:email
+ *   pnpm worker:email --tenant hidros-it
+ *   pnpm worker:email --tenant dfl-eventi-it
  */
 
 import { Worker, Job } from "bullmq";
 import { processQueuedEmail } from "../src/lib/email";
 import { connectToDatabase } from "../src/lib/db/connection";
 
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf('--tenant');
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
+
+const { tenant } = parseArgs();
+const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
 const redisHost = process.env.REDIS_HOST || "localhost";
 const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
 
 console.log("[Email Worker] Starting...");
+if (tenant) {
+  console.log(`[Email Worker] Target tenant: ${tenant} (database: ${tenantDb})`);
+}
 console.log(`[Email Worker] Redis: ${redisHost}:${redisPort}`);
-
-// Connect to database
-await connectToDatabase();
 
 const worker = new Worker(
   "email",

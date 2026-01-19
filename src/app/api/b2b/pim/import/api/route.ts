@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportSourceModel } from "@/lib/db/models/import-source";
-import { ImportJobModel } from "@/lib/db/models/import-job";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { LanguageModel } from "@/lib/db/models/language";
+import { connectWithModels } from "@/lib/db/connection";
 import { syncQueue } from "@/lib/queue/queues";
 import {
   calculateCompletenessScore,
@@ -15,6 +11,7 @@ import {
   mergeWithLockedFields,
 } from "@/lib/pim/auto-publish";
 import { projectConfig, MULTILINGUAL_FIELDS } from "@/config/project.config";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 /**
  * Check if an object is already in multilingual format (has language keys at root level)
@@ -26,8 +23,16 @@ function isMultilingualObject(obj: any, languageCodes: string[]): boolean {
     return false;
   }
   const keys = Object.keys(obj);
+
+  // If no languages are configured in database, use common language codes as fallback
+  const validCodes = languageCodes.length > 0
+    ? languageCodes
+    : ['it', 'en', 'de', 'fr', 'es', 'pt', 'nl', 'pl', 'cs', 'sk', 'hu', 'ro', 'bg'];
+
   // Check if all keys are language codes (e.g., { it: ..., en: ... })
-  return keys.length > 0 && keys.every(key => languageCodes.includes(key));
+  // Also check that keys are 2-letter codes to avoid false positives
+  return keys.length > 0 &&
+         keys.every(key => key.length === 2 && validCodes.includes(key));
 }
 
 /**
@@ -130,17 +135,43 @@ function deepMerge(target: any, source: any): any {
  */
 export async function POST(req: NextRequest) {
   try {
-    // TODO: Re-enable authentication
-    // const session = await getB2BSession();
-    // if (!session || session.role !== "admin") {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantId: string | undefined;
+    let tenantDb: string;
 
-    await connectToDatabase();
+    if (authMethod === "api-key") {
+      // Verify API key and secret (requires "import" permission)
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "import");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+      tenantId = apiKeyResult.tenantId;
+    } else {
+      // Require valid session authentication (no env var fallback)
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+      tenantId = session.tenantId;
+    }
+
+    // Get models bound to the correct tenant connection
+    const {
+      ImportSource: ImportSourceModel,
+      ImportJob: ImportJobModel,
+      PIMProduct: PIMProductModel,
+      Language: LanguageModel
+    } = await connectWithModels(tenantDb);
 
     // Fetch language codes from database for multilingual detection
     const languages = await LanguageModel.find({}, { code: 1 }).lean();
-    const languageCodes = languages.map(l => l.code);
+    const languageCodes = languages.map((l: { code: string }) => l.code);
 
     const body = await req.json();
     const { source_id, products, batch_id, batch_metadata, channel_metadata, merge_mode = 'replace' } = body;
@@ -353,12 +384,6 @@ export async function POST(req: NextRequest) {
           debugProductSource = JSON.parse(JSON.stringify(productSource));
         }
 
-        console.log(`🔍 Product ${entity_code}`);
-        console.log(`   batch_id received:`, batch_id);
-        console.log(`   batch_metadata received:`, JSON.stringify(batch_metadata));
-        console.log(`   productSource:`, JSON.stringify(productSource));
-        console.log(`   finalProductData.source:`, JSON.stringify(finalProductData.source || 'undefined'));
-
         await PIMProductModel.create({
           // No wholesaler_id - database provides isolation
           ...finalProductData,
@@ -458,7 +483,7 @@ export async function POST(req: NextRequest) {
               product_ids: batchIds,
               operation: 'bulk-sync',
               channels: ['solr'],
-              tenant_id: process.env.VINC_TENANT_ID || 'default',
+              tenant_id: tenantId || 'default',
               priority: 'high',
             }, {
               priority: 1, // High priority for search indexing

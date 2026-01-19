@@ -1,5 +1,9 @@
 /**
  * Direct batch import - bypasses API and queues products directly
+ *
+ * Usage:
+ *   npx tsx scripts/batch-import-direct.ts --tenant hidros-it
+ *   npx tsx scripts/batch-import-direct.ts --tenant dfl-eventi-it
  */
 
 import { connectToDatabase } from "../src/lib/db/connection";
@@ -7,6 +11,20 @@ import { ImportSourceModel } from "../src/lib/db/models/import-source";
 import { PIMProductModel } from "../src/lib/db/models/pim-product";
 import { projectConfig } from "../src/config/project.config";
 import { SolrAdapter } from "../src/lib/adapters/solr-adapter";
+
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf("--tenant");
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
 
 // 10 test products with Italian content (NO language suffixes - will auto-convert to IT)
 const products = [
@@ -39,8 +57,17 @@ function applyDefaultLanguage(data: any): void {
 
 async function batchImport() {
   try {
-    console.log("📦 Direct Batch Import - 10 Products\n");
-    await connectToDatabase();
+    const { tenant } = parseArgs();
+    const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
+    console.log("📦 Direct Batch Import - 10 Products");
+    if (tenant) {
+      console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})\n`);
+    } else {
+      console.log(`⚠️  No --tenant specified, using environment default\n`);
+    }
+
+    await connectToDatabase(tenantDb);
 
     // Get source
     const source = await ImportSourceModel.findOne({ source_id: "test-default-lang" });
@@ -52,15 +79,16 @@ async function batchImport() {
 
     // Initialize Solr adapter
     console.log("🔍 Initializing Search Engine adapter...");
+    const solrCore = tenantDb || process.env.SOLR_CORE || process.env.MONGODB_DATABASE || "mycore";
     const solrAdapter = new SolrAdapter({
       enabled: true,
       custom_config: {
         solr_url: process.env.SOLR_URL || "http://localhost:8983/solr",
-        solr_core: process.env.SOLR_CORE || process.env.MONGODB_DATABASE || "mycore",
+        solr_core: solrCore,
       },
     });
     await solrAdapter.initialize();
-    console.log("✅ Search Engine adapter initialized\n");
+    console.log(`✅ Search Engine adapter initialized (core: ${solrCore})\n`);
 
     let successCount = 0;
     let failedCount = 0;

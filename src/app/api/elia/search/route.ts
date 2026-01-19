@@ -23,6 +23,22 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // Get tenant-specific Solr collection from headers (set by middleware)
+    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    if (!tenantDb) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Tenant not specified',
+          code: 'NO_TENANT',
+          details: {
+            message: 'Tenant must be provided via X-API-Key header',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { intent, language = 'it', limit } = body as {
       intent: EliaIntentExtraction;
@@ -46,6 +62,7 @@ export async function POST(request: NextRequest) {
     const searchResult = await cascadeSearch(intent, {
       language,
       maxResults: limit || 20,
+      tenantDb, // Pass tenant database to search service
     });
 
     const durationMs = Date.now() - startTime;

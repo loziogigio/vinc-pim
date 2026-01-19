@@ -1,6 +1,7 @@
 /**
  * Enable Search Indexing for Language API Route
  * POST /api/admin/languages/:code/enable-search
+ * Supports both session auth and API key auth
  *
  * Enables search engine indexing for a language:
  * - Updates Solr schema with language-specific analyzers
@@ -9,20 +10,45 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { LanguageModel } from "@/lib/db/models/language";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { refreshLanguageCache } from "@/services/language.service";
 import { addLanguageFieldsToSolr, ensureBaseFields } from "@/services/solr-schema.service";
 import { syncQueue } from "@/lib/queue/queues";
 import { projectConfig, ensureSolrCore } from "@/config/project.config";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    await connectToDatabase();
+    // Check for API key authentication first
+    const authMethod = request.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(request);
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { success: false, error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    // Get models bound to the correct tenant connection
+    const { Language: LanguageModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { code } = await params;
 

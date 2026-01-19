@@ -83,7 +83,8 @@ interface SolrProductDetails {
  */
 async function fetchProductsFromSolr(
   entityCodes: string[],
-  language: string = 'it'
+  language: string = 'it',
+  tenantDb?: string
 ): Promise<Map<string, SolrProductDetails>> {
   if (entityCodes.length === 0) {
     return new Map();
@@ -99,6 +100,7 @@ async function fetchProductsFromSolr(
       },
       include_faceting: true,
       group_variants: false,
+      tenantDb, // Pass tenant database
     });
 
     const products = new Map<string, SolrProductDetails>();
@@ -171,6 +173,22 @@ function mergeProductData(
 
 export async function POST(request: NextRequest) {
   try {
+    // Get tenant-specific Solr collection from headers (set by middleware)
+    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    if (!tenantDb) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Tenant not specified',
+          code: 'NO_TENANT',
+          details: {
+            message: 'Tenant must be provided via X-API-Key header',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const body: AnalyzeRequest = await request.json();
     const { products, intent, language = 'it', total_found } = body;
 
@@ -225,7 +243,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Fetch product details from Solr (name, brand, model, attributes)
     console.log(`[ELIA Analyze] Fetching ${entityCodes.length} products from Solr...`);
-    const solrProducts = await fetchProductsFromSolr(entityCodes, language);
+    const solrProducts = await fetchProductsFromSolr(entityCodes, language, tenantDb);
     console.log(`[ELIA Analyze] Fetched ${solrProducts.size} products from Solr`);
 
     // Step 3: Merge ERP + Solr data

@@ -40,4 +40,7 @@ ActivityLogSchema.index({ type: 1 });
 ActivityLogSchema.index({ createdAt: -1 });
 ActivityLogSchema.index({ performedBy: 1 });
 
+// Export schema for model-registry
+export { ActivityLogSchema };
+
 export const ActivityLogModel = models.ActivityLog ?? model("ActivityLog", ActivityLogSchema);

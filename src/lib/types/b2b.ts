@@ -7,6 +7,7 @@ export type B2BUserRole = "admin" | "manager" | "viewer";
 
 export type B2BSessionData = {
   isLoggedIn: boolean;
+  tenantId: string;
   userId: string;
   username: string;
   email: string;

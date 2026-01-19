@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportJobModel } from "@/lib/db/models/import-job";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/b2b/pim/batches
@@ -10,11 +9,12 @@ import { ImportJobModel } from "@/lib/db/models/import-job";
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ImportJob } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get distinct batch IDs from import jobs
-    const batches = await ImportJobModel.distinct("batch_id", query);
+    const batches = await ImportJob.distinct("batch_id", query);
 
     // Sort and limit to 50 most recent
     const sortedBatches = batches

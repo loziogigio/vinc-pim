@@ -1,74 +1,154 @@
 import mongoose from "mongoose";
+import { getPooledConnection, closeAllConnections } from "./connection-pool";
 
-// Configuration - same pattern as vinc-b2b
-const MIN_POOL = Number(process.env.VINC_MONGO_MIN_POOL_SIZE ?? "0");
-const MAX_POOL = Number(process.env.VINC_MONGO_MAX_POOL_SIZE ?? "50");
-const mongoUri = process.env.VINC_MONGO_URL ?? "mongodb://admin:admin@localhost:27017/?authSource=admin";
-// Use env var for database name (fallback to hidros-it)
-const mongoDbName = process.env.VINC_TENANT_ID ? `vinc-${process.env.VINC_TENANT_ID}` : "vinc-hidros-it";
-console.log(`🔧 DB: mongoDbName="${mongoDbName}", VINC_TENANT_ID="${process.env.VINC_TENANT_ID}"`);
+// Re-export pool utilities
+export {
+  getPooledConnection,
+  getPooledModel,
+  closeAllConnections,
+  getPoolStats,
+} from "./connection-pool";
 
-interface MongooseGlobal {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
-}
+// Re-export model registry utilities for multi-tenant model access
+export {
+  getModel,
+  getTenantModels,
+  connectWithModels,
+} from "./model-registry";
 
-const globalForMongoose = globalThis as typeof globalThis & { _mongoose?: MongooseGlobal };
-
-if (!globalForMongoose._mongoose) {
-  globalForMongoose._mongoose = { conn: null, promise: null };
-}
-
-export const connectToDatabase = async () => {
-  const cache = globalForMongoose._mongoose!;
-
-  if (cache.conn) {
-    return cache.conn;
-  }
-
-  if (!cache.promise) {
-    console.log(`🔌 Connecting to MongoDB database: ${mongoDbName}`);
-
-    cache.promise = mongoose
-      .connect(mongoUri, {
-        dbName: mongoDbName,
-        minPoolSize: MIN_POOL,
-        maxPoolSize: MAX_POOL,
-        bufferCommands: false,
-      })
-      .then((m) => {
-        console.log(`✅ MongoDB connected to database: ${mongoDbName}`);
-        cache.conn = m;
-        return m;
-      })
-      .catch((error) => {
-        console.error(`❌ MongoDB connection failed:`, error.message);
-        cache.promise = null;
-        cache.conn = null;
-        throw error;
-      });
-  }
-
+/**
+ * Try to detect tenant database from request headers
+ * @returns Database name or null if not available
+ */
+export async function detectTenantDbFromHeaders(): Promise<string | null> {
   try {
-    cache.conn = await cache.promise;
-  } catch (error) {
-    cache.conn = null;
-    throw error;
+    const { headers } = await import("next/headers");
+    const headersList = await headers();
+
+    // Check for tenant database name set by middleware
+    const tenantDb = headersList.get("x-resolved-tenant-db");
+    if (tenantDb) {
+      return tenantDb;
+    }
+
+    // Check for tenant ID and build database name
+    const tenantId = headersList.get("x-resolved-tenant-id");
+    if (tenantId) {
+      return `vinc-${tenantId}`;
+    }
+  } catch {
+    // Headers not available (e.g., in non-request context)
+  }
+  return null;
+}
+
+/**
+ * Try to detect tenant database from session
+ * @returns Database name or null if not available
+ */
+export async function detectTenantDbFromSession(): Promise<string | null> {
+  try {
+    const { getB2BSession } = await import("@/lib/auth/b2b-session");
+    const session = await getB2BSession();
+    if (session.isLoggedIn && session.tenantId) {
+      return `vinc-${session.tenantId}`;
+    }
+  } catch {
+    // Session not available (non-request context or no cookies)
+  }
+  return null;
+}
+
+/**
+ * Auto-detect tenant database name from headers or session.
+ * Throws if tenant cannot be determined.
+ * @returns Database name (e.g., "vinc-hidros-it")
+ */
+export async function autoDetectTenantDb(): Promise<string> {
+  // Try headers first (set by middleware)
+  const fromHeaders = await detectTenantDbFromHeaders();
+  if (fromHeaders) {
+    return fromHeaders;
   }
 
-  return cache.conn;
+  // Fall back to session
+  const fromSession = await detectTenantDbFromSession();
+  if (fromSession) {
+    return fromSession;
+  }
+
+  throw new Error(
+    "Could not auto-detect tenant database. Ensure middleware sets x-resolved-tenant-db header or user is logged in."
+  );
+}
+
+/**
+ * Connect to a tenant-specific database using connection pool.
+ *
+ * IMPORTANT: This function uses the connection pool for multi-tenant support.
+ * It does NOT use the default mongoose connection to avoid race conditions
+ * when switching between tenant databases.
+ *
+ * For Mongoose models, use connectWithModels() instead which provides
+ * properly bound models for the tenant connection.
+ *
+ * @param dbName - Database name (e.g., "vinc-hidros-it"). If not provided, auto-detects from headers/session.
+ * @returns A mongoose-compatible object with connection.db for raw collection access
+ */
+export const connectToDatabase = async (
+  dbName?: string
+): Promise<typeof mongoose> => {
+  let targetDb: string;
+
+  if (dbName) {
+    targetDb = dbName;
+  } else {
+    // Try to auto-detect tenant from headers (set by middleware)
+    const fromHeaders = await detectTenantDbFromHeaders();
+    if (fromHeaders) {
+      targetDb = fromHeaders;
+    } else {
+      // Try session if headers didn't have tenant info
+      const fromSession = await detectTenantDbFromSession();
+      if (fromSession) {
+        targetDb = fromSession;
+      } else {
+        throw new Error(
+          "No tenant database specified and could not auto-detect from headers or session."
+        );
+      }
+    }
+  }
+
+  // Use connection pool - no disconnect/reconnect needed
+  const connection = await getPooledConnection(targetDb);
+
+  // Return mongoose-compatible object for backward compatibility
+  // Routes using connection.connection.db will work
+  return {
+    connection: {
+      db: connection.db,
+      readyState: connection.readyState,
+    },
+    models: connection.models,
+  } as unknown as typeof mongoose;
 };
 
 export const getCurrentDatabase = (): string | undefined => {
-  return mongoose.connection.db?.databaseName;
+  // With pooling, there's no single "current" database
+  return undefined;
 };
 
 export const disconnectAll = async () => {
-  const cache = globalForMongoose._mongoose!;
-  cache.conn = null;
-  cache.promise = null;
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
-    console.log("🔌 Disconnected from MongoDB");
-  }
+  await closeAllConnections();
+  console.log("🔌 Disconnected all pooled connections");
+};
+
+/**
+ * Connect to tenant database, auto-detecting tenant from headers or session
+ * For use in Server Components and API routes
+ * @deprecated Use connectToDatabase() directly - it now auto-detects tenant
+ */
+export const connectToTenantDb = async (): Promise<typeof mongoose> => {
+  return connectToDatabase();
 };

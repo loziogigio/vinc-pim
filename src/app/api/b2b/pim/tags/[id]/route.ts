@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { TagModel } from "@/lib/db/models/tag";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 
 // GET /api/b2b/pim/tags/[id] - Fetch single tag
 export async function GET(
@@ -11,11 +9,12 @@ export async function GET(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Tag: TagModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
 
@@ -56,11 +55,12 @@ export async function PATCH(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Tag: TagModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const body = await req.json();
@@ -120,11 +120,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session?.isLoggedIn) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Tag: TagModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
 

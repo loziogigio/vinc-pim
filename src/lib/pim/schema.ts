@@ -8,13 +8,15 @@
  * - Language codes follow ISO 639-1 standard (2-letter lowercase codes)
  * - All enabled languages in the system can be used
  * - When importing, if a plain string is provided, it will be automatically converted to the default language
+ *
+ * SYNCHRONIZED WITH: src/lib/db/models/pim-product.ts (IPIMProduct interface)
  */
 
 export type PIMFieldCategory = "core" | "pricing" | "inventory" | "media" | "taxonomy" | "features" | "additional";
 
 export type PIMField = {
   name: string;
-  type: "string" | "number" | "boolean" | "array" | "object" | "multilingual_text" | "multilingual_array";
+  type: "string" | "number" | "boolean" | "array" | "object" | "multilingual_text" | "multilingual_array" | "date";
   category: PIMFieldCategory;
   required: boolean;
   description: string;
@@ -23,10 +25,12 @@ export type PIMField = {
 
 /**
  * Complete PIM Product Schema
- * Based on IPIMProduct interface
+ * Based on IPIMProduct interface from src/lib/db/models/pim-product.ts
  */
 export const PIM_PRODUCT_SCHEMA: PIMField[] = [
-  // Core Identity
+  // ============================================
+  // CORE IDENTITY (9 fields)
+  // ============================================
   {
     name: "entity_code",
     type: "string",
@@ -72,296 +76,344 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     type: "multilingual_text",
     category: "core",
     required: false,
-    description: "Short product description (multilingual - supports all enabled languages)",
-    example: '{"it": "Mouse wireless ad alta precisione", "de": "Hochpräzise kabellose Maus", "en": "High-precision wireless mouse"}'
+    description: "Short product description for listings (multilingual)",
+    example: '{"it": "Mouse wireless compatto", "en": "Compact wireless mouse"}'
   },
   {
     name: "long_description",
     type: "multilingual_text",
     category: "core",
     required: false,
-    description: "Detailed product description (multilingual - supports all enabled languages, can contain HTML)",
+    description: "Detailed product description (multilingual, can contain HTML)",
     example: '{"it": "<p>Mouse wireless ergonomico con <strong>illuminazione RGB</strong></p>", "en": "<p>Ergonomic wireless mouse with <strong>RGB lighting</strong></p>"}'
   },
   {
-    name: "product_status",
+    name: "product_model",
     type: "string",
     category: "core",
     required: false,
-    description: "Product status code",
-    example: "available"
+    description: "Product model number/code",
+    example: "WM-2024-PRO"
   },
   {
-    name: "product_status_description",
-    type: "multilingual_text",
+    name: "ean",
+    type: "array",
     category: "core",
     required: false,
-    description: "Product status description (multilingual)",
-    example: '{"it": "Disponibile - Spedizione in 1-2 giorni", "de": "Verfügbar - Versand in 1-2 Tagen", "en": "Available - Ships in 1-2 days"}'
+    description: "EAN barcodes (array of strings for multiple codes)",
+    example: '["5901234123457", "5901234123464"]'
   },
 
-  // Pricing
+  // ============================================
+  // PRICING (ProductPricing object + promotions)
+  // ============================================
   {
-    name: "price",
-    type: "number",
+    name: "pricing",
+    type: "object",
     category: "pricing",
     required: false,
-    description: "Regular price",
-    example: "29.99"
+    description: "Product pricing object with list (user's cost), retail (MSRP), sale (discounted), currency, and vat_rate",
+    example: '{"list": 80.02, "retail": 160.04, "sale": 72.02, "currency": "EUR", "vat_rate": 22}'
   },
   {
-    name: "sale_price",
+    name: "pricing.list",
     type: "number",
     category: "pricing",
     required: false,
-    description: "Sale/promotional price",
-    example: "24.99"
+    description: "User's purchase/cost price (from ERP net_price or price)",
+    example: "80.02"
   },
   {
-    name: "min_price",
+    name: "pricing.retail",
     type: "number",
     category: "pricing",
     required: false,
-    description: "Minimum price"
+    description: "MSRP / suggested retail price (from ERP gross_price)",
+    example: "160.04"
   },
   {
-    name: "max_price",
+    name: "pricing.sale",
     type: "number",
     category: "pricing",
     required: false,
-    description: "Maximum price"
+    description: "Discounted price (from ERP price_discount)",
+    example: "72.02"
+  },
+  {
+    name: "pricing.currency",
+    type: "string",
+    category: "pricing",
+    required: false,
+    description: "Currency code (EUR, USD, etc.)",
+    example: "EUR"
+  },
+  {
+    name: "pricing.vat_rate",
+    type: "number",
+    category: "pricing",
+    required: false,
+    description: "VAT percentage (22, 10, 4, 0)",
+    example: "22"
+  },
+  {
+    name: "promotions",
+    type: "array",
+    category: "pricing",
+    required: false,
+    description: "Product-level promotions (legacy - prefer packaging_options.promotions). Includes promo_code, promo_row, is_active, promo_type, calc_method, label (multilingual), discount_percentage, discount_amount, buy_x, get_y, is_stackable, priority, start_date, end_date, min_quantity, min_order_value, promo_price",
+    example: '[{"promo_code": "PROMO-2024", "promo_row": 1, "is_active": true, "promo_type": "STD", "label": {"it": "Promozione", "en": "Promotion"}, "discount_percentage": 20, "promo_price": 65.00, "is_stackable": false, "priority": 1}]'
+  },
+  {
+    name: "promo_code",
+    type: "array",
+    category: "pricing",
+    required: false,
+    description: "Array of active promotion codes (for faceting/filtering)",
+    example: '["016", "017"]'
+  },
+  {
+    name: "promo_type",
+    type: "array",
+    category: "pricing",
+    required: false,
+    description: "Array of promotion business categories (STD, XXX, OMG, EOL, etc.) for faceting",
+    example: '["STD", "OMG"]'
+  },
+  {
+    name: "has_active_promo",
+    type: "boolean",
+    category: "pricing",
+    required: false,
+    description: "Has any active promotion",
+    example: "true"
   },
 
-  // Inventory
+  // ============================================
+  // INVENTORY & STOCK (18 fields)
+  // ============================================
   {
     name: "quantity",
     type: "number",
     category: "inventory",
-    required: false,
-    description: "Available quantity",
-    example: "100"
-  },
-  {
-    name: "stock",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Stock level",
+    required: true,
+    description: "Available quantity in stock",
     example: "100"
   },
   {
     name: "sold",
     type: "number",
     category: "inventory",
-    required: false,
-    description: "Units sold"
+    required: true,
+    description: "Units sold",
+    example: "50"
+  },
+  {
+    name: "unit",
+    type: "string",
+    category: "inventory",
+    required: true,
+    description: "Base unit of measure (default: pcs)",
+    example: "pcs"
   },
   {
     name: "stock_status",
     type: "string",
     category: "inventory",
     required: false,
-    description: "Stock status (in_stock, out_of_stock, pre_order)",
+    description: "Stock status: in_stock, out_of_stock, pre_order",
     example: "in_stock"
   },
   {
-    name: "min_stock",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Minimum stock level",
-    example: "10"
-  },
-  {
-    name: "lot_size",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Lot/batch size",
-    example: "100"
-  },
-
-  // Unit of Measure (Base)
-  {
-    name: "uom",
+    name: "product_status",
     type: "string",
     category: "inventory",
     required: false,
-    description: "Base unit of measure (PZ=piece, KG=kilogram, LT=liter, MT=meter, etc.)",
-    example: "PZ"
+    description: "Product status code from ERP",
+    example: "A"
   },
   {
-    name: "uom_description",
-    type: "string",
+    name: "product_status_description",
+    type: "multilingual_text",
     category: "inventory",
     required: false,
-    description: "Unit of measure description",
-    example: "Pieces"
+    description: "Product status description (multilingual)",
+    example: '{"it": "Disponibile", "de": "Verfügbar", "en": "Available"}'
   },
-
-  // Packaging Options
+  // Physical - Weight
   {
-    name: "packaging_options",
-    type: "array",
-    category: "inventory",
-    required: false,
-    description: "All available packaging options with multilingual labels (array of objects with id, code, label, qty, uom, is_default, is_smallest, ean, position)",
-    example: '[{"id": "pkg-1", "code": "PZ", "label": {"it": "Pezzo singolo", "en": "Single Piece"}, "qty": 1, "uom": "PZ", "is_default": false, "is_smallest": true}, {"id": "pkg-2", "code": "CT", "label": {"it": "Cartone", "en": "Carton"}, "qty": 12, "uom": "PZ", "is_default": true, "is_smallest": false}]'
-  },
-
-  // Physical Properties - Weight
-  {
-    name: "gross_weight",
+    name: "weight",
     type: "number",
     category: "inventory",
     required: false,
-    description: "Gross weight",
-    example: "0.5"
-  },
-  {
-    name: "net_weight",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Net weight",
-    example: "0.45"
+    description: "Product weight value",
+    example: "0.12"
   },
   {
     name: "weight_uom",
     type: "string",
     category: "inventory",
     required: false,
-    description: "Unit of measure for weight (KG=kilogram, LB=pound, G=gram, etc.)",
+    description: "Weight unit of measure (KG, G, LB)",
     example: "KG"
   },
-
-  // Physical Properties - Dimensions
-  {
-    name: "length",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Length",
-    example: "20"
-  },
-  {
-    name: "width",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Width",
-    example: "15"
-  },
-  {
-    name: "height",
-    type: "number",
-    category: "inventory",
-    required: false,
-    description: "Height",
-    example: "10"
-  },
-  {
-    name: "dimension_uom",
-    type: "string",
-    category: "inventory",
-    required: false,
-    description: "Unit of measure for dimensions (CM=centimeter, M=meter, IN=inch, FT=foot, etc.)",
-    example: "CM"
-  },
-
-  // Physical Properties - Volume
+  // Physical - Volume
   {
     name: "volume",
     type: "number",
     category: "inventory",
     required: false,
-    description: "Volume",
-    example: "0.003"
+    description: "Product volume value",
+    example: "420"
   },
   {
     name: "volume_uom",
     type: "string",
     category: "inventory",
     required: false,
-    description: "Unit of measure for volume (L=liter, ML=milliliter, M3=cubic meter, GAL=gallon, etc.)",
-    example: "L"
+    description: "Volume unit of measure (CM3, L, ML)",
+    example: "CM3"
+  },
+  // Physical - Dimensions
+  {
+    name: "dimension_height",
+    type: "number",
+    category: "inventory",
+    required: false,
+    description: "Height dimension",
+    example: "3.5"
+  },
+  {
+    name: "dimension_width",
+    type: "number",
+    category: "inventory",
+    required: false,
+    description: "Width dimension",
+    example: "4.5"
+  },
+  {
+    name: "dimension_length",
+    type: "number",
+    category: "inventory",
+    required: false,
+    description: "Length dimension",
+    example: "26.8"
+  },
+  {
+    name: "dimension_uom",
+    type: "string",
+    category: "inventory",
+    required: false,
+    description: "Dimension unit of measure (CM, MM, M)",
+    example: "CM"
+  },
+  // Packaging with embedded promotions
+  {
+    name: "packaging_options",
+    type: "array",
+    category: "inventory",
+    required: false,
+    description: "Packaging options with code, label (multilingual), qty, uom, is_default, is_smallest, ean, position, pricing object (list, retail, sale), and promotions array (promo_code, promo_row, promo_type, label, discount_percentage, promo_price, etc.)",
+    example: '[{"code": "PZ", "label": {"it": "Pezzo", "en": "Piece"}, "qty": 1, "uom": "PZ", "is_default": false, "is_smallest": true, "pricing": {"list": 80.02, "retail": 160.04}}, {"code": "BOX", "label": {"it": "Scatola", "en": "Box"}, "qty": 4, "uom": "PZ", "is_default": true, "is_smallest": false, "pricing": {"list": 320.08, "retail": 640.16, "sale": 288.07}, "promotions": [{"promo_code": "BREVE-SCAD", "promo_row": 1, "is_active": true, "promo_type": "BREVE-SCAD", "label": {"it": "Merce a breve scadenza", "en": "Short expiry goods"}, "discount_percentage": 10, "promo_price": 288.07, "is_stackable": false, "priority": 1, "end_date": "2026-02-07"}]}]'
+  },
+  // Import source
+  {
+    name: "source",
+    type: "object",
+    category: "inventory",
+    required: false,
+    description: "Import source info (source_id, source_name, batch_id, imported_at)",
+    example: '{"source_id": "erp-sync", "source_name": "ERP Sync", "imported_at": "2024-01-15T10:00:00Z"}'
+  },
+  {
+    name: "item_creation_date",
+    type: "date",
+    category: "inventory",
+    required: false,
+    description: "When item was originally created in ERP",
+    example: "2024-01-15T10:00:00Z"
   },
 
-  // Media
+  // ============================================
+  // MEDIA & IMAGES (2 fields)
+  // ============================================
   {
-    name: "gallery",
+    name: "images",
     type: "array",
     category: "media",
     required: false,
-    description: "Product image gallery (array of image objects with id, url, s3_key, label, position - first image [position 0] is the cover/main image)",
-    example: '[{"id": "img_001", "url": "https://cdn.../image1.jpg", "label": "Main product photo", "position": 0}, {"id": "img_002", "url": "https://cdn.../image2.jpg", "position": 1}]'
+    description: "Product images array (position 0 = cover/main image). Each has: url, cdn_key, position, file_name, file_type, size_bytes, uploaded_at, uploaded_by",
+    example: '[{"url": "https://cdn.../image1.jpg", "cdn_key": "products/image1.jpg", "position": 0}]'
   },
   {
     name: "media",
     type: "array",
     category: "media",
     required: false,
-    description: "Media files (documents, videos, 3D models) with multilingual labels - supports both uploaded files and external URLs (YouTube, Vimeo, etc.)",
-    example: '[{"type": "document", "url": "https://cdn.../manual.pdf", "label": {"it": "Manuale d\'uso", "en": "User Manual"}, "language": "it", "position": 0}]'
+    description: "Media files: documents, videos, 3D models. Supports uploads and external URLs (YouTube/Vimeo). Each has: type, url, s3_key, label (multilingual), language, file_type, size_bytes, is_external_link, position",
+    example: '[{"type": "document", "url": "https://cdn.../manual.pdf", "label": {"it": "Manuale", "en": "Manual"}, "position": 0}]'
   },
 
-  // Taxonomy
+  // ============================================
+  // CATEGORY & BRAND (5 fields)
+  // ============================================
   {
     name: "brand",
     type: "object",
     category: "taxonomy",
     required: false,
-    description: "Brand object with id, name (universal, not translated), slug, and optional image",
-    example: '{"id": "brand-bosch", "name": "Bosch Professional", "slug": "bosch-professional"}'
+    description: "Brand with hierarchy support: brand_id, label, slug, description, logo_url, website_url, parent_brand_id, brand_family, level, path, hierarchy",
+    example: '{"brand_id": "brand-bosch", "label": "Bosch Professional", "slug": "bosch-professional"}'
   },
   {
     name: "category",
     type: "object",
     category: "taxonomy",
     required: false,
-    description: "Category object with id, name (multilingual), slug (multilingual), details (multilingual), icon, and optional image",
-    example: '{"id": "cat-001", "name": {"it": "Trapani", "de": "Bohrmaschinen", "en": "Drills"}, "slug": {"it": "trapani", "de": "bohrmaschinen", "en": "drills"}}'
+    description: "Category with hierarchy: category_id, name (multilingual), slug (multilingual), details, image, icon, parent_id, level, path, hierarchy",
+    example: '{"category_id": "cat-001", "name": {"it": "Trapani", "en": "Drills"}, "slug": {"it": "trapani", "en": "drills"}}'
   },
   {
     name: "collections",
     type: "array",
     category: "taxonomy",
     required: false,
-    description: "Array of collection objects with id, name (multilingual), and slug (multilingual)",
-    example: '[{"id": "col-001", "name": {"it": "Utensili Elettrici", "en": "Power Tools"}, "slug": {"it": "utensili-elettrici", "en": "power-tools"}}]'
+    description: "Multiple collections with hierarchy: collection_id, name (multilingual), slug (multilingual), description, parent_collection_id, level, path, hierarchy",
+    example: '[{"collection_id": "col-001", "name": {"it": "Utensili Elettrici", "en": "Power Tools"}}]'
   },
   {
     name: "product_type",
     type: "object",
     category: "taxonomy",
     required: false,
-    description: "Product type object with id, name (multilingual), slug (multilingual), and optional features array",
-    example: '{"id": "type-001", "name": {"it": "Trapano", "en": "Drill"}, "slug": {"it": "trapano", "en": "drill"}}'
+    description: "Product type with features: product_type_id, name (multilingual), slug (multilingual), features, inherited_features, parent_type_id, level, path, hierarchy",
+    example: '{"product_type_id": "type-001", "name": {"it": "Trapano", "en": "Drill"}}'
   },
   {
     name: "tags",
     type: "array",
     category: "taxonomy",
     required: false,
-    description: "Array of tag objects with id, name (multilingual), and slug (universal)",
-    example: '[{"id": "tag-bestseller", "name": {"it": "Più venduto", "en": "Bestseller"}, "slug": "bestseller"}]'
+    description: "Marketing/SEO tags: tag_id, name (multilingual), slug, description, color, tag_category, tag_group, tag_group_data",
+    example: '[{"tag_id": "tag-bestseller", "name": {"it": "Più venduto", "en": "Bestseller"}, "slug": "bestseller"}]'
   },
 
-  // Features & Specifications
+  // ============================================
+  // FEATURES & SPECS (4 fields)
+  // ============================================
   {
     name: "features",
     type: "multilingual_array",
     category: "features",
     required: false,
-    description: "Product features (multilingual array of strings per language)",
-    example: '{"it": ["Connessione wireless 2.4GHz", "Sensore ottico 1600 DPI"], "en": ["2.4GHz wireless connection", "1600 DPI optical sensor"]}'
+    description: "Marketing features/highlights per language (array of strings)",
+    example: '{"it": ["Connessione wireless 2.4GHz", "Sensore 1600 DPI"], "en": ["2.4GHz wireless", "1600 DPI sensor"]}'
   },
   {
     name: "specifications",
-    type: "multilingual_array",
+    type: "object",
     category: "features",
     required: false,
-    description: "Product specifications (multilingual array of objects with key, label, value, uom, category, order)",
+    description: "Technical specs per language (array of objects with key, label, value, uom, category, order)",
     example: '{"it": [{"key": "peso", "label": "Peso", "value": "0.2", "uom": "kg"}], "en": [{"key": "weight", "label": "Weight", "value": "0.2", "uom": "kg"}]}'
   },
   {
@@ -369,102 +421,28 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     type: "object",
     category: "features",
     required: false,
-    description: "Product attributes with multilingual support. Each attribute uses slug as key (for faceting) and stores label (multilingual), value (multilingual), and optional uom (language-independent). Label and value can be either simple strings or multilingual objects.",
-    example: '{"material": {"label": {"en": "Material", "it": "Materiale"}, "value": {"en": "Cotton", "it": "Cotone"}, "uom": "g/m²"}, "color": {"label": "Color", "value": "Blue"}}'
+    description: "Product attributes per language (array of objects with key, label, value)",
+    example: '{"it": [{"key": "color", "label": "Colore", "value": "Nero"}], "en": [{"key": "color", "label": "Color", "value": "Black"}]}'
   },
   {
-    name: "meta",
+    name: "synonym_keys",
     type: "array",
     category: "features",
     required: false,
-    description: "Metadata key-value pairs (array of objects with key and value)",
-    example: '[{"key": "warranty_type", "value": "manufacturer"}, {"key": "origin_country", "value": "Italy"}]'
+    description: "References to SynonymDictionary.key for search expansion",
+    example: '["trapano", "drill", "bohrmaschine"]'
   },
 
-  // Additional Fields
-  {
-    name: "model",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Model number",
-    example: "WM-2024"
-  },
-  {
-    name: "product_model",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Product model code"
-  },
-  {
-    name: "color",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Product color",
-    example: "Black"
-  },
-  {
-    name: "material",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Material",
-    example: "Plastic"
-  },
-  {
-    name: "weight",
-    type: "number",
-    category: "additional",
-    required: false,
-    description: "Product weight",
-    example: "0.2"
-  },
-  {
-    name: "dimensions",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Product dimensions",
-    example: "10 x 5 x 3 cm"
-  },
-  {
-    name: "warranty_months",
-    type: "number",
-    category: "additional",
-    required: false,
-    description: "Warranty period in months",
-    example: "12"
-  },
-  {
-    name: "manufacturer",
-    type: "string",
-    category: "additional",
-    required: false,
-    description: "Manufacturer name"
-  },
-  {
-    name: "ean",
-    type: "array",
-    category: "additional",
-    required: false,
-    description: "EAN barcodes (array of strings for multiple codes)",
-    example: '["5901234123457", "5901234123464"]'
-  },
-  {
-    name: "docs",
-    type: "array",
-    category: "additional",
-    required: false,
-    description: "Product documents"
-  },
+  // ============================================
+  // ADDITIONAL FIELDS (17 fields)
+  // ============================================
+  // Variant relationships
   {
     name: "parent_entity_code",
     type: "string",
     category: "additional",
     required: false,
-    description: "Parent product entity code (for product variations)",
+    description: "Parent product entity_code (for variants)",
     example: "PROD-PARENT-001"
   },
   {
@@ -472,51 +450,130 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     type: "string",
     category: "additional",
     required: false,
-    description: "Parent product SKU"
-  },
-  {
-    name: "variants_sku",
-    type: "array",
-    category: "additional",
-    required: false,
-    description: "Child variant SKUs (array of SKU strings)",
-    example: '["SKU-VAR-001", "SKU-VAR-002", "SKU-VAR-003"]'
+    description: "Parent product SKU (for variants)"
   },
   {
     name: "variants_entity_code",
     type: "array",
     category: "additional",
     required: false,
-    description: "Child variant entity_codes (array of entity_code strings)",
-    example: '["PROD-VAR-001", "PROD-VAR-002", "PROD-VAR-003"]'
+    description: "Child variant entity_codes (for parent products)",
+    example: '["PROD-VAR-001", "PROD-VAR-002"]'
   },
-
-  // Promotions
   {
-    name: "promotions",
+    name: "variants_sku",
     type: "array",
     category: "additional",
     required: false,
-    description: "Product promotions with multilingual labels (array of promotion objects with promo_code, is_active, promo_type, label, discount_percentage, discount_amount, is_stackable, priority, start_date, end_date, min_quantity, min_order_value)",
-    example: '[{"promo_code": "PROMO-2024", "is_active": true, "promo_type": "percentage", "label": {"it": "Promozione di Natale", "en": "Christmas Promotion"}, "discount_percentage": 20, "is_stackable": false, "priority": 1, "start_date": "2024-12-01T00:00:00Z", "end_date": "2024-12-31T23:59:59Z"}]'
+    description: "Child variant SKUs (for parent products)",
+    example: '["SKU-VAR-001", "SKU-VAR-002"]'
   },
-
+  {
+    name: "parent_product",
+    type: "object",
+    category: "additional",
+    required: false,
+    description: "Self-contained parent product data for variant displays: entity_code, sku, name, slug, cover_image_url, price, brand, category",
+    example: '{"entity_code": "PARENT-001", "name": {"it": "Prodotto Base"}}'
+  },
+  {
+    name: "sibling_variants",
+    type: "array",
+    category: "additional",
+    required: false,
+    description: "Self-contained sibling variants data: entity_code, sku, name, variant_attributes, cover_image_url, price, stock_status",
+    example: '[{"entity_code": "VAR-002", "variant_attributes": {"color": "blue"}}]'
+  },
+  {
+    name: "is_parent",
+    type: "boolean",
+    category: "additional",
+    required: false,
+    description: "Is this a parent product? (true for single products and parents, false for variants)",
+    example: "true"
+  },
+  {
+    name: "include_faceting",
+    type: "boolean",
+    category: "additional",
+    required: false,
+    description: "Include in Solr faceting? (false for parent products with variants)",
+    example: "true"
+  },
+  {
+    name: "share_images_with_variants",
+    type: "boolean",
+    category: "additional",
+    required: false,
+    description: "Share parent images with all child variants in search",
+    example: "false"
+  },
+  {
+    name: "share_media_with_variants",
+    type: "boolean",
+    category: "additional",
+    required: false,
+    description: "Share parent media (docs, videos) with all child variants",
+    example: "false"
+  },
   // SEO
   {
     name: "meta_title",
     type: "multilingual_text",
     category: "additional",
     required: false,
-    description: "SEO meta title (multilingual - supports all enabled languages)",
-    example: '{"it": "Bosch PSB 750 - Trapano Professionale | Miglior Prezzo", "de": "Bosch PSB 750 - Profi-Bohrmaschine | Bester Preis", "en": "Bosch PSB 750 - Professional Drill | Best Price"}'
+    description: "SEO meta title (multilingual)",
+    example: '{"it": "Bosch PSB 750 - Trapano | Miglior Prezzo", "en": "Bosch PSB 750 - Drill | Best Price"}'
   },
   {
     name: "meta_description",
     type: "multilingual_text",
     category: "additional",
     required: false,
-    description: "SEO meta description (multilingual - supports all enabled languages)",
-    example: '{"it": "Acquista il trapano professionale Bosch PSB 750. Potenza 750W, 2 velocità. Spedizione gratuita.", "en": "Buy Bosch PSB 750 professional drill. 750W power, 2 speeds. Free shipping."}'
+    description: "SEO meta description (multilingual)",
+    example: '{"it": "Acquista il trapano Bosch PSB 750. Spedizione gratuita.", "en": "Buy Bosch PSB 750 drill. Free shipping."}'
+  },
+  // Metadata
+  {
+    name: "meta",
+    type: "array",
+    category: "additional",
+    required: false,
+    description: "Generic metadata key-value pairs",
+    example: '[{"key": "warranty_type", "value": "manufacturer"}]'
+  },
+  // PIM internal fields (usually auto-managed)
+  {
+    name: "status",
+    type: "string",
+    category: "additional",
+    required: false,
+    description: "PIM status: draft, published, archived (auto-managed)",
+    example: "draft"
+  },
+  {
+    name: "completeness_score",
+    type: "number",
+    category: "additional",
+    required: false,
+    description: "Quality score 0-100 (auto-calculated)",
+    example: "85"
+  },
+  {
+    name: "auto_publish_enabled",
+    type: "boolean",
+    category: "additional",
+    required: false,
+    description: "Enable auto-publish when score threshold is met",
+    example: "false"
+  },
+  {
+    name: "min_score_threshold",
+    type: "number",
+    category: "additional",
+    required: false,
+    description: "Minimum completeness score for auto-publish (default: 80)",
+    example: "80"
   }
 ];
 

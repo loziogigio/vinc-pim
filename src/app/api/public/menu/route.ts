@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { MenuItemModel, MenuLocation } from "@/lib/db/models/menu";
+import { connectWithModels } from "@/lib/db/connection";
+import { MenuLocation } from "@/lib/db/models/menu";
 
 /**
  * GET /api/public/menu
@@ -9,7 +9,15 @@ import { MenuItemModel, MenuLocation } from "@/lib/db/models/menu";
  */
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
+    const tenantDb = req.headers.get("x-resolved-tenant-db");
+    if (!tenantDb) {
+      return NextResponse.json(
+        { error: "Tenant not resolved" },
+        { status: 400 }
+      );
+    }
+
+    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location") as MenuLocation | null;

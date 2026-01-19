@@ -212,7 +212,8 @@ export function getSortField(field: string, lang: string): string {
   const sortFieldMap: Record<string, string> = {
     price: 'price',
     relevance: 'score',
-    newest: 'created_at',
+    newest: 'item_creation_date',    // ERP insertion date (when item was created in ERP)
+    created: 'created_at',           // PIM import date (when item was imported to PIM)
     popularity: 'priority_score',
     quality: 'priority_score', // Use priority_score for quality sort
     name: `name_text_${lang}`,

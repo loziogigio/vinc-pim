@@ -37,6 +37,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get tenant-specific Solr collection from headers (set by middleware)
+    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    if (!tenantDb) {
+      return NextResponse.json(
+        {
+          error: 'Tenant not specified',
+          details: {
+            code: 'NO_TENANT',
+            message: 'Tenant must be provided via X-Tenant-ID header or URL path',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     // Use default facet fields if not specified
     const facetFields = body.facet_fields && body.facet_fields.length > 0
       ? body.facet_fields
@@ -57,8 +72,9 @@ export async function POST(request: NextRequest) {
     // Build Solr query (facet-only, no docs)
     const solrQuery = buildFacetOnlyQuery(facetRequest);
 
-    // Execute search
-    const solrClient = getSolrClient();
+    // Execute search with tenant-specific core
+    const { SolrClient } = await import('@/lib/search/solr-client');
+    const solrClient = new SolrClient(config.url, tenantDb);
     const solrResponse = await solrClient.search(solrQuery);
 
     // Transform response
@@ -120,6 +136,21 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
 
+    // Get tenant-specific Solr collection from headers (set by middleware)
+    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    if (!tenantDb) {
+      return NextResponse.json(
+        {
+          error: 'Tenant not specified',
+          details: {
+            code: 'NO_TENANT',
+            message: 'Tenant must be provided via X-Tenant-ID header or URL path',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     // Extract parameters
     const lang = searchParams.get('lang') || 'it';
     const text = searchParams.get('text') || searchParams.get('q') || undefined;
@@ -161,9 +192,10 @@ export async function GET(request: NextRequest) {
       facet_sort: (searchParams.get('facet_sort') as 'count' | 'index') || 'count',
     };
 
-    // Build and execute query
+    // Build and execute query with tenant-specific core
     const solrQuery = buildFacetOnlyQuery(facetRequest);
-    const solrClient = getSolrClient();
+    const { SolrClient } = await import('@/lib/search/solr-client');
+    const solrClient = new SolrClient(config.url, tenantDb);
     const solrResponse = await solrClient.search(solrQuery);
 
     // Transform response

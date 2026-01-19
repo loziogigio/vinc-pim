@@ -76,4 +76,7 @@ B2BProductSchema.index({ category: 1 });
 B2BProductSchema.index({ lastSyncedAt: -1 });
 B2BProductSchema.index({ title: "text" }); // Text search index
 
+// Export schema for model-registry
+export { B2BProductSchema };
+
 export const B2BProductModel = models.B2BProduct ?? model("B2BProduct", B2BProductSchema);

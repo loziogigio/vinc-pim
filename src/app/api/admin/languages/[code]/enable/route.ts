@@ -1,20 +1,47 @@
 /**
  * Enable Language API Route
  * POST /api/admin/languages/:code/enable
+ * Supports both session auth and API key auth
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { LanguageModel } from "@/lib/db/models/language";
+import { connectWithModels } from "@/lib/db/connection";
 import { refreshLanguageCache } from "@/services/language.service";
 import { addLanguageFieldsToSolr } from "@/services/solr-schema.service";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    await connectToDatabase();
+    // Check for API key authentication first
+    const authMethod = request.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(request);
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { success: false, error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    // Get models bound to the correct tenant connection
+    const { Language: LanguageModel } = await connectWithModels(tenantDb);
 
     const { code } = await params;
     const body = await request.json();

@@ -7,7 +7,8 @@ import { cn } from "@/components/ui/utils";
 import type { CompanyBranding, ProductCardStyle } from "@/lib/types/home-settings";
 import { getCardStyleCSS, getCardHoverStyleCSS } from "@/lib/home-settings/style-utils";
 
-const FALLBACK_IMAGE = "https://via.placeholder.com/480x360.png?text=Product";
+// Local placeholder image - no external dependency
+const FALLBACK_IMAGE = "/placeholder-product.svg";
 
 const shadowBadge =
   "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide";

@@ -1,6 +1,9 @@
 /**
  * Enable 10 languages for data entry and search indexing
- * Run with: npx tsx scripts/enable-10-languages.ts
+ * Usage:
+ *   npx tsx scripts/enable-10-languages.ts
+ *   npx tsx scripts/enable-10-languages.ts --tenant dfl-eventi-it
+ *   npx tsx scripts/enable-10-languages.ts --tenant hidros-it
  */
 
 import { connectToDatabase } from "../src/lib/db/connection";
@@ -22,10 +25,33 @@ const LANGUAGES_TO_ENABLE = [
   "ja", // Japanese
 ];
 
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf('--tenant');
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
+
 async function enableLanguages() {
   try {
-    console.log("🌍 Enabling 10 languages for PIM and Search...\n");
-    await connectToDatabase();
+    const { tenant } = parseArgs();
+    const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
+    console.log("🌍 Enabling 10 languages for PIM and Search...");
+    if (tenant) {
+      console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})\n`);
+    } else {
+      console.log("📍 Using default database from environment\n");
+    }
+
+    await connectToDatabase(tenantDb);
 
     // Ensure base fields exist in Solr first
     console.log("📋 Step 1: Ensuring base Solr fields exist...");

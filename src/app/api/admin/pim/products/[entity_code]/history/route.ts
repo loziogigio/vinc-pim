@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { headers } from "next/headers";
 
 /**
  * GET /api/admin/pim/products/[entity_code]/history
@@ -12,7 +13,36 @@ export async function GET(
 ) {
   try {
     const { entity_code } = await params;
-    await connectToDatabase();
+
+    // Determine tenant database from headers or session
+    let tenantDb: string | null = null;
+
+    // Try headers first (middleware-provided)
+    const headersList = await headers();
+    const tenantDbHeader = headersList.get("x-resolved-tenant-db");
+    const tenantIdHeader = headersList.get("x-resolved-tenant-id");
+
+    if (tenantDbHeader) {
+      tenantDb = tenantDbHeader;
+    } else if (tenantIdHeader) {
+      tenantDb = `vinc-${tenantIdHeader}`;
+    } else {
+      // Fall back to session
+      const session = await getB2BSession();
+      if (session.isLoggedIn && session.tenantId) {
+        tenantDb = `vinc-${session.tenantId}`;
+      }
+    }
+
+    if (!tenantDb) {
+      return NextResponse.json(
+        { error: "No tenant context available" },
+        { status: 401 }
+      );
+    }
+
+    // Get tenant-specific models from connection pool
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // No wholesaler_id - database provides isolation
 

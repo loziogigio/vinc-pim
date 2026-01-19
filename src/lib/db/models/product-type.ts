@@ -108,5 +108,8 @@ ProductTypeSchema.index({ slug: 1 }, { unique: true });
 // Index for sorting
 ProductTypeSchema.index({ display_order: 1 });
 
+// Export schema for model-registry
+export { ProductTypeSchema };
+
 export const ProductTypeModel =
   mongoose.models.ProductType || mongoose.model<IProductType>("ProductType", ProductTypeSchema);

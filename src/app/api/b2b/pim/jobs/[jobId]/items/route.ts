@@ -5,10 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportJobModel } from "@/lib/db/models/import-job";
-import { AssociationJobModel } from "@/lib/db/models/association-job";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/b2b/pim/jobs/[jobId]/items
@@ -19,13 +16,13 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    // TODO: Re-enable authentication when needed
-    // const session = await getB2BSession();
-    // if (!session || session.role !== "admin") {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    const session = await getB2BSession();
+    if (!session || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ImportJob: ImportJobModel, AssociationJob: AssociationJobModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { jobId } = await params;
     const { searchParams } = new URL(req.url);

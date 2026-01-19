@@ -182,5 +182,8 @@ MenuItemSchema.index({ location: 1, parent_id: 1, position: 1 });
 MenuItemSchema.index({ is_active: 1, start_date: 1, end_date: 1 });
 MenuItemSchema.index({ type: 1, reference_id: 1 });
 
+// Export schema for model-registry
+export { MenuItemSchema };
+
 export const MenuItemModel =
   mongoose.models.MenuItem || mongoose.model<IMenuItem>("MenuItem", MenuItemSchema);

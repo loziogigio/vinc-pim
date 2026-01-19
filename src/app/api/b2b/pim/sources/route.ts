@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportSourceModel } from "@/lib/db/models/import-source";
+import { connectWithModels } from "@/lib/db/connection";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 /**
  * GET /api/b2b/pim/sources
@@ -9,13 +9,29 @@ import { ImportSourceModel } from "@/lib/db/models/import-source";
  */
 export async function GET(req: NextRequest) {
   try {
-    // TODO: Re-enable authentication
-    // const session = await getB2BSession();
-    // if (!session || session.role !== "admin") {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantDb: string;
 
-    await connectToDatabase();
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "pim");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    // Get tenant-specific models from connection pool
+    const { ImportSource: ImportSourceModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -70,12 +86,32 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || session.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let createdBy = "api";
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "pim");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+      createdBy = `api-key:${req.headers.get("x-api-key-id")}`;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+      createdBy = session.userId || "session";
     }
 
-    await connectToDatabase();
+    // Get tenant-specific models from connection pool
+    const { ImportSource: ImportSourceModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
 
@@ -102,7 +138,7 @@ export async function POST(req: NextRequest) {
     const source = await ImportSourceModel.create({
       ...body,
       // No wholesaler_id - database provides isolation
-      created_by: session.userId,
+      created_by: createdBy,
       stats: {
         total_imports: 0,
         total_products: 0,

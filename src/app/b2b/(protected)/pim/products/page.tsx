@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
@@ -86,6 +86,9 @@ function getMultilingualText(
 export default function ProductsListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/pim/products" -> "/dfl-eventi-it")
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
   // Language store for getting default language from database
   const { languages, fetchLanguages } = useLanguageStore();
@@ -207,7 +210,7 @@ export default function ProductsListPage() {
         // Clear selection
         setSelectedProducts(new Set());
         // Redirect to jobs page to monitor progress
-        router.push(`/b2b/pim/jobs`);
+        router.push(`${tenantPrefix}/b2b/pim/jobs`);
       } else {
         const error = await res.json();
         alert(`Bulk update failed: ${error.error || "Unknown error"}`);
@@ -320,13 +323,13 @@ export default function ProductsListPage() {
     });
     params.set("page", "1"); // Reset to first page
 
-    router.push(`/b2b/pim/products?${params.toString()}`);
+    router.push(`${tenantPrefix}/b2b/pim/products?${params.toString()}`);
   }
 
   function goToPage(page: number) {
     const params = new URLSearchParams(searchParams?.toString() || "");
     params.set("page", page.toString());
-    router.push(`/b2b/pim/products?${params.toString()}`);
+    router.push(`${tenantPrefix}/b2b/pim/products?${params.toString()}`);
   }
 
   const renderEmptyState = () => (
@@ -912,7 +915,7 @@ export default function ProductsListPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Link
-                          href={`/b2b/pim/products/${product.entity_code}`}
+                          href={`${tenantPrefix}/b2b/pim/products/${product.entity_code}`}
                           className="flex items-center gap-3 group"
                         >
                           <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
@@ -1031,7 +1034,7 @@ export default function ProductsListPage() {
                             {product.analytics.views_30d}
                           </span>
                           <Link
-                            href={`/b2b/pim/products/${product.entity_code}`}
+                            href={`${tenantPrefix}/b2b/pim/products/${product.entity_code}`}
                             className="text-xs text-primary hover:underline font-medium"
                           >
                             Edit
@@ -1092,7 +1095,7 @@ export default function ProductsListPage() {
           onSuccess={(entityCode) => {
             setShowCreateModal(false);
             // Redirect to the new product's detail page
-            router.push(`/b2b/pim/products/${entityCode}`);
+            router.push(`${tenantPrefix}/b2b/pim/products/${entityCode}`);
           }}
         />
       )}

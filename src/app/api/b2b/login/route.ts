@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { B2BUserModel } from "@/lib/db/models/b2b-user";
+import { connectWithModels } from "@/lib/db/connection";
 import { createB2BSession } from "@/lib/auth/b2b-session";
-import { ActivityLogModel } from "@/lib/db/models/activity-log";
 import { getTenantDbFromRequest } from "@/lib/utils/tenant";
 import bcrypt from "bcryptjs";
 
@@ -27,10 +25,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await connectToDatabase(tenantDb);
+    const { B2BUser: B2BUserModel, ActivityLog: ActivityLogModel } = await connectWithModels(tenantDb);
 
-    // Find user
-    const user = await B2BUserModel.findOne({ username, isActive: true });
+    // Find user by username OR email
+    const user = await B2BUserModel.findOne({
+      $or: [
+        { username, isActive: true },
+        { email: username.toLowerCase(), isActive: true }
+      ]
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -60,8 +63,12 @@ export async function POST(request: NextRequest) {
       performedBy: username,
     });
 
-    // Create session
+    // Extract tenant ID from database name (vinc-{tenant_id} -> tenant_id)
+    const tenantId = tenantDb.replace(/^vinc-/, "");
+
+    // Create session with tenant ID
     await createB2BSession({
+      tenantId,
       userId: user._id.toString(),
       username: user.username,
       email: user.email,

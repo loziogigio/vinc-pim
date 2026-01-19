@@ -1,9 +1,10 @@
-import { connectToDatabase } from "./connection";
-import { PageModel, type PageDocument } from "./models/page";
+import { connectWithModels, autoDetectTenantDb } from "./connection";
+import type { PageDocument } from "./models/page";
 import { getHomeTemplateConfig } from "./home-templates";
 import type { PageConfig, PageBlock, BlockConfig, PageVersion } from "@/lib/types/blocks";
 import { pageConfigSchema } from "@/lib/validation/blockSchemas";
 import { sanitizeBlock } from "@/lib/validation/sanitizers";
+import type mongoose from "mongoose";
 
 const serializeBlock = (
   block: {
@@ -82,7 +83,18 @@ const serializePage = (
   } as PageConfig;
 };
 
-const ensureDefaultHomepage = async () => {
+/**
+ * Get the Page model for the current tenant database
+ * Uses auto-detection from headers/session if tenantDb not provided
+ */
+async function getPageModel(tenantDb?: string): Promise<mongoose.Model<PageDocument>> {
+  const dbName = tenantDb ?? await autoDetectTenantDb();
+  const models = await connectWithModels(dbName);
+  return models.Page as mongoose.Model<PageDocument>;
+}
+
+const ensureDefaultHomepage = async (tenantDb?: string) => {
+  const PageModel = await getPageModel(tenantDb);
   const existing = await PageModel.findOne({ slug: "home" }).lean<PageDocument | null>();
   if (existing) {
     return serializePage(existing);
@@ -102,7 +114,8 @@ const ensureDefaultHomepage = async () => {
   return serializePage(newPage.toObject());
 };
 
-const ensureDefaultProductDetail = async (slug: string) => {
+const ensureDefaultProductDetail = async (slug: string, tenantDb?: string) => {
+  const PageModel = await getPageModel(tenantDb);
   const existing = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (existing) {
     return serializePage(existing);
@@ -128,22 +141,20 @@ const ensureDefaultProductDetail = async (slug: string) => {
   return serializePage(newPage.toObject());
 };
 
-export const getPageConfig = async (slug: string): Promise<PageConfig> => {
-  await connectToDatabase();
-
+export const getPageConfig = async (slug: string, tenantDb?: string): Promise<PageConfig> => {
   if (slug === "home") {
     try {
-      const homeTemplateConfig = await getHomeTemplateConfig();
+      const homeTemplateConfig = await getHomeTemplateConfig(tenantDb);
       return homeTemplateConfig as PageConfig;
     } catch (error) {
       console.error("[getPageConfig] Failed to load home template config, falling back to PageModel:", error);
-      return ensureDefaultHomepage();
+      return ensureDefaultHomepage(tenantDb);
     }
   }
 
   // Handle product detail pages (product-detail or product-detail-{productId})
   if (slug === "product-detail" || slug.startsWith("product-detail-")) {
-    const config = await ensureDefaultProductDetail(slug);
+    const config = await ensureDefaultProductDetail(slug, tenantDb);
     console.log('[getPageConfig] ===== LOAD REQUEST =====');
     console.log('[getPageConfig] Slug:', slug);
     console.log('[getPageConfig] Versions count:', config.versions.length);
@@ -157,6 +168,7 @@ export const getPageConfig = async (slug: string): Promise<PageConfig> => {
     return config;
   }
 
+  const PageModel = await getPageModel(tenantDb);
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (!doc) {
     throw new Error("Page not found");
@@ -170,8 +182,8 @@ export const savePage = async (input: {
   slug: string;
   blocks: PageBlock[];
   seo?: any;
-}): Promise<PageConfig> => {
-  await connectToDatabase();
+}, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const { slug, blocks, seo } = input;
 
@@ -318,8 +330,8 @@ export const hotfixPage = async (input: {
   slug: string;
   blocks: PageBlock[];
   seo?: any;
-}): Promise<PageConfig> => {
-  await connectToDatabase();
+}, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const { slug, blocks, seo } = input;
 
@@ -371,8 +383,8 @@ export const hotfixPage = async (input: {
 };
 
 // Publish - marks current version as published
-export const publishPage = async (slug: string): Promise<PageConfig> => {
-  await connectToDatabase();
+export const publishPage = async (slug: string, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (!doc) throw new Error("Page not found");
@@ -423,8 +435,8 @@ export const publishPage = async (slug: string): Promise<PageConfig> => {
  * Load a version for editing - just switches the current version pointer
  * Does NOT create a new version, just makes the selected version current
  */
-export const loadVersion = async (slug: string, version: number): Promise<PageConfig> => {
-  await connectToDatabase();
+export const loadVersion = async (slug: string, version: number, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (!doc) throw new Error("Page not found");
@@ -453,8 +465,8 @@ export const loadVersion = async (slug: string, version: number): Promise<PageCo
 };
 
 // Delete version - removes a version from history
-export const deleteVersion = async (slug: string, version: number): Promise<PageConfig> => {
-  await connectToDatabase();
+export const deleteVersion = async (slug: string, version: number, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (!doc) throw new Error("Page not found");
@@ -485,8 +497,8 @@ export const deleteVersion = async (slug: string, version: number): Promise<Page
 };
 
 // Duplicate version - creates a new draft version with content from an existing version
-export const duplicateVersion = async (slug: string, sourceVersion: number): Promise<PageConfig> => {
-  await connectToDatabase();
+export const duplicateVersion = async (slug: string, sourceVersion: number, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (!doc) throw new Error("Page not found");
@@ -541,8 +553,8 @@ export const duplicateVersion = async (slug: string, sourceVersion: number): Pro
 };
 
 // Start new version - creates a new draft version from scratch
-export const startNewVersion = async (slug: string): Promise<PageConfig> => {
-  await connectToDatabase();
+export const startNewVersion = async (slug: string, tenantDb?: string): Promise<PageConfig> => {
+  const PageModel = await getPageModel(tenantDb);
 
   const doc = await PageModel.findOne({ slug }).lean<PageDocument | null>();
   if (!doc) throw new Error("Page not found");
@@ -590,8 +602,8 @@ export const startNewVersion = async (slug: string): Promise<PageConfig> => {
 /**
  * Get all pages (for sitemap generation)
  */
-export const getAllPages = async (): Promise<Array<{ slug: string; updatedAt: string }>> => {
-  await connectToDatabase();
+export const getAllPages = async (tenantDb?: string): Promise<Array<{ slug: string; updatedAt: string }>> => {
+  const PageModel = await getPageModel(tenantDb);
   const pages = await PageModel.find({}, { slug: 1, updatedAt: 1 }).lean();
   return pages.map(p => ({
     slug: p.slug,

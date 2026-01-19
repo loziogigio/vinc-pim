@@ -83,25 +83,29 @@ export type ProductMeta = {
 };
 
 export type PackagingOption = {
-  id?: string;              // Optional unique ID
-  code: string;             // Packaging code (e.g., "MV", "IM", "CF", "PALLET")
-  label: MultilingualText;  // Multilingual label
-  qty: number;              // Quantity per packaging unit
-  uom: string;              // Unit of measure (e.g., "PZ")
-  is_default: boolean;      // Is this the default packaging?
-  is_smallest: boolean;     // Is this the smallest unit?
-  ean?: string;             // EAN barcode (optional)
-  position?: number;        // Display order (optional)
+  id?: string;                    // Optional unique ID
+  code: string;                   // Packaging code (e.g., "PZ", "BOX", "CF", "PALLET")
+  label: MultilingualText;        // Multilingual label
+  qty: number;                    // Quantity per packaging unit
+  uom: string;                    // Unit of measure (e.g., "PZ")
+  is_default: boolean;            // Is this the default packaging?
+  is_smallest: boolean;           // Is this the smallest unit?
+  ean?: string;                   // EAN barcode (optional)
+  position?: number;              // Display order (optional)
+  pricing?: PackagingPricing;     // Optional pricing override for this packaging
+  promotions?: Promotion[];       // Promotions specific to this packaging option
 };
 
 /**
- * Promotion data for product-level discounts
+ * Promotion data for packaging-level discounts
  * Supports multilingual labels and various discount types
+ * Each promotion is tied to a specific packaging option
  */
 export type Promotion = {
-  promo_code?: string;            // Promotion code (e.g., "016")
+  promo_code?: string;            // Promotion code (e.g., "016", "BREVE-SCAD")
+  promo_row?: number;             // Row number from ERP (for tracking/sorting)
   is_active: boolean;
-  promo_type?: string;            // Business category (STD, XXX, OMG, EOL, etc.)
+  promo_type?: string;            // Business category (STD, XXX, OMG, EOL, BREVE-SCAD, etc.)
   calc_method?: string;           // Calculation method (RPNQMIN, RQCSC, RVMSC, RCNA, RQCOE)
   label: MultilingualText;        // Multilingual promotion label
   language?: string;              // Primary language of the promotion
@@ -115,6 +119,41 @@ export type Promotion = {
   end_date?: Date;                // Promotion end date
   min_quantity?: number;          // Minimum quantity to qualify
   min_order_value?: number;       // Minimum order value to qualify
+  promo_price?: number;           // Final price when this promotion applies
+};
+
+// ============================================
+// PIM PRICING TYPES (ERP-based)
+// ============================================
+
+/**
+ * Product pricing from ERP
+ * - list: User's purchase/cost price (from price list / net_price)
+ * - retail: MSRP / suggested retail price (gross_price from ERP)
+ * - sale: Discounted price (price_discount from ERP)
+ */
+export type PIMPricing = {
+  list: number;                   // User's purchase/cost price
+  retail?: number;                // MSRP / suggested retail price
+  sale?: number;                  // Discounted price (if applicable)
+  currency: string;               // Currency code (EUR, USD, etc.)
+  vat_rate?: number;              // VAT percentage (22, 10, 4, 0)
+};
+
+/**
+ * Partial pricing for packaging options (all fields optional)
+ * Supports reference-based pricing with discounts
+ */
+export type PackagingPricing = {
+  list?: number;                  // List price for this packaging
+  retail?: number;                // MSRP for this packaging
+  sale?: number;                  // Discounted price for this packaging
+  // Reference-based pricing fields
+  price_ref?: string;             // Reference packaging code (e.g., "PZ" for BOX)
+  list_discount_pct?: number;     // Percentage discount from retail to get list (e.g., 50 for -50%)
+  list_discount_amt?: number;     // Fixed amount discount from retail to get list (e.g., 5 for -€5)
+  sale_discount_pct?: number;     // Percentage discount from list to get sale (e.g., 10 for -10%)
+  sale_discount_amt?: number;     // Fixed amount discount from list to get sale (e.g., 5 for -€5)
 };
 
 // ============================================

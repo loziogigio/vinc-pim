@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { ImportJobModel } from "@/lib/db/models/import-job";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/b2b/pim/stats
@@ -11,11 +9,12 @@ import { ImportJobModel } from "@/lib/db/models/import-job";
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel, ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     // Get product stats (no wholesaler_id - database provides isolation)
     const [

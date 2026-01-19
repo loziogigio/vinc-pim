@@ -1,7 +1,8 @@
-import { connectToDatabase } from "./connection";
-import { B2BHomeTemplateModel, type HomeTemplateDocument } from "./models/home-template";
+import { connectWithModels, autoDetectTenantDb } from "./connection";
+import type { HomeTemplateDocument } from "./models/home-template";
 import { initializeHomeTemplate } from "./init-home-template";
 import type { PageVersionTags } from "@/lib/types/blocks";
+import type mongoose from "mongoose";
 
 const HOME_TEMPLATE_ID = "home-page";
 
@@ -114,26 +115,39 @@ const cloneTags = (tags?: PageVersionTags | { attributes?: any }) => {
 };
 
 /**
+ * Get the HomeTemplate model for the current tenant database
+ * Uses auto-detection from headers/session if tenantDb not provided
+ */
+async function getHomeTemplateModel(tenantDb?: string): Promise<mongoose.Model<HomeTemplateDocument>> {
+  const dbName = tenantDb ?? await autoDetectTenantDb();
+  const models = await connectWithModels(dbName);
+  return models.HomeTemplate as mongoose.Model<HomeTemplateDocument>;
+}
+
+/**
  * Get all versions for a template
  */
-async function getAllVersions(lean: boolean = true): Promise<HomeTemplateDocument[]> {
-  const query = B2BHomeTemplateModel.find({ templateId: HOME_TEMPLATE_ID }).sort({ version: 1 });
+async function getAllVersions(lean: boolean = true, tenantDb?: string): Promise<HomeTemplateDocument[]> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
+  const query = HomeTemplateModel.find({ templateId: HOME_TEMPLATE_ID }).sort({ version: 1 });
   return lean ? query.lean<HomeTemplateDocument[]>() : query.exec();
 }
 
 /**
  * Get the current working version
  */
-async function getCurrentVersion(lean: boolean = true): Promise<HomeTemplateDocument | null> {
-  const query = B2BHomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrent: true });
+async function getCurrentVersion(lean: boolean = true, tenantDb?: string): Promise<HomeTemplateDocument | null> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
+  const query = HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrent: true });
   return lean ? query.lean<HomeTemplateDocument | null>() : query.exec();
 }
 
 /**
  * Get the current published version
  */
-async function getCurrentPublishedVersion(lean: boolean = true): Promise<HomeTemplateDocument | null> {
-  const query = B2BHomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrentPublished: true });
+async function getCurrentPublishedVersion(lean: boolean = true, tenantDb?: string): Promise<HomeTemplateDocument | null> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
+  const query = HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID, isCurrentPublished: true });
   return lean ? query.lean<HomeTemplateDocument | null>() : query.exec();
 }
 
@@ -166,15 +180,13 @@ function findDefaultPublishedVersion(versions: HomeTemplateDocument[]): HomeTemp
  * Get or create the home page template
  * Creates an empty template if it doesn't exist - no auto-population
  */
-export async function getOrCreateHomeTemplate(): Promise<HomeTemplateDocument> {
-  await connectToDatabase();
-
+export async function getOrCreateHomeTemplate(tenantDb?: string): Promise<HomeTemplateDocument> {
   // Try to find current version
-  let template = await getCurrentVersion(true);
+  let template = await getCurrentVersion(true, tenantDb);
 
   // If not found, check if any version exists
   if (!template) {
-    const allVersions = await getAllVersions(true);
+    const allVersions = await getAllVersions(true, tenantDb);
     if (allVersions.length > 0) {
       // Return the latest version
       template = allVersions[allVersions.length - 1];
@@ -184,7 +196,7 @@ export async function getOrCreateHomeTemplate(): Promise<HomeTemplateDocument> {
   // If still not found, initialize empty template
   if (!template) {
     console.log("[getOrCreateHomeTemplate] Template not found, creating empty template...");
-    const initialized = await initializeHomeTemplate();
+    const initialized = await initializeHomeTemplate(tenantDb);
     template = initialized.toObject ? initialized.toObject() : initialized;
   }
 
@@ -199,14 +211,12 @@ export async function getOrCreateHomeTemplate(): Promise<HomeTemplateDocument> {
  * Get home template configuration for home-builder
  * Returns in PageConfig format that the builder expects
  */
-export async function getHomeTemplateConfig(): Promise<any> {
-  await connectToDatabase();
-
-  const allVersions = await getAllVersions(true);
+export async function getHomeTemplateConfig(tenantDb?: string): Promise<any> {
+  const allVersions = await getAllVersions(true, tenantDb);
 
   if (allVersions.length === 0) {
-    await initializeHomeTemplate();
-    return getHomeTemplateConfig();
+    await initializeHomeTemplate(tenantDb);
+    return getHomeTemplateConfig(tenantDb);
   }
 
   const currentVersion = allVersions.find((v) => v.isCurrent === true);
@@ -237,8 +247,8 @@ export async function getHomeTemplateConfig(): Promise<any> {
 export async function saveHomeTemplateDraft(input: {
   blocks: any[];
   seo?: any;
-}): Promise<any> {
-  await connectToDatabase();
+}, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
   const { blocks, seo } = input;
   const now = new Date().toISOString();
@@ -253,12 +263,12 @@ export async function saveHomeTemplateDraft(input: {
   }));
 
   // Find current version
-  let currentVersion = await getCurrentVersion(false);
+  let currentVersion = await getCurrentVersion(false, tenantDb);
 
   if (!currentVersion) {
-    const allVersions = await getAllVersions(false);
+    const allVersions = await getAllVersions(false, tenantDb);
     if (allVersions.length === 0) {
-      currentVersion = await B2BHomeTemplateModel.create({
+      currentVersion = await HomeTemplateModel.create({
         templateId: HOME_TEMPLATE_ID,
         name: "Home Page",
         version: 1,
@@ -274,11 +284,11 @@ export async function saveHomeTemplateDraft(input: {
       });
     } else {
       const latest = allVersions[allVersions.length - 1];
-      await B2BHomeTemplateModel.updateOne(
+      await HomeTemplateModel.updateOne(
         { _id: latest._id },
         { $set: { isCurrent: true } }
       );
-      currentVersion = await B2BHomeTemplateModel.findById(latest._id);
+      currentVersion = await HomeTemplateModel.findById(latest._id);
     }
   }
 
@@ -287,7 +297,7 @@ export async function saveHomeTemplateDraft(input: {
   }
 
   // Use templateId + version to find the document (avoids ObjectId/string mismatch issues)
-  await B2BHomeTemplateModel.updateOne(
+  await HomeTemplateModel.updateOne(
     { templateId: HOME_TEMPLATE_ID, version: currentVersion.version },
     {
       $set: {
@@ -298,16 +308,16 @@ export async function saveHomeTemplateDraft(input: {
     }
   );
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Publish home template draft
  */
-export async function publishHomeTemplate(metadata?: PublishMetadataInput): Promise<any> {
-  await connectToDatabase();
+export async function publishHomeTemplate(metadata?: PublishMetadataInput, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
-  const currentVersion = await getCurrentVersion(false);
+  const currentVersion = await getCurrentVersion(false, tenantDb);
 
   if (!currentVersion) {
     throw new Error("No current version to publish");
@@ -363,7 +373,7 @@ export async function publishHomeTemplate(metadata?: PublishMetadataInput): Prom
   if (metadata?.isDefault !== undefined) {
     if (metadata.isDefault) {
       // Clear isDefault from all other versions (use version number instead of _id)
-      await B2BHomeTemplateModel.updateMany(
+      await HomeTemplateModel.updateMany(
         { templateId: HOME_TEMPLATE_ID, version: { $ne: currentVersion.version } },
         { $set: { isDefault: false } }
       );
@@ -373,7 +383,7 @@ export async function publishHomeTemplate(metadata?: PublishMetadataInput): Prom
     }
   } else {
     // Check if there's any other default published version
-    const otherDefault = await B2BHomeTemplateModel.findOne({
+    const otherDefault = await HomeTemplateModel.findOne({
       templateId: HOME_TEMPLATE_ID,
       version: { $ne: currentVersion.version },
       status: "published",
@@ -389,7 +399,7 @@ export async function publishHomeTemplate(metadata?: PublishMetadataInput): Prom
   console.log(`${logPrefix} Final updates to apply:`, JSON.stringify(updates, null, 2));
 
   // Use templateId + version to find document (avoids ObjectId/string mismatch issues)
-  const updateResult = await B2BHomeTemplateModel.updateOne(
+  const updateResult = await HomeTemplateModel.updateOne(
     { templateId: HOME_TEMPLATE_ID, version: currentVersion.version },
     { $set: updates }
   );
@@ -397,27 +407,28 @@ export async function publishHomeTemplate(metadata?: PublishMetadataInput): Prom
   console.log(`${logPrefix} Update result: matched=${updateResult.matchedCount}, modified=${updateResult.modifiedCount}`);
 
   // Update isCurrentPublished flags
-  await updateCurrentPublishedFlags();
+  await updateCurrentPublishedFlags(tenantDb);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Update isCurrentPublished flags based on isDefault and priority
  */
-async function updateCurrentPublishedFlags(): Promise<void> {
-  const allVersions = await getAllVersions(true);
+async function updateCurrentPublishedFlags(tenantDb?: string): Promise<void> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
+  const allVersions = await getAllVersions(true, tenantDb);
   const defaultPublished = findDefaultPublishedVersion(allVersions);
 
   // Clear all isCurrentPublished flags
-  await B2BHomeTemplateModel.updateMany(
+  await HomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrentPublished: false } }
   );
 
   // Set the current published version
   if (defaultPublished) {
-    await B2BHomeTemplateModel.updateOne(
+    await HomeTemplateModel.updateOne(
       { templateId: HOME_TEMPLATE_ID, version: defaultPublished.version },
       { $set: { isCurrentPublished: true } }
     );
@@ -428,11 +439,11 @@ async function updateCurrentPublishedFlags(): Promise<void> {
  * Load a specific home template version for editing.
  * Simply switches the isCurrent pointer.
  */
-export async function loadHomeTemplateVersion(version: number): Promise<any> {
-  await connectToDatabase();
+export async function loadHomeTemplateVersion(version: number, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
   // Check if version exists
-  const targetVersion = await B2BHomeTemplateModel.findOne({
+  const targetVersion = await HomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   }).lean();
@@ -442,27 +453,27 @@ export async function loadHomeTemplateVersion(version: number): Promise<any> {
   }
 
   // Clear isCurrent from all versions
-  await B2BHomeTemplateModel.updateMany(
+  await HomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
 
   // Set isCurrent on target version using templateId + version (avoids ObjectId issues)
-  await B2BHomeTemplateModel.updateOne(
+  await HomeTemplateModel.updateOne(
     { templateId: HOME_TEMPLATE_ID, version: version },
     { $set: { isCurrent: true } }
   );
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Start a new draft version based on the latest published (or current) version
  */
-export async function startNewHomeTemplateVersion(): Promise<any> {
-  await connectToDatabase();
+export async function startNewHomeTemplateVersion(tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
-  const allVersions = await getAllVersions(true);
+  const allVersions = await getAllVersions(true, tenantDb);
 
   if (allVersions.length === 0) {
     throw new Error("No template versions found");
@@ -488,13 +499,13 @@ export async function startNewHomeTemplateVersion(): Promise<any> {
   const nextVersion = maxVersion + 1;
 
   // Clear isCurrent from all versions
-  await B2BHomeTemplateModel.updateMany(
+  await HomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
 
   // Create new version
-  const newVersion = await B2BHomeTemplateModel.create({
+  const newVersion = await HomeTemplateModel.create({
     templateId: HOME_TEMPLATE_ID,
     name: baseVersion.name,
     version: nextVersion,
@@ -517,16 +528,16 @@ export async function startNewHomeTemplateVersion(): Promise<any> {
 
   console.log(`[startNewHomeTemplateVersion] Created version ${nextVersion}`);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Delete a historical home template version.
  */
-export async function deleteHomeTemplateVersion(version: number): Promise<any> {
-  await connectToDatabase();
+export async function deleteHomeTemplateVersion(version: number, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
-  const targetVersion = await B2BHomeTemplateModel.findOne({
+  const targetVersion = await HomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   });
@@ -543,23 +554,23 @@ export async function deleteHomeTemplateVersion(version: number): Promise<any> {
     throw new Error("Cannot delete the published version");
   }
 
-  await B2BHomeTemplateModel.deleteOne({ _id: targetVersion._id });
+  await HomeTemplateModel.deleteOne({ _id: targetVersion._id });
 
   console.log(`[deleteHomeTemplateVersion] Deleted version ${version}`);
 
   // Update current published flags
-  await updateCurrentPublishedFlags();
+  await updateCurrentPublishedFlags(tenantDb);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Duplicate an existing version into a new draft.
  */
-export async function duplicateHomeTemplateVersion(sourceVersion: number): Promise<any> {
-  await connectToDatabase();
+export async function duplicateHomeTemplateVersion(sourceVersion: number, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
-  const source = await B2BHomeTemplateModel.findOne({
+  const source = await HomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: sourceVersion
   });
@@ -568,20 +579,20 @@ export async function duplicateHomeTemplateVersion(sourceVersion: number): Promi
     throw new Error(`Source version ${sourceVersion} not found`);
   }
 
-  const allVersions = await getAllVersions(true);
+  const allVersions = await getAllVersions(true, tenantDb);
   const maxVersion = Math.max(...allVersions.map((v) => v.version));
   const nextVersion = maxVersion + 1;
 
   const now = new Date().toISOString();
 
   // Clear isCurrent from all versions
-  await B2BHomeTemplateModel.updateMany(
+  await HomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
 
   // Create new version
-  const newVersion = await B2BHomeTemplateModel.create({
+  const newVersion = await HomeTemplateModel.create({
     templateId: HOME_TEMPLATE_ID,
     name: source.name,
     version: nextVersion,
@@ -604,19 +615,19 @@ export async function duplicateHomeTemplateVersion(sourceVersion: number): Promi
 
   console.log(`[duplicateHomeTemplateVersion] Created version ${nextVersion} from v${sourceVersion}`);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Rename a specific version.
  */
-export async function renameHomeTemplateVersion(input: { version: number; label: string }): Promise<any> {
-  await connectToDatabase();
+export async function renameHomeTemplateVersion(input: { version: number; label: string }, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
   const { version, label } = input;
 
   // Check if version exists
-  const exists = await B2BHomeTemplateModel.findOne({
+  const exists = await HomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   }).lean();
@@ -629,14 +640,14 @@ export async function renameHomeTemplateVersion(input: { version: number; label:
   const newLabel = trimmed.length > 0 ? trimmed : `Version ${version}`;
 
   // Use findOneAndUpdate to avoid _id type mismatch issues
-  await B2BHomeTemplateModel.findOneAndUpdate(
+  await HomeTemplateModel.findOneAndUpdate(
     { templateId: HOME_TEMPLATE_ID, version: version },
     { $set: { label: newLabel } }
   );
 
   console.log(`[renameHomeTemplateVersion] Updated version ${version} label to "${newLabel}"`);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
@@ -644,12 +655,13 @@ export async function renameHomeTemplateVersion(input: { version: number; label:
  */
 export async function publishHomeTemplateVersion(
   version: number,
-  metadata?: PublishMetadataInput
+  metadata?: PublishMetadataInput,
+  tenantDb?: string
 ): Promise<any> {
-  await connectToDatabase();
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
   // Check if version exists
-  const target = await B2BHomeTemplateModel.findOne({
+  const target = await HomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   }).lean();
@@ -723,7 +735,7 @@ export async function publishHomeTemplateVersion(
   if (metadata?.isDefault !== undefined) {
     if (metadata.isDefault) {
       // Clear isDefault from all other versions
-      await B2BHomeTemplateModel.updateMany(
+      await HomeTemplateModel.updateMany(
         { templateId: HOME_TEMPLATE_ID, version: { $ne: version } },
         { $set: { isDefault: false } }
       );
@@ -733,7 +745,7 @@ export async function publishHomeTemplateVersion(
     }
   } else {
     // Check if there's any other default published version
-    const otherDefault = await B2BHomeTemplateModel.findOne({
+    const otherDefault = await HomeTemplateModel.findOne({
       templateId: HOME_TEMPLATE_ID,
       version: { $ne: version },
       status: "published",
@@ -752,34 +764,34 @@ export async function publishHomeTemplateVersion(
   }
 
   // Use findOneAndUpdate to avoid _id type mismatch issues
-  await B2BHomeTemplateModel.findOneAndUpdate(
+  await HomeTemplateModel.findOneAndUpdate(
     { templateId: HOME_TEMPLATE_ID, version: version },
     updateOp
   );
 
   // Set as current version
-  await B2BHomeTemplateModel.updateMany(
+  await HomeTemplateModel.updateMany(
     { templateId: HOME_TEMPLATE_ID },
     { $set: { isCurrent: false } }
   );
-  await B2BHomeTemplateModel.updateOne(
+  await HomeTemplateModel.updateOne(
     { templateId: HOME_TEMPLATE_ID, version: version },
     { $set: { isCurrent: true } }
   );
 
   // Update isCurrentPublished flags
-  await updateCurrentPublishedFlags();
+  await updateCurrentPublishedFlags(tenantDb);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Unpublish a specific version.
  */
-export async function unpublishHomeTemplateVersion(version: number): Promise<any> {
-  await connectToDatabase();
+export async function unpublishHomeTemplateVersion(version: number, tenantDb?: string): Promise<any> {
+  const HomeTemplateModel = await getHomeTemplateModel(tenantDb);
 
-  const target = await B2BHomeTemplateModel.findOne({
+  const target = await HomeTemplateModel.findOne({
     templateId: HOME_TEMPLATE_ID,
     version: version
   }).lean();
@@ -792,7 +804,7 @@ export async function unpublishHomeTemplateVersion(version: number): Promise<any
     throw new Error(`Version ${version} is not published`);
   }
 
-  await B2BHomeTemplateModel.findOneAndUpdate(
+  await HomeTemplateModel.findOneAndUpdate(
     { templateId: HOME_TEMPLATE_ID, version: version },
     {
       $set: {
@@ -806,18 +818,16 @@ export async function unpublishHomeTemplateVersion(version: number): Promise<any
   );
 
   // Update isCurrentPublished flags
-  await updateCurrentPublishedFlags();
+  await updateCurrentPublishedFlags(tenantDb);
 
-  return getHomeTemplateConfig();
+  return getHomeTemplateConfig(tenantDb);
 }
 
 /**
  * Get published home template for customer_web
  */
-export async function getPublishedHomeTemplate(): Promise<any | null> {
-  await connectToDatabase();
-
-  const currentPublished = await getCurrentPublishedVersion(true);
+export async function getPublishedHomeTemplate(tenantDb?: string): Promise<any | null> {
+  const currentPublished = await getCurrentPublishedVersion(true, tenantDb);
 
   if (!currentPublished || currentPublished.status !== "published") {
     return null;
@@ -843,10 +853,8 @@ export async function getPublishedHomeTemplate(): Promise<any | null> {
  * Get the latest saved home template version (draft or published).
  * Used for preview mode so the admin can see draft content.
  */
-export async function getLatestHomeTemplateVersion(): Promise<any | null> {
-  await connectToDatabase();
-
-  const current = await getCurrentVersion(true);
+export async function getLatestHomeTemplateVersion(tenantDb?: string): Promise<any | null> {
+  const current = await getCurrentVersion(true, tenantDb);
 
   if (!current) {
     return null;

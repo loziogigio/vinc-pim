@@ -28,6 +28,7 @@ export async function getB2BSession(): Promise<IronSession<B2BSessionData>> {
 export async function createB2BSession(userData: Omit<B2BSessionData, "isLoggedIn" | "lastLoginAt">) {
   const session = await getB2BSession();
   session.isLoggedIn = true;
+  session.tenantId = userData.tenantId;
   session.userId = userData.userId;
   session.username = userData.username;
   session.email = userData.email;

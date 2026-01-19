@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
 
 /**
@@ -17,11 +16,12 @@ import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const {
@@ -172,11 +172,12 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const searchParams = req.nextUrl.searchParams;
     const minScore = parseInt(searchParams.get("min_score") || "80");

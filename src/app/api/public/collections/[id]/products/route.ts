@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { CollectionModel } from "@/lib/db/models/collection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/public/collections/[id]/products
@@ -19,7 +17,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectToDatabase();
+    const tenantDb = req.headers.get("x-resolved-tenant-db");
+    if (!tenantDb) {
+      return NextResponse.json(
+        { error: "Tenant not resolved" },
+        { status: 400 }
+      );
+    }
+
+    const { Collection: CollectionModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
     const { searchParams } = new URL(req.url);

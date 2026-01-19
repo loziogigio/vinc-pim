@@ -78,6 +78,7 @@ function ProductBuilderContent() {
   const [templateType, setTemplateType] = useState<"sku" | "parent" | "standard">("sku");
   const [skuValue, setSkuValue] = useState<string>("");
   const [parentSkuValue, setParentSkuValue] = useState<string>("");
+  const [shopUrl, setShopUrl] = useState<string>("");
 
   const versions = usePageBuilderStore((state) => state.versions);
   const currentVersion = usePageBuilderStore((state) => state.currentVersion);
@@ -133,6 +134,24 @@ function ProductBuilderContent() {
 
     loadTemplate();
   }, [loadPageConfig, productId, templateType]);
+
+  // Fetch home settings to get shopUrl for LivePreview
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/b2b/home-settings");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.branding?.shopUrl) {
+            setShopUrl(data.branding.shopUrl);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch home settings for shopUrl:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     if (selectedBlockId) {
@@ -829,6 +848,7 @@ function ProductBuilderContent() {
               blocks={blocks}
               productId={productId}
               isDirty={isDirty}
+              customerWebUrl={shopUrl || undefined}
             />
           </section>
         </div>

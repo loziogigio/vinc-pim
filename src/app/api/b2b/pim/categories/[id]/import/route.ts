@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { CategoryModel } from "@/lib/db/models/category";
-import { AssociationJobModel } from "@/lib/db/models/association-job";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 // POST /api/b2b/pim/categories/[category_id]/import - Import product associations
@@ -12,11 +10,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Category: CategoryModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     // Await params (Next.js 15+)
     const { id } = await params;
@@ -134,7 +133,7 @@ export async function POST(
 
     // Process the job asynchronously (in background)
     // For now, we'll process immediately but in production this should use a queue
-    processAssociationJob(jobId, id, entityCodes, action, session.userId, category).catch(err => {
+    processAssociationJob(jobId, id, entityCodes, action, session.userId, category, tenantDb).catch(err => {
       console.error("Error processing association job:", err);
     });
 
@@ -159,12 +158,12 @@ async function processAssociationJob(
   entityCodes: string[],
   action: string,
   wholesalerId: string,
-  category: any
+  category: any,
+  tenantDb: string
 ) {
   try {
-    await connectToDatabase();
-
-    const { PIMProductModel } = await import("@/lib/db/models/pim-product");
+    const { connectWithModels } = await import("@/lib/db/connection");
+    const { PIMProduct: PIMProductModel, AssociationJob: AssociationJobModel, Category: CategoryModel } = await connectWithModels(tenantDb);
 
     // Update job status to processing
     await AssociationJobModel.updateOne(
@@ -190,7 +189,7 @@ async function processAssociationJob(
         if (action === "add") {
           // Associate products with category
           const updateData: any = {
-            "category.id": id,
+            "category.id": category_id,
             "category.name": category.name,
             "category.slug": category.slug,
           };
@@ -212,7 +211,7 @@ async function processAssociationJob(
               entity_code: { $in: batch },
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "category.id": id,
+              "category.id": category_id,
             },
             { $unset: { category: "" } }
           );
@@ -241,14 +240,13 @@ async function processAssociationJob(
     }
 
     // Update category product count (no wholesaler_id - database provides isolation)
-    const { CategoryModel } = await import("@/lib/db/models/category");
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "category.id": id,
+      "category.id": category_id,
     });
 
     await CategoryModel.updateOne(
-      { category_id: id },
+      { category_id: category_id },
       { $set: { product_count: productCount } }
     );
 
@@ -268,15 +266,21 @@ async function processAssociationJob(
   } catch (error: any) {
     console.error("Error in processAssociationJob:", error);
 
-    await AssociationJobModel.updateOne(
-      { job_id: jobId },
-      {
-        $set: {
-          status: "failed",
-          completed_at: new Date(),
-          errors: [{ item: "system", error: error.message }],
-        },
-      }
-    );
+    // Try to update job status, but models might not be available if error happened early
+    try {
+      const { AssociationJob } = await connectWithModels(tenantDb);
+      await AssociationJob.updateOne(
+        { job_id: jobId },
+        {
+          $set: {
+            status: "failed",
+            completed_at: new Date(),
+            errors: [{ item: "system", error: error.message }],
+          },
+        }
+      );
+    } catch (updateError) {
+      console.error("Failed to update job status:", updateError);
+    }
   }
 }

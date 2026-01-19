@@ -1,14 +1,40 @@
 /**
  * Check current language configuration
+ * Usage:
+ *   npx tsx scripts/check-language-status.ts
+ *   npx tsx scripts/check-language-status.ts --tenant dfl-eventi-it
  */
 
 import { connectToDatabase } from "../src/lib/db/connection";
 import { LanguageModel } from "../src/lib/db/models/language";
 
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf('--tenant');
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
+
 async function checkStatus() {
   try {
-    console.log("🔍 Checking language configuration...\n");
-    await connectToDatabase();
+    const { tenant } = parseArgs();
+    const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
+    console.log("🔍 Checking language configuration...");
+    if (tenant) {
+      console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})\n`);
+    } else {
+      console.log("📍 Using default database from environment\n");
+    }
+
+    await connectToDatabase(tenantDb);
 
     // Get all enabled languages
     const enabledLanguages = await LanguageModel.find({ isEnabled: true })

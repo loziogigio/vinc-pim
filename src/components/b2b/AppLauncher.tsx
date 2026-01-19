@@ -8,7 +8,8 @@ import {
   Settings,
   Package,
   Home,
-  LogOut
+  LogOut,
+  Store
 } from "lucide-react";
 
 const apps = [
@@ -32,6 +33,13 @@ const apps = [
     href: "/b2b/home-settings",
     icon: Home,
     color: "bg-emerald-500",
+  },
+  {
+    name: "Store",
+    description: "Orders & Customers",
+    href: "/b2b/store/orders",
+    icon: Store,
+    color: "bg-amber-500",
   },
 ];
 

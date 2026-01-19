@@ -1,7 +1,7 @@
-import { B2BHomeSettingsModel, HomeSettingsDocument } from "./models/home-settings";
+import type { HomeSettingsDocument } from "./models/home-settings";
 import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
-import { connectToDatabase } from "./connection";
+import { connectWithModels, autoDetectTenantDb } from "./connection";
 
 const GLOBAL_HOME_SETTINGS_ID = process.env.HOME_SETTINGS_ID?.trim() || "global-b2b-home";
 
@@ -27,13 +27,20 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   hoverBackgroundColor: undefined
 };
 
-async function ensureConnection() {
-  await connectToDatabase();
+/**
+ * Get models for the current tenant database
+ * Uses auto-detection from headers/session if tenantDb not provided
+ */
+async function getHomeSettingsModel(tenantDb?: string) {
+  const dbName = tenantDb ?? await autoDetectTenantDb();
+  const models = await connectWithModels(dbName);
+  return models.HomeSettings;
 }
 
-const migrateLegacyHomeSettings = async (customerId?: string) => {
+const migrateLegacyHomeSettings = async (customerId?: string, tenantDb?: string) => {
   try {
-    const db = B2BHomeSettingsModel.db;
+    const HomeSettingsModel = await getHomeSettingsModel(tenantDb);
+    const db = HomeSettingsModel.db;
     if (!db || typeof db.collection !== "function") {
       return null;
     }
@@ -50,7 +57,7 @@ const migrateLegacyHomeSettings = async (customerId?: string) => {
     }
 
     const { _id, ...rest } = legacyDoc;
-    await B2BHomeSettingsModel.create(rest);
+    await HomeSettingsModel.create(rest);
     console.log("[home-settings] Migrated legacy home settings into b2bhomesettings collection.");
     return rest as HomeSettingsDocument;
   } catch (error) {
@@ -73,20 +80,20 @@ function mergeCardStyle(current: ProductCardStyle | undefined, update?: Partial<
   };
 }
 
-export async function getHomeSettings(): Promise<HomeSettingsDocument | null> {
-  await ensureConnection();
-
+export async function getHomeSettings(tenantDb?: string): Promise<HomeSettingsDocument | null> {
   try {
-    let settings = await B2BHomeSettingsModel.findOne(
+    const HomeSettingsModel = await getHomeSettingsModel(tenantDb);
+
+    let settings = await HomeSettingsModel.findOne(
       { customerId: GLOBAL_HOME_SETTINGS_ID },
       null,
       { sort: { updatedAt: -1 } }
     ).lean<HomeSettingsDocument>();
 
     if (!settings) {
-      const migrated = await migrateLegacyHomeSettings(GLOBAL_HOME_SETTINGS_ID);
+      const migrated = await migrateLegacyHomeSettings(GLOBAL_HOME_SETTINGS_ID, tenantDb);
       if (migrated) {
-        settings = await B2BHomeSettingsModel.findOne(
+        settings = await HomeSettingsModel.findOne(
           { customerId: GLOBAL_HOME_SETTINGS_ID },
           null,
           { sort: { updatedAt: -1 } }
@@ -95,11 +102,11 @@ export async function getHomeSettings(): Promise<HomeSettingsDocument | null> {
     }
 
     if (!settings) {
-      settings = await B2BHomeSettingsModel.findOne({}, null, { sort: { updatedAt: -1 } }).lean<HomeSettingsDocument>();
+      settings = await HomeSettingsModel.findOne({}, null, { sort: { updatedAt: -1 } }).lean<HomeSettingsDocument>();
       if (!settings) {
-        const migrated = await migrateLegacyHomeSettings();
+        const migrated = await migrateLegacyHomeSettings(undefined, tenantDb);
         if (migrated) {
-          settings = await B2BHomeSettingsModel.findOne({}, null, { sort: { updatedAt: -1 } }).lean<HomeSettingsDocument>();
+          settings = await HomeSettingsModel.findOne({}, null, { sort: { updatedAt: -1 } }).lean<HomeSettingsDocument>();
         }
       }
     }
@@ -122,23 +129,24 @@ type HomeSettingsUpdate = {
 };
 
 export async function upsertHomeSettings(
-  data: HomeSettingsUpdate
+  data: HomeSettingsUpdate,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
-  await ensureConnection();
-
   try {
+    const HomeSettingsModel = await getHomeSettingsModel(tenantDb);
+
     // Check if document exists
-    const existingDoc = await B2BHomeSettingsModel.findOne(
+    const existingDoc = await HomeSettingsModel.findOne(
       { customerId: GLOBAL_HOME_SETTINGS_ID }
     ).lean();
 
     // Try legacy migration if no document
     if (!existingDoc) {
-      await migrateLegacyHomeSettings(GLOBAL_HOME_SETTINGS_ID);
+      await migrateLegacyHomeSettings(GLOBAL_HOME_SETTINGS_ID, tenantDb);
     }
 
     // Re-check after migration attempt
-    const docExists = existingDoc || await B2BHomeSettingsModel.exists(
+    const docExists = existingDoc || await HomeSettingsModel.exists(
       { customerId: GLOBAL_HOME_SETTINGS_ID }
     );
 
@@ -199,7 +207,7 @@ export async function upsertHomeSettings(
         updateFields.lastModifiedBy = data.lastModifiedBy;
       }
 
-      const result = await B2BHomeSettingsModel.findOneAndUpdate(
+      const result = await HomeSettingsModel.findOneAndUpdate(
         { customerId: GLOBAL_HOME_SETTINGS_ID },
         { $set: updateFields },
         { new: true, runValidators: true }
@@ -208,7 +216,7 @@ export async function upsertHomeSettings(
       return result;
     } else {
       // INSERT: Create new document with full objects
-      const newDoc = await B2BHomeSettingsModel.create({
+      const newDoc = await HomeSettingsModel.create({
         customerId: GLOBAL_HOME_SETTINGS_ID,
         branding: mergeBranding(undefined, data.branding as Partial<CompanyBranding>),
         defaultCardVariant: data.defaultCardVariant ?? "b2b",
@@ -229,40 +237,43 @@ export async function upsertHomeSettings(
 
 export async function updateBranding(
   branding: Partial<CompanyBranding>,
-  lastModifiedBy?: string
+  lastModifiedBy?: string,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
-  return upsertHomeSettings({ branding, lastModifiedBy });
+  return upsertHomeSettings({ branding, lastModifiedBy }, tenantDb);
 }
 
 export async function updateCardStyle(
   cardStyle: Partial<ProductCardStyle>,
-  lastModifiedBy?: string
+  lastModifiedBy?: string,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
-  return upsertHomeSettings({ cardStyle, lastModifiedBy });
+  return upsertHomeSettings({ cardStyle, lastModifiedBy }, tenantDb);
 }
 
 export async function updateCardVariant(
   variant: "b2b" | "horizontal" | "compact" | "detailed",
-  lastModifiedBy?: string
+  lastModifiedBy?: string,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
-  return upsertHomeSettings({ defaultCardVariant: variant, lastModifiedBy });
+  return upsertHomeSettings({ defaultCardVariant: variant, lastModifiedBy }, tenantDb);
 }
 
 export async function initializeHomeSettings(
-  companyTitle: string
+  companyTitle: string,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
   return upsertHomeSettings({
     branding: { title: companyTitle },
     defaultCardVariant: "b2b",
     cardStyle: DEFAULT_CARD_STYLE
-  });
+  }, tenantDb);
 }
 
-export async function deleteHomeSettings(): Promise<boolean> {
-  await ensureConnection();
-
+export async function deleteHomeSettings(tenantDb?: string): Promise<boolean> {
   try {
-    await B2BHomeSettingsModel.deleteMany({});
+    const HomeSettingsModel = await getHomeSettingsModel(tenantDb);
+    await HomeSettingsModel.deleteMany({});
     return true;
   } catch (error) {
     console.error("Error deleting home settings:", error);
@@ -272,9 +283,10 @@ export async function deleteHomeSettings(): Promise<boolean> {
 
 export async function updateCDNConfiguration(
   cdn: Partial<CDNConfiguration>,
-  lastModifiedBy?: string
+  lastModifiedBy?: string,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
-  return upsertHomeSettings({ cdn, lastModifiedBy });
+  return upsertHomeSettings({ cdn, lastModifiedBy }, tenantDb);
 }
 
 /**
@@ -282,17 +294,18 @@ export async function updateCDNConfiguration(
  */
 export async function updateCDNCredentials(
   cdn_credentials: Partial<CDNCredentials>,
-  lastModifiedBy?: string
+  lastModifiedBy?: string,
+  tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
-  return upsertHomeSettings({ cdn_credentials, lastModifiedBy });
+  return upsertHomeSettings({ cdn_credentials, lastModifiedBy }, tenantDb);
 }
 
 /**
  * Get CDN credentials from database
  */
-export async function getCDNCredentials(): Promise<CDNCredentials | null> {
+export async function getCDNCredentials(tenantDb?: string): Promise<CDNCredentials | null> {
   try {
-    const settings = await getHomeSettings();
+    const settings = await getHomeSettings(tenantDb);
     return settings?.cdn_credentials ?? null;
   } catch (error) {
     console.error("Error fetching CDN credentials:", error);
@@ -304,9 +317,9 @@ export async function getCDNCredentials(): Promise<CDNCredentials | null> {
  * Get CDN base URL from database settings
  * @returns CDN base URL or empty string if not configured
  */
-export async function getCDNBaseUrl(): Promise<string> {
+export async function getCDNBaseUrl(tenantDb?: string): Promise<string> {
   try {
-    const settings = await getHomeSettings();
+    const settings = await getHomeSettings(tenantDb);
 
     // Check if CDN is configured and enabled in database
     if (settings?.cdn?.enabled && settings.cdn.baseUrl) {
@@ -332,12 +345,12 @@ export async function getCDNBaseUrl(): Promise<string> {
  * @param relativePath - Relative path (e.g., /product_images/10076/main_image.jpg)
  * @returns Full CDN URL or relative path if CDN not configured
  */
-export async function constructCDNUrl(relativePath?: string): Promise<string> {
+export async function constructCDNUrl(relativePath?: string, tenantDb?: string): Promise<string> {
   if (!relativePath) {
     return '';
   }
 
-  const baseUrl = await getCDNBaseUrl();
+  const baseUrl = await getCDNBaseUrl(tenantDb);
   if (!baseUrl) {
     return relativePath;
   }

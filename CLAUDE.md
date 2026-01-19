@@ -11,6 +11,98 @@ VINC Commerce Suite is a Next.js 15 B2B e-commerce platform with:
 - MongoDB for data persistence
 - BullMQ for background job processing
 
+## Core Maintenance Standards
+
+These three principles are the foundation of all code in this project. Every implementation decision should be evaluated against them.
+
+### 1. Readability
+
+Code should be self-explanatory and easy to understand at a glance.
+
+**Guidelines:**
+
+- Use descriptive variable and function names that reveal intent
+- Keep functions small and focused on a single responsibility
+- Use consistent formatting and naming conventions
+- Add comments only when the "why" isn't obvious from the code
+- Avoid clever tricks - prefer explicit over implicit
+
+```typescript
+// BAD: Cryptic and hard to follow
+const r = await db.find({ s: "a", t: { $gt: d - 86400000 } });
+
+// GOOD: Clear intent
+const activeOrdersLastDay = await OrderModel.find({
+  status: "active",
+  created_at: { $gt: oneDayAgo },
+});
+```
+
+### 2. Reusability
+
+Extract common patterns into shared utilities to avoid reinventing solutions.
+
+**Guidelines:**
+
+- Create utility functions for repeated operations
+- Use shared types and interfaces from `src/lib/types/`
+- Build composable components and hooks
+- Centralize configuration in `src/config/`
+- Use constants from `src/lib/constants/` for shared values
+
+```typescript
+// BAD: Duplicated pagination logic in every route
+const page = parseInt(searchParams.get("page") || "1");
+const limit = parseInt(searchParams.get("limit") || "20");
+const skip = (page - 1) * limit;
+
+// GOOD: Shared utility
+import { parsePagination } from "@/lib/utils/pagination";
+const { page, limit, skip } = parsePagination(searchParams);
+```
+
+**Key reusable locations:**
+- `src/lib/utils/` - Utility functions
+- `src/lib/types/` - Shared TypeScript types
+- `src/lib/constants/` - Constants and enumerations
+- `src/lib/db/` - Database utilities and models
+- `src/components/shared/` - Reusable UI components
+
+### 3. No Duplication (DRY)
+
+Every piece of knowledge should have a single, authoritative source.
+
+**Guidelines:**
+
+- Single source of truth for types, constants, and configuration
+- Extract duplicated code into shared functions
+- Use barrel exports (`index.ts`) for clean imports
+- When you copy-paste code, stop and refactor
+
+```typescript
+// BAD: Same validation logic in 3 different routes
+if (!email || !email.includes("@")) { ... }
+
+// GOOD: Single validation utility
+import { validateEmail } from "@/lib/validation";
+if (!validateEmail(email)) { ... }
+```
+
+**Anti-patterns to avoid:**
+
+- Copying code between files instead of extracting shared utility
+- Defining the same type in multiple files
+- Hard-coding the same magic value in multiple places
+- Creating similar components that could be parameterized
+
+### Applying the Standards
+
+When writing or reviewing code, ask:
+
+1. **Readability**: Can a new developer understand this in 30 seconds?
+2. **Reusability**: Is this pattern used elsewhere? Should it be shared?
+3. **No Duplication**: Does this duplicate existing code or knowledge?
+
 ## Key Conventions
 
 ### MongoDB & Collections
@@ -78,13 +170,49 @@ return NextResponse.json({ success: true, data: result });
 return NextResponse.json({ error: "Message" }, { status: 400 });
 ```
 
-### Search (Solr)
+### Search (SolrCloud)
+
+This project uses **SolrCloud** (not standalone Solr). Key differences:
+
+- Uses **collections** instead of cores
+- Collection naming: `vinc-${tenant_id}` (e.g., `vinc-hidros-it`)
+- Config set: `_default` (SolrCloud default)
+
+**Environment variable:**
+```bash
+SOLR_URL=http://149.81.163.109:8983/solr
+```
+
+**Admin API endpoints:**
+```bash
+# List all collections
+curl "$SOLR_URL/admin/collections?action=LIST"
+
+# Check if collection exists
+curl "$SOLR_URL/admin/collections?action=LIST" | jq '.collections | index("vinc-hidros-it")'
+
+# Create collection
+curl "$SOLR_URL/admin/collections?action=CREATE&name=vinc-tenant-id&numShards=1&replicationFactor=1&collection.configName=_default"
+
+# Delete collection (SolrCloud - use collections API, not cores API)
+curl "$SOLR_URL/admin/collections?action=DELETE&name=vinc-tenant-id"
+
+# Check collection status
+curl "$SOLR_URL/admin/collections?action=CLUSTERSTATUS&collection=vinc-tenant-id"
+```
+
+**Important:** SolrCloud uses **collections API**, not cores API. When deleting:
+- ✅ Use: `/admin/collections?action=DELETE&name=vinc-tenant-id`
+- ❌ Don't use: `/admin/cores?action=UNLOAD&core=vinc-tenant-id` (standalone Solr only)
+
+The tenant service (`src/lib/services/admin-tenant.service.ts`) handles this automatically with proper fallback logic.
 
 Key files:
 - `@/config/project.config.ts` - Solr connection config
 - `@/lib/search/facet-config.ts` - Facet field definitions
 - `@/lib/search/solr-client.ts` - HTTP client
 - `@/lib/search/query-builder.ts` - Query building
+- `@/lib/services/admin-tenant.service.ts` - Tenant provisioning/deletion with Solr collection management
 
 ### React Components
 
@@ -129,6 +257,360 @@ const products = await PIMProductModel
   .lean();
 ```
 
+### Multi-Tenant Database Access
+
+This is a **multi-tenant application** where each tenant has its own database (`vinc-{tenant-id}`). Database access patterns must support concurrent requests to different tenant databases.
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────┐
+│  Connection Pool (LRU, max 50)          │
+│  ┌─────────────────────────────────┐    │
+│  │ vinc-tenant-a  → Connection     │    │
+│  │ vinc-tenant-b  → Connection     │    │
+│  │ vinc-tenant-c  → Connection     │    │
+│  │ ... (reused via useDb())        │    │
+│  └─────────────────────────────────┘    │
+│                                          │
+│  Admin DB: vinc-admin (separate)         │
+└─────────────────────────────────────────┘
+```
+
+**Key Files:**
+
+- `src/lib/db/connection-pool.ts` - LRU-based connection pool
+- `src/lib/db/model-registry.ts` - Tenant-specific model provider
+- `src/lib/db/connection.ts` - Connection utilities
+- `src/lib/db/admin-connection.ts` - Admin database (separate)
+
+#### Pattern 1: Mongoose Models (Recommended)
+
+Use `connectWithModels()` for Mongoose model access with full pooling support:
+
+```typescript
+import { connectWithModels } from "@/lib/db/connection";
+
+export async function GET(req: NextRequest) {
+  const session = await getB2BSession();
+  const dbName = `vinc-${session.tenantId}`;
+
+  // Get models bound to the correct tenant connection
+  const { Customer, Order } = await connectWithModels(dbName);
+
+  // Models are now tenant-specific
+  const customers = await Customer.find({ status: "active" }).lean();
+  const orders = await Order.find({ customer_id: id }).lean();
+
+  return NextResponse.json({ customers, orders });
+}
+```
+
+#### Pattern 2: Raw MongoDB Collections
+
+For direct MongoDB access (no Mongoose validation/middleware):
+
+```typescript
+import { getPooledConnection } from "@/lib/db/connection";
+
+export async function GET(req: NextRequest) {
+  const session = await getB2BSession();
+  const dbName = `vinc-${session.tenantId}`;
+
+  // Get pooled connection
+  const connection = await getPooledConnection(dbName);
+  const db = connection.db;
+
+  // Access raw collections
+  const products = await db.collection("pimproducts")
+    .find({ status: "published" })
+    .limit(100)
+    .toArray();
+
+  return NextResponse.json({ products });
+}
+```
+
+#### Pattern 3: Admin Database
+
+For super-admin operations (tenant management, etc.):
+
+```typescript
+import { connectToAdminDatabase } from "@/lib/db/admin-connection";
+import { getTenantModel } from "@/lib/db/models/admin-tenant";
+
+export async function GET(req: NextRequest) {
+  // Admin connection is completely separate from tenant pool
+  await connectToAdminDatabase();
+
+  const TenantModel = await getTenantModel();
+  const tenants = await TenantModel.find({ status: "active" }).lean();
+
+  return NextResponse.json({ tenants });
+}
+```
+
+**Anti-Patterns:**
+
+```typescript
+// BAD: Global models don't respect connection pooling
+import { CustomerModel } from "@/lib/db/models/customer";
+await connectToDatabase(dbName);
+const customers = await CustomerModel.find({});  // May use wrong connection!
+
+// GOOD: Use connectWithModels for proper tenant isolation
+const { Customer } = await connectWithModels(dbName);
+const customers = await Customer.find({});  // Always correct tenant
+```
+
+#### Connection Pool Settings
+
+| Variable                     | Default   | Description                      |
+| ---------------------------- | --------- | -------------------------------- |
+| `VINC_POOL_MAX_CONNECTIONS`  | 50        | Max tenant connections in pool   |
+| `VINC_POOL_PER_DB_SIZE`      | 10        | MongoDB pool size per connection |
+| `VINC_POOL_TTL_MS`           | 1800000   | Connection TTL (30 min)          |
+
+## Best Practices
+
+### Things to NEVER Do
+
+- **Client-side pagination**: Never load all items and paginate in React. This causes performance issues with large datasets and wastes bandwidth/memory.
+- **Hard-coded magic values**: Never use raw strings/numbers directly in code. See "Constants & Enumerations" section below.
+- **Co-Authored-By in commits**: Never add `Co-Authored-By: Claude ...` or similar attribution lines to git commit messages.
+- **Company-specific API keys in documentation**: Never use real tenant names like `ak_hidros-it_...` in API documentation. Always use generic placeholders like `ak_{tenant-id}_{key-suffix}` and `sk_{secret}`. Real test keys should only appear in CLAUDE.md's "Multi-Tenant API Testing" section for internal testing purposes.
+
+### Constants & Enumerations
+
+**NEVER hard-code values directly in business logic.** Use typed constants and enumerations for maintainability, type safety, and refactoring support.
+
+#### Location for Constants
+
+```
+src/lib/constants/
+  ├── index.ts              # Barrel export
+  ├── order.ts              # Order-related constants
+  ├── customer.ts           # Customer-related constants
+  └── common.ts             # Shared constants (currencies, countries, etc.)
+```
+
+#### Pattern 1: String Literal Union Types (Preferred for simple enums)
+
+```typescript
+// src/lib/constants/order.ts
+
+// Define allowed values as const array (single source of truth)
+export const ORDER_STATUSES = [
+  "draft",
+  "pending",
+  "confirmed",
+  "shipped",
+  "delivered",
+  "cancelled",
+] as const;
+
+// Derive type from array
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+// Optional: Human-readable labels
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  draft: "Draft (Cart)",
+  pending: "Pending",
+  confirmed: "Confirmed",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+// Usage in code:
+import { ORDER_STATUSES, OrderStatus, ORDER_STATUS_LABELS } from "@/lib/constants/order";
+
+// Type-safe function parameter
+function updateOrderStatus(orderId: string, status: OrderStatus) { ... }
+
+// Validation
+if (!ORDER_STATUSES.includes(status)) {
+  throw new Error(`Invalid status: ${status}`);
+}
+
+// UI dropdown
+ORDER_STATUSES.map(status => (
+  <option key={status} value={status}>{ORDER_STATUS_LABELS[status]}</option>
+))
+```
+
+#### Pattern 2: Object Constants (For related values)
+
+```typescript
+// src/lib/constants/customer.ts
+
+export const CUSTOMER_TYPES = {
+  BUSINESS: "business",
+  PRIVATE: "private",
+  RESELLER: "reseller",
+} as const;
+
+export type CustomerType = (typeof CUSTOMER_TYPES)[keyof typeof CUSTOMER_TYPES];
+
+// With metadata
+export const CUSTOMER_TYPE_CONFIG = {
+  business: {
+    label: "Business",
+    icon: "Building2",
+    color: "emerald",
+    requiresVAT: true,
+  },
+  private: {
+    label: "Private",
+    icon: "User",
+    color: "purple",
+    requiresVAT: false,
+  },
+  reseller: {
+    label: "Reseller",
+    icon: "Store",
+    color: "amber",
+    requiresVAT: true,
+  },
+} as const;
+```
+
+#### Pattern 3: Numeric Constants
+
+```typescript
+// src/lib/constants/common.ts
+
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 20,
+  MAX_LIMIT: 100,
+} as const;
+
+export const VAT_RATES = {
+  STANDARD: 22,
+  REDUCED: 10,
+  SUPER_REDUCED: 4,
+  ZERO: 0,
+} as const;
+
+export type VatRate = (typeof VAT_RATES)[keyof typeof VAT_RATES];
+
+// Code prefix patterns
+export const CODE_PREFIXES = {
+  CUSTOMER_PUBLIC: "C-",
+  ORDER: "ORD-",
+  CART: "CART-",
+  INVOICE: "INV-",
+} as const;
+```
+
+#### Pattern 4: Mongoose Schema with Constants
+
+```typescript
+// In model file
+import { ORDER_STATUSES } from "@/lib/constants/order";
+
+const OrderSchema = new Schema({
+  status: {
+    type: String,
+    enum: ORDER_STATUSES,  // Use constant array
+    default: "draft",
+  },
+});
+```
+
+#### What to Extract as Constants
+
+| Extract                                   | Don't Extract                      |
+| ----------------------------------------- | ---------------------------------- |
+| Status values (order, customer, payment)  | One-time configuration values      |
+| Type classifications                      | Values from environment variables  |
+| VAT rates, currencies                     | Truly unique identifiers           |
+| Error codes and messages                  | CSS class names (use Tailwind)     |
+| API endpoints (if reused)                 | Component-specific UI strings      |
+| Pagination defaults                       |                                    |
+| Code prefixes (C-, ORD-, etc.)            |                                    |
+
+#### Anti-Patterns to Avoid
+
+```typescript
+// BAD: Magic strings scattered in code
+if (order.status === "confirmed") { ... }
+const vat = price * 0.22;
+
+// BAD: Duplicated values
+// file1.ts: status: "pending"
+// file2.ts: status: "pending"  // Easy to typo as "Pending"
+
+// BAD: Type assertions without validation
+const status = input as OrderStatus;  // No runtime check!
+
+// GOOD: Centralized constants with type safety
+import { OrderStatus, VAT_RATES } from "@/lib/constants";
+
+if (order.status === "confirmed") { ... }  // TypeScript knows valid values
+const vat = price * (VAT_RATES.STANDARD / 100);
+
+// GOOD: Runtime validation
+function isValidStatus(s: string): s is OrderStatus {
+  return ORDER_STATUSES.includes(s as OrderStatus);
+}
+```
+
+### Things to ALWAYS Do
+
+- **Server-side pagination via API**: Always implement pagination at the API level. The API should accept `page` and `limit` (or `pageSize`) parameters and return paginated results with metadata.
+
+```typescript
+// API Route - Server-side pagination
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "20");
+  const search = searchParams.get("search") || "";
+
+  const skip = (page - 1) * limit;
+
+  // Build query with optional search filter
+  const query: Record<string, unknown> = {};
+  if (search) {
+    query.$or = [
+      { entity_code: { $regex: search, $options: "i" } },
+      { sku: { $regex: search, $options: "i" } },
+      { name: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    Model.find(query).skip(skip).limit(limit).lean(),
+    Model.countDocuments(query),
+  ]);
+
+  return NextResponse.json({
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+}
+```
+
+```typescript
+// React Component - Consuming paginated API
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [search, setSearch] = useState("");
+
+const { data, isLoading } = useSWR(
+  `/api/items?page=${page}&limit=${pageSize}&search=${search}`
+);
+
+// Render pagination controls using data.pagination.totalPages
+```
+
 ## Project Structure
 
 ```
@@ -147,6 +629,160 @@ src/
   │   ├── types/         # Shared TypeScript types
   │   └── security/      # Auth & validation
   └── config/            # Project configuration
+```
+
+## Multi-Tenant API Testing
+
+This project uses multi-tenant isolation with separate MongoDB databases per tenant (`vinc-{tenant-id}`).
+
+### Test API Keys
+
+Test keys are stored in `scripts/.test-api-keys.json`. To recreate them:
+
+```bash
+npx tsx scripts/create-test-api-keys.ts
+```
+
+**Fixed test credentials:**
+
+| Tenant        | Key ID                             | Secret                                     |
+| ------------- | ---------------------------------- | ------------------------------------------ |
+| hidros-it     | `ak_hidros-it_aabbccddeeff`        | `sk_aabbccddeeff00112233445566778899`      |
+| dfl-eventi-it | `ak_dfl-eventi-it_112233445566`    | `sk_112233445566778899aabbccddeeff00`      |
+
+### API Key Authentication Headers
+
+When using API key auth, include these headers:
+
+```bash
+-H "x-auth-method: api-key"
+-H "x-api-key-id: ak_{tenant}_{12-hex-chars}"
+-H "x-api-secret: sk_{32-hex-chars}"
+```
+
+### Testing Tenant Isolation
+
+```bash
+# Test hidros customers (should return data)
+curl -s "http://localhost:3001/api/b2b/customers" \
+  -H "x-auth-method: api-key" \
+  -H "x-api-key-id: ak_hidros-it_aabbccddeeff" \
+  -H "x-api-secret: sk_aabbccddeeff00112233445566778899" | jq '.customers | length'
+
+# Test DFL customers (should return 0 - different tenant)
+curl -s "http://localhost:3001/api/b2b/customers" \
+  -H "x-auth-method: api-key" \
+  -H "x-api-key-id: ak_dfl-eventi-it_112233445566" \
+  -H "x-api-secret: sk_112233445566778899aabbccddeeff00" | jq '.customers | length'
+
+# Test cross-tenant access (should be blocked)
+curl -s "http://localhost:3001/api/b2b/orders/{hidros-order-id}" \
+  -H "x-auth-method: api-key" \
+  -H "x-api-key-id: ak_dfl-eventi-it_112233445566" \
+  -H "x-api-secret: sk_112233445566778899aabbccddeeff00"
+# Expected: {"error":"Order not found"}
+```
+
+### API Key Format
+
+- **Key ID**: `ak_{tenant-id}_{12-hex-chars}` (e.g., `ak_hidros-it_aabbccddeeff`)
+- **Secret**: `sk_{32-hex-chars}` (e.g., `sk_aabbccddeeff00112233445566778899`)
+- Secrets are stored as bcrypt hashes in the `apikeys` collection
+
+### Key Files for Multi-Tenancy
+
+- `src/lib/auth/api-key-auth.ts` - API key verification
+- `src/lib/db/connection.ts` - Tenant database switching
+- `src/middleware.ts` - Tenant resolution from URL path
+
+## Debugging & Utility Scripts
+
+### Checking Tenant Resources
+
+Use `scripts/check-tenant.cjs` to verify tenant provisioning and deletion:
+
+```bash
+# Check if tenant exists and verify all resources
+node scripts/check-tenant.cjs <tenant-id>
+
+# Examples
+node scripts/check-tenant.cjs hidros-it    # Should show all resources present
+node scripts/check-tenant.cjs df-it        # After deletion, should show all resources removed
+```
+
+**What it checks:**
+- Admin database record (in `vinc-admin` database)
+- Tenant MongoDB database (`vinc-{tenant-id}`)
+  - Collections list
+  - Admin users count
+  - Languages count (enabled vs total)
+- Solr collection (`vinc-{tenant-id}`)
+
+**Sample output:**
+```
+=== TENANT RESOURCE CHECK ===
+
+Tenant ID: hidros-it
+Expected DB: vinc-hidros-it
+Expected Solr: vinc-hidros-it
+
+✅ Tenant found in admin database
+   Name: Hidros S.r.l
+   Status: active
+   Admin Email: admin@hidros.com
+   Mongo DB: vinc-hidros-it
+   Solr Core: vinc-hidros-it
+
+✅ MongoDB database exists: vinc-hidros-it
+   Collections: categories, languages, b2busers, ...
+   Admin users: 2
+   Languages: 43 total, 1 enabled
+
+✅ Solr collection exists: vinc-hidros-it
+   URL: http://149.81.163.109:8983/solr/#/vinc-hidros-it
+
+=== SUMMARY ===
+✅ Admin DB record
+✅ MongoDB database
+✅ Solr collection
+
+✅ Tenant fully provisioned - all resources present
+```
+
+**Use cases:**
+- Verify tenant creation completed successfully
+- Check tenant deletion removed all resources
+- Debug partial provisioning states
+- Audit tenant infrastructure
+
+### Other Utility Scripts
+
+Pattern for creating check scripts (from `scripts/check-api-source.cjs`):
+
+```javascript
+#!/usr/bin/env node
+require('dotenv').config();
+const mongoose = require('mongoose');
+
+async function main() {
+  await mongoose.connect(process.env.VINC_MONGO_URL, {
+    dbName: process.env.VINC_MONGO_DB,
+  });
+
+  // Create flexible model with strict: false
+  const Model = mongoose.models.ModelName || mongoose.model(
+    'ModelName',
+    new mongoose.Schema({}, { strict: false })
+  );
+
+  // Query and display data
+  const doc = await Model.findOne({ /* query */ }).exec();
+  console.log('Field:', doc.field);
+
+  await mongoose.connection.close();
+}
+
+main().catch(console.error);
 ```
 
 ## Related Projects

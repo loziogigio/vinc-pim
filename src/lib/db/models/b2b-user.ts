@@ -57,4 +57,6 @@ const B2BUserSchema = new Schema<B2BUser>(
 // Additional index for faster queries (email and username already indexed via unique: true)
 B2BUserSchema.index({ isActive: 1 });
 
+export { B2BUserSchema };
+
 export const B2BUserModel = models.B2BUser ?? model("B2BUser", B2BUserSchema);

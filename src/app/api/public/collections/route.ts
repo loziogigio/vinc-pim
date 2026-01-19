@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { CollectionModel } from "@/lib/db/models/collection";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/public/collections
@@ -14,7 +13,15 @@ import { CollectionModel } from "@/lib/db/models/collection";
  */
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
+    const tenantDb = req.headers.get("x-resolved-tenant-db");
+    if (!tenantDb) {
+      return NextResponse.json(
+        { error: "Tenant not resolved" },
+        { status: 400 }
+      );
+    }
+
+    const { Collection: CollectionModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const sort = searchParams.get("sort") || "display_order";

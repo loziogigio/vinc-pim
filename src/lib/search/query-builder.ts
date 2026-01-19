@@ -39,8 +39,8 @@ export function buildSearchQuery(request: SearchRequest): SolrJsonQuery {
   // Build filter queries
   const filters = buildFilterQueries(request.filters, request);
 
-  // Build sort
-  const sort = buildSortClause(request.sort, lang);
+  // Build sort (pass text to determine default sort behavior)
+  const sort = buildSortClause(request.sort, lang, request.text);
 
   // Pagination
   const offset = request.start || 0;
@@ -461,13 +461,22 @@ function buildRangeFilter(
 
 /**
  * Build sort clause
+ * When no explicit sort is provided:
+ * - If text search: default to relevance (score desc)
+ * - If no text (browsing/filtering only): default to item_creation_date desc (ERP insertion date)
  */
 function buildSortClause(
   sort: SearchRequest['sort'],
-  lang: string
+  lang: string,
+  text?: string
 ): string | undefined {
   if (!sort) {
-    // Default sort: relevance (score) desc
+    // No explicit sort - use smart defaults
+    if (!text || text.trim() === '') {
+      // No text query (browsing/filtering) → sort by ERP insertion date (newest first)
+      return 'item_creation_date desc';
+    }
+    // Text search → sort by relevance
     return 'score desc';
   }
 
@@ -564,8 +573,8 @@ export function buildQueryParams(request: SearchRequest): Record<string, string 
     params.fq = fq;
   }
 
-  // Sort
-  const sort = buildSortClause(request.sort, lang);
+  // Sort (pass text to determine default sort behavior)
+  const sort = buildSortClause(request.sort, lang, request.text);
   if (sort) {
     params.sort = sort;
   }

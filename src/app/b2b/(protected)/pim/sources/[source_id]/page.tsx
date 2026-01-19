@@ -18,7 +18,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { PIM_PRODUCT_SCHEMA, FIELD_CATEGORIES, type PIMFieldCategory } from "@/lib/pim/schema";
+import { PIM_PRODUCT_SCHEMA, FIELD_CATEGORIES } from "@/lib/pim/schema";
 
 type ImportSource = {
   _id: string;

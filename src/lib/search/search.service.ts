@@ -3,7 +3,7 @@
  * Core search function for direct use (no HTTP overhead)
  */
 
-import { getSolrClient, SolrError } from './solr-client';
+import { getSolrClient, SolrClient, SolrError } from './solr-client';
 import { buildSearchQuery } from './query-builder';
 import { transformSearchResponse, enrichFacetResults } from './response-transformer';
 import { enrichSearchResults } from './response-enricher';
@@ -26,6 +26,7 @@ export interface SearchParams {
   group_variants?: boolean;
   group?: SearchRequest['group'];
   facet_fields?: string[];
+  tenantDb?: string; // Optional tenant database (e.g., vinc-hidros-it)
 }
 
 export interface SearchResult {
@@ -62,7 +63,12 @@ export async function searchProducts(params: SearchParams): Promise<SearchResult
 
   // Build and execute query
   const solrQuery = buildSearchQuery(searchRequest);
-  const solrClient = getSolrClient();
+
+  // Create tenant-specific Solr client if tenantDb is provided
+  // Otherwise use singleton (for backward compatibility)
+  const solrClient = params.tenantDb
+    ? new SolrClient(config.url, params.tenantDb)
+    : getSolrClient();
   const solrResponse = await solrClient.search(solrQuery);
 
   // Transform response
@@ -73,11 +79,13 @@ export async function searchProducts(params: SearchParams): Promise<SearchResult
   );
 
   // Enrich results with fresh data from MongoDB
-  response.results = await enrichSearchResults(response.results, searchRequest.lang);
+  if (params.tenantDb) {
+    response.results = await enrichSearchResults(params.tenantDb, response.results, searchRequest.lang);
+  }
 
   // Enrich facets with full entity data
   if (response.facet_results) {
-    response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang);
+    response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, params.tenantDb);
   }
 
   return {

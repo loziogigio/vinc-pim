@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
+import { getB2BSession } from "@/lib/auth/b2b-session";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]/history
@@ -11,8 +11,14 @@ export async function GET(
   { params }: { params: Promise<{ entity_code: string }> }
 ) {
   try {
+    const session = await getB2BSession();
+    if (!session || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { entity_code } = await params;
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // No wholesaler_id - database provides isolation
 

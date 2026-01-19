@@ -1,0 +1,12 @@
+{
+  "hidros": {
+    "key_id": "ak_hidros-it_aabbccddeeff",
+    "secret": "sk_aabbccddeeff00112233445566778899",
+    "tenant": "hidros-it"
+  },
+  "dfl": {
+    "key_id": "ak_dfl-eventi-it_112233445566",
+    "secret": "sk_112233445566778899aabbccddeeff00",
+    "tenant": "dfl-eventi-it"
+  }
+}

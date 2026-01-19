@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
+import { connectWithModels } from "@/lib/db/connection";
 import { importQueue } from "@/lib/queue/queues";
-import { ImportJobModel } from "@/lib/db/models/import-job";
 import crypto from "crypto";
 
 /**
@@ -12,11 +11,12 @@ import crypto from "crypto";
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { product_ids, updates } = body;

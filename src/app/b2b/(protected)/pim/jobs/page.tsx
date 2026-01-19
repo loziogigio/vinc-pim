@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   CheckCircle2,
@@ -80,6 +80,9 @@ type Job = ImportJob | AssociationJob;
 
 export default function JobsPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -472,7 +475,7 @@ export default function JobsPage() {
           jobs.map((job) => (
             <div
               key={job._id}
-              onClick={() => router.push(`/b2b/pim/jobs/${job.job_id}`)}
+              onClick={() => router.push(`${tenantPrefix}/b2b/pim/jobs/${job.job_id}`)}
               className="rounded-lg bg-card p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
             >
               <div className="flex items-start gap-4">

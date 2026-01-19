@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
-import { CollectionModel } from "@/lib/db/models/collection";
-import { AssociationJobModel } from "@/lib/db/models/association-job";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { nanoid } from "nanoid";
 
@@ -14,11 +11,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Collection: CollectionModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     // Await params (Next.js 15+)
     const { id } = await params;
@@ -139,7 +137,7 @@ export async function POST(
     });
 
     // Process asynchronously
-    processCollectionImportJob(jobId, id, entityCodes, action, session.userId, collection).catch(
+    processCollectionImportJob(tenantDb, jobId, id, entityCodes, action, session.userId, collection).catch(
       (error) => {
         console.error("Background job error:", error);
       }
@@ -161,6 +159,7 @@ export async function POST(
 
 // Background job processor
 async function processCollectionImportJob(
+  tenantDb: string,
   jobId: string,
   id: string,
   entityCodes: string[],
@@ -168,6 +167,13 @@ async function processCollectionImportJob(
   wholesalerId: string,
   collection: any
 ) {
+  // Get fresh models for the background job
+  const {
+    AssociationJob: AssociationJobModel,
+    PIMProduct: PIMProductModel,
+    Collection: CollectionModel
+  } = await connectWithModels(tenantDb);
+
   try {
     // Update job status to processing
     await AssociationJobModel.updateOne(
@@ -312,7 +318,9 @@ async function processCollectionImportJob(
     );
   } catch (error: any) {
     console.error("Job processing error:", error);
-    await AssociationJobModel.updateOne(
+    // Get fresh connection for error handler
+    const { AssociationJob: AssociationJobModelError } = await connectWithModels(tenantDb);
+    await AssociationJobModelError.updateOne(
       { job_id: jobId },
       {
         $set: {

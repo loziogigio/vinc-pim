@@ -89,3 +89,38 @@ export function getTenantDbFromRequest(request: NextRequest): string | null {
   }
   return getTenantDatabaseName(tenantId);
 }
+
+/**
+ * Get tenant ID from headers (for use in Server Components)
+ * Uses next/headers to access request headers set by middleware
+ */
+export async function getTenantIdFromHeaders(): Promise<string | null> {
+  const { headers } = await import("next/headers");
+  const headersList = await headers();
+
+  // Check resolved tenant ID from middleware
+  const resolvedTenantId = headersList.get("x-resolved-tenant-id");
+  if (resolvedTenantId) {
+    return resolvedTenantId;
+  }
+
+  // Check X-Tenant-ID header
+  const headerTenantId = headersList.get("x-tenant-id");
+  if (headerTenantId) {
+    return headerTenantId;
+  }
+
+  // Fall back to environment variable
+  return process.env.VINC_TENANT_ID || null;
+}
+
+/**
+ * Get tenant database name from headers (for use in Server Components)
+ */
+export async function getTenantDbFromHeaders(): Promise<string | null> {
+  const tenantId = await getTenantIdFromHeaders();
+  if (!tenantId) {
+    return null;
+  }
+  return getTenantDatabaseName(tenantId);
+}

@@ -17,7 +17,7 @@ export interface IUOM extends Document {
   updated_at: Date;
 }
 
-const UOMSchema = new Schema<IUOM>(
+export const UOMSchema = new Schema<IUOM>(
   {
     uom_id: {
       type: String,

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { CategoryModel } from "@/lib/db/models/category";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 /**
@@ -13,11 +11,12 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
 
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const searchParams = req.nextUrl.searchParams;
     const parentId = searchParams.get("parent_id");
@@ -88,11 +87,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Category: CategoryModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { name, slug, description, parent_id, hero_image, seo, display_order } = body;

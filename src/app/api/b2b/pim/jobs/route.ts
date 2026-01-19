@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { ImportJobModel } from "@/lib/db/models/import-job";
-import { AssociationJobModel } from "@/lib/db/models/association-job";
+import { connectWithModels } from "@/lib/db/connection";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
 /**
  * GET /api/b2b/pim/jobs
@@ -10,13 +9,29 @@ import { AssociationJobModel } from "@/lib/db/models/association-job";
  */
 export async function GET(req: NextRequest) {
   try {
-    // TODO: Re-enable authentication
-    // const session = await getB2BSession();
-    // if (!session) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    // Authenticate via API key or session
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantDb: string;
 
-    await connectToDatabase();
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "pim");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    // Get tenant-specific models from connection pool
+    const { ImportJob: ImportJobModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");

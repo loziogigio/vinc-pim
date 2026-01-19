@@ -132,5 +132,7 @@ LanguageSchema.pre("save", async function (next) {
   next();
 });
 
+export { LanguageSchema };
+
 export const LanguageModel =
   mongoose.models.Language || mongoose.model<ILanguage>("Language", LanguageSchema);

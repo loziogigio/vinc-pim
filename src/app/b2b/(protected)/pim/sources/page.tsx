@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Plus, Settings, Trash2, Edit, CheckCircle2, XCircle, Search, Filter } from "lucide-react";
 
@@ -23,6 +23,9 @@ type ImportSource = {
 
 export default function SourcesPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
   const [sources, setSources] = useState<ImportSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -196,7 +199,7 @@ export default function SourcesPage() {
             <div
               key={source._id}
               className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => router.push(`/b2b/pim/sources/${source.source_id}`)}
+              onClick={() => router.push(`${tenantPrefix}/b2b/pim/sources/${source.source_id}`)}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -262,7 +265,7 @@ export default function SourcesPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => router.push(`/b2b/pim/sources/${source.source_id}`)}
+                    onClick={() => router.push(`${tenantPrefix}/b2b/pim/sources/${source.source_id}`)}
                     className="p-2 rounded border border-border hover:bg-muted"
                     title="Edit source"
                   >

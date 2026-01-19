@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
@@ -138,5 +138,7 @@ const HomeSettingsSchema = new Schema(
   }
 );
 
+export { HomeSettingsSchema };
+
 export const B2BHomeSettingsModel =
-  models.B2BHomeSettings || model<HomeSettingsDocument>("B2BHomeSettings", HomeSettingsSchema);
+  mongoose.models.B2BHomeSettings || mongoose.model<HomeSettingsDocument>("B2BHomeSettings", HomeSettingsSchema);

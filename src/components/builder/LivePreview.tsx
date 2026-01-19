@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, RefreshCcw } from "lucide-react";
+import { AlertTriangle, Eye, RefreshCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PageBlock } from "@/lib/types/blocks";
 import type { DeviceMode } from "@/lib/store/pageBuilderStore";
@@ -19,7 +19,7 @@ export const LivePreview = ({
   blocks,
   productId,
   pageType,
-  customerWebUrl = process.env.NEXT_PUBLIC_CUSTOMER_WEB_URL || "http://localhost:3000",
+  customerWebUrl,
   isDirty = true
 }: LivePreviewProps) => {
   const [previewKey, setPreviewKey] = useState(0);
@@ -192,7 +192,20 @@ export const LivePreview = ({
         </div>
       </div>
       <div className="flex-1 overflow-auto rounded-b-[0.428rem] bg-[#f0f1f5]">
-        {blocks.length || productId ? (
+        {!customerWebUrl ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-6 text-[#b9b9c3]">
+            <AlertTriangle className="h-12 w-12 text-amber-500" />
+            <div className="text-center">
+              <p className="text-[0.95rem] font-medium text-[#5e5873]">Shop URL not configured</p>
+              <p className="mt-1 text-[0.857rem]">
+                Set the <strong>Shop URL</strong> in <strong>Settings → Branding</strong> to enable live preview.
+              </p>
+              <p className="mt-3 text-[0.75rem] text-[#b9b9c3]">
+                Attempted URL: <code className="rounded bg-slate-200 px-1 py-0.5">{previewUrl}</code>
+              </p>
+            </div>
+          </div>
+        ) : blocks.length || productId ? (
           <div className="flex h-full items-start justify-center px-6 py-6">
             <div
               style={{

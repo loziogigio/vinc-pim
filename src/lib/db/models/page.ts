@@ -1,4 +1,4 @@
-import { Schema, models, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 const BlockSchema = new Schema(
   {
@@ -70,4 +70,6 @@ export type PageDocument = InferSchemaType<typeof PageSchema> & {
   }>;
 };
 
-export const PageModel = models.Page ?? model("Page", PageSchema);
+export { PageSchema };
+
+export const PageModel = mongoose.models.Page ?? mongoose.model("Page", PageSchema);

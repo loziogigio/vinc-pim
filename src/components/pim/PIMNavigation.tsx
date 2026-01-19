@@ -41,6 +41,8 @@ const navItems = [
 
 export function PIMNavigation() {
   const pathname = usePathname();
+  // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/pim/products" -> "/dfl-eventi-it")
+  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
   return (
     <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
@@ -51,14 +53,15 @@ export function PIMNavigation() {
       </div>
       {navItems.map((item) => {
         const Icon = item.icon;
+        const fullHref = `${tenantPrefix}${item.href}`;
         // Special case for Overview: only match exact path
         const isActive = item.href === "/b2b/pim"
-          ? pathname === item.href
-          : pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          ? pathname === fullHref
+          : pathname === fullHref || pathname?.startsWith(`${fullHref}/`);
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={fullHref}
             className={cn(
               "flex items-center gap-3 rounded-[0.358rem] px-4 py-2.5 text-[0.875rem] font-medium transition",
               isActive

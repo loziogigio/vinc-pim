@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { FeatureModel } from "@/lib/db/models/feature";
-import { UOMModel } from "@/lib/db/models/uom";
+import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
 /**
@@ -13,11 +11,12 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getB2BSession();
 
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Feature, UOM } = await connectWithModels(tenantDb);
 
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
@@ -31,7 +30,7 @@ export async function GET(req: NextRequest) {
       query.is_active = true;
     }
 
-    const features = await FeatureModel.find(query)
+    const features = await Feature.find(query)
       .sort({ display_order: 1, label: 1 })
       .lean();
 
@@ -39,7 +38,7 @@ export async function GET(req: NextRequest) {
     const featuresWithUOM = await Promise.all(
       features.map(async (feature: any) => {
         if (feature.uom_id) {
-          const uom = await UOMModel.findOne({ uom_id: feature.uom_id }).lean();
+          const uom = await UOM.findOne({ uom_id: feature.uom_id }).lean();
           if (uom) {
             feature.uom = {
               uom_id: uom.uom_id,
@@ -70,11 +69,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { Feature, UOM } = await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { key, label, type, unit, uom_id, options, default_required, display_order } = body;
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if key already exists for this wholesaler
-    const existing = await FeatureModel.findOne({
+    const existing = await Feature.findOne({
       // No wholesaler_id - database provides isolation
       key,
     });
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const feature = await FeatureModel.create({
+    const feature = await Feature.create({
       feature_id: nanoid(12),
       // No wholesaler_id - database provides isolation
       key,
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     // Populate UOM data in response if uom_id is provided
     let featureResponse = feature.toObject();
     if (uom_id) {
-      const uom = await UOMModel.findOne({ uom_id }).lean();
+      const uom = await UOM.findOne({ uom_id }).lean();
       if (uom) {
         featureResponse.uom = {
           uom_id: uom.uom_id,

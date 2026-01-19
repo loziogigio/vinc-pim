@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { B2BProductModel } from "@/lib/db/models/b2b-product";
-import { ActivityLogModel } from "@/lib/db/models/activity-log";
+import { connectWithModels } from "@/lib/db/connection";
 import * as XLSX from "xlsx";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getB2BSession();
 
-    if (!session.isLoggedIn) {
+    if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { B2BProduct: B2BProductModel, ActivityLog: ActivityLogModel } = await connectWithModels(tenantDb);
 
     // Get the uploaded file
     const formData = await req.formData();
@@ -53,8 +54,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    await connectToDatabase();
 
     // Process products with validation
     const results = {

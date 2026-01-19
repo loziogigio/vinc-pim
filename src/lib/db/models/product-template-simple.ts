@@ -1,4 +1,4 @@
-import { Schema, models, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 // Block schema (YouTube, attachments, etc.)
 const BlockSchema = new Schema(
@@ -134,5 +134,8 @@ export type ProductTemplateDocument = InferSchemaType<typeof ProductTemplateSche
   }>;
 };
 
+// Export schema with alias for model-registry compatibility
+export { ProductTemplateSchema as ProductTemplateSimpleSchema };
+
 export const ProductTemplateModel =
-  models.ProductTemplate ?? model("ProductTemplate", ProductTemplateSchema);
+  mongoose.models.ProductTemplate ?? mongoose.model("ProductTemplate", ProductTemplateSchema);

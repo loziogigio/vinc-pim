@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { connectToDatabase } from "@/lib/db/connection";
-import { SynonymDictionaryModel } from "@/lib/db/models/synonym-dictionary";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 
 /**
@@ -15,11 +13,12 @@ export async function POST(
 ) {
   try {
     const session = await getB2BSession();
-    if (!session) {
+    if (!session?.isLoggedIn || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { id } = await params;
 
@@ -77,11 +76,11 @@ export async function POST(
     }
 
     console.log(
-      `🔄 Synced ${syncedCount}/${products.length} products to Solr for dictionary "${dictionary.key}"`
+      `Synced ${syncedCount}/${products.length} products to Solr for dictionary "${dictionary.key}"`
     );
 
     if (errors.length > 0) {
-      console.warn(`⚠️ Sync errors:`, errors.slice(0, 10));
+      console.warn(`Sync errors:`, errors.slice(0, 10));
     }
 
     return NextResponse.json({

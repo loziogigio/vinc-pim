@@ -3,24 +3,47 @@
  * PIM Import Worker
  * Standalone worker process for handling product imports
  *
- * Usage: pnpm worker:pim
+ * Usage:
+ *   pnpm worker:pim
+ *   pnpm worker:pim --tenant hidros-it
+ *   pnpm worker:pim --tenant dfl-eventi-it
  */
 
 import { connectToDatabase } from '../src/lib/db/connection';
 import { importWorker } from '../src/lib/queue/import-worker';
 
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { tenant?: string } {
+  const args = process.argv.slice(2);
+  const tenantIndex = args.indexOf('--tenant');
+
+  if (tenantIndex >= 0 && args[tenantIndex + 1]) {
+    return { tenant: args[tenantIndex + 1] };
+  }
+
+  return {};
+}
+
+const { tenant } = parseArgs();
+const tenantDb = tenant ? `vinc-${tenant}` : undefined;
+
 console.log('🚀 PIM Import Worker starting...');
+if (tenant) {
+  console.log(`🎯 Target tenant: ${tenant} (database: ${tenantDb})`);
+} else {
+  console.log('🎯 Multi-tenant mode: Jobs will use tenant-specific databases');
+}
 console.log(`📍 Redis: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
 console.log(`📊 Concurrency: 2 jobs`);
 console.log('');
 
-// Initialize database connection before worker starts
+// Initialize worker (no database connection at startup - connects per-job)
 async function startWorker() {
   try {
-    // Force fresh MongoDB connection
-    await connectToDatabase();
-
     console.log('✅ Worker ready and listening for jobs');
+    console.log('   Jobs will connect to tenant-specific databases');
     console.log('   Press Ctrl+C to stop');
     console.log('');
   } catch (error) {

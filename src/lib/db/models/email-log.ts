@@ -53,7 +53,7 @@ export interface IEmailLog extends Document {
   updated_at: Date;
 }
 
-const EmailLogSchema = new Schema<IEmailLog>(
+export const EmailLogSchema = new Schema<IEmailLog>(
   {
     email_id: {
       type: String,

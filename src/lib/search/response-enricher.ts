@@ -5,8 +5,8 @@
  * Priority: MongoDB data overrides Solr data for entities like brands, categories, etc.
  */
 
-import { connectToDatabase } from '@/lib/db/connection';
-import mongoose from 'mongoose';
+import { getPooledConnection } from '@/lib/db/connection';
+import type { SolrProduct } from '@/lib/types/search';
 
 // ============================================
 // CACHE CONFIGURATION
@@ -19,32 +19,41 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 
-// Entity caches
-let brandsCache: CacheEntry<any> | null = null;
-let categoriesCache: CacheEntry<any> | null = null;
-let collectionsCache: CacheEntry<any> | null = null;
-let productTypesCache: CacheEntry<any> | null = null;
-let tagsCache: CacheEntry<any> | null = null;
+// Tenant-aware entity caches
+// Key format: `${tenantDb}:${collectionName}`
+const entityCaches = new Map<string, CacheEntry<any>>();
+
+function getCacheKey(tenantDb: string, collectionName: string): string {
+  return `${tenantDb}:${collectionName}`;
+}
+
+function getCache(tenantDb: string, collectionName: string): CacheEntry<any> | undefined {
+  return entityCaches.get(getCacheKey(tenantDb, collectionName));
+}
+
+function setCache(tenantDb: string, collectionName: string, entry: CacheEntry<any>): void {
+  entityCaches.set(getCacheKey(tenantDb, collectionName), entry);
+}
 
 // ============================================
 // GENERIC CACHE LOADER
 // ============================================
 
 async function loadEntityCache(
+  tenantDb: string,
   collectionName: string,
-  idField: string,
-  cache: CacheEntry<any> | null,
-  setCache: (entry: CacheEntry<any>) => void
+  idField: string
 ): Promise<Map<string, any>> {
   const now = Date.now();
 
   // Return cached if still valid
+  const cache = getCache(tenantDb, collectionName);
   if (cache && (now - cache.timestamp) < CACHE_TTL_MS) {
     return cache.data;
   }
 
-  await connectToDatabase();
-  const db = mongoose.connection.db;
+  const connection = await getPooledConnection(tenantDb);
+  const db = connection.db;
 
   if (!db) {
     console.warn(`[Enricher] MongoDB not connected, skipping ${collectionName} enrichment`);
@@ -61,7 +70,7 @@ async function loadEntityCache(
     }
   }
 
-  setCache({ data: map, timestamp: now });
+  setCache(tenantDb, collectionName, { data: map, timestamp: now });
   return map;
 }
 
@@ -69,24 +78,79 @@ async function loadEntityCache(
 // ENTITY LOADERS
 // ============================================
 
-export async function loadBrands(): Promise<Map<string, any>> {
-  return loadEntityCache('brands', 'brand_id', brandsCache, (c) => { brandsCache = c; });
+export async function loadBrands(tenantDb: string): Promise<Map<string, any>> {
+  return loadEntityCache(tenantDb, 'brands', 'brand_id');
 }
 
-export async function loadCategories(): Promise<Map<string, any>> {
-  return loadEntityCache('categories', 'category_id', categoriesCache, (c) => { categoriesCache = c; });
+export async function loadCategories(tenantDb: string): Promise<Map<string, any>> {
+  return loadEntityCache(tenantDb, 'categories', 'category_id');
 }
 
-export async function loadCollections(): Promise<Map<string, any>> {
-  return loadEntityCache('collections', 'collection_id', collectionsCache, (c) => { collectionsCache = c; });
+export async function loadCollections(tenantDb: string): Promise<Map<string, any>> {
+  return loadEntityCache(tenantDb, 'collections', 'collection_id');
 }
 
-export async function loadProductTypes(): Promise<Map<string, any>> {
-  return loadEntityCache('producttypes', 'product_type_id', productTypesCache, (c) => { productTypesCache = c; });
+export async function loadProductTypes(tenantDb: string): Promise<Map<string, any>> {
+  return loadEntityCache(tenantDb, 'producttypes', 'product_type_id');
 }
 
-export async function loadTags(): Promise<Map<string, any>> {
-  return loadEntityCache('tags', 'tag_id', tagsCache, (c) => { tagsCache = c; });
+export async function loadTags(tenantDb: string): Promise<Map<string, any>> {
+  return loadEntityCache(tenantDb, 'tags', 'tag_id');
+}
+
+// ============================================
+// MEDIA MERGE FOR VARIANTS
+// ============================================
+
+/**
+ * Merge parent media with variant media.
+ * Strategy: Variant's own content first, then parent's content appended.
+ * Deduplicates by URL.
+ *
+ * @param variant - The variant product
+ * @param parent - The parent product
+ * @param shareImages - Whether to merge images
+ * @param shareMedia - Whether to merge additional media (docs, videos, 3D)
+ */
+export function mergeMediaFromParent(
+  variant: SolrProduct,
+  parent: SolrProduct,
+  shareImages: boolean,
+  shareMedia: boolean
+): SolrProduct {
+  if (!parent || (!shareImages && !shareMedia)) return variant;
+
+  const result = { ...variant };
+
+  // Merge images (if shareImages enabled)
+  if (shareImages && parent.images?.length) {
+    let mergedImages = variant.images || [];
+    const existingUrls = new Set(mergedImages.map(img => img.url));
+    const parentImages = parent.images.filter(img => !existingUrls.has(img.url));
+    mergedImages = [...mergedImages, ...parentImages];
+    result.images = mergedImages.length > 0 ? mergedImages : undefined;
+    result.image_count = mergedImages.length;
+
+    // Also merge gallery if present
+    if (parent.gallery?.length) {
+      let mergedGallery = variant.gallery || [];
+      const existingGalleryUrls = new Set(mergedGallery.map(g => g.url));
+      const parentGallery = parent.gallery.filter(g => !existingGalleryUrls.has(g.url));
+      mergedGallery = [...mergedGallery, ...parentGallery];
+      result.gallery = mergedGallery.length > 0 ? mergedGallery : undefined;
+    }
+  }
+
+  // Merge additional media (if shareMedia enabled)
+  if (shareMedia && parent.media?.length) {
+    let mergedMedia = variant.media || [];
+    const existingUrls = new Set(mergedMedia.map(m => m.url));
+    const parentMedia = parent.media.filter(m => !existingUrls.has(m.url));
+    mergedMedia = [...mergedMedia, ...parentMedia];
+    result.media = mergedMedia.length > 0 ? mergedMedia : undefined;
+  }
+
+  return result;
 }
 
 /**
@@ -94,22 +158,25 @@ export async function loadTags(): Promise<Map<string, any>> {
  * These fields change frequently and should come from MongoDB (source of truth)
  */
 interface ProductEnrichmentData {
+  entity_code?: string;
   attributes?: any;
   images?: any[];
   media?: any[];
+  share_images_with_variants?: boolean;
+  share_media_with_variants?: boolean;
 }
 
 /**
  * Load product data from MongoDB by entity_codes for enrichment
  * Returns Map<entity_code, ProductEnrichmentData>
  */
-export async function loadProductData(entityCodes: string[]): Promise<Map<string, ProductEnrichmentData>> {
+export async function loadProductData(tenantDb: string, entityCodes: string[]): Promise<Map<string, ProductEnrichmentData>> {
   if (!entityCodes.length) {
     return new Map();
   }
 
-  await connectToDatabase();
-  const db = mongoose.connection.db;
+  const connection = await getPooledConnection(tenantDb);
+  const db = connection.db;
 
   if (!db) {
     console.warn('[Enricher] MongoDB not connected, skipping product data enrichment');
@@ -118,16 +185,19 @@ export async function loadProductData(entityCodes: string[]): Promise<Map<string
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, images: 1, media: 1 })
+    .project({ entity_code: 1, attributes: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
   for (const product of products) {
     if (product.entity_code) {
       map.set(product.entity_code, {
+        entity_code: product.entity_code,
         attributes: product.attributes,
         images: product.images,
         media: product.media,
+        share_images_with_variants: product.share_images_with_variants,
+        share_media_with_variants: product.share_media_with_variants,
       });
     }
   }
@@ -295,9 +365,11 @@ function getLocalizedMedia(media: any[], lang: string): any[] {
 /**
  * Enrich search results with fresh data from MongoDB
  * Call this after transformSearchResponse
+ * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
+ * @param results - Search results to enrich
  * @param lang - Language code for localized fields (default: 'it')
  */
-export async function enrichSearchResults(results: any[], lang: string = 'it'): Promise<any[]> {
+export async function enrichSearchResults(tenantDb: string, results: any[], lang: string = 'it'): Promise<any[]> {
   if (!results?.length) {
     return results;
   }
@@ -308,14 +380,23 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
       .map(r => r.entity_code)
       .filter((code): code is string => !!code);
 
+    // Collect parent entity codes from variants (for media merge)
+    const parentEntityCodes = results
+      .filter(r => r.parent_entity_code && !r.is_parent)
+      .map(r => r.parent_entity_code)
+      .filter((code): code is string => !!code);
+
+    // Combine all entity codes (products + parents)
+    const allEntityCodes = Array.from(new Set([...entityCodes, ...parentEntityCodes]));
+
     // Load all entity caches and product data in parallel
     const [brandsMap, categoriesMap, collectionsMap, productTypesMap, tagsMap, productDataMap] = await Promise.all([
-      loadBrands(),
-      loadCategories(),
-      loadCollections(),
-      loadProductTypes(),
-      loadTags(),
-      loadProductData(entityCodes),
+      loadBrands(tenantDb),
+      loadCategories(tenantDb),
+      loadCollections(tenantDb),
+      loadProductTypes(tenantDb),
+      loadTags(tenantDb),
+      loadProductData(tenantDb, allEntityCodes),
     ]);
 
     // Enrich each result
@@ -333,7 +414,7 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
       // Determine has_active_promo (prefer Solr value, which is indexed)
       const hasActivePromo = result.has_active_promo ?? false;
 
-      return {
+      let enrichedResult: SolrProduct = {
         ...result,
         // Ensure has_active_promo is always set
         has_active_promo: hasActivePromo,
@@ -349,6 +430,28 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
         // Remove gallery (doesn't exist in MongoDB schema)
         gallery: undefined,
       };
+
+      // For variants, check if parent has share_images/media_with_variants enabled
+      if (result.parent_entity_code && !result.is_parent) {
+        const parentData = productDataMap.get(result.parent_entity_code);
+        if (parentData) {
+          const shouldShareImages = parentData.share_images_with_variants === true;
+          const shouldShareMedia = parentData.share_media_with_variants === true;
+
+          if (shouldShareImages || shouldShareMedia) {
+            // Build parent-like object for merge function
+            const parentForMerge = {
+              entity_code: parentData.entity_code || result.parent_entity_code,
+              images: parentData.images,
+              media: parentData.media ? getLocalizedMedia(parentData.media, lang) : undefined,
+              gallery: undefined,
+            } as SolrProduct;
+            enrichedResult = mergeMediaFromParent(enrichedResult, parentForMerge, shouldShareImages, shouldShareMedia);
+          }
+        }
+      }
+
+      return enrichedResult;
     });
   } catch (error) {
     console.error('[Enricher] Failed to enrich results:', error);
@@ -365,10 +468,11 @@ export async function enrichSearchResults(results: any[], lang: string = 'it'): 
  * Enrich variant grouped search results
  * For group_variants: true - fetch parent from MongoDB and enrich variants
  *
+ * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
  * @param results - Results with _needs_parent_enrichment flag and variants array
  * @param lang - Language code for localized fields
  */
-export async function enrichVariantGroupedResults(results: any[], lang: string = 'it'): Promise<any[]> {
+export async function enrichVariantGroupedResults(tenantDb: string, results: any[], lang: string = 'it'): Promise<any[]> {
   if (!results?.length) {
     return results;
   }
@@ -395,12 +499,12 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
 
     // Load entity caches and ALL product data in parallel
     const [brandsMap, categoriesMap, collectionsMap, productTypesMap, tagsMap, productDataMap] = await Promise.all([
-      loadBrands(),
-      loadCategories(),
-      loadCollections(),
-      loadProductTypes(),
-      loadTags(),
-      loadFullProductData(allEntityCodes),
+      loadBrands(tenantDb),
+      loadCategories(tenantDb),
+      loadCollections(tenantDb),
+      loadProductTypes(tenantDb),
+      loadTags(tenantDb),
+      loadFullProductData(tenantDb, allEntityCodes),
     ]);
 
     // Helper to enrich a single product
@@ -454,6 +558,8 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
         parent_sku: productData.parent_sku || product.parent_sku,
         variants_entity_code: productData.variants_entity_code || product.variants_entity_code,
         variants_sku: productData.variants_sku || product.variants_sku,
+        share_images_with_variants: productData.share_images_with_variants ?? product.share_images_with_variants,
+        share_media_with_variants: productData.share_media_with_variants ?? product.share_media_with_variants,
         // Promotions
         has_active_promo: hasActivePromo,
         promotions: productData.promotions || product.promotions,
@@ -489,6 +595,16 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
         if (childHasActivePromo) {
           enrichedParent.has_active_promo = true;
         }
+
+        // Merge parent media with variants if enabled
+        const shouldShareImages = enrichedParent.share_images_with_variants === true;
+        const shouldShareMedia = enrichedParent.share_media_with_variants === true;
+
+        if (shouldShareImages || shouldShareMedia) {
+          enrichedParent.variants = enrichedParent.variants.map((v: SolrProduct) =>
+            mergeMediaFromParent(v, enrichedParent, shouldShareImages, shouldShareMedia)
+          );
+        }
       }
 
       return enrichedParent;
@@ -502,13 +618,13 @@ export async function enrichVariantGroupedResults(results: any[], lang: string =
 /**
  * Load full product data from MongoDB (all fields needed for parent enrichment)
  */
-async function loadFullProductData(entityCodes: string[]): Promise<Map<string, any>> {
+async function loadFullProductData(tenantDb: string, entityCodes: string[]): Promise<Map<string, any>> {
   if (!entityCodes.length) {
     return new Map();
   }
 
-  await connectToDatabase();
-  const db = mongoose.connection.db;
+  const connection = await getPooledConnection(tenantDb);
+  const db = connection.db;
 
   if (!db) {
     console.warn('[Enricher] MongoDB not connected, skipping full product data enrichment');
@@ -555,32 +671,68 @@ function getLocalizedDescription(product: any, lang: string): string | undefined
 // ============================================
 
 /**
- * Clear all entity caches (call when entities are updated)
+ * Clear all entity caches for all tenants
  */
 export function clearAllCaches(): void {
-  brandsCache = null;
-  categoriesCache = null;
-  collectionsCache = null;
-  productTypesCache = null;
-  tagsCache = null;
+  entityCaches.clear();
 }
 
-export function clearBrandsCache(): void {
-  brandsCache = null;
+/**
+ * Clear all entity caches for a specific tenant
+ */
+export function clearTenantCaches(tenantDb: string): void {
+  Array.from(entityCaches.keys())
+    .filter(key => key.startsWith(`${tenantDb}:`))
+    .forEach(key => entityCaches.delete(key));
 }
 
-export function clearCategoriesCache(): void {
-  categoriesCache = null;
+export function clearBrandsCache(tenantDb?: string): void {
+  if (tenantDb) {
+    entityCaches.delete(getCacheKey(tenantDb, 'brands'));
+  } else {
+    // Clear brands for all tenants
+    Array.from(entityCaches.keys())
+      .filter(key => key.endsWith(':brands'))
+      .forEach(key => entityCaches.delete(key));
+  }
 }
 
-export function clearCollectionsCache(): void {
-  collectionsCache = null;
+export function clearCategoriesCache(tenantDb?: string): void {
+  if (tenantDb) {
+    entityCaches.delete(getCacheKey(tenantDb, 'categories'));
+  } else {
+    Array.from(entityCaches.keys())
+      .filter(key => key.endsWith(':categories'))
+      .forEach(key => entityCaches.delete(key));
+  }
 }
 
-export function clearProductTypesCache(): void {
-  productTypesCache = null;
+export function clearCollectionsCache(tenantDb?: string): void {
+  if (tenantDb) {
+    entityCaches.delete(getCacheKey(tenantDb, 'collections'));
+  } else {
+    Array.from(entityCaches.keys())
+      .filter(key => key.endsWith(':collections'))
+      .forEach(key => entityCaches.delete(key));
+  }
 }
 
-export function clearTagsCache(): void {
-  tagsCache = null;
+export function clearProductTypesCache(tenantDb?: string): void {
+  if (tenantDb) {
+    entityCaches.delete(getCacheKey(tenantDb, 'producttypes'));
+  } else {
+    Array.from(entityCaches.keys())
+      .filter(key => key.endsWith(':producttypes'))
+      .forEach(key => entityCaches.delete(key));
+  }
+}
+
+export function clearTagsCache(tenantDb?: string): void {
+  if (tenantDb) {
+    entityCaches.delete(getCacheKey(tenantDb, 'tags'));
+  } else {
+    Array.from(entityCaches.keys())
+      .filter(key => key.endsWith(':tags'))
+      .forEach(key => entityCaches.delete(key));
+  }
 }

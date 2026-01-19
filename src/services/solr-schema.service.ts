@@ -513,6 +513,7 @@ const BASE_FIELDS = [
   { name: "created_at", type: "pdate", stored: true, indexed: true },
   { name: "updated_at", type: "pdate", stored: true, indexed: true },
   { name: "published_at", type: "pdate", stored: true, indexed: true },
+  { name: "item_creation_date", type: "pdate", stored: true, indexed: true },  // ERP insertion date
 
   // Inventory & Pricing
   { name: "price", type: "pdouble", stored: true, indexed: true },
