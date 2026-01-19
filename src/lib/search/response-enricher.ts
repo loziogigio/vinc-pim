@@ -6,7 +6,7 @@
  */
 
 import { getPooledConnection } from '@/lib/db/connection';
-import type { SolrProduct } from '@/lib/types/search';
+import type { SolrProduct, PackagingData } from '@/lib/types/search';
 
 // ============================================
 // CACHE CONFIGURATION
@@ -164,6 +164,7 @@ interface ProductEnrichmentData {
   media?: any[];
   share_images_with_variants?: boolean;
   share_media_with_variants?: boolean;
+  packaging_options?: PackagingData[];
 }
 
 /**
@@ -185,7 +186,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1 })
+    .project({ entity_code: 1, attributes: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -198,6 +199,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
         media: product.media,
         share_images_with_variants: product.share_images_with_variants,
         share_media_with_variants: product.share_media_with_variants,
+        packaging_options: product.packaging_options,
       });
     }
   }
@@ -427,6 +429,7 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         attributes: mongoAttributes || result.attributes,
         images: productData?.images || result.images,
         media: mongoMedia || result.media,
+        packaging_options: productData?.packaging_options || result.packaging_options,
         // Remove gallery (doesn't exist in MongoDB schema)
         gallery: undefined,
       };
