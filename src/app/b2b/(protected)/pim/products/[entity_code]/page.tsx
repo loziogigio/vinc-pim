@@ -1328,7 +1328,7 @@ export default function ProductDetailPage({
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column - Product Image */}
         <div className="lg:col-span-1">
           <div className="rounded-lg bg-card p-4 shadow-sm sticky top-6">
@@ -1364,7 +1364,7 @@ export default function ProductDetailPage({
         </div>
 
         {/* Right Column - Edit Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-4 space-y-6">
           {/* Language Switcher */}
           <div className="rounded-lg bg-card p-4 shadow-sm">
             <LanguageSwitcher variant="compact" showLabel={true} />
@@ -1584,6 +1584,7 @@ export default function ProductDetailPage({
                             <th className="text-center py-2 px-3 font-medium text-muted-foreground">List Disc.</th>
                             <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sale Disc.</th>
                             <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ref</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sellable</th>
                             <th className="text-center py-2 px-3 font-medium text-muted-foreground">Flags</th>
                           </tr>
                         </thead>
@@ -1623,15 +1624,36 @@ export default function ProductDetailPage({
                                 {pkg.pricing?.price_ref || "—"}
                               </td>
                               <td className="py-2 px-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={pkg.is_sellable !== false}
+                                  onChange={async (e) => {
+                                    const newValue = e.target.checked;
+                                    const updatedOptions = product.packaging_options!.map((p, i) =>
+                                      i === idx ? { ...p, is_sellable: newValue } : p
+                                    );
+                                    setProduct({ ...product, packaging_options: updatedOptions });
+                                    try {
+                                      await fetch(`/api/b2b/pim/products/${entity_code}`, {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ packaging_options: updatedOptions }),
+                                      });
+                                      toast.success(`${pkg.code} is now ${newValue ? "sellable" : "not sellable"}`);
+                                    } catch {
+                                      toast.error("Failed to update packaging option");
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                />
+                              </td>
+                              <td className="py-2 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1 flex-wrap">
                                   {pkg.is_default && (
                                     <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded">Default</span>
                                   )}
                                   {pkg.is_smallest && (
                                     <span className="px-1.5 py-0.5 bg-muted text-muted-foreground text-xs rounded">Smallest</span>
-                                  )}
-                                  {pkg.is_sellable === false && (
-                                    <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-600 text-xs rounded">Not Sellable</span>
                                   )}
                                 </div>
                               </td>
