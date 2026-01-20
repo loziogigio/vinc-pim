@@ -90,6 +90,7 @@ export type PackagingOption = {
   uom: string;                    // Unit of measure (e.g., "PZ")
   is_default: boolean;            // Is this the default packaging?
   is_smallest: boolean;           // Is this the smallest unit?
+  is_sellable?: boolean;          // Can this packaging be sold? (default: true)
   ean?: string;                   // EAN barcode (optional)
   position?: number;              // Display order (optional)
   pricing?: PackagingPricing;     // Optional pricing override for this packaging

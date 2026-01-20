@@ -318,6 +318,7 @@ export interface PackagingData {
   uom: string;
   is_default: boolean;
   is_smallest: boolean;
+  is_sellable?: boolean;
   ean?: string;
   position?: number;
 }

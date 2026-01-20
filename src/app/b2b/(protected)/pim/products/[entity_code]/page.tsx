@@ -1623,12 +1623,15 @@ export default function ProductDetailPage({
                                 {pkg.pricing?.price_ref || "—"}
                               </td>
                               <td className="py-2 px-3 text-center">
-                                <div className="flex items-center justify-center gap-1">
+                                <div className="flex items-center justify-center gap-1 flex-wrap">
                                   {pkg.is_default && (
                                     <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded">Default</span>
                                   )}
                                   {pkg.is_smallest && (
                                     <span className="px-1.5 py-0.5 bg-muted text-muted-foreground text-xs rounded">Smallest</span>
+                                  )}
+                                  {pkg.is_sellable === false && (
+                                    <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-600 text-xs rounded">Not Sellable</span>
                                   )}
                                 </div>
                               </td>

@@ -331,6 +331,7 @@ export interface IPIMProduct extends Document {
     uom: string;              // Unit of measure (e.g., "PZ")
     is_default: boolean;      // Is this the default packaging?
     is_smallest: boolean;     // Is this the smallest unit?
+    is_sellable?: boolean;    // Can this packaging be sold? (default: true)
     ean?: string;             // EAN barcode (optional)
     position?: number;        // Display order (optional)
     pricing?: PackagingPricing; // Optional pricing override for this packaging
@@ -791,6 +792,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         uom: { type: String, required: true },
         is_default: { type: Boolean, required: true, default: false },
         is_smallest: { type: Boolean, required: true, default: false },
+        is_sellable: { type: Boolean, default: true },
         ean: { type: String },
         position: { type: Number },
         // Pricing (PackagingPricing) with reference-based pricing support
