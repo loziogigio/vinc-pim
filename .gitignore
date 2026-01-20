@@ -29,3 +29,9 @@ test-*.html
 sample-*.csv
 sample-*.json
 .env.local
+
+# E2E test scripts (contain API keys)
+scripts/e2e-*.ts
+scripts/test-*.ts
+scripts/migrate-*.ts
+scripts/.test-api-keys.json

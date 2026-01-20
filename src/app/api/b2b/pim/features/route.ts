@@ -187,3 +187,83 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+/**
+ * DELETE /api/b2b/pim/features
+ * Bulk delete features
+ *
+ * Body options:
+ * - { delete_all: true } - Delete all features (skips those used by product types)
+ * - { feature_ids: ["id1", "id2"] } - Delete specific features by IDs
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const auth = await authenticateRequest(req);
+    if (!auth.authenticated || !auth.models) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.statusCode || 401 }
+      );
+    }
+
+    const { Feature, ProductType } = auth.models;
+
+    const body = await req.json().catch(() => ({}));
+    const { delete_all, feature_ids } = body;
+
+    if (!delete_all && (!feature_ids || !Array.isArray(feature_ids))) {
+      return NextResponse.json(
+        { error: "Either delete_all: true or feature_ids array is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get features in use by product types
+    const productTypes = await ProductType.find({}).lean();
+    const featuresInUse = new Set<string>();
+    for (const pt of productTypes) {
+      if (pt.features && Array.isArray(pt.features)) {
+        for (const f of pt.features) {
+          if (f.feature_id) {
+            featuresInUse.add(f.feature_id);
+          }
+        }
+      }
+    }
+
+    let featuresToDelete: string[];
+
+    if (delete_all) {
+      // Get all feature IDs
+      const allFeatures = await Feature.find({}).select("feature_id").lean();
+      featuresToDelete = allFeatures
+        .map((f: { feature_id: string }) => f.feature_id)
+        .filter((id: string) => !featuresInUse.has(id));
+    } else {
+      // Filter out features in use
+      featuresToDelete = feature_ids.filter((id: string) => !featuresInUse.has(id));
+    }
+
+    // Delete features
+    const result = await Feature.deleteMany({
+      feature_id: { $in: featuresToDelete },
+    });
+
+    const skipped = delete_all
+      ? featuresInUse.size
+      : feature_ids.filter((id: string) => featuresInUse.has(id)).length;
+
+    return NextResponse.json({
+      success: true,
+      deleted: result.deletedCount,
+      skipped,
+      skipped_reason: skipped > 0 ? "Features in use by product types" : undefined,
+    });
+  } catch (error) {
+    console.error("Error bulk deleting features:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
