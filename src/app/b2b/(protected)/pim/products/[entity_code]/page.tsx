@@ -1764,16 +1764,44 @@ export default function ProductDetailPage({
                                 </div>
                               </td>
                               <td className="py-2 px-3 text-center">
-                                <button
-                                  onClick={() => {
-                                    setEditingPackaging(pkg);
-                                    setPackagingModalOpen(true);
-                                  }}
-                                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
-                                  title="Edit packaging option"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setEditingPackaging(pkg);
+                                      setPackagingModalOpen(true);
+                                    }}
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
+                                    title="Edit packaging option"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Delete packaging option "${pkg.code}"?`)) return;
+                                      const updatedOptions = product.packaging_options!.filter((_, i) => i !== idx);
+                                      try {
+                                        const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+                                          method: "PATCH",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ packaging_options: updatedOptions }),
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          setProduct(data.product);
+                                          toast.success(`Packaging option "${pkg.code}" deleted`);
+                                        } else {
+                                          toast.error("Failed to delete packaging option");
+                                        }
+                                      } catch {
+                                        toast.error("Failed to delete packaging option");
+                                      }
+                                    }}
+                                    className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
+                                    title="Delete packaging option"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -1850,16 +1878,50 @@ export default function ProductDetailPage({
                                   {promo.end_date ? new Date(promo.end_date).toLocaleDateString() : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-center">
-                                  <button
-                                    onClick={() => {
-                                      setEditingPromotion({ promotion: promo, packagingCode: pkg.code });
-                                      setPromotionModalOpen(true);
-                                    }}
-                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
-                                    title="Edit promotion"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingPromotion({ promotion: promo, packagingCode: pkg.code });
+                                        setPromotionModalOpen(true);
+                                      }}
+                                      className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
+                                      title="Edit promotion"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm(`Delete promotion "${promo.promo_code}"?`)) return;
+                                        const updatedOptions = product.packaging_options!.map((p) => {
+                                          if (p.code !== pkg.code) return p;
+                                          return {
+                                            ...p,
+                                            promotions: (p.promotions || []).filter((pr) => pr.promo_code !== promo.promo_code),
+                                          };
+                                        });
+                                        try {
+                                          const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ packaging_options: updatedOptions }),
+                                          });
+                                          if (res.ok) {
+                                            const data = await res.json();
+                                            setProduct(data.product);
+                                            toast.success(`Promotion "${promo.promo_code}" deleted`);
+                                          } else {
+                                            toast.error("Failed to delete promotion");
+                                          }
+                                        } catch {
+                                          toast.error("Failed to delete promotion");
+                                        }
+                                      }}
+                                      className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
+                                      title="Delete promotion"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))
