@@ -20,6 +20,8 @@ import { SynonymDictionarySelector } from "@/components/pim/SynonymDictionarySel
 import { MultilingualInput } from "@/components/pim/MultilingualInput";
 import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
 import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
+import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
+import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import {
   ProductImage,
@@ -45,6 +47,8 @@ import {
   GlobeLock,
   Trash2,
   Loader2,
+  Plus,
+  Pencil,
 } from "lucide-react";
 
 type Product = {
@@ -217,6 +221,12 @@ export default function ProductDetailPage({
   const [hasChanges, setHasChanges] = useState(false);
   const [isOldVersion, setIsOldVersion] = useState(false);
   const [currentVersionNumber, setCurrentVersionNumber] = useState<number | null>(null);
+
+  // Packaging & Promotion modals
+  const [packagingModalOpen, setPackagingModalOpen] = useState(false);
+  const [editingPackaging, setEditingPackaging] = useState<PackagingOption | null>(null);
+  const [promotionModalOpen, setPromotionModalOpen] = useState(false);
+  const [editingPromotion, setEditingPromotion] = useState<{ promotion: Promotion | null; packagingCode: string }>({ promotion: null, packagingCode: "" });
 
   const [formData, setFormData] = useState<FormData>({
     name: {},
@@ -593,6 +603,89 @@ export default function ProductDetailPage({
       });
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // Handle save packaging option (create or update)
+  async function handleSavePackaging(option: PackagingOption) {
+    if (!product) return;
+
+    const existingOptions = product.packaging_options || [];
+    let updatedOptions: PackagingOption[];
+
+    if (editingPackaging) {
+      // Update existing
+      updatedOptions = existingOptions.map((p) =>
+        p.code === editingPackaging.code ? option : p
+      );
+    } else {
+      // Add new
+      option.position = existingOptions.length + 1;
+      updatedOptions = [...existingOptions, option];
+    }
+
+    try {
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packaging_options: updatedOptions }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProduct(data.product);
+        toast.success(editingPackaging ? "Packaging option updated" : "Packaging option added");
+        setPackagingModalOpen(false);
+        setEditingPackaging(null);
+      } else {
+        toast.error("Failed to save packaging option");
+      }
+    } catch {
+      toast.error("Failed to save packaging option");
+    }
+  }
+
+  // Handle save promotion (create or update)
+  async function handleSavePromotion(packagingCode: string, promotion: Promotion) {
+    if (!product || !product.packaging_options) return;
+
+    const updatedOptions = product.packaging_options.map((pkg) => {
+      if (pkg.code !== packagingCode) return pkg;
+
+      const existingPromos = pkg.promotions || [];
+      let updatedPromos: Promotion[];
+
+      if (editingPromotion.promotion) {
+        // Update existing
+        updatedPromos = existingPromos.map((p) =>
+          p.promo_code === editingPromotion.promotion?.promo_code ? promotion : p
+        );
+      } else {
+        // Add new
+        updatedPromos = [...existingPromos, promotion];
+      }
+
+      return { ...pkg, promotions: updatedPromos };
+    });
+
+    try {
+      const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packaging_options: updatedOptions }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProduct(data.product);
+        toast.success(editingPromotion.promotion ? "Promotion updated" : "Promotion added");
+        setPromotionModalOpen(false);
+        setEditingPromotion({ promotion: null, packagingCode: "" });
+      } else {
+        toast.error("Failed to save promotion");
+      }
+    } catch {
+      toast.error("Failed to save promotion");
     }
   }
 
@@ -1565,29 +1658,42 @@ export default function ProductDetailPage({
                 })()}
 
                 {/* Packaging Options */}
-                {product.packaging_options && product.packaging_options.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      Packaging Options ({product.packaging_options.length})
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Packaging Options ({product.packaging_options?.length || 0})
                     </h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Code</th>
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
-                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Qty</th>
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">UOM</th>
-                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">List</th>
-                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Retail</th>
-                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Sale</th>
-                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">List Disc.</th>
-                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sale Disc.</th>
-                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ref</th>
-                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sellable</th>
-                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Flags</th>
-                          </tr>
-                        </thead>
+                    <button
+                      onClick={() => {
+                        setEditingPackaging(null);
+                        setPackagingModalOpen(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add
+                    </button>
+                  </div>
+                  {product.packaging_options && product.packaging_options.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Code</th>
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Qty</th>
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">UOM</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">List</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Retail</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Sale</th>
+                          <th className="text-center py-2 px-3 font-medium text-muted-foreground">List Disc.</th>
+                          <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sale Disc.</th>
+                          <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ref</th>
+                          <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sellable</th>
+                          <th className="text-center py-2 px-3 font-medium text-muted-foreground">Flags</th>
+                          <th className="text-center py-2 px-3 font-medium text-muted-foreground w-10"></th>
+                        </tr>
+                      </thead>
                         <tbody>
                           {product.packaging_options.map((pkg, idx) => (
                             <tr key={pkg.code + idx} className={`border-b border-border/50 ${pkg.is_default ? "bg-primary/5" : ""}`}>
@@ -1657,20 +1763,45 @@ export default function ProductDetailPage({
                                   )}
                                 </div>
                               </td>
+                              <td className="py-2 px-3 text-center">
+                                <button
+                                  onClick={() => {
+                                    setEditingPackaging(pkg);
+                                    setPackagingModalOpen(true);
+                                  }}
+                                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
+                                  title="Edit packaging option"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Promotions Table - Collect from all packaging options */}
-                {product.packaging_options && product.packaging_options.some(pkg => pkg.promotions && pkg.promotions.filter(p => p.is_active).length > 0) && (
+                {product.packaging_options && product.packaging_options.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      Promotions ({product.packaging_options.reduce((count, pkg) => count + (pkg.promotions?.filter(p => p.is_active).length || 0), 0)})
-                    </h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Promotions ({product.packaging_options.reduce((count, pkg) => count + (pkg.promotions?.filter(p => p.is_active).length || 0), 0)})
+                      </h4>
+                      <button
+                        onClick={() => {
+                          setEditingPromotion({ promotion: null, packagingCode: product.packaging_options?.[0]?.code || "" });
+                          setPromotionModalOpen(true);
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                      </button>
+                    </div>
+                    {product.packaging_options.some(pkg => pkg.promotions && pkg.promotions.filter(p => p.is_active).length > 0) && (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -1683,10 +1814,11 @@ export default function ProductDetailPage({
                             <th className="text-right py-2 px-3 font-medium text-muted-foreground">Promo Price</th>
                             <th className="text-left py-2 px-3 font-medium text-muted-foreground">Start Date</th>
                             <th className="text-left py-2 px-3 font-medium text-muted-foreground">End Date</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground w-10"></th>
                           </tr>
                         </thead>
                         <tbody>
-                          {product.packaging_options.flatMap((pkg, pkgIdx) =>
+                          {product.packaging_options.flatMap((pkg) =>
                             (pkg.promotions || []).filter(p => p.is_active).map((promo, promoIdx) => (
                               <tr key={`${pkg.code}-${promo.promo_code || promoIdx}`} className="border-b border-border/50">
                                 <td className="py-2 px-3 font-mono text-foreground">{pkg.code}</td>
@@ -1717,12 +1849,25 @@ export default function ProductDetailPage({
                                 <td className="py-2 px-3 text-muted-foreground">
                                   {promo.end_date ? new Date(promo.end_date).toLocaleDateString() : "—"}
                                 </td>
+                                <td className="py-2 px-3 text-center">
+                                  <button
+                                    onClick={() => {
+                                      setEditingPromotion({ promotion: promo, packagingCode: pkg.code });
+                                      setPromotionModalOpen(true);
+                                    }}
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
+                                    title="Edit promotion"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                </td>
                               </tr>
                             ))
                           )}
                         </tbody>
                       </table>
                     </div>
+                    )}
                   </div>
                 )}
 
@@ -2210,6 +2355,32 @@ export default function ProductDetailPage({
           </div>
         </div>
       )}
+
+      {/* Packaging Option Modal */}
+      <PackagingOptionModal
+        open={packagingModalOpen}
+        option={editingPackaging}
+        defaultLanguageCode={defaultLanguageCode}
+        onSave={handleSavePackaging}
+        onClose={() => {
+          setPackagingModalOpen(false);
+          setEditingPackaging(null);
+        }}
+      />
+
+      {/* Promotion Modal */}
+      <PromotionModal
+        open={promotionModalOpen}
+        promotion={editingPromotion.promotion}
+        packagingCode={editingPromotion.packagingCode}
+        packagingOptions={product?.packaging_options || []}
+        defaultLanguageCode={defaultLanguageCode}
+        onSave={handleSavePromotion}
+        onClose={() => {
+          setPromotionModalOpen(false);
+          setEditingPromotion({ promotion: null, packagingCode: "" });
+        }}
+      />
     </div>
   );
 }
