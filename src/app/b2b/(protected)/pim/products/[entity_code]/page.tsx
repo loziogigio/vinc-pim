@@ -2423,6 +2423,7 @@ export default function ProductDetailPage({
         open={packagingModalOpen}
         option={editingPackaging}
         defaultLanguageCode={defaultLanguageCode}
+        availablePackagingCodes={(product?.packaging_options || []).map((p) => p.code)}
         onSave={handleSavePackaging}
         onClose={() => {
           setPackagingModalOpen(false);

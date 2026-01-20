@@ -1,7 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
+
+/**
+ * Authenticate request via session or API key
+ * Returns tenant-specific models from connection pool
+ */
+async function authenticateRequest(req: NextRequest): Promise<{
+  authenticated: boolean;
+  tenantId?: string;
+  tenantDb?: string;
+  models?: Awaited<ReturnType<typeof connectWithModels>>;
+  error?: string;
+  statusCode?: number;
+}> {
+  const authMethod = req.headers.get("x-auth-method");
+  let tenantId: string;
+  let tenantDb: string;
+
+  if (authMethod === "api-key") {
+    const apiKeyResult = await verifyAPIKeyFromRequest(req, "product-types");
+    if (!apiKeyResult.authenticated) {
+      return {
+        authenticated: false,
+        error: apiKeyResult.error,
+        statusCode: apiKeyResult.statusCode,
+      };
+    }
+    tenantId = apiKeyResult.tenantId!;
+    tenantDb = apiKeyResult.tenantDb!;
+  } else {
+    const session = await getB2BSession();
+    if (!session || !session.isLoggedIn || !session.tenantId) {
+      return { authenticated: false, error: "Unauthorized", statusCode: 401 };
+    }
+    tenantId = session.tenantId;
+    tenantDb = `vinc-${session.tenantId}`;
+  }
+
+  // Get tenant-specific models from connection pool
+  const models = await connectWithModels(tenantDb);
+
+  return {
+    authenticated: true,
+    tenantId,
+    tenantDb,
+    models,
+  };
+}
 
 /**
  * GET /api/b2b/pim/product-types
@@ -9,14 +57,15 @@ import { nanoid } from "nanoid";
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateRequest(req);
+    if (!auth.authenticated || !auth.models) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.statusCode || 401 }
+      );
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
-    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = auth.models;
 
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
@@ -73,13 +122,15 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateRequest(req);
+    if (!auth.authenticated || !auth.models) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.statusCode || 401 }
+      );
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
-    const { ProductType: ProductTypeModel } = await connectWithModels(tenantDb);
+    const { ProductType: ProductTypeModel } = auth.models;
 
     const body = await req.json();
     const { name, slug, description, features, display_order } = body;

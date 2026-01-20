@@ -10,6 +10,7 @@ interface PackagingOptionModalProps {
   open: boolean;
   option: PackagingOption | null; // null = create mode
   defaultLanguageCode: string;
+  availablePackagingCodes: string[]; // Available codes for price_ref dropdown
   onSave: (option: PackagingOption) => void;
   onClose: () => void;
 }
@@ -38,6 +39,7 @@ export function PackagingOptionModal({
   open,
   option,
   defaultLanguageCode,
+  availablePackagingCodes,
   onSave,
   onClose,
 }: PackagingOptionModalProps) {
@@ -244,11 +246,18 @@ export function PackagingOptionModal({
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Price Reference
                 </label>
-                <Input
+                <select
                   value={formData.pricing?.price_ref || ""}
-                  onChange={(e) => updatePricing("price_ref", e.target.value.toUpperCase() || undefined)}
-                  placeholder="e.g., PZ"
-                />
+                  onChange={(e) => updatePricing("price_ref", e.target.value || undefined)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">-- None --</option>
+                  {availablePackagingCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">

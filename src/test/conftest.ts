@@ -263,6 +263,231 @@ export const PortalUserFactory = {
   },
 };
 
+/**
+ * Factory for creating test packaging options.
+ */
+export const PackagingOptionFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    const code = `PKG-${nanoid(4)}`;
+    return {
+      code,
+      label: { it: `Test Package ${code}`, en: `Test Package ${code}` },
+      qty: 1,
+      uom: "PZ",
+      is_default: false,
+      is_smallest: false,
+      is_sellable: true,
+      position: 1,
+      pricing: {
+        list: 100,
+        retail: 200,
+      },
+      ...overrides,
+    };
+  },
+
+  createDefault(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      code: "PZ",
+      label: { it: "Pezzo", en: "Piece" },
+      qty: 1,
+      is_default: true,
+      is_smallest: true,
+      ...overrides,
+    });
+  },
+
+  createBox(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      code: "BOX",
+      label: { it: "Scatola da 6", en: "Box of 6" },
+      qty: 6,
+      is_default: false,
+      is_smallest: false,
+      pricing: { list: 550, retail: 1100 },
+      ...overrides,
+    });
+  },
+
+  createNonSellable(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      code: "DISPLAY",
+      label: { it: "Espositore", en: "Display" },
+      qty: 24,
+      is_sellable: false,
+      ...overrides,
+    });
+  },
+};
+
+/**
+ * Factory for creating test promotions.
+ */
+export const PromotionFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    const code = `PROMO-${nanoid(4)}`;
+    return {
+      promo_code: code,
+      is_active: true,
+      promo_type: "STD",
+      label: { it: `Promo ${code}`, en: `Promo ${code}` },
+      discount_percentage: 10,
+      min_quantity: 1,
+      is_stackable: false,
+      priority: 1,
+      ...overrides,
+    };
+  },
+
+  createQuantityDiscount(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      promo_code: "QTY-DISC",
+      label: { it: "Sconto Quantita", en: "Quantity Discount" },
+      discount_percentage: 15,
+      min_quantity: 5,
+      ...overrides,
+    });
+  },
+};
+
+/**
+ * Factory for creating test features (technical features for products).
+ */
+export const FeatureFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    const key = `feature-${nanoid(4)}`;
+    return {
+      feature_id: nanoid(12),
+      key,
+      label: `Test Feature ${key}`,
+      type: "text",
+      default_required: false,
+      display_order: 0,
+      is_active: true,
+      ...overrides,
+    };
+  },
+
+  createNumberFeature(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      key: "diameter",
+      label: "Diameter",
+      type: "number",
+      uom_id: "mm-001",
+      uom: { uom_id: "mm-001", symbol: "mm", name: "Millimeter", category: "length" },
+      default_required: true,
+      ...overrides,
+    });
+  },
+
+  createSelectFeature(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      key: "material",
+      label: "Material",
+      type: "select",
+      options: ["Steel", "Brass", "Plastic", "Copper"],
+      default_required: true,
+      ...overrides,
+    });
+  },
+
+  createMultiselectFeature(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      key: "certifications",
+      label: "Certifications",
+      type: "multiselect",
+      options: ["CE", "UL", "FDA", "ISO 9001"],
+      default_required: false,
+      ...overrides,
+    });
+  },
+
+  createBooleanFeature(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      key: "fda_approved",
+      label: "FDA Approved",
+      type: "boolean",
+      default_required: false,
+      ...overrides,
+    });
+  },
+
+  createInactive(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      is_active: false,
+      ...overrides,
+    });
+  },
+};
+
+/**
+ * Factory for creating test product types.
+ */
+export const ProductTypeFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    const slug = `product-type-${nanoid(4)}`;
+    return {
+      product_type_id: nanoid(12),
+      name: `Test Product Type ${slug}`,
+      slug,
+      description: `Description for ${slug}`,
+      features: [],
+      display_order: 0,
+      is_active: true,
+      product_count: 0,
+      ...overrides,
+    };
+  },
+
+  createWithFeatures(featureIds: string[], overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      features: featureIds.map((feature_id, index) => ({
+        feature_id,
+        required: index === 0, // First feature is required
+        display_order: index,
+      })),
+      ...overrides,
+    });
+  },
+
+  createWaterMeter(featureIds?: string[], overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      name: "Water Meter",
+      slug: "water-meter",
+      description: "Meters for measuring water flow and usage",
+      features: featureIds?.map((feature_id, index) => ({
+        feature_id,
+        required: true,
+        display_order: index,
+      })) || [],
+      display_order: 1,
+      ...overrides,
+    });
+  },
+
+  createValve(featureIds?: string[], overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      name: "Valve",
+      slug: "valve",
+      description: "Valves for controlling flow",
+      features: featureIds?.map((feature_id, index) => ({
+        feature_id,
+        required: index < 2, // First two are required
+        display_order: index,
+      })) || [],
+      display_order: 2,
+      ...overrides,
+    });
+  },
+
+  createInactive(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      is_active: false,
+      ...overrides,
+    });
+  },
+};
+
 // ============================================
 // ASSERTIONS
 // ============================================
