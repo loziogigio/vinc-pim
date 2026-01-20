@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IProductTypeFeature {
-  feature_id: string; // Reference to TechnicalFeature
+export interface IProductTypeTechnicalSpecification {
+  technical_specification_id: string; // Reference to TechnicalSpecification
   required: boolean; // Override per product type
   display_order: number; // Override per product type
 }
@@ -13,8 +13,8 @@ export interface IProductType extends Document {
   slug: string;
   description?: string;
 
-  // Technical Features (references to TechnicalFeature model)
-  features: IProductTypeFeature[];
+  // Technical Specifications (references to TechnicalSpecification model)
+  technical_specifications: IProductTypeTechnicalSpecification[];
 
   // Display Order
   display_order: number;
@@ -30,9 +30,9 @@ export interface IProductType extends Document {
   updated_at: Date;
 }
 
-const ProductTypeFeatureSchema = new Schema<IProductTypeFeature>(
+const ProductTypeTechnicalSpecificationSchema = new Schema<IProductTypeTechnicalSpecification>(
   {
-    feature_id: {
+    technical_specification_id: {
       type: String,
       required: true,
     },
@@ -72,8 +72,8 @@ const ProductTypeSchema = new Schema<IProductType>(
       type: String,
       trim: true,
     },
-    features: {
-      type: [ProductTypeFeatureSchema],
+    technical_specifications: {
+      type: [ProductTypeTechnicalSpecificationSchema],
       default: [],
     },
     display_order: {

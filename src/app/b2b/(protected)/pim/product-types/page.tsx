@@ -168,6 +168,12 @@ export default function ProductTypesPage() {
 
         {/* Product Types List */}
         <div className="rounded-lg bg-card shadow-sm border border-border">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              Product Type Directory
+            </h2>
+          </div>
+
           {filteredProductTypes.length === 0 ? (
             <div className="p-12 text-center">
               <Cpu className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -191,39 +197,47 @@ export default function ProductTypesPage() {
               )}
             </div>
           ) : (
-            <div className="p-2">
+            <div className="divide-y divide-border">
               {filteredProductTypes.map((productType) => (
                 <div
                   key={productType.product_type_id}
-                  className={`flex items-center gap-3 p-4 rounded-lg border border-border mb-2 hover:shadow-md transition ${
+                  className={`flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between ${
                     !productType.is_active ? "opacity-60" : ""
                   }`}
                 >
-                  <Cpu className="h-10 w-10 text-primary flex-shrink-0" />
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-foreground">{productType.name}</h3>
-                      {!productType.is_active && (
-                        <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
-                          Inactive
-                        </span>
-                      )}
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                      <Cpu className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">{productType.slug}</p>
-                    {productType.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
-                        {productType.description}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Package className="h-4 w-4" />
-                        {productType.product_count} products
-                      </span>
-                      <span>
-                        {(productType.features || []).length} features
-                      </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-foreground">{productType.name}</h3>
+                        {!productType.is_active && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                            Inactive
+                          </span>
+                        )}
+                        {productType.is_active && (
+                          <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-medium">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">{productType.slug}</p>
+                      {productType.description && (
+                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground line-clamp-1">
+                          {productType.description}
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Package className="h-4 w-4" />
+                          {productType.product_count} products
+                        </span>
+                        <span>
+                          {(productType.features || []).length} features
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -231,15 +245,15 @@ export default function ProductTypesPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/b2b/pim/product-types/${productType.product_type_id}`}
-                      className="flex items-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm text-muted-foreground hover:text-foreground"
+                      className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      View
+                      Open
                     </Link>
                     <button
                       type="button"
                       onClick={() => router.push(`/b2b/pim/product-types/${productType.product_type_id}/edit`)}
-                      className="flex items-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm"
+                      className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                     >
                       <Edit2 className="h-4 w-4" />
                       Edit
@@ -247,9 +261,10 @@ export default function ProductTypesPage() {
                     <button
                       type="button"
                       onClick={() => handleDelete(productType)}
-                      className="px-3 py-2 rounded border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
+                      className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
                     >
                       <Trash2 className="h-4 w-4" />
+                      Delete
                     </button>
                   </div>
                 </div>

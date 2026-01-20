@@ -124,7 +124,7 @@ export async function PATCH(
     const { id } = await params;
 
     const body = await req.json();
-    const { name, slug, description, features, display_order, is_active } = body;
+    const { name, slug, description, technical_specifications, display_order, is_active } = body;
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
@@ -156,7 +156,7 @@ export async function PATCH(
     if (name !== undefined) productType.name = name;
     if (slug !== undefined) productType.slug = slug;
     if (description !== undefined) productType.description = description;
-    if (features !== undefined) productType.features = features;
+    if (technical_specifications !== undefined) productType.technical_specifications = technical_specifications;
     if (display_order !== undefined) productType.display_order = display_order;
     if (is_active !== undefined) productType.is_active = is_active;
     productType.updated_at = new Date();

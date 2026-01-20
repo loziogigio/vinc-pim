@@ -97,7 +97,7 @@ type Product = {
     id: string;
     name: string | Record<string, string>;
     slug: string;
-    features?: any[];
+    technical_specifications?: any[];
   };
   collections?: {
     id: string;
@@ -384,7 +384,12 @@ export default function ProductDetailPage({
 
         // Initialize product associations
         const loadedProductType = data.product.product_type || null;
-        const loadedFeatures = data.product.product_type?.features || [];
+        /// Technical specifications from Product Types are stored in 'technical_specifications' field
+        // Format: { it: [{ key, label, value, uom?, category?, order? }, ...], en: [...] }
+        const rawSpecs = data.product.technical_specifications;
+        const loadedFeatures = rawSpecs && typeof rawSpecs === 'object' && !Array.isArray(rawSpecs)
+          ? (rawSpecs[defaultLanguageCode] || rawSpecs.it || Object.values(rawSpecs)[0] || [])
+          : (Array.isArray(rawSpecs) ? rawSpecs : []);
         const loadedCollections = data.product.collections || [];
         const loadedCategory = data.product.category || null;
         const loadedBrand = data.product.brand || null;
@@ -427,7 +432,7 @@ export default function ProductDetailPage({
         setSynonymKeys(loadedSynonymKeys);
 
         // Auto-enable JSON view for self-contained data (only if arrays have content)
-        if (loadedProductType && ((loadedProductType.hierarchy && loadedProductType.hierarchy.length > 0) || (loadedProductType.inherited_features && loadedProductType.inherited_features.length > 0))) {
+        if (loadedProductType && ((loadedProductType.hierarchy && loadedProductType.hierarchy.length > 0) || (loadedProductType.inherited_technical_specifications && loadedProductType.inherited_technical_specifications.length > 0))) {
           setShowProductTypeJSON(true);
         }
         if (loadedCategory && (loadedCategory as any).hierarchy && (loadedCategory as any).hierarchy.length > 0) {
@@ -500,13 +505,21 @@ export default function ProductDetailPage({
 
       // Add product type if changed
       if (productType) {
+        // Use product_type_id to match schema, fallback to id for backwards compatibility
+        const ptId = productType.product_type_id || productType.id;
         updates.product_type = {
-          id: productType.product_type_id || productType.id,
+          id: ptId,
+          product_type_id: ptId, // Include both for compatibility
           name: productType.name,
           slug: productType.slug,
-          features: featureValues,
         };
       }
+
+      // Technical specifications from Product Types are stored in 'technical_specifications' field
+      // Format: { it: [{ key, label, value, uom?, category?, order? }, ...], en: [...] }
+      updates.technical_specifications = {
+        [defaultLanguageCode]: featureValues,
+      };
 
       // Add collections
       updates.collections = collections;
@@ -534,6 +547,8 @@ export default function ProductDetailPage({
 
       console.log("💾 Saving product with updates:", {
         product_type: updates.product_type,
+        featureValues_count: featureValues?.length,
+        featureValues_raw: featureValues,
         collections: updates.collections,
         brand: updates.brand,
         attributes: updates.attributes,
@@ -2078,7 +2093,7 @@ export default function ProductDetailPage({
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-foreground">Product Type</h3>
-              {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_features && productType.inherited_features.length > 0)) && (
+              {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_technical_specifications && productType.inherited_technical_specifications.length > 0)) && (
                 <button
                   onClick={() => setShowProductTypeJSON(!showProductTypeJSON)}
                   className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors"
@@ -2089,7 +2104,7 @@ export default function ProductDetailPage({
                 </button>
               )}
             </div>
-            {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_features && productType.inherited_features.length > 0)) && showProductTypeJSON ? (
+            {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_technical_specifications && productType.inherited_technical_specifications.length > 0)) && showProductTypeJSON ? (
               <div className="p-3 bg-muted/50 rounded border">
                 <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
                 <pre className="text-xs overflow-auto max-h-64">
@@ -2115,7 +2130,21 @@ export default function ProductDetailPage({
             )}
           </div>
 
-
+          {/* Technical Specifications - Only shown when product type is selected */}
+          {productType && productType.technical_specifications && productType.technical_specifications.length > 0 && (
+            <div className="rounded-lg bg-card p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Technical Specifications</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Complete the technical specifications for this product type
+              </p>
+              <FeaturesForm
+                features={productType.technical_specifications}
+                values={featureValues}
+                onChange={setFeatureValues}
+                disabled={isOldVersion}
+              />
+            </div>
+          )}
 
           {/* Category */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -2208,22 +2237,6 @@ export default function ProductDetailPage({
               />
             )}
           </div>
-
-          {/* Features - Only shown when product type is selected */}
-          {productType && productType.featureDetails && productType.featureDetails.length > 0 && (
-            <div className="rounded-lg bg-card p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Features</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Complete the technical features for this product type
-              </p>
-              <FeaturesForm
-                features={productType.featureDetails}
-                values={featureValues}
-                onChange={setFeatureValues}
-                disabled={isOldVersion}
-              />
-            </div>
-          )}
 
           {/* Custom Attributes */}
           <div className="rounded-lg bg-card p-6 shadow-sm">

@@ -124,10 +124,10 @@ interface SolrMultilingualDocument {
   product_model?: string;
 
   // Complex objects stored as JSON (for frontend display)
-  specifications_json?: string;
+  technical_specifications_json?: string;
   attributes_json?: string;
   promotions_json?: string;
-  product_type_features_json?: string;
+  product_type_technical_specifications_json?: string;
 
   // Relationship objects with multilingual content (stored as JSON)
   category_json?: string;
@@ -674,10 +674,10 @@ export class SolrAdapter extends MarketplaceAdapter {
       product_model: product.product_model,
 
       // Complex objects stored as JSON (for frontend display, not faceting)
-      specifications_json: product.specifications ? JSON.stringify(product.specifications) : undefined,
+      technical_specifications_json: product.technical_specifications ? JSON.stringify(product.technical_specifications) : undefined,
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
-      product_type_features_json: product.product_type?.features ? JSON.stringify(product.product_type.features) : undefined,
+      product_type_technical_specifications_json: product.product_type?.technical_specifications ? JSON.stringify(product.product_type.technical_specifications) : undefined,
       packaging_json: product.packaging_options ? JSON.stringify(product.packaging_options) : undefined,
 
       // Relationship objects with multilingual content (stored as JSON)
@@ -712,9 +712,9 @@ export class SolrAdapter extends MarketplaceAdapter {
         doc[`short_description_sort_${l}`] = product.short_description[l].toLowerCase();
       }
 
-      // Features (array of strings)
-      if (product.features?.[l]) {
-        doc[`features_text_${l}`] = product.features[l];
+      // Marketing Features (marketing highlights - array of strings)
+      if (product.marketing_features?.[l]) {
+        doc[`marketing_features_text_${l}`] = product.marketing_features[l];
       }
 
       // SEO fields
@@ -725,10 +725,10 @@ export class SolrAdapter extends MarketplaceAdapter {
         doc[`meta_description_text_${l}`] = product.meta_description[l];
       }
 
-      // Specification labels (extract from nested array)
-      if (product.specifications?.[l]) {
+      // Technical Specification labels (extract from nested array)
+      if (product.technical_specifications?.[l]) {
         // Handle both array format and JSON string format
-        let specs: any = product.specifications[l];
+        let specs: any = product.technical_specifications[l];
         if (typeof specs === 'string') {
           try {
             specs = JSON.parse(specs);
@@ -867,13 +867,13 @@ export class SolrAdapter extends MarketplaceAdapter {
         doc[`product_type_slug_text_${l}`] = product.product_type.slug[l];
       }
 
-      // Product type features (labels)
-      if (product.product_type?.features) {
-        const featureLabels = product.product_type.features
-          .map(f => f.label?.[l])
+      // Product type technical specifications (labels)
+      if (product.product_type?.technical_specifications) {
+        const specLabels = product.product_type.technical_specifications
+          .map((f: { label?: Record<string, string> }) => f.label?.[l])
           .filter(Boolean) as string[];
-        if (featureLabels.length > 0) {
-          doc[`product_type_feature_labels_text_${l}`] = featureLabels;
+        if (specLabels.length > 0) {
+          doc[`product_type_technical_spec_labels_text_${l}`] = specLabels;
         }
       }
 
@@ -922,14 +922,14 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
     }
 
-    // Check features
-    if (product.features && typeof product.features === 'object') {
-      Object.keys(product.features).forEach(lang => languageSet.add(lang));
+    // Check marketing_features
+    if (product.marketing_features && typeof product.marketing_features === 'object') {
+      Object.keys(product.marketing_features).forEach(lang => languageSet.add(lang));
     }
 
-    // Check specifications
-    if (product.specifications && typeof product.specifications === 'object') {
-      Object.keys(product.specifications).forEach(lang => languageSet.add(lang));
+    // Check technical_specifications
+    if (product.technical_specifications && typeof product.technical_specifications === 'object') {
+      Object.keys(product.technical_specifications).forEach(lang => languageSet.add(lang));
     }
 
     // Note: Attributes ARE language-keyed: { it: { slug: { label, value, uom } }, en: {...} }

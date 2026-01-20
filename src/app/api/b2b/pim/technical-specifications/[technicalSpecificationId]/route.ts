@@ -20,7 +20,7 @@ async function authenticateRequest(req: NextRequest): Promise<{
   let tenantDb: string;
 
   if (authMethod === "api-key") {
-    const apiKeyResult = await verifyAPIKeyFromRequest(req, "features");
+    const apiKeyResult = await verifyAPIKeyFromRequest(req, "technical-specifications");
     if (!apiKeyResult.authenticated) {
       return {
         authenticated: false,
@@ -51,12 +51,12 @@ async function authenticateRequest(req: NextRequest): Promise<{
 }
 
 /**
- * PATCH /api/b2b/pim/features/[featureId]
- * Update a technical feature
+ * PATCH /api/b2b/pim/technical-specifications/[technicalSpecificationId]
+ * Update a technical specification
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ featureId: string }> }
+  { params }: { params: Promise<{ technicalSpecificationId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(req);
@@ -67,43 +67,52 @@ export async function PATCH(
       );
     }
 
-    const { Feature } = auth.models;
+    const { TechnicalSpecification } = auth.models;
 
-    const { featureId } = await params;
+    const { technicalSpecificationId } = await params;
     const body = await req.json();
     const { key, label, type, unit, options, default_required, display_order, is_active } = body;
 
-    // Check if feature exists and belongs to wholesaler
-    const feature = await Feature.findOne({
-      feature_id: featureId,
-      // No wholesaler_id - database provides isolation
+    // Check if technical specification exists
+    const technicalSpecification = await TechnicalSpecification.findOne({
+      technical_specification_id: technicalSpecificationId,
     });
 
-    if (!feature) {
+    if (!technicalSpecification) {
       return NextResponse.json(
-        { error: "Feature not found" },
+        { error: "Technical specification not found" },
         { status: 404 }
       );
     }
 
-    // If key is changing, check for duplicates
-    if (key && key !== feature.key) {
-      const existing = await Feature.findOne({
-        // No wholesaler_id - database provides isolation
-        key,
-        feature_id: { $ne: featureId },
-      });
-
-      if (existing) {
+    // Validate key format if provided
+    if (key) {
+      const keyRegex = /^[a-z0-9_-]+$/;
+      if (!keyRegex.test(key)) {
         return NextResponse.json(
-          { error: "A feature with this key already exists" },
+          { error: "Key must contain only lowercase letters, numbers, underscores, and hyphens (no spaces or special characters)" },
           { status: 400 }
         );
       }
     }
 
-    // Update feature
-    const updateData: any = {
+    // If key is changing, check for duplicates
+    if (key && key !== technicalSpecification.key) {
+      const existing = await TechnicalSpecification.findOne({
+        key,
+        technical_specification_id: { $ne: technicalSpecificationId },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          { error: "A technical specification with this key already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update technical specification
+    const updateData: Record<string, unknown> = {
       updated_at: new Date(),
     };
 
@@ -116,16 +125,15 @@ export async function PATCH(
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;
 
-    // No wholesaler_id - database provides isolation
-    const updatedFeature = await Feature.findOneAndUpdate(
-      { feature_id: featureId },
+    const updatedTechnicalSpecification = await TechnicalSpecification.findOneAndUpdate(
+      { technical_specification_id: technicalSpecificationId },
       updateData,
       { new: true }
     );
 
-    return NextResponse.json({ feature: updatedFeature });
+    return NextResponse.json({ technical_specification: updatedTechnicalSpecification });
   } catch (error) {
-    console.error("Error updating feature:", error);
+    console.error("Error updating technical specification:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -134,12 +142,12 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/b2b/pim/features/[featureId]
- * Delete a technical feature
+ * DELETE /api/b2b/pim/technical-specifications/[technicalSpecificationId]
+ * Delete a technical specification
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ featureId: string }> }
+  { params }: { params: Promise<{ technicalSpecificationId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(req);
@@ -150,47 +158,44 @@ export async function DELETE(
       );
     }
 
-    const { Feature, ProductType } = auth.models;
+    const { TechnicalSpecification, ProductType } = auth.models;
 
-    const { featureId } = await params;
+    const { technicalSpecificationId } = await params;
 
-    // Check if feature exists and belongs to wholesaler
-    const feature = await Feature.findOne({
-      feature_id: featureId,
-      // No wholesaler_id - database provides isolation
+    // Check if technical specification exists
+    const technicalSpecification = await TechnicalSpecification.findOne({
+      technical_specification_id: technicalSpecificationId,
     });
 
-    if (!feature) {
+    if (!technicalSpecification) {
       return NextResponse.json(
-        { error: "Feature not found" },
+        { error: "Technical specification not found" },
         { status: 404 }
       );
     }
 
-    // Check if feature is being used by any product types
-    const productTypesUsingFeature = await ProductType.countDocuments({
-      // No wholesaler_id - database provides isolation
-      "features.feature_id": featureId,
+    // Check if technical specification is being used by any product types
+    const productTypesUsingSpec = await ProductType.countDocuments({
+      "technical_specifications.technical_specification_id": technicalSpecificationId,
     });
 
-    if (productTypesUsingFeature > 0) {
+    if (productTypesUsingSpec > 0) {
       return NextResponse.json(
         {
-          error: `Cannot delete feature used in ${productTypesUsingFeature} product type(s). Please remove it from product types first.`,
+          error: `Cannot delete technical specification used in ${productTypesUsingSpec} product type(s). Please remove it from product types first.`,
         },
         { status: 400 }
       );
     }
 
-    // Delete feature
-    await Feature.deleteOne({
-      feature_id: featureId,
-      // No wholesaler_id - database provides isolation
+    // Delete technical specification
+    await TechnicalSpecification.deleteOne({
+      technical_specification_id: technicalSpecificationId,
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting feature:", error);
+    console.error("Error deleting technical specification:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

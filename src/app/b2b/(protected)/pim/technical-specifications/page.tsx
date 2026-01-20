@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type TechnicalFeature = {
+type TechnicalSpecification = {
   _id: string;
-  feature_id: string;
+  technical_specification_id: string;
   key: string;
   label: string;
   type: "text" | "number" | "select" | "multiselect" | "boolean";
@@ -27,72 +27,65 @@ type TechnicalFeature = {
   updated_at: string;
 };
 
-export default function FeaturesPage() {
-  const [features, setFeatures] = useState<TechnicalFeature[]>([]);
+export default function TechnicalSpecificationsPage() {
+  const [technicalSpecifications, setTechnicalSpecifications] = useState<TechnicalSpecification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingFeature, setEditingFeature] = useState<TechnicalFeature | null>(null);
+  const [editingSpec, setEditingSpec] = useState<TechnicalSpecification | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
 
   useEffect(() => {
-    fetchFeatures();
+    fetchTechnicalSpecifications();
   }, []);
 
-  async function fetchFeatures() {
+  async function fetchTechnicalSpecifications() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/features?include_inactive=true");
+      const res = await fetch("/api/b2b/pim/technical-specifications?include_inactive=true");
       if (res.ok) {
         const data = await res.json();
-        setFeatures(data.features);
+        setTechnicalSpecifications(data.technical_specifications);
       }
     } catch (error) {
-      console.error("Error fetching features:", error);
-      toast.error("Failed to load features");
+      console.error("Error fetching technical specifications:", error);
+      toast.error("Failed to load technical specifications");
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function handleDelete(feature: TechnicalFeature) {
-    if (!confirm(`Are you sure you want to delete "${feature.label}"?`)) {
+  async function handleDelete(spec: TechnicalSpecification) {
+    if (!confirm(`Are you sure you want to delete "${spec.label}"?`)) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/b2b/pim/features/${feature.feature_id}`, {
+      const res = await fetch(`/api/b2b/pim/technical-specifications/${spec.technical_specification_id}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        toast.success("Feature deleted successfully");
-        fetchFeatures();
+        toast.success("Technical specification deleted successfully");
+        fetchTechnicalSpecifications();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete feature");
+        toast.error(error.error || "Failed to delete technical specification");
       }
     } catch (error) {
-      console.error("Error deleting feature:", error);
-      toast.error("Failed to delete feature");
+      console.error("Error deleting technical specification:", error);
+      toast.error("Failed to delete technical specification");
     }
   }
 
-  // Filter features based on search and active status
-  const filteredFeatures = features.filter((feat) => {
+  // Filter specifications based on search and active status
+  const filteredSpecifications = technicalSpecifications.filter((spec) => {
     const matchesSearch =
-      feat.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      feat.key.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesActive = showInactive || feat.is_active;
+      spec.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      spec.key.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesActive = showInactive || spec.is_active;
     return matchesSearch && matchesActive;
   });
-
-  // Group features by type
-  const groupedFeatures = filteredFeatures.reduce((acc, feat) => {
-    if (!acc[feat.type]) acc[feat.type] = [];
-    acc[feat.type].push(feat);
-    return acc;
-  }, {} as Record<string, TechnicalFeature[]>);
 
   const typeLabels: Record<string, string> = {
     text: "Text",
@@ -100,6 +93,14 @@ export default function FeaturesPage() {
     select: "Select",
     multiselect: "Multi-select",
     boolean: "Boolean",
+  };
+
+  const typeColors: Record<string, string> = {
+    text: "bg-blue-100 text-blue-700",
+    number: "bg-emerald-100 text-emerald-700",
+    select: "bg-purple-100 text-purple-700",
+    multiselect: "bg-indigo-100 text-indigo-700",
+    boolean: "bg-amber-100 text-amber-700",
   };
 
   if (isLoading) {
@@ -117,16 +118,16 @@ export default function FeaturesPage() {
         <Breadcrumbs
           items={[
             { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Features" },
+            { label: "Technical Specifications" },
           ]}
         />
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Features</h1>
+            <h1 className="text-2xl font-bold text-foreground">Technical Specifications</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {features.length} total features
+              {technicalSpecifications.length} total specifications
             </p>
           </div>
           <button
@@ -135,7 +136,7 @@ export default function FeaturesPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
           >
             <Plus className="h-5 w-5" />
-            New Feature
+            New Specification
           </button>
         </div>
 
@@ -145,7 +146,7 @@ export default function FeaturesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search features by label or key..."
+              placeholder="Search specifications by label or key..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -166,18 +167,18 @@ export default function FeaturesPage() {
           </button>
         </div>
 
-        {/* Features List */}
-        <div className="space-y-4">
-          {filteredFeatures.length === 0 ? (
-            <div className="rounded-lg bg-card shadow-sm border border-border p-12 text-center">
+        {/* Specifications Table */}
+        <div className="rounded-lg bg-card shadow-sm border border-border overflow-hidden">
+          {filteredSpecifications.length === 0 ? (
+            <div className="p-12 text-center">
               <Sliders className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? "No features found" : "No features yet"}
+                {searchQuery ? "No specifications found" : "No specifications yet"}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
                   ? "Try adjusting your search query"
-                  : "Create reusable features for your product types"}
+                  : "Create reusable technical specifications for your product types"}
               </p>
               {!searchQuery && (
                 <button
@@ -186,113 +187,133 @@ export default function FeaturesPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                 >
                   <Plus className="h-5 w-5" />
-                  Create Feature
+                  New Specification
                 </button>
               )}
             </div>
           ) : (
-            Object.entries(groupedFeatures).map(([type, typeFeatures]) => (
-              <div key={type} className="rounded-lg bg-card shadow-sm border border-border overflow-hidden">
-                <div className="px-4 py-3 bg-muted/50 border-b border-border">
-                  <h3 className="font-semibold text-foreground">
-                    {typeLabels[type]} ({typeFeatures.length})
-                  </h3>
-                </div>
-                <div className="p-2">
-                  {typeFeatures.map((feature) => (
-                    <div
-                      key={feature.feature_id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border border-border mb-2 hover:shadow-sm transition ${
-                        !feature.is_active ? "opacity-60" : ""
-                      }`}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b border-border">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                      Label
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                      Key
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                      Type
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                      Unit
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                      Options
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredSpecifications.map((spec) => (
+                    <tr
+                      key={spec.technical_specification_id}
+                      className={`hover:bg-muted/30 transition ${!spec.is_active ? "opacity-60" : ""}`}
                     >
-                      <Sliders className="h-8 w-8 text-primary flex-shrink-0" />
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-foreground">{feature.label}</h4>
-                          {feature.default_required && (
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Sliders className="h-5 w-5 text-primary flex-shrink-0" />
+                          <span className="font-medium text-foreground">{spec.label}</span>
+                          {spec.default_required && (
                             <span className="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700">
-                              Required by default
-                            </span>
-                          )}
-                          {!feature.is_active && (
-                            <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
-                              Inactive
+                              Required
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <code className="px-2 py-0.5 bg-muted rounded text-xs font-mono">
-                            {feature.key}
-                          </code>
-                          {feature.unit && (
-                            <span className="text-xs">Unit: {feature.unit}</span>
-                          )}
-                          {feature.options && feature.options.length > 0 && (
-                            <span className="text-xs">
-                              {feature.options.length} option{feature.options.length !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </div>
-                        {feature.options && feature.options.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {feature.options.slice(0, 5).map((opt, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs"
-                              >
-                                {opt}
-                              </span>
-                            ))}
-                            {feature.options.length > 5 && (
-                              <span className="px-2 py-0.5 bg-gray-50 text-gray-600 rounded text-xs">
-                                +{feature.options.length - 5} more
-                              </span>
-                            )}
-                          </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="px-2 py-0.5 bg-muted rounded text-xs font-mono">
+                          {spec.key}
+                        </code>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${typeColors[spec.type] || "bg-gray-100 text-gray-700"}`}>
+                          {typeLabels[spec.type] || spec.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {spec.unit ? (
+                          <span className="text-sm text-muted-foreground">{spec.unit}</span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/50">—</span>
                         )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditingFeature(feature)}
-                          className="flex items-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(feature)}
-                          className="px-3 py-2 rounded border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {spec.options && spec.options.length > 0 ? (
+                          <span className="text-sm text-muted-foreground">
+                            {spec.options.length} option{spec.options.length !== 1 ? "s" : ""}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {spec.is_active ? (
+                          <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingSpec(spec)}
+                            className="p-2 rounded border border-border hover:bg-muted transition"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(spec)}
+                            className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              </div>
-            ))
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
 
       {/* Create/Edit Modal */}
-      {(showCreateModal || editingFeature) && (
-        <FeatureModal
-          feature={editingFeature}
+      {(showCreateModal || editingSpec) && (
+        <TechnicalSpecificationModal
+          specification={editingSpec}
           onClose={() => {
             setShowCreateModal(false);
-            setEditingFeature(null);
+            setEditingSpec(null);
           }}
           onSuccess={() => {
             setShowCreateModal(false);
-            setEditingFeature(null);
-            fetchFeatures();
+            setEditingSpec(null);
+            fetchTechnicalSpecifications();
           }}
         />
       )}
@@ -300,25 +321,25 @@ export default function FeaturesPage() {
   );
 }
 
-// Feature Create/Edit Modal Component
-function FeatureModal({
-  feature,
+// Technical Specification Create/Edit Modal Component
+function TechnicalSpecificationModal({
+  specification,
   onClose,
   onSuccess,
 }: {
-  feature: TechnicalFeature | null;
+  specification: TechnicalSpecification | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [formData, setFormData] = useState({
-    key: feature?.key || "",
-    label: feature?.label || "",
-    type: feature?.type || ("text" as const),
-    unit: feature?.unit || "",
-    options: feature?.options?.join(", ") || "",
-    default_required: feature?.default_required || false,
-    display_order: feature?.display_order || 0,
-    is_active: feature?.is_active ?? true,
+    key: specification?.key || "",
+    label: specification?.label || "",
+    type: specification?.type || ("text" as const),
+    unit: specification?.unit || "",
+    options: specification?.options?.join(", ") || "",
+    default_required: specification?.default_required || false,
+    display_order: specification?.display_order || 0,
+    is_active: specification?.is_active ?? true,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -337,7 +358,7 @@ function FeatureModal({
     setIsSaving(true);
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         key: formData.key,
         label: formData.label,
         type: formData.type,
@@ -351,11 +372,11 @@ function FeatureModal({
         is_active: formData.is_active,
       };
 
-      const url = feature
-        ? `/api/b2b/pim/features/${feature.feature_id}`
-        : "/api/b2b/pim/features";
+      const url = specification
+        ? `/api/b2b/pim/technical-specifications/${specification.technical_specification_id}`
+        : "/api/b2b/pim/technical-specifications";
 
-      const method = feature ? "PATCH" : "POST";
+      const method = specification ? "PATCH" : "POST";
 
       const res = await fetch(url, {
         method,
@@ -364,15 +385,15 @@ function FeatureModal({
       });
 
       if (res.ok) {
-        toast.success(feature ? "Feature updated successfully" : "Feature created successfully");
+        toast.success(specification ? "Specification updated successfully" : "Specification created successfully");
         onSuccess();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to save feature");
+        toast.error(error.error || "Failed to save specification");
       }
     } catch (error) {
-      console.error("Error saving feature:", error);
-      toast.error("Failed to save feature");
+      console.error("Error saving specification:", error);
+      toast.error("Failed to save specification");
     } finally {
       setIsSaving(false);
     }
@@ -385,7 +406,7 @@ function FeatureModal({
           {/* Header */}
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-xl font-bold text-foreground">
-              {feature ? "Edit Feature" : "Create Feature"}
+              {specification ? "Edit Technical Specification" : "Create Technical Specification"}
             </h2>
           </div>
 
@@ -434,7 +455,7 @@ function FeatureModal({
                 <label className="block text-sm font-medium text-foreground mb-1">Type *</label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value as "text" | "number" | "select" | "multiselect" | "boolean" })}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
                   <option value="text">Text</option>
@@ -533,7 +554,7 @@ function FeatureModal({
               disabled={isSaving}
               className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
             >
-              {isSaving ? "Saving..." : feature ? "Update" : "Create"}
+              {isSaving ? "Saving..." : specification ? "Update" : "Create"}
             </button>
           </div>
         </form>

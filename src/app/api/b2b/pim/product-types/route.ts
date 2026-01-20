@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
     const { ProductType: ProductTypeModel } = auth.models;
 
     const body = await req.json();
-    const { name, slug, description, features, display_order } = body;
+    const { name, slug, description, technical_specifications, display_order } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
       name,
       slug,
       description,
-      features: features || [],
+      technical_specifications: technical_specifications || [],
       display_order: display_order || 0,
       is_active: true,
       product_count: 0,
@@ -169,6 +169,101 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ productType }, { status: 201 });
   } catch (error) {
     console.error("Error creating product type:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/b2b/pim/product-types
+ * Bulk delete product types
+ *
+ * Body options:
+ * - { delete_all: true } - Delete all product types (skips those with products)
+ * - { product_type_ids: ["id1", "id2"] } - Delete specific product types by IDs
+ * - { force: true } - Force delete even if products are assigned (clears product_type from products)
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const auth = await authenticateRequest(req);
+    if (!auth.authenticated || !auth.models) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.statusCode || 401 }
+      );
+    }
+
+    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = auth.models;
+
+    const body = await req.json().catch(() => ({}));
+    const { delete_all, product_type_ids, force } = body;
+
+    if (!delete_all && (!product_type_ids || !Array.isArray(product_type_ids))) {
+      return NextResponse.json(
+        { error: "Either delete_all: true or product_type_ids array is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get product types with products assigned
+    const productCounts = await PIMProductModel.aggregate([
+      {
+        $match: {
+          isCurrent: true,
+          "product_type.id": { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: "$product_type.id",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const typesWithProducts = new Map(productCounts.map((c) => [c._id, c.count]));
+
+    let typesToDelete: string[];
+
+    if (delete_all) {
+      // Get all product type IDs
+      const allTypes = await ProductTypeModel.find({}).select("product_type_id").lean();
+      typesToDelete = allTypes.map((pt: { product_type_id: string }) => pt.product_type_id);
+    } else {
+      typesToDelete = product_type_ids;
+    }
+
+    // If not forcing, filter out types with products
+    let skipped = 0;
+    let skippedIds: string[] = [];
+
+    if (!force) {
+      skippedIds = typesToDelete.filter((id: string) => typesWithProducts.has(id));
+      skipped = skippedIds.length;
+      typesToDelete = typesToDelete.filter((id: string) => !typesWithProducts.has(id));
+    } else {
+      // Force mode: clear product_type from products first
+      await PIMProductModel.updateMany(
+        { "product_type.id": { $in: typesToDelete } },
+        { $unset: { product_type: "" } }
+      );
+    }
+
+    // Delete product types
+    const result = await ProductTypeModel.deleteMany({
+      product_type_id: { $in: typesToDelete },
+    });
+
+    return NextResponse.json({
+      success: true,
+      deleted: result.deletedCount,
+      skipped,
+      skipped_reason: skipped > 0 ? "Product types have products assigned (use force: true to override)" : undefined,
+    });
+  } catch (error) {
+    console.error("Error bulk deleting product types:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

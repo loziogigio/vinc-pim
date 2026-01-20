@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IFeature extends Document {
-  feature_id: string;
+export interface ITechnicalSpecification extends Document {
+  technical_specification_id: string;
   // wholesaler_id removed - database per wholesaler provides isolation
   key: string; // e.g., "diameter", "pressure_rating", "material"
   label: string; // e.g., "Diameter", "Pressure Rating", "Material"
@@ -23,9 +23,9 @@ export interface IFeature extends Document {
   updated_at: Date;
 }
 
-const FeatureSchema = new Schema<IFeature>(
+const TechnicalSpecificationSchema = new Schema<ITechnicalSpecification>(
   {
-    feature_id: {
+    technical_specification_id: {
       type: String,
       required: true,
       unique: true,
@@ -85,13 +85,13 @@ const FeatureSchema = new Schema<IFeature>(
 );
 
 // Index for key uniqueness (no wholesaler_id - database provides isolation)
-FeatureSchema.index({ key: 1 }, { unique: true });
+TechnicalSpecificationSchema.index({ key: 1 }, { unique: true });
 
 // Index for sorting (no wholesaler_id - database provides isolation)
-FeatureSchema.index({ display_order: 1 });
+TechnicalSpecificationSchema.index({ display_order: 1 });
 
 // Export schema for model-registry
-export { FeatureSchema };
+export { TechnicalSpecificationSchema };
 
-export const FeatureModel =
-  mongoose.models.Features || mongoose.model<IFeature>("Features", FeatureSchema);
+export const TechnicalSpecificationModel =
+  mongoose.models.TechnicalSpecifications || mongoose.model<ITechnicalSpecification>("TechnicalSpecifications", TechnicalSpecificationSchema);

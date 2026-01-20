@@ -139,7 +139,7 @@ export interface SolrProduct {
   description?: string;
   short_description?: string;
   long_description?: string;
-  features?: string[];
+  marketing_features?: string[];
 
   // Pricing & inventory
   price?: number;
@@ -164,9 +164,9 @@ export interface SolrProduct {
   collections?: CollectionData[];
   tags?: TagData[];
 
-  // Attributes & Specifications (for requested language)
+  // Attributes & Technical Specifications (for requested language)
   attributes?: AttributeData[];
-  specifications?: SpecificationData[];
+  technical_specifications?: SpecificationData[];
 
   // Promotions
   has_active_promo?: boolean;
@@ -424,16 +424,16 @@ export interface ProductTypeData {
   is_active?: boolean;
   product_count?: number;
   display_order?: number;
-  features?: ProductTypeFeature[];
+  technical_specifications?: ProductTypeTechnicalSpecification[];
   // Hierarchy fields
   parent_type_id?: string;
   level?: number;
   path?: string[];
   hierarchy?: ProductTypeHierarchyItem[];
-  inherited_features?: ProductTypeFeature[];
+  inherited_technical_specifications?: ProductTypeTechnicalSpecification[];
 }
 
-export interface ProductTypeFeature {
+export interface ProductTypeTechnicalSpecification {
   key: string;
   label?: string;
   value?: any;
@@ -446,7 +446,7 @@ export interface ProductTypeHierarchyItem {
   slug?: string;
   level?: number;
   description?: string;
-  features?: ProductTypeFeature[];
+  technical_specifications?: ProductTypeTechnicalSpecification[];
 }
 
 export interface CollectionData {
@@ -578,12 +578,12 @@ export interface SolrRawDocument {
   brand_json?: string;
   collections_json?: string;
   product_type_json?: string;
-  specifications_json?: string;
+  technical_specifications_json?: string;
   attributes_json?: string;
   promotions_json?: string;
   media_json?: string;
   packaging_json?: string;
-  product_type_features_json?: string;
+  product_type_technical_specifications_json?: string;
   tags_json?: string;
   image_json?: string;
   images_json?: string;

@@ -205,16 +205,16 @@ export interface IPIMProduct extends Document {
   // Synonym dictionary keys (for search synonyms - references SynonymDictionary.key)
   synonym_keys?: string[];
 
-  // Features (Marketing highlights - "Caratteristiche")
+  // Marketing Features (Marketing highlights - "Caratteristiche")
   // Multilingual structure: features organized by language
   // Example: { "it": ["Ricarica wireless", "Resistente all'acqua IP68"], "de": [...] }
-  features?: {
+  marketing_features?: {
     [K in SupportedLanguage]?: string[];
   };
 
-  // Specifications (Technical data - "Specifiche tecniche")
+  // Technical Specifications (Technical data - "Specifiche tecniche")
   // Multilingual structure: specifications organized by language (labels translated, values stay same)
-  specifications?: {
+  technical_specifications?: {
     [K in SupportedLanguage]?: {
       key: string;        // Programmatic key (e.g., "weight", "dimensions")
       label: string;      // Display label in this language (e.g., "Peso" for IT, "Gewicht" for DE)
@@ -405,15 +405,15 @@ const createMultilingualTextSchema = () => {
   return { type: Schema.Types.Mixed };
 };
 
-// Dynamic Features Schema (array of strings per language)
+// Dynamic Marketing Features Schema (array of strings per language)
 // Uses Mixed type to support all languages (validated at runtime via middleware)
-const createFeaturesSchema = () => {
+const createMarketingFeaturesSchema = () => {
   return { type: Schema.Types.Mixed };
 };
 
-// Dynamic Specifications Schema (structured array per language)
+// Dynamic Technical Specifications Schema (structured array per language)
 // Uses Mixed type to support all languages (validated at runtime via middleware)
-const createSpecificationsSchema = () => {
+const createTechnicalSpecificationsSchema = () => {
   return { type: Schema.Types.Mixed };
 };
 
@@ -424,8 +424,8 @@ const createAttributesSchema = () => {
 };
 
 const MultilingualTextSchema = createMultilingualTextSchema();
-const FeaturesSchema = createFeaturesSchema();
-const SpecificationsSchema = createSpecificationsSchema();
+const MarketingFeaturesSchema = createMarketingFeaturesSchema();
+const TechnicalSpecificationsSchema = createTechnicalSpecificationsSchema();
 const AttributesSchema = createAttributesSchema();
 
 // Source sub-schema (strict: false allows batch_metadata without defining it)
@@ -633,12 +633,17 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       product_type_id: { type: String },
       name: MultilingualTextSchema,
       slug: MultilingualTextSchema,
-      features: [
+      technical_specifications: [
         {
+          technical_specification_id: { type: String },
           key: { type: String },
           label: MultilingualTextSchema,
+          type: { type: String, enum: ["text", "number", "select", "multiselect", "boolean"] },
           value: { type: Schema.Types.Mixed },
           unit: { type: String },
+          options: [{ type: String }],
+          required: { type: Boolean },
+          display_order: { type: Number },
         },
       ],
       description: { type: String },
@@ -656,21 +661,31 @@ const PIMProductSchema = new Schema<IPIMProduct>(
           slug: MultilingualTextSchema,
           level: { type: Number },
           description: { type: String },
-          features: [
+          technical_specifications: [
             {
+              technical_specification_id: { type: String },
               key: { type: String },
               label: MultilingualTextSchema,
+              type: { type: String, enum: ["text", "number", "select", "multiselect", "boolean"] },
               unit: { type: String },
+              options: [{ type: String }],
+              required: { type: Boolean },
+              display_order: { type: Number },
             },
           ],
         },
       ],
-      // Accumulated features from all parent types
-      inherited_features: [
+      // Accumulated technical specifications from all parent types
+      inherited_technical_specifications: [
         {
+          technical_specification_id: { type: String },
           key: { type: String },
           label: MultilingualTextSchema,
+          type: { type: String, enum: ["text", "number", "select", "multiselect", "boolean"] },
           unit: { type: String },
+          options: [{ type: String }],
+          required: { type: Boolean },
+          display_order: { type: Number },
         },
       ],
     },
@@ -705,11 +720,11 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     // Synonym dictionary keys (for search synonyms)
     synonym_keys: [{ type: String }],
 
-    // Features (Marketing highlights - dynamically organized by language)
-    features: FeaturesSchema,
+    // Marketing Features (Marketing highlights - dynamically organized by language)
+    marketing_features: MarketingFeaturesSchema,
 
-    // Specifications (Technical data - dynamically organized by language)
-    specifications: SpecificationsSchema,
+    // Technical Specifications (Technical data - dynamically organized by language)
+    technical_specifications: TechnicalSpecificationsSchema,
 
     meta: [
       {

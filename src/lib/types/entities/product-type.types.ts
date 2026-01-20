@@ -4,17 +4,22 @@
  *
  * Supports both minimal and self-contained (full) embedding:
  * - Minimal: Only required fields (product_type_id, name, slug)
- * - Self-contained: All fields including hierarchy, features, and inherited features
+ * - Self-contained: All fields including hierarchy, technical_specifications, and inherited technical_specifications
  */
 
 import { MultilingualText } from "../pim";
 
-// Product Type Feature
-export interface ProductTypeFeature {
+// Product Type Technical Specification
+export interface ProductTypeTechnicalSpecification {
+  technical_specification_id?: string;
   key: string;
   label: MultilingualText;
+  type?: "text" | "number" | "select" | "multiselect" | "boolean";
   value?: string | number | boolean | string[];
   unit?: string;
+  options?: string[];
+  required?: boolean;
+  display_order?: number;
 }
 
 /**
@@ -27,7 +32,7 @@ export interface ProductTypeHierarchyItem {
   slug: MultilingualText;
   level: number;
   description?: string;
-  features?: ProductTypeFeature[];  // Features at this hierarchy level
+  technical_specifications?: ProductTypeTechnicalSpecification[];  // Technical specifications at this hierarchy level
 }
 
 // Base product type fields (for embedding in products)
@@ -35,7 +40,7 @@ export interface ProductTypeBase {
   product_type_id: string;
   name: MultilingualText;
   slug: MultilingualText;
-  features?: ProductTypeFeature[];  // Features defined at this type level
+  technical_specifications?: ProductTypeTechnicalSpecification[];  // Technical specifications defined at this type level
   description?: string;       // Optional: Include for self-contained
   is_active?: boolean;        // Optional: Include for self-contained
   product_count?: number;     // Optional: Include for self-contained
@@ -48,23 +53,23 @@ export interface ProductTypeBase {
 
   /**
    * SELF-CONTAINED: Full product type hierarchy
-   * Critical for "filter by parent type" and feature inheritance
+   * Critical for "filter by parent type" and technical specification inheritance
    *
    * Example:
    * hierarchy: [
-   *   { product_type_id: "tools", name: { it: "Utensili" }, level: 0, features: [...] },
-   *   { product_type_id: "power-tools", name: { it: "Elettroutensili" }, level: 1, features: [...] }
+   *   { product_type_id: "tools", name: { it: "Utensili" }, level: 0, technical_specifications: [...] },
+   *   { product_type_id: "power-tools", name: { it: "Elettroutensili" }, level: 1, technical_specifications: [...] }
    * ]
    */
   hierarchy?: ProductTypeHierarchyItem[];  // Optional: Include for self-contained mode
 
   /**
-   * INHERITED FEATURES: All features accumulated from parent types
-   * Enables feature validation and display without hierarchy traversal
+   * INHERITED TECHNICAL SPECIFICATIONS: All technical specifications accumulated from parent types
+   * Enables validation and display without hierarchy traversal
    *
-   * Example: A "Hammer Drill" inherits features from "Cordless Drills" → "Power Tools" → "Tools"
+   * Example: A "Hammer Drill" inherits technical specifications from "Cordless Drills" → "Power Tools" → "Tools"
    */
-  inherited_features?: ProductTypeFeature[];  // Optional: Features from ancestors
+  inherited_technical_specifications?: ProductTypeTechnicalSpecification[];  // Optional: Technical specifications from ancestors
 }
 
 // Product Type embedded in products (supports both minimal and full)

@@ -36,7 +36,7 @@ export async function GET(
       }
       tenantDb = `vinc-${session.tenantId}`;
     }
-    const { PIMProduct: PIMProductModel, ProductType: ProductTypeModel, Feature: FeatureModel } = await connectWithModels(tenantDb);
+    const { PIMProduct: PIMProductModel, ProductType: ProductTypeModel, TechnicalSpecification: TechnicalSpecificationModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
     const { entity_code } = resolvedParams;
@@ -103,55 +103,85 @@ export async function GET(
       product.critical_issues = currentIssues;
     }
 
-    // Populate product type feature details if product has a product_type
-    if (product.product_type?.id) {
-      const productType = await ProductTypeModel.findOne({
-        product_type_id: product.product_type.id,
-        // No wholesaler_id - database provides isolation
+    // Populate product type technical specifications if product has a product_type
+    // Check all possible field names for the product type ID
+    let productTypeId = product.product_type?.id || product.product_type?.product_type_id;
+    const productTypeSlug = product.product_type?.slug;
+
+    console.log("📦 Product type lookup:", {
+      hasProductType: !!product.product_type,
+      productTypeId,
+      productTypeSlug,
+      productTypeKeys: product.product_type ? Object.keys(product.product_type) : [],
+      existingTechnicalSpecs: product.product_type?.technical_specifications?.length || 0,
+    });
+
+    // Try to find product type by ID first, then by slug as fallback
+    let productType: any = null;
+
+    if (productTypeId) {
+      productType = await ProductTypeModel.findOne({
+        product_type_id: productTypeId,
+      }).lean() as any;
+    }
+
+    // Fallback: look up by slug if ID lookup failed
+    if (!productType && productTypeSlug) {
+      console.log("📦 Falling back to slug lookup:", productTypeSlug);
+      productType = await ProductTypeModel.findOne({
+        slug: productTypeSlug,
       }).lean() as any;
 
-      if (productType && productType.features && productType.features.length > 0) {
-        // Get all feature IDs
-        const featureIds = productType.features.map((f: any) => f.feature_id);
-
-        // Fetch full feature definitions
-        const features = await FeatureModel.find({
-          feature_id: { $in: featureIds },
-          // No wholesaler_id - database provides isolation
-        }).lean() as any[];
-
-        // Create a map for quick lookup
-        const featureMap = new Map(features.map((f: any) => [f.feature_id, f]));
-
-        // Combine feature definitions with product type metadata
-        const featureDetails = productType.features
-          .map((ptFeature: any) => {
-            const feature = featureMap.get(ptFeature.feature_id);
-            if (!feature) return null;
-
-            return {
-              feature_id: feature.feature_id,
-              key: feature.key,
-              label: feature.label,
-              type: feature.type,
-              unit: feature.unit,
-              options: feature.options,
-              required: ptFeature.required,
-            };
-          })
-          .filter((f: any) => f !== null)
-          .sort((a: any, b: any) => {
-            const aOrder = productType.features.find((f: any) => f.feature_id === a.feature_id)?.display_order || 0;
-            const bOrder = productType.features.find((f: any) => f.feature_id === b.feature_id)?.display_order || 0;
-            return aOrder - bOrder;
-          });
-
-        // Add featureDetails to the product_type
-        product.product_type = {
-          ...product.product_type,
-          featureDetails,
-        };
+      // If found, update the productTypeId for later use
+      if (productType) {
+        productTypeId = productType.product_type_id;
       }
+    }
+
+    console.log("📦 ProductType found:", {
+      found: !!productType,
+      productTypeId: productType?.product_type_id,
+      hasTechnicalSpecs: productType?.technical_specifications?.length || 0,
+    });
+
+    if (productType && productType.technical_specifications && productType.technical_specifications.length > 0) {
+      // Get all technical specification IDs
+      const specIds = productType.technical_specifications.map((s: any) => s.technical_specification_id);
+
+      // Fetch full technical specification definitions
+      const specs = await TechnicalSpecificationModel.find({
+        technical_specification_id: { $in: specIds },
+        // No wholesaler_id - database provides isolation
+      }).lean() as any[];
+
+      // Create a map for quick lookup
+      const specMap = new Map(specs.map((s: any) => [s.technical_specification_id, s]));
+
+      // Combine technical specification definitions with product type metadata
+      const technicalSpecifications = productType.technical_specifications
+        .map((ptSpec: any) => {
+          const spec = specMap.get(ptSpec.technical_specification_id);
+          if (!spec) return null;
+
+          return {
+            technical_specification_id: spec.technical_specification_id,
+            key: spec.key,
+            label: spec.label,
+            type: spec.type,
+            unit: spec.unit,
+            options: spec.options,
+            required: ptSpec.required,
+            display_order: ptSpec.display_order,
+          };
+        })
+        .filter((s: any) => s !== null)
+        .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0));
+
+      // Add technical_specifications to the product_type
+      product.product_type = {
+        ...product.product_type,
+        technical_specifications: technicalSpecifications,
+      };
     }
 
     const response: any = { product };
@@ -219,6 +249,8 @@ export async function PATCH(
       "collections",
       "category",
       "attributes",
+      "marketing_features",        // Marketing highlights (array of strings per language)
+      "technical_specifications",  // Technical specs (array of { key, label, value, uom } per language)
       "dimensions",
       "weight",
       "tags",

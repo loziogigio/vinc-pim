@@ -211,14 +211,39 @@ function cleanupIncompleteArrays(data: any): void {
     }
   }
 
-  // Clean up features - remove entries with empty label or value
-  if (data.features && Array.isArray(data.features)) {
-    data.features = data.features.filter((item: any) =>
-      item && item.label && item.value
-    );
-    // Remove features array if empty
-    if (data.features.length === 0) {
-      delete data.features;
+  // Clean up marketing_features - remove empty entries
+  if (data.marketing_features && typeof data.marketing_features === 'object') {
+    for (const lang of Object.keys(data.marketing_features)) {
+      if (Array.isArray(data.marketing_features[lang])) {
+        data.marketing_features[lang] = data.marketing_features[lang].filter(
+          (item: string) => item && item.trim()
+        );
+        if (data.marketing_features[lang].length === 0) {
+          delete data.marketing_features[lang];
+        }
+      }
+    }
+    // Remove marketing_features if empty
+    if (Object.keys(data.marketing_features).length === 0) {
+      delete data.marketing_features;
+    }
+  }
+
+  // Clean up technical_specifications - remove entries missing required fields
+  if (data.technical_specifications && typeof data.technical_specifications === 'object') {
+    for (const lang of Object.keys(data.technical_specifications)) {
+      if (Array.isArray(data.technical_specifications[lang])) {
+        data.technical_specifications[lang] = data.technical_specifications[lang].filter(
+          (item: any) => item && item.key && (item.value !== undefined && item.value !== '')
+        );
+        if (data.technical_specifications[lang].length === 0) {
+          delete data.technical_specifications[lang];
+        }
+      }
+    }
+    // Remove technical_specifications if empty
+    if (Object.keys(data.technical_specifications).length === 0) {
+      delete data.technical_specifications;
     }
   }
 

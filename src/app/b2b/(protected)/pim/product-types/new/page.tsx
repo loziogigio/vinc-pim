@@ -6,9 +6,9 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ArrowLeft, Save, Cpu, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
-type TechnicalFeature = {
+type TechnicalSpecification = {
   _id: string;
-  feature_id: string;
+  technical_specification_id: string;
   key: string;
   label: string;
   type: "text" | "number" | "select" | "multiselect" | "boolean";
@@ -19,8 +19,8 @@ type TechnicalFeature = {
   is_active: boolean;
 };
 
-type SelectedFeature = {
-  feature_id: string;
+type SelectedSpecification = {
+  technical_specification_id: string;
   required: boolean;
   display_order: number;
 };
@@ -39,17 +39,17 @@ export default function NewProductTypePage() {
     display_order: 0,
   });
 
-  // Available features from the Features management page
-  const [availableFeatures, setAvailableFeatures] = useState<TechnicalFeature[]>([]);
+  // Available technical specifications from the Technical Specifications management page
+  const [availableSpecifications, setAvailableSpecifications] = useState<TechnicalSpecification[]>([]);
 
-  // Selected features with overrides
-  const [selectedFeatures, setSelectedFeatures] = useState<Map<string, SelectedFeature>>(new Map());
+  // Selected specifications with overrides
+  const [selectedSpecifications, setSelectedSpecifications] = useState<Map<string, SelectedSpecification>>(new Map());
 
-  // Feature creation dialog
-  const [showFeatureDialog, setShowFeatureDialog] = useState(false);
-  const [isCreatingFeature, setIsCreatingFeature] = useState(false);
-  const [isFeatureKeyManuallyEdited, setIsFeatureKeyManuallyEdited] = useState(false);
-  const [featureFormData, setFeatureFormData] = useState({
+  // Specification creation dialog
+  const [showSpecDialog, setShowSpecDialog] = useState(false);
+  const [isCreatingSpec, setIsCreatingSpec] = useState(false);
+  const [isSpecKeyManuallyEdited, setIsSpecKeyManuallyEdited] = useState(false);
+  const [specFormData, setSpecFormData] = useState({
     key: "",
     label: "",
     type: "text" as "text" | "number" | "select" | "multiselect" | "boolean",
@@ -61,20 +61,20 @@ export default function NewProductTypePage() {
   });
 
   useEffect(() => {
-    fetchFeatures();
+    fetchSpecifications();
   }, []);
 
-  async function fetchFeatures() {
+  async function fetchSpecifications() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/features?include_inactive=false");
+      const res = await fetch("/api/b2b/pim/technical-specifications?include_inactive=false");
       if (res.ok) {
         const data = await res.json();
-        setAvailableFeatures(data.features);
+        setAvailableSpecifications(data.technical_specifications);
       }
     } catch (error) {
-      console.error("Error fetching features:", error);
-      toast.error("Failed to load features");
+      console.error("Error fetching technical specifications:", error);
+      toast.error("Failed to load technical specifications");
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +89,7 @@ export default function NewProductTypePage() {
       .replace(/-+/g, "-");
   }
 
-  function generateFeatureKey(label: string) {
+  function generateSpecKey(label: string) {
     return label
       .toLowerCase()
       .trim()
@@ -97,8 +97,8 @@ export default function NewProductTypePage() {
       .replace(/\s+/g, "_");
   }
 
-  function resetFeatureForm() {
-    setFeatureFormData({
+  function resetSpecForm() {
+    setSpecFormData({
       key: "",
       label: "",
       type: "text",
@@ -106,45 +106,45 @@ export default function NewProductTypePage() {
       options: [],
       optionInput: "",
       default_required: false,
-      display_order: availableFeatures.length,
+      display_order: availableSpecifications.length,
     });
-    setIsFeatureKeyManuallyEdited(false);
+    setIsSpecKeyManuallyEdited(false);
   }
 
   function addOption() {
-    const option = featureFormData.optionInput.trim();
-    if (option && !featureFormData.options.includes(option)) {
-      setFeatureFormData({
-        ...featureFormData,
-        options: [...featureFormData.options, option],
+    const option = specFormData.optionInput.trim();
+    if (option && !specFormData.options.includes(option)) {
+      setSpecFormData({
+        ...specFormData,
+        options: [...specFormData.options, option],
         optionInput: "",
       });
     }
   }
 
   function removeOption(option: string) {
-    setFeatureFormData({
-      ...featureFormData,
-      options: featureFormData.options.filter((o) => o !== option),
+    setSpecFormData({
+      ...specFormData,
+      options: specFormData.options.filter((o) => o !== option),
     });
   }
 
-  async function handleCreateFeature(e: React.FormEvent) {
+  async function handleCreateSpecification(e: React.FormEvent) {
     e.preventDefault();
-    setIsCreatingFeature(true);
+    setIsCreatingSpec(true);
 
     try {
       const payload = {
-        key: featureFormData.key,
-        label: featureFormData.label,
-        type: featureFormData.type,
-        unit: featureFormData.unit || undefined,
-        options: featureFormData.options.length > 0 ? featureFormData.options : undefined,
-        default_required: featureFormData.default_required,
-        display_order: featureFormData.display_order,
+        key: specFormData.key,
+        label: specFormData.label,
+        type: specFormData.type,
+        unit: specFormData.unit || undefined,
+        options: specFormData.options.length > 0 ? specFormData.options : undefined,
+        default_required: specFormData.default_required,
+        display_order: specFormData.display_order,
       };
 
-      const res = await fetch("/api/b2b/pim/features", {
+      const res = await fetch("/api/b2b/pim/technical-specifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -152,66 +152,66 @@ export default function NewProductTypePage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast.success("Feature created successfully");
+        toast.success("Technical specification created successfully");
 
-        // Refresh features list
-        await fetchFeatures();
+        // Refresh specifications list
+        await fetchSpecifications();
 
-        // Auto-select the newly created feature
-        const newFeature = data.feature;
-        const newSelected = new Map(selectedFeatures);
-        newSelected.set(newFeature.feature_id, {
-          feature_id: newFeature.feature_id,
-          required: newFeature.default_required,
+        // Auto-select the newly created specification
+        const newSpec = data.technical_specification;
+        const newSelected = new Map(selectedSpecifications);
+        newSelected.set(newSpec.technical_specification_id, {
+          technical_specification_id: newSpec.technical_specification_id,
+          required: newSpec.default_required,
           display_order: newSelected.size,
         });
-        setSelectedFeatures(newSelected);
+        setSelectedSpecifications(newSelected);
 
         // Close dialog and reset form
-        setShowFeatureDialog(false);
-        resetFeatureForm();
+        setShowSpecDialog(false);
+        resetSpecForm();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to create feature");
+        toast.error(error.error || "Failed to create technical specification");
       }
     } catch (error) {
-      console.error("Error creating feature:", error);
-      toast.error("Failed to create feature");
+      console.error("Error creating technical specification:", error);
+      toast.error("Failed to create technical specification");
     } finally {
-      setIsCreatingFeature(false);
+      setIsCreatingSpec(false);
     }
   }
 
-  function toggleFeature(feature: TechnicalFeature) {
-    const newSelected = new Map(selectedFeatures);
+  function toggleSpecification(spec: TechnicalSpecification) {
+    const newSelected = new Map(selectedSpecifications);
 
-    if (newSelected.has(feature.feature_id)) {
-      newSelected.delete(feature.feature_id);
+    if (newSelected.has(spec.technical_specification_id)) {
+      newSelected.delete(spec.technical_specification_id);
     } else {
-      newSelected.set(feature.feature_id, {
-        feature_id: feature.feature_id,
-        required: feature.default_required,
+      newSelected.set(spec.technical_specification_id, {
+        technical_specification_id: spec.technical_specification_id,
+        required: spec.default_required,
         display_order: newSelected.size,
       });
     }
 
-    setSelectedFeatures(newSelected);
+    setSelectedSpecifications(newSelected);
   }
 
-  function updateFeatureOverride(featureId: string, updates: Partial<SelectedFeature>) {
-    const newSelected = new Map(selectedFeatures);
-    const current = newSelected.get(featureId);
+  function updateSpecificationOverride(specId: string, updates: Partial<SelectedSpecification>) {
+    const newSelected = new Map(selectedSpecifications);
+    const current = newSelected.get(specId);
     if (current) {
-      newSelected.set(featureId, { ...current, ...updates });
-      setSelectedFeatures(newSelected);
+      newSelected.set(specId, { ...current, ...updates });
+      setSelectedSpecifications(newSelected);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (selectedFeatures.size === 0) {
-      toast.error("Please select at least one feature");
+    if (selectedSpecifications.size === 0) {
+      toast.error("Please select at least one technical specification");
       return;
     }
 
@@ -223,7 +223,7 @@ export default function NewProductTypePage() {
         slug: formData.slug,
         description: formData.description,
         display_order: formData.display_order,
-        features: Array.from(selectedFeatures.values()),
+        technical_specifications: Array.from(selectedSpecifications.values()),
       };
 
       const res = await fetch("/api/b2b/pim/product-types", {
@@ -247,12 +247,12 @@ export default function NewProductTypePage() {
     }
   }
 
-  // Group features by type
-  const groupedFeatures = availableFeatures.reduce((acc, feat) => {
-    if (!acc[feat.type]) acc[feat.type] = [];
-    acc[feat.type].push(feat);
+  // Group specifications by type
+  const groupedSpecifications = availableSpecifications.reduce((acc, spec) => {
+    if (!acc[spec.type]) acc[spec.type] = [];
+    acc[spec.type].push(spec);
     return acc;
-  }, {} as Record<string, TechnicalFeature[]>);
+  }, {} as Record<string, TechnicalSpecification[]>);
 
   const typeLabels: Record<string, string> = {
     text: "Text",
@@ -295,7 +295,7 @@ export default function NewProductTypePage() {
             <div>
               <h1 className="text-2xl font-bold text-foreground">Create Product Type</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Define a new product type with features
+                Define a new product type with technical specifications
               </p>
             </div>
           </div>
@@ -382,46 +382,46 @@ export default function NewProductTypePage() {
           </div>
         </div>
 
-        {/* Features Selection */}
+        {/* Technical Specifications Selection */}
         <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Select Features</h2>
+              <h2 className="text-lg font-semibold text-foreground">Select Technical Specifications</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Choose which features apply to this product type. Selected: {selectedFeatures.size}
+                Choose which specifications apply to this product type. Selected: {selectedSpecifications.size}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => setShowFeatureDialog(true)}
+              onClick={() => setShowSpecDialog(true)}
               className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm"
             >
               <Plus className="h-4 w-4" />
-              Create New Feature
+              New Specification
             </button>
           </div>
 
-          {availableFeatures.length === 0 ? (
+          {availableSpecifications.length === 0 ? (
             <div className="p-8 text-center border border-dashed border-border rounded-lg">
               <p className="text-sm text-muted-foreground">
-                No features available. Please create features first in the Features page.
+                No technical specifications available. Please create specifications first in the Technical Specifications page.
               </p>
             </div>
           ) : (
             <div className="space-y-6">
-              {Object.entries(groupedFeatures).map(([type, features]) => (
+              {Object.entries(groupedSpecifications).map(([type, specs]) => (
                 <div key={type} className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                    {typeLabels[type]} Features
+                    {typeLabels[type]} Specifications
                   </h3>
                   <div className="space-y-2">
-                    {features.map((feature) => {
-                      const isSelected = selectedFeatures.has(feature.feature_id);
-                      const selectedData = selectedFeatures.get(feature.feature_id);
+                    {specs.map((spec) => {
+                      const isSelected = selectedSpecifications.has(spec.technical_specification_id);
+                      const selectedData = selectedSpecifications.get(spec.technical_specification_id);
 
                       return (
                         <div
-                          key={feature.feature_id}
+                          key={spec.technical_specification_id}
                           className={`p-4 rounded-lg border transition ${
                             isSelected
                               ? "border-primary bg-primary/5"
@@ -432,28 +432,28 @@ export default function NewProductTypePage() {
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => toggleFeature(feature)}
+                              onChange={() => toggleSpecification(spec)}
                               className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-sm text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                  {feature.key}
+                                  {spec.key}
                                 </span>
-                                <span className="font-medium text-foreground">{feature.label}</span>
-                                {feature.unit && (
-                                  <span className="text-xs text-muted-foreground">({feature.unit})</span>
+                                <span className="font-medium text-foreground">{spec.label}</span>
+                                {spec.unit && (
+                                  <span className="text-xs text-muted-foreground">({spec.unit})</span>
                                 )}
-                                {feature.default_required && (
+                                {spec.default_required && (
                                   <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">
                                     Required by default
                                   </span>
                                 )}
                               </div>
-                              {feature.options && feature.options.length > 0 && (
+                              {spec.options && spec.options.length > 0 && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Options: {feature.options.slice(0, 3).join(", ")}
-                                  {feature.options.length > 3 && ` +${feature.options.length - 3} more`}
+                                  Options: {spec.options.slice(0, 3).join(", ")}
+                                  {spec.options.length > 3 && ` +${spec.options.length - 3} more`}
                                 </p>
                               )}
 
@@ -465,7 +465,7 @@ export default function NewProductTypePage() {
                                       type="checkbox"
                                       checked={selectedData.required}
                                       onChange={(e) =>
-                                        updateFeatureOverride(feature.feature_id, {
+                                        updateSpecificationOverride(spec.technical_specification_id, {
                                           required: e.target.checked,
                                         })
                                       }
@@ -479,7 +479,7 @@ export default function NewProductTypePage() {
                                       type="number"
                                       value={selectedData.display_order}
                                       onChange={(e) =>
-                                        updateFeatureOverride(feature.feature_id, {
+                                        updateSpecificationOverride(spec.technical_specification_id, {
                                           display_order: parseInt(e.target.value),
                                         })
                                       }
@@ -520,24 +520,24 @@ export default function NewProductTypePage() {
         </div>
       </form>
 
-      {/* Create Feature Dialog */}
-      {showFeatureDialog && (
+      {/* Create Technical Specification Dialog */}
+      {showSpecDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <form onSubmit={handleCreateFeature}>
+            <form onSubmit={handleCreateSpecification}>
               {/* Dialog Header */}
               <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-white">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">Create New Feature</h2>
+                  <h2 className="text-xl font-semibold text-foreground">New Technical Specification</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Add a new technical feature to your catalog
+                    Add a technical specification to your catalog
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setShowFeatureDialog(false);
-                    resetFeatureForm();
+                    setShowSpecDialog(false);
+                    resetSpecForm();
                   }}
                   className="p-2 rounded hover:bg-gray-100 transition"
                 >
@@ -556,14 +556,14 @@ export default function NewProductTypePage() {
                     <input
                       type="text"
                       required
-                      value={featureFormData.label}
+                      value={specFormData.label}
                       onChange={(e) => {
                         const label = e.target.value;
-                        setFeatureFormData({
-                          ...featureFormData,
+                        setSpecFormData({
+                          ...specFormData,
                           label,
                           // Auto-generate key only if it hasn't been manually edited
-                          key: isFeatureKeyManuallyEdited ? featureFormData.key : generateFeatureKey(label),
+                          key: isSpecKeyManuallyEdited ? specFormData.key : generateSpecKey(label),
                         });
                       }}
                       className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -577,10 +577,10 @@ export default function NewProductTypePage() {
                     <input
                       type="text"
                       required
-                      value={featureFormData.key}
+                      value={specFormData.key}
                       onChange={(e) => {
-                        setFeatureFormData({ ...featureFormData, key: e.target.value });
-                        setIsFeatureKeyManuallyEdited(true);
+                        setSpecFormData({ ...specFormData, key: e.target.value });
+                        setIsSpecKeyManuallyEdited(true);
                       }}
                       className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
                       placeholder="max_pressure"
@@ -596,11 +596,11 @@ export default function NewProductTypePage() {
                     </label>
                     <select
                       required
-                      value={featureFormData.type}
+                      value={specFormData.type}
                       onChange={(e) =>
-                        setFeatureFormData({
-                          ...featureFormData,
-                          type: e.target.value as any,
+                        setSpecFormData({
+                          ...specFormData,
+                          type: e.target.value as "text" | "number" | "select" | "multiselect" | "boolean",
                           options: [], // Reset options when type changes
                         })
                       }
@@ -619,9 +619,9 @@ export default function NewProductTypePage() {
                     </label>
                     <input
                       type="text"
-                      value={featureFormData.unit}
+                      value={specFormData.unit}
                       onChange={(e) =>
-                        setFeatureFormData({ ...featureFormData, unit: e.target.value })
+                        setSpecFormData({ ...specFormData, unit: e.target.value })
                       }
                       className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       placeholder="e.g., bar, mm, kg"
@@ -630,7 +630,7 @@ export default function NewProductTypePage() {
                 </div>
 
                 {/* Options for select/multiselect */}
-                {(featureFormData.type === "select" || featureFormData.type === "multiselect") && (
+                {(specFormData.type === "select" || specFormData.type === "multiselect") && (
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
                       Options <span className="text-red-500">*</span>
@@ -639,10 +639,10 @@ export default function NewProductTypePage() {
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          value={featureFormData.optionInput}
+                          value={specFormData.optionInput}
                           onChange={(e) =>
-                            setFeatureFormData({
-                              ...featureFormData,
+                            setSpecFormData({
+                              ...specFormData,
                               optionInput: e.target.value,
                             })
                           }
@@ -663,9 +663,9 @@ export default function NewProductTypePage() {
                           Add
                         </button>
                       </div>
-                      {featureFormData.options.length > 0 && (
+                      {specFormData.options.length > 0 && (
                         <div className="flex flex-wrap gap-2">
-                          {featureFormData.options.map((option) => (
+                          {specFormData.options.map((option) => (
                             <span
                               key={option}
                               className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
@@ -694,10 +694,10 @@ export default function NewProductTypePage() {
                     </label>
                     <input
                       type="number"
-                      value={featureFormData.display_order}
+                      value={specFormData.display_order}
                       onChange={(e) =>
-                        setFeatureFormData({
-                          ...featureFormData,
+                        setSpecFormData({
+                          ...specFormData,
                           display_order: parseInt(e.target.value),
                         })
                       }
@@ -708,10 +708,10 @@ export default function NewProductTypePage() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={featureFormData.default_required}
+                        checked={specFormData.default_required}
                         onChange={(e) =>
-                          setFeatureFormData({
-                            ...featureFormData,
+                          setSpecFormData({
+                            ...specFormData,
                             default_required: e.target.checked,
                           })
                         }
@@ -728,8 +728,8 @@ export default function NewProductTypePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowFeatureDialog(false);
-                    resetFeatureForm();
+                    setShowSpecDialog(false);
+                    resetSpecForm();
                   }}
                   className="px-4 py-2 rounded border border-border hover:bg-muted transition"
                 >
@@ -737,11 +737,11 @@ export default function NewProductTypePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isCreatingFeature}
+                  disabled={isCreatingSpec}
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
-                  {isCreatingFeature ? "Creating..." : "Create Feature"}
+                  {isCreatingSpec ? "Creating..." : "Create"}
                 </button>
               </div>
             </form>

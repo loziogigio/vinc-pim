@@ -21,7 +21,7 @@ async function authenticateRequest(req: NextRequest): Promise<{
   let tenantDb: string;
 
   if (authMethod === "api-key") {
-    const apiKeyResult = await verifyAPIKeyFromRequest(req, "features");
+    const apiKeyResult = await verifyAPIKeyFromRequest(req, "technical-specifications");
     if (!apiKeyResult.authenticated) {
       return {
         authenticated: false,
@@ -52,8 +52,8 @@ async function authenticateRequest(req: NextRequest): Promise<{
 }
 
 /**
- * GET /api/b2b/pim/features
- * Get all technical features with UOM data populated
+ * GET /api/b2b/pim/technical-specifications
+ * Get all technical specifications with UOM data populated
  */
 export async function GET(req: NextRequest) {
   try {
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { Feature, UOM } = auth.models;
+    const { TechnicalSpecification, UOM } = auth.models;
 
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
@@ -79,17 +79,17 @@ export async function GET(req: NextRequest) {
       query.is_active = true;
     }
 
-    const features = await Feature.find(query)
+    const technicalSpecifications = await TechnicalSpecification.find(query)
       .sort({ display_order: 1, label: 1 })
       .lean();
 
-    // Populate UOM data for features that reference a UOM
-    const featuresWithUOM = await Promise.all(
-      features.map(async (feature: any) => {
-        if (feature.uom_id) {
-          const uom = await UOM.findOne({ uom_id: feature.uom_id }).lean();
+    // Populate UOM data for technical specifications that reference a UOM
+    const technicalSpecificationsWithUOM = await Promise.all(
+      technicalSpecifications.map(async (spec: any) => {
+        if (spec.uom_id) {
+          const uom = await UOM.findOne({ uom_id: spec.uom_id }).lean();
           if (uom) {
-            feature.uom = {
+            spec.uom = {
               uom_id: uom.uom_id,
               symbol: uom.symbol,
               name: uom.name,
@@ -97,13 +97,13 @@ export async function GET(req: NextRequest) {
             };
           }
         }
-        return feature;
+        return spec;
       })
     );
 
-    return NextResponse.json({ features: featuresWithUOM });
+    return NextResponse.json({ technical_specifications: technicalSpecificationsWithUOM });
   } catch (error) {
-    console.error("Error fetching features:", error);
+    console.error("Error fetching technical specifications:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -112,8 +112,8 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/b2b/pim/features
- * Create a new technical feature with UOM support
+ * POST /api/b2b/pim/technical-specifications
+ * Create a new technical specification with UOM support
  */
 export async function POST(req: NextRequest) {
   try {
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { Feature, UOM } = auth.models;
+    const { TechnicalSpecification, UOM } = auth.models;
 
     const body = await req.json();
     const { key, label, type, unit, uom_id, options, default_required, display_order } = body;
@@ -137,21 +137,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if key already exists for this wholesaler
-    const existing = await Feature.findOne({
+    // Validate key format: only lowercase letters, numbers, underscores, hyphens
+    const keyRegex = /^[a-z0-9_-]+$/;
+    if (!keyRegex.test(key)) {
+      return NextResponse.json(
+        { error: "Key must contain only lowercase letters, numbers, underscores, and hyphens (no spaces or special characters)" },
+        { status: 400 }
+      );
+    }
+
+    // Check if key already exists
+    const existing = await TechnicalSpecification.findOne({
       // No wholesaler_id - database provides isolation
       key,
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: "A feature with this key already exists" },
+        { error: "A technical specification with this key already exists" },
         { status: 400 }
       );
     }
 
-    const feature = await Feature.create({
-      feature_id: nanoid(12),
+    const technicalSpecification = await TechnicalSpecification.create({
+      technical_specification_id: nanoid(12),
       // No wholesaler_id - database provides isolation
       key,
       label,
@@ -165,11 +174,11 @@ export async function POST(req: NextRequest) {
     });
 
     // Populate UOM data in response if uom_id is provided
-    let featureResponse = feature.toObject();
+    let specResponse = technicalSpecification.toObject();
     if (uom_id) {
       const uom = await UOM.findOne({ uom_id }).lean();
       if (uom) {
-        featureResponse.uom = {
+        specResponse.uom = {
           uom_id: uom.uom_id,
           symbol: uom.symbol,
           name: uom.name,
@@ -178,9 +187,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ feature: featureResponse }, { status: 201 });
+    return NextResponse.json({ technical_specification: specResponse }, { status: 201 });
   } catch (error) {
-    console.error("Error creating feature:", error);
+    console.error("Error creating technical specification:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -189,12 +198,12 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * DELETE /api/b2b/pim/features
- * Bulk delete features
+ * DELETE /api/b2b/pim/technical-specifications
+ * Bulk delete technical specifications
  *
  * Body options:
- * - { delete_all: true } - Delete all features (skips those used by product types)
- * - { feature_ids: ["id1", "id2"] } - Delete specific features by IDs
+ * - { delete_all: true } - Delete all technical specifications (skips those used by product types)
+ * - { technical_specification_ids: ["id1", "id2"] } - Delete specific technical specifications by IDs
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -206,61 +215,61 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const { Feature, ProductType } = auth.models;
+    const { TechnicalSpecification, ProductType } = auth.models;
 
     const body = await req.json().catch(() => ({}));
-    const { delete_all, feature_ids } = body;
+    const { delete_all, technical_specification_ids } = body;
 
-    if (!delete_all && (!feature_ids || !Array.isArray(feature_ids))) {
+    if (!delete_all && (!technical_specification_ids || !Array.isArray(technical_specification_ids))) {
       return NextResponse.json(
-        { error: "Either delete_all: true or feature_ids array is required" },
+        { error: "Either delete_all: true or technical_specification_ids array is required" },
         { status: 400 }
       );
     }
 
-    // Get features in use by product types
+    // Get technical specifications in use by product types
     const productTypes = await ProductType.find({}).lean();
-    const featuresInUse = new Set<string>();
+    const specsInUse = new Set<string>();
     for (const pt of productTypes) {
-      if (pt.features && Array.isArray(pt.features)) {
-        for (const f of pt.features) {
-          if (f.feature_id) {
-            featuresInUse.add(f.feature_id);
+      if (pt.technical_specifications && Array.isArray(pt.technical_specifications)) {
+        for (const spec of pt.technical_specifications) {
+          if (spec.technical_specification_id) {
+            specsInUse.add(spec.technical_specification_id);
           }
         }
       }
     }
 
-    let featuresToDelete: string[];
+    let specsToDelete: string[];
 
     if (delete_all) {
-      // Get all feature IDs
-      const allFeatures = await Feature.find({}).select("feature_id").lean();
-      featuresToDelete = allFeatures
-        .map((f: { feature_id: string }) => f.feature_id)
-        .filter((id: string) => !featuresInUse.has(id));
+      // Get all technical specification IDs
+      const allSpecs = await TechnicalSpecification.find({}).select("technical_specification_id").lean();
+      specsToDelete = allSpecs
+        .map((spec: { technical_specification_id: string }) => spec.technical_specification_id)
+        .filter((id: string) => !specsInUse.has(id));
     } else {
-      // Filter out features in use
-      featuresToDelete = feature_ids.filter((id: string) => !featuresInUse.has(id));
+      // Filter out technical specifications in use
+      specsToDelete = technical_specification_ids.filter((id: string) => !specsInUse.has(id));
     }
 
-    // Delete features
-    const result = await Feature.deleteMany({
-      feature_id: { $in: featuresToDelete },
+    // Delete technical specifications
+    const result = await TechnicalSpecification.deleteMany({
+      technical_specification_id: { $in: specsToDelete },
     });
 
     const skipped = delete_all
-      ? featuresInUse.size
-      : feature_ids.filter((id: string) => featuresInUse.has(id)).length;
+      ? specsInUse.size
+      : technical_specification_ids.filter((id: string) => specsInUse.has(id)).length;
 
     return NextResponse.json({
       success: true,
       deleted: result.deletedCount,
       skipped,
-      skipped_reason: skipped > 0 ? "Features in use by product types" : undefined,
+      skipped_reason: skipped > 0 ? "Technical specifications in use by product types" : undefined,
     });
   } catch (error) {
-    console.error("Error bulk deleting features:", error);
+    console.error("Error bulk deleting technical specifications:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

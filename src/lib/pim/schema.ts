@@ -401,7 +401,7 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
   // FEATURES & SPECS (4 fields)
   // ============================================
   {
-    name: "features",
+    name: "marketing_features",
     type: "multilingual_array",
     category: "features",
     required: false,
@@ -409,7 +409,7 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     example: '{"it": ["Connessione wireless 2.4GHz", "Sensore 1600 DPI"], "en": ["2.4GHz wireless", "1600 DPI sensor"]}'
   },
   {
-    name: "specifications",
+    name: "technical_specifications",
     type: "object",
     category: "features",
     required: false,

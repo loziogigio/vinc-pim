@@ -1,6 +1,6 @@
-# Features and Product Types in PIM
+# Technical Specifications and Product Types in PIM
 
-This document explains how Features and Product Types work in the VINC Commerce Suite PIM (Product Information Management) system.
+This document explains how Technical Specifications and Product Types work in the VINC Commerce Suite PIM (Product Information Management) system.
 
 ## Overview
 
@@ -8,34 +8,69 @@ The PIM uses a two-level abstraction for managing product attributes:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Features                                                    │
-│  Define reusable product attributes (e.g., Diameter, Color)  │
+│  Technical Specifications                                    │
+│  Define reusable attributes (e.g., Diameter, Pressure)       │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Product Types                                               │
-│  Group features into templates (e.g., Water Meter, Pump)     │
+│  Group specs into templates (e.g., Water Meter, Pump)        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Products                                                    │
-│  Assign a type and fill in feature values                    │
+│  Assign a type and fill in specification values              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Features
+## Marketing Features vs Technical Specifications
 
-**Features** (also called Technical Features) define reusable data attributes for products.
+The PIM distinguishes between two types of product information:
+
+| Type | Field | Purpose | Structure |
+|------|-------|---------|-----------|
+| **Marketing Features** | `marketing_features` | Bullet points for marketing | `{ "it": ["Wireless", "Waterproof"] }` |
+| **Technical Specifications** | `technical_specifications` | Measured data with units | `{ "it": [{ key, label, value, uom }] }` |
+
+### Marketing Features
+Simple string arrays per language for marketing highlights:
+```json
+{
+  "marketing_features": {
+    "it": ["Alta efficienza energetica", "Silenzioso", "Facile installazione"],
+    "en": ["High energy efficiency", "Quiet operation", "Easy installation"]
+  }
+}
+```
+
+### Technical Specifications
+Structured data with keys, labels, values, and units:
+```json
+{
+  "technical_specifications": {
+    "it": [
+      { "key": "max_pressure", "label": "Pressione Massima", "value": "10", "uom": "bar" },
+      { "key": "flow_rate", "label": "Portata", "value": "120", "uom": "l/min" }
+    ]
+  }
+}
+```
+
+---
+
+## Technical Specifications
+
+**Technical Specifications** define reusable data attributes for products.
 
 ### Schema
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `feature_id` | string | Yes | Unique identifier (nanoid) |
+| `technical_specification_id` | string | Yes | Unique identifier (nanoid) |
 | `key` | string | Yes | Slug-like identifier (e.g., `diameter`, `material`) |
 | `label` | string | Yes | Display name (e.g., "Diameter", "Material") |
 | `type` | enum | Yes | One of: `text`, `number`, `select`, `multiselect`, `boolean` |
@@ -46,7 +81,7 @@ The PIM uses a two-level abstraction for managing product attributes:
 | `display_order` | number | No | Sorting order (default: 0) |
 | `is_active` | boolean | No | Active status (default: true) |
 
-### Feature Types
+### Specification Types
 
 | Type | Input Control | Example |
 |------|--------------|---------|
@@ -56,11 +91,11 @@ The PIM uses a two-level abstraction for managing product attributes:
 | `select` | Dropdown | Size: Small / Medium / Large |
 | `multiselect` | Checkbox list | Certifications: CE, UL, FDA |
 
-### Example Feature
+### Example Technical Specification
 
 ```json
 {
-  "feature_id": "xyz123abc456",
+  "technical_specification_id": "xyz123abc456",
   "key": "pressure_rating",
   "label": "Pressure Rating",
   "type": "number",
@@ -81,15 +116,15 @@ The PIM uses a two-level abstraction for managing product attributes:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/b2b/pim/features` | List all features |
-| POST | `/api/b2b/pim/features` | Create a new feature |
-| PATCH | `/api/b2b/pim/features/{featureId}` | Update a feature |
-| DELETE | `/api/b2b/pim/features/{featureId}` | Delete a feature |
+| GET | `/api/b2b/pim/technical-specifications` | List all specifications |
+| POST | `/api/b2b/pim/technical-specifications` | Create a new specification |
+| PATCH | `/api/b2b/pim/technical-specifications/{id}` | Update a specification |
+| DELETE | `/api/b2b/pim/technical-specifications/{id}` | Delete a specification |
 
-### Create Feature Example
+### Create Technical Specification Example
 
 ```bash
-curl -X POST "http://localhost:3001/api/b2b/pim/features" \
+curl -X POST "http://localhost:3001/api/b2b/pim/technical-specifications" \
   -H "Content-Type: application/json" \
   -H "x-auth-method: api-key" \
   -H "x-api-key-id: ak_{tenant}_{key}" \
@@ -107,13 +142,13 @@ curl -X POST "http://localhost:3001/api/b2b/pim/features" \
 ### Constraints
 
 - `key` must be unique per tenant
-- Cannot delete a feature that is used by any product type
+- Cannot delete a specification that is used by any product type
 
 ---
 
 ## Product Types
 
-**Product Types** are templates that define which features apply to a category of products.
+**Product Types** are templates that define which technical specifications apply to a category of products.
 
 ### Schema
 
@@ -123,19 +158,19 @@ curl -X POST "http://localhost:3001/api/b2b/pim/features" \
 | `name` | string | Yes | Display name (e.g., "Water Meter") |
 | `slug` | string | Yes | URL-friendly identifier (lowercase) |
 | `description` | string | No | Optional description |
-| `features` | array | No | Array of feature references |
+| `technical_specifications` | array | No | Array of specification references |
 | `display_order` | number | No | Sorting order (default: 0) |
 | `is_active` | boolean | No | Active status (default: true) |
 | `product_count` | number | No | Cached count of products using this type |
 
-### Feature Reference Schema
+### Technical Specification Reference Schema
 
-Each feature in the `features` array has:
+Each specification in the `technical_specifications` array has:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `feature_id` | string | Yes | Reference to Feature |
-| `required` | boolean | No | Whether this feature is required for products |
+| `technical_specification_id` | string | Yes | Reference to Technical Specification |
+| `required` | boolean | No | Whether this spec is required for products |
 | `display_order` | number | No | Display order within this product type |
 
 ### Example Product Type
@@ -146,10 +181,10 @@ Each feature in the `features` array has:
   "name": "Water Meter",
   "slug": "water-meter",
   "description": "Meters for measuring water flow and usage",
-  "features": [
-    { "feature_id": "diameter-001", "required": true, "display_order": 0 },
-    { "feature_id": "material-001", "required": true, "display_order": 1 },
-    { "feature_id": "pressure-001", "required": false, "display_order": 2 }
+  "technical_specifications": [
+    { "technical_specification_id": "diameter-001", "required": true, "display_order": 0 },
+    { "technical_specification_id": "material-001", "required": true, "display_order": 1 },
+    { "technical_specification_id": "pressure-001", "required": false, "display_order": 2 }
   ],
   "display_order": 0,
   "is_active": true,
@@ -181,9 +216,9 @@ curl -X POST "http://localhost:3001/api/b2b/pim/product-types" \
     "name": "Pressure Gauge",
     "slug": "pressure-gauge",
     "description": "Instruments for measuring pressure",
-    "features": [
-      { "feature_id": "xyz123", "required": true, "display_order": 0 },
-      { "feature_id": "abc456", "required": false, "display_order": 1 }
+    "technical_specifications": [
+      { "technical_specification_id": "xyz123", "required": true, "display_order": 0 },
+      { "technical_specification_id": "abc456", "required": false, "display_order": 1 }
     ],
     "display_order": 5
   }'
@@ -198,12 +233,12 @@ curl -X POST "http://localhost:3001/api/b2b/pim/product-types" \
 
 ## How They Work Together
 
-### 1. Create Features
+### 1. Create Technical Specifications
 
 First, define the reusable attributes:
 
 ```
-Features:
+Technical Specifications:
 ├── diameter (number, unit: mm)
 ├── material (select: Steel, Brass, Plastic)
 ├── pressure_rating (number, unit: bar)
@@ -213,7 +248,7 @@ Features:
 
 ### 2. Create Product Types
 
-Group features into product templates:
+Group specifications into product templates:
 
 ```
 Product Types:
@@ -241,14 +276,16 @@ When creating a product, select a type and fill in values:
 ```json
 {
   "entity_code": "WM-001",
-  "name": "Digital Water Meter 25mm",
+  "name": { "it": "Contatore Acqua Digitale 25mm" },
   "product_type": {
     "product_type_id": "water-meter-001",
-    "name": "Water Meter",
-    "features": [
-      { "key": "diameter", "value": 25, "unit": "mm" },
-      { "key": "material", "value": "Brass" },
-      { "key": "pressure_rating", "value": 16, "unit": "bar" }
+    "name": "Water Meter"
+  },
+  "technical_specifications": {
+    "it": [
+      { "key": "diameter", "label": "Diametro", "value": "25", "uom": "mm" },
+      { "key": "material", "label": "Materiale", "value": "Ottone" },
+      { "key": "pressure_rating", "label": "Pressione Massima", "value": "16", "uom": "bar" }
     ]
   }
 }
@@ -263,29 +300,32 @@ When creating a product, select a type and fill in values:
 │                         ADMIN WORKFLOW                                │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                       │
-│  1. Create Features                                                   │
-│     POST /api/b2b/pim/features                                        │
+│  1. Create Technical Specifications                                   │
+│     POST /api/b2b/pim/technical-specifications                        │
 │     ┌──────────────────────────────────────────────┐                 │
 │     │ { key: "diameter", type: "number", ... }     │                 │
 │     └──────────────────────────────────────────────┘                 │
 │                          │                                            │
 │                          ▼                                            │
-│  2. Create Product Types (referencing features)                       │
+│  2. Create Product Types (referencing specifications)                 │
 │     POST /api/b2b/pim/product-types                                   │
 │     ┌──────────────────────────────────────────────┐                 │
-│     │ { name: "Water Meter", features: [           │                 │
-│     │   { feature_id: "xyz", required: true }      │                 │
-│     │ ] }                                          │                 │
+│     │ { name: "Water Meter",                       │                 │
+│     │   technical_specifications: [                │                 │
+│     │     { technical_specification_id: "xyz",     │                 │
+│     │       required: true }                       │                 │
+│     │   ] }                                        │                 │
 │     └──────────────────────────────────────────────┘                 │
 │                          │                                            │
 │                          ▼                                            │
-│  3. Create Products (with type and feature values)                    │
+│  3. Create Products (with type and spec values)                       │
 │     POST /api/b2b/pim/products                                        │
 │     ┌──────────────────────────────────────────────┐                 │
 │     │ { entity_code: "WM-001",                     │                 │
-│     │   product_type: { id: "...",                 │                 │
-│     │     features: [{ key: "diameter", value: 25 }│                 │
-│     │   ] }                                        │                 │
+│     │   product_type: { product_type_id: "..." },  │                 │
+│     │   technical_specifications: {                │                 │
+│     │     "it": [{ key: "diameter", value: "25" }] │                 │
+│     │   }                                          │                 │
 │     │ }                                            │                 │
 │     └──────────────────────────────────────────────┘                 │
 │                                                                       │
@@ -298,12 +338,12 @@ When creating a product, select a type and fill in values:
 
 ### FeaturesForm
 
-Renders feature inputs based on product type definition:
+Renders specification inputs based on product type definition:
 
-- **Required features** are shown first with red asterisks
-- **Optional features** are shown in a collapsible section
-- Input type adapts to feature type (text, number, select, etc.)
-- Shows unit symbol for numeric features with UOM
+- **Required specifications** are shown first with red asterisks
+- **Optional specifications** are shown in a collapsible section
+- Input type adapts to specification type (text, number, select, etc.)
+- Shows unit symbol for numeric specifications with UOM
 
 Location: `src/components/pim/FeaturesForm.tsx`
 
@@ -312,8 +352,8 @@ Location: `src/components/pim/FeaturesForm.tsx`
 Modal/dropdown for selecting a product type when creating products:
 
 - Searchable list of available product types
-- Shows feature count for each type
-- When selected, enriches the type with full feature definitions
+- Shows specification count for each type
+- When selected, enriches the type with full specification definitions
 
 Location: `src/components/pim/ProductTypeSelector.tsx`
 
@@ -321,13 +361,13 @@ Location: `src/components/pim/ProductTypeSelector.tsx`
 
 ## Safety Constraints
 
-### Feature Deletion
+### Specification Deletion
 
-Cannot delete a feature that is used by any product type:
+Cannot delete a specification that is used by any product type:
 
 ```json
 {
-  "error": "Cannot delete feature used in 3 product type(s)"
+  "error": "Cannot delete specification used in 3 product type(s)"
 }
 ```
 
@@ -347,8 +387,8 @@ Cannot delete a product type that has products assigned:
 
 | Collection | Model | Description |
 |------------|-------|-------------|
-| `Features` | `FeatureModel` | Technical feature definitions |
-| `ProductType` | `ProductTypeModel` | Product type templates |
+| `technicalspecifications` | `TechnicalSpecificationModel` | Technical specification definitions |
+| `producttypes` | `ProductTypeModel` | Product type templates |
 | `pimproducts` | `PIMProductModel` | Products with embedded type data |
 | `uoms` | `UOMModel` | Units of measurement |
 
@@ -358,7 +398,7 @@ Cannot delete a product type that has products assigned:
 
 ```
 Database Models:
-  src/lib/db/models/feature.ts
+  src/lib/db/models/technical-specification.ts
   src/lib/db/models/product-type.ts
   src/lib/db/models/uom.ts
   src/lib/db/models/pim-product.ts
@@ -368,14 +408,18 @@ Type Definitions:
   src/lib/types/entities/product-type.types.ts
 
 API Routes:
-  src/app/api/b2b/pim/features/route.ts
-  src/app/api/b2b/pim/features/[featureId]/route.ts
+  src/app/api/b2b/pim/technical-specifications/route.ts
+  src/app/api/b2b/pim/technical-specifications/[id]/route.ts
   src/app/api/b2b/pim/product-types/route.ts
   src/app/api/b2b/pim/product-types/[id]/route.ts
 
 UI Components:
   src/components/pim/FeaturesForm.tsx
   src/components/pim/ProductTypeSelector.tsx
+
+UI Pages:
+  src/app/b2b/(protected)/pim/technical-specifications/page.tsx
+  src/app/b2b/(protected)/pim/product-types/page.tsx
 ```
 
 ---

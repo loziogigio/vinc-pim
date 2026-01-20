@@ -422,7 +422,7 @@ export function transformDocument(
     is_active: data.is_active,
     product_count: data.product_count,
     display_order: data.display_order,
-    features: data.features?.map((f: any) => ({
+    technical_specifications: data.technical_specifications?.map((f: any) => ({
       key: f.key,
       label: getMultilingualValue(f.label, lang),
       value: f.value,
@@ -436,7 +436,7 @@ export function transformDocument(
       name: getMultilingualValue(h.name, lang),
       slug: getMultilingualValue(h.slug, lang),
     })),
-    inherited_features: data.inherited_features?.map((f: any) => ({
+    inherited_technical_specifications: data.inherited_technical_specifications?.map((f: any) => ({
       key: f.key,
       label: getMultilingualValue(f.label, lang),
       unit: f.unit,
@@ -530,10 +530,10 @@ export function transformDocument(
     };
   }
 
-  // Specifications for requested language
-  const specifications = parseJsonField<SpecificationData[]>(doc.specifications_json, (data) => {
+  // Technical Specifications for requested language
+  const technical_specifications = parseJsonField<SpecificationData[]>(doc.technical_specifications_json, (data) => {
     if (!data) return undefined;
-    // Specifications are stored per language: { it: [...], en: [...] }
+    // Technical specifications are stored per language: { it: [...], en: [...] }
     const langSpecs = data[lang] || data.it || data.en || (Array.isArray(data) ? data : undefined);
     return Array.isArray(langSpecs) ? langSpecs : undefined;
   });
@@ -686,9 +686,9 @@ export function transformDocument(
     collections,
     tags,
 
-    // Attributes & Specifications
+    // Attributes & Technical Specifications
     attributes,
-    specifications,
+    technical_specifications,
 
     // Promotions & Packaging
     has_active_promo: getBooleanValue(doc.has_active_promo),

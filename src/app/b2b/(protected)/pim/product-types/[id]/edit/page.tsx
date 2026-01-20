@@ -6,9 +6,9 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ArrowLeft, Save, Cpu } from "lucide-react";
 import { toast } from "sonner";
 
-type TechnicalFeature = {
+type TechnicalSpecification = {
   _id: string;
-  feature_id: string;
+  technical_specification_id: string;
   key: string;
   label: string;
   type: "text" | "number" | "select" | "multiselect" | "boolean";
@@ -19,8 +19,8 @@ type TechnicalFeature = {
   is_active: boolean;
 };
 
-type SelectedFeature = {
-  feature_id: string;
+type SelectedSpecification = {
+  technical_specification_id: string;
   required: boolean;
   display_order: number;
 };
@@ -30,7 +30,7 @@ type ProductType = {
   name: string;
   slug: string;
   description?: string;
-  features?: SelectedFeature[];
+  technical_specifications?: SelectedSpecification[];
   display_order: number;
   is_active: boolean;
 };
@@ -52,14 +52,14 @@ export default function EditProductTypePage() {
     is_active: true,
   });
 
-  // Available features from the Features management page
-  const [availableFeatures, setAvailableFeatures] = useState<TechnicalFeature[]>([]);
+  // Available specifications from the Technical Specifications management page
+  const [availableSpecifications, setAvailableSpecifications] = useState<TechnicalSpecification[]>([]);
 
-  // Selected features with overrides
-  const [selectedFeatures, setSelectedFeatures] = useState<Map<string, SelectedFeature>>(new Map());
+  // Selected specifications with overrides
+  const [selectedSpecifications, setSelectedSpecifications] = useState<Map<string, SelectedSpecification>>(new Map());
 
   useEffect(() => {
-    Promise.all([fetchProductType(), fetchFeatures()]);
+    Promise.all([fetchProductType(), fetchSpecifications()]);
   }, [productTypeId]);
 
   async function fetchProductType() {
@@ -78,12 +78,12 @@ export default function EditProductTypePage() {
             is_active: productType.is_active,
           });
 
-          // Pre-populate selected features
-          const selected = new Map<string, SelectedFeature>();
-          (productType.features || []).forEach((f: SelectedFeature) => {
-            selected.set(f.feature_id, f);
+          // Pre-populate selected specifications
+          const selected = new Map<string, SelectedSpecification>();
+          (productType.technical_specifications || []).forEach((s: SelectedSpecification) => {
+            selected.set(s.technical_specification_id, s);
           });
-          setSelectedFeatures(selected);
+          setSelectedSpecifications(selected);
         } else {
           toast.error("Product type not found");
           router.push("/b2b/pim/product-types");
@@ -95,17 +95,17 @@ export default function EditProductTypePage() {
     }
   }
 
-  async function fetchFeatures() {
+  async function fetchSpecifications() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/features?include_inactive=false");
+      const res = await fetch("/api/b2b/pim/technical-specifications?include_inactive=false");
       if (res.ok) {
         const data = await res.json();
-        setAvailableFeatures(data.features);
+        setAvailableSpecifications(data.technical_specifications);
       }
     } catch (error) {
-      console.error("Error fetching features:", error);
-      toast.error("Failed to load features");
+      console.error("Error fetching technical specifications:", error);
+      toast.error("Failed to load technical specifications");
     } finally {
       setIsLoading(false);
     }
@@ -120,36 +120,36 @@ export default function EditProductTypePage() {
       .replace(/-+/g, "-");
   }
 
-  function toggleFeature(feature: TechnicalFeature) {
-    const newSelected = new Map(selectedFeatures);
+  function toggleSpecification(spec: TechnicalSpecification) {
+    const newSelected = new Map(selectedSpecifications);
 
-    if (newSelected.has(feature.feature_id)) {
-      newSelected.delete(feature.feature_id);
+    if (newSelected.has(spec.technical_specification_id)) {
+      newSelected.delete(spec.technical_specification_id);
     } else {
-      newSelected.set(feature.feature_id, {
-        feature_id: feature.feature_id,
-        required: feature.default_required,
+      newSelected.set(spec.technical_specification_id, {
+        technical_specification_id: spec.technical_specification_id,
+        required: spec.default_required,
         display_order: newSelected.size,
       });
     }
 
-    setSelectedFeatures(newSelected);
+    setSelectedSpecifications(newSelected);
   }
 
-  function updateFeatureOverride(featureId: string, updates: Partial<SelectedFeature>) {
-    const newSelected = new Map(selectedFeatures);
-    const current = newSelected.get(featureId);
+  function updateSpecificationOverride(specId: string, updates: Partial<SelectedSpecification>) {
+    const newSelected = new Map(selectedSpecifications);
+    const current = newSelected.get(specId);
     if (current) {
-      newSelected.set(featureId, { ...current, ...updates });
-      setSelectedFeatures(newSelected);
+      newSelected.set(specId, { ...current, ...updates });
+      setSelectedSpecifications(newSelected);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (selectedFeatures.size === 0) {
-      toast.error("Please select at least one feature");
+    if (selectedSpecifications.size === 0) {
+      toast.error("Please select at least one technical specification");
       return;
     }
 
@@ -162,7 +162,7 @@ export default function EditProductTypePage() {
         description: formData.description,
         display_order: formData.display_order,
         is_active: formData.is_active,
-        features: Array.from(selectedFeatures.values()),
+        technical_specifications: Array.from(selectedSpecifications.values()),
       };
 
       const res = await fetch(`/api/b2b/pim/product-types/${productTypeId}`, {
@@ -186,12 +186,12 @@ export default function EditProductTypePage() {
     }
   }
 
-  // Group features by type
-  const groupedFeatures = availableFeatures.reduce((acc, feat) => {
-    if (!acc[feat.type]) acc[feat.type] = [];
-    acc[feat.type].push(feat);
+  // Group specifications by type
+  const groupedSpecifications = availableSpecifications.reduce((acc, spec) => {
+    if (!acc[spec.type]) acc[spec.type] = [];
+    acc[spec.type].push(spec);
     return acc;
-  }, {} as Record<string, TechnicalFeature[]>);
+  }, {} as Record<string, TechnicalSpecification[]>);
 
   const typeLabels: Record<string, string> = {
     text: "Text",
@@ -234,7 +234,7 @@ export default function EditProductTypePage() {
             <div>
               <h1 className="text-2xl font-bold text-foreground">Edit Product Type</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Update product type and features
+                Update product type and technical specifications
               </p>
             </div>
           </div>
@@ -330,36 +330,36 @@ export default function EditProductTypePage() {
           </div>
         </div>
 
-        {/* Features Selection */}
+        {/* Technical Specifications Selection */}
         <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Select Features</h2>
+            <h2 className="text-lg font-semibold text-foreground">Select Technical Specifications</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose which features apply to this product type. Selected: {selectedFeatures.size}
+              Choose which specifications apply to this product type. Selected: {selectedSpecifications.size}
             </p>
           </div>
 
-          {availableFeatures.length === 0 ? (
+          {availableSpecifications.length === 0 ? (
             <div className="p-8 text-center border border-dashed border-border rounded-lg">
               <p className="text-sm text-muted-foreground">
-                No features available. Please create features first in the Features page.
+                No technical specifications available. Please create specifications first in the Technical Specifications page.
               </p>
             </div>
           ) : (
             <div className="space-y-6">
-              {Object.entries(groupedFeatures).map(([type, features]) => (
+              {Object.entries(groupedSpecifications).map(([type, specs]) => (
                 <div key={type} className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                    {typeLabels[type]} Features
+                    {typeLabels[type]} Specifications
                   </h3>
                   <div className="space-y-2">
-                    {features.map((feature) => {
-                      const isSelected = selectedFeatures.has(feature.feature_id);
-                      const selectedData = selectedFeatures.get(feature.feature_id);
+                    {specs.map((spec) => {
+                      const isSelected = selectedSpecifications.has(spec.technical_specification_id);
+                      const selectedData = selectedSpecifications.get(spec.technical_specification_id);
 
                       return (
                         <div
-                          key={feature.feature_id}
+                          key={spec.technical_specification_id}
                           className={`p-4 rounded-lg border transition ${
                             isSelected
                               ? "border-primary bg-primary/5"
@@ -370,28 +370,28 @@ export default function EditProductTypePage() {
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => toggleFeature(feature)}
+                              onChange={() => toggleSpecification(spec)}
                               className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-sm text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                  {feature.key}
+                                  {spec.key}
                                 </span>
-                                <span className="font-medium text-foreground">{feature.label}</span>
-                                {feature.unit && (
-                                  <span className="text-xs text-muted-foreground">({feature.unit})</span>
+                                <span className="font-medium text-foreground">{spec.label}</span>
+                                {spec.unit && (
+                                  <span className="text-xs text-muted-foreground">({spec.unit})</span>
                                 )}
-                                {feature.default_required && (
+                                {spec.default_required && (
                                   <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">
                                     Required by default
                                   </span>
                                 )}
                               </div>
-                              {feature.options && feature.options.length > 0 && (
+                              {spec.options && spec.options.length > 0 && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Options: {feature.options.slice(0, 3).join(", ")}
-                                  {feature.options.length > 3 && ` +${feature.options.length - 3} more`}
+                                  Options: {spec.options.slice(0, 3).join(", ")}
+                                  {spec.options.length > 3 && ` +${spec.options.length - 3} more`}
                                 </p>
                               )}
 
@@ -403,7 +403,7 @@ export default function EditProductTypePage() {
                                       type="checkbox"
                                       checked={selectedData.required}
                                       onChange={(e) =>
-                                        updateFeatureOverride(feature.feature_id, {
+                                        updateSpecificationOverride(spec.technical_specification_id, {
                                           required: e.target.checked,
                                         })
                                       }
@@ -417,7 +417,7 @@ export default function EditProductTypePage() {
                                       type="number"
                                       value={selectedData.display_order}
                                       onChange={(e) =>
-                                        updateFeatureOverride(feature.feature_id, {
+                                        updateSpecificationOverride(spec.technical_specification_id, {
                                           display_order: parseInt(e.target.value),
                                         })
                                       }

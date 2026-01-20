@@ -24,7 +24,7 @@ import { ActivityLogSchema } from "./models/activity-log";
 import { B2BProductSchema } from "./models/b2b-product";
 import { MenuItemSchema } from "./models/menu";
 import { ProductTypeSchema } from "./models/product-type";
-import { FeatureSchema } from "./models/feature";
+import { TechnicalSpecificationSchema } from "./models/technical-specification";
 import { PageSchema } from "./models/page";
 import { HomeSettingsSchema } from "./models/home-settings";
 import { HomeTemplateSchema } from "./models/home-template";
@@ -55,7 +55,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   B2BProduct: B2BProductSchema,
   MenuItem: MenuItemSchema,
   ProductType: ProductTypeSchema,
-  Feature: FeatureSchema,
+  TechnicalSpecification: TechnicalSpecificationSchema,
   Page: PageSchema,
   HomeSettings: HomeSettingsSchema,
   HomeTemplate: HomeTemplateSchema,
@@ -128,7 +128,7 @@ export async function getTenantModels(dbName: string) {
     B2BProduct: connection.models.B2BProduct,
     MenuItem: connection.models.MenuItem,
     ProductType: connection.models.ProductType,
-    Feature: connection.models.Feature,
+    TechnicalSpecification: connection.models.TechnicalSpecification,
     Page: connection.models.Page,
     HomeSettings: connection.models.HomeSettings,
     HomeTemplate: connection.models.HomeTemplate,

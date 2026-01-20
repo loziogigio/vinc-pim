@@ -160,7 +160,7 @@ export class B2CAdapter extends MarketplaceAdapter {
       collections: product.collections,
       product_type: product.product_type,
       media: product.media,
-      specifications: product.specifications,
+      technical_specifications: product.technical_specifications,
       attributes: product.attributes,
       ean: product.ean,
 

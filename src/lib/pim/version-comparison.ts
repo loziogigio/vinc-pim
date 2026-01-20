@@ -45,7 +45,8 @@ export function compareVersions(
     "brand",
     "category",
     "tag",
-    "features",
+    "marketing_features",
+    "technical_specifications",
     "packaging_options",
   ];
 

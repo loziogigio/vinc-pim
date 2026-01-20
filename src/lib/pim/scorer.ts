@@ -105,9 +105,9 @@ export function calculateCompletenessScore(
     score += 5;
   }
 
-  // Features (25 points)
-  if (hasFeatures(product.features)) {
-    const featureCount = countFeatures(product.features);
+  // Marketing Features (25 points)
+  if (hasFeatures(product.marketing_features)) {
+    const featureCount = countFeatures(product.marketing_features);
     if (featureCount >= 5) {
       score += 25;
     } else {
@@ -285,18 +285,18 @@ export function getScoreBreakdown(
     percentage: (galleryCurrent / galleryMax) * 100,
   };
 
-  // Features
+  // Marketing Features
   const featuresMax = 25;
   let featuresCurrent = 0;
-  if (hasFeatures(product.features)) {
-    const featureCount = countFeatures(product.features);
+  if (hasFeatures(product.marketing_features)) {
+    const featureCount = countFeatures(product.marketing_features);
     if (featureCount >= 5) {
       featuresCurrent = 25;
     } else {
       featuresCurrent = featureCount * 5;
     }
   }
-  breakdown.features = {
+  breakdown.marketing_features = {
     current: featuresCurrent,
     max: featuresMax,
     percentage: (featuresCurrent / featuresMax) * 100,
