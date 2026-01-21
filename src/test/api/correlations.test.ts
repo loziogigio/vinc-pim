@@ -941,4 +941,281 @@ describe("integration: Correlations API", () => {
       expect(data.stats.by_type.related).toBe(0);
     });
   });
+
+  // ============================================
+  // POST /api/b2b/correlations/bulk - Bulk Import
+  // ============================================
+
+  describe("POST /api/b2b/correlations/bulk", () => {
+    // Import the bulk handler
+    let bulkImport: (req: NextRequest) => Promise<Response>;
+
+    beforeAll(async () => {
+      const bulkModule = await import("@/app/api/b2b/correlations/bulk/route");
+      bulkImport = bulkModule.POST;
+    });
+
+    it("should bulk import multiple correlations", async () => {
+      /**
+       * Test bulk importing multiple correlations in one request.
+       */
+      // Arrange - Create products
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "BULK-A" }));
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "BULK-B" }));
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "BULK-C" }));
+
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [
+            { source_entity_code: "BULK-A", target_entity_code: "BULK-B" },
+            { source_entity_code: "BULK-A", target_entity_code: "BULK-C" },
+          ],
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.result.created).toBe(2);
+      expect(data.result.failed).toBe(0);
+
+      // Verify in database
+      const correlations = await ProductCorrelationModel.find({ source_entity_code: "BULK-A" });
+      expect(correlations).toHaveLength(2);
+    });
+
+    it("should handle bidirectional correlations in bulk", async () => {
+      /**
+       * Test bulk importing bidirectional correlations.
+       */
+      // Arrange
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "BIDIR-A" }));
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "BIDIR-B" }));
+
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [
+            { source_entity_code: "BIDIR-A", target_entity_code: "BIDIR-B", is_bidirectional: true },
+          ],
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.result.created).toBe(2); // Both directions
+
+      // Verify both directions exist
+      const forward = await ProductCorrelationModel.findOne({
+        source_entity_code: "BIDIR-A",
+        target_entity_code: "BIDIR-B",
+      });
+      const reverse = await ProductCorrelationModel.findOne({
+        source_entity_code: "BIDIR-B",
+        target_entity_code: "BIDIR-A",
+      });
+      expect(forward).not.toBeNull();
+      expect(reverse).not.toBeNull();
+    });
+
+    it("should skip self-correlations in bulk", async () => {
+      /**
+       * Test that self-correlations are skipped.
+       */
+      // Arrange
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "SELF-A" }));
+
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [
+            { source_entity_code: "SELF-A", target_entity_code: "SELF-A" },
+          ],
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.result.created).toBe(0);
+      expect(data.result.skipped).toBe(1);
+    });
+
+    it("should report errors for missing products", async () => {
+      /**
+       * Test error reporting when products don't exist.
+       */
+      // Arrange - Only create source product
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "EXISTS-A" }));
+
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [
+            { source_entity_code: "EXISTS-A", target_entity_code: "NOT-EXISTS" },
+          ],
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.result.created).toBe(0);
+      expect(data.result.failed).toBe(1);
+      expect(data.result.errors).toHaveLength(1);
+      expect(data.result.errors[0].error).toContain("Target product not found");
+    });
+
+    it("should use replace sync_mode to clear existing correlations", async () => {
+      /**
+       * Test replace mode deletes existing correlations first.
+       */
+      // Arrange - Create existing correlation
+      await ProductCorrelationModel.create(
+        CorrelationFactory.createDocument({
+          source_entity_code: "REPLACE-OLD",
+          target_entity_code: "REPLACE-TGT",
+          correlation_type: "related",
+        })
+      );
+
+      // Create new products
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "REPLACE-NEW" }));
+      await PIMProductModel.create(PIMProductFactory.createPayload({ entity_code: "REPLACE-TGT2" }));
+
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [
+            { source_entity_code: "REPLACE-NEW", target_entity_code: "REPLACE-TGT2" },
+          ],
+          sync_mode: "replace",
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.result.created).toBe(1);
+
+      // Old correlation should be deleted
+      const oldCorrelation = await ProductCorrelationModel.findOne({
+        source_entity_code: "REPLACE-OLD",
+      });
+      expect(oldCorrelation).toBeNull();
+
+      // New correlation should exist
+      const newCorrelation = await ProductCorrelationModel.findOne({
+        source_entity_code: "REPLACE-NEW",
+      });
+      expect(newCorrelation).not.toBeNull();
+    });
+
+    it("should reject empty correlations array", async () => {
+      /**
+       * Test validation for empty array.
+       */
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({ correlations: [] }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(400);
+      expect(data.error).toContain("correlations array is required");
+    });
+
+    it("should reject invalid sync_mode", async () => {
+      /**
+       * Test validation for invalid sync mode.
+       */
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [{ source_entity_code: "A", target_entity_code: "B" }],
+          sync_mode: "invalid",
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(400);
+      expect(data.error).toContain("sync_mode must be");
+    });
+
+    it("should enrich with product data in bulk", async () => {
+      /**
+       * Test that bulk import enriches correlations with product data.
+       */
+      // Arrange
+      await PIMProductModel.create(PIMProductFactory.createPayload({
+        entity_code: "ENRICH-A",
+        name: { it: "Prodotto A" },
+        images: [{ cdn_key: "a.jpg", url: "https://cdn.example.com/a.jpg", is_cover: true, position: 0 }],
+      }));
+      await PIMProductModel.create(PIMProductFactory.createPayload({
+        entity_code: "ENRICH-B",
+        name: { it: "Prodotto B" },
+        images: [{ cdn_key: "b.jpg", url: "https://cdn.example.com/b.jpg", is_cover: true, position: 0 }],
+      }));
+
+      const req = new NextRequest("http://localhost/api/b2b/correlations/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          correlations: [
+            { source_entity_code: "ENRICH-A", target_entity_code: "ENRICH-B" },
+          ],
+        }),
+        headers: { "Content-Type": "application/json", "x-auth-method": "api-key" },
+      });
+
+      // Act
+      const res = await bulkImport(req);
+      await res.json();
+
+      // Assert - Check database for enriched data
+      const correlation = await ProductCorrelationModel.findOne({
+        source_entity_code: "ENRICH-A",
+        target_entity_code: "ENRICH-B",
+      });
+
+      expect(correlation).not.toBeNull();
+      expect(correlation!.source_product.name.it).toBe("Prodotto A");
+      expect(correlation!.source_product.cover_image_url).toBe("https://cdn.example.com/a.jpg");
+      expect(correlation!.target_product.name.it).toBe("Prodotto B");
+      expect(correlation!.target_product.cover_image_url).toBe("https://cdn.example.com/b.jpg");
+    });
+  });
 });

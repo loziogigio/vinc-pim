@@ -30,6 +30,13 @@ REST API documentation for the VINC Commerce Suite.
   - Auto-assignment of created resources
   - External integration examples
 
+- **[Correlations API](./correlations-api.md)** - Product correlations and relationships
+  - Related products management (Articoli Correlati)
+  - CRUD operations for correlations
+  - Bulk import from ERP (CORRE00F)
+  - Bidirectional correlation support
+  - Statistics for dashboard
+
 ### AI Search API
 
 - **[ELIA AI Search](./elia-api.md)** - AI-powered natural language product search
