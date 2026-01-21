@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ArrowLeft, Save, Cpu } from "lucide-react";
 import { toast } from "sonner";
+import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
 
 type TechnicalSpecification = {
   _id: string;
@@ -27,9 +28,9 @@ type SelectedSpecification = {
 
 type ProductType = {
   product_type_id: string;
-  name: string;
+  name: MultiLangString;
   slug: string;
-  description?: string;
+  description?: MultiLangString;
   technical_specifications?: SelectedSpecification[];
   display_order: number;
   is_active: boolean;
@@ -71,9 +72,9 @@ export default function EditProductTypePage() {
 
         if (productType) {
           setFormData({
-            name: productType.name,
+            name: getLocalizedString(productType.name, ""),
             slug: productType.slug,
-            description: productType.description || "",
+            description: getLocalizedString(productType.description, ""),
             display_order: productType.display_order,
             is_active: productType.is_active,
           });
@@ -157,9 +158,9 @@ export default function EditProductTypePage() {
 
     try {
       const payload = {
-        name: formData.name,
+        name: { it: formData.name }, // Multilingual: store as object
         slug: formData.slug,
-        description: formData.description,
+        description: formData.description ? { it: formData.description } : undefined,
         display_order: formData.display_order,
         is_active: formData.is_active,
         technical_specifications: Array.from(selectedSpecifications.values()),

@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
 
 type ProductTypeFeature = {
   feature_id: string;
@@ -25,9 +26,9 @@ type ProductTypeFeature = {
 type ProductType = {
   _id: string;
   product_type_id: string;
-  name: string;
+  name: MultiLangString;
   slug: string;
-  description?: string;
+  description?: MultiLangString;
   features?: ProductTypeFeature[];
   display_order: number;
   is_active: boolean;
@@ -71,7 +72,7 @@ export default function ProductTypesPage() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${productType.name}"?`)) {
+    if (!confirm(`Are you sure you want to delete "${getLocalizedString(productType.name)}"?`)) {
       return;
     }
 
@@ -95,8 +96,9 @@ export default function ProductTypesPage() {
 
   // Filter product types based on search and active status
   const filteredProductTypes = productTypes.filter((pt) => {
+    const nameStr = getLocalizedString(pt.name, "").toLowerCase();
     const matchesSearch =
-      pt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      nameStr.includes(searchQuery.toLowerCase()) ||
       pt.slug.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesActive = showInactive || pt.is_active;
     return matchesSearch && matchesActive;
@@ -211,7 +213,7 @@ export default function ProductTypesPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-semibold text-foreground">{productType.name}</h3>
+                        <h3 className="text-base font-semibold text-foreground">{getLocalizedString(productType.name)}</h3>
                         {!productType.is_active && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                             Inactive
@@ -226,7 +228,7 @@ export default function ProductTypesPage() {
                       <p className="text-xs text-muted-foreground mt-0.5 font-mono">{productType.slug}</p>
                       {productType.description && (
                         <p className="mt-1 max-w-2xl text-sm text-muted-foreground line-clamp-1">
-                          {productType.description}
+                          {getLocalizedString(productType.description)}
                         </p>
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

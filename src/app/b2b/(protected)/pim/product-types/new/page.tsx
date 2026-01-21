@@ -219,9 +219,9 @@ export default function NewProductTypePage() {
 
     try {
       const payload = {
-        name: formData.name,
+        name: { it: formData.name }, // Multilingual: store as object
         slug: formData.slug,
-        description: formData.description,
+        description: formData.description ? { it: formData.description } : undefined,
         display_order: formData.display_order,
         technical_specifications: Array.from(selectedSpecifications.values()),
       };

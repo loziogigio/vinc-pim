@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Search, X, Cpu } from "lucide-react";
+import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
 
 type ProductType = {
   product_type_id: string;
-  name: string;
+  name: MultiLangString;
   slug: string;
-  description?: string;
+  description?: MultiLangString;
   features?: {
     feature_id: string;
     required: boolean;
@@ -30,7 +31,7 @@ type ProductTypeWithFeatureDetails = ProductType & {
 type Props = {
   value?: {
     id: string;
-    name: string;
+    name: MultiLangString;
     slug: string;
   };
   onChange: (productType: ProductTypeWithFeatureDetails | null) => void;
@@ -106,10 +107,11 @@ export function ProductTypeSelector({ value, onChange, disabled }: Props) {
     onChange(null);
   }
 
-  const filteredProductTypes = productTypes.filter((pt) =>
-    pt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pt.slug.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProductTypes = productTypes.filter((pt) => {
+    const nameStr = getLocalizedString(pt.name, "").toLowerCase();
+    return nameStr.includes(searchQuery.toLowerCase()) ||
+      pt.slug.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="relative">
@@ -123,7 +125,7 @@ export function ProductTypeSelector({ value, onChange, disabled }: Props) {
           <div className="flex items-center gap-2">
             <Cpu className="h-4 w-4 text-primary" />
             <div>
-              <p className="text-sm font-medium text-foreground">{value.name}</p>
+              <p className="text-sm font-medium text-foreground">{getLocalizedString(value.name)}</p>
               <p className="text-xs text-muted-foreground">{value.slug}</p>
             </div>
           </div>
@@ -200,10 +202,10 @@ export function ProductTypeSelector({ value, onChange, disabled }: Props) {
                       <div className="flex items-start gap-3">
                         <Cpu className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground">{pt.name}</p>
+                          <p className="font-medium text-foreground">{getLocalizedString(pt.name)}</p>
                           <p className="text-xs text-muted-foreground mb-1">{pt.slug}</p>
                           {pt.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">{pt.description}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{getLocalizedString(pt.description)}</p>
                           )}
                           <div className="mt-2 text-xs text-muted-foreground">
                             {(pt.features || []).length} technical features

@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import type { MultiLangString } from "@/lib/types/pim";
 
 export interface IProductTypeTechnicalSpecification {
   technical_specification_id: string; // Reference to TechnicalSpecification
@@ -10,9 +11,9 @@ export interface IProductType extends Document {
   product_type_id: string;
   code?: string; // Customer's ERP code (e.g., "001", "010")
   // wholesaler_id removed - database per wholesaler provides isolation
-  name: string; // e.g., "Water Meter", "Pump", "Valve"
+  name: MultiLangString; // e.g., { it: "Contatore Acqua", en: "Water Meter" }
   slug: string;
-  description?: string;
+  description?: MultiLangString;
 
   // Technical Specifications (references to TechnicalSpecification model)
   technical_specifications: IProductTypeTechnicalSpecification[];
@@ -64,9 +65,8 @@ const ProductTypeSchema = new Schema<IProductType>(
     },
     // wholesaler_id removed - database per wholesaler provides isolation
     name: {
-      type: String,
+      type: Schema.Types.Mixed, // Multilingual: { it: "...", en: "..." }
       required: true,
-      trim: true,
     },
     slug: {
       type: String,
@@ -75,8 +75,7 @@ const ProductTypeSchema = new Schema<IProductType>(
       lowercase: true,
     },
     description: {
-      type: String,
-      trim: true,
+      type: Schema.Types.Mixed, // Multilingual: { it: "...", en: "..." }
     },
     technical_specifications: {
       type: [ProductTypeTechnicalSpecificationSchema],

@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Cpu,
 } from "lucide-react";
+import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
 
 type ProductTypeFeature = {
   feature_id: string;
@@ -25,9 +26,9 @@ type ProductTypeFeature = {
 
 type ProductType = {
   product_type_id: string;
-  name: string;
+  name: MultiLangString;
   slug: string;
-  description?: string;
+  description?: MultiLangString;
   features?: ProductTypeFeature[];
   display_order: number;
   is_active: boolean;
@@ -396,7 +397,7 @@ export default function ProductTypeDetailPage() {
               <div className="flex items-center gap-3">
                 <Cpu className="w-10 h-10 text-primary" />
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground mb-2">{productType.name}</h1>
+                  <h1 className="text-3xl font-bold text-foreground mb-2">{getLocalizedString(productType.name)}</h1>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <span>Slug: {productType.slug}</span>
                     <span>Products: {productType.product_count}</span>
@@ -459,7 +460,7 @@ export default function ProductTypeDetailPage() {
             <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
               <h2 className="text-lg font-semibold text-foreground">Product Type Details</h2>
               {productType.description && (
-                <p className="text-sm leading-6 text-muted-foreground">{productType.description}</p>
+                <p className="text-sm leading-6 text-muted-foreground">{getLocalizedString(productType.description)}</p>
               )}
               <dl className="grid gap-4 sm:grid-cols-2 text-sm text-muted-foreground">
                 <div>
@@ -666,7 +667,7 @@ export default function ProductTypeDetailPage() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Add products to product type</h2>
                 <p className="text-sm text-muted-foreground">
-                  Select products to associate with {productType.name}
+                  Select products to associate with {getLocalizedString(productType.name)}
                 </p>
               </div>
               <button
@@ -759,7 +760,7 @@ export default function ProductTypeDetailPage() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Import products</h2>
                 <p className="text-sm text-muted-foreground">
-                  Upload a file to add or remove products from {productType.name}
+                  Upload a file to add or remove products from {getLocalizedString(productType.name)}
                 </p>
               </div>
               <button
