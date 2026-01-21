@@ -40,7 +40,7 @@ type ProductType = {
 type Product = {
   entity_code: string;
   sku: string;
-  name: string;
+  name: MultiLangString;
   image?: {
     thumbnail: string;
   };
@@ -580,7 +580,7 @@ export default function ProductTypeDetailPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={product.image.thumbnail}
-                              alt={product.name}
+                              alt={getLocalizedString(product.name)}
                               className="h-full w-full object-cover"
                             />
                           ) : (
@@ -589,7 +589,7 @@ export default function ProductTypeDetailPage() {
                         </div>
                         <div className="flex flex-1 flex-col gap-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">{product.name}</span>
+                            <span className="font-medium text-foreground">{getLocalizedString(product.name)}</span>
                             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                               {product.status}
                             </span>
@@ -714,7 +714,7 @@ export default function ProductTypeDetailPage() {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={product.image.thumbnail}
-                                alt={product.name}
+                                alt={getLocalizedString(product.name)}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
@@ -722,7 +722,7 @@ export default function ProductTypeDetailPage() {
                             )}
                           </div>
                           <div>
-                            <div className="font-medium text-foreground">{product.name}</div>
+                            <div className="font-medium text-foreground">{getLocalizedString(product.name)}</div>
                             <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>
                           </div>
                         </label>
