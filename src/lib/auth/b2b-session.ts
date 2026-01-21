@@ -17,6 +17,7 @@ const sessionOptions = {
     maxAge: 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     sameSite: "lax" as const,
+    path: "/", // Required for cookie to be sent to all routes (including /api/*)
   },
 };
 
