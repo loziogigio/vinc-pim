@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Secret",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
   "Access-Control-Max-Age": "86400", // 24 hours
 };
 
