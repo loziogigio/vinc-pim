@@ -62,6 +62,45 @@ Structured data with keys, labels, values, and units:
 
 ---
 
+## API Authentication
+
+All API endpoints support two authentication methods:
+
+### 1. Session Authentication (B2B Portal)
+
+Used when accessing from the B2B portal UI. The session cookie is automatically included.
+
+### 2. API Key Authentication (External Scripts/Integrations)
+
+For external integrations and sync scripts, use API key authentication with these headers:
+
+| Header         | Required | Format                       | Description          |
+|----------------|----------|------------------------------|----------------------|
+| `x-api-key-id` | Yes      | `ak_{tenant}_{12-hex-chars}` | API key identifier   |
+| `x-api-secret` | Yes      | `sk_{32-hex-chars}`          | API key secret       |
+
+**Example:**
+
+```bash
+curl -X GET "http://localhost:3001/{tenant}/api/b2b/pim/product-types" \
+  -H "x-api-key-id: ak_hidros-it_aabbccddeeff" \
+  -H "x-api-secret: sk_aabbccddeeff00112233445566778899"
+```
+
+**URL Patterns:**
+
+- With tenant prefix: `/{tenant}/api/b2b/pim/...` (recommended for clarity)
+- Without prefix: `/api/b2b/pim/...` (tenant extracted from API key)
+
+**Required Permissions:**
+
+| Endpoint                               | Permission                        |
+|----------------------------------------|-----------------------------------|
+| `/api/b2b/pim/technical-specifications` | `technical-specifications` or `*` |
+| `/api/b2b/pim/product-types`           | `product-types` or `*`            |
+
+---
+
 ## Technical Specifications
 
 **Technical Specifications** define reusable data attributes for products.
@@ -124,9 +163,8 @@ Structured data with keys, labels, values, and units:
 ### Create Technical Specification Example
 
 ```bash
-curl -X POST "http://localhost:3001/api/b2b/pim/technical-specifications" \
+curl -X POST "http://localhost:3001/{tenant}/api/b2b/pim/technical-specifications" \
   -H "Content-Type: application/json" \
-  -H "x-auth-method: api-key" \
   -H "x-api-key-id: ak_{tenant}_{key}" \
   -H "x-api-secret: sk_{secret}" \
   -d '{
@@ -155,6 +193,7 @@ curl -X POST "http://localhost:3001/api/b2b/pim/technical-specifications" \
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `product_type_id` | string | Yes | Unique identifier (nanoid) |
+| `code` | string | No | Customer's ERP code (e.g., "001", "010") - must be unique |
 | `name` | string | Yes | Display name (e.g., "Water Meter") |
 | `slug` | string | Yes | URL-friendly identifier (lowercase) |
 | `description` | string | No | Optional description |
@@ -178,6 +217,7 @@ Each specification in the `technical_specifications` array has:
 ```json
 {
   "product_type_id": "abc123xyz789",
+  "code": "001",
   "name": "Water Meter",
   "slug": "water-meter",
   "description": "Meters for measuring water flow and usage",
@@ -207,12 +247,12 @@ Each specification in the `technical_specifications` array has:
 ### Create Product Type Example
 
 ```bash
-curl -X POST "http://localhost:3001/api/b2b/pim/product-types" \
+curl -X POST "http://localhost:3001/{tenant}/api/b2b/pim/product-types" \
   -H "Content-Type: application/json" \
-  -H "x-auth-method: api-key" \
   -H "x-api-key-id: ak_{tenant}_{key}" \
   -H "x-api-secret: sk_{secret}" \
   -d '{
+    "code": "005",
     "name": "Pressure Gauge",
     "slug": "pressure-gauge",
     "description": "Instruments for measuring pressure",
@@ -223,6 +263,8 @@ curl -X POST "http://localhost:3001/api/b2b/pim/product-types" \
     "display_order": 5
   }'
 ```
+
+> **Note:** The `code` field is optional but recommended for ERP integration. It must be unique per tenant.
 
 ### Constraints
 
