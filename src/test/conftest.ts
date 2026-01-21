@@ -488,6 +488,98 @@ export const ProductTypeFactory = {
   },
 };
 
+/**
+ * Factory for creating test PIM products.
+ */
+export const PIMProductFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    const code = `PROD-${nanoid(6)}`;
+    return {
+      entity_code: code,
+      sku: code,
+      name: { it: `Prodotto ${code}`, en: `Product ${code}` },
+      description: { it: `Descrizione ${code}`, en: `Description ${code}` },
+      status: "published",
+      isCurrent: true,
+      price: 99.99,
+      images: [
+        {
+          cdn_key: `images/${code}.jpg`,
+          url: `https://example.com/images/${code}.jpg`,
+          is_cover: true,
+          position: 0,
+        },
+      ],
+      ...overrides,
+    };
+  },
+
+  createMinimal(overrides?: Record<string, unknown>) {
+    const code = `PROD-${nanoid(6)}`;
+    return {
+      entity_code: code,
+      sku: code,
+      name: { it: `Prodotto ${code}` },
+      isCurrent: true,
+      ...overrides,
+    };
+  },
+};
+
+/**
+ * Factory for creating test product correlations.
+ */
+export const CorrelationFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    return {
+      source_entity_code: `PROD-${nanoid(6)}`,
+      target_entity_code: `PROD-${nanoid(6)}`,
+      correlation_type: "related",
+      is_bidirectional: false,
+      position: 0,
+      ...overrides,
+    };
+  },
+
+  createBidirectional(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      is_bidirectional: true,
+      ...overrides,
+    });
+  },
+
+  createDocument(overrides?: Record<string, unknown>) {
+    const sourceCode = `PROD-${nanoid(6)}`;
+    const targetCode = `PROD-${nanoid(6)}`;
+    return {
+      correlation_id: nanoid(),
+      source_entity_code: sourceCode,
+      target_entity_code: targetCode,
+      correlation_type: "related",
+      source_product: {
+        entity_code: sourceCode,
+        sku: sourceCode,
+        name: { it: "Source Product", en: "Source Product" },
+        cover_image_url: "https://example.com/source.jpg",
+        price: 89.99,
+      },
+      target_product: {
+        entity_code: targetCode,
+        sku: targetCode,
+        name: { it: "Target Product", en: "Target Product" },
+        cover_image_url: "https://example.com/target.jpg",
+        price: 99.99,
+      },
+      position: 0,
+      is_bidirectional: false,
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+      ...overrides,
+    };
+  },
+};
+
 // ============================================
 // ASSERTIONS
 // ============================================

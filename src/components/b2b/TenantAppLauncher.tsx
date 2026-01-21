@@ -8,7 +8,8 @@ import {
   Package,
   Home,
   LogOut,
-  Store
+  Store,
+  Link2,
 } from "lucide-react";
 
 interface TenantAppLauncherProps {
@@ -25,6 +26,13 @@ export function TenantAppLauncher({ tenant }: TenantAppLauncherProps) {
       href: `/${tenant}/b2b/pim`,
       icon: Package,
       color: "bg-violet-500",
+    },
+    {
+      name: "Correlazioni",
+      description: "Related products",
+      href: `/${tenant}/b2b/correlations`,
+      icon: Link2,
+      color: "bg-cyan-500",
     },
     {
       name: "Home Builder",

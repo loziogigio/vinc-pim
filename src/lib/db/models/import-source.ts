@@ -11,6 +11,16 @@ export interface IImportSource extends Document {
   source_name: string; // e.g., "ACME Manufacturing Feed"
   source_type: "api" | "csv" | "excel" | "xml" | "manual" | "manual_upload";
 
+  // Import type: what kind of data this source imports
+  import_type: "products" | "correlations";
+
+  // Correlation-specific settings (only used when import_type: "correlations")
+  correlation_settings?: {
+    default_type: string; // "related", "accessory", etc.
+    create_bidirectional: boolean; // Create both A→B and B→A records
+    sync_mode: "replace" | "merge"; // replace: delete all first, merge: add new only
+  };
+
   // API configuration (for source_type: "api")
   api_config?: {
     endpoint: string; // API URL
@@ -70,6 +80,20 @@ const ImportSourceSchema = new Schema<IImportSource>(
       type: String,
       enum: ["api", "csv", "excel", "xml", "manual", "manual_upload"],
       required: true,
+    },
+
+    // Import type: what kind of data this source imports
+    import_type: {
+      type: String,
+      enum: ["products", "correlations"],
+      default: "products",
+    },
+
+    // Correlation-specific settings (only used when import_type: "correlations")
+    correlation_settings: {
+      default_type: { type: String, default: "related" },
+      create_bidirectional: { type: Boolean, default: true },
+      sync_mode: { type: String, enum: ["replace", "merge"], default: "replace" },
     },
 
     // API configuration for API sources

@@ -13,11 +13,13 @@ import {
   Settings,
   LogOut,
   Home,
+  Link2,
 } from "lucide-react";
 
 const apps = [
   { name: "Home", href: "/b2b", icon: Home, color: "bg-[#009688]" },
   { name: "PIM", href: "/b2b/pim", icon: Package, color: "bg-violet-500" },
+  { name: "Correlazioni", href: "/b2b/correlations", icon: Link2, color: "bg-cyan-500" },
   { name: "Store", href: "/b2b/store/orders", icon: Store, color: "bg-amber-500" },
   { name: "Customers", href: "/b2b/store/customers", icon: Users, color: "bg-emerald-500" },
   { name: "Portal Users", href: "/b2b/store/portal-users", icon: KeyRound, color: "bg-indigo-500" },

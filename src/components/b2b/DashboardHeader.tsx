@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, User, Home, Package, Store, LayoutDashboard, Users, Settings } from "lucide-react";
+import { Bell, User, Home, Package, Store, LayoutDashboard, Users, Settings, Link2 } from "lucide-react";
 import type { B2BSessionData } from "@/lib/types/b2b";
 import { AppLauncherDropdown } from "./AppLauncherDropdown";
 
@@ -14,6 +14,7 @@ type DashboardHeaderProps = {
 function getCurrentSection(pathname: string) {
   // Check if path contains the section (works with or without tenant prefix)
   if (pathname.includes("/b2b/pim")) return { name: "PIM", icon: Package, color: "bg-violet-500" };
+  if (pathname.includes("/b2b/correlations")) return { name: "Correlazioni", icon: Link2, color: "bg-cyan-500" };
   if (pathname.includes("/b2b/store/orders")) return { name: "Store", icon: Store, color: "bg-amber-500" };
   if (pathname.includes("/b2b/store/customers")) return { name: "Store", icon: Users, color: "bg-emerald-500" };
   if (pathname.includes("/b2b/store")) return { name: "Store", icon: Store, color: "bg-amber-500" };

@@ -160,6 +160,7 @@ export function mergeMediaFromParent(
 interface ProductEnrichmentData {
   entity_code?: string;
   attributes?: any;
+  technical_specifications?: any;
   images?: any[];
   media?: any[];
   share_images_with_variants?: boolean;
@@ -186,7 +187,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1 })
+    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -195,6 +196,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
       map.set(product.entity_code, {
         entity_code: product.entity_code,
         attributes: product.attributes,
+        technical_specifications: product.technical_specifications,
         images: product.images,
         media: product.media,
         share_images_with_variants: product.share_images_with_variants,
@@ -325,6 +327,39 @@ function getLocalizedAttributes(attributes: any, lang: string): any {
 }
 
 /**
+ * Extract technical specifications for the requested language
+ * MongoDB stores: { it: [...], en: [...] } with arrays of specs
+ */
+function getLocalizedTechnicalSpecs(specs: any, lang: string): any[] | undefined {
+  if (!specs) return undefined;
+
+  // Check if it's language-keyed format: { it: [...], en: [...] }
+  if (specs[lang] && Array.isArray(specs[lang])) {
+    return specs[lang];
+  }
+  // Fallback to Italian, then English, then first available array
+  if (specs.it && Array.isArray(specs.it)) {
+    return specs.it;
+  }
+  if (specs.en && Array.isArray(specs.en)) {
+    return specs.en;
+  }
+
+  // If it's already an array (flat format), return as-is
+  if (Array.isArray(specs)) {
+    return specs;
+  }
+
+  // Try to get first available language array
+  const firstValue = Object.values(specs)[0];
+  if (Array.isArray(firstValue)) {
+    return firstValue;
+  }
+
+  return undefined;
+}
+
+/**
  * Filter attributes to remove those marked hide_in_commerce
  * Only visible attributes (hide_in_commerce !== true) are returned
  */
@@ -409,6 +444,9 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
       const mongoAttributes = productData?.attributes
         ? filterVisibleAttributes(getLocalizedAttributes(productData.attributes, lang))
         : undefined;
+      const mongoTechnicalSpecs = productData?.technical_specifications
+        ? getLocalizedTechnicalSpecs(productData.technical_specifications, lang)
+        : undefined;
       const mongoMedia = productData?.media
         ? getLocalizedMedia(productData.media, lang)
         : undefined;
@@ -427,6 +465,7 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         tags: enrichTags(result.tags, tagsMap),
         // Replace Solr data with MongoDB data (source of truth, localized)
         attributes: mongoAttributes || result.attributes,
+        technical_specifications: mongoTechnicalSpecs || result.technical_specifications,
         images: productData?.images || result.images,
         media: mongoMedia || result.media,
         packaging_options: productData?.packaging_options || result.packaging_options,
@@ -532,6 +571,9 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
       const mongoAttributes = productData.attributes
         ? filterVisibleAttributes(getLocalizedAttributes(productData.attributes, lang))
         : undefined;
+      const mongoTechnicalSpecs = productData.technical_specifications
+        ? getLocalizedTechnicalSpecs(productData.technical_specifications, lang)
+        : undefined;
       const mongoMedia = productData.media
         ? getLocalizedMedia(productData.media, lang)
         : undefined;
@@ -571,8 +613,9 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         cover_image_url: productData.cover_image_url || product.cover_image_url,
         images: productData.images || product.images,
         media: mongoMedia || product.media,
-        // Attributes
+        // Attributes & Technical Specifications
         attributes: mongoAttributes || product.attributes,
+        technical_specifications: mongoTechnicalSpecs || product.technical_specifications,
         // Entity relations enriched
         brand: enrichBrand(productData.brand || product.brand, brandsMap),
         category: enrichCategory(productData.category || product.category, categoriesMap),

@@ -18,6 +18,8 @@ import {
 import { detectConflicts } from "../pim/conflict-resolver";
 import { syncProductToSolr } from "../sync/marketplace-sync";
 import { syncQueue } from "./queues";
+import { nanoid } from "nanoid";
+import { parseBidirectionalFlag } from "../constants/correlation";
 
 interface ImportJobData {
   job_id: string;
@@ -75,6 +77,358 @@ function applyDefaultLanguageToData(data: any, languageCodes: string[]): void {
         console.log(`📝 Applied default language '${defaultLang}' to field '${field}'`);
       }
     }
+  }
+}
+
+/**
+ * Process correlation import job
+ * Handles import of product correlations (related products, accessories, etc.)
+ */
+async function processCorrelationImport(
+  job: Job<ImportJobData>,
+  source: any,
+  tenantDb: string,
+  languageCodes: string[]
+) {
+  const { job_id, file_url, file_name, api_config } = job.data;
+  const isApiImport = !!api_config;
+
+  console.log(`📊 Processing correlation import: ${job_id}`);
+
+  const {
+    ImportJob: ImportJobModel,
+    ProductCorrelation,
+    PIMProduct: PIMProductModel,
+  } = await connectWithModels(tenantDb);
+
+  const correlationSettings = source.correlation_settings || {
+    default_type: "related",
+    create_bidirectional: true,
+    sync_mode: "replace",
+  };
+
+  const stats = {
+    total_rows: 0,
+    successful_rows: 0,
+    failed_rows: 0,
+    created_correlations: 0,
+    skipped_correlations: 0,
+  };
+  const errors: any[] = [];
+
+  try {
+    // Parse file or fetch API data
+    let rows: any[] = [];
+
+    if (isApiImport) {
+      // API import (similar to product import)
+      const fetchOptions: RequestInit = {
+        method: api_config!.method || "GET",
+        headers: api_config!.headers || {},
+      };
+
+      if (api_config!.auth_type === "bearer" && api_config!.auth_token) {
+        fetchOptions.headers = {
+          ...fetchOptions.headers,
+          Authorization: `Bearer ${api_config!.auth_token}`,
+        };
+      }
+
+      const response = await fetch(api_config!.endpoint, fetchOptions);
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const apiData = await response.json();
+      const dataArray = Array.isArray(apiData) ? apiData : [apiData];
+
+      // Map fields using source field_mapping
+      rows = dataArray.map((item: any) => {
+        const mapped: any = {};
+        if (source.field_mapping) {
+          for (const mapping of source.field_mapping) {
+            if (item[mapping.source_field] !== undefined) {
+              mapped[mapping.pim_field] = item[mapping.source_field];
+            }
+          }
+        } else {
+          Object.assign(mapped, item);
+        }
+        return mapped;
+      });
+    } else {
+      // File import
+      if (!file_url) {
+        throw new Error("No file URL provided");
+      }
+
+      const response = await fetch(file_url);
+      if (!response.ok) {
+        throw new Error(`CDN fetch failed: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const fileType = detectFileType(file_name || "data.csv");
+
+      let parsedRows: any[] = [];
+      if (fileType === "xlsx") {
+        parsedRows = parseExcel(buffer, source.field_mapping || []);
+      } else {
+        parsedRows = await parseCSV(buffer, source.field_mapping || []);
+      }
+
+      // Extract data from parsed rows
+      rows = parsedRows.map((row) => row.data || row);
+    }
+
+    stats.total_rows = rows.length;
+    console.log(`📊 Parsed ${rows.length} correlation rows`);
+
+    // Sync mode: replace = delete existing, merge = add new only
+    if (correlationSettings.sync_mode === "replace") {
+      console.log(`🗑️ Sync mode: replace - deleting existing correlations of type "${correlationSettings.default_type}"`);
+      const deleteResult = await ProductCorrelation.deleteMany({
+        correlation_type: correlationSettings.default_type,
+      });
+      console.log(`🗑️ Deleted ${deleteResult.deletedCount} existing correlations`);
+    }
+
+    // Process each correlation row
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      try {
+        const source_entity_code = row.source_entity_code || row.source || row.ARTPR;
+        const target_entity_code = row.target_entity_code || row.target || row.ARTCO;
+        const is_bidirectional_raw = row.is_bidirectional ?? row.bidirectional ?? row.CORSIM ?? false;
+        const is_bidirectional = parseBidirectionalFlag(is_bidirectional_raw);
+
+        if (!source_entity_code || !target_entity_code) {
+          errors.push({
+            row: i + 1,
+            error: "Missing source or target entity_code",
+            raw_data: row,
+          });
+          stats.failed_rows++;
+          continue;
+        }
+
+        // Skip self-correlations
+        if (source_entity_code === target_entity_code) {
+          stats.skipped_correlations++;
+          continue;
+        }
+
+        // Fetch target product to enrich correlation
+        const targetProduct = await PIMProductModel.findOne({
+          entity_code: target_entity_code,
+          isCurrent: true,
+        })
+          .select("entity_code sku name images price")
+          .lean() as any;
+
+        if (!targetProduct) {
+          errors.push({
+            row: i + 1,
+            error: `Target product not found: ${target_entity_code}`,
+            raw_data: row,
+          });
+          stats.failed_rows++;
+          continue;
+        }
+
+        // Verify source product exists
+        const sourceExists = await PIMProductModel.exists({
+          entity_code: source_entity_code,
+          isCurrent: true,
+        });
+
+        if (!sourceExists) {
+          errors.push({
+            row: i + 1,
+            error: `Source product not found: ${source_entity_code}`,
+            raw_data: row,
+          });
+          stats.failed_rows++;
+          continue;
+        }
+
+        // Get cover image URL
+        const coverImage = Array.isArray(targetProduct.images)
+          ? targetProduct.images.find((img: any) => img.is_cover) || targetProduct.images[0]
+          : null;
+
+        // Check for existing correlation (for merge mode)
+        if (correlationSettings.sync_mode === "merge") {
+          const existing = await ProductCorrelation.findOne({
+            source_entity_code,
+            target_entity_code,
+            correlation_type: correlationSettings.default_type,
+          });
+
+          if (existing) {
+            stats.skipped_correlations++;
+            continue;
+          }
+        }
+
+        // Create the correlation
+        await ProductCorrelation.create({
+          correlation_id: nanoid(),
+          source_entity_code,
+          target_entity_code,
+          correlation_type: correlationSettings.default_type,
+          target_product: {
+            entity_code: targetProduct.entity_code,
+            sku: targetProduct.sku,
+            name: targetProduct.name || {},
+            cover_image_url: coverImage?.url,
+            price: targetProduct.price,
+          },
+          position: i,
+          is_bidirectional,
+          is_active: true,
+          source_import: {
+            source_id: source.source_id,
+            source_name: source.source_name,
+            imported_at: new Date(),
+          },
+        });
+        stats.created_correlations++;
+
+        // Create reverse correlation if bidirectional
+        if (is_bidirectional && correlationSettings.create_bidirectional) {
+          const sourceProduct = await PIMProductModel.findOne({
+            entity_code: source_entity_code,
+            isCurrent: true,
+          })
+            .select("entity_code sku name images price")
+            .lean() as any;
+
+          if (sourceProduct) {
+            const sourceCoverImage = Array.isArray(sourceProduct.images)
+              ? sourceProduct.images.find((img: any) => img.is_cover) || sourceProduct.images[0]
+              : null;
+
+            // Check if reverse already exists
+            const reverseExists = await ProductCorrelation.findOne({
+              source_entity_code: target_entity_code,
+              target_entity_code: source_entity_code,
+              correlation_type: correlationSettings.default_type,
+            });
+
+            if (!reverseExists) {
+              await ProductCorrelation.create({
+                correlation_id: nanoid(),
+                source_entity_code: target_entity_code,
+                target_entity_code: source_entity_code,
+                correlation_type: correlationSettings.default_type,
+                target_product: {
+                  entity_code: sourceProduct.entity_code,
+                  sku: sourceProduct.sku,
+                  name: sourceProduct.name || {},
+                  cover_image_url: sourceCoverImage?.url,
+                  price: sourceProduct.price,
+                },
+                position: i,
+                is_bidirectional: true,
+                is_active: true,
+                source_import: {
+                  source_id: source.source_id,
+                  source_name: source.source_name,
+                  imported_at: new Date(),
+                },
+              });
+              stats.created_correlations++;
+            }
+          }
+        }
+
+        stats.successful_rows++;
+
+        // Update progress periodically
+        if (i % 50 === 0) {
+          await job.updateProgress(Math.round((i / rows.length) * 100));
+          await ImportJobModel.updateOne(
+            { job_id },
+            {
+              $set: {
+                processed_rows: i + 1,
+                successful_rows: stats.successful_rows,
+                failed_rows: stats.failed_rows,
+              },
+            }
+          );
+        }
+      } catch (rowError: any) {
+        errors.push({
+          row: i + 1,
+          error: rowError.message,
+          raw_data: row,
+        });
+        stats.failed_rows++;
+      }
+    }
+
+    // Update job completion
+    const completionStatus = stats.failed_rows > 0
+      ? (stats.successful_rows > 0 ? "partial" : "failed")
+      : "completed";
+
+    await ImportJobModel.updateOne(
+      { job_id },
+      {
+        $set: {
+          status: completionStatus,
+          completed_at: new Date(),
+          total_rows: stats.total_rows,
+          processed_rows: stats.total_rows,
+          successful_rows: stats.successful_rows,
+          failed_rows: stats.failed_rows,
+          import_errors: errors.slice(0, 1000), // Limit stored errors
+        },
+      }
+    );
+
+    // Update source stats
+    await source.updateOne({
+      $set: {
+        "stats.last_import_at": new Date(),
+        "stats.last_import_status": completionStatus,
+      },
+      $inc: {
+        "stats.total_imports": 1,
+      },
+    });
+
+    console.log(`✅ Correlation import completed:`);
+    console.log(`   Total rows: ${stats.total_rows}`);
+    console.log(`   Successful: ${stats.successful_rows}`);
+    console.log(`   Failed: ${stats.failed_rows}`);
+    console.log(`   Correlations created: ${stats.created_correlations}`);
+    console.log(`   Skipped: ${stats.skipped_correlations}`);
+
+    return {
+      success: stats.failed_rows === 0,
+      stats,
+      errors: errors.slice(0, 100),
+    };
+  } catch (error: any) {
+    console.error(`❌ Correlation import failed:`, error);
+
+    await ImportJobModel.updateOne(
+      { job_id },
+      {
+        $set: {
+          status: "failed",
+          completed_at: new Date(),
+          import_errors: [{ error: error.message }],
+        },
+      }
+    );
+
+    throw error;
   }
 }
 
@@ -158,6 +512,12 @@ async function processImport(job: Job<ImportJobData>) {
     // Get source configuration
     const source = await ImportSourceModel.findOne({ source_id });
     if (!source) throw new Error(`Source not found: ${source_id}`);
+
+    // Check if this is a correlation import
+    if ((source as any).import_type === "correlations") {
+      console.log(`📊 Processing correlation import for source: ${source_id}`);
+      return processCorrelationImport(job, source as any, tenantDb, languageCodes);
+    }
 
     let rows;
 
