@@ -15,6 +15,7 @@ import {
   getMultilingualField,
   getSortField,
   getFilterField,
+  getFacetConfig,
   FACET_FIELDS_CONFIG,
   MULTILINGUAL_TEXT_FIELDS,
 } from './facet-config';
@@ -400,6 +401,25 @@ function buildFilterQueries(
 }
 
 /**
+ * Check if a value is a wildcard pattern (starts or ends with *)
+ */
+function isWildcardPattern(value: string): boolean {
+  return value.startsWith('*') || value.endsWith('*');
+}
+
+/**
+ * Escape query characters but preserve wildcards in wildcard patterns
+ */
+function escapeFilterValue(value: string): string {
+  if (isWildcardPattern(value)) {
+    // For wildcard patterns, only escape chars that aren't wildcards
+    const specialCharsNoWildcard = /[+\-&|!(){}[\]^"~?:\\/]/g;
+    return value.replace(specialCharsNoWildcard, '\\$&');
+  }
+  return escapeQueryChars(value);
+}
+
+/**
  * Build a single filter clause
  */
 function buildFilterClause(
@@ -415,6 +435,10 @@ function buildFilterClause(
   }
 
   if (typeof value === 'string') {
+    // Don't quote wildcard patterns as quotes disable wildcard matching
+    if (isWildcardPattern(value)) {
+      return `${field}:${escapeFilterValue(value)}`;
+    }
     if (value.includes(' ') || value.includes(':')) {
       return `${field}:"${escapeQueryChars(value)}"`;
     }
@@ -426,6 +450,9 @@ function buildFilterClause(
       return buildFilterClause(field, value[0]);
     }
     const escapedValues = value.map((v) => {
+      if (isWildcardPattern(v)) {
+        return escapeFilterValue(v);
+      }
       if (v.includes(' ') || v.includes(':')) {
         return `"${escapeQueryChars(v)}"`;
       }
@@ -490,6 +517,7 @@ function buildSortClause(
 
 /**
  * Build facet query object
+ * Supports static facets from FACET_FIELDS_CONFIG and dynamic spec_* / attribute_* facets
  */
 function buildFacetQuery(
   facetFields: string[],
@@ -501,13 +529,14 @@ function buildFacetQuery(
   const facet: SolrJsonFacet = {};
 
   for (const field of facetFields) {
-    const fieldConfig = FACET_FIELDS_CONFIG[field];
+    // Use getFacetConfig to handle both static and dynamic fields
+    const fieldConfig = getFacetConfig(field);
 
     if (fieldConfig?.type === 'range' && fieldConfig.ranges) {
       // Range facets use query facets
       facet[field] = buildRangeFacet(field, fieldConfig.ranges);
     } else {
-      // Terms facet
+      // Terms facet (works for flat, boolean, hierarchical, and dynamic fields)
       facet[field] = {
         type: 'terms',
         field: getFilterField(field),

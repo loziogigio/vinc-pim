@@ -39,9 +39,13 @@ export async function GET(
     }
 
     // Get all products for this product type (no wholesaler_id - database provides isolation)
+    // Support both legacy "id" and new "product_type_id" field names
     const products = await PIMProductModel.find({
       isCurrent: true,
-      "product_type.id": id,
+      $or: [
+        { "product_type.product_type_id": id },
+        { "product_type.id": id },
+      ],
     })
       .select("entity_code sku name")
       .lean() as any[];

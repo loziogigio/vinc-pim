@@ -69,6 +69,7 @@ interface SolrMultilingualDocument {
   category_id?: string;
   brand_id?: string;
   product_type_id?: string;
+  product_type_code?: string; // Customer's ERP code for the product type
   collection_ids?: string[];
   collection_slugs?: string[];
 
@@ -610,7 +611,9 @@ export class SolrAdapter extends MarketplaceAdapter {
       // Relationships (IDs)
       category_id: product.category?.category_id,
       brand_id: product.brand?.brand_id,
-      product_type_id: product.product_type?.product_type_id,
+      // Support both field names for backwards compatibility (id was used historically, product_type_id is correct)
+      product_type_id: product.product_type?.product_type_id || (product.product_type as any)?.id,
+      product_type_code: (product.product_type as any)?.code,
       collection_ids: product.collections?.length ? [...new Set(product.collections.map(c => c.collection_id).filter(Boolean))] : [],
       // Extract slugs from multilingual objects (e.g., { it: "test-nuovo" } -> ["test-nuovo"])
       collection_slugs: product.collections?.length
@@ -742,6 +745,23 @@ export class SolrAdapter extends MarketplaceAdapter {
           const specLabels = specs.map((spec: any) => spec.label).filter(Boolean);
           if (specLabels.length > 0) {
             doc[`spec_labels_text_${l}`] = specLabels;
+          }
+
+          // Dynamic specification fields for faceting/filtering
+          // Creates: spec_{key}_s, spec_{key}_f, etc.
+          // Note: Specs are language-aware but values are typically the same across languages
+          // We index specs only once (from first language that has them) to avoid duplication
+          for (const spec of specs) {
+            if (spec && spec.key && spec.value !== undefined && spec.value !== null && spec.value !== '') {
+              const specFieldName = `spec_${spec.key}`;
+              // Check if this spec field was already indexed (from another language)
+              const existingSuffix = ['_s', '_f', '_b', '_ss', '_fs'].find(s => doc[`${specFieldName}${s}`] !== undefined);
+              if (!existingSuffix) {
+                const { suffix, value: typedValue } = this.getAttributeTypeSuffix(spec.value);
+                // Use spec key as field name: spec_weight_f = 2.5, spec_color_s = "Rosso"
+                doc[`${specFieldName}_${suffix}`] = typedValue;
+              }
+            }
           }
         }
       }

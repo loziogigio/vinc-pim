@@ -260,7 +260,115 @@ export const FILTER_FIELD_MAP: Record<string, string> = {
 
 /**
  * Get Solr filter field name
+ * Handles dynamic fields for attributes (attribute_*) and specifications (spec_*)
  */
 export function getFilterField(field: string): string {
-  return FILTER_FIELD_MAP[field] || field;
+  // Check static mapping first
+  if (FILTER_FIELD_MAP[field]) {
+    return FILTER_FIELD_MAP[field];
+  }
+
+  // Dynamic attribute fields: attribute_* (pass through as-is)
+  if (field.startsWith('attribute_')) {
+    return field;
+  }
+
+  // Dynamic specification fields: spec_* (pass through as-is)
+  // Format: spec_{key}_{suffix} where suffix is s, f, b, ss, fs
+  if (field.startsWith('spec_')) {
+    return field;
+  }
+
+  return field;
+}
+
+// ============================================
+// TECHNICAL SPECIFICATION HELPERS
+// ============================================
+
+/**
+ * Check if a field is a technical specification field
+ */
+export function isSpecificationField(field: string): boolean {
+  return field.startsWith('spec_') && !field.startsWith('spec_labels_');
+}
+
+/**
+ * Check if a field is an attribute field
+ */
+export function isAttributeField(field: string): boolean {
+  return field.startsWith('attribute_');
+}
+
+/**
+ * Get facet configuration for a dynamic specification field
+ * Since spec fields are dynamic, we generate config on-the-fly
+ *
+ * @param field - Full Solr field name (e.g., spec_weight_f, spec_color_s)
+ * @param label - Human-readable label (e.g., "Weight", "Color")
+ */
+export function getSpecificationFacetConfig(field: string, label?: string): FacetFieldConfig {
+  const suffix = field.slice(-2); // Get suffix like _s, _f, _b
+
+  // Determine facet type based on suffix
+  if (suffix === '_b') {
+    return {
+      type: 'boolean',
+      label: label || field,
+      labels: {
+        true: 'Sì',
+        false: 'No',
+      },
+    };
+  }
+
+  if (suffix === '_f') {
+    // Numeric field - could be used for range facets
+    return {
+      type: 'flat', // Use flat for now, could extend to 'range' if needed
+      label: label || field,
+    };
+  }
+
+  // Default to flat facet for string fields (_s, _ss)
+  return {
+    type: 'flat',
+    label: label || field,
+  };
+}
+
+/**
+ * Get facet configuration for a field (static or dynamic)
+ */
+export function getFacetConfig(field: string, label?: string): FacetFieldConfig | undefined {
+  // Check static configuration first
+  if (FACET_FIELDS_CONFIG[field]) {
+    return FACET_FIELDS_CONFIG[field];
+  }
+
+  // Generate config for dynamic specification fields
+  if (isSpecificationField(field)) {
+    return getSpecificationFacetConfig(field, label);
+  }
+
+  // Generate config for dynamic attribute fields
+  if (isAttributeField(field)) {
+    const suffix = field.slice(-2);
+    if (suffix === '_b') {
+      return {
+        type: 'boolean',
+        label: label || field,
+        labels: {
+          true: 'Sì',
+          false: 'No',
+        },
+      };
+    }
+    return {
+      type: 'flat',
+      label: label || field,
+    };
+  }
+
+  return undefined;
 }

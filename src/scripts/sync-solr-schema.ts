@@ -6,20 +6,27 @@
  */
 
 import 'dotenv/config';
-import mongoose from "mongoose";
-import { LanguageModel } from "../lib/db/models/language";
 import { syncSolrSchemaWithLanguages } from "../services/solr-schema.service";
 import { SolrAdapter } from "../lib/adapters";
-import { connectToDatabase, disconnectAll } from "../lib/db/connection";
+import { connectWithModels, disconnectAll } from "../lib/db/connection";
 import { getSolrConfig, isSolrEnabled } from "../config/project.config";
 
 async function main() {
   try {
     console.log("🔄 Solr Schema Sync Tool\n");
 
+    // Get tenant ID from environment
+    const tenantId = process.env.VINC_TENANT_ID;
+    if (!tenantId) {
+      console.error('❌ VINC_TENANT_ID environment variable is required');
+      console.error('   Usage: VINC_TENANT_ID=hidros-it pnpm run solr:schema');
+      process.exit(1);
+    }
+
+    const dbName = `vinc-${tenantId}`;
+
     // Connect to MongoDB using centralized connection (single source of truth)
-    await connectToDatabase();
-    const dbName = mongoose.connection.db?.databaseName;
+    const { Language } = await connectWithModels(dbName);
     console.log(`✓ Connected to MongoDB: ${dbName}\n`);
 
     // Check if Solr is enabled
@@ -59,7 +66,7 @@ async function main() {
     }
 
     // Get all enabled languages
-    const enabledLanguages = await LanguageModel.find({ isEnabled: true }).sort({ order: 1 });
+    const enabledLanguages = await Language.find({ isEnabled: true }).sort({ order: 1 });
 
     console.log(`Found ${enabledLanguages.length} enabled languages:`);
     enabledLanguages.forEach(lang => {

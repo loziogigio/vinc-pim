@@ -32,18 +32,32 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
+    // Match either legacy "id" or new "product_type_id" field for backward compatibility
+    const productTypeMatch = {
+      $or: [
+        { "product_type.product_type_id": productTypeId },
+        { "product_type.id": productTypeId },
+      ],
+    };
+
     const query: Record<string, unknown> = {
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "product_type.id": productTypeId,
+      ...productTypeMatch,
     };
 
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { entity_code: { $regex: search, $options: "i" } },
+      query.$and = [
+        productTypeMatch,
+        {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { sku: { $regex: search, $options: "i" } },
+            { entity_code: { $regex: search, $options: "i" } },
+          ],
+        },
       ];
+      delete query.$or;
     }
 
     const [products, total] = await Promise.all([
@@ -120,7 +134,7 @@ export async function POST(
 
     if (action === "add") {
       const productTypeData = {
-        id: productTypeId,
+        product_type_id: productTypeId,
         name: productType.name,
         slug: productType.slug,
       };
@@ -137,7 +151,10 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "product_type.id": productTypeId,
+        $or: [
+          { "product_type.product_type_id": productTypeId },
+          { "product_type.id": productTypeId },
+        ],
       });
 
       await ProductTypeModel.updateOne(
@@ -151,12 +168,16 @@ export async function POST(
       });
     }
 
+    // Remove action - match either field name
     const result = await PIMProductModel.updateMany(
       {
         entity_code: { $in: entity_codes },
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "product_type.id": productTypeId,
+        $or: [
+          { "product_type.product_type_id": productTypeId },
+          { "product_type.id": productTypeId },
+        ],
       },
       { $unset: { product_type: "" } }
     );
@@ -164,7 +185,10 @@ export async function POST(
     const productCount = await PIMProductModel.countDocuments({
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "product_type.id": productTypeId,
+      $or: [
+        { "product_type.product_type_id": productTypeId },
+        { "product_type.id": productTypeId },
+      ],
     });
 
     // No wholesaler_id - database provides isolation

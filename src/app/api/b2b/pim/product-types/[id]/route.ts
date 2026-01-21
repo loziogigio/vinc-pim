@@ -82,10 +82,14 @@ export async function GET(
       );
     }
 
+    // Support both legacy "id" and new "product_type_id" field names
     const productCount = await PIMProductModel.countDocuments({
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "product_type.id": id,
+      $or: [
+        { "product_type.product_type_id": id },
+        { "product_type.id": id },
+      ],
     });
 
     return NextResponse.json({
@@ -124,7 +128,7 @@ export async function PATCH(
     const { id } = await params;
 
     const body = await req.json();
-    const { name, slug, description, technical_specifications, display_order, is_active } = body;
+    const { code, name, slug, description, technical_specifications, display_order, is_active } = body;
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
@@ -153,6 +157,23 @@ export async function PATCH(
       }
     }
 
+    // Check code uniqueness if provided and different
+    if (code !== undefined && code !== (productType as any).code) {
+      if (code) {
+        const existingCode = await ProductTypeModel.findOne({
+          code,
+          product_type_id: { $ne: id },
+        });
+        if (existingCode) {
+          return NextResponse.json(
+            { error: "A product type with this code already exists" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    if (code !== undefined) (productType as any).code = code || undefined;
     if (name !== undefined) productType.name = name;
     if (slug !== undefined) productType.slug = slug;
     if (description !== undefined) productType.description = description;
@@ -208,10 +229,14 @@ export async function DELETE(
       );
     }
 
+    // Support both legacy "id" and new "product_type_id" field names
     const productCount = await PIMProductModel.countDocuments({
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "product_type.id": id,
+      $or: [
+        { "product_type.product_type_id": id },
+        { "product_type.id": id },
+      ],
     });
 
     if (productCount > 0) {

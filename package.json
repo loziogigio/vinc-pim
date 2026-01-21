@@ -19,7 +19,8 @@
     "worker:all:prod": "concurrently \"pnpm worker:pim:prod\" \"pnpm worker:sync:prod\" \"pnpm worker:email:prod\"",
     "solr:schema": "dotenv -e .env -o -- vite-node src/scripts/sync-solr-schema.ts",
     "solr:resync": "dotenv -e .env -o -- vite-node src/scripts/resync-solr.ts",
-    "bulk-publish": "dotenv -e .env -o -- vite-node scripts/bulk-publish.ts"
+    "bulk-publish": "dotenv -e .env -o -- vite-node scripts/bulk-publish.ts",
+    "migrate:product-type-ids": "dotenv -e .env -o -- vite-node scripts/migrate-product-type-ids.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",

@@ -6,11 +6,8 @@
  */
 
 import 'dotenv/config';
-import mongoose from 'mongoose';
-import { PIMProductModel } from '../lib/db/models/pim-product';
 import { SolrAdapter, loadAdapterConfigs } from '../lib/adapters';
-import { connectToDatabase, disconnectAll } from '../lib/db/connection';
-import { LanguageModel } from '../lib/db/models/language';
+import { connectWithModels, disconnectAll } from '../lib/db/connection';
 import { syncSolrSchemaWithLanguages } from '../services/solr-schema.service';
 
 const BATCH_SIZE = 100;
@@ -18,9 +15,18 @@ const BATCH_SIZE = 100;
 async function main() {
   console.log('🔄 Solr Re-sync Tool\n');
 
+  // Get tenant ID from environment
+  const tenantId = process.env.VINC_TENANT_ID;
+  if (!tenantId) {
+    console.error('❌ VINC_TENANT_ID environment variable is required');
+    console.error('   Usage: VINC_TENANT_ID=hidros-it pnpm run solr:resync');
+    process.exit(1);
+  }
+
+  const dbName = `vinc-${tenantId}`;
+
   // Connect to MongoDB using centralized connection (single source of truth)
-  await connectToDatabase();
-  const dbName = mongoose.connection.db?.databaseName;
+  const { PIMProduct, Language } = await connectWithModels(dbName);
   console.log(`✓ Connected to MongoDB: ${dbName}\n`);
 
   // Initialize Solr adapter (config from loadAdapterConfigs - single source of truth)
@@ -50,7 +56,7 @@ async function main() {
 
     // Ensure schema is properly set up (creates fields with correct types)
     console.log('\n📋 Ensuring Solr schema is up to date...');
-    const enabledLanguages = await LanguageModel.find({ isEnabled: true }).sort({ order: 1 });
+    const enabledLanguages = await Language.find({ isEnabled: true }).sort({ order: 1 });
     if (enabledLanguages.length > 0) {
       await syncSolrSchemaWithLanguages(enabledLanguages);
     } else {
@@ -63,7 +69,7 @@ async function main() {
   }
 
   // Count total products
-  const totalCount = await PIMProductModel.countDocuments({ isCurrent: true });
+  const totalCount = await PIMProduct.countDocuments({ isCurrent: true });
   console.log(`📊 Found ${totalCount} current products to sync\n`);
 
   if (totalCount === 0) {
@@ -81,7 +87,7 @@ async function main() {
   console.log(`Processing in batches of ${BATCH_SIZE}...\n`);
 
   // Use cursor for memory efficiency
-  const cursor = PIMProductModel.find({ isCurrent: true })
+  const cursor = PIMProduct.find({ isCurrent: true })
     .lean()
     .cursor({ batchSize: BATCH_SIZE });
 

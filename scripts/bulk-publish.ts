@@ -20,8 +20,7 @@
  */
 
 import mongoose from "mongoose";
-import { connectToDatabase } from "@/lib/db/connection";
-import { PIMProductModel } from "@/lib/db/models/pim-product";
+import { connectWithModels } from "@/lib/db/connection";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
 
 // Parse command line arguments
@@ -54,10 +53,20 @@ async function main() {
   console.log(`🏃 Mode: ${DRY_RUN ? "DRY RUN (use --execute to publish)" : "EXECUTE"}`);
   console.log("=".repeat(50));
 
+  // Get tenant ID from environment
+  const tenantId = process.env.VINC_TENANT_ID;
+  if (!tenantId) {
+    console.error('❌ VINC_TENANT_ID environment variable is required');
+    console.error('   Usage: VINC_TENANT_ID=hidros-it pnpm run bulk-publish');
+    process.exit(1);
+  }
+
+  const dbName = `vinc-${tenantId}`;
+
   // Connect to MongoDB using app's connection logic
   console.log("\n📡 Connecting to MongoDB...");
-  await connectToDatabase();
-  console.log("✅ Connected");
+  const { PIMProduct } = await connectWithModels(dbName);
+  console.log(`✅ Connected to ${dbName}`);
 
   try {
     // Find all draft products
@@ -70,7 +79,7 @@ async function main() {
       query.completeness_score = { $gte: MIN_SCORE };
     }
 
-    const drafts = await PIMProductModel.find(query)
+    const drafts = await PIMProduct.find(query)
       .limit(MAX_ITEMS ? MAX_ITEMS * 2 : 0)
       .lean() as any[];
 
@@ -164,7 +173,7 @@ async function main() {
 
       for (const product of eligible) {
         try {
-          await PIMProductModel.updateOne(
+          await PIMProduct.updateOne(
             { entity_code: product.entity_code, isCurrent: true },
             {
               $set: {
@@ -193,8 +202,8 @@ async function main() {
     }
 
     // Show stats
-    const totalDrafts = await PIMProductModel.countDocuments({ isCurrent: true, status: "draft" });
-    const totalPublished = await PIMProductModel.countDocuments({ isCurrent: true, status: "published" });
+    const totalDrafts = await PIMProduct.countDocuments({ isCurrent: true, status: "draft" });
+    const totalPublished = await PIMProduct.countDocuments({ isCurrent: true, status: "published" });
 
     console.log(`\n📈 Current Stats:`);
     console.log(`   Draft: ${totalDrafts}`);

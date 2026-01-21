@@ -8,6 +8,7 @@ export interface IProductTypeTechnicalSpecification {
 
 export interface IProductType extends Document {
   product_type_id: string;
+  code?: string; // Customer's ERP code (e.g., "001", "010")
   // wholesaler_id removed - database per wholesaler provides isolation
   name: string; // e.g., "Water Meter", "Pump", "Valve"
   slug: string;
@@ -54,6 +55,11 @@ const ProductTypeSchema = new Schema<IProductType>(
       type: String,
       required: true,
       unique: true,
+      index: true,
+    },
+    code: {
+      type: String,
+      sparse: true, // Allow null/undefined, but enforce uniqueness when set
       index: true,
     },
     // wholesaler_id removed - database per wholesaler provides isolation

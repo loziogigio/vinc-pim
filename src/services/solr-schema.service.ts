@@ -561,6 +561,7 @@ const BASE_FIELDS = [
   { name: "category_id", type: "string", stored: true, indexed: true },
   { name: "brand_id", type: "string", stored: true, indexed: true },
   { name: "product_type_id", type: "string", stored: true, indexed: true },
+  { name: "product_type_code", type: "string", stored: true, indexed: true },
   { name: "collection_ids", type: "strings", stored: true, indexed: true },
   { name: "collection_slugs", type: "strings", stored: true, indexed: true },
 

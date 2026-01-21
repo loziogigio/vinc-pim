@@ -83,17 +83,22 @@ export async function GET(req: NextRequest) {
 
     // Update product counts for each product type
     const productTypeIds = productTypes.map((pt) => pt.product_type_id);
+    // Support both legacy "id" and new "product_type_id" field names
     const productCounts = await PIMProductModel.aggregate([
       {
         $match: {
           // No wholesaler_id - database provides isolation
           isCurrent: true,
-          "product_type.id": { $in: productTypeIds },
+          $or: [
+            { "product_type.product_type_id": { $in: productTypeIds } },
+            { "product_type.id": { $in: productTypeIds } },
+          ],
         },
       },
       {
         $group: {
-          _id: "$product_type.id",
+          // Use coalesce-like logic to get the ID from either field
+          _id: { $ifNull: ["$product_type.product_type_id", "$product_type.id"] },
           count: { $sum: 1 },
         },
       },
@@ -133,7 +138,7 @@ export async function POST(req: NextRequest) {
     const { ProductType: ProductTypeModel } = auth.models;
 
     const body = await req.json();
-    const { name, slug, description, technical_specifications, display_order } = body;
+    const { code, name, slug, description, technical_specifications, display_order } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -143,19 +148,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if slug already exists (no wholesaler_id - database provides isolation)
-    const existing = await ProductTypeModel.findOne({
-      slug,
-    });
+    const existingSlug = await ProductTypeModel.findOne({ slug });
 
-    if (existing) {
+    if (existingSlug) {
       return NextResponse.json(
         { error: "A product type with this slug already exists" },
         { status: 400 }
       );
     }
 
+    // If code provided, check uniqueness
+    if (code) {
+      const existingCode = await ProductTypeModel.findOne({ code });
+      if (existingCode) {
+        return NextResponse.json(
+          { error: "A product type with this code already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
     const productType = await ProductTypeModel.create({
       product_type_id: nanoid(12),
+      code: code || undefined,
       // No wholesaler_id - database provides isolation
       name,
       slug,
@@ -207,17 +222,20 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Get product types with products assigned
+    // Get product types with products assigned (support both field names)
     const productCounts = await PIMProductModel.aggregate([
       {
         $match: {
           isCurrent: true,
-          "product_type.id": { $exists: true, $ne: null },
+          $or: [
+            { "product_type.product_type_id": { $exists: true, $ne: null } },
+            { "product_type.id": { $exists: true, $ne: null } },
+          ],
         },
       },
       {
         $group: {
-          _id: "$product_type.id",
+          _id: { $ifNull: ["$product_type.product_type_id", "$product_type.id"] },
           count: { $sum: 1 },
         },
       },
@@ -244,9 +262,14 @@ export async function DELETE(req: NextRequest) {
       skipped = skippedIds.length;
       typesToDelete = typesToDelete.filter((id: string) => !typesWithProducts.has(id));
     } else {
-      // Force mode: clear product_type from products first
+      // Force mode: clear product_type from products first (support both field names)
       await PIMProductModel.updateMany(
-        { "product_type.id": { $in: typesToDelete } },
+        {
+          $or: [
+            { "product_type.product_type_id": { $in: typesToDelete } },
+            { "product_type.id": { $in: typesToDelete } },
+          ],
+        },
         { $unset: { product_type: "" } }
       );
     }

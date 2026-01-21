@@ -187,7 +187,7 @@ async function processAssociationJob(
         if (action === "add") {
           // Associate products with product type
           const updateData: any = {
-            "product_type.id": id,
+            "product_type.product_type_id": id,
             "product_type.name": productType.name,
             "product_type.slug": productType.slug,
           };
@@ -203,13 +203,16 @@ async function processAssociationJob(
 
           successful += result.modifiedCount;
         } else {
-          // Remove product type from products
+          // Remove product type from products (support both field names)
           const result = await PIMProductModel.updateMany(
             {
               entity_code: { $in: batch },
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "product_type.id": id,
+              $or: [
+                { "product_type.product_type_id": id },
+                { "product_type.id": id },
+              ],
             },
             { $unset: { product_type: "" } }
           );
@@ -238,9 +241,13 @@ async function processAssociationJob(
     }
 
     // Update product type product count (no wholesaler_id - database provides isolation)
+    // Support both legacy "id" and new "product_type_id" field names
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "product_type.id": id,
+      $or: [
+        { "product_type.product_type_id": id },
+        { "product_type.id": id },
+      ],
     });
 
     await ProductTypeModel.updateOne(

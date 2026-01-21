@@ -1,117 +1,140 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPooledConnection } from "@/lib/db/connection";
 import { getB2BSession } from "@/lib/auth/b2b-session";
+import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { getSolrConfig, isSolrEnabled } from "@/config/project.config";
+import { buildSearchQuery } from "@/lib/search/query-builder";
+import type { SearchRequest } from "@/lib/types/search";
 
+/**
+ * POST /api/b2b/search
+ *
+ * Search products with optional filtering and faceting via Solr.
+ * Supports both B2B session auth and API key auth.
+ *
+ * Request body:
+ * {
+ *   "query": "*",                    // Search text (default: "*" for all)
+ *   "filters": {                     // Optional filters
+ *     "product_type_json": "*Pompe*",
+ *     "spec_col_s": "Grigio",
+ *     "spec_mat_s": "Ottone"
+ *   },
+ *   "facets": ["spec_col_s", "spec_mat_s", "spec_tip_s"],  // Optional facet fields
+ *   "limit": 20,                     // Results per page (default: 20, max: 100)
+ *   "page": 1,                       // Page number (default: 1)
+ *   "lang": "it"                     // Language for text fields (default: "it")
+ * }
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Check B2B authentication
-    const session = await getB2BSession();
-    if (!session || !session.isLoggedIn || !session.tenantId) {
+    // Check if Solr is enabled
+    if (!isSolrEnabled()) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+        { error: "Search is not enabled" },
+        { status: 503 }
       );
     }
 
-    const params = await request.json();
+    // Authenticate - support both B2B session and API key
+    const authMethod = request.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(request, "read");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      // B2B session auth
+      const session = await getB2BSession();
+      if (!session || !session.isLoggedIn || !session.tenantId) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    }
+
+    // Parse request body
+    const body = await request.json();
     const {
-      text = '',
+      query = "*",
       filters = {},
-      start = 0,
-      rows = 12,
-      sort = 'relevance'
-    } = params;
+      facets = [],
+      limit = 20,
+      page = 1,
+      lang = "it",
+    } = body;
 
-    const tenantDb = `vinc-${session.tenantId}`;
-    const connection = await getPooledConnection(tenantDb);
-    const db = connection.db;
-    if (!db) {
-      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
-    }
-    const collection = db.collection('products_b2b');
+    // Build Solr query
+    const solrConfig = getSolrConfig();
+    const solrCore = tenantDb; // Same as tenant DB name
 
-    // Build MongoDB query
-    const query: any = {};
+    // Convert to SearchRequest format
+    const searchRequest: SearchRequest = {
+      text: query === "*" ? undefined : query,
+      filters: filters,
+      facet_fields: facets.length > 0 ? facets : undefined,
+      start: (page - 1) * limit,
+      rows: Math.min(limit, 100), // Max 100 per page
+      lang,
+    };
 
-    // Text search
-    if (text && text.trim()) {
-      query.$text = { $search: text.trim() };
-    }
+    // Build the Solr JSON query
+    const solrQuery = buildSearchQuery(searchRequest);
 
-    // Filters
-    if (filters) {
-      // Brand filter (use brand.brand_id per BrandBase standard)
-      if (filters.brand && Array.isArray(filters.brand) && filters.brand.length > 0) {
-        query['brand.brand_id'] = { $in: filters.brand };
+    // Execute Solr query
+    const solrResponse = await fetch(
+      `${solrConfig.url}/${solrCore}/query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(solrQuery),
       }
+    );
 
-      // Category filter
-      if (filters.category && Array.isArray(filters.category) && filters.category.length > 0) {
-        query['category.code'] = { $in: filters.category };
-      }
-
-      // Custom filters (mapped field names)
-      if (filters.codice_figura && Array.isArray(filters.codice_figura)) {
-        query['parent_sku'] = { $in: filters.codice_figura };
-      }
-
-      if (filters.carti && Array.isArray(filters.carti)) {
-        query['sku'] = { $in: filters.carti };
-      }
-
-      // Price range
-      if (filters.min_price || filters.max_price) {
-        query.price = {};
-        if (filters.min_price) query.price.$gte = Number(filters.min_price);
-        if (filters.max_price) query.price.$lte = Number(filters.max_price);
-      }
+    if (!solrResponse.ok) {
+      const errorText = await solrResponse.text();
+      console.error("Solr query error:", errorText);
+      return NextResponse.json(
+        { error: "Search service error" },
+        { status: 503 }
+      );
     }
 
-    // Build sort
-    let sortCriteria: any = {};
-    switch (sort) {
-      case 'price_asc':
-        sortCriteria = { price: 1 };
-        break;
-      case 'price_desc':
-        sortCriteria = { price: -1 };
-        break;
-      case 'name_asc':
-        sortCriteria = { title: 1 };
-        break;
-      case 'name_desc':
-        sortCriteria = { title: -1 };
-        break;
-      case 'relevance':
-      default:
-        // If text search, sort by text score
-        if (query.$text) {
-          sortCriteria = { score: { $meta: 'textScore' } };
-        } else {
-          sortCriteria = { 'title': 1 };
+    const solrData = await solrResponse.json();
+
+    // Extract results
+    const docs = solrData.response?.docs || [];
+    const total = solrData.response?.numFound || 0;
+
+    // Extract facets if requested
+    const facetResults: Record<string, { buckets: { val: string; count: number }[] }> = {};
+    if (solrData.facets && facets.length > 0) {
+      for (const facetField of facets) {
+        if (solrData.facets[facetField]) {
+          facetResults[facetField] = {
+            buckets: solrData.facets[facetField].buckets || [],
+          };
         }
+      }
     }
 
-    // Execute query with pagination
-    const projection = query.$text
-      ? { score: { $meta: 'textScore' } }
-      : {};
-
-    const results = await collection
-      .find(query, { projection })
-      .sort(sortCriteria)
-      .skip(start * rows)
-      .limit(rows)
-      .toArray();
-
-    // Get total count
-    const numFound = await collection.countDocuments(query);
-
+    // Return response
     return NextResponse.json({
-      results,
-      numFound,
-      start,
-      rows
+      total,
+      products: docs,
+      facets: Object.keys(facetResults).length > 0 ? facetResults : undefined,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
     });
 
   } catch (error) {
