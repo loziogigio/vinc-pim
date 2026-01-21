@@ -15,6 +15,7 @@ import {
   X,
   ExternalLink,
   Cpu,
+  RefreshCw,
 } from "lucide-react";
 import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
 
@@ -26,6 +27,7 @@ type ProductTypeFeature = {
 
 type ProductType = {
   product_type_id: string;
+  code?: string;
   name: MultiLangString;
   slug: string;
   description?: MultiLangString;
@@ -79,6 +81,7 @@ export default function ProductTypeDetailPage() {
   const [importAction, setImportAction] = useState<"add" | "remove">("add");
   const [importing, setImporting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (productTypeId) {
@@ -362,6 +365,29 @@ export default function ProductTypeDetailPage() {
     }
   }
 
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      const res = await fetch(`/api/b2b/pim/product-types/${productTypeId}/sync`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast.error(error.error || "Failed to sync products");
+        return;
+      }
+
+      const data = await res.json();
+      toast.success(data.message || "Products synced successfully");
+    } catch (error) {
+      console.error("Failed to sync products:", error);
+      toast.error("Failed to sync products");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -397,7 +423,14 @@ export default function ProductTypeDetailPage() {
               <div className="flex items-center gap-3">
                 <Cpu className="w-10 h-10 text-primary" />
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground mb-2">{getLocalizedString(productType.name)}</h1>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold text-foreground">{getLocalizedString(productType.name)}</h1>
+                    {productType.code && (
+                      <span className="rounded-md bg-primary/10 px-3 py-1 text-sm font-mono font-medium text-primary">
+                        {productType.code}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <span>Slug: {productType.slug}</span>
                     <span>Products: {productType.product_count}</span>
@@ -410,6 +443,15 @@ export default function ProductTypeDetailPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleSync}
+                disabled={syncing || productType.product_count === 0}
+                className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Sync ProductType data (code, name, slug) to all associated products"
+              >
+                <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Syncing..." : "Sync Products"}
+              </button>
               <button
                 onClick={() => setShowImportModal(true)}
                 className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition"
@@ -463,6 +505,10 @@ export default function ProductTypeDetailPage() {
                 <p className="text-sm leading-6 text-muted-foreground">{getLocalizedString(productType.description)}</p>
               )}
               <dl className="grid gap-4 sm:grid-cols-2 text-sm text-muted-foreground">
+                <div>
+                  <dt className="font-medium text-foreground">Code (ERP)</dt>
+                  <dd className="font-mono">{productType.code || "—"}</dd>
+                </div>
                 <div>
                   <dt className="font-medium text-foreground">Display Order</dt>
                   <dd>{productType.display_order}</dd>

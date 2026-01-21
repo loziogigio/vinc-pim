@@ -33,6 +33,7 @@ export default function NewProductTypePage() {
 
   // Form data
   const [formData, setFormData] = useState({
+    code: "",
     name: "",
     slug: "",
     description: "",
@@ -219,6 +220,7 @@ export default function NewProductTypePage() {
 
     try {
       const payload = {
+        code: formData.code || undefined, // Optional ERP code
         name: { it: formData.name }, // Multilingual: store as object
         slug: formData.slug,
         description: formData.description ? { it: formData.description } : undefined,
@@ -316,7 +318,19 @@ export default function NewProductTypePage() {
             Basic Information
           </h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Code (ERP)
+              </label>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="e.g., 001, 037"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
                 Name <span className="text-red-500">*</span>

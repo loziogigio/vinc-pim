@@ -133,11 +133,15 @@ export async function POST(
     }
 
     if (action === "add") {
-      const productTypeData = {
+      const productTypeData: Record<string, unknown> = {
         product_type_id: productTypeId,
         name: productType.name,
         slug: productType.slug,
       };
+      // Include code if present
+      if ((productType as any).code) {
+        productTypeData.code = (productType as any).code;
+      }
 
       const result = await PIMProductModel.updateMany(
         {

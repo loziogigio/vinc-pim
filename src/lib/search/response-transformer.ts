@@ -37,6 +37,7 @@ import {
   loadCategories,
   loadCollections,
   loadProductTypes,
+  loadProductTypesByCode,
   loadTags,
   mergeMediaFromParent,
 } from './response-enricher';
@@ -52,6 +53,7 @@ interface EntityCaches {
   categories: Map<string, any>;
   collections: Map<string, any>;
   productTypes: Map<string, any>;
+  productTypesByCode: Map<string, any>;
   tags: Map<string, any>;
 }
 
@@ -161,15 +163,16 @@ function extractAttributeSlug(fieldName: string): string | null {
  * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
  */
 async function loadEntityCaches(tenantDb: string): Promise<EntityCaches> {
-  const [brands, categories, collections, productTypes, tags] = await Promise.all([
+  const [brands, categories, collections, productTypes, productTypesByCode, tags] = await Promise.all([
     loadBrands(tenantDb),
     loadCategories(tenantDb),
     loadCollections(tenantDb),
     loadProductTypes(tenantDb),
+    loadProductTypesByCode(tenantDb),
     loadTags(tenantDb),
   ]);
 
-  return { brands, categories, collections, productTypes, tags };
+  return { brands, categories, collections, productTypes, productTypesByCode, tags };
 }
 
 /**
@@ -194,6 +197,9 @@ function getEntityData(
     return caches.collections.get(value);
   } else if (labelField === 'product_type_json') {
     return caches.productTypes.get(value);
+  } else if (labelField === 'product_type_json_by_code') {
+    // Code-based lookup for product_type_code facet
+    return caches.productTypesByCode.get(value);
   } else if (labelField === 'tags_json') {
     return caches.tags.get(value);
   }

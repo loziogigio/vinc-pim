@@ -537,13 +537,22 @@ function buildFacetQuery(
       facet[field] = buildRangeFacet(field, fieldConfig.ranges);
     } else {
       // Terms facet (works for flat, boolean, hierarchical, and dynamic fields)
-      facet[field] = {
+      const solrField = getFilterField(field);
+      const facetDef: SolrJsonFacetField = {
         type: 'terms',
-        field: getFilterField(field),
+        field: solrField,
         limit: limit || config.facetLimit,
         mincount: mincount || config.facetMinCount,
         sort: sort || 'count',
-      } as SolrJsonFacetField;
+      };
+
+      // Exclude empty/null values for specific fields
+      const excludeEmptyFields = ['product_type_code', 'product_type_id', 'brand_id', 'category_id'];
+      if (excludeEmptyFields.includes(field)) {
+        facetDef.domain = { filter: `${solrField}:*` };
+      }
+
+      facet[field] = facetDef;
     }
   }
 

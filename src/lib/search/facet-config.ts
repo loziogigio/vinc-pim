@@ -50,6 +50,11 @@ export const FACET_FIELDS_CONFIG: Record<string, FacetFieldConfig> = {
     label: 'Tipo Prodotto',
     label_field: 'product_type_json',
   },
+  product_type_code: {
+    type: 'flat',
+    label: 'Tipo Prodotto',
+    label_field: 'product_type_json_by_code',  // Special marker for code-based lookup
+  },
   stock_status: {
     type: 'flat',
     label: 'Disponibilità',
@@ -237,6 +242,7 @@ export const FILTER_FIELD_MAP: Record<string, string> = {
   brand_id: 'brand_id',
   brand_ancestors: 'brand_ancestors',
   product_type_id: 'product_type_id',
+  product_type_code: 'product_type_code',
   product_type_ancestors: 'product_type_ancestors',
   collection_ids: 'collection_ids',
   collection_ancestors: 'collection_ancestors',

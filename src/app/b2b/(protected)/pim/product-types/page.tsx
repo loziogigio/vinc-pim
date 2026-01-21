@@ -13,6 +13,7 @@ import {
   Search,
   Filter,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
@@ -26,6 +27,7 @@ type ProductTypeFeature = {
 type ProductType = {
   _id: string;
   product_type_id: string;
+  code?: string;
   name: MultiLangString;
   slug: string;
   description?: MultiLangString;
@@ -43,6 +45,7 @@ export default function ProductTypesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     fetchProductTypes();
@@ -94,12 +97,37 @@ export default function ProductTypesPage() {
     }
   }
 
+  async function handleSyncAll() {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/b2b/pim/product-types/sync", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast.error(error.error || "Failed to sync product types");
+        return;
+      }
+
+      const data = await res.json();
+      toast.success(data.message || "All product types synced successfully");
+    } catch (error) {
+      console.error("Error syncing product types:", error);
+      toast.error("Failed to sync product types");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   // Filter product types based on search and active status
   const filteredProductTypes = productTypes.filter((pt) => {
     const nameStr = getLocalizedString(pt.name, "").toLowerCase();
+    const query = searchQuery.toLowerCase();
     const matchesSearch =
-      nameStr.includes(searchQuery.toLowerCase()) ||
-      pt.slug.toLowerCase().includes(searchQuery.toLowerCase());
+      nameStr.includes(query) ||
+      pt.slug.toLowerCase().includes(query) ||
+      (pt.code && pt.code.toLowerCase().includes(query));
     const matchesActive = showInactive || pt.is_active;
     return matchesSearch && matchesActive;
   });
@@ -131,14 +159,26 @@ export default function ProductTypesPage() {
               {productTypes.length} total product types
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push("/b2b/pim/product-types/new")}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
-          >
-            <Plus className="h-5 w-5" />
-            New Product Type
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSyncAll}
+              disabled={syncing || productTypes.length === 0}
+              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Sync all ProductType data (code, name, slug) to associated products"
+            >
+              <RefreshCw className={`h-5 w-5 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing..." : "Sync All"}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/b2b/pim/product-types/new")}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+            >
+              <Plus className="h-5 w-5" />
+              New Product Type
+            </button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -147,7 +187,7 @@ export default function ProductTypesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search product types by name or slug..."
+              placeholder="Search by name, slug, or code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -214,6 +254,11 @@ export default function ProductTypesPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold text-foreground">{getLocalizedString(productType.name)}</h3>
+                        {productType.code && (
+                          <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-mono font-medium text-primary">
+                            {productType.code}
+                          </span>
+                        )}
                         {!productType.is_active && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                             Inactive

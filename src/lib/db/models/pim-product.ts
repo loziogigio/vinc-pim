@@ -631,6 +631,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     product_type: {
       product_type_id: { type: String },
+      code: { type: String },  // Customer's ERP code (e.g., "001", "037")
       name: MultilingualTextSchema,
       slug: MultilingualTextSchema,
       technical_specifications: [

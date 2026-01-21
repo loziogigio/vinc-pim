@@ -38,6 +38,7 @@ export interface ProductTypeHierarchyItem {
 // Base product type fields (for embedding in products)
 export interface ProductTypeBase {
   product_type_id: string;
+  code?: string;              // Customer's ERP code (e.g., "001", "037")
   name: MultilingualText;
   slug: MultilingualText;
   technical_specifications?: ProductTypeTechnicalSpecification[];  // Technical specifications defined at this type level

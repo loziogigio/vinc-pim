@@ -191,6 +191,10 @@ async function processAssociationJob(
             "product_type.name": productType.name,
             "product_type.slug": productType.slug,
           };
+          // Include code if present
+          if (productType.code) {
+            updateData["product_type.code"] = productType.code;
+          }
 
           const result = await PIMProductModel.updateMany(
             {

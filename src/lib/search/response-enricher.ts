@@ -94,6 +94,42 @@ export async function loadProductTypes(tenantDb: string): Promise<Map<string, an
   return loadEntityCache(tenantDb, 'producttypes', 'product_type_id');
 }
 
+/**
+ * Load ProductTypes keyed by code (for product_type_code facet)
+ * Same collection as loadProductTypes but keyed by 'code' field
+ */
+export async function loadProductTypesByCode(tenantDb: string): Promise<Map<string, any>> {
+  const now = Date.now();
+  const cacheKey = 'producttypes_by_code';
+
+  // Return cached if still valid
+  const cache = getCache(tenantDb, cacheKey);
+  if (cache && (now - cache.timestamp) < CACHE_TTL_MS) {
+    return cache.data;
+  }
+
+  const connection = await getPooledConnection(tenantDb);
+  const db = connection.db;
+
+  if (!db) {
+    console.warn('[Enricher] MongoDB not connected, skipping productTypes by code enrichment');
+    return new Map();
+  }
+
+  // Load from producttypes collection but key by 'code'
+  const docs = await db.collection('producttypes').find({ code: { $exists: true, $nin: [null, ''] } }).toArray();
+  const map = new Map<string, any>();
+
+  for (const doc of docs) {
+    if (doc.code) {
+      map.set(doc.code, doc);
+    }
+  }
+
+  setCache(tenantDb, cacheKey, { data: map, timestamp: now });
+  return map;
+}
+
 export async function loadTags(tenantDb: string): Promise<Map<string, any>> {
   return loadEntityCache(tenantDb, 'tags', 'tag_id');
 }

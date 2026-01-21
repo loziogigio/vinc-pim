@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { getSolrConfig, isSolrEnabled } from "@/config/project.config";
+import { connectWithModels } from "@/lib/db/connection";
 
 /**
  * GET /api/b2b/search/available-specs
@@ -18,7 +19,8 @@ import { getSolrConfig, isSolrEnabled } from "@/config/project.config";
  *       key: "weight",
  *       field: "spec_weight_f",
  *       type: "number",
- *       label: "Peso"  // from first product found
+ *       label: "Peso",
+ *       uom: { symbol: "kg", name: "Kilogrammi", category: "weight" }
  *     },
  *     ...
  *   ]
@@ -184,10 +186,36 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Load TechnicalSpecifications from MongoDB to get UOM data
+    const { TechnicalSpecification } = await connectWithModels(tenantDb);
+    const techSpecs = await TechnicalSpecification.find({
+      key: { $in: Array.from(specFieldsMap.keys()) },
+    }).lean() as any[];
+
+    // Build map of key → UOM data
+    const uomMap = new Map<string, { symbol: string; name: string; category: string } | undefined>();
+    for (const spec of techSpecs) {
+      if (spec.uom) {
+        uomMap.set(spec.key, {
+          symbol: spec.uom.symbol,
+          name: spec.uom.name,
+          category: spec.uom.category,
+        });
+      } else if (spec.unit) {
+        // Fallback to legacy unit field
+        uomMap.set(spec.key, {
+          symbol: spec.unit,
+          name: spec.unit,
+          category: "other",
+        });
+      }
+    }
+
     // Convert to array and limit sample values
     const specs = Array.from(specFieldsMap.values()).map(({ sampleValues, ...spec }) => ({
       ...spec,
       sample_values: Array.from(sampleValues).slice(0, 5),
+      uom: uomMap.get(spec.key),
     }));
 
     // Sort by key
