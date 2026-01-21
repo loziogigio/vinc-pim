@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       text: body.text,
       lang: body.lang,
       start: body.start || 0,
-      rows: Math.min(body.rows || config.defaultRows, config.maxRows),
+      rows: Math.min(body.rows ?? config.defaultRows, config.maxRows),
       filters: body.filters || {},
       sort: body.sort,
       // Fuzzy search options (like dfl-api)
