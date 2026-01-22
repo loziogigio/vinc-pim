@@ -47,8 +47,9 @@ GET /api/b2b/mobile-builder/config
     "_id": "679123abc...",
     "config_id": "mobile-home",
     "app_identity": {
+      "app_name": "My Store",
       "logo_url": "https://example.com/logo.png",
-      "app_name": "My Store"
+      "primary_color": "#3b82f6"
     },
     "blocks": [
       {
@@ -104,8 +105,9 @@ GET /api/b2b/mobile-builder/config
   "config": {
     "config_id": "mobile-home",
     "app_identity": {
+      "app_name": "",
       "logo_url": "",
-      "app_name": ""
+      "primary_color": "#ec4899"
     },
     "blocks": [],
     "version": 1,
@@ -146,8 +148,9 @@ POST /api/b2b/mobile-builder/config
     }
   ],
   "app_identity": {
+    "app_name": "My Store",
     "logo_url": "https://example.com/logo.png",
-    "app_name": "My Store"
+    "primary_color": "#3b82f6"
   }
 }
 ```
@@ -481,16 +484,26 @@ Configure app branding displayed at the top of the mobile home.
 ```json
 {
   "app_identity": {
+    "app_name": "My Store",
     "logo_url": "https://example.com/logo.png",
-    "app_name": "My Store"
+    "primary_color": "#3b82f6"
   }
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `logo_url` | string | URL to the logo image |
-| `app_name` | string | App name displayed below the logo |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `app_name` | string | `""` | App name displayed in header |
+| `logo_url` | string | `""` | URL to the logo image |
+| `primary_color` | string | `"#ec4899"` | Hex color for buttons and accent elements |
+
+### Primary Color Usage
+
+The `primary_color` is applied to:
+
+- "Add to Cart" button background in Product Slider and Product Gallery blocks
+- "See All" link text in Product Slider blocks
+- Any accent elements defined by the mobile app theme
 
 ---
 
