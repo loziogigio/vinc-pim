@@ -5,6 +5,12 @@ import { X, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PackagingOption } from "@/lib/types/pim";
+import {
+  calculatePackagePrice,
+  calculateUnitPrice,
+  formatPrice,
+  syncPackagePrices,
+} from "@/lib/utils/packaging";
 
 interface PackagingOptionModalProps {
   open: boolean;
@@ -26,6 +32,11 @@ const emptyOption: PackagingOption = {
   ean: "",
   position: 1,
   pricing: {
+    // Unit prices (per piece)
+    list_unit: undefined,
+    retail_unit: undefined,
+    sale_unit: undefined,
+    // Package prices (calculated)
     list: undefined,
     retail: undefined,
     sale: undefined,
@@ -44,19 +55,47 @@ export function PackagingOptionModal({
   onClose,
 }: PackagingOptionModalProps) {
   const [formData, setFormData] = useState<PackagingOption>(emptyOption);
+  const [qtyInput, setQtyInput] = useState("1"); // Separate string state for qty input
   const isEditMode = option !== null;
 
   useEffect(() => {
     if (open) {
-      setFormData(option || { ...emptyOption, position: 1 });
+      if (option) {
+        setQtyInput(String(option.qty));
+        // Migrate existing data: if we have package prices but no unit prices, calculate them
+        const pricing = option.pricing || {};
+        const migratedPricing = {
+          ...pricing,
+          // Calculate unit prices from package prices if not set
+          list_unit:
+            pricing.list_unit ??
+            calculateUnitPrice(pricing.list, option.qty),
+          retail_unit:
+            pricing.retail_unit ??
+            calculateUnitPrice(pricing.retail, option.qty),
+          sale_unit:
+            pricing.sale_unit ??
+            calculateUnitPrice(pricing.sale, option.qty),
+        };
+        setFormData({ ...option, pricing: migratedPricing });
+      } else {
+        setQtyInput("1");
+        setFormData({ ...emptyOption, position: 1 });
+      }
     }
   }, [open, option]);
 
   if (!open) return null;
 
+  // Parse qty from input string, default to 1 if invalid
+  const parsedQty = parseFloat(qtyInput) || 1;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // Use parsed qty value and sync package prices
+    const finalData = { ...formData, qty: parsedQty };
+    const syncedPricing = syncPackagePrices(finalData.pricing, parsedQty);
+    onSave({ ...finalData, pricing: syncedPricing });
   };
 
   const updateField = (field: string, value: any) => {
@@ -136,10 +175,11 @@ export function PackagingOptionModal({
                 Quantity <span className="text-red-500">*</span>
               </label>
               <Input
-                type="number"
-                min="1"
-                value={formData.qty}
-                onChange={(e) => updateField("qty", parseInt(e.target.value) || 1)}
+                type="text"
+                inputMode="decimal"
+                value={qtyInput}
+                onChange={(e) => setQtyInput(e.target.value)}
+                placeholder="e.g., 1, 6, 0.75"
                 required
               />
             </div>
@@ -200,45 +240,65 @@ export function PackagingOptionModal({
           {/* Pricing */}
           <div className="border-t pt-4">
             <h4 className="text-sm font-semibold text-slate-900 mb-3">Pricing</h4>
+
+            {/* Unit Prices (editable) */}
+            <p className="text-xs text-slate-500 mb-2">
+              Unit Price (per piece) - Package price calculated automatically
+            </p>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  List Price
+                  List (Unit)
                 </label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.pricing?.list || ""}
-                  onChange={(e) => updatePricing("list", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  value={formData.pricing?.list_unit ?? formData.pricing?.list ?? ""}
+                  onChange={(e) => updatePricing("list_unit", e.target.value ? parseFloat(e.target.value) : undefined)}
                   placeholder="0.00"
                 />
+                {parsedQty !== 1 && formData.pricing?.list_unit && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.list_unit, parsedQty))}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Retail Price (MSRP)
+                  Retail (Unit)
                 </label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.pricing?.retail || ""}
-                  onChange={(e) => updatePricing("retail", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  value={formData.pricing?.retail_unit ?? formData.pricing?.retail ?? ""}
+                  onChange={(e) => updatePricing("retail_unit", e.target.value ? parseFloat(e.target.value) : undefined)}
                   placeholder="0.00"
                 />
+                {parsedQty !== 1 && formData.pricing?.retail_unit && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.retail_unit, parsedQty))}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Sale Price
+                  Sale (Unit)
                 </label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.pricing?.sale || ""}
-                  onChange={(e) => updatePricing("sale", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  value={formData.pricing?.sale_unit ?? formData.pricing?.sale ?? ""}
+                  onChange={(e) => updatePricing("sale_unit", e.target.value ? parseFloat(e.target.value) : undefined)}
                   placeholder="0.00"
                 />
+                {parsedQty !== 1 && formData.pricing?.sale_unit && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.sale_unit, parsedQty))}
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4 mt-4">

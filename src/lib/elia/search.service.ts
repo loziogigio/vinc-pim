@@ -17,6 +17,7 @@ import {
   extractTermStrings,
   getProductTerms,
   getAttributeTerms,
+  getSpecTerms,
 } from './intent.service';
 import { searchProducts } from '@/lib/search';
 
@@ -66,14 +67,14 @@ export interface CascadeSearchOptions {
 }
 
 /**
- * Result of 24-level cascade search
+ * Result of cascade search
  */
 export interface CascadeSearchResult {
   /** Products found */
   products: SolrProduct[];
   /** Total count from Solr */
   total_count: number;
-  /** Which cascade level matched (0-23) */
+  /** Which cascade level matched */
   matched_level: number;
   /** Search text used at matched level */
   matched_search_text: string;
@@ -81,6 +82,8 @@ export interface CascadeSearchResult {
   matched_products: string[];
   /** Attribute terms used */
   matched_attributes: string[];
+  /** Spec terms used */
+  matched_specs: string[];
 }
 
 /**
@@ -119,6 +122,7 @@ export async function cascadeSearch(
     // Get terms for logging
     const productTerms = getProductTerms(intent, cascadeLevel.productLevel);
     const attributeTerms = getAttributeTerms(intent, cascadeLevel.attributeLevel);
+    const specTerms = getSpecTerms(intent, cascadeLevel.specLevel);
 
     console.log(`[ELIA Search] Level ${cascadeLevel.level}: "${searchText}" (${levelName})`);
 
@@ -141,6 +145,7 @@ export async function cascadeSearch(
           matched_search_text: searchText,
           matched_products: extractTermStrings(productTerms),
           matched_attributes: extractTermStrings(attributeTerms),
+          matched_specs: extractTermStrings(specTerms),
         };
       }
 
@@ -170,6 +175,7 @@ export async function cascadeSearch(
     matched_search_text: '',
     matched_products: [],
     matched_attributes: [],
+    matched_specs: [],
   };
 }
 
@@ -238,7 +244,7 @@ export interface EliaSearchResult {
   intent: EliaIntentExtraction;
   /** Search metadata */
   search_info: {
-    /** Which cascade level matched (0-23) */
+    /** Which cascade level matched */
     matched_level: number;
     /** Human-readable level name */
     matched_level_name: string;
@@ -253,6 +259,8 @@ export interface EliaSearchResult {
   matched_products: string[];
   /** Attribute terms used in matched search */
   matched_attributes: string[];
+  /** Spec terms used in matched search */
+  matched_specs: string[];
 }
 
 /**
@@ -298,5 +306,6 @@ export async function eliaSearch(
     total_found: searchResult.total_count,
     matched_products: searchResult.matched_products,
     matched_attributes: searchResult.matched_attributes,
+    matched_specs: searchResult.matched_specs,
   };
 }

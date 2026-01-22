@@ -83,6 +83,16 @@ export interface EliaIntentExtraction {
   attribute_related: SynonymTerm[];
 
   // ============================================
+  // SPEC SYNONYMS (3 levels, technical specifications)
+  // ============================================
+  /** Exact spec terms from user query (precision: 1.0) - e.g., "5kg", "100cm" */
+  spec_exact: SynonymTerm[];
+  /** Spec synonyms - similar measurements (precision: 0.9-0.7, min 3) */
+  spec_synonyms: SynonymTerm[];
+  /** Spec related - related specifications (precision: 0.6-0.4, min 3) */
+  spec_related: SynonymTerm[];
+
+  // ============================================
   // FILTERS & MODIFIERS
   // ============================================
   /** Sort preference based on user intent */
@@ -193,6 +203,47 @@ export const EliaIntentExtractionSchema = {
       description: 'Attribute related - related concepts (precision: 0.6-0.4, min 3)',
     },
     // ============================================
+    // SPEC SYNONYMS (3 levels)
+    // ============================================
+    spec_exact: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: {
+          term: { type: 'string' as const, description: 'The spec term (e.g., "5kg", "100cm")' },
+          precision: { type: 'number' as const, minimum: 0, maximum: 1, description: 'Precision score (1.0 for exact)' },
+        },
+        required: ['term', 'precision'],
+      },
+      description: 'Exact spec terms from user query (precision: 1.0)',
+    },
+    spec_synonyms: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: {
+          term: { type: 'string' as const, description: 'The spec synonym term' },
+          precision: { type: 'number' as const, minimum: 0, maximum: 1, description: 'Precision score (0.9-0.7)' },
+        },
+        required: ['term', 'precision'],
+      },
+      minItems: 3,
+      description: 'Spec synonyms - similar measurements (precision: 0.9-0.7, min 3)',
+    },
+    spec_related: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: {
+          term: { type: 'string' as const, description: 'The related spec term' },
+          precision: { type: 'number' as const, minimum: 0, maximum: 1, description: 'Precision score (0.6-0.4)' },
+        },
+        required: ['term', 'precision'],
+      },
+      minItems: 3,
+      description: 'Spec related - related specifications (precision: 0.6-0.4, min 3)',
+    },
+    // ============================================
     // FILTERS & MODIFIERS
     // ============================================
     sort_by: {
@@ -243,6 +294,9 @@ export const EliaIntentExtractionSchema = {
     'attribute_exact',
     'attribute_synonyms',
     'attribute_related',
+    'spec_exact',
+    'spec_synonyms',
+    'spec_related',
     'sort_by',
     'stock_filter',
     'user_message',
@@ -453,14 +507,14 @@ export interface ProductForAnalysis {
 }
 
 /**
- * Result of 24-level cascade search
+ * Result of cascade search
  */
 export interface CascadeSearchResult {
   /** Products found */
   products: ProductForAnalysis[];
   /** Total count from Solr */
   total_count: number;
-  /** Which cascade level matched (0-23) */
+  /** Which cascade level matched */
   matched_level: number;
   /** Search text used at matched level */
   matched_search_text: string;
@@ -468,4 +522,6 @@ export interface CascadeSearchResult {
   matched_products: string[];
   /** Attribute keywords used at this level */
   matched_attributes: string[];
+  /** Spec keywords used at this level */
+  matched_specs: string[];
 }

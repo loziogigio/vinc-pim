@@ -73,6 +73,7 @@ interface SolrProductDetails {
   brand_name?: string;
   model?: string;
   attributes?: Record<string, unknown>;
+  technical_specifications?: Record<string, unknown>[];
   category_path?: string[];
 }
 
@@ -119,12 +120,23 @@ async function fetchProductsFromSolr(
         }
       }
 
+      // Extract technical specifications from the product
+      const technicalSpecs: Record<string, unknown>[] = [];
+      if (doc.technical_specifications && Array.isArray(doc.technical_specifications)) {
+        for (const spec of doc.technical_specifications) {
+          if (spec && typeof spec === 'object') {
+            technicalSpecs.push(spec);
+          }
+        }
+      }
+
       products.set(entityCode, {
         entity_code: entityCode,
         name: Array.isArray(doc.name) ? doc.name[0] : doc.name,
         brand_name: doc.brand?.label,
         model: doc.product_model?.trim(),
         attributes,
+        technical_specifications: technicalSpecs.length > 0 ? technicalSpecs : undefined,
         category_path: doc.category?.breadcrumb,
       });
     }
@@ -160,6 +172,9 @@ function mergeProductData(
     if (solr?.model) merged.model = solr.model;
     if (solr?.attributes && Object.keys(solr.attributes).length > 0) {
       merged.attributes = solr.attributes;
+    }
+    if (solr?.technical_specifications && solr.technical_specifications.length > 0) {
+      merged.technical_specifications = solr.technical_specifications;
     }
     if (solr?.category_path) merged.category_path = solr.category_path;
 
@@ -232,19 +247,26 @@ export async function POST(request: NextRequest) {
       ...(intent.attribute_exact?.map(t => t.term) || []),
       ...(intent.attribute_synonyms?.map(t => t.term) || []),
     ];
+    // Extract spec terms (for Claude context)
+    const specTerms = [
+      ...(intent.spec_exact?.map(t => t.term) || []),
+      ...(intent.spec_synonyms?.map(t => t.term) || []),
+    ];
 
     console.log(`[ELIA Analyze] Processing ${limitedProducts.length}/${originalCount} products (max ${MAX_PRODUCTS_FOR_ANALYSIS})`);
     console.log(`[ELIA Analyze] Intent type: ${intent.intent_type}, Sort: ${sort_by}, Stock: ${stock_filter}`);
     console.log(`[ELIA Analyze] Product terms:`, productTerms);
     console.log(`[ELIA Analyze] Attribute terms:`, attributeTerms);
+    console.log(`[ELIA Analyze] Spec terms:`, specTerms);
 
     // Step 1: Extract entity_codes (only for limited products)
     const entityCodes = limitedProducts.map(p => p.entity_code);
 
-    // Step 2: Fetch product details from Solr (name, brand, model, attributes)
+    // Step 2: Fetch product details from Solr (name, brand, model, attributes, technical_specifications)
     console.log(`[ELIA Analyze] Fetching ${entityCodes.length} products from Solr...`);
     const solrProducts = await fetchProductsFromSolr(entityCodes, language, tenantDb);
-    console.log(`[ELIA Analyze] Fetched ${solrProducts.size} products from Solr`);
+    const productsWithSpecs = Array.from(solrProducts.values()).filter(p => p.technical_specifications && p.technical_specifications.length > 0).length;
+    console.log(`[ELIA Analyze] Fetched ${solrProducts.size} products from Solr (${productsWithSpecs} with technical_specifications)`);
 
     // Step 3: Merge ERP + Solr data
     const mergedProducts = mergeProductData(limitedProducts, solrProducts);
@@ -255,8 +277,9 @@ export async function POST(request: NextRequest) {
       intent: {
         sort_by,
         stock_filter,
-        // Pass attribute terms as context for Claude analysis
+        // Pass attribute and spec terms as context for Claude analysis
         attributes: { terms: attributeTerms },
+        specs: { terms: specTerms },
       },
       user_message,
       language,
@@ -323,6 +346,9 @@ export async function GET() {
             attribute_exact: [{ term: 'economica', precision: 1.0 }],
             attribute_synonyms: [{ term: 'risparmio', precision: 0.8 }],
             attribute_related: [{ term: 'efficiente', precision: 0.5 }],
+            spec_exact: [{ term: '24kW', precision: 1.0 }],
+            spec_synonyms: [{ term: '24 kW', precision: 0.9 }],
+            spec_related: [{ term: 'alta potenza', precision: 0.5 }],
             sort_by: 'price_asc | price_desc | quality | relevance',
             stock_filter: 'any | in_stock | available_soon',
             user_message: 'AI-generated message',

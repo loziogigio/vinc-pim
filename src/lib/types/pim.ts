@@ -143,12 +143,24 @@ export type PIMPricing = {
 
 /**
  * Partial pricing for packaging options (all fields optional)
- * Supports reference-based pricing with discounts
+ * Supports both unit-based and package-based pricing with discounts
+ *
+ * Pricing model:
+ * - Unit prices (list_unit, retail_unit, sale_unit) are stored per single piece
+ * - Package prices (list, retail, sale) are calculated: unit_price × qty
+ * - UI edits unit prices, displays both unit and calculated package prices
  */
 export type PackagingPricing = {
-  list?: number;                  // List price for this packaging
+  // Unit prices (per single piece) - PRIMARY storage
+  list_unit?: number;             // List price per unit (e.g., €45.00/pz)
+  retail_unit?: number;           // MSRP per unit (e.g., €90.00/pz)
+  sale_unit?: number;             // Sale price per unit (e.g., €40.50/pz)
+
+  // Package prices (calculated: unit × qty) - for display/backward compatibility
+  list?: number;                  // List price for this packaging (e.g., €270.00 for BOX of 6)
   retail?: number;                // MSRP for this packaging
   sale?: number;                  // Discounted price for this packaging
+
   // Reference-based pricing fields
   price_ref?: string;             // Reference packaging code (e.g., "PZ" for BOX)
   list_discount_pct?: number;     // Percentage discount from retail to get list (e.g., 50 for -50%)

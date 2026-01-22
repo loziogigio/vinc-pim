@@ -168,7 +168,7 @@ function isValidSynonymArray(arr: unknown, minItems: number = 0): boolean {
 }
 
 /**
- * Validate intent structure (5-array schema with precision)
+ * Validate intent structure (arrays with precision)
  */
 function validateIntent(intent: EliaIntentExtraction): void {
   // Validate product synonym arrays (2 levels)
@@ -188,6 +188,17 @@ function validateIntent(intent: EliaIntentExtraction): void {
   }
   if (!isValidSynonymArray(intent.attribute_related, 3)) {
     throw new Error('Invalid intent: attribute_related must have at least 3 SynonymTerm objects');
+  }
+
+  // Validate spec synonym arrays (3 levels)
+  if (!isValidSynonymArray(intent.spec_exact, 0)) {
+    throw new Error('Invalid intent: spec_exact must be an array of SynonymTerm objects');
+  }
+  if (!isValidSynonymArray(intent.spec_synonyms, 3)) {
+    throw new Error('Invalid intent: spec_synonyms must have at least 3 SynonymTerm objects');
+  }
+  if (!isValidSynonymArray(intent.spec_related, 3)) {
+    throw new Error('Invalid intent: spec_related must have at least 3 SynonymTerm objects');
   }
 
   // Validate required fields

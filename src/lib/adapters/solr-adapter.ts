@@ -747,6 +747,21 @@ export class SolrAdapter extends MarketplaceAdapter {
             doc[`spec_labels_text_${l}`] = specLabels;
           }
 
+          // Spec VALUES for text search - only display value (what's shown in UI)
+          // Format: "value UOM" if UOM present, otherwise just "value"
+          const specValues: string[] = [];
+          for (const spec of specs) {
+            if (spec && spec.value !== undefined && spec.value !== null && spec.value !== '') {
+              const valueStr = String(spec.value);
+              // Only store display value: "5.8 CM" or "Pedale"
+              const displayValue = spec.uom ? `${valueStr} ${spec.uom}` : valueStr;
+              specValues.push(displayValue);
+            }
+          }
+          if (specValues.length > 0) {
+            doc[`spec_values_text_${l}`] = specValues;
+          }
+
           // Dynamic specification fields for faceting/filtering
           // Creates: spec_{key}_s, spec_{key}_f, etc.
           // Note: Specs are language-aware but values are typically the same across languages

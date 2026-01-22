@@ -23,6 +23,7 @@ import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
 import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { calculateUnitPrice, calculatePackagePrice } from "@/lib/utils/packaging";
 import {
   ProductImage,
   extractAttributesForLanguage,
@@ -1698,9 +1699,9 @@ export default function ProductDetailPage({
                           <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
                           <th className="text-right py-2 px-3 font-medium text-muted-foreground">Qty</th>
                           <th className="text-left py-2 px-3 font-medium text-muted-foreground">UOM</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">List</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Retail</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Sale</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">List/Unit</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Retail/Unit</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Sale/Unit</th>
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground">List Disc.</th>
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sale Disc.</th>
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ref</th>
@@ -1719,13 +1720,46 @@ export default function ProductDetailPage({
                               <td className="py-2 px-3 text-right text-foreground">{pkg.qty}</td>
                               <td className="py-2 px-3 text-foreground">{pkg.uom}</td>
                               <td className="py-2 px-3 text-right text-foreground">
-                                {pkg.pricing?.list ? `€${pkg.pricing.list.toFixed(2)}` : "—"}
+                                {(() => {
+                                  const unitPrice = pkg.pricing?.list_unit ?? calculateUnitPrice(pkg.pricing?.list, pkg.qty);
+                                  const pkgPrice = unitPrice ? calculatePackagePrice(unitPrice, pkg.qty) : undefined;
+                                  return unitPrice ? (
+                                    <div>
+                                      <div>€{unitPrice.toFixed(2)}</div>
+                                      {pkg.qty !== 1 && pkgPrice && (
+                                        <div className="text-xs text-muted-foreground">×{pkg.qty} = €{pkgPrice.toFixed(2)}</div>
+                                      )}
+                                    </div>
+                                  ) : "—";
+                                })()}
                               </td>
                               <td className="py-2 px-3 text-right text-foreground">
-                                {pkg.pricing?.retail ? `€${pkg.pricing.retail.toFixed(2)}` : "—"}
+                                {(() => {
+                                  const unitPrice = pkg.pricing?.retail_unit ?? calculateUnitPrice(pkg.pricing?.retail, pkg.qty);
+                                  const pkgPrice = unitPrice ? calculatePackagePrice(unitPrice, pkg.qty) : undefined;
+                                  return unitPrice ? (
+                                    <div>
+                                      <div>€{unitPrice.toFixed(2)}</div>
+                                      {pkg.qty !== 1 && pkgPrice && (
+                                        <div className="text-xs text-muted-foreground">×{pkg.qty} = €{pkgPrice.toFixed(2)}</div>
+                                      )}
+                                    </div>
+                                  ) : "—";
+                                })()}
                               </td>
                               <td className="py-2 px-3 text-right text-emerald-600 font-medium">
-                                {pkg.pricing?.sale ? `€${pkg.pricing.sale.toFixed(2)}` : "—"}
+                                {(() => {
+                                  const unitPrice = pkg.pricing?.sale_unit ?? calculateUnitPrice(pkg.pricing?.sale, pkg.qty);
+                                  const pkgPrice = unitPrice ? calculatePackagePrice(unitPrice, pkg.qty) : undefined;
+                                  return unitPrice ? (
+                                    <div>
+                                      <div>€{unitPrice.toFixed(2)}</div>
+                                      {pkg.qty !== 1 && pkgPrice && (
+                                        <div className="text-xs text-muted-foreground font-normal">×{pkg.qty} = €{pkgPrice.toFixed(2)}</div>
+                                      )}
+                                    </div>
+                                  ) : "—";
+                                })()}
                               </td>
                               <td className="py-2 px-3 text-center text-muted-foreground text-xs">
                                 {pkg.pricing?.list_discount_pct

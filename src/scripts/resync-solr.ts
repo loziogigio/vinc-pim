@@ -2,7 +2,12 @@
  * Re-sync all products from MongoDB to Solr
  * Updates Solr index with latest product data including attribute facet fields
  *
- * Usage: pnpm solr:resync
+ * Usage:
+ *   pnpm solr:resync <tenant-id>
+ *   pnpm solr:resync hidros-it
+ *
+ * Or via environment variable:
+ *   VINC_TENANT_ID=hidros-it pnpm solr:resync
  */
 
 import 'dotenv/config';
@@ -15,11 +20,12 @@ const BATCH_SIZE = 100;
 async function main() {
   console.log('🔄 Solr Re-sync Tool\n');
 
-  // Get tenant ID from environment
-  const tenantId = process.env.VINC_TENANT_ID;
+  // Get tenant ID from argument or environment
+  const tenantId = process.argv[2] || process.env.VINC_TENANT_ID;
   if (!tenantId) {
-    console.error('❌ VINC_TENANT_ID environment variable is required');
-    console.error('   Usage: VINC_TENANT_ID=hidros-it pnpm run solr:resync');
+    console.error('❌ Tenant ID is required');
+    console.error('   Usage: pnpm solr:resync <tenant-id>');
+    console.error('   Example: pnpm solr:resync hidros-it');
     process.exit(1);
   }
 
@@ -68,9 +74,10 @@ async function main() {
     process.exit(1);
   }
 
-  // Count total products
-  const totalCount = await PIMProduct.countDocuments({ isCurrent: true });
-  console.log(`📊 Found ${totalCount} current products to sync\n`);
+  // Count total products (only published products by default)
+  const filter = { isCurrent: true, status: 'published' };
+  const totalCount = await PIMProduct.countDocuments(filter);
+  console.log(`📊 Found ${totalCount} published products to sync\n`);
 
   if (totalCount === 0) {
     console.log('No products to sync.');
@@ -87,7 +94,7 @@ async function main() {
   console.log(`Processing in batches of ${BATCH_SIZE}...\n`);
 
   // Use cursor for memory efficiency
-  const cursor = PIMProduct.find({ isCurrent: true })
+  const cursor = PIMProduct.find(filter)
     .lean()
     .cursor({ batchSize: BATCH_SIZE });
 

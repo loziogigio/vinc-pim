@@ -118,6 +118,17 @@ export async function extractSearchIntent(
       return { success: false, error: 'Invalid intent: attribute_related must have at least 3 SynonymTerms' };
     }
 
+    // Validate spec synonym arrays - 3 levels
+    if (!isValidSynonymArray(intent.spec_exact, 0)) {
+      return { success: false, error: 'Invalid intent: spec_exact must be an array of SynonymTerms' };
+    }
+    if (!isValidSynonymArray(intent.spec_synonyms, 3)) {
+      return { success: false, error: 'Invalid intent: spec_synonyms must have at least 3 SynonymTerms' };
+    }
+    if (!isValidSynonymArray(intent.spec_related, 3)) {
+      return { success: false, error: 'Invalid intent: spec_related must have at least 3 SynonymTerms' };
+    }
+
     return { success: true, intent };
   } catch (error) {
     return {
@@ -133,48 +144,51 @@ export async function extractSearchIntent(
 
 /**
  * Cascade search level configuration
- * 3 product levels × 4 attribute levels = 12 combinations
+ * 3 product levels × 4 attribute levels × 4 spec levels
+ * But simplified to: product × (combined attribute+spec) levels
  */
 export interface CascadeLevel {
   level: number;
   name: string;
   productLevel: 0 | 1 | 2;  // 0=exact, 1=syn[0], 2=syn[1]
   attributeLevel: 0 | 1 | 2 | 3;  // 0=exact, 1=synonyms, 2=related, 3=none
+  specLevel: 0 | 1 | 2 | 3;  // 0=exact, 1=synonyms, 2=related, 3=none
 }
 
 /**
  * Get all cascade levels in priority order (12 levels)
  *
- * Order: Each product level exhausts all attribute options (including fallback)
+ * Order: Each product level exhausts all attribute+spec options (including fallback)
  * before moving to the next synonym level.
+ * Specs are kept in sync with attributes (same level) to avoid explosion of combinations.
  *
- * Phase 1 (0-3):  product_exact + all attrs → product_exact fallback
- * Phase 2 (4-7):  syn[0] + all attrs → syn[0] fallback
- * Phase 3 (8-11): syn[1] + all attrs → syn[1] fallback
+ * Phase 1 (0-3):  product_exact + all attrs/specs → product_exact fallback
+ * Phase 2 (4-7):  syn[0] + all attrs/specs → syn[0] fallback
+ * Phase 3 (8-11): syn[1] + all attrs/specs → syn[1] fallback
  */
 export function getCascadeLevels(): CascadeLevel[] {
   return [
     // ========================================
     // PHASE 1: product_exact (levels 0-3)
     // ========================================
-    { level: 0, name: 'exact + attr_exact', productLevel: 0, attributeLevel: 0 },
-    { level: 1, name: 'exact + attr_syn', productLevel: 0, attributeLevel: 1 },
-    { level: 2, name: 'exact + attr_related', productLevel: 0, attributeLevel: 2 },
-    { level: 3, name: 'exact only', productLevel: 0, attributeLevel: 3 },
+    { level: 0, name: 'exact + attr_exact + spec_exact', productLevel: 0, attributeLevel: 0, specLevel: 0 },
+    { level: 1, name: 'exact + attr_syn + spec_syn', productLevel: 0, attributeLevel: 1, specLevel: 1 },
+    { level: 2, name: 'exact + attr_related + spec_related', productLevel: 0, attributeLevel: 2, specLevel: 2 },
+    { level: 3, name: 'exact only', productLevel: 0, attributeLevel: 3, specLevel: 3 },
     // ========================================
     // PHASE 2: product_synonyms[0] (levels 4-7)
     // ========================================
-    { level: 4, name: 'syn[0] + attr_exact', productLevel: 1, attributeLevel: 0 },
-    { level: 5, name: 'syn[0] + attr_syn', productLevel: 1, attributeLevel: 1 },
-    { level: 6, name: 'syn[0] + attr_related', productLevel: 1, attributeLevel: 2 },
-    { level: 7, name: 'syn[0] only', productLevel: 1, attributeLevel: 3 },
+    { level: 4, name: 'syn[0] + attr_exact + spec_exact', productLevel: 1, attributeLevel: 0, specLevel: 0 },
+    { level: 5, name: 'syn[0] + attr_syn + spec_syn', productLevel: 1, attributeLevel: 1, specLevel: 1 },
+    { level: 6, name: 'syn[0] + attr_related + spec_related', productLevel: 1, attributeLevel: 2, specLevel: 2 },
+    { level: 7, name: 'syn[0] only', productLevel: 1, attributeLevel: 3, specLevel: 3 },
     // ========================================
     // PHASE 3: product_synonyms[1] (levels 8-11)
     // ========================================
-    { level: 8, name: 'syn[1] + attr_exact', productLevel: 2, attributeLevel: 0 },
-    { level: 9, name: 'syn[1] + attr_syn', productLevel: 2, attributeLevel: 1 },
-    { level: 10, name: 'syn[1] + attr_related', productLevel: 2, attributeLevel: 2 },
-    { level: 11, name: 'syn[1] only', productLevel: 2, attributeLevel: 3 },
+    { level: 8, name: 'syn[1] + attr_exact + spec_exact', productLevel: 2, attributeLevel: 0, specLevel: 0 },
+    { level: 9, name: 'syn[1] + attr_syn + spec_syn', productLevel: 2, attributeLevel: 1, specLevel: 1 },
+    { level: 10, name: 'syn[1] + attr_related + spec_related', productLevel: 2, attributeLevel: 2, specLevel: 2 },
+    { level: 11, name: 'syn[1] only', productLevel: 2, attributeLevel: 3, specLevel: 3 },
   ];
 }
 
@@ -204,6 +218,19 @@ export function getAttributeTerms(intent: EliaIntentExtraction, level: 0 | 1 | 2
 }
 
 /**
+ * Get spec terms for a specific cascade level
+ * Level 3 = none (fallback with no specs)
+ */
+export function getSpecTerms(intent: EliaIntentExtraction, level: 0 | 1 | 2 | 3): SynonymTerm[] {
+  switch (level) {
+    case 0: return intent.spec_exact;
+    case 1: return intent.spec_synonyms;
+    case 2: return intent.spec_related;
+    case 3: return []; // No specs (fallback)
+  }
+}
+
+/**
  * Extract just the term strings from SynonymTerm array
  */
 export function extractTermStrings(synonymTerms: SynonymTerm[]): string[] {
@@ -227,10 +254,12 @@ export function buildCascadeSearchText(
 ): string {
   const productTerms = getProductTerms(intent, cascadeLevel.productLevel);
   const attributeTerms = getAttributeTerms(intent, cascadeLevel.attributeLevel);
+  const specTerms = getSpecTerms(intent, cascadeLevel.specLevel);
 
   const parts: string[] = [
     ...extractTermStrings(productTerms),
     ...extractTermStrings(attributeTerms),
+    ...extractTermStrings(specTerms),
   ];
 
   return parts.join(' ');

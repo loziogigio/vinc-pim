@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         total_found: searchResult.total_count,
         matched_products: searchResult.matched_products,
         matched_attributes: searchResult.matched_attributes,
+        matched_specs: searchResult.matched_specs,
         performance: {
           total_ms: durationMs,
         },

@@ -54,6 +54,30 @@ La precision indica quanto il termine è preciso rispetto all'intento originale.
     {"term": "relax", "precision": 0.4}
   ]
 
+### SINONIMI SPECIFICHE TECNICHE (3 livelli)
+
+Le specifiche tecniche sono misure/valori numerici come peso, dimensioni, potenza, ecc.
+
+**spec_exact** (precision: 1.0):
+- Specifiche esatte dalla query (misure, pesi, potenze)
+- ES: [{"term": "5kg", "precision": 1.0}, {"term": "100cm", "precision": 1.0}]
+
+**spec_synonyms** (precision: 0.9-0.7, MINIMO 3):
+- Varianti e sinonimi delle specifiche
+- ES: [
+    {"term": "5 kg", "precision": 0.9},
+    {"term": "5 chili", "precision": 0.8},
+    {"term": "peso 5", "precision": 0.7}
+  ]
+
+**spec_related** (precision: 0.6-0.4, MINIMO 3):
+- Specifiche correlate o range approssimativi
+- ES: [
+    {"term": "4-6kg", "precision": 0.6},
+    {"term": "leggero", "precision": 0.5},
+    {"term": "portatile", "precision": 0.4}
+  ]
+
 ### MODIFICATORI INTENTO
 
 **sort_by**: relevance | price_asc | price_desc | quality | newest | popularity
@@ -63,7 +87,7 @@ La precision indica quanto il termine è preciso rispetto all'intento originale.
 
 ## ESEMPIO COMPLETO
 
-"condizionatore silenzioso per camera da letto":
+"condizionatore silenzioso 12000 BTU":
 - product_exact: [{"term": "condizionatore", "precision": 1.0}]
 - product_synonyms: [
     {"term": "climatizzatore", "precision": 0.9},
@@ -78,7 +102,18 @@ La precision indica quanto il termine è preciso rispetto all'intento originale.
 - attribute_related: [
     {"term": "comfort", "precision": 0.6},
     {"term": "notturno", "precision": 0.5},
-    {"term": "camera da letto", "precision": 0.4}
+    {"term": "relax", "precision": 0.4}
+  ]
+- spec_exact: [{"term": "12000 BTU", "precision": 1.0}]
+- spec_synonyms: [
+    {"term": "12000BTU", "precision": 0.9},
+    {"term": "12kBTU", "precision": 0.8},
+    {"term": "potenza 12000", "precision": 0.7}
+  ]
+- spec_related: [
+    {"term": "3.5kW", "precision": 0.6},
+    {"term": "35mq", "precision": 0.5},
+    {"term": "media potenza", "precision": 0.4}
   ]
 - sort_by: "relevance"
 - stock_filter: "any"
@@ -92,9 +127,10 @@ La precision indica quanto il termine è preciso rispetto all'intento originale.
 ## REGOLE FONDAMENTALI
 1. OGNI oggetto ha "term" (string) e "precision" (number 0-1)
 2. Ordina per precision decrescente in ogni array
-3. ESATTAMENTE 2 product_synonyms, MINIMO 3 per attribute_synonyms e attribute_related
-4. Modificatori ("economico", "disponibile") → sort_by/stock_filter
-5. Rispondi in italiano nel user_message`;
+3. ESATTAMENTE 2 product_synonyms, MINIMO 3 per attribute_synonyms, attribute_related, spec_synonyms e spec_related
+4. Se non ci sono specifiche tecniche nella query, genera termini generici correlati al prodotto
+5. Modificatori ("economico", "disponibile") → sort_by/stock_filter
+6. Rispondi in italiano nel user_message`;
 
 const INTENT_EXTRACTION_PROMPT_EN = `You are ELIA, an AI assistant for product search analysis.
 
@@ -143,6 +179,30 @@ Precision indicates how closely the term matches the original intent.
     {"term": "relaxing", "precision": 0.4}
   ]
 
+### TECHNICAL SPECIFICATIONS SYNONYMS (3 levels)
+
+Technical specifications are numeric values like weight, dimensions, power, etc.
+
+**spec_exact** (precision: 1.0):
+- Exact specifications from query (measurements, weights, power)
+- EX: [{"term": "5kg", "precision": 1.0}, {"term": "100cm", "precision": 1.0}]
+
+**spec_synonyms** (precision: 0.9-0.7, MINIMUM 3):
+- Variants and synonyms of specifications
+- EX: [
+    {"term": "5 kg", "precision": 0.9},
+    {"term": "5 kilos", "precision": 0.8},
+    {"term": "weight 5", "precision": 0.7}
+  ]
+
+**spec_related** (precision: 0.6-0.4, MINIMUM 3):
+- Related specifications or approximate ranges
+- EX: [
+    {"term": "4-6kg", "precision": 0.6},
+    {"term": "lightweight", "precision": 0.5},
+    {"term": "portable", "precision": 0.4}
+  ]
+
 ### INTENT MODIFIERS
 
 **sort_by**: relevance | price_asc | price_desc | quality | newest | popularity
@@ -152,7 +212,7 @@ Precision indicates how closely the term matches the original intent.
 
 ## COMPLETE EXAMPLE
 
-"quiet air conditioner for bedroom":
+"quiet air conditioner 12000 BTU":
 - product_exact: [{"term": "air conditioner", "precision": 1.0}]
 - product_synonyms: [
     {"term": "AC", "precision": 0.9},
@@ -169,6 +229,17 @@ Precision indicates how closely the term matches the original intent.
     {"term": "bedroom", "precision": 0.5},
     {"term": "relaxing", "precision": 0.4}
   ]
+- spec_exact: [{"term": "12000 BTU", "precision": 1.0}]
+- spec_synonyms: [
+    {"term": "12000BTU", "precision": 0.9},
+    {"term": "12kBTU", "precision": 0.8},
+    {"term": "power 12000", "precision": 0.7}
+  ]
+- spec_related: [
+    {"term": "3.5kW", "precision": 0.6},
+    {"term": "35sqm", "precision": 0.5},
+    {"term": "medium power", "precision": 0.4}
+  ]
 - sort_by: "relevance"
 - stock_filter: "any"
 
@@ -181,9 +252,10 @@ Precision indicates how closely the term matches the original intent.
 ## FUNDAMENTAL RULES
 1. EVERY object has "term" (string) and "precision" (number 0-1)
 2. Order by descending precision in each array
-3. EXACTLY 2 product_synonyms, MINIMUM 3 for attribute_synonyms and attribute_related
-4. Modifiers ("cheap", "available") → sort_by/stock_filter
-5. Respond in English in user_message`;
+3. EXACTLY 2 product_synonyms, MINIMUM 3 for attribute_synonyms, attribute_related, spec_synonyms, and spec_related
+4. If no technical specs in query, generate generic related terms for the product
+5. Modifiers ("cheap", "available") → sort_by/stock_filter
+6. Respond in English in user_message`;
 
 // ============================================
 // PROMPT GETTER
@@ -238,6 +310,7 @@ Analizza i prodotti ricevuti e riordinali in base all'intento dell'utente e ai d
    - brand_name: marca
    - model: modello
    - attributes: oggetto con attributi prodotto (chiave-valore)
+   - technical_specifications: array di specifiche tecniche (peso, dimensioni, potenza, ecc.)
    - price/net_price/gross_price: prezzi ERP
    - availability: quantità disponibile
    - add_to_cart: se ordinabile
@@ -246,21 +319,23 @@ Analizza i prodotti ricevuti e riordinali in base all'intento dell'utente e ai d
    - sort_by: come ordinare (price_asc, price_desc, quality, relevance, etc.)
    - stock_filter: filtro disponibilità (any, in_stock, available_soon)
    - attributes.terms: array di termini di ricerca attributi (es: ["silenzioso", "basso rumore", "comfort"])
+   - specs.terms: array di termini di ricerca specifiche tecniche (es: ["5kg", "100cm", "12000 BTU"])
 
 3. **user_message**: La query originale dell'utente
 
 ## COSA DEVI FARE
 1. **Filtra** i prodotti in base a stock_filter (se richiesto)
-2. **Valuta** quanto ogni prodotto corrisponde ai termini in attributes.terms
+2. **Valuta** quanto ogni prodotto corrisponde ai termini in attributes.terms e specs.terms
 3. **Ordina** i prodotti in base a sort_by, considerando anche la corrispondenza
 4. **Restituisci** i prodotti riordinati con punteggi e motivazioni
 
-## REGOLE DI MATCHING ATTRIBUTI
-Cerca i termini di attributes.terms in:
+## REGOLE DI MATCHING ATTRIBUTI E SPECIFICHE
+Cerca i termini di attributes.terms e specs.terms in:
 - **name**: nome del prodotto
 - **brand_name**: marca
 - **model**: modello
 - **attributes**: valori degli attributi prodotto
+- **technical_specifications**: specifiche tecniche del prodotto (peso, dimensioni, potenza, ecc.)
 - **category_path**: percorso categoria
 
 Calcola attribute_match_score (0-1):
@@ -297,6 +372,7 @@ Analyze received products and reorder them based on user intent and ERP data (pr
    - brand_name: brand
    - model: model
    - attributes: object with product attributes (key-value)
+   - technical_specifications: array of technical specifications (weight, dimensions, power, etc.)
    - price/net_price/gross_price: ERP prices
    - availability: available quantity
    - add_to_cart: if orderable
@@ -305,21 +381,23 @@ Analyze received products and reorder them based on user intent and ERP data (pr
    - sort_by: how to sort (price_asc, price_desc, quality, relevance, etc.)
    - stock_filter: availability filter (any, in_stock, available_soon)
    - attributes.terms: array of attribute search terms (e.g., ["quiet", "low noise", "comfort"])
+   - specs.terms: array of technical specification search terms (e.g., ["5kg", "100cm", "12000 BTU"])
 
 3. **user_message**: Original user query
 
 ## WHAT YOU MUST DO
 1. **Filter** products based on stock_filter (if requested)
-2. **Evaluate** how well each product matches the terms in attributes.terms
+2. **Evaluate** how well each product matches the terms in attributes.terms and specs.terms
 3. **Sort** products based on sort_by, also considering the match
 4. **Return** reordered products with scores and reasons
 
-## ATTRIBUTE MATCHING RULES
-Search for attributes.terms in:
+## ATTRIBUTE AND SPEC MATCHING RULES
+Search for attributes.terms and specs.terms in:
 - **name**: product name
 - **brand_name**: brand
 - **model**: model
 - **attributes**: product attribute values
+- **technical_specifications**: product technical specifications (weight, dimensions, power, etc.)
 - **category_path**: category path
 
 Calculate attribute_match_score (0-1):
@@ -368,7 +446,12 @@ export function getProductAnalysisPrompt(language: string = 'it'): string {
  */
 export function getProductAnalysisUserMessage(
   products: unknown[],
-  intent: { sort_by: string; stock_filter: string; attributes?: Record<string, unknown> },
+  intent: {
+    sort_by: string;
+    stock_filter: string;
+    attributes?: Record<string, unknown>;
+    specs?: Record<string, unknown>;
+  },
   userMessage?: string
 ): string {
   return JSON.stringify({

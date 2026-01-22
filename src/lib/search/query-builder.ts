@@ -194,8 +194,9 @@ const SEARCH_FIELDS_CONFIG = [
   // Attribute labels and values (searchable dynamic attributes)
   { field: 'attr_values_text_{lang}', weight: 80, wildcardWeight: 30 }, // Attribute values (CROMATO, PEGASO, NT300)
   { field: 'attr_labels_text_{lang}', weight: 25, wildcardWeight: 8 },  // Attribute labels (Colore, Materiale)
-  // Specification labels
+  // Specification labels and values
   { field: 'spec_labels_text_{lang}', weight: 20, wildcardWeight: 6 },
+  { field: 'spec_values_text_{lang}', weight: 60, wildcardWeight: 20, containsWeight: 8 }, // Spec values (5kg, 100cm, 12000 BTU)
   // Category/Collection/Product Type names
   { field: 'category_name_text_{lang}', weight: 40, wildcardWeight: 12 },
   { field: 'collection_names_text_{lang}', weight: 15, wildcardWeight: 5 },

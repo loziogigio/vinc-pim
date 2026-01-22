@@ -1,0 +1,197 @@
+/**
+ * Packaging Price Utilities
+ *
+ * Helper functions for calculating unit and package prices.
+ * The pricing model stores unit prices and calculates package prices on the fly.
+ */
+
+import type { PackagingOption, PackagingPricing } from "@/lib/types/pim";
+
+/**
+ * Calculate package price from unit price and quantity
+ * @param unitPrice - Price per single unit
+ * @param qty - Quantity in the package
+ * @returns Package price (unit × qty), rounded to 2 decimals
+ */
+export function calculatePackagePrice(
+  unitPrice: number | undefined,
+  qty: number
+): number | undefined {
+  if (unitPrice === undefined || unitPrice === null) return undefined;
+  return Math.round(unitPrice * qty * 100) / 100;
+}
+
+/**
+ * Calculate unit price from package price and quantity
+ * @param packagePrice - Total package price
+ * @param qty - Quantity in the package
+ * @returns Unit price (package ÷ qty), rounded to 2 decimals
+ */
+export function calculateUnitPrice(
+  packagePrice: number | undefined,
+  qty: number
+): number | undefined {
+  if (packagePrice === undefined || packagePrice === null || qty <= 0)
+    return undefined;
+  return Math.round((packagePrice / qty) * 100) / 100;
+}
+
+/**
+ * Get display prices for a packaging option
+ * Returns both unit and package prices, calculating missing values
+ *
+ * @param pricing - Pricing data (may have unit or package prices)
+ * @param qty - Quantity in the package
+ * @returns Object with unit and package prices
+ */
+export function getDisplayPrices(
+  pricing: PackagingPricing | undefined,
+  qty: number
+): {
+  list_unit?: number;
+  retail_unit?: number;
+  sale_unit?: number;
+  list_pkg?: number;
+  retail_pkg?: number;
+  sale_pkg?: number;
+} {
+  if (!pricing) return {};
+
+  // Prefer unit prices if available, otherwise calculate from package prices
+  const list_unit =
+    pricing.list_unit ?? calculateUnitPrice(pricing.list, qty);
+  const retail_unit =
+    pricing.retail_unit ?? calculateUnitPrice(pricing.retail, qty);
+  const sale_unit =
+    pricing.sale_unit ?? calculateUnitPrice(pricing.sale, qty);
+
+  // Calculate package prices from unit prices
+  const list_pkg =
+    pricing.list ?? calculatePackagePrice(list_unit, qty);
+  const retail_pkg =
+    pricing.retail ?? calculatePackagePrice(retail_unit, qty);
+  const sale_pkg =
+    pricing.sale ?? calculatePackagePrice(sale_unit, qty);
+
+  return {
+    list_unit,
+    retail_unit,
+    sale_unit,
+    list_pkg,
+    retail_pkg,
+    sale_pkg,
+  };
+}
+
+/**
+ * Sync package prices from unit prices
+ * Call this before saving to ensure package prices are in sync
+ *
+ * @param pricing - Pricing data with unit prices
+ * @param qty - Quantity in the package
+ * @returns Updated pricing with calculated package prices
+ */
+export function syncPackagePrices(
+  pricing: PackagingPricing | undefined,
+  qty: number
+): PackagingPricing | undefined {
+  if (!pricing) return undefined;
+
+  return {
+    ...pricing,
+    // Keep unit prices as stored
+    list_unit: pricing.list_unit,
+    retail_unit: pricing.retail_unit,
+    sale_unit: pricing.sale_unit,
+    // Calculate package prices from unit prices
+    list: calculatePackagePrice(pricing.list_unit, qty) ?? pricing.list,
+    retail:
+      calculatePackagePrice(pricing.retail_unit, qty) ?? pricing.retail,
+    sale: calculatePackagePrice(pricing.sale_unit, qty) ?? pricing.sale,
+  };
+}
+
+/**
+ * Get the effective display price for a packaging option
+ * Priority: sale > retail > list (for display in lists)
+ *
+ * @param pricing - Pricing data
+ * @param qty - Quantity in the package
+ * @param priceType - 'unit' or 'package'
+ * @returns The effective price and its type
+ */
+export function getEffectivePrice(
+  pricing: PackagingPricing | undefined,
+  qty: number,
+  priceType: "unit" | "package" = "package"
+): { price?: number; type: "sale" | "retail" | "list" | null } {
+  if (!pricing) return { price: undefined, type: null };
+
+  const prices = getDisplayPrices(pricing, qty);
+
+  if (priceType === "unit") {
+    if (prices.sale_unit !== undefined)
+      return { price: prices.sale_unit, type: "sale" };
+    if (prices.retail_unit !== undefined)
+      return { price: prices.retail_unit, type: "retail" };
+    if (prices.list_unit !== undefined)
+      return { price: prices.list_unit, type: "list" };
+  } else {
+    if (prices.sale_pkg !== undefined)
+      return { price: prices.sale_pkg, type: "sale" };
+    if (prices.retail_pkg !== undefined)
+      return { price: prices.retail_pkg, type: "retail" };
+    if (prices.list_pkg !== undefined)
+      return { price: prices.list_pkg, type: "list" };
+  }
+
+  return { price: undefined, type: null };
+}
+
+/**
+ * Get the default packaging option from a list
+ */
+export function getDefaultPackaging(
+  options: PackagingOption[] | undefined
+): PackagingOption | undefined {
+  if (!options || options.length === 0) return undefined;
+  return options.find((opt) => opt.is_default) || options[0];
+}
+
+/**
+ * Get the smallest (unit) packaging option from a list
+ */
+export function getSmallestPackaging(
+  options: PackagingOption[] | undefined
+): PackagingOption | undefined {
+  if (!options || options.length === 0) return undefined;
+  return options.find((opt) => opt.is_smallest) || options[0];
+}
+
+/**
+ * Format price for display with currency symbol
+ */
+export function formatPrice(
+  price: number | undefined,
+  currency: string = "EUR",
+  locale: string = "it-IT"
+): string {
+  if (price === undefined || price === null) return "-";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+  }).format(price);
+}
+
+/**
+ * Format unit price with "/pz" suffix
+ */
+export function formatUnitPrice(
+  price: number | undefined,
+  currency: string = "EUR",
+  uom: string = "pz",
+  locale: string = "it-IT"
+): string {
+  if (price === undefined || price === null) return "-";
+  return `${formatPrice(price, currency, locale)}/${uom}`;
+}

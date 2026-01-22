@@ -167,6 +167,8 @@ export interface SolrProduct {
   // Attributes & Technical Specifications (for requested language)
   attributes?: AttributeData[];
   technical_specifications?: SpecificationData[];
+  /** Flat array of spec values for text matching (e.g., ["5.8", "Altezza 5.8", "5.8 CM"]) */
+  spec_values?: string[];
 
   // Promotions
   has_active_promo?: boolean;

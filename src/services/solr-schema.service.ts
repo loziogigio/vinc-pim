@@ -47,6 +47,7 @@ const MULTILINGUAL_FIELDS = [
 
   // Nested object labels (extracted for search)
   { name: "spec_labels", multiValued: true },     // Specification labels
+  { name: "spec_values", multiValued: true },     // Specification values for text search (5kg, 100cm, 12000 BTU)
   { name: "attr_labels", multiValued: true },     // Attribute labels
   { name: "attr_values", multiValued: true },     // Attribute values for text search (CROMATO, PEGASO, etc.)
   { name: "media_labels", multiValued: true },    // Media labels
