@@ -54,7 +54,15 @@ const CompanyBrandingSchema = new Schema(
     primaryColor: { type: String, default: "#009f7f" },
     secondaryColor: { type: String, default: "#02b290" },
     shopUrl: { type: String },
-    websiteUrl: { type: String }
+    websiteUrl: { type: String },
+    // Extended theming colors
+    accentColor: { type: String },
+    textColor: { type: String },
+    mutedColor: { type: String },
+    backgroundColor: { type: String },
+    headerBackgroundColor: { type: String },
+    footerBackgroundColor: { type: String },
+    footerTextColor: { type: String }
   },
   { _id: false }
 );

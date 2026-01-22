@@ -31,6 +31,22 @@ export interface CompanyBranding {
   shopUrl?: string;
   /** Company website URL (e.g., https://www.hidros.com) */
   websiteUrl?: string;
+
+  // Extended theming colors
+  /** Accent color for buttons, links, CTAs */
+  accentColor?: string;
+  /** Main body text color (default: #000000) */
+  textColor?: string;
+  /** Secondary/muted text color (default: #595959) */
+  mutedColor?: string;
+  /** Page background color (default: #ffffff) */
+  backgroundColor?: string;
+  /** Header background color (empty = transparent/inherit) */
+  headerBackgroundColor?: string;
+  /** Footer background color (default: #f5f5f5) */
+  footerBackgroundColor?: string;
+  /** Footer text color (default: #666666) */
+  footerTextColor?: string;
 }
 
 export interface CDNConfiguration {

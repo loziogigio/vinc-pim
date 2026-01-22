@@ -31,7 +31,15 @@ const DEFAULT_BRANDING: CompanyBranding = {
   primaryColor: "#009f7f",
   secondaryColor: "#02b290",
   shopUrl: "",
-  websiteUrl: ""
+  websiteUrl: "",
+  // Extended theming colors
+  accentColor: "",
+  textColor: "#000000",
+  mutedColor: "#595959",
+  backgroundColor: "#ffffff",
+  headerBackgroundColor: "",
+  footerBackgroundColor: "#f5f5f5",
+  footerTextColor: "#666666"
 };
 
 const DEFAULT_CARD_STYLE: ProductCardStyle = {
@@ -888,6 +896,80 @@ function BrandingForm({
           helper="Badges, accents and hover states."
         />
       </div>
+
+      {/* Extended Theme Colours */}
+      <details className="group rounded-xl border border-slate-200 bg-slate-50/50">
+        <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 hover:text-slate-900">
+          <Palette className="h-4 w-4" />
+          Extended Theme Colours
+          <span className="ml-auto text-xs text-slate-400 group-open:hidden">Click to expand</span>
+        </summary>
+        <div className="grid gap-4 border-t border-slate-200 px-4 py-4 md:grid-cols-2">
+          <ColorInput
+            id="accent-color"
+            label="Accent colour"
+            value={branding.accentColor}
+            onChange={(value) => onChange("accentColor", value)}
+            helper="Buttons, links and CTAs."
+            allowClear
+            onClear={() => onChange("accentColor", "")}
+          />
+          <ColorInput
+            id="text-color"
+            label="Text colour"
+            value={branding.textColor}
+            onChange={(value) => onChange("textColor", value)}
+            helper="Main body text (default: #000000)."
+            allowClear
+            onClear={() => onChange("textColor", "")}
+          />
+          <ColorInput
+            id="muted-color"
+            label="Muted colour"
+            value={branding.mutedColor}
+            onChange={(value) => onChange("mutedColor", value)}
+            helper="Secondary/muted text (default: #595959)."
+            allowClear
+            onClear={() => onChange("mutedColor", "")}
+          />
+          <ColorInput
+            id="background-color"
+            label="Background colour"
+            value={branding.backgroundColor}
+            onChange={(value) => onChange("backgroundColor", value)}
+            helper="Page background (default: #ffffff)."
+            allowClear
+            onClear={() => onChange("backgroundColor", "")}
+          />
+          <ColorInput
+            id="header-bg-color"
+            label="Header background"
+            value={branding.headerBackgroundColor}
+            onChange={(value) => onChange("headerBackgroundColor", value)}
+            helper="Header background (empty = inherit)."
+            allowClear
+            onClear={() => onChange("headerBackgroundColor", "")}
+          />
+          <ColorInput
+            id="footer-bg-color"
+            label="Footer background"
+            value={branding.footerBackgroundColor}
+            onChange={(value) => onChange("footerBackgroundColor", value)}
+            helper="Footer background (default: #f5f5f5)."
+            allowClear
+            onClear={() => onChange("footerBackgroundColor", "")}
+          />
+          <ColorInput
+            id="footer-text-color"
+            label="Footer text colour"
+            value={branding.footerTextColor}
+            onChange={(value) => onChange("footerTextColor", value)}
+            helper="Footer text (default: #666666)."
+            allowClear
+            onClear={() => onChange("footerTextColor", "")}
+          />
+        </div>
+      </details>
     </SectionCard>
   );
 }

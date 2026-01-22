@@ -8,7 +8,15 @@ const GLOBAL_HOME_SETTINGS_ID = process.env.HOME_SETTINGS_ID?.trim() || "global-
 const DEFAULT_BRANDING: CompanyBranding = {
   title: "B2B Store",
   primaryColor: "#009f7f",
-  secondaryColor: "#02b290"
+  secondaryColor: "#02b290",
+  // Extended theming colors
+  accentColor: "",
+  textColor: "#000000",
+  mutedColor: "#595959",
+  backgroundColor: "#ffffff",
+  headerBackgroundColor: "",
+  footerBackgroundColor: "#f5f5f5",
+  footerTextColor: "#666666"
 };
 
 const LEGACY_HOME_SETTINGS_COLLECTION = "homesettings";
