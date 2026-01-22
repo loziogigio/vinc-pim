@@ -39,6 +39,7 @@ const MobileHomeConfigSchema = new Schema<IMobileHomeConfig>(
         app_name: "",
         logo_url: "",
         logo_width: 64,
+        primary_color: "#ec4899",
       },
     },
     blocks: {

@@ -58,11 +58,13 @@ export const dynamic = "force-dynamic";
 // Sortable block item component
 function SortableBlockItem({
   block,
+  index,
   isSelected,
   onClick,
   onDelete,
 }: {
   block: MobileBlock;
+  index: number;
   isSelected: boolean;
   onClick: () => void;
   onDelete: () => void;
@@ -85,9 +87,14 @@ function SortableBlockItem({
       className={cn(
         "flex items-center gap-2 rounded-md border bg-white p-3 transition-all",
         isDragging ? "opacity-50 shadow-lg" : "",
-        isSelected ? "border-pink-500 ring-2 ring-pink-200" : "border-gray-200"
+        isSelected ? "border-slate-500 ring-2 ring-slate-200" : "border-gray-200"
       )}
     >
+      {/* Block number */}
+      <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-xs font-medium text-slate-600">
+        {index + 1}
+      </span>
+
       <button
         type="button"
         className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
@@ -175,9 +182,9 @@ function AppIdentitySettings({
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-pink-200 bg-pink-50/50 p-4">
+    <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
       <div className="flex items-center gap-2">
-        <Smartphone className="h-4 w-4 text-pink-600" />
+        <Smartphone className="h-4 w-4 text-slate-600" />
         <h3 className="text-sm font-semibold text-gray-700">App Identity</h3>
       </div>
 
@@ -203,7 +210,7 @@ function AppIdentitySettings({
               className={cn(
                 "flex items-center gap-1 px-2 py-1 text-xs transition",
                 logoInputMode === "upload"
-                  ? "bg-pink-100 text-pink-700"
+                  ? "bg-slate-100 text-slate-700"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -216,7 +223,7 @@ function AppIdentitySettings({
               className={cn(
                 "flex items-center gap-1 px-2 py-1 text-xs transition",
                 logoInputMode === "url"
-                  ? "bg-pink-100 text-pink-700"
+                  ? "bg-slate-100 text-slate-700"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -309,6 +316,25 @@ function AppIdentitySettings({
             min={20}
             max={100}
             className="h-8 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Primary Color */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Primary Color (Buttons)</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={appIdentity.primary_color || "#ec4899"}
+            onChange={(e) => onChange({ primary_color: e.target.value })}
+            className="h-8 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+          />
+          <Input
+            value={appIdentity.primary_color || "#ec4899"}
+            onChange={(e) => onChange({ primary_color: e.target.value })}
+            placeholder="#ec4899"
+            className="h-8 text-sm font-mono flex-1"
           />
         </div>
       </div>
@@ -586,7 +612,7 @@ export default function MobileBuilderPage() {
   if (isLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
       </div>
     );
   }
@@ -608,7 +634,7 @@ export default function MobileBuilderPage() {
             )}
           </button>
           <div className="flex items-center gap-3">
-            <Smartphone className="h-5 w-5 text-pink-500" />
+            <Smartphone className="h-5 w-5 text-slate-600" />
             <span className="text-lg font-semibold text-gray-800">Mobile Home Builder</span>
 
             {/* Version Selector Dropdown */}
@@ -639,7 +665,7 @@ export default function MobileBuilderPage() {
                           onClick={() => handleSwitchVersion(v.version)}
                           className={cn(
                             "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50",
-                            v.version === currentVersion && "bg-pink-50 text-pink-600"
+                            v.version === currentVersion && "bg-slate-50 text-slate-600"
                           )}
                         >
                           <span>v{v.version}</span>
@@ -703,7 +729,7 @@ export default function MobileBuilderPage() {
           <Button
             onClick={handlePublish}
             disabled={isPublishing || isDirty}
-            className="gap-2 bg-pink-500 hover:bg-pink-600"
+            className="gap-2 bg-slate-600 hover:bg-slate-700"
           >
             {isPublishing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -722,7 +748,7 @@ export default function MobileBuilderPage() {
         </div>
       )}
       {info && (
-        <div className="border-l-4 border-pink-500 bg-pink-50 px-6 py-3 text-sm text-pink-600">
+        <div className="border-l-4 border-slate-500 bg-slate-50 px-6 py-3 text-sm text-slate-600">
           {info}
         </div>
       )}
@@ -752,9 +778,9 @@ export default function MobileBuilderPage() {
                     key={blockMeta.type}
                     type="button"
                     onClick={() => handleAddBlock(blockMeta.type)}
-                    className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:border-pink-300 hover:bg-pink-50"
+                    className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-pink-100 text-pink-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-600">
                       <Plus className="h-4 w-4" />
                     </div>
                     <div>
@@ -789,10 +815,11 @@ export default function MobileBuilderPage() {
               >
                 <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
-                    {blocks.map((block) => (
+                    {blocks.map((block, index) => (
                       <SortableBlockItem
                         key={block.id}
                         block={block}
+                        index={index}
                         isSelected={selectedBlockId === block.id}
                         onClick={() => setSelectedBlockId(block.id)}
                         onDelete={() => handleDeleteBlock(block.id)}

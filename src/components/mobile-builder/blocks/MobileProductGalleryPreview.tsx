@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 
 interface MobileProductGalleryPreviewProps {
   block: MobileProductGalleryBlock;
+  primaryColor?: string;
 }
 
 // Sample products for preview (fallback)
@@ -34,7 +35,7 @@ const GAP_SIZES = {
   md: "gap-3",
 };
 
-export function MobileProductGalleryPreview({ block }: MobileProductGalleryPreviewProps) {
+export function MobileProductGalleryPreview({ block, primaryColor = "#ec4899" }: MobileProductGalleryPreviewProps) {
   const {
     title,
     show_title,
@@ -116,9 +117,10 @@ export function MobileProductGalleryPreview({ block }: MobileProductGalleryPrevi
                 <button
                   type="button"
                   className={cn(
-                    "flex w-full items-center justify-center gap-1 rounded bg-pink-500 font-medium text-white",
+                    "flex w-full items-center justify-center gap-1 rounded font-medium text-white",
                     isCompact ? "mt-1.5 py-1 text-[10px]" : "mt-2 py-1.5 text-xs"
                   )}
+                  style={{ backgroundColor: primaryColor }}
                 >
                   <ShoppingCart className={cn(isCompact ? "h-3 w-3" : "h-3.5 w-3.5")} />
                   {isCompact ? "Add" : "Add to Cart"}

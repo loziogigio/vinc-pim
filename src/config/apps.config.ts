@@ -120,7 +120,7 @@ export const APPS: AppConfig[] = [
     description: "Build mobile app home screen",
     href: "/b2b/mobile-builder",
     icon: Smartphone,
-    color: "bg-pink-500",
+    color: "bg-slate-600",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: false,

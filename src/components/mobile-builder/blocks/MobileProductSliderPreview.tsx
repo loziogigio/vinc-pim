@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 
 interface MobileProductSliderPreviewProps {
   block: MobileProductSliderBlock;
+  primaryColor?: string;
 }
 
 // Sample products for preview (fallback)
@@ -26,7 +27,7 @@ const PLACEHOLDER_COLORS = [
   "bg-gradient-to-br from-pink-100 to-pink-200",
 ];
 
-export function MobileProductSliderPreview({ block }: MobileProductSliderPreviewProps) {
+export function MobileProductSliderPreview({ block, primaryColor = "#ec4899" }: MobileProductSliderPreviewProps) {
   const {
     title,
     show_title,
@@ -47,7 +48,7 @@ export function MobileProductSliderPreview({ block }: MobileProductSliderPreview
       {show_title && title && (
         <div className="mb-3 flex items-center justify-between px-4">
           <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-          <button type="button" className="text-xs text-pink-500">
+          <button type="button" className="text-xs" style={{ color: primaryColor }}>
             See All
           </button>
         </div>
@@ -101,7 +102,8 @@ export function MobileProductSliderPreview({ block }: MobileProductSliderPreview
               {show_add_to_cart && (
                 <button
                   type="button"
-                  className="mt-1.5 flex w-full items-center justify-center gap-1 rounded bg-pink-500 py-1 text-[10px] font-medium text-white"
+                  className="mt-1.5 flex w-full items-center justify-center gap-1 rounded py-1 text-[10px] font-medium text-white"
+                  style={{ backgroundColor: primaryColor }}
                 >
                   <ShoppingCart className="h-3 w-3" />
                   Add

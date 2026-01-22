@@ -16,12 +16,14 @@ export interface MobileAppIdentity {
   logo_url: string;
   logo_width: number;   // px
   logo_height?: number; // px, optional (maintain aspect ratio)
+  primary_color: string; // hex color for buttons (e.g., "#ec4899")
 }
 
 export const DEFAULT_APP_IDENTITY: MobileAppIdentity = {
   app_name: "",
   logo_url: "",
   logo_width: 64,
+  primary_color: "#ec4899", // pink-500 default
 };
 
 // ============================================================================
