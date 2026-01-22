@@ -3,14 +3,8 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  LayoutDashboard,
-  Package,
-  Home,
-  LogOut,
-  Store,
-  Link2,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
+import { getLauncherApps } from "@/config/apps.config";
 
 interface TenantAppLauncherProps {
   tenant: string;
@@ -18,44 +12,7 @@ interface TenantAppLauncherProps {
 
 export function TenantAppLauncher({ tenant }: TenantAppLauncherProps) {
   const router = useRouter();
-
-  const apps = [
-    {
-      name: "PIM",
-      description: "Product management",
-      href: `/${tenant}/b2b/pim`,
-      icon: Package,
-      color: "bg-violet-500",
-    },
-    {
-      name: "Correlazioni",
-      description: "Related products",
-      href: `/${tenant}/b2b/correlations`,
-      icon: Link2,
-      color: "bg-cyan-500",
-    },
-    {
-      name: "Home Builder",
-      description: "Design your storefront",
-      href: `/${tenant}/b2b/home-builder`,
-      icon: LayoutDashboard,
-      color: "bg-blue-500",
-    },
-    {
-      name: "Home Settings",
-      description: "Configure homepage",
-      href: `/${tenant}/b2b/home-settings`,
-      icon: Home,
-      color: "bg-emerald-500",
-    },
-    {
-      name: "Store",
-      description: "Orders & Customers",
-      href: `/${tenant}/b2b/store/orders`,
-      icon: Store,
-      color: "bg-amber-500",
-    },
-  ];
+  const apps = getLauncherApps();
 
   const handleLogout = async () => {
     await fetch(`/${tenant}/api/b2b/logout`, { method: "POST" });
@@ -90,8 +47,8 @@ export function TenantAppLauncher({ tenant }: TenantAppLauncherProps) {
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-5">
           {apps.map((app) => (
             <Link
-              key={app.name}
-              href={app.href}
+              key={app.id}
+              href={`/${tenant}${app.href}`}
               className="group flex flex-col items-center gap-3 rounded-2xl p-4 transition-all hover:bg-muted/50"
             >
               <div

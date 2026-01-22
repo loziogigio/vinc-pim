@@ -1,27 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, User, Home, Package, Store, LayoutDashboard, Users, Settings, Link2 } from "lucide-react";
+import { Bell, User } from "lucide-react";
 import type { B2BSessionData } from "@/lib/types/b2b";
+import { getCurrentSection } from "@/config/apps.config";
 import { AppLauncherDropdown } from "./AppLauncherDropdown";
 
 type DashboardHeaderProps = {
   session: B2BSessionData;
   notificationCount?: number;
 };
-
-// Get current section info based on pathname (handles tenant-prefixed paths)
-function getCurrentSection(pathname: string) {
-  // Check if path contains the section (works with or without tenant prefix)
-  if (pathname.includes("/b2b/pim")) return { name: "PIM", icon: Package, color: "bg-violet-500" };
-  if (pathname.includes("/b2b/correlations")) return { name: "Correlazioni", icon: Link2, color: "bg-cyan-500" };
-  if (pathname.includes("/b2b/store/orders")) return { name: "Store", icon: Store, color: "bg-amber-500" };
-  if (pathname.includes("/b2b/store/customers")) return { name: "Store", icon: Users, color: "bg-emerald-500" };
-  if (pathname.includes("/b2b/store")) return { name: "Store", icon: Store, color: "bg-amber-500" };
-  if (pathname.includes("/b2b/home-builder")) return { name: "Builder", icon: LayoutDashboard, color: "bg-blue-500" };
-  if (pathname.includes("/b2b/home-settings")) return { name: "Settings", icon: Settings, color: "bg-slate-500" };
-  return { name: "Dashboard", icon: Home, color: "bg-[#009688]" };
-}
 
 export function DashboardHeader({ session, notificationCount = 0 }: DashboardHeaderProps) {
   const pathname = usePathname() || "";

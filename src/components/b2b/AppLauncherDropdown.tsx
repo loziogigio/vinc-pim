@@ -3,29 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Grid3X3,
-  Package,
-  Store,
-  Users,
-  KeyRound,
-  LayoutDashboard,
-  Settings,
-  LogOut,
-  Home,
-  Link2,
-} from "lucide-react";
-
-const apps = [
-  { name: "Home", href: "/b2b", icon: Home, color: "bg-[#009688]" },
-  { name: "PIM", href: "/b2b/pim", icon: Package, color: "bg-violet-500" },
-  { name: "Correlazioni", href: "/b2b/correlations", icon: Link2, color: "bg-cyan-500" },
-  { name: "Store", href: "/b2b/store/orders", icon: Store, color: "bg-amber-500" },
-  { name: "Customers", href: "/b2b/store/customers", icon: Users, color: "bg-emerald-500" },
-  { name: "Portal Users", href: "/b2b/store/portal-users", icon: KeyRound, color: "bg-indigo-500" },
-  { name: "Builder", href: "/b2b/home-builder", icon: LayoutDashboard, color: "bg-blue-500" },
-  { name: "Settings", href: "/b2b/home-settings", icon: Settings, color: "bg-slate-500" },
-];
+import { Grid3X3, LogOut } from "lucide-react";
+import { getLauncherApps } from "@/config/apps.config";
 
 type AppLauncherDropdownProps = {
   tenantId?: string;
@@ -79,9 +58,9 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
         <div className="absolute right-0 top-full mt-2 w-[280px] rounded-2xl border border-[#ebe9f1] bg-white shadow-xl z-50">
           <div className="p-4">
             <div className="grid grid-cols-3 gap-2">
-              {apps.map((app) => (
+              {getLauncherApps().map((app) => (
                 <Link
-                  key={app.name}
+                  key={app.id}
                   href={`${tenantPrefix}${app.href}`}
                   onClick={() => setIsOpen(false)}
                   className="group flex flex-col items-center gap-2 rounded-xl p-3 transition hover:bg-[#f8f8f8]"
