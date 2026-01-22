@@ -211,12 +211,27 @@ export async function PATCH(
   { params }: { params: Promise<{ entity_code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check for API key authentication first
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "write");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantDb = `vinc-${session.tenantId}`;
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
     const { PIMProduct: PIMProductModel, Tag: TagModel, Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
@@ -257,6 +272,7 @@ export async function PATCH(
       "synonym_keys",
       "share_images_with_variants",
       "share_media_with_variants",
+      "packaging_options",          // Pricing & packaging (array of { code, qty, uom, pricing, ... })
     ];
 
     allowedFields.forEach((field) => {

@@ -48,9 +48,14 @@ export interface ProductPricing {
  * Supports reference-based pricing with discounts
  */
 export interface PackagingPricing {
+  // Package prices (total for this packaging)
   list?: number;                  // List price for this packaging
   retail?: number;                // MSRP for this packaging
   sale?: number;                  // Discounted price for this packaging
+  // Unit prices (price per single unit)
+  list_unit?: number;             // List price per unit (list / qty)
+  retail_unit?: number;           // MSRP per unit (retail / qty)
+  sale_unit?: number;             // Sale price per unit (sale / qty)
   // Reference-based pricing fields
   price_ref?: string;             // Reference packaging code (e.g., "PZ" for BOX)
   list_discount_pct?: number;     // Percentage discount from retail to get list (e.g., 50 for -50%)
@@ -813,9 +818,14 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         position: { type: Number },
         // Pricing (PackagingPricing) with reference-based pricing support
         pricing: {
+          // Package prices (total for this packaging)
           list: { type: Number },
           retail: { type: Number },
           sale: { type: Number },
+          // Unit prices (price per single unit)
+          list_unit: { type: Number },
+          retail_unit: { type: Number },
+          sale_unit: { type: Number },
           // Reference-based pricing fields
           price_ref: { type: String },
           list_discount_pct: { type: Number },

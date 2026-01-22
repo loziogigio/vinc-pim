@@ -321,6 +321,77 @@ function enrichTags(solrTags: any[], tagsMap: Map<string, any>): any[] {
 }
 
 // ============================================
+// PACKAGING PRICE CALCULATION (BI-DIRECTIONAL)
+// ============================================
+
+/**
+ * Calculate prices for packaging options (bi-directional)
+ *
+ * Supports two pricing sources:
+ * 1. Total price stored (list, retail, sale) → calculate unit prices
+ * 2. Unit price stored (list_unit, retail_unit, sale_unit) → calculate total prices
+ *
+ * Formula:
+ * - unit_price = total_price / qty
+ * - total_price = unit_price * qty
+ */
+function enrichPackagingWithUnitPrices(
+  packagingOptions: PackagingData[] | undefined
+): PackagingData[] | undefined {
+  if (!packagingOptions?.length) return packagingOptions;
+
+  return packagingOptions.map(pkg => {
+    const pricing = pkg.pricing;
+    if (!pricing) return pkg;
+
+    const qty = pkg.qty || 1; // Avoid division by zero
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    // Calculate list prices (bi-directional)
+    let list = pricing.list;
+    let listUnit = pricing.list_unit;
+    if (list != null && listUnit == null && qty > 0) {
+      // Total stored → calculate unit
+      listUnit = round2(list / qty);
+    } else if (listUnit != null && list == null) {
+      // Unit stored → calculate total
+      list = round2(listUnit * qty);
+    }
+
+    // Calculate retail prices (bi-directional)
+    let retail = pricing.retail;
+    let retailUnit = pricing.retail_unit;
+    if (retail != null && retailUnit == null && qty > 0) {
+      retailUnit = round2(retail / qty);
+    } else if (retailUnit != null && retail == null) {
+      retail = round2(retailUnit * qty);
+    }
+
+    // Calculate sale prices (bi-directional)
+    let sale = pricing.sale;
+    let saleUnit = pricing.sale_unit;
+    if (sale != null && saleUnit == null && qty > 0) {
+      saleUnit = round2(sale / qty);
+    } else if (saleUnit != null && sale == null) {
+      sale = round2(saleUnit * qty);
+    }
+
+    return {
+      ...pkg,
+      pricing: {
+        ...pricing,
+        list,
+        retail,
+        sale,
+        list_unit: listUnit,
+        retail_unit: retailUnit,
+        sale_unit: saleUnit,
+      },
+    };
+  });
+}
+
+// ============================================
 // MAIN ENRICHER
 // ============================================
 
@@ -504,7 +575,9 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         technical_specifications: mongoTechnicalSpecs || result.technical_specifications,
         images: productData?.images || result.images,
         media: mongoMedia || result.media,
-        packaging_options: productData?.packaging_options || result.packaging_options,
+        packaging_options: enrichPackagingWithUnitPrices(
+          productData?.packaging_options || result.packaging_options
+        ),
         // Remove gallery (doesn't exist in MongoDB schema)
         gallery: undefined,
       };
@@ -644,7 +717,9 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         // Promotions & Packaging
         has_active_promo: hasActivePromo,
         promotions: productData.promotions || product.promotions,
-        packaging_options: productData.packaging_options || product.packaging_options,
+        packaging_options: enrichPackagingWithUnitPrices(
+          productData.packaging_options || product.packaging_options
+        ),
         // Media
         cover_image_url: productData.cover_image_url || product.cover_image_url,
         images: productData.images || product.images,

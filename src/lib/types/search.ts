@@ -312,10 +312,27 @@ export interface PromotionData {
   min_order_value?: number;
 }
 
+export interface PackagingPricing {
+  // Package prices (total for this packaging)
+  list?: number;
+  retail?: number;
+  sale?: number;
+  // Unit prices (calculated: price / qty)
+  list_unit?: number;
+  retail_unit?: number;
+  sale_unit?: number;
+  // Reference-based pricing fields
+  price_ref?: string;
+  list_discount_pct?: number;
+  list_discount_amt?: number;
+  sale_discount_pct?: number;
+  sale_discount_amt?: number;
+}
+
 export interface PackagingData {
   id?: string;
   code: string;
-  label?: string;
+  label?: string | Record<string, string>;
   qty: number;
   uom: string;
   is_default: boolean;
@@ -323,6 +340,8 @@ export interface PackagingData {
   is_sellable?: boolean;
   ean?: string;
   position?: number;
+  pricing?: PackagingPricing;
+  promotions?: PromotionData[];
 }
 
 export interface ParentProductData {

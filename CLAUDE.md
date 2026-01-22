@@ -622,14 +622,213 @@ src/
   │   │   └── (builder)/   # Builder pages (minimal layout)
   ├── components/
   │   ├── builder/       # Home page builder components
+  │   ├── navigation/    # Shared navigation components
+  │   ├── layouts/       # Shared layout components
   │   └── pim/           # PIM components
+  ├── config/
+  │   └── apps.config.ts # Centralized app registry
   ├── lib/
   │   ├── db/            # Database connection & models
   │   ├── search/        # Solr search utilities
   │   ├── types/         # Shared TypeScript types
   │   └── security/      # Auth & validation
-  └── config/            # Project configuration
+  └── test/
+      └── unit/          # Unit tests (Vitest)
 ```
+
+## Development Workflow
+
+### Git Branch Strategy
+
+```
+Feature Branch → Main → Delete Branch
+
+1. Create feature branch from main:
+   git checkout main
+   git pull
+   git checkout -b feature/{feature-name}
+
+2. Implement changes
+3. Write unit tests in src/test/unit/
+4. Run tests: npm test
+5. Commit with descriptive message:
+   git add .
+   git commit -m "feat: description of changes"
+
+6. Merge to main:
+   git checkout main
+   git merge feature/{feature-name}
+
+7. Push main:
+   git push origin main
+
+8. Delete feature branch (local + remote):
+   git branch -d feature/{feature-name}
+   git push origin --delete feature/{feature-name}
+```
+
+### Unit Testing
+
+Tests are located in `src/test/unit/` and use Vitest.
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- apps-config.test.ts
+
+# Run tests in watch mode
+npm test -- --watch
+```
+
+**Test file naming:** `{feature-name}.test.ts`
+
+## New Application Development
+
+When adding a new B2B application, follow this pattern:
+
+### Step 1: Register in App Registry
+
+Add the app to `src/config/apps.config.ts`:
+
+```typescript
+// In the APPS array
+{
+  id: "new-app",
+  name: "New App",
+  description: "Description here",
+  href: "/b2b/new-app",
+  icon: IconComponent,  // from lucide-react
+  color: "bg-blue-500",
+  showInLauncher: true,
+  showInHeader: true,
+  hasNavigation: true,  // true if app has sidebar navigation
+}
+```
+
+This automatically:
+
+- Adds the app to the App Launcher dropdown
+- Adds the app to the header section detection
+- Enables proper path matching for tenant prefixes
+
+### Step 2: Create Folder Structure
+
+```
+src/app/b2b/(protected)/new-app/
+├── layout.tsx           # Uses AppLayout + Navigation
+├── page.tsx             # Main dashboard page
+└── sub-section/
+    └── page.tsx         # Sub-section pages
+```
+
+### Step 3: Create Navigation (if hasNavigation: true)
+
+```typescript
+// src/components/new-app/NewAppNavigation.tsx
+"use client";
+
+import { AppSidebar, NavLink } from "@/components/navigation";
+import { LayoutDashboard, Folder, Settings } from "lucide-react";
+
+export function NewAppNavigation() {
+  return (
+    <AppSidebar title="New App">
+      <NavLink href="/b2b/new-app" icon={LayoutDashboard} label="Dashboard" />
+      <NavLink href="/b2b/new-app/items" icon={Folder} label="Items" />
+      <NavLink href="/b2b/new-app/settings" icon={Settings} label="Settings" />
+    </AppSidebar>
+  );
+}
+```
+
+### Step 4: Create Layout
+
+```typescript
+// src/app/b2b/(protected)/new-app/layout.tsx
+import { AppLayout } from "@/components/layouts/AppLayout";
+import { NewAppNavigation } from "@/components/new-app/NewAppNavigation";
+
+export default function NewAppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AppLayout navigation={<NewAppNavigation />}>
+      {children}
+    </AppLayout>
+  );
+}
+```
+
+### Step 5: Create Main Page
+
+```typescript
+// src/app/b2b/(protected)/new-app/page.tsx
+export default function NewAppPage() {
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">New App Dashboard</h1>
+      {/* Content here */}
+    </div>
+  );
+}
+```
+
+### Step 6: Write Unit Tests
+
+```typescript
+// src/test/unit/new-app.test.ts
+import { describe, it, expect } from "vitest";
+import { getAppById, getAppByPath } from "@/config/apps.config";
+
+describe("unit: New App Config", () => {
+  it("should be registered in app registry", () => {
+    const app = getAppById("new-app");
+    expect(app).toBeDefined();
+    expect(app?.name).toBe("New App");
+    expect(app?.href).toBe("/b2b/new-app");
+  });
+
+  it("should match path correctly", () => {
+    const app = getAppByPath("/b2b/new-app/items");
+    expect(app?.id).toBe("new-app");
+  });
+
+  it("should handle tenant-prefixed paths", () => {
+    const app = getAppByPath("/tenant-id/b2b/new-app");
+    expect(app?.id).toBe("new-app");
+  });
+});
+```
+
+### Shared Navigation Components
+
+Use these reusable components from `src/components/navigation/`:
+
+| Component    | Purpose                                     |
+| ------------ | ------------------------------------------- |
+| `NavLink`    | Navigation link with active state detection |
+| `NavSection` | Collapsible section with items              |
+| `AppSidebar` | Standard sidebar wrapper                    |
+
+```typescript
+import { NavLink, NavSection, AppSidebar } from "@/components/navigation";
+```
+
+### App Registry Helper Functions
+
+Available in `src/config/apps.config.ts`:
+
+| Function                      | Returns                                  |
+| ----------------------------- | ---------------------------------------- |
+| `getAppById(id)`              | App config by ID                         |
+| `getAppByPath(pathname)`      | App config matching pathname             |
+| `getLauncherApps()`           | Apps for App Launcher dropdown           |
+| `getHeaderApps()`             | Apps for header display                  |
+| `getCurrentSection(pathname)` | Current section info (name, icon, color) |
 
 ## Multi-Tenant API Testing
 
