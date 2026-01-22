@@ -1,6 +1,10 @@
 /**
  * POST /api/search/search
  * Search products with filters, pagination, and sorting
+ *
+ * Supports both:
+ * - API key authentication (for external clients)
+ * - Session authentication (for B2B internal use like mobile-builder)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,6 +14,8 @@ import { transformSearchResponse, enrichFacetResults, enrichProductsWithVariants
 import { enrichSearchResults, enrichVariantGroupedResults } from '@/lib/search/response-enricher';
 import { SearchRequest } from '@/lib/types/search';
 import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
+import { getB2BSession } from '@/lib/auth/b2b-session';
+import { verifyAPIKeyFromRequest } from '@/lib/auth/api-key-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,8 +43,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get tenant-specific Solr collection from headers (set by middleware)
-    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    // Determine tenant database based on auth method
+    const authMethod = request.headers.get('x-auth-method');
+    let tenantDb = request.headers.get('x-resolved-tenant-db');
+
+    // For session auth, verify B2B session and get tenant from session
+    if (authMethod === 'session') {
+      const session = await getB2BSession();
+      if (!session || !session.tenantId) {
+        return NextResponse.json(
+          { error: 'Unauthorized - invalid session' },
+          { status: 401 }
+        );
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    } else if (authMethod === 'api-key') {
+      // Verify API key
+      const apiKeyResult = await verifyAPIKeyFromRequest(request, 'read');
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || 'Unauthorized' },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    }
+
     if (!tenantDb) {
       return NextResponse.json(
         {
@@ -159,6 +189,10 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/search/search
  * Search with query parameters (for simple searches)
+ *
+ * Supports both:
+ * - API key authentication (for external clients)
+ * - Session authentication (for B2B internal use like mobile-builder)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -176,8 +210,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get tenant-specific Solr collection from headers (set by middleware)
-    const tenantDb = request.headers.get('x-resolved-tenant-db');
+    // Determine tenant database based on auth method
+    const authMethod = request.headers.get('x-auth-method');
+    let tenantDb = request.headers.get('x-resolved-tenant-db');
+
+    // For session auth, verify B2B session and get tenant from session
+    if (authMethod === 'session') {
+      const session = await getB2BSession();
+      if (!session || !session.tenantId) {
+        return NextResponse.json(
+          { error: 'Unauthorized - invalid session' },
+          { status: 401 }
+        );
+      }
+      tenantDb = `vinc-${session.tenantId}`;
+    } else if (authMethod === 'api-key') {
+      // Verify API key
+      const apiKeyResult = await verifyAPIKeyFromRequest(request, 'read');
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || 'Unauthorized' },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantDb = apiKeyResult.tenantDb!;
+    }
+
     if (!tenantDb) {
       return NextResponse.json(
         {

@@ -194,7 +194,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // For public API routes, search routes, and ELIA routes, require API key authentication
+  // For public API routes, search routes, and ELIA routes
   const isPublicApiRoute = actualPath.startsWith("/api/public");
   const isSearchRoute = actualPath.startsWith("/api/search");
   const isEliaRoute = actualPath.startsWith("/api/elia");
@@ -203,8 +203,38 @@ export async function middleware(request: NextRequest) {
     // Support both header formats: x-api-key OR x-api-key-id (for sync scripts)
     const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
     const apiSecret = request.headers.get("x-api-secret");
+    const requestHeaders = new Headers(request.headers);
 
-    if (!apiKey || !apiSecret) {
+    if (apiKey && apiSecret) {
+      // API key authentication - extract tenant from key
+      const apiKeyTenantId = extractTenantFromApiKey(apiKey);
+      if (!apiKeyTenantId) {
+        return NextResponse.json(
+          {
+            error: "Invalid API key format",
+            details: {
+              code: "INVALID_API_KEY",
+              message: "API key must be in format: ak_{tenant-id}_{suffix}"
+            }
+          },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      // Inject tenant headers from API key
+      requestHeaders.set("x-resolved-tenant-id", apiKeyTenantId);
+      requestHeaders.set("x-resolved-tenant-db", `vinc-${apiKeyTenantId}`);
+      requestHeaders.set("x-auth-method", "api-key");
+      requestHeaders.set("x-api-key-id", apiKey);
+    } else if (isSearchRoute && (tenantId || request.headers.get("x-tenant-id"))) {
+      // Search routes also support session auth when tenant is provided
+      // via URL path OR X-Tenant-ID header (for B2B internal calls)
+      const effectiveTenantId = tenantId || request.headers.get("x-tenant-id")!;
+      requestHeaders.set("x-resolved-tenant-id", effectiveTenantId);
+      requestHeaders.set("x-resolved-tenant-db", `vinc-${effectiveTenantId}`);
+      requestHeaders.set("x-auth-method", "session");
+    } else {
+      // No authentication provided
       return NextResponse.json(
         {
           error: "Authentication required",
@@ -216,28 +246,6 @@ export async function middleware(request: NextRequest) {
         { status: 401, headers: corsHeaders }
       );
     }
-
-    // Extract tenant from API key
-    const apiKeyTenantId = extractTenantFromApiKey(apiKey);
-    if (!apiKeyTenantId) {
-      return NextResponse.json(
-        {
-          error: "Invalid API key format",
-          details: {
-            code: "INVALID_API_KEY",
-            message: "API key must be in format: ak_{tenant-id}_{suffix}"
-          }
-        },
-        { status: 401, headers: corsHeaders }
-      );
-    }
-
-    // Inject tenant headers from API key
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-resolved-tenant-id", apiKeyTenantId);
-    requestHeaders.set("x-resolved-tenant-db", `vinc-${apiKeyTenantId}`);
-    requestHeaders.set("x-auth-method", "api-key");
-    requestHeaders.set("x-api-key-id", apiKey);
 
     // Rewrite URL if tenant was in path
     if (rewritePath) {

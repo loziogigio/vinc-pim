@@ -15,6 +15,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Settings,
+  Smartphone,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -109,6 +110,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/home-builder",
     icon: LayoutDashboard,
     color: "bg-blue-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: false,
+  },
+  {
+    id: "mobile-builder",
+    name: "Mobile Builder",
+    description: "Build mobile app home screen",
+    href: "/b2b/mobile-builder",
+    icon: Smartphone,
+    color: "bg-pink-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: false,
