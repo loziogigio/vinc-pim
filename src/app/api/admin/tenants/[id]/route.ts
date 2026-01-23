@@ -63,6 +63,13 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
  * - name: string - Display name
  * - status: "active" | "suspended" | "pending"
  * - settings: { features?: string[], limits?: { max_products?, max_users?, max_orders? } }
+ * - project_code: string - Project identifier
+ * - domains: Array<{ hostname, is_primary?, is_active? }> - Domain mappings
+ * - api: { pim_api_url, b2b_api_url, api_key_id, api_secret } - API configuration
+ * - database: { mongo_url, mongo_db } - Database override
+ * - require_login: boolean - Whether login is required
+ * - home_settings_customer_id: string - Home settings customer ID
+ * - builder_url: string - Builder/preview URL
  */
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const auth = await verifyAdminAuth(req);
@@ -74,7 +81,18 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   try {
     const body = await req.json();
-    const { name, status, settings } = body;
+    const {
+      name,
+      status,
+      settings,
+      project_code,
+      domains,
+      api,
+      database,
+      require_login,
+      home_settings_customer_id,
+      builder_url,
+    } = body;
 
     // Handle status changes with special functions
     if (status === "suspended") {
@@ -95,10 +113,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       });
     }
 
-    // General update
-    const updates: { name?: string; settings?: typeof settings } = {};
+    // General update - include all valid fields
+    const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;
     if (settings !== undefined) updates.settings = settings;
+    if (project_code !== undefined) updates.project_code = project_code;
+    if (domains !== undefined) updates.domains = domains;
+    if (api !== undefined) updates.api = api;
+    if (database !== undefined) updates.database = database;
+    if (require_login !== undefined) updates.require_login = require_login;
+    if (home_settings_customer_id !== undefined) updates.home_settings_customer_id = home_settings_customer_id;
+    if (builder_url !== undefined) updates.builder_url = builder_url;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(

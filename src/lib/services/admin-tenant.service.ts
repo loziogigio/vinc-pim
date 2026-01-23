@@ -7,7 +7,14 @@
 
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { getTenantModel, ITenant, ITenantDocument } from "../db/models/admin-tenant";
+import {
+  getTenantModel,
+  ITenant,
+  ITenantDocument,
+  ITenantDomain,
+  ITenantApiConfig,
+  ITenantDbConfig,
+} from "../db/models/admin-tenant";
 import { LanguageModel } from "../db/models/language";
 
 // ============================================
@@ -21,6 +28,15 @@ export interface CreateTenantInput {
   admin_password: string;
   admin_name?: string;
   created_by: string;
+
+  // Multi-tenant support fields (optional)
+  project_code?: string;
+  domains?: ITenantDomain[];
+  api?: ITenantApiConfig;
+  database?: ITenantDbConfig;
+  require_login?: boolean;
+  home_settings_customer_id?: string;
+  builder_url?: string;
 }
 
 export interface TenantProvisionResult {
@@ -437,6 +453,14 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
     solr_core: solrCore,
     mongo_db: mongoDb,
     created_by,
+    // Multi-tenant support fields
+    project_code: input.project_code || `vinc-${tenant_id}`,
+    domains: input.domains,
+    api: input.api,
+    database: input.database,
+    require_login: input.require_login,
+    home_settings_customer_id: input.home_settings_customer_id,
+    builder_url: input.builder_url,
   });
 
   const accessUrl = `${BASE_URL}/${tenant_id}/api/b2b`;
@@ -530,7 +554,18 @@ export async function getTenant(tenantId: string): Promise<ITenant | null> {
  */
 export async function updateTenant(
   tenantId: string,
-  updates: Partial<Pick<ITenant, "name" | "status" | "settings">>
+  updates: Partial<Pick<ITenant,
+    | "name"
+    | "status"
+    | "settings"
+    | "project_code"
+    | "domains"
+    | "api"
+    | "database"
+    | "require_login"
+    | "home_settings_customer_id"
+    | "builder_url"
+  >>
 ): Promise<ITenantDocument> {
   const TenantModel = await getTenantModel();
 
@@ -543,6 +578,24 @@ export async function updateTenant(
   if (updates.status !== undefined) tenant.status = updates.status;
   if (updates.settings !== undefined) tenant.settings = updates.settings;
 
+  // Multi-tenant support fields
+  if (updates.project_code !== undefined) tenant.project_code = updates.project_code;
+  if (updates.domains !== undefined) tenant.domains = updates.domains;
+  if (updates.api !== undefined) tenant.api = updates.api;
+  if (updates.database !== undefined) tenant.database = updates.database;
+  if (updates.require_login !== undefined) tenant.require_login = updates.require_login;
+  if (updates.home_settings_customer_id !== undefined) tenant.home_settings_customer_id = updates.home_settings_customer_id;
+  if (updates.builder_url !== undefined) tenant.builder_url = updates.builder_url;
+
   await tenant.save();
   return tenant;
+}
+
+/**
+ * Get tenant by domain hostname.
+ */
+export async function getTenantByDomain(hostname: string): Promise<ITenant | null> {
+  const TenantModel = await getTenantModel();
+  const tenant = await TenantModel.findByDomain(hostname);
+  return tenant?.toObject() || null;
 }

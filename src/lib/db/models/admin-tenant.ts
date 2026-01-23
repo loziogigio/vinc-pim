@@ -36,6 +36,33 @@ export interface ITenantSettings {
   rate_limit?: ITenantRateLimit;
 }
 
+/**
+ * Domain configuration for multi-tenant hostname resolution
+ */
+export interface ITenantDomain {
+  hostname: string;
+  is_primary?: boolean;
+  is_active?: boolean;
+}
+
+/**
+ * API configuration for external API access
+ */
+export interface ITenantApiConfig {
+  pim_api_url?: string;
+  b2b_api_url?: string;
+  api_key_id?: string;
+  api_secret?: string;
+}
+
+/**
+ * Database configuration for tenant data storage
+ */
+export interface ITenantDbConfig {
+  mongo_url?: string;
+  mongo_db?: string;
+}
+
 export interface ITenant {
   tenant_id: string;
   name: string;
@@ -48,12 +75,22 @@ export interface ITenant {
   created_at: Date;
   updated_at: Date;
   created_by: string;
+
+  // Multi-tenant support fields (optional for backwards compatibility)
+  project_code?: string;
+  domains?: ITenantDomain[];
+  api?: ITenantApiConfig;
+  database?: ITenantDbConfig;
+  require_login?: boolean;
+  home_settings_customer_id?: string;
+  builder_url?: string;
 }
 
 export interface ITenantDocument extends ITenant, Document {}
 
 export interface ITenantModel extends Model<ITenantDocument> {
   findByTenantId(tenantId: string): Promise<ITenantDocument | null>;
+  findByDomain(hostname: string): Promise<ITenantDocument | null>;
 }
 
 // ============================================
@@ -74,6 +111,33 @@ const TenantSettingsSchema = new Schema(
       requests_per_day: { type: Number, default: 0 },
       max_concurrent: { type: Number, default: 0 },
     },
+  },
+  { _id: false }
+);
+
+const TenantDomainSchema = new Schema(
+  {
+    hostname: { type: String, required: true, lowercase: true, trim: true },
+    is_primary: { type: Boolean, default: false },
+    is_active: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
+const TenantApiConfigSchema = new Schema(
+  {
+    pim_api_url: { type: String },
+    b2b_api_url: { type: String },
+    api_key_id: { type: String },
+    api_secret: { type: String },
+  },
+  { _id: false }
+);
+
+const TenantDbConfigSchema = new Schema(
+  {
+    mongo_url: { type: String },
+    mongo_db: { type: String },
   },
   { _id: false }
 );
@@ -120,6 +184,27 @@ const TenantSchema = new Schema<ITenantDocument>(
       type: String,
       required: true,
     },
+
+    // Multi-tenant support fields (optional for backwards compatibility)
+    project_code: {
+      type: String,
+      trim: true,
+    },
+    domains: [TenantDomainSchema],
+    api: TenantApiConfigSchema,
+    database: TenantDbConfigSchema,
+    require_login: {
+      type: Boolean,
+      default: false,
+    },
+    home_settings_customer_id: {
+      type: String,
+      trim: true,
+    },
+    builder_url: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -133,6 +218,7 @@ const TenantSchema = new Schema<ITenantDocument>(
 TenantSchema.index({ tenant_id: 1 }, { unique: true });
 TenantSchema.index({ status: 1 });
 TenantSchema.index({ admin_email: 1 });
+TenantSchema.index({ "domains.hostname": 1 });
 
 // ============================================
 // STATICS
@@ -142,6 +228,16 @@ TenantSchema.statics.findByTenantId = function (
   tenantId: string
 ): Promise<ITenantDocument | null> {
   return this.findOne({ tenant_id: tenantId.toLowerCase() });
+};
+
+TenantSchema.statics.findByDomain = function (
+  hostname: string
+): Promise<ITenantDocument | null> {
+  return this.findOne({
+    "domains.hostname": hostname.toLowerCase(),
+    "domains.is_active": { $ne: false },
+    status: "active",
+  });
 };
 
 // ============================================

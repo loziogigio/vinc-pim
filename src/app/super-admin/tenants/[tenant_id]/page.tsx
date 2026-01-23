@@ -10,6 +10,24 @@ interface RateLimitSettings {
   max_concurrent: number;
 }
 
+interface TenantDomain {
+  hostname: string;
+  is_primary?: boolean;
+  is_active?: boolean;
+}
+
+interface TenantApiConfig {
+  pim_api_url: string;
+  b2b_api_url: string;
+  api_key_id: string;
+  api_secret: string;
+}
+
+interface TenantDbConfig {
+  mongo_url: string;
+  mongo_db: string;
+}
+
 interface Tenant {
   _id: string;
   tenant_id: string;
@@ -30,6 +48,14 @@ interface Tenant {
     };
     rate_limit?: RateLimitSettings;
   };
+  // Multi-tenant support fields
+  project_code?: string;
+  domains?: TenantDomain[];
+  api?: TenantApiConfig;
+  database?: TenantDbConfig;
+  require_login?: boolean;
+  home_settings_customer_id?: string;
+  builder_url?: string;
 }
 
 export default function TenantDetailPage() {
@@ -48,6 +74,24 @@ export default function TenantDetailPage() {
     max_concurrent: 0,
   });
   const [rateLimitLoading, setRateLimitLoading] = useState(false);
+
+  // Multi-tenant config state
+  const [domains, setDomains] = useState<TenantDomain[]>([]);
+  const [apiConfig, setApiConfig] = useState<TenantApiConfig>({
+    pim_api_url: "",
+    b2b_api_url: "",
+    api_key_id: "",
+    api_secret: "",
+  });
+  const [dbConfig, setDbConfig] = useState<TenantDbConfig>({
+    mongo_url: "",
+    mongo_db: "",
+  });
+  const [projectCode, setProjectCode] = useState("");
+  const [requireLogin, setRequireLogin] = useState(false);
+  const [homeSettingsCustomerId, setHomeSettingsCustomerId] = useState("");
+  const [builderUrl, setBuilderUrl] = useState("");
+  const [multiTenantLoading, setMultiTenantLoading] = useState(false);
 
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
@@ -81,6 +125,74 @@ export default function TenantDetailPage() {
       })
       .catch(() => {});
   }, [tenantId]);
+
+  // Domain management functions
+  const addDomain = () => {
+    setDomains([...domains, { hostname: "", is_primary: false, is_active: true }]);
+  };
+
+  const removeDomain = (index: number) => {
+    setDomains(domains.filter((_, i) => i !== index));
+  };
+
+  const updateDomain = (index: number, field: keyof TenantDomain, value: string | boolean) => {
+    const updated = [...domains];
+    // Strip protocol from hostname (users often paste full URLs)
+    let processedValue = value;
+    if (field === "hostname" && typeof value === "string") {
+      processedValue = value.replace(/^https?:\/\//, "").trim();
+    }
+    updated[index] = { ...updated[index], [field]: processedValue };
+    // If setting as primary, unset others
+    if (field === "is_primary" && value === true) {
+      updated.forEach((d, i) => {
+        if (i !== index) d.is_primary = false;
+      });
+    }
+    setDomains(updated);
+  };
+
+  // Save multi-tenant configuration
+  const handleMultiTenantSave = async () => {
+    setMultiTenantLoading(true);
+    setActionMessage("");
+    try {
+      const updates: Record<string, unknown> = {
+        project_code: projectCode || `vinc-${tenantId}`,
+        domains: domains.filter(d => d.hostname.trim() !== ""),
+        require_login: requireLogin,
+        home_settings_customer_id: homeSettingsCustomerId,
+        builder_url: builderUrl,
+      };
+
+      // Only include api config if at least one field is filled
+      if (apiConfig.pim_api_url || apiConfig.b2b_api_url || apiConfig.api_key_id) {
+        updates.api = apiConfig;
+      }
+
+      // Only include database config if at least one field is filled
+      if (dbConfig.mongo_url || dbConfig.mongo_db) {
+        updates.database = dbConfig;
+      }
+
+      const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setActionMessage(data.error || "Failed to update multi-tenant config");
+        return;
+      }
+      setTenant(data.tenant);
+      setActionMessage("Multi-tenant configuration saved successfully");
+    } catch {
+      setActionMessage("Network error");
+    } finally {
+      setMultiTenantLoading(false);
+    }
+  };
 
   const handleRateLimitSave = async () => {
     setRateLimitLoading(true);
@@ -118,6 +230,15 @@ export default function TenantDetailPage() {
       }
       const data = await res.json();
       setTenant(data.tenant);
+
+      // Load multi-tenant config
+      if (data.tenant.domains) setDomains(data.tenant.domains);
+      if (data.tenant.api) setApiConfig(data.tenant.api);
+      if (data.tenant.database) setDbConfig(data.tenant.database);
+      if (data.tenant.project_code) setProjectCode(data.tenant.project_code);
+      if (data.tenant.require_login) setRequireLogin(data.tenant.require_login);
+      if (data.tenant.home_settings_customer_id) setHomeSettingsCustomerId(data.tenant.home_settings_customer_id);
+      if (data.tenant.builder_url) setBuilderUrl(data.tenant.builder_url);
     } catch {
       setError("Network error");
     } finally {
@@ -269,6 +390,219 @@ export default function TenantDetailPage() {
                 <label className="text-sm text-slate-400">Solr Collection</label>
                 <p className="text-white font-mono">{tenant.solr_core || `vinc-${tenant.tenant_id}`}</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Multi-Tenant Configuration Card */}
+        <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-700">
+            <h2 className="text-lg font-semibold text-white">Multi-Tenant Configuration</h2>
+            <p className="text-sm text-slate-400 mt-1">Configure domains and API access for this tenant</p>
+          </div>
+          <div className="p-6 space-y-6">
+            {/* Project Code */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Project Code</label>
+              <input
+                type="text"
+                value={projectCode}
+                onChange={(e) => setProjectCode(e.target.value)}
+                placeholder={`vinc-${tenant.tenant_id}`}
+                className="w-full max-w-md px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">Used for identification across systems</p>
+            </div>
+
+            {/* Domains Section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-slate-300">Domains</label>
+                <button
+                  onClick={addDomain}
+                  className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                >
+                  + Add Domain
+                </button>
+              </div>
+              {domains.length === 0 ? (
+                <>
+                  <p className="text-sm text-slate-500">No domains configured. Add a domain to enable multi-tenant access.</p>
+                  <p className="text-xs text-slate-500 mt-1">Enter hostname only (e.g., shop.example.com), protocol will be stripped automatically</p>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  {domains.map((domain, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 bg-slate-700/50 rounded-lg">
+                      <input
+                        type="text"
+                        value={domain.hostname}
+                        onChange={(e) => updateDomain(index, "hostname", e.target.value)}
+                        placeholder="shop.example.com"
+                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <label className="flex items-center gap-2 text-sm text-slate-300 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={domain.is_primary || false}
+                          onChange={(e) => updateDomain(index, "is_primary", e.target.checked)}
+                          className="rounded bg-slate-700 border-slate-600"
+                        />
+                        Primary
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-slate-300 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={domain.is_active !== false}
+                          onChange={(e) => updateDomain(index, "is_active", e.target.checked)}
+                          className="rounded bg-slate-700 border-slate-600"
+                        />
+                        Active
+                      </label>
+                      <button
+                        onClick={() => removeDomain(index)}
+                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                        title="Remove domain"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* API Configuration */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">API Configuration</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">PIM API URL</label>
+                  <input
+                    type="text"
+                    value={apiConfig.pim_api_url}
+                    onChange={(e) => setApiConfig({ ...apiConfig, pim_api_url: e.target.value })}
+                    placeholder="https://api.example.com"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">B2B API URL</label>
+                  <input
+                    type="text"
+                    value={apiConfig.b2b_api_url}
+                    onChange={(e) => setApiConfig({ ...apiConfig, b2b_api_url: e.target.value })}
+                    placeholder="https://api.example.com"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">API Key ID</label>
+                  <input
+                    type="text"
+                    value={apiConfig.api_key_id}
+                    onChange={(e) => setApiConfig({ ...apiConfig, api_key_id: e.target.value })}
+                    placeholder={`ak_${tenant.tenant_id}_xxxx`}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">API Secret</label>
+                  <input
+                    type="password"
+                    value={apiConfig.api_secret}
+                    onChange={(e) => setApiConfig({ ...apiConfig, api_secret: e.target.value })}
+                    placeholder="sk_xxxx"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">API keys can be created in the tenant's apikeys collection</p>
+            </div>
+
+            {/* Database Configuration */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Database Override</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">MongoDB URL</label>
+                  <input
+                    type="text"
+                    value={dbConfig.mongo_url}
+                    onChange={(e) => setDbConfig({ ...dbConfig, mongo_url: e.target.value })}
+                    placeholder="mongodb://..."
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">MongoDB Database</label>
+                  <input
+                    type="text"
+                    value={dbConfig.mongo_db}
+                    onChange={(e) => setDbConfig({ ...dbConfig, mongo_db: e.target.value })}
+                    placeholder={`vinc-${tenant.tenant_id}`}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Only set if using a different database connection</p>
+            </div>
+
+            {/* Additional Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Home Settings Customer ID</label>
+                <input
+                  type="text"
+                  value={homeSettingsCustomerId}
+                  onChange={(e) => setHomeSettingsCustomerId(e.target.value)}
+                  placeholder="default"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Builder URL</label>
+                <input
+                  type="text"
+                  value={builderUrl}
+                  onChange={(e) => setBuilderUrl(e.target.value)}
+                  placeholder="https://builder.example.com"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Require Login Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-white">Require Login</label>
+                <p className="text-xs text-slate-400">Users must log in to view any page</p>
+              </div>
+              <button
+                onClick={() => setRequireLogin(!requireLogin)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  requireLogin ? "bg-blue-600" : "bg-slate-600"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    requireLogin ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Save Button */}
+            <div className="pt-2">
+              <button
+                onClick={handleMultiTenantSave}
+                disabled={multiTenantLoading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+              >
+                {multiTenantLoading ? "Saving..." : "Save Multi-Tenant Configuration"}
+              </button>
             </div>
           </div>
         </div>
