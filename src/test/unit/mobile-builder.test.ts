@@ -70,6 +70,11 @@ describe("unit: Mobile Builder - DEFAULT_APP_IDENTITY", () => {
   it("should not have logo_height set by default", () => {
     expect(DEFAULT_APP_IDENTITY.logo_height).toBeUndefined();
   });
+
+  it("should have default primary_color for buttons", () => {
+    expect(DEFAULT_APP_IDENTITY.primary_color).toBe("#ec4899");
+    expect(DEFAULT_APP_IDENTITY.primary_color).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
 });
 
 // ============================================

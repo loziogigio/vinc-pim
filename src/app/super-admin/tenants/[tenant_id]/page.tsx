@@ -12,6 +12,7 @@ interface RateLimitSettings {
 
 interface TenantDomain {
   hostname: string;
+  protocol?: "http" | "https";
   is_primary?: boolean;
   is_active?: boolean;
 }
@@ -128,7 +129,7 @@ export default function TenantDetailPage() {
 
   // Domain management functions
   const addDomain = () => {
-    setDomains([...domains, { hostname: "", is_primary: false, is_active: true }]);
+    setDomains([...domains, { hostname: "", protocol: "https", is_primary: false, is_active: true }]);
   };
 
   const removeDomain = (index: number) => {
@@ -434,6 +435,14 @@ export default function TenantDetailPage() {
                 <div className="space-y-2">
                   {domains.map((domain, index) => (
                     <div key={index} className="flex items-center gap-2 p-3 bg-slate-700/50 rounded-lg">
+                      <select
+                        value={domain.protocol || "https"}
+                        onChange={(e) => updateDomain(index, "protocol", e.target.value)}
+                        className="px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="https">https://</option>
+                        <option value="http">http://</option>
+                      </select>
                       <input
                         type="text"
                         value={domain.hostname}

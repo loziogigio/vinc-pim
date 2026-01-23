@@ -301,7 +301,7 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
           />
           <p className="mt-1 text-xs text-slate-500">
             Products are fetched from the customer storefront search endpoint. Paste a keyword or an
-            advanced query (e.g. <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">shop?text=lavabo&amp;filters-brand=VUC</code>).
+            advanced query (e.g. <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">shop?text=moon&amp;filters-brand_id=004 or search?text=moon&amp;filters-brand_id=004 </code> ).
           </p>
           {parsedSearchSummary ? (
             <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">

@@ -41,6 +41,7 @@ export interface ITenantSettings {
  */
 export interface ITenantDomain {
   hostname: string;
+  protocol?: "http" | "https";
   is_primary?: boolean;
   is_active?: boolean;
 }
@@ -118,6 +119,7 @@ const TenantSettingsSchema = new Schema(
 const TenantDomainSchema = new Schema(
   {
     hostname: { type: String, required: true, lowercase: true, trim: true },
+    protocol: { type: String, enum: ["http", "https"], default: "https" },
     is_primary: { type: Boolean, default: false },
     is_active: { type: Boolean, default: true },
   },

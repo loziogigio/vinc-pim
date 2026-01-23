@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/db/connection";
-import { B2BHomeSettingsModel } from "@/lib/db/models/home-settings";
+import { connectWithModels, autoDetectTenantDb } from "@/lib/db/connection";
 
 async function getCustomerWebBase(): Promise<string | null> {
   try {
-    await connectDB();
-    const settings = await B2BHomeSettingsModel.findOne({}).lean();
+    const dbName = await autoDetectTenantDb();
+    const { HomeSettings } = await connectWithModels(dbName);
+    const settings = await HomeSettings.findOne({}).lean();
     const shopUrl = settings?.branding?.shopUrl;
     if (shopUrl) {
       return shopUrl.replace(/\/$/, "");
@@ -41,6 +41,8 @@ export async function GET(request: Request) {
       targetUrl.searchParams.set("text", text);
     }
 
+    console.log('[customer-web/product-search] Fetching from:', targetUrl.toString());
+
     const response = await fetch(targetUrl.toString(), {
       headers: {
         "Content-Type": "application/json"
@@ -49,8 +51,9 @@ export async function GET(request: Request) {
     });
 
     if (!response.ok) {
-      console.error('[customer-web/product-search] upstream error', response.status);
-      return NextResponse.json({ items: [], error: "Unable to load preview results." }, { status: 500 });
+      const errorText = await response.text().catch(() => "");
+      console.error('[customer-web/product-search] upstream error', response.status, errorText.slice(0, 500));
+      return NextResponse.json({ items: [], error: `Upstream error: ${response.status}` }, { status: 500 });
     }
 
     const data = await response.json();

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Copy, Check, Key, RefreshCw } from "lucide-react";
 
 interface Tenant {
   _id: string;
@@ -18,16 +19,27 @@ interface AdminUser {
   name: string;
 }
 
+interface AdminToken {
+  token: string;
+  created_at: string;
+  description?: string;
+  expires_at?: string | null;
+}
+
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [adminToken, setAdminToken] = useState<AdminToken | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(false);
 
   useEffect(() => {
     checkAuth();
     loadTenants();
+    loadAdminToken();
   }, []);
 
   const checkAuth = async () => {
@@ -55,6 +67,44 @@ export default function SuperAdminDashboardPage() {
       console.error("Failed to load tenants:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAdminToken = async () => {
+    try {
+      const res = await fetch("/api/admin/token");
+      if (res.ok) {
+        const data = await res.json();
+        setAdminToken(data);
+      }
+    } catch (err) {
+      console.error("Failed to load admin token:", err);
+    }
+  };
+
+  const refreshAdminToken = async () => {
+    setTokenLoading(true);
+    try {
+      const res = await fetch("/api/admin/token");
+      if (res.ok) {
+        const data = await res.json();
+        setAdminToken(data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh admin token:", err);
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const copyToken = async () => {
+    if (!adminToken?.token) return;
+    try {
+      await navigator.clipboard.writeText(adminToken.token);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy token:", err);
     }
   };
 
@@ -107,6 +157,58 @@ export default function SuperAdminDashboardPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Admin Token Section */}
+        <div className="bg-slate-800 rounded-lg p-4 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Key className="h-5 w-5 text-amber-400" />
+              <div>
+                <h3 className="text-sm font-medium text-white">Cache Clear Token</h3>
+                <p className="text-xs text-slate-400">Used by b2b instances to validate cache clear requests</p>
+              </div>
+            </div>
+            <button
+              onClick={refreshAdminToken}
+              disabled={tokenLoading}
+              className="p-2 text-slate-400 hover:text-white transition-colors"
+              title="Refresh token"
+            >
+              <RefreshCw className={`h-4 w-4 ${tokenLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+          {adminToken ? (
+            <div className="mt-3 flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-slate-900 rounded text-sm font-mono text-slate-300 truncate">
+                {adminToken.token}
+              </code>
+              <button
+                onClick={copyToken}
+                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm text-white transition-colors flex items-center gap-2"
+              >
+                {tokenCopied ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-400" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 text-sm text-slate-400">Loading token...</div>
+          )}
+          {adminToken?.created_at && (
+            <p className="mt-2 text-xs text-slate-500">
+              Created: {new Date(adminToken.created_at).toLocaleString()}
+              {adminToken.description && ` - ${adminToken.description}`}
+            </p>
+          )}
+        </div>
+
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-white">Tenants</h2>
           <button

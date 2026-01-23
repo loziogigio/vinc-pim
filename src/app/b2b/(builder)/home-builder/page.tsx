@@ -128,7 +128,7 @@ const buildPublishPayload = (form: PublishFormValues) => {
 
 function HomeBuilderContent() {
   const searchParams = useSearchParams();
-  const urlVersion = searchParams.get("v");
+  const urlVersion = searchParams?.get("v") ?? null;
 
   const blocks = usePageBuilderStore((state) => state.blocks);
   const isDirty = usePageBuilderStore((state) => state.isDirty);
@@ -293,8 +293,57 @@ function HomeBuilderContent() {
     setPublishForm(defaultPublishForm);
   };
 
-  const handlePublishButtonClick = () => {
-    if (currentVersion > 0) {
+  const handlePublishButtonClick = async () => {
+    if (currentVersion <= 0) return;
+
+    // Check for unsaved changes
+    if (isDirty) {
+      const userChoice = window.confirm(
+        "You have unsaved changes!\n\n" +
+        "Click OK to save your changes first, then publish.\n" +
+        "Click Cancel to discard changes and publish the last saved version."
+      );
+
+      if (userChoice) {
+        // Save first, then open publish dialog
+        setIsSaving(true);
+        setError(null);
+        try {
+          const payload = getPagePayload();
+          const response = await fetch("/api/home-template/save-draft", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              blocks: payload.blocks,
+              seo: payload.seo
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to save");
+          }
+
+          const saved = await response.json();
+          loadPageConfig(saved);
+          markSaved();
+          setInfo("Changes saved. Now opening publish dialog...");
+
+          // Open publish dialog after save
+          openPublishDialog(saved.currentVersion);
+        } catch (saveError) {
+          console.error(saveError);
+          setError("Failed to save changes. Please try again.");
+          return;
+        } finally {
+          setIsSaving(false);
+        }
+      } else {
+        // User chose to publish without saving - open dialog for last saved version
+        openPublishDialog(currentVersion);
+      }
+    } else {
+      // No unsaved changes, proceed normally
       openPublishDialog(currentVersion);
     }
   };

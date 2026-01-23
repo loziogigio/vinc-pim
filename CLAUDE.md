@@ -11,6 +11,10 @@ VINC Commerce Suite is a Next.js 15 B2B e-commerce platform with:
 - MongoDB for data persistence
 - BullMQ for background job processing
 
+## Development Mode
+
+**IMPORTANT:** During development, do NOT run `npm run build` to verify changes. The user runs in dev mode (`npm run dev`) which provides hot reloading and immediate feedback. Only run builds when explicitly requested.
+
 ## Core Maintenance Standards
 
 These three principles are the foundation of all code in this project. Every implementation decision should be evaluated against them.

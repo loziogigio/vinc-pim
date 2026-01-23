@@ -37,6 +37,13 @@ REST API documentation for the VINC Commerce Suite.
   - Bidirectional correlation support
   - Statistics for dashboard
 
+- **[Home Settings API](./home-settings-api.md)** - Tenant-wide storefront configuration
+  - Company branding (logo, favicon, URLs)
+  - Extended theme colors (14 color fields)
+  - Product card styling
+  - CDN credentials management
+  - SMTP settings for email
+
 ### AI Search API
 
 - **[ELIA AI Search](./elia-api.md)** - AI-powered natural language product search

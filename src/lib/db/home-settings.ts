@@ -1,5 +1,5 @@
 import type { HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, HeaderConfig, HeaderRow, MetaTags } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectWithModels, autoDetectTenantDb } from "./connection";
 
@@ -34,6 +34,87 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   backgroundColor: "#ffffff",
   hoverBackgroundColor: undefined
 };
+
+/**
+ * Default header configuration matching vinc-b2b layout
+ * Main row: 20-60-20 (Logo | Search+Radio | Icons)
+ * Nav row: 50-50 (Menu+Buttons | Quick links)
+ */
+const DEFAULT_HEADER_CONFIG: HeaderConfig = {
+  rows: [
+    {
+      id: "main",
+      enabled: true,
+      fixed: true,
+      backgroundColor: "#ffffff",
+      layout: "20-60-20",
+      blocks: [
+        {
+          id: "left",
+          alignment: "left",
+          widgets: [
+            { id: "logo", type: "logo", config: {} }
+          ]
+        },
+        {
+          id: "center",
+          alignment: "center",
+          widgets: [
+            { id: "search", type: "search-bar", config: { width: "lg" } },
+            { id: "radio", type: "radio-widget", config: {
+              enabled: false,
+              headerIcon: "",
+              stations: [
+                { id: "station-rtl", name: "RTL 102.5", logoUrl: "", streamUrl: "https://streamingv2.shoutcast.com/rtl-102-5" },
+                { id: "station-rds", name: "RDS", logoUrl: "", streamUrl: "https://icstream.rds.radio/rds" }
+              ]
+            } }
+          ]
+        },
+        {
+          id: "right",
+          alignment: "right",
+          widgets: [
+            { id: "no-price", type: "no-price", config: {} },
+            { id: "favorites", type: "favorites", config: {} },
+            { id: "compare", type: "compare", config: {} },
+            { id: "profile", type: "profile", config: {} },
+            { id: "cart", type: "cart", config: {} }
+          ]
+        }
+      ]
+    },
+    {
+      id: "nav",
+      enabled: true,
+      fixed: true,
+      backgroundColor: "#f8fafc",
+      layout: "50-50",
+      blocks: [
+        {
+          id: "left",
+          alignment: "left",
+          widgets: [
+            { id: "categories", type: "category-menu", config: { label: "Categorie" } },
+            { id: "promo-btn", type: "button", config: { label: "Promozioni", url: "/promotions", variant: "primary" } },
+            { id: "new-btn", type: "button", config: { label: "Nuovi arrivi", url: "/new-arrivals", variant: "secondary" } }
+          ]
+        },
+        {
+          id: "right",
+          alignment: "right",
+          widgets: [
+            { id: "orders-btn", type: "button", config: { label: "i miei ordini", url: "/orders", variant: "outline" } },
+            { id: "docs-btn", type: "button", config: { label: "i miei documenti", url: "/documents", variant: "outline" } },
+            { id: "delivery", type: "company-info", config: { showDeliveryAddress: true } }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+export { DEFAULT_HEADER_CONFIG };
 
 /**
  * Get models for the current tenant database
@@ -133,6 +214,11 @@ type HomeSettingsUpdate = {
   cdn?: Partial<CDNConfiguration> | CDNConfiguration;
   cdn_credentials?: Partial<CDNCredentials> | CDNCredentials;
   smtp_settings?: Partial<SMTPSettings> | SMTPSettings;
+  footerHtml?: string;
+  footerHtmlDraft?: string;
+  headerConfig?: HeaderConfig;
+  headerConfigDraft?: HeaderConfig;
+  meta_tags?: Partial<MetaTags> | MetaTags;
   lastModifiedBy?: string;
 };
 
@@ -211,6 +297,34 @@ export async function upsertHomeSettings(
         updateFields.defaultCardVariant = data.defaultCardVariant;
       }
 
+      if (data.footerHtml !== undefined) {
+        updateFields.footerHtml = data.footerHtml;
+      }
+
+      if (data.footerHtmlDraft !== undefined) {
+        updateFields.footerHtmlDraft = data.footerHtmlDraft;
+      }
+
+      // HeaderConfig is replaced as a whole (complex nested structure)
+      if (data.headerConfig !== undefined) {
+        updateFields.headerConfig = data.headerConfig;
+      }
+
+      // HeaderConfigDraft is replaced as a whole (complex nested structure)
+      if (data.headerConfigDraft !== undefined) {
+        updateFields.headerConfigDraft = data.headerConfigDraft;
+      }
+
+      // MetaTags - partial update using dot notation
+      if (data.meta_tags) {
+        const metaTagsUpdate = data.meta_tags as Partial<MetaTags>;
+        Object.entries(metaTagsUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`meta_tags.${key}`] = value;
+          }
+        });
+      }
+
       if (data.lastModifiedBy) {
         updateFields.lastModifiedBy = data.lastModifiedBy;
       }
@@ -232,6 +346,11 @@ export async function upsertHomeSettings(
         cdn: data.cdn,
         cdn_credentials: data.cdn_credentials,
         smtp_settings: data.smtp_settings,
+        footerHtml: data.footerHtml,
+        footerHtmlDraft: data.footerHtmlDraft,
+        headerConfig: data.headerConfig ?? DEFAULT_HEADER_CONFIG,
+        headerConfigDraft: data.headerConfigDraft ?? data.headerConfig ?? DEFAULT_HEADER_CONFIG,
+        meta_tags: data.meta_tags,
         lastModifiedBy: data.lastModifiedBy
       });
 
@@ -306,6 +425,17 @@ export async function updateCDNCredentials(
   tenantDb?: string
 ): Promise<HomeSettingsDocument | null> {
   return upsertHomeSettings({ cdn_credentials, lastModifiedBy }, tenantDb);
+}
+
+/**
+ * Update header configuration
+ */
+export async function updateHeaderConfig(
+  headerConfig: HeaderConfig,
+  lastModifiedBy?: string,
+  tenantDb?: string
+): Promise<HomeSettingsDocument | null> {
+  return upsertHomeSettings({ headerConfig, lastModifiedBy }, tenantDb);
 }
 
 /**

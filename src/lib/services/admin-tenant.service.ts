@@ -16,6 +16,7 @@ import {
   ITenantDbConfig,
 } from "../db/models/admin-tenant";
 import { LanguageModel } from "../db/models/language";
+import { notifyTenantCacheClear } from "./cache-clear.service";
 
 // ============================================
 // TYPES
@@ -485,6 +486,11 @@ export async function suspendTenant(tenantId: string): Promise<ITenantDocument> 
   tenant.status = "suspended";
   await tenant.save();
 
+  // Notify b2b instances to clear cache (fire and forget)
+  notifyTenantCacheClear({ tenantId }).catch((err) => {
+    console.error("[suspendTenant] Cache clear notification failed:", err);
+  });
+
   console.log(`Suspended tenant: ${tenantId}`);
   return tenant;
 }
@@ -502,6 +508,11 @@ export async function activateTenant(tenantId: string): Promise<ITenantDocument>
 
   tenant.status = "active";
   await tenant.save();
+
+  // Notify b2b instances to clear cache (fire and forget)
+  notifyTenantCacheClear({ tenantId }).catch((err) => {
+    console.error("[activateTenant] Cache clear notification failed:", err);
+  });
 
   console.log(`Activated tenant: ${tenantId}`);
   return tenant;
@@ -588,6 +599,12 @@ export async function updateTenant(
   if (updates.builder_url !== undefined) tenant.builder_url = updates.builder_url;
 
   await tenant.save();
+
+  // Notify b2b instances to clear cache (fire and forget)
+  notifyTenantCacheClear({ tenantId }).catch((err) => {
+    console.error("[updateTenant] Cache clear notification failed:", err);
+  });
+
   return tenant;
 }
 

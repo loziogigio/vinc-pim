@@ -16,12 +16,42 @@ import {
   Check,
   Trash2,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  FileCode2,
+  Send,
+  LayoutTemplate,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Lock,
+  Unlock,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Image,
+  Search,
+  Radio,
+  Menu,
+  ShoppingCart,
+  Building2,
+  EyeOff,
+  Heart,
+  GitCompare,
+  User,
+  Square,
+  Space,
+  Minus,
+  Settings2,
+  Globe,
+  X
 } from "lucide-react";
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
+import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation } from "@/lib/types/home-settings";
+import { LAYOUT_WIDTHS, LAYOUT_BLOCK_COUNT, HEADER_WIDGET_LIBRARY } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
 const DEFAULT_BRANDING: CompanyBranding = {
@@ -69,7 +99,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "apikeys";
+type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "apikeys" | "footer" | "header" | "seo";
 
 const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_url: "",
@@ -93,6 +123,102 @@ const DEFAULT_SMTP_SETTINGS: SMTPSettings = {
   default_to: ""
 };
 
+const DEFAULT_HEADER_CONFIG: HeaderConfig = {
+  rows: [
+    {
+      id: "main",
+      enabled: true,
+      fixed: true,
+      backgroundColor: "#ffffff",
+      layout: "20-60-20",
+      blocks: [
+        {
+          id: "left",
+          alignment: "left",
+          widgets: [
+            { id: "logo", type: "logo", config: {} }
+          ]
+        },
+        {
+          id: "center",
+          alignment: "center",
+          widgets: [
+            { id: "search", type: "search-bar", config: { width: "lg" } },
+            { id: "radio", type: "radio-widget", config: {
+              enabled: false,
+              headerIcon: "",
+              stations: [
+                { id: "station-rtl", name: "RTL 102.5", logoUrl: "", streamUrl: "https://streamingv2.shoutcast.com/rtl-102-5" },
+                { id: "station-rds", name: "RDS", logoUrl: "", streamUrl: "https://icstream.rds.radio/rds" }
+              ]
+            } }
+          ]
+        },
+        {
+          id: "right",
+          alignment: "right",
+          widgets: [
+            { id: "no-price", type: "no-price", config: {} },
+            { id: "favorites", type: "favorites", config: {} },
+            { id: "compare", type: "compare", config: {} },
+            { id: "profile", type: "profile", config: {} },
+            { id: "cart", type: "cart", config: {} }
+          ]
+        }
+      ]
+    },
+    {
+      id: "nav",
+      enabled: true,
+      fixed: true,
+      backgroundColor: "#f8fafc",
+      layout: "50-50",
+      blocks: [
+        {
+          id: "left",
+          alignment: "left",
+          widgets: [
+            { id: "categories", type: "category-menu", config: { label: "Categorie" } },
+            { id: "promo-btn", type: "button", config: { label: "Promozioni", url: "/promotions", variant: "primary" } },
+            { id: "new-btn", type: "button", config: { label: "Nuovi arrivi", url: "/new-arrivals", variant: "secondary" } }
+          ]
+        },
+        {
+          id: "right",
+          alignment: "right",
+          widgets: [
+            { id: "orders-btn", type: "button", config: { label: "i miei ordini", url: "/orders", variant: "outline" } },
+            { id: "docs-btn", type: "button", config: { label: "i miei documenti", url: "/documents", variant: "outline" } },
+            { id: "delivery", type: "company-info", config: { showDeliveryAddress: true } }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+const DEFAULT_META_TAGS: MetaTags = {
+  title: "",
+  description: "",
+  keywords: "",
+  author: "",
+  robots: "index, follow",
+  canonicalUrl: "",
+  ogTitle: "",
+  ogDescription: "",
+  ogImage: "",
+  ogSiteName: "",
+  ogType: "website",
+  twitterCard: "summary_large_image",
+  twitterSite: "",
+  twitterCreator: "",
+  twitterImage: "",
+  structuredData: "",
+  themeColor: "",
+  googleSiteVerification: "",
+  bingSiteVerification: ""
+};
+
 interface BrandingFormProps {
   branding: CompanyBranding;
   onChange: (key: keyof CompanyBranding, value: string) => void;
@@ -109,6 +235,10 @@ interface CardStyleFormProps {
   onStyleChange: <K extends keyof ProductCardStyle>(key: K, value: ProductCardStyle[K]) => void;
 }
 
+interface MetaTagsFormProps {
+  metaTags: MetaTags;
+  onChange: (key: keyof MetaTags, value: string) => void;
+}
 
 const SectionCard: React.FC<{ title: string; description: string; children: React.ReactNode }> = ({
   title,
@@ -182,6 +312,11 @@ export default function HomeSettingsPage() {
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
   const [cdnCredentials, setCdnCredentials] = useState<CDNCredentials>(DEFAULT_CDN_CREDENTIALS);
   const [smtpSettings, setSmtpSettings] = useState<SMTPSettings>(DEFAULT_SMTP_SETTINGS);
+  const [footerHtml, setFooterHtml] = useState<string>("");
+  const [footerHtmlDraft, setFooterHtmlDraft] = useState<string>("");
+  const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
+  const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
+  const [metaTags, setMetaTags] = useState<MetaTags>(DEFAULT_META_TAGS);
   const [activeSection, setActiveSection] = useState<ActiveSection>("branding");
   const [previewVariant, setPreviewVariant] = useState<PreviewVariant>("b2b");
 
@@ -208,6 +343,11 @@ export default function HomeSettingsPage() {
         setCardStyle(DEFAULT_CARD_STYLE);
         setCdnCredentials(DEFAULT_CDN_CREDENTIALS);
         setSmtpSettings(DEFAULT_SMTP_SETTINGS);
+        setFooterHtml("");
+        setFooterHtmlDraft("");
+        setHeaderConfig(DEFAULT_HEADER_CONFIG);
+        setHeaderConfigDraft(DEFAULT_HEADER_CONFIG);
+        setMetaTags(DEFAULT_META_TAGS);
         setCardVariant("b2b");
         setPreviewVariant("b2b");
         setDirty(false);
@@ -239,6 +379,14 @@ export default function HomeSettingsPage() {
       setSmtpSettings({
         ...DEFAULT_SMTP_SETTINGS,
         ...(data.smtp_settings ?? {})
+      });
+      setFooterHtml(data.footerHtml || "");
+      setFooterHtmlDraft(data.footerHtmlDraft || data.footerHtml || "");
+      setHeaderConfig(data.headerConfig || DEFAULT_HEADER_CONFIG);
+      setHeaderConfigDraft(data.headerConfigDraft || data.headerConfig || DEFAULT_HEADER_CONFIG);
+      setMetaTags({
+        ...DEFAULT_META_TAGS,
+        ...(data.meta_tags ?? {})
       });
       setDirty(false);
       setToast("Settings loaded.");
@@ -318,6 +466,9 @@ export default function HomeSettingsPage() {
           cardStyle,
           cdn_credentials: cdnCredentials,
           smtp_settings: smtpSettings,
+          footerHtmlDraft,
+          headerConfigDraft,
+          meta_tags: metaTags,
           lastModifiedBy: "admin"
         })
       });
@@ -342,14 +493,6 @@ export default function HomeSettingsPage() {
 
   const showInitialLoader = isLoading && !hasLoadedOnce;
 
-  const previewHeading = useMemo(
-    () =>
-      previewVariant === "horizontal"
-        ? "Horizontal product card"
-        : "Vertical product card",
-    [previewVariant]
-  );
-
   return showInitialLoader ? (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center">
       <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
@@ -364,7 +507,7 @@ export default function HomeSettingsPage() {
         <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between px-6 py-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold text-slate-900">Home Settings</h1>
+              <h1 className="text-lg font-semibold text-slate-900">B2B Ecommerce - Brand & Settings</h1>
               {dirty ? (
                 <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                   Unsaved changes
@@ -376,7 +519,7 @@ export default function HomeSettingsPage() {
               )}
             </div>
             <p className="text-sm text-slate-500">
-              Configure company branding and product card styles for customer storefronts.
+              Configure branding, SEO, layouts, and settings for your B2B storefront.
             </p>
           </div>
 
@@ -482,30 +625,70 @@ export default function HomeSettingsPage() {
               active={activeSection === "apikeys"}
               onClick={() => setActiveSection("apikeys")}
             />
+            <SidebarItem
+              icon={FileCode2}
+              label="Footer"
+              description="Custom footer HTML"
+              active={activeSection === "footer"}
+              onClick={() => setActiveSection("footer")}
+            />
+            <SidebarItem
+              icon={LayoutTemplate}
+              label="Header"
+              description="Header rows & widgets"
+              active={activeSection === "header"}
+              onClick={() => setActiveSection("header")}
+            />
+            <SidebarItem
+              icon={Globe}
+              label="SEO & Meta Tags"
+              description="Search engine optimization"
+              active={activeSection === "seo"}
+              onClick={() => setActiveSection("seo")}
+            />
           </nav>
         </aside>
 
         <main className="flex-1 space-y-6">
           {activeSection === "branding" && (
-            <BrandingForm
-              branding={branding}
-              onChange={updateBranding}
-              onUploadLogo={handleLogoUpload}
-              onUploadFavicon={handleFaviconUpload}
-              logoUpload={logoUploader.uploadState}
-              faviconUpload={faviconUploader.uploadState}
-            />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2">
+                <BrandingForm
+                  branding={branding}
+                  onChange={updateBranding}
+                  onUploadLogo={handleLogoUpload}
+                  onUploadFavicon={handleFaviconUpload}
+                  logoUpload={logoUploader.uploadState}
+                  faviconUpload={faviconUploader.uploadState}
+                />
+              </div>
+              <div className="xl:col-span-1">
+                <BrandingPreview branding={branding} cardStyle={cardStyle} />
+              </div>
+            </div>
           )}
           {activeSection === "product" && (
-            <CardStyleForm
-              cardStyle={cardStyle}
-              cardVariant={cardVariant}
-              onVariantChange={(variant) => {
-                setCardVariant(variant);
-                setDirty(true);
-              }}
-              onStyleChange={updateCardStyle}
-            />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2">
+                <CardStyleForm
+                  cardStyle={cardStyle}
+                  cardVariant={cardVariant}
+                  onVariantChange={(variant) => {
+                    setCardVariant(variant);
+                    setDirty(true);
+                  }}
+                  onStyleChange={updateCardStyle}
+                />
+              </div>
+              <div className="xl:col-span-1">
+                <ProductCardPreviewPanel
+                  cardStyle={cardStyle}
+                  branding={branding}
+                  previewVariant={previewVariant}
+                  onVariantChange={setPreviewVariant}
+                />
+              </div>
+            </div>
           )}
           {activeSection === "cdn" && (
             <CDNForm
@@ -520,94 +703,69 @@ export default function HomeSettingsPage() {
             />
           )}
           {activeSection === "apikeys" && <APIKeysForm />}
-        </main>
-
-        <aside className="w-full shrink-0 space-y-5 lg:w-[400px]">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Branding preview</h3>
-                  <p className="text-xs text-slate-500">
-                    See how your colours and logo appear together.
-                  </p>
-                </div>
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-700">
-                  <Upload className="h-4 w-4" />
-                  <span className="sr-only">Upload logo</span>
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-5 px-5 py-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50">
-                  {branding.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={branding.logo} alt="Company logo" className="h-full w-full object-contain" />
-                  ) : (
-                    <span className="text-xs font-semibold uppercase text-slate-400">Logo</span>
-                  )}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">
-                    {branding.title || "Your company"}
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Primary palette
-                </span>
-                <div className="flex items-center gap-3">
-                  <span
-                    className="h-10 w-10 rounded-full border border-slate-200"
-                    style={{ backgroundColor: branding.primaryColor || "#009f7f" }}
-                  />
-                  <span
-                    className="h-10 w-10 rounded-full border border-slate-200"
-                    style={{ backgroundColor: branding.secondaryColor || "#02b290" }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">{previewHeading}</h3>
-                  <p className="text-xs text-slate-500">
-                    Live preview updates as you tweak styles.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {CARD_VARIANTS.map((variant) => (
-                    <button
-                      key={variant.value}
-                      type="button"
-                      onClick={() => setPreviewVariant(variant.value)}
-                      className={cn(
-                        "rounded-lg border px-3 py-1 text-xs font-medium transition-colors",
-                        previewVariant === variant.value
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700"
-                      )}
-                    >
-                      {variant.label.split(" ")[0]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <ProductCardPreview
-              variant={previewVariant}
-              cardStyle={cardStyle}
+          {activeSection === "footer" && (
+            <FooterForm
+              footerHtml={footerHtml}
+              footerHtmlDraft={footerHtmlDraft}
               branding={branding}
-              className="px-5 py-6"
+              onDraftChange={(html) => {
+                setFooterHtmlDraft(html);
+                setDirty(true);
+              }}
+              onPublish={async () => {
+                // Save draft as published
+                const response = await fetch("/api/b2b/home-settings", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    footerHtml: footerHtmlDraft,
+                    footerHtmlDraft,
+                    lastModifiedBy: "admin"
+                  })
+                });
+                if (response.ok) {
+                  setFooterHtml(footerHtmlDraft);
+                  setToast("Footer published successfully.");
+                }
+              }}
             />
-          </div>
-        </aside>
+          )}
+          {activeSection === "header" && (
+            <HeaderForm
+              headerConfig={headerConfig}
+              headerConfigDraft={headerConfigDraft}
+              branding={branding}
+              onDraftChange={(config) => {
+                setHeaderConfigDraft(config);
+                setDirty(true);
+              }}
+              onPublish={async () => {
+                const response = await fetch("/api/b2b/home-settings", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    headerConfig: headerConfigDraft,
+                    headerConfigDraft,
+                    lastModifiedBy: "admin"
+                  })
+                });
+                if (response.ok) {
+                  setHeaderConfig(headerConfigDraft);
+                  setToast("Header published successfully.");
+                }
+              }}
+            />
+          )}
+          {activeSection === "seo" && (
+            <MetaTagsForm
+              metaTags={metaTags}
+              onChange={(key, value) => {
+                setMetaTags(prev => ({ ...prev, [key]: value }));
+                setDirty(true);
+              }}
+            />
+          )}
+        </main>
       </div>
     </>
   );
@@ -2229,6 +2387,2151 @@ function APIKeysForm() {
           </div>
         </div>
       )}
+    </SectionCard>
+  );
+}
+
+interface FooterFormProps {
+  footerHtml: string;
+  footerHtmlDraft: string;
+  branding: CompanyBranding;
+  onDraftChange: (html: string) => void;
+  onPublish: () => Promise<void>;
+}
+
+interface FooterImage {
+  url: string;
+  name: string;
+  uploadedAt: Date;
+}
+
+function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPublish }: FooterFormProps) {
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [footerImages, setFooterImages] = useState<FooterImage[]>([]);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadState, uploadImage, resetError } = useImageUpload();
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await onPublish();
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const url = await uploadImage(file);
+    if (url) {
+      setFooterImages(prev => [
+        { url, name: file.name, uploadedAt: new Date() },
+        ...prev
+      ]);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleCopyUrl = async (url: string) => {
+    await navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(null), 2000);
+  };
+
+  const handleInsertImage = (url: string, name: string) => {
+    const imgTag = `<img src="${url}" alt="${name}" class="h-auto max-w-full" />`;
+    onDraftChange(footerHtmlDraft + "\n" + imgTag);
+  };
+
+  const handleRemoveImage = (url: string) => {
+    setFooterImages(prev => prev.filter(img => img.url !== url));
+  };
+
+  const hasUnsavedChanges = footerHtmlDraft !== footerHtml;
+  const year = new Date().getFullYear();
+
+  // Sanitize HTML for preview
+  const sanitizedHtml = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return DOMPurify.sanitize(footerHtmlDraft);
+  }, [footerHtmlDraft]);
+
+  const exampleHtml = `<div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+  <div class="flex items-center gap-4">
+    <img src="/assets/vinc/logo.png" class="h-[80px] w-auto" alt="Logo" />
+    <div class="text-[40px] text-[#7a7a7a]">
+      <div class="font-bold">Hidros</div>
+      <div class="font-normal">Point</div>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-3 text-sm">
+    <div>📍 Via Example 123, Milan</div>
+    <div>📞 +39 0123 456789</div>
+    <div>✉️ info@company.com</div>
+  </div>
+</div>`;
+
+  return (
+    <div className="space-y-4">
+      {/* Status and Actions Bar */}
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-2">
+          {hasUnsavedChanges ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              Draft has unpublished changes
+            </span>
+          ) : footerHtml ? (
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+              Published
+            </span>
+          ) : (
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              No footer configured
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {footerHtml && hasUnsavedChanges && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onDraftChange(footerHtml)}
+              className="text-xs text-slate-500"
+            >
+              Revert to Published
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            onClick={handlePublish}
+            disabled={isPublishing || !footerHtmlDraft}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            {isPublishing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Publish
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Accordion Sections */}
+      <AccordionGroup>
+        {/* HTML Editor Accordion */}
+        <AccordionItem
+          title="HTML Editor"
+          description="Write custom HTML with Tailwind CSS classes"
+          defaultOpen={true}
+          badge={
+            footerHtmlDraft ? (
+              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                {footerHtmlDraft.length} chars
+              </span>
+            ) : null
+          }
+        >
+          <div className="space-y-4">
+            <textarea
+              id="footer-html"
+              value={footerHtmlDraft}
+              onChange={(e) => onDraftChange(e.target.value)}
+              placeholder={exampleHtml}
+              rows={12}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-slate-500">
+              Use Tailwind CSS classes for styling. HTML is sanitized with DOMPurify before rendering.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onDraftChange(exampleHtml)}
+                className="text-xs"
+              >
+                Load Example
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onDraftChange("")}
+                className="text-xs text-slate-500 hover:text-rose-600"
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        </AccordionItem>
+
+        {/* Footer Images Accordion */}
+        <AccordionItem
+          title="Footer Images"
+          description="Upload images to use in your footer HTML"
+          defaultOpen={false}
+          badge={
+            footerImages.length > 0 ? (
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                {footerImages.length} image{footerImages.length > 1 ? "s" : ""}
+              </span>
+            ) : null
+          }
+          actions={
+            <div onClick={(e) => e.stopPropagation()}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="footer-image-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadState.isUploading}
+                className="gap-2"
+              >
+                {uploadState.isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            {uploadState.error && (
+              <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700 flex items-center justify-between">
+                <span>{uploadState.error}</span>
+                <button
+                  type="button"
+                  onClick={resetError}
+                  className="text-rose-500 hover:text-rose-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {footerImages.length > 0 ? (
+              <div className="space-y-2">
+                {footerImages.map((image) => (
+                  <div
+                    key={image.url}
+                    className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={image.url}
+                      alt={image.name}
+                      className="h-12 w-12 rounded object-cover border border-slate-200"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-slate-700 truncate">{image.name}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{image.url}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCopyUrl(image.url)}
+                        className="h-8 w-8 p-0"
+                        title="Copy URL"
+                      >
+                        {copiedUrl === image.url ? (
+                          <Check className="h-4 w-4 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-slate-500" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleInsertImage(image.url, image.name)}
+                        className="h-8 px-2 text-xs text-primary"
+                        title="Insert into HTML"
+                      >
+                        Insert
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveImage(image.url)}
+                        className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600"
+                        title="Remove from list"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-6 text-center">
+                <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                <p className="text-sm text-slate-500">No images uploaded yet</p>
+                <p className="text-xs text-slate-400">Click "Upload" to add images for your footer</p>
+              </div>
+            )}
+          </div>
+        </AccordionItem>
+
+        {/* Live Preview Accordion */}
+        <AccordionItem
+          title="Live Preview"
+          description="See how your footer will appear on the storefront"
+          defaultOpen={true}
+          badge={
+            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+              Preview
+            </span>
+          }
+        >
+          <div className="bg-slate-100 -mx-4 -mb-4 p-4 rounded-b-xl">
+            <footer className="rounded-lg overflow-hidden shadow-lg">
+              <div
+                className="border-t-[6px]"
+                style={{
+                  borderColor: branding.primaryColor || "#009f7f",
+                  backgroundColor: branding.footerBackgroundColor || "#f5f5f5",
+                  color: branding.footerTextColor || "#666666",
+                }}
+              >
+                {sanitizedHtml && (
+                  <div
+                    className="mx-auto max-w-[1920px] px-4 md:px-6 lg:px-8 2xl:px-10 py-8 lg:py-10"
+                    dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+                  />
+                )}
+
+                {!sanitizedHtml && (
+                  <div className="mx-auto max-w-[1920px] px-4 py-8 text-center text-sm text-slate-400">
+                    Enter HTML above to see a preview
+                  </div>
+                )}
+
+                {/* Copyright bar */}
+                <div
+                  className="py-3 text-center text-xs font-semibold text-white md:text-sm"
+                  style={{ backgroundColor: branding.primaryColor || "#009f7f" }}
+                >
+                  Copyright © {year} {branding.title || "Your Company"} All rights reserved.
+                </div>
+              </div>
+            </footer>
+          </div>
+        </AccordionItem>
+      </AccordionGroup>
+    </div>
+  );
+}
+
+// ============================================================================
+// Header Builder Components
+// ============================================================================
+
+interface HeaderFormProps {
+  headerConfig: HeaderConfig;
+  headerConfigDraft: HeaderConfig;
+  branding: CompanyBranding;
+  onDraftChange: (config: HeaderConfig) => void;
+  onPublish: () => Promise<void>;
+}
+
+const LAYOUT_OPTIONS: { value: RowLayout; label: string; description: string }[] = [
+  { value: "full", label: "Full Width", description: "1 block (100%)" },
+  { value: "50-50", label: "50-50", description: "2 blocks (50% / 50%)" },
+  { value: "20-60-20", label: "20-60-20", description: "Logo | Search | Icons" },
+  { value: "25-50-25", label: "25-50-25", description: "Balanced header" },
+  { value: "30-40-30", label: "30-40-30", description: "Compact center" },
+  { value: "33-33-33", label: "33-33-33", description: "3 equal blocks" },
+];
+
+const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
+  "logo": Image,
+  "search-bar": Search,
+  "radio-widget": Radio,
+  "category-menu": Menu,
+  "cart": ShoppingCart,
+  "company-info": Building2,
+  "no-price": EyeOff,
+  "favorites": Heart,
+  "compare": GitCompare,
+  "profile": User,
+  "button": Square,
+  "spacer": Space,
+  "divider": Minus,
+};
+
+// ============================================================================
+// Meta Tags Form Component
+// ============================================================================
+
+function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
+  return (
+    <div className="space-y-6">
+      {/* Basic SEO */}
+      <SectionCard title="Basic SEO" description="Essential meta tags for search engines">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <label htmlFor="meta-title" className="text-sm font-medium text-slate-600">
+              Page Title
+            </label>
+            <input
+              id="meta-title"
+              type="text"
+              value={metaTags.title || ""}
+              onChange={(e) => onChange("title", e.target.value)}
+              placeholder="Your Company - B2B Store"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-xs text-slate-500">Appears in browser tab and search results (50-60 characters recommended)</p>
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <label htmlFor="meta-description" className="text-sm font-medium text-slate-600">
+              Meta Description
+            </label>
+            <textarea
+              id="meta-description"
+              value={metaTags.description || ""}
+              onChange={(e) => onChange("description", e.target.value)}
+              placeholder="A brief description of your B2B store for search results..."
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-xs text-slate-500">Description shown in search results (150-160 characters recommended)</p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="meta-keywords" className="text-sm font-medium text-slate-600">
+              Keywords
+            </label>
+            <input
+              id="meta-keywords"
+              type="text"
+              value={metaTags.keywords || ""}
+              onChange={(e) => onChange("keywords", e.target.value)}
+              placeholder="b2b, wholesale, products"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-xs text-slate-500">Comma-separated keywords (less important for modern SEO)</p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="meta-author" className="text-sm font-medium text-slate-600">
+              Author
+            </label>
+            <input
+              id="meta-author"
+              type="text"
+              value={metaTags.author || ""}
+              onChange={(e) => onChange("author", e.target.value)}
+              placeholder="Company Name"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="meta-robots" className="text-sm font-medium text-slate-600">
+              Robots Directive
+            </label>
+            <select
+              id="meta-robots"
+              value={metaTags.robots || "index, follow"}
+              onChange={(e) => onChange("robots", e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="index, follow">Index, Follow (default)</option>
+              <option value="noindex, follow">No Index, Follow</option>
+              <option value="index, nofollow">Index, No Follow</option>
+              <option value="noindex, nofollow">No Index, No Follow</option>
+            </select>
+            <p className="text-xs text-slate-500">Controls how search engines crawl and index the site</p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="meta-canonical" className="text-sm font-medium text-slate-600">
+              Canonical URL
+            </label>
+            <input
+              id="meta-canonical"
+              type="url"
+              value={metaTags.canonicalUrl || ""}
+              onChange={(e) => onChange("canonicalUrl", e.target.value)}
+              placeholder="https://shop.example.com"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-xs text-slate-500">Preferred URL for the homepage</p>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Open Graph */}
+      <SectionCard title="Open Graph (Social Sharing)" description="How your site appears when shared on Facebook, LinkedIn, etc.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="og-title" className="text-sm font-medium text-slate-600">
+              OG Title
+            </label>
+            <input
+              id="og-title"
+              type="text"
+              value={metaTags.ogTitle || ""}
+              onChange={(e) => onChange("ogTitle", e.target.value)}
+              placeholder="Leave empty to use page title"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="og-sitename" className="text-sm font-medium text-slate-600">
+              Site Name
+            </label>
+            <input
+              id="og-sitename"
+              type="text"
+              value={metaTags.ogSiteName || ""}
+              onChange={(e) => onChange("ogSiteName", e.target.value)}
+              placeholder="Your Company"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <label htmlFor="og-description" className="text-sm font-medium text-slate-600">
+              OG Description
+            </label>
+            <textarea
+              id="og-description"
+              value={metaTags.ogDescription || ""}
+              onChange={(e) => onChange("ogDescription", e.target.value)}
+              placeholder="Leave empty to use meta description"
+              rows={2}
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <label htmlFor="og-image" className="text-sm font-medium text-slate-600">
+              OG Image URL
+            </label>
+            <input
+              id="og-image"
+              type="url"
+              value={metaTags.ogImage || ""}
+              onChange={(e) => onChange("ogImage", e.target.value)}
+              placeholder="https://cdn.example.com/og-image.jpg"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-xs text-slate-500">Recommended size: 1200x630 pixels (JPG or PNG)</p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="og-type" className="text-sm font-medium text-slate-600">
+              OG Type
+            </label>
+            <select
+              id="og-type"
+              value={metaTags.ogType || "website"}
+              onChange={(e) => onChange("ogType", e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="website">Website</option>
+              <option value="article">Article</option>
+              <option value="product">Product</option>
+              <option value="business.business">Business</option>
+            </select>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Twitter Card */}
+      <SectionCard title="Twitter Card" description="How your site appears when shared on Twitter/X">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="twitter-card" className="text-sm font-medium text-slate-600">
+              Card Type
+            </label>
+            <select
+              id="twitter-card"
+              value={metaTags.twitterCard || "summary_large_image"}
+              onChange={(e) => onChange("twitterCard", e.target.value as MetaTags["twitterCard"])}
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="summary">Summary</option>
+              <option value="summary_large_image">Summary Large Image</option>
+              <option value="app">App</option>
+              <option value="player">Player</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="twitter-site" className="text-sm font-medium text-slate-600">
+              Site @username
+            </label>
+            <input
+              id="twitter-site"
+              type="text"
+              value={metaTags.twitterSite || ""}
+              onChange={(e) => onChange("twitterSite", e.target.value)}
+              placeholder="@yourcompany"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="twitter-creator" className="text-sm font-medium text-slate-600">
+              Creator @username
+            </label>
+            <input
+              id="twitter-creator"
+              type="text"
+              value={metaTags.twitterCreator || ""}
+              onChange={(e) => onChange("twitterCreator", e.target.value)}
+              placeholder="@creator"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="twitter-image" className="text-sm font-medium text-slate-600">
+              Twitter Image URL
+            </label>
+            <input
+              id="twitter-image"
+              type="url"
+              value={metaTags.twitterImage || ""}
+              onChange={(e) => onChange("twitterImage", e.target.value)}
+              placeholder="Leave empty to use OG image"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Additional Settings */}
+      <SectionCard title="Additional Settings" description="Theme color and site verification">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="theme-color" className="text-sm font-medium text-slate-600">
+              Theme Color
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={metaTags.themeColor || "#009f7f"}
+                onChange={(e) => onChange("themeColor", e.target.value)}
+                className="h-10 w-10 cursor-pointer rounded border border-slate-300"
+              />
+              <input
+                id="theme-color"
+                type="text"
+                value={metaTags.themeColor || ""}
+                onChange={(e) => onChange("themeColor", e.target.value)}
+                placeholder="#009f7f"
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <p className="text-xs text-slate-500">Browser address bar color on mobile</p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="google-verification" className="text-sm font-medium text-slate-600">
+              Google Site Verification
+            </label>
+            <input
+              id="google-verification"
+              type="text"
+              value={metaTags.googleSiteVerification || ""}
+              onChange={(e) => onChange("googleSiteVerification", e.target.value)}
+              placeholder="Verification code from Google Search Console"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="bing-verification" className="text-sm font-medium text-slate-600">
+              Bing Site Verification
+            </label>
+            <input
+              id="bing-verification"
+              type="text"
+              value={metaTags.bingSiteVerification || ""}
+              onChange={(e) => onChange("bingSiteVerification", e.target.value)}
+              placeholder="Verification code from Bing Webmaster Tools"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Structured Data */}
+      <SectionCard title="Structured Data (JSON-LD)" description="Advanced: Custom structured data for rich snippets">
+        <div className="space-y-2">
+          <label htmlFor="structured-data" className="text-sm font-medium text-slate-600">
+            JSON-LD Structured Data
+          </label>
+          <textarea
+            id="structured-data"
+            value={metaTags.structuredData || ""}
+            onChange={(e) => onChange("structuredData", e.target.value)}
+            placeholder={`{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Your Company",
+  "url": "https://shop.example.com"
+}`}
+            rows={10}
+            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 font-mono text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+          <p className="text-xs text-slate-500">Optional JSON-LD for Organization, LocalBusiness, or other schema types</p>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, onPublish }: HeaderFormProps) {
+  const [selectedWidget, setSelectedWidget] = useState<{ rowId: string; blockId: string; widgetId: string } | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  // Compare configs to determine if there are unpublished changes
+  const hasUnpublishedChanges = JSON.stringify(headerConfigDraft) !== JSON.stringify(headerConfig);
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await onPublish();
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleRevertToPublished = () => {
+    onDraftChange(headerConfig);
+  };
+
+  const updateRow = (rowId: string, updates: Partial<HeaderRow>) => {
+    onDraftChange({
+      ...headerConfigDraft,
+      rows: headerConfigDraft.rows.map((row) =>
+        row.id === rowId ? { ...row, ...updates } : row
+      ),
+    });
+  };
+
+  const updateBlock = (rowId: string, blockId: string, updates: Partial<HeaderBlock>) => {
+    onDraftChange({
+      ...headerConfigDraft,
+      rows: headerConfigDraft.rows.map((row) =>
+        row.id === rowId
+          ? {
+              ...row,
+              blocks: row.blocks.map((block) =>
+                block.id === blockId ? { ...block, ...updates } : block
+              ),
+            }
+          : row
+      ),
+    });
+  };
+
+  const addRow = () => {
+    const newRowId = `row-${Date.now()}`;
+    const newRow: HeaderRow = {
+      id: newRowId,
+      enabled: true,
+      fixed: false,
+      backgroundColor: "#ffffff",
+      layout: "50-50",
+      blocks: [
+        { id: `${newRowId}-left`, alignment: "left", widgets: [] },
+        { id: `${newRowId}-right`, alignment: "right", widgets: [] },
+      ],
+    };
+    onDraftChange({
+      ...headerConfigDraft,
+      rows: [...headerConfigDraft.rows, newRow],
+    });
+  };
+
+  const deleteRow = (rowId: string) => {
+    onDraftChange({
+      ...headerConfigDraft,
+      rows: headerConfigDraft.rows.filter((row) => row.id !== rowId),
+    });
+  };
+
+  const moveRow = (rowId: string, direction: "up" | "down") => {
+    const index = headerConfigDraft.rows.findIndex((r) => r.id === rowId);
+    if (index === -1) return;
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === headerConfigDraft.rows.length - 1) return;
+
+    const newRows = [...headerConfigDraft.rows];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
+    onDraftChange({ ...headerConfigDraft, rows: newRows });
+  };
+
+  const changeLayout = (rowId: string, newLayout: RowLayout) => {
+    const row = headerConfigDraft.rows.find((r) => r.id === rowId);
+    if (!row) return;
+
+    const blockCount = LAYOUT_BLOCK_COUNT[newLayout];
+    const currentBlockCount = row.blocks.length;
+
+    let newBlocks = [...row.blocks];
+
+    if (blockCount > currentBlockCount) {
+      // Add new blocks
+      const blockNames = ["left", "center", "right"];
+      for (let i = currentBlockCount; i < blockCount; i++) {
+        newBlocks.push({
+          id: `${rowId}-${blockNames[i] || `block-${i}`}`,
+          alignment: i === 0 ? "left" : i === blockCount - 1 ? "right" : "center",
+          widgets: [],
+        });
+      }
+    } else if (blockCount < currentBlockCount) {
+      // Remove extra blocks (keep widgets from removed blocks in last remaining block)
+      const removedBlocks = newBlocks.slice(blockCount);
+      const removedWidgets = removedBlocks.flatMap((b) => b.widgets);
+      newBlocks = newBlocks.slice(0, blockCount);
+      if (newBlocks.length > 0) {
+        newBlocks[newBlocks.length - 1].widgets.push(...removedWidgets);
+      }
+    }
+
+    updateRow(rowId, { layout: newLayout, blocks: newBlocks });
+  };
+
+  const addWidgetToBlock = (rowId: string, blockId: string, widgetType: HeaderWidgetType) => {
+    const row = headerConfigDraft.rows.find((r) => r.id === rowId);
+    if (!row) return;
+
+    const block = row.blocks.find((b) => b.id === blockId);
+    if (!block) return;
+
+    // Check if widget already exists (for non-multiple types)
+    const widgetMeta = HEADER_WIDGET_LIBRARY[widgetType];
+    if (!widgetMeta.allowMultiple) {
+      const allWidgets = headerConfigDraft.rows.flatMap((r) =>
+        r.blocks.flatMap((b) => b.widgets)
+      );
+      if (allWidgets.some((w) => w.type === widgetType)) {
+        return; // Widget already exists
+      }
+    }
+
+    const newWidget: HeaderWidget = {
+      id: `${widgetType}-${Date.now()}`,
+      type: widgetType,
+      config: {},
+    };
+
+    updateBlock(rowId, blockId, {
+      widgets: [...block.widgets, newWidget],
+    });
+  };
+
+  const removeWidget = (rowId: string, blockId: string, widgetId: string) => {
+    const row = headerConfigDraft.rows.find((r) => r.id === rowId);
+    if (!row) return;
+
+    const block = row.blocks.find((b) => b.id === blockId);
+    if (!block) return;
+
+    updateBlock(rowId, blockId, {
+      widgets: block.widgets.filter((w) => w.id !== widgetId),
+    });
+
+    if (selectedWidget?.widgetId === widgetId) {
+      setSelectedWidget(null);
+    }
+  };
+
+  const getUsedWidgetTypes = (): Set<HeaderWidgetType> => {
+    const used = new Set<HeaderWidgetType>();
+    headerConfigDraft.rows.forEach((row) => {
+      row.blocks.forEach((block) => {
+        block.widgets.forEach((widget) => {
+          const meta = HEADER_WIDGET_LIBRARY[widget.type];
+          if (!meta.allowMultiple) {
+            used.add(widget.type);
+          }
+        });
+      });
+    });
+    return used;
+  };
+
+  const usedWidgetTypes = getUsedWidgetTypes();
+
+  return (
+    <div className="space-y-4">
+      {/* Status and Actions Bar */}
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-2">
+          {hasUnpublishedChanges ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              Draft has unpublished changes
+            </span>
+          ) : headerConfig.rows.length > 0 ? (
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+              Published
+            </span>
+          ) : (
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              No header configured
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {hasUnpublishedChanges && headerConfig.rows.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleRevertToPublished}
+              className="text-xs text-slate-500"
+            >
+              Revert to Published
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            onClick={handlePublish}
+            disabled={isPublishing || headerConfigDraft.rows.length === 0}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            {isPublishing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Publish
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Two-column layout: Builder on left, Widget Config on right */}
+      <div className="flex gap-4">
+        {/* Left Column - Row Configuration */}
+        <div className={cn("flex-1 min-w-0", selectedWidget && "max-w-[calc(100%-320px)]")}>
+          <AccordionGroup>
+            {/* Row Configuration Accordion */}
+            <AccordionItem
+              title="Row Configuration"
+              description="Configure header rows, layout, and widgets"
+              defaultOpen={true}
+              badge={
+                headerConfigDraft.rows.length > 0 ? (
+                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                    {headerConfigDraft.rows.filter(r => r.enabled).length}/{headerConfigDraft.rows.length} rows
+                  </span>
+                ) : null
+              }
+            >
+              <div className="space-y-4">
+          {headerConfigDraft.rows.map((row, rowIndex) => (
+            <div
+              key={row.id}
+              className={cn(
+                "rounded-xl border-2 transition-colors",
+                row.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"
+              )}
+            >
+              {/* Row Header */}
+              <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+                <GripVertical className="h-4 w-4 text-slate-400 cursor-grab" />
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={row.enabled}
+                    onChange={(e) => updateRow(row.id, { enabled: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    Row {rowIndex + 1}
+                  </span>
+                </label>
+
+                <div className="flex-1" />
+
+                {/* Layout Selector */}
+                <select
+                  value={row.layout}
+                  onChange={(e) => changeLayout(row.id, e.target.value as RowLayout)}
+                  disabled={!row.enabled}
+                  className="rounded-md border border-slate-200 px-2 py-1 text-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {LAYOUT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Fixed Toggle */}
+                <button
+                  type="button"
+                  onClick={() => updateRow(row.id, { fixed: !row.fixed })}
+                  disabled={!row.enabled}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                    row.fixed
+                      ? "bg-primary/10 text-primary"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  )}
+                  title={row.fixed ? "Fixed/Sticky" : "Scrollable"}
+                >
+                  {row.fixed ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  {row.fixed ? "Fixed" : "Scroll"}
+                </button>
+
+                {/* Row Actions */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveRow(row.id, "up")}
+                    disabled={rowIndex === 0}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveRow(row.id, "down")}
+                    disabled={rowIndex === headerConfigDraft.rows.length - 1}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteRow(row.id)}
+                    className="rounded p-1 text-slate-400 hover:bg-rose-100 hover:text-rose-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Row Blocks */}
+              {row.enabled && (
+                <div className="p-4">
+                  <div className="flex gap-2">
+                    {row.blocks.map((block, blockIndex) => {
+                      const widthPct = LAYOUT_WIDTHS[row.layout][blockIndex] || 100;
+                      return (
+                        <div
+                          key={block.id}
+                          className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3"
+                          style={{ width: `${widthPct}%` }}
+                        >
+                          {/* Block Header */}
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-medium text-slate-500">
+                              {widthPct}%
+                            </span>
+                            <div className="flex gap-1">
+                              {(["left", "center", "right"] as BlockAlignment[]).map((align) => (
+                                <button
+                                  key={align}
+                                  type="button"
+                                  onClick={() => updateBlock(row.id, block.id, { alignment: align })}
+                                  className={cn(
+                                    "rounded p-1 transition-colors",
+                                    block.alignment === align
+                                      ? "bg-primary/20 text-primary"
+                                      : "text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                                  )}
+                                  title={`Align ${align}`}
+                                >
+                                  {align === "left" && <AlignLeft className="h-3 w-3" />}
+                                  {align === "center" && <AlignCenter className="h-3 w-3" />}
+                                  {align === "right" && <AlignRight className="h-3 w-3" />}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Widgets in Block */}
+                          <div
+                            className={cn(
+                              "flex flex-wrap gap-1 min-h-[40px]",
+                              block.alignment === "left" && "justify-start",
+                              block.alignment === "center" && "justify-center",
+                              block.alignment === "right" && "justify-end"
+                            )}
+                          >
+                            {block.widgets.map((widget) => {
+                              const WidgetIcon = WIDGET_ICONS[widget.type];
+                              const meta = HEADER_WIDGET_LIBRARY[widget.type];
+                              const isSelected =
+                                selectedWidget?.rowId === row.id &&
+                                selectedWidget?.blockId === block.id &&
+                                selectedWidget?.widgetId === widget.id;
+
+                              return (
+                                <div
+                                  key={widget.id}
+                                  onClick={() =>
+                                    setSelectedWidget({
+                                      rowId: row.id,
+                                      blockId: block.id,
+                                      widgetId: widget.id,
+                                    })
+                                  }
+                                  className={cn(
+                                    "flex items-center gap-1 rounded-md border px-2 py-1 text-xs cursor-pointer transition-colors",
+                                    isSelected
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-slate-200 bg-white text-slate-600 hover:border-primary/50"
+                                  )}
+                                >
+                                  <WidgetIcon className="h-3 w-3" />
+                                  <span>{meta.label}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeWidget(row.id, block.id, widget.id);
+                                    }}
+                                    className="ml-1 rounded text-slate-400 hover:text-rose-600"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+
+                            {/* Add Widget Button */}
+                            <WidgetAdder
+                              onAdd={(type) => addWidgetToBlock(row.id, block.id, type)}
+                              usedTypes={usedWidgetTypes}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Row Background Color */}
+                  <div className="mt-3 flex items-center gap-3 pt-3 border-t border-slate-100">
+                    <label className="text-xs text-slate-500">Background:</label>
+                    <input
+                      type="color"
+                      value={row.backgroundColor || "#ffffff"}
+                      onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value })}
+                      className="h-6 w-8 cursor-pointer rounded border border-slate-200"
+                    />
+                    <input
+                      type="text"
+                      value={row.backgroundColor || ""}
+                      onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value })}
+                      placeholder="#ffffff"
+                      className="w-24 rounded border border-slate-200 px-2 py-1 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Add Row Button */}
+          <button
+            type="button"
+            onClick={addRow}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-4 text-sm font-medium text-slate-500 transition-colors hover:border-primary hover:text-primary"
+          >
+            <Plus className="h-4 w-4" />
+            Add Row
+          </button>
+          </div>
+        </AccordionItem>
+
+        {/* Available Widgets Accordion */}
+        <AccordionItem
+          title="Available Widgets"
+          description="Reference guide for header widgets. Click + in a block to add widgets."
+          defaultOpen={false}
+          badge={
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+              {Object.keys(HEADER_WIDGET_LIBRARY).length} widgets
+            </span>
+          }
+        >
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {(Object.entries(HEADER_WIDGET_LIBRARY) as [HeaderWidgetType, typeof HEADER_WIDGET_LIBRARY[HeaderWidgetType]][]).map(
+              ([type, meta]) => {
+                const Icon = WIDGET_ICONS[type];
+                const isUsed = usedWidgetTypes.has(type) && !meta.allowMultiple;
+                return (
+                  <div
+                    key={type}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border p-2",
+                      isUsed
+                        ? "border-slate-100 bg-slate-50 text-slate-400"
+                        : "border-slate-200 bg-white text-slate-700"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium truncate">{meta.label}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{meta.description}</div>
+                    </div>
+                    {isUsed && (
+                      <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                    )}
+                  </div>
+                );
+              }
+            )}
+          </div>
+        </AccordionItem>
+
+        {/* Header Preview Accordion */}
+        <AccordionItem
+          title="Header Preview"
+          description="Preview of your header configuration"
+          defaultOpen={true}
+          badge={
+            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+              Preview
+            </span>
+          }
+        >
+          {/* Header preview container */}
+        <div className="bg-slate-100 p-4">
+          <div className="rounded-lg overflow-hidden shadow-lg bg-white">
+            {headerConfigDraft.rows.filter(r => r.enabled).map((row) => (
+              <div
+                key={row.id}
+                className="border-b border-slate-200 last:border-b-0"
+                style={{ backgroundColor: row.backgroundColor || "#ffffff" }}
+              >
+                <div className="mx-auto max-w-[1920px] px-4 flex items-center gap-2 py-3">
+                  {row.blocks.map((block, blockIndex) => {
+                    const widthPct = LAYOUT_WIDTHS[row.layout][blockIndex] || 100;
+                    return (
+                      <div
+                        key={block.id}
+                        className={cn(
+                          "flex items-center gap-2 flex-wrap",
+                          block.alignment === "left" && "justify-start",
+                          block.alignment === "center" && "justify-center",
+                          block.alignment === "right" && "justify-end"
+                        )}
+                        style={{ width: `${widthPct}%` }}
+                      >
+                        {block.widgets.map((widget) => {
+                          const Icon = WIDGET_ICONS[widget.type];
+                          const meta = HEADER_WIDGET_LIBRARY[widget.type];
+                          const config = widget.config as Record<string, unknown>;
+
+                          // Render widget preview based on type
+                          if (widget.type === "logo") {
+                            return (
+                              <div key={widget.id} className="flex items-center gap-2">
+                                {branding.logo ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={branding.logo} alt={branding.title} className="h-10 w-auto" />
+                                ) : (
+                                  <div className="flex items-center gap-2 text-slate-600">
+                                    <Image className="h-5 w-5" />
+                                    <span className="font-semibold">{branding.title}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (widget.type === "search-bar") {
+                            return (
+                              <div key={widget.id} className="flex-1 max-w-md">
+                                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                  <Search className="h-4 w-4 text-slate-400" />
+                                  <span className="text-sm text-slate-400">Search products...</span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (widget.type === "button") {
+                            const label = (config.label as string) || "Button";
+                            const variant = (config.variant as string) || "outline";
+                            const backgroundColor = (config.backgroundColor as string) || "#009f7f";
+                            const textColor = (config.textColor as string) || "#ffffff";
+                            return (
+                              <button
+                                key={widget.id}
+                                type="button"
+                                className={cn(
+                                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                                  variant === "primary" && "text-white",
+                                  variant === "secondary" && "bg-slate-100 text-slate-700",
+                                  variant === "outline" && "border border-slate-200 text-slate-700",
+                                  variant === "ghost" && "text-slate-700 hover:bg-slate-100"
+                                )}
+                                style={
+                                  variant === "primary"
+                                    ? { backgroundColor: branding.primaryColor }
+                                    : variant === "custom"
+                                    ? { backgroundColor, color: textColor }
+                                    : undefined
+                                }
+                              >
+                                {label}
+                              </button>
+                            );
+                          }
+
+                          if (widget.type === "category-menu") {
+                            const label = (config.label as string) || "Categories";
+                            return (
+                              <button
+                                key={widget.id}
+                                type="button"
+                                className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700"
+                              >
+                                <Menu className="h-4 w-4" />
+                                {label}
+                              </button>
+                            );
+                          }
+
+                          if (widget.type === "radio-widget") {
+                            const radioConfig = config as { enabled?: boolean; headerIcon?: string; stations?: RadioStation[] };
+                            const enabled = radioConfig.enabled !== false;
+                            if (!enabled) return null;
+                            return (
+                              <button
+                                key={widget.id}
+                                type="button"
+                                className="shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
+                                title="Radio Player"
+                              >
+                                {radioConfig.headerIcon ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={radioConfig.headerIcon} alt="Radio" className="h-10 w-auto" />
+                                ) : (
+                                  <Radio className="h-6 w-6 text-slate-600" />
+                                )}
+                              </button>
+                            );
+                          }
+
+                          // Icon widgets (cart, favorites, compare, profile, no-price)
+                          return (
+                            <button
+                              key={widget.id}
+                              type="button"
+                              className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+                              title={meta.label}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {headerConfigDraft.rows.filter(r => r.enabled).length === 0 && (
+              <div className="p-8 text-center text-sm text-slate-400">
+                No header rows enabled. Add and enable rows above to see a preview.
+              </div>
+            )}
+          </div>
+        </div>
+        </AccordionItem>
+      </AccordionGroup>
+        </div>
+
+        {/* Right Column - Widget Configuration Panel */}
+        {selectedWidget && (
+          <div className="w-80 shrink-0">
+            <div className="sticky top-4">
+              <WidgetConfigPanel
+                headerConfig={headerConfigDraft}
+                selectedWidget={selectedWidget}
+                onUpdate={onDraftChange}
+                onClose={() => setSelectedWidget(null)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface WidgetAdderProps {
+  onAdd: (type: HeaderWidgetType) => void;
+  usedTypes: Set<HeaderWidgetType>;
+}
+
+function WidgetAdder({ onAdd, usedTypes }: WidgetAdderProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const availableWidgets = (Object.entries(HEADER_WIDGET_LIBRARY) as [HeaderWidgetType, typeof HEADER_WIDGET_LIBRARY[HeaderWidgetType]][])
+    .filter(([type, meta]) => meta.allowMultiple || !usedTypes.has(type));
+
+  if (availableWidgets.length === 0) return null;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-center rounded-md border border-dashed border-slate-300 p-1 text-slate-400 transition-colors hover:border-primary hover:text-primary"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white shadow-lg">
+            <div className="max-h-64 overflow-y-auto p-1">
+              {availableWidgets.map(([type, meta]) => {
+                const Icon = WIDGET_ICONS[type];
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      onAdd(type);
+                      setIsOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-slate-100"
+                  >
+                    <Icon className="h-3.5 w-3.5 text-slate-500" />
+                    <span className="text-slate-700">{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+interface WidgetConfigPanelProps {
+  headerConfig: HeaderConfig;
+  selectedWidget: { rowId: string; blockId: string; widgetId: string };
+  onUpdate: (config: HeaderConfig) => void;
+  onClose: () => void;
+}
+
+function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: WidgetConfigPanelProps) {
+  const radioLogoUploader = useImageUpload();
+  const row = headerConfig.rows.find((r) => r.id === selectedWidget.rowId);
+  const block = row?.blocks.find((b) => b.id === selectedWidget.blockId);
+  const widget = block?.widgets.find((w) => w.id === selectedWidget.widgetId);
+
+  if (!widget) return null;
+
+  const meta = HEADER_WIDGET_LIBRARY[widget.type];
+  const Icon = WIDGET_ICONS[widget.type];
+
+  const updateWidgetConfig = (updates: Record<string, unknown>) => {
+    onUpdate({
+      ...headerConfig,
+      rows: headerConfig.rows.map((r) =>
+        r.id === selectedWidget.rowId
+          ? {
+              ...r,
+              blocks: r.blocks.map((b) =>
+                b.id === selectedWidget.blockId
+                  ? {
+                      ...b,
+                      widgets: b.widgets.map((w) =>
+                        w.id === selectedWidget.widgetId
+                          ? { ...w, config: { ...w.config, ...updates } }
+                          : w
+                      ),
+                    }
+                  : b
+              ),
+            }
+          : r
+      ),
+    });
+  };
+
+  return (
+    <SectionCard
+      title={`Configure: ${meta.label}`}
+      description={meta.description}
+    >
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-3">
+          <Icon className="h-5 w-5 text-slate-500" />
+          <div>
+            <div className="text-sm font-medium text-slate-700">{meta.label}</div>
+            <div className="text-xs text-slate-500">Widget ID: {widget.id}</div>
+          </div>
+        </div>
+
+        {/* Widget-specific configuration */}
+        {widget.type === "button" && (() => {
+          const config = (widget.config || {}) as { label?: string; url?: string; target?: string; variant?: string; backgroundColor?: string; textColor?: string };
+          return (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600">Label</label>
+                <input
+                  type="text"
+                  value={config.label || ""}
+                  onChange={(e) => updateWidgetConfig({ label: e.target.value })}
+                  placeholder="Button text"
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">URL</label>
+                <input
+                  type="text"
+                  value={config.url || ""}
+                  onChange={(e) => updateWidgetConfig({ url: e.target.value })}
+                  placeholder="https://example.com or /path"
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Open In</label>
+                <select
+                  value={config.target || "_self"}
+                  onChange={(e) => updateWidgetConfig({ target: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="_self">Same Tab</option>
+                  <option value="_blank">New Tab</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Variant</label>
+                <select
+                  value={config.variant || "primary"}
+                  onChange={(e) => updateWidgetConfig({ variant: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="primary">Primary</option>
+                  <option value="secondary">Secondary</option>
+                  <option value="outline">Outline</option>
+                  <option value="ghost">Ghost</option>
+                  <option value="custom">Custom Colors</option>
+                </select>
+              </div>
+              {config.variant === "custom" && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Background Color</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={config.backgroundColor || "#009f7f"}
+                        onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })}
+                        className="h-8 w-10 cursor-pointer rounded border border-slate-200"
+                      />
+                      <input
+                        type="text"
+                        value={config.backgroundColor || "#009f7f"}
+                        onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })}
+                        placeholder="#009f7f"
+                        className="flex-1 rounded-md border border-slate-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Text Color</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={config.textColor || "#ffffff"}
+                        onChange={(e) => updateWidgetConfig({ textColor: e.target.value })}
+                        className="h-8 w-10 cursor-pointer rounded border border-slate-200"
+                      />
+                      <input
+                        type="text"
+                        value={config.textColor || "#ffffff"}
+                        onChange={(e) => updateWidgetConfig({ textColor: e.target.value })}
+                        placeholder="#ffffff"
+                        className="flex-1 rounded-md border border-slate-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
+        {widget.type === "search-bar" && (() => {
+          const config = (widget.config || {}) as { placeholder?: string; width?: string };
+          return (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600">Placeholder</label>
+                <input
+                  type="text"
+                  value={config.placeholder || ""}
+                  onChange={(e) => updateWidgetConfig({ placeholder: e.target.value })}
+                  placeholder="Search products..."
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Width</label>
+                <select
+                  value={config.width || "lg"}
+                  onChange={(e) => updateWidgetConfig({ width: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="sm">Small</option>
+                  <option value="md">Medium</option>
+                  <option value="lg">Large</option>
+                  <option value="full">Full</option>
+                </select>
+              </div>
+            </div>
+          );
+        })()}
+
+        {widget.type === "category-menu" && (() => {
+          const config = (widget.config || {}) as { label?: string };
+          return (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600">Label</label>
+                <input
+                  type="text"
+                  value={config.label || ""}
+                  onChange={(e) => updateWidgetConfig({ label: e.target.value })}
+                  placeholder="Categories"
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {widget.type === "radio-widget" && (() => {
+          const config = (widget.config || {}) as { enabled?: boolean; headerIcon?: string; stations?: RadioStation[] };
+          const stations = config.stations || [];
+
+          const addStation = () => {
+            const newStation: RadioStation = {
+              id: `station-${Date.now()}`,
+              name: "",
+              logoUrl: "",
+              streamUrl: "",
+            };
+            updateWidgetConfig({ stations: [...stations, newStation] });
+          };
+
+          const updateStation = (stationId: string, updates: Partial<RadioStation>) => {
+            updateWidgetConfig({
+              stations: stations.map((s) =>
+                s.id === stationId ? { ...s, ...updates } : s
+              ),
+            });
+          };
+
+          const removeStation = (stationId: string) => {
+            updateWidgetConfig({
+              stations: stations.filter((s) => s.id !== stationId),
+            });
+          };
+
+          const handleHeaderIconUpload = async (file: File) => {
+            const url = await radioLogoUploader.uploadImage(file);
+            if (url) {
+              updateWidgetConfig({ headerIcon: url });
+            }
+          };
+
+          const handleStationLogoUpload = async (stationId: string, file: File) => {
+            const url = await radioLogoUploader.uploadImage(file);
+            if (url) {
+              updateStation(stationId, { logoUrl: url });
+            }
+          };
+
+          return (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.enabled !== false}
+                  onChange={(e) => updateWidgetConfig({ enabled: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-slate-600">Enabled</span>
+              </label>
+
+              {/* Header Icon */}
+              <div>
+                <label className="text-xs font-medium text-slate-600">Header Icon</label>
+                <p className="text-[10px] text-slate-400 mb-2">Image shown in the header for the radio button</p>
+                {config.headerIcon && (
+                  <div className="mb-2 flex justify-center">
+                    <div className="h-24 w-24 rounded border border-slate-200 bg-white p-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={config.headerIcon}
+                        alt="Radio icon"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={config.headerIcon || ""}
+                    onChange={(e) => updateWidgetConfig({ headerIcon: e.target.value })}
+                    placeholder="/assets/radio-icon.png"
+                    className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-primary focus:outline-none"
+                  />
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleHeaderIconUpload(file);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                    <span className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+                      <Upload className="h-4 w-4" />
+                    </span>
+                  </label>
+                </div>
+                {radioLogoUploader.uploadState.isUploading && (
+                  <p className="mt-1 text-[10px] text-slate-400">Uploading...</p>
+                )}
+              </div>
+
+              <div className="border-t border-slate-100 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-slate-600">Radio Stations</label>
+                  <button
+                    type="button"
+                    onClick={addStation}
+                    className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add Station
+                  </button>
+                </div>
+
+                {stations.length === 0 ? (
+                  <div className="rounded-lg bg-slate-50 p-3 text-center text-xs text-slate-500">
+                    No stations configured. Click &quot;Add Station&quot; to add one.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {stations.map((station, index) => (
+                      <div
+                        key={station.id}
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-slate-700">
+                            Station {index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeStation(station.id)}
+                            className="p-1 text-slate-400 hover:text-red-500"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-[10px] font-medium text-slate-500">Station Name</label>
+                            <input
+                              type="text"
+                              value={station.name}
+                              onChange={(e) => updateStation(station.id, { name: e.target.value })}
+                              placeholder="Radio Italia"
+                              className="mt-0.5 w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-primary focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-medium text-slate-500">Logo</label>
+                            <div className="mt-0.5 flex items-center gap-2">
+                              {station.logoUrl && (
+                                <div className="h-8 w-8 flex-shrink-0 rounded border border-slate-200 bg-white p-0.5">
+                                  <img
+                                    src={station.logoUrl}
+                                    alt={station.name || "Station logo"}
+                                    className="h-full w-full object-contain"
+                                  />
+                                </div>
+                              )}
+                              <input
+                                type="text"
+                                value={station.logoUrl}
+                                onChange={(e) => updateStation(station.id, { logoUrl: e.target.value })}
+                                placeholder="/assets/radio-logo.png"
+                                className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-primary focus:outline-none"
+                              />
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleStationLogoUpload(station.id, file);
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                />
+                                <span className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+                                  <Upload className="h-3.5 w-3.5" />
+                                </span>
+                              </label>
+                            </div>
+                            {radioLogoUploader.uploadState.isUploading && (
+                              <p className="mt-1 text-[10px] text-slate-400">Uploading...</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-medium text-slate-500">Stream URL</label>
+                            <input
+                              type="text"
+                              value={station.streamUrl}
+                              onChange={(e) => updateStation(station.id, { streamUrl: e.target.value })}
+                              placeholder="https://stream.radioitalia.it/stream"
+                              className="mt-0.5 w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-primary focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {(widget.type === "cart" || widget.type === "favorites" || widget.type === "compare" || widget.type === "profile" || widget.type === "no-price") && (() => {
+          const config = (widget.config || {}) as { showLabel?: boolean; showBadge?: boolean };
+          return (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.showLabel || false}
+                  onChange={(e) => updateWidgetConfig({ showLabel: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-slate-600">Show Label</span>
+              </label>
+              {widget.type !== "no-price" && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.showBadge || false}
+                    onChange={(e) => updateWidgetConfig({ showBadge: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-slate-600">Show Badge</span>
+                </label>
+              )}
+            </div>
+          );
+        })()}
+
+        {widget.type === "company-info" && (() => {
+          const config = (widget.config || {}) as { showDeliveryAddress?: boolean; showBalance?: boolean };
+          return (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.showDeliveryAddress || false}
+                  onChange={(e) => updateWidgetConfig({ showDeliveryAddress: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-slate-600">Show Delivery Address</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.showBalance || false}
+                  onChange={(e) => updateWidgetConfig({ showBalance: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-slate-600">Show Balance</span>
+              </label>
+            </div>
+          );
+        })()}
+
+        {(widget.type === "logo" || widget.type === "spacer" || widget.type === "divider") && (
+          <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+            This widget has no additional configuration options.
+          </div>
+        )}
+
+        <div className="flex justify-end pt-2 border-t border-slate-100">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-slate-500"
+          >
+            Close
+          </Button>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+// ============================================================================
+// Branding Preview Component (Sidebar)
+// ============================================================================
+
+interface BrandingPreviewProps {
+  branding: CompanyBranding;
+  cardStyle: ProductCardStyle;
+}
+
+function BrandingPreview({ branding, cardStyle }: BrandingPreviewProps) {
+  return (
+    <SectionCard
+      title="Branding Preview"
+      description="Theme colours and branding at a glance."
+    >
+      {/* Logo & Company Info */}
+      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
+        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0">
+          {branding.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={branding.logo} alt="Logo" className="h-full w-full object-contain" />
+          ) : (
+            <span className="text-[10px] font-semibold uppercase text-slate-400">Logo</span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <div className="text-lg font-semibold text-slate-900 truncate">
+            {branding.title || "Your company"}
+          </div>
+          <div className="text-sm text-slate-500 truncate">
+            {branding.shopUrl || "shop.example.com"}
+          </div>
+        </div>
+      </div>
+
+      {/* Colour Grid */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* Brand Colors */}
+        <div className="space-y-3">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Brand</div>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <span
+                className="h-10 w-10 rounded-full border border-slate-200"
+                style={{ backgroundColor: branding.primaryColor || "#009f7f" }}
+              />
+              <span className="text-[9px] text-slate-500">Primary</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span
+                className="h-10 w-10 rounded-full border border-slate-200"
+                style={{ backgroundColor: branding.secondaryColor || "#02b290" }}
+              />
+              <span className="text-[9px] text-slate-500">Secondary</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Text Colors */}
+        <div className="space-y-3">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Text</div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center text-[10px] font-medium"
+                style={{ backgroundColor: branding.textColor || "#000000", color: "#fff" }}
+              >
+                Aa
+              </div>
+              <span className="text-xs text-slate-600">Body</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center text-[10px] font-medium"
+                style={{ backgroundColor: branding.mutedColor || "#595959", color: "#fff" }}
+              >
+                Aa
+              </div>
+              <span className="text-xs text-slate-600">Muted</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Layout Colors */}
+        <div className="space-y-3">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Layout</div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded border border-slate-200"
+                style={{ backgroundColor: branding.backgroundColor || "#ffffff" }}
+              />
+              <span className="text-xs text-slate-600">Background</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded border border-slate-200"
+                style={{ backgroundColor: branding.footerBackgroundColor || "#f5f5f5" }}
+              />
+              <span className="text-xs text-slate-600">Footer</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Card Style Summary */}
+      <div className="mt-6 pt-4 border-t border-slate-100">
+        <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400 mb-3">Card Style</div>
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <span className="text-slate-500">Border</span>
+            <div className="font-medium text-slate-700">{cardStyle.borderWidth}px {cardStyle.borderStyle}</div>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <span className="text-slate-500">Radius</span>
+            <div className="font-medium text-slate-700">{cardStyle.borderRadius}</div>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <span className="text-slate-500">Shadow</span>
+            <div className="font-medium text-slate-700">{cardStyle.shadowSize}</div>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <span className="text-slate-500">Hover</span>
+            <div className="font-medium text-slate-700">{cardStyle.hoverEffect}</div>
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+// ============================================================================
+// Product Card Preview Panel Component (Sidebar)
+// ============================================================================
+
+interface ProductCardPreviewPanelProps {
+  cardStyle: ProductCardStyle;
+  branding: CompanyBranding;
+  previewVariant: PreviewVariant;
+  onVariantChange: (variant: PreviewVariant) => void;
+}
+
+function ProductCardPreviewPanel({ cardStyle, branding, previewVariant, onVariantChange }: ProductCardPreviewPanelProps) {
+  const previewHeading = previewVariant === "horizontal"
+    ? "Horizontal product card"
+    : "Vertical product card";
+
+  return (
+    <SectionCard
+      title={previewHeading}
+      description="Live preview."
+    >
+      <div className="flex gap-2 mb-4">
+        {CARD_VARIANTS.map((variant) => (
+          <button
+            key={variant.value}
+            type="button"
+            onClick={() => onVariantChange(variant.value)}
+            className={cn(
+              "rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors",
+              previewVariant === variant.value
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            )}
+          >
+            {variant.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <ProductCardPreview
+          variant={previewVariant}
+          cardStyle={cardStyle}
+          branding={branding}
+        />
+      </div>
     </SectionCard>
   );
 }

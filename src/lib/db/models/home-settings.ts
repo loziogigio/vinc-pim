@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -107,6 +107,121 @@ const SMTPSettingsSchema = new Schema(
   { _id: false }
 );
 
+// ============================================================================
+// SEO Meta Tags Schema
+// ============================================================================
+
+// Meta tags schema for SEO configuration
+const MetaTagsSchema = new Schema(
+  {
+    // Basic meta
+    title: { type: String },
+    description: { type: String },
+    keywords: { type: String },
+    author: { type: String },
+    robots: { type: String },
+    canonicalUrl: { type: String },
+
+    // Open Graph
+    ogTitle: { type: String },
+    ogDescription: { type: String },
+    ogImage: { type: String },
+    ogSiteName: { type: String },
+    ogType: { type: String },
+
+    // Twitter Card
+    twitterCard: {
+      type: String,
+      enum: ["summary", "summary_large_image", "app", "player"]
+    },
+    twitterSite: { type: String },
+    twitterCreator: { type: String },
+    twitterImage: { type: String },
+
+    // Structured Data
+    structuredData: { type: String },
+
+    // Additional meta
+    themeColor: { type: String },
+    googleSiteVerification: { type: String },
+    bingSiteVerification: { type: String }
+  },
+  { _id: false }
+);
+
+// ============================================================================
+// Header Builder Schemas
+// ============================================================================
+
+// Header widget schema (individual widget)
+const HeaderWidgetSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        "logo",
+        "search-bar",
+        "radio-widget",
+        "category-menu",
+        "cart",
+        "company-info",
+        "no-price",
+        "favorites",
+        "compare",
+        "profile",
+        "button",
+        "spacer",
+        "divider"
+      ]
+    },
+    config: { type: Schema.Types.Mixed, default: {} }
+  },
+  { _id: false }
+);
+
+// Header block schema (contains widgets)
+const HeaderBlockSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    alignment: {
+      type: String,
+      enum: ["left", "center", "right"],
+      default: "left"
+    },
+    widgets: { type: [HeaderWidgetSchema], default: [] }
+  },
+  { _id: false }
+);
+
+// Header row schema (contains blocks)
+const HeaderRowSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    enabled: { type: Boolean, default: true },
+    fixed: { type: Boolean, default: true },
+    backgroundColor: { type: String },
+    textColor: { type: String },
+    height: { type: Number },
+    layout: {
+      type: String,
+      enum: ["full", "50-50", "33-33-33", "20-60-20", "25-50-25", "30-40-30"],
+      default: "20-60-20"
+    },
+    blocks: { type: [HeaderBlockSchema], default: [] }
+  },
+  { _id: false }
+);
+
+// Header config schema (top level)
+const HeaderConfigSchema = new Schema(
+  {
+    rows: { type: [HeaderRowSchema], default: [] }
+  },
+  { _id: false }
+);
+
 // Home settings schema
 const HomeSettingsSchema = new Schema(
   {
@@ -137,6 +252,17 @@ const HomeSettingsSchema = new Schema(
     },
     smtp_settings: {
       type: SMTPSettingsSchema
+    },
+    footerHtml: { type: String },
+    footerHtmlDraft: { type: String },
+    headerConfig: {
+      type: HeaderConfigSchema
+    },
+    headerConfigDraft: {
+      type: HeaderConfigSchema
+    },
+    meta_tags: {
+      type: MetaTagsSchema
     },
     lastModifiedBy: { type: String }
   },

@@ -34,23 +34,35 @@ export async function initializeHomeTemplate(tenantDb?: string) {
 
   const now = new Date().toISOString();
 
-  // Create empty initial version as a single document
-  const template = await HomeTemplateModel.create({
-    templateId: HOME_TEMPLATE_ID,
-    name: "Home Page",
-    version: 1,
-    blocks: [], // Empty - no auto-population
-    seo: {},
-    status: "draft" as const,
-    label: "Version 1",
-    createdAt: now,
-    lastSavedAt: now,
-    createdBy: "system",
-    comment: "Empty home page template - ready for customization",
-    isCurrent: true, // Mark as current working version
-    isActive: true
-  });
+  try {
+    // Create empty initial version as a single document
+    const template = await HomeTemplateModel.create({
+      templateId: HOME_TEMPLATE_ID,
+      name: "Home Page",
+      version: 1,
+      blocks: [], // Empty - no auto-population
+      seo: {},
+      status: "draft" as const,
+      label: "Version 1",
+      createdAt: now,
+      lastSavedAt: now,
+      createdBy: "system",
+      comment: "Empty home page template - ready for customization",
+      isCurrent: true, // Mark as current working version
+      isActive: true
+    });
 
-  console.log("[initializeHomeTemplate] Empty home template created successfully");
-  return template;
+    console.log("[initializeHomeTemplate] Empty home template created successfully");
+    return template;
+  } catch (error: unknown) {
+    // Handle race condition - if duplicate key error, return existing document
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      console.log("[initializeHomeTemplate] Race condition detected, returning existing template");
+      const existingTemplate = await HomeTemplateModel.findOne({ templateId: HOME_TEMPLATE_ID });
+      if (existingTemplate) {
+        return existingTemplate;
+      }
+    }
+    throw error;
+  }
 }
