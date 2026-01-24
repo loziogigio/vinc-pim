@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -103,6 +103,21 @@ const SMTPSettingsSchema = new Schema(
     from: { type: String },
     from_name: { type: String },
     default_to: { type: String }
+  },
+  { _id: false }
+);
+
+// Company contact info schema for email footers
+const CompanyContactInfoSchema = new Schema(
+  {
+    legal_name: { type: String },
+    address_line1: { type: String },
+    address_line2: { type: String },
+    phone: { type: String },
+    email: { type: String },
+    support_email: { type: String },
+    business_hours: { type: String },
+    vat_number: { type: String }
   },
   { _id: false }
 );
@@ -252,6 +267,9 @@ const HomeSettingsSchema = new Schema(
     },
     smtp_settings: {
       type: SMTPSettingsSchema
+    },
+    company_info: {
+      type: CompanyContactInfoSchema
     },
     footerHtml: { type: String },
     footerHtmlDraft: { type: String },

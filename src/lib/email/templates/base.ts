@@ -2,11 +2,15 @@
  * Base email template with B2B branding
  */
 
+import type { CompanyContactInfo } from "@/lib/types/home-settings";
+
 export interface EmailBranding {
   companyName: string;
   logo?: string;
   primaryColor: string;
   secondaryColor: string;
+  /** Company contact info for email footer */
+  companyInfo?: CompanyContactInfo;
 }
 
 export interface BaseEmailOptions {
@@ -21,9 +25,17 @@ export interface BaseEmailOptions {
  */
 export function renderBaseTemplate(options: BaseEmailOptions): string {
   const { branding, preheader, content, footerText } = options;
-  const { companyName, logo, primaryColor, secondaryColor } = branding;
+  const { companyName, logo, primaryColor, companyInfo } = branding;
 
   const currentYear = new Date().getFullYear();
+
+  // Extract company contact info with fallbacks
+  const legalName = companyInfo?.legal_name || companyName;
+  const addressLine1 = companyInfo?.address_line1 || "";
+  const addressLine2 = companyInfo?.address_line2 || "";
+  const phone = companyInfo?.phone || "";
+  const email = companyInfo?.email || "";
+  const businessHours = companyInfo?.business_hours || "";
 
   return `
 <!DOCTYPE html>
@@ -81,16 +93,25 @@ export function renderBaseTemplate(options: BaseEmailOptions): string {
                     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
                       <tr>
                         <td align="center">
-                          <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1e293b;">Hidros Point Srl</p>
+                          <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1e293b;">${legalName}</p>
+                          ${addressLine1 || addressLine2 ? `
                           <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b;">
-                            Viale delle Industrie, 81020 - San Marco Evangelista ZI (CE)
+                            ${[addressLine1, addressLine2].filter(Boolean).join(" - ")}
                           </p>
+                          ` : ''}
+                          ${phone || email ? `
                           <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">
-                            📞 +39 0823 1872 900 &nbsp;|&nbsp; ✉️ commerciale@hidros.com
+                            ${[
+                              phone ? `📞 ${phone}` : '',
+                              email ? `✉️ ${email}` : ''
+                            ].filter(Boolean).join(' &nbsp;|&nbsp; ')}
                           </p>
+                          ` : ''}
+                          ${businessHours ? `
                           <p style="margin: 0 0 12px 0; font-size: 12px; color: #64748b;">
-                            🕐 Lun-Ven 7:30-19:00 (continuato) | Sab 8:00-13:00
+                            🕐 ${businessHours}
                           </p>
+                          ` : ''}
                         </td>
                       </tr>
                     </table>

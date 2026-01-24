@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Settings,
   Smartphone,
+  Bell,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -124,6 +125,17 @@ export const APPS: AppConfig[] = [
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: false,
+  },
+  {
+    id: "notifications",
+    name: "Notifications",
+    description: "Multi-channel notifications & campaigns",
+    href: "/b2b/notifications",
+    icon: Bell,
+    color: "bg-rose-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
   },
   {
     id: "settings",

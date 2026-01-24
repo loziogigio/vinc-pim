@@ -49,6 +49,8 @@ export interface IEmailLog extends Document {
   // Metadata
   tags?: string[];
   metadata?: Record<string, any>;
+  // Tenant info (for queue processing)
+  tenant_db?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -137,6 +139,8 @@ export const EmailLogSchema = new Schema<IEmailLog>(
     // Metadata
     tags: [String],
     metadata: Schema.Types.Mixed,
+    // Tenant info (for queue processing)
+    tenant_db: String,
   },
   {
     timestamps: {

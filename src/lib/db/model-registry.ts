@@ -39,6 +39,8 @@ import { UOMSchema } from "./models/uom";
 import { EmailLogSchema } from "./models/email-log";
 import { ProductCorrelationSchema } from "./models/product-correlation";
 import { MobileHomeConfigSchema } from "./models/mobile-home-config";
+import { NotificationTemplateSchema } from "./models/notification-template";
+import { EmailComponentSchema } from "./models/email-component";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -72,6 +74,8 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   EmailLog: EmailLogSchema,
   ProductCorrelation: ProductCorrelationSchema,
   MobileHomeConfig: MobileHomeConfigSchema,
+  NotificationTemplate: NotificationTemplateSchema,
+  EmailComponent: EmailComponentSchema,
 };
 
 /**
@@ -147,6 +151,8 @@ export async function getTenantModels(dbName: string) {
     EmailLog: connection.models.EmailLog,
     ProductCorrelation: connection.models.ProductCorrelation,
     MobileHomeConfig: connection.models.MobileHomeConfig,
+    NotificationTemplate: connection.models.NotificationTemplate,
+    EmailComponent: connection.models.EmailComponent,
   };
 }
 

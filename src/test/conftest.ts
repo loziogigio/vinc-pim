@@ -580,6 +580,75 @@ export const CorrelationFactory = {
   },
 };
 
+/**
+ * Factory for creating test notification templates.
+ */
+export const NotificationTemplateFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    const id = `template-${nanoid(6)}`;
+    return {
+      template_id: id,
+      name: `Test Template ${id}`,
+      description: "Test template description",
+      trigger: "custom",
+      channels: {
+        email: {
+          enabled: true,
+          subject: "Test Subject {{name}}",
+          html_body: "<p>Hello {{name}}</p>",
+          text_body: "Hello {{name}}",
+        },
+      },
+      variables: ["name"],
+      is_active: true,
+      is_default: false,
+      ...overrides,
+    };
+  },
+
+  createWelcomeTemplate(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      template_id: "welcome",
+      name: "Welcome Email",
+      trigger: "welcome",
+      variables: ["customer_name", "username", "password", "login_url"],
+      channels: {
+        email: {
+          enabled: true,
+          subject: "Welcome {{customer_name}}!",
+          html_body: "<p>Your credentials: {{username}} / {{password}}</p>",
+        },
+      },
+      is_default: true,
+      ...overrides,
+    });
+  },
+
+  createOrderTemplate(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      template_id: "order_confirmation",
+      name: "Order Confirmation",
+      trigger: "order_confirmation",
+      variables: ["customer_name", "order_number", "order_total"],
+      channels: {
+        email: {
+          enabled: true,
+          subject: "Order #{{order_number}} Confirmed",
+          html_body: "<p>Thank you {{customer_name}}! Total: {{order_total}}</p>",
+        },
+      },
+      ...overrides,
+    });
+  },
+
+  createInactiveTemplate(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      is_active: false,
+      ...overrides,
+    });
+  },
+};
+
 // ============================================
 // ASSERTIONS
 // ============================================

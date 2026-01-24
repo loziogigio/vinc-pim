@@ -1,5 +1,5 @@
 import type { HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, HeaderConfig, HeaderRow, MetaTags } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, MetaTags } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectWithModels, autoDetectTenantDb } from "./connection";
 
@@ -214,6 +214,7 @@ type HomeSettingsUpdate = {
   cdn?: Partial<CDNConfiguration> | CDNConfiguration;
   cdn_credentials?: Partial<CDNCredentials> | CDNCredentials;
   smtp_settings?: Partial<SMTPSettings> | SMTPSettings;
+  company_info?: Partial<CompanyContactInfo> | CompanyContactInfo;
   footerHtml?: string;
   footerHtmlDraft?: string;
   headerConfig?: HeaderConfig;
@@ -289,6 +290,15 @@ export async function upsertHomeSettings(
         Object.entries(smtpUpdate).forEach(([key, value]) => {
           if (value !== undefined) {
             updateFields[`smtp_settings.${key}`] = value;
+          }
+        });
+      }
+
+      if (data.company_info) {
+        const companyInfoUpdate = data.company_info as Partial<CompanyContactInfo>;
+        Object.entries(companyInfoUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`company_info.${key}`] = value;
           }
         });
       }

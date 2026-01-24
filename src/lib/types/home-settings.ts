@@ -103,6 +103,28 @@ export interface SMTPSettings {
   default_to?: string;
 }
 
+/**
+ * Company contact information for email footers and legal compliance
+ */
+export interface CompanyContactInfo {
+  /** Legal company name (e.g., "Hidros Point Srl") */
+  legal_name?: string;
+  /** Street address (e.g., "Viale delle Industrie, 123") */
+  address_line1?: string;
+  /** City, ZIP, Country (e.g., "81020 San Marco Evangelista (CE)") */
+  address_line2?: string;
+  /** Phone number (e.g., "+39 0823 1872 900") */
+  phone?: string;
+  /** General contact email */
+  email?: string;
+  /** Support email for customer inquiries */
+  support_email?: string;
+  /** Business hours (e.g., "Lun-Ven 8:00-18:00") */
+  business_hours?: string;
+  /** VAT number / P.IVA */
+  vat_number?: string;
+}
+
 // ============================================================================
 // SEO Meta Tags
 // ============================================================================
@@ -370,6 +392,8 @@ export interface HomeSettings {
   cdn?: CDNConfiguration;
   cdn_credentials?: CDNCredentials;
   smtp_settings?: SMTPSettings;
+  /** Company contact information for email footers */
+  company_info?: CompanyContactInfo;
   /** Custom footer HTML content (published version, sanitized with DOMPurify on render) */
   footerHtml?: string;
   /** Draft footer HTML content (for preview before publishing) */

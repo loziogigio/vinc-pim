@@ -6,6 +6,7 @@
 import { sendEmail } from './index';
 import { getHomeSettings } from '@/lib/db/home-settings';
 import type { EmailBranding } from './templates/base';
+import type { CompanyContactInfo } from '@/lib/types/home-settings';
 import {
   renderRegistrationRequestEmail,
   renderRegistrationRequestEmailText,
@@ -32,6 +33,7 @@ import {
 interface BrandingWithUrls extends EmailBranding {
   shopUrl: string;
   websiteUrl?: string;
+  companyInfo?: CompanyContactInfo;
 }
 
 interface SettingsWithDefaults {
@@ -53,7 +55,8 @@ async function getSettings(): Promise<SettingsWithDefaults> {
       primaryColor: settings?.branding?.primaryColor || '#009f7f',
       secondaryColor: settings?.branding?.secondaryColor || '#02b290',
       shopUrl: settings?.branding?.shopUrl || fallbackUrl,
-      websiteUrl: settings?.branding?.websiteUrl
+      websiteUrl: settings?.branding?.websiteUrl,
+      companyInfo: settings?.company_info
     },
     defaultRecipient: settings?.smtp_settings?.default_to
   };

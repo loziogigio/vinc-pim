@@ -115,12 +115,19 @@ async function getTenantDbName(): Promise<string> {
 }
 
 /**
- * Get EmailLog model for the current tenant
+ * Get EmailLog model for a specific tenant database
+ */
+async function getEmailLogModelForDb(tenantDb: string) {
+  const { EmailLog } = await connectWithModels(tenantDb);
+  return EmailLog;
+}
+
+/**
+ * Get EmailLog model for the current tenant (auto-detect)
  */
 async function getEmailLogModel() {
   const dbName = await getTenantDbName();
-  const { EmailLog } = await connectWithModels(dbName);
-  return EmailLog;
+  return getEmailLogModelForDb(dbName);
 }
 
 // ============================================
@@ -304,8 +311,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     };
   }
 
+  // Get tenant database name for queue processing
+  const tenantDb = await getTenantDbName();
+
   // Get EmailLog model for current tenant
-  const EmailLogModel = await getEmailLogModel();
+  const EmailLogModel = await getEmailLogModelForDb(tenantDb);
 
   // Prepare HTML with tracking if enabled
   let html = options.html;
@@ -315,7 +325,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     html = addTrackingToHtml(html, emailId);
   }
 
-  // Create email log entry
+  // Create email log entry with tenant info
   const emailLog = await EmailLogModel.create({
     email_id: emailId,
     to: options.to,
@@ -333,13 +343,14 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     scheduled_at: options.scheduledAt,
     tags: options.tags,
     metadata: options.metadata,
+    tenant_db: tenantDb,
   });
 
   // Send immediately or queue
   if (options.immediate) {
     return await sendEmailNow(emailLog);
   } else {
-    return await queueEmail(emailLog, options.scheduledAt);
+    return await queueEmail(emailLog, options.scheduledAt, tenantDb);
   }
 }
 
@@ -412,7 +423,8 @@ async function sendEmailNow(emailLog: IEmailLog): Promise<SendEmailResult> {
  */
 async function queueEmail(
   emailLog: IEmailLog,
-  scheduledAt?: Date
+  scheduledAt?: Date,
+  tenantDb?: string
 ): Promise<SendEmailResult> {
   try {
     const queue = getEmailQueue();
@@ -421,7 +433,7 @@ async function queueEmail(
 
     await queue.add(
       "send-email",
-      { emailId: emailLog.email_id },
+      { emailId: emailLog.email_id, tenantDb },
       {
         priority: emailLog.priority || 0,
         delay: Math.max(0, delay),
@@ -430,7 +442,7 @@ async function queueEmail(
     );
 
     console.log(
-      `[Email] Queued: ${emailLog.email_id} to ${emailLog.to}`,
+      `[Email] Queued: ${emailLog.email_id} to ${emailLog.to} (tenant: ${tenantDb})`,
       scheduledAt ? `(scheduled for ${scheduledAt.toISOString()})` : ""
     );
 
@@ -459,9 +471,20 @@ async function queueEmail(
 
 /**
  * Process a queued email (called by worker)
+ * @param emailId - The email ID to process
+ * @param tenantDb - The tenant database name (required for worker context)
  */
-export async function processQueuedEmail(emailId: string): Promise<SendEmailResult> {
-  const EmailLogModel = await getEmailLogModel();
+export async function processQueuedEmail(emailId: string, tenantDb?: string): Promise<SendEmailResult> {
+  if (!tenantDb) {
+    return {
+      success: false,
+      emailId,
+      status: "failed",
+      error: "Tenant database not specified",
+    };
+  }
+
+  const EmailLogModel = await getEmailLogModelForDb(tenantDb);
 
   const emailLog = await EmailLogModel.findOne({ email_id: emailId });
   if (!emailLog) {

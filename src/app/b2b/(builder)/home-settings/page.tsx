@@ -50,7 +50,7 @@ import { Button } from "@/components/ui/button";
 import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation } from "@/lib/types/home-settings";
 import { LAYOUT_WIDTHS, LAYOUT_BLOCK_COUNT, HEADER_WIDGET_LIBRARY } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
@@ -99,7 +99,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "apikeys" | "footer" | "header" | "seo";
+type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "company" | "apikeys" | "footer" | "header" | "seo";
 
 const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_url: "",
@@ -121,6 +121,17 @@ const DEFAULT_SMTP_SETTINGS: SMTPSettings = {
   from: "",
   from_name: "",
   default_to: ""
+};
+
+const DEFAULT_COMPANY_INFO: CompanyContactInfo = {
+  legal_name: "",
+  address_line1: "",
+  address_line2: "",
+  phone: "",
+  email: "",
+  support_email: "",
+  business_hours: "",
+  vat_number: ""
 };
 
 const DEFAULT_HEADER_CONFIG: HeaderConfig = {
@@ -312,6 +323,7 @@ export default function HomeSettingsPage() {
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
   const [cdnCredentials, setCdnCredentials] = useState<CDNCredentials>(DEFAULT_CDN_CREDENTIALS);
   const [smtpSettings, setSmtpSettings] = useState<SMTPSettings>(DEFAULT_SMTP_SETTINGS);
+  const [companyInfo, setCompanyInfo] = useState<CompanyContactInfo>(DEFAULT_COMPANY_INFO);
   const [footerHtml, setFooterHtml] = useState<string>("");
   const [footerHtmlDraft, setFooterHtmlDraft] = useState<string>("");
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
@@ -343,6 +355,7 @@ export default function HomeSettingsPage() {
         setCardStyle(DEFAULT_CARD_STYLE);
         setCdnCredentials(DEFAULT_CDN_CREDENTIALS);
         setSmtpSettings(DEFAULT_SMTP_SETTINGS);
+        setCompanyInfo(DEFAULT_COMPANY_INFO);
         setFooterHtml("");
         setFooterHtmlDraft("");
         setHeaderConfig(DEFAULT_HEADER_CONFIG);
@@ -379,6 +392,10 @@ export default function HomeSettingsPage() {
       setSmtpSettings({
         ...DEFAULT_SMTP_SETTINGS,
         ...(data.smtp_settings ?? {})
+      });
+      setCompanyInfo({
+        ...DEFAULT_COMPANY_INFO,
+        ...(data.company_info ?? {})
       });
       setFooterHtml(data.footerHtml || "");
       setFooterHtmlDraft(data.footerHtmlDraft || data.footerHtml || "");
@@ -452,6 +469,11 @@ export default function HomeSettingsPage() {
     setDirty(true);
   };
 
+  const updateCompanyInfo = <K extends keyof CompanyContactInfo>(key: K, value: CompanyContactInfo[K]) => {
+    setCompanyInfo((prev: CompanyContactInfo) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
@@ -466,6 +488,7 @@ export default function HomeSettingsPage() {
           cardStyle,
           cdn_credentials: cdnCredentials,
           smtp_settings: smtpSettings,
+          company_info: companyInfo,
           footerHtmlDraft,
           headerConfigDraft,
           meta_tags: metaTags,
@@ -619,6 +642,13 @@ export default function HomeSettingsPage() {
               onClick={() => setActiveSection("smtp")}
             />
             <SidebarItem
+              icon={Building2}
+              label="Company Info"
+              description="Contact details for email footers"
+              active={activeSection === "company"}
+              onClick={() => setActiveSection("company")}
+            />
+            <SidebarItem
               icon={Key}
               label="API Keys"
               description="Manage programmatic access"
@@ -700,6 +730,12 @@ export default function HomeSettingsPage() {
             <SMTPForm
               smtpSettings={smtpSettings}
               onChange={updateSmtpSettings}
+            />
+          )}
+          {activeSection === "company" && (
+            <CompanyInfoForm
+              companyInfo={companyInfo}
+              onChange={updateCompanyInfo}
             />
           )}
           {activeSection === "apikeys" && <APIKeysForm />}
@@ -1882,6 +1918,171 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
             {testResult.message}
           </div>
         )}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ============================================================================
+// Company Info Form
+// ============================================================================
+
+interface CompanyInfoFormProps {
+  companyInfo: CompanyContactInfo;
+  onChange: <K extends keyof CompanyContactInfo>(key: K, value: CompanyContactInfo[K]) => void;
+}
+
+function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
+  return (
+    <SectionCard
+      title="Company Contact Info"
+      description="Contact information displayed in email footers and used for legal compliance."
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <label htmlFor="company-legal-name" className="text-sm font-medium text-slate-600">
+            Legal Company Name
+          </label>
+          <input
+            id="company-legal-name"
+            type="text"
+            value={companyInfo.legal_name || ""}
+            onChange={(e) => onChange("legal_name", e.target.value)}
+            placeholder="My Company Srl"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            Official registered company name
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-vat" className="text-sm font-medium text-slate-600">
+            VAT Number / P.IVA
+          </label>
+          <input
+            id="company-vat"
+            type="text"
+            value={companyInfo.vat_number || ""}
+            onChange={(e) => onChange("vat_number", e.target.value)}
+            placeholder="IT12345678901"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-address1" className="text-sm font-medium text-slate-600">
+            Address Line 1
+          </label>
+          <input
+            id="company-address1"
+            type="text"
+            value={companyInfo.address_line1 || ""}
+            onChange={(e) => onChange("address_line1", e.target.value)}
+            placeholder="Via Roma, 123"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-address2" className="text-sm font-medium text-slate-600">
+            Address Line 2
+          </label>
+          <input
+            id="company-address2"
+            type="text"
+            value={companyInfo.address_line2 || ""}
+            onChange={(e) => onChange("address_line2", e.target.value)}
+            placeholder="00100 Roma (RM)"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            City, ZIP, Country
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-phone" className="text-sm font-medium text-slate-600">
+            Phone Number
+          </label>
+          <input
+            id="company-phone"
+            type="tel"
+            value={companyInfo.phone || ""}
+            onChange={(e) => onChange("phone", e.target.value)}
+            placeholder="+39 06 1234567"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-email" className="text-sm font-medium text-slate-600">
+            General Email
+          </label>
+          <input
+            id="company-email"
+            type="email"
+            value={companyInfo.email || ""}
+            onChange={(e) => onChange("email", e.target.value)}
+            placeholder="info@company.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-support-email" className="text-sm font-medium text-slate-600">
+            Support Email
+          </label>
+          <input
+            id="company-support-email"
+            type="email"
+            value={companyInfo.support_email || ""}
+            onChange={(e) => onChange("support_email", e.target.value)}
+            placeholder="support@company.com"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-slate-500">
+            For customer support inquiries
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="company-hours" className="text-sm font-medium text-slate-600">
+            Business Hours
+          </label>
+          <input
+            id="company-hours"
+            type="text"
+            value={companyInfo.business_hours || ""}
+            onChange={(e) => onChange("business_hours", e.target.value)}
+            placeholder="Lun-Ven 9:00-18:00"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <h4 className="text-sm font-semibold text-slate-900">Email Footer Preview</h4>
+        <p className="text-xs text-slate-500 mb-3">This is how your company info will appear in email footers</p>
+        <div className="bg-white rounded border border-slate-200 p-4 text-center">
+          <p className="font-semibold text-slate-900 text-sm">{companyInfo.legal_name || "Company Name"}</p>
+          {(companyInfo.address_line1 || companyInfo.address_line2) && (
+            <p className="text-xs text-slate-600 mt-1">
+              {[companyInfo.address_line1, companyInfo.address_line2].filter(Boolean).join(" - ")}
+            </p>
+          )}
+          {(companyInfo.phone || companyInfo.email) && (
+            <p className="text-xs text-slate-600 mt-1">
+              {[
+                companyInfo.phone ? `📞 ${companyInfo.phone}` : "",
+                companyInfo.email ? `✉️ ${companyInfo.email}` : ""
+              ].filter(Boolean).join(" | ")}
+            </p>
+          )}
+          {companyInfo.business_hours && (
+            <p className="text-xs text-slate-600 mt-1">🕐 {companyInfo.business_hours}</p>
+          )}
+        </div>
       </div>
     </SectionCard>
   );

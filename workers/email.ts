@@ -10,7 +10,6 @@
 
 import { Worker, Job } from "bullmq";
 import { processQueuedEmail } from "../src/lib/email";
-import { connectToDatabase } from "../src/lib/db/connection";
 
 /**
  * Parse command line arguments
@@ -40,11 +39,18 @@ console.log(`[Email Worker] Redis: ${redisHost}:${redisPort}`);
 
 const worker = new Worker(
   "email",
-  async (job: Job<{ emailId: string }>) => {
-    const { emailId } = job.data;
-    console.log(`[Email Worker] Processing job ${job.id} for email ${emailId}`);
+  async (job: Job<{ emailId: string; tenantDb?: string }>) => {
+    const { emailId, tenantDb: jobTenantDb } = job.data;
+    // Use tenant from job data, or fallback to worker CLI arg
+    const effectiveTenantDb = jobTenantDb || tenantDb;
 
-    const result = await processQueuedEmail(emailId);
+    console.log(`[Email Worker] Processing job ${job.id} for email ${emailId} (tenant: ${effectiveTenantDb || 'not specified'})`);
+
+    if (!effectiveTenantDb) {
+      throw new Error("No tenant database specified. Either pass --tenant to worker or ensure job data includes tenantDb.");
+    }
+
+    const result = await processQueuedEmail(emailId, effectiveTenantDb);
 
     if (!result.success) {
       throw new Error(result.error || "Failed to send email");
