@@ -12,6 +12,8 @@ Product Information Management system with multilingual support and multi-tenant
 - First product tutorial
 
 ### [02. API](02-api/) ⭐
+
+- **[SSO Authentication](02-api/sso-api.md)** - Single Sign-On via VINC API with OAuth 2.0 support
 - **[ELIA AI Search](02-api/elia-api.md)** - Natural language product search with Claude AI
 - REST API documentation
 - Authentication
@@ -64,6 +66,8 @@ Product Information Management system with multilingual support and multi-tenant
 **Sync to Marketplaces?** → [Multichannel Sync Guide](05-integrations/MULTICHANNEL_SYNC.md) ⭐
 
 **API Integration?** → [API Documentation](02-api/)
+
+**SSO Authentication?** → [SSO API](02-api/sso-api.md) ⭐
 
 **AI Search?** → [ELIA AI Search](02-api/elia-api.md) ⭐
 

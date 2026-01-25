@@ -52,10 +52,34 @@ REST API documentation for the VINC Commerce Suite.
   - Frontend integration examples
   - React hook implementation
 
+### Authentication
+
+- **[SSO API](./sso-api.md)** - Single Sign-On authentication system
+  - Login via VINC API
+  - Token validation and refresh
+  - Session management
+  - OAuth 2.0 authorization code flow with PKCE
+  - Rate limiting and account lockout protection
+
+### Service Integration
+
+- **[B2B Portal API](./b2b-portal-api.md)** - APIs for vinc-b2b frontend integration
+  - Customer addresses
+  - Password management (reset, change)
+  - Token validation and refresh
+  - Configuration examples for vinc-b2b
+
+- **[VINC API Client](./vinc-api-client.md)** - Internal service-to-service client
+  - Authentication methods (login, profile, password)
+  - B2B methods (customers, addresses)
+  - Error handling
+  - TypeScript types
+
 ## Authentication Methods
 
 | Method | Use Case | Headers |
 |--------|----------|---------|
+| SSO Token | B2B applications | `Authorization: Bearer <token>` |
 | Session | B2B Admin UI | Cookie-based |
 | API Key | External integrations | `x-auth-method`, `x-api-key-id`, `x-api-secret` |
 | Portal User Token | Customer self-service | API Key headers + `x-portal-user-token` |
@@ -65,4 +89,3 @@ REST API documentation for the VINC Commerce Suite.
 - Customers API reference
 - Orders API reference
 - Webhooks
-- Rate limiting
