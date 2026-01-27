@@ -15,18 +15,29 @@ export {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_TRIGGERS,
   TRIGGER_LABELS,
+  TEMPLATE_TYPES,
+  TEMPLATE_TYPE_LABELS,
+  CHANNEL_LABELS,
   type NotificationChannel,
   type NotificationTrigger,
+  type TemplateType,
   type IEmailChannelContent,
   type IWebPushChannelContent,
   type IMobilePushChannelContent,
   type ISmsChannelContent,
+  type IInAppChannelContent,
   type INotificationChannels,
+  type IEmailChannel,
+  type IMobileChannel,
+  type IWebInAppChannel,
+  type ITemplateChannels,
+  type ITemplateProduct,
 } from "@/lib/constants/notification";
 
 // Import for use in schema
 import {
   NOTIFICATION_TRIGGERS as TRIGGERS,
+  TEMPLATE_TYPES,
   type NotificationTrigger as TriggerType,
   type INotificationChannels as ChannelsType,
 } from "@/lib/constants/notification";
@@ -88,12 +99,74 @@ const SmsChannelSchema = new Schema(
   { _id: false }
 );
 
+const InAppChannelSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    title: { type: String, default: "" },
+    body: { type: String, default: "" },
+    icon: { type: String },
+    action_url: { type: String }
+  },
+  { _id: false }
+);
+
+// Legacy 5-channel structure (for backward compatibility)
 const NotificationChannelsSchema = new Schema(
   {
     email: { type: EmailChannelSchema },
     web_push: { type: WebPushChannelSchema },
     mobile_push: { type: MobilePushChannelSchema },
-    sms: { type: SmsChannelSchema }
+    sms: { type: SmsChannelSchema },
+    in_app: { type: InAppChannelSchema }
+  },
+  { _id: false }
+);
+
+// ============================================
+// NEW SIMPLIFIED SCHEMAS
+// ============================================
+
+const NewEmailChannelSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    subject: { type: String },
+    html_body: { type: String }
+  },
+  { _id: false }
+);
+
+const NewMobileChannelSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true }
+  },
+  { _id: false }
+);
+
+const NewWebInAppChannelSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    icon: { type: String },
+    action_url: { type: String }
+  },
+  { _id: false }
+);
+
+const TemplateChannelsSchema = new Schema(
+  {
+    email: { type: NewEmailChannelSchema },
+    mobile: { type: NewMobileChannelSchema },
+    web_in_app: { type: NewWebInAppChannelSchema }
+  },
+  { _id: false }
+);
+
+// Product schema for product templates
+const TemplateProductSchema = new Schema(
+  {
+    sku: { type: String, required: true },
+    name: { type: String, required: true },
+    image: { type: String, required: true },
+    item_ref: { type: String, required: true }
   },
   { _id: false }
 );
@@ -117,15 +190,72 @@ const NotificationTemplateSchema = new Schema<INotificationTemplateDocument>(
       type: String,
       trim: true
     },
+
+    // NEW: Template type (product or generic)
+    type: {
+      type: String,
+      enum: TEMPLATE_TYPES,
+      default: "generic"
+    },
+
     trigger: {
       type: String,
       enum: TRIGGERS,
       required: true
     },
+
+    // NEW: Common content fields
+    title: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    body: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    // NEW: Product template fields
+    products: {
+      type: [TemplateProductSchema],
+      default: undefined
+    },
+    filters: {
+      type: Schema.Types.Mixed,
+      default: undefined
+    },
+
+    // NEW: Generic template fields
+    url: {
+      type: String,
+      trim: true
+    },
+    image: {
+      type: String,
+      trim: true
+    },
+    open_in_new_tab: {
+      type: Boolean,
+      default: true
+    },
+
+    // NEW: Simplified 3-channel structure
+    template_channels: {
+      type: TemplateChannelsSchema,
+      default: () => ({
+        email: { enabled: true },
+        mobile: { enabled: true },
+        web_in_app: { enabled: true }
+      })
+    },
+
+    // Legacy: Old 5-channel structure (for backward compatibility)
     channels: {
       type: NotificationChannelsSchema,
       default: () => ({})
     },
+
     variables: {
       type: [String],
       default: []
@@ -174,8 +304,9 @@ const NotificationTemplateSchema = new Schema<INotificationTemplateDocument>(
 // INDEXES
 // ============================================
 
-NotificationTemplateSchema.index({ template_id: 1 }, { unique: true });
+// Note: template_id index already created by unique: true in field definition
 NotificationTemplateSchema.index({ trigger: 1 });
+NotificationTemplateSchema.index({ type: 1 });
 NotificationTemplateSchema.index({ is_active: 1 });
 NotificationTemplateSchema.index({ is_default: 1 });
 

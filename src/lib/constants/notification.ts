@@ -6,11 +6,33 @@
  */
 
 // ============================================
-// CHANNELS
+// TEMPLATE TYPES
 // ============================================
 
-export const NOTIFICATION_CHANNELS = ["email", "web_push", "mobile_push", "sms"] as const;
+export const TEMPLATE_TYPES = ["product", "generic"] as const;
+export type TemplateType = (typeof TEMPLATE_TYPES)[number];
+
+export const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
+  product: "Prodotti",
+  generic: "Comunicazione Generica",
+};
+
+// ============================================
+// CHANNELS (simplified to 3)
+// ============================================
+
+export const NOTIFICATION_CHANNELS = ["email", "mobile", "web_in_app"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+export const CHANNEL_LABELS: Record<NotificationChannel, string> = {
+  email: "Email",
+  mobile: "Mobile App",
+  web_in_app: "Web Push / In-App",
+};
+
+// Legacy channel mapping for backward compatibility
+export const LEGACY_CHANNELS = ["email", "web_push", "mobile_push", "sms", "in_app"] as const;
+export type LegacyNotificationChannel = (typeof LEGACY_CHANNELS)[number];
 
 // ============================================
 // TRIGGERS
@@ -57,7 +79,40 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
 };
 
 // ============================================
-// CHANNEL CONTENT INTERFACES
+// NEW CHANNEL CONTENT INTERFACES (simplified)
+// ============================================
+
+/** Email channel - uses header/footer components */
+export interface IEmailChannel {
+  enabled: boolean;
+  /** Override subject (uses template title if empty) */
+  subject?: string;
+  /** Custom HTML body (auto-generated if empty) */
+  html_body?: string;
+}
+
+/** Mobile channel - push + in-app for mobile apps */
+export interface IMobileChannel {
+  enabled: boolean;
+  /** Uses title/body from main template */
+}
+
+/** Web In-App channel - browser push + bell dropdown */
+export interface IWebInAppChannel {
+  enabled: boolean;
+  icon?: string;
+  action_url?: string;
+}
+
+/** Simplified 3-channel structure */
+export interface ITemplateChannels {
+  email?: IEmailChannel;
+  mobile?: IMobileChannel;
+  web_in_app?: IWebInAppChannel;
+}
+
+// ============================================
+// LEGACY CHANNEL CONTENT INTERFACES (for backward compatibility)
 // ============================================
 
 export interface IEmailChannelContent {
@@ -87,11 +142,31 @@ export interface ISmsChannelContent {
   body: string;
 }
 
+export interface IInAppChannelContent {
+  enabled: boolean;
+  title: string;
+  body: string;
+  icon?: string;
+  action_url?: string;
+}
+
 export interface INotificationChannels {
   email?: IEmailChannelContent;
   web_push?: IWebPushChannelContent;
   mobile_push?: IMobilePushChannelContent;
   sms?: ISmsChannelContent;
+  in_app?: IInAppChannelContent;
+}
+
+// ============================================
+// TEMPLATE PRODUCT (for product templates)
+// ============================================
+
+export interface ITemplateProduct {
+  sku: string;
+  name: string;
+  image: string;
+  item_ref: string;
 }
 
 // ============================================
@@ -102,14 +177,39 @@ export interface INotificationTemplate {
   template_id: string;
   name: string;
   description?: string;
+
+  // NEW: Template type determines editor and content structure
+  type: TemplateType;
+
   trigger: NotificationTrigger;
+
+  // NEW: Common content fields (used across all channels)
+  title: string;
+  body: string;
+
+  // NEW: Product template fields
+  products?: ITemplateProduct[];
+  filters?: Record<string, string[]>;
+
+  // NEW: Generic template fields
+  url?: string;
+  image?: string;
+  open_in_new_tab?: boolean;
+
+  // NEW: Simplified 3-channel structure
+  template_channels: ITemplateChannels;
+
+  // Legacy: Old 5-channel structure (for backward compatibility)
   channels: INotificationChannels;
+
   variables: string[];
+
   // Header/Footer settings for email
   header_id?: string;
   footer_id?: string;
   use_default_header: boolean;
   use_default_footer: boolean;
+
   is_active: boolean;
   is_default: boolean;
   created_at: Date | string;

@@ -9,8 +9,16 @@ import type {
   INotificationTemplate,
   INotificationTemplateDocument,
   NotificationTrigger,
-  INotificationChannels
+  INotificationChannels,
+  TemplateType,
+  ITemplateChannels,
+  ITemplateProduct,
 } from "@/lib/db/models/notification-template";
+
+import {
+  generateProductPayload,
+  generateGenericPayload,
+} from "./seed-campaign-templates";
 
 // ============================================
 // TYPES
@@ -657,4 +665,306 @@ export async function previewTemplateInline(
   );
 
   return { subject, html };
+}
+
+// ============================================
+// DEFAULT HEADER/FOOTER FUNCTIONS
+// ============================================
+
+/**
+ * Get the default email header component.
+ */
+export async function getDefaultHeader(
+  tenantDb: string
+): Promise<{ html_content: string } | null> {
+  const { EmailComponent } = await connectWithModels(tenantDb);
+  const header = await EmailComponent.findOne({ type: "header", is_default: true }).lean();
+  return header as { html_content: string } | null;
+}
+
+/**
+ * Get the default email footer component.
+ */
+export async function getDefaultFooter(
+  tenantDb: string
+): Promise<{ html_content: string } | null> {
+  const { EmailComponent } = await connectWithModels(tenantDb);
+  const footer = await EmailComponent.findOne({ type: "footer", is_default: true }).lean();
+  return footer as { html_content: string } | null;
+}
+
+// ============================================
+// CAMPAIGN TEMPLATE FUNCTIONS (NEW)
+// ============================================
+
+export interface ListCampaignTemplatesOptions {
+  page?: number;
+  limit?: number;
+  type?: TemplateType;
+  search?: string;
+}
+
+export interface CreateCampaignTemplateInput {
+  name: string;
+  type: TemplateType;
+  title: string;
+  body: string;
+  // Product template fields
+  products?: ITemplateProduct[];
+  filters?: Record<string, string[]>;
+  // Generic template fields
+  url?: string;
+  image?: string;
+  open_in_new_tab?: boolean;
+  // Channel toggles
+  template_channels?: ITemplateChannels;
+  created_by?: string;
+}
+
+export interface UpdateCampaignTemplateInput {
+  name?: string;
+  title?: string;
+  body?: string;
+  products?: ITemplateProduct[];
+  filters?: Record<string, string[]>;
+  url?: string;
+  image?: string;
+  open_in_new_tab?: boolean;
+  template_channels?: ITemplateChannels;
+  updated_by?: string;
+}
+
+/**
+ * List campaign templates (product/generic types only).
+ */
+export async function listCampaignTemplates(
+  tenantDb: string,
+  options: ListCampaignTemplatesOptions = {}
+): Promise<ListTemplatesResult> {
+  const { NotificationTemplate } = await connectWithModels(tenantDb);
+
+  const page = options.page || 1;
+  const limit = options.limit || 20;
+  const skip = (page - 1) * limit;
+
+  // Only campaign templates (with type field)
+  const query: Record<string, unknown> = {
+    type: { $in: ["product", "generic"] }
+  };
+
+  if (options.type) {
+    query.type = options.type;
+  }
+
+  if (options.search) {
+    query.$or = [
+      { name: { $regex: options.search, $options: "i" } },
+      { title: { $regex: options.search, $options: "i" } },
+      { template_id: { $regex: options.search, $options: "i" } }
+    ];
+  }
+
+  const [templates, total] = await Promise.all([
+    NotificationTemplate.find(query)
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean<INotificationTemplateDocument[]>(),
+    NotificationTemplate.countDocuments(query)
+  ]);
+
+  return {
+    templates,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+}
+
+/**
+ * Create a new campaign template.
+ * Generates template_id from name automatically.
+ */
+export async function createCampaignTemplate(
+  tenantDb: string,
+  input: CreateCampaignTemplateInput
+): Promise<INotificationTemplateDocument> {
+  const { NotificationTemplate } = await connectWithModels(tenantDb);
+
+  // Generate template_id from name
+  const baseId = input.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+  // Check for duplicates and add suffix if needed
+  let templateId = baseId;
+  let counter = 1;
+  while (await NotificationTemplate.findOne({ template_id: templateId })) {
+    templateId = `${baseId}-${counter}`;
+    counter++;
+  }
+
+  // Determine trigger based on type
+  const trigger: NotificationTrigger = input.type === "product" ? "back_in_stock" : "newsletter";
+
+  // Default channel settings
+  const defaultChannels: ITemplateChannels = {
+    email: { enabled: true },
+    mobile: { enabled: true },
+    web_in_app: { enabled: true },
+  };
+
+  const template = await NotificationTemplate.create({
+    template_id: templateId,
+    name: input.name,
+    type: input.type,
+    trigger,
+    title: input.title,
+    body: input.body,
+    // Product fields
+    products: input.products || [],
+    filters: input.filters,
+    // Generic fields
+    url: input.url,
+    image: input.image,
+    open_in_new_tab: input.open_in_new_tab ?? true,
+    // Channels
+    template_channels: input.template_channels || defaultChannels,
+    // Header/footer for email
+    use_default_header: true,
+    use_default_footer: true,
+    is_active: true,
+    is_default: false,
+    created_by: input.created_by,
+  });
+
+  return template.toObject() as INotificationTemplateDocument;
+}
+
+/**
+ * Update a campaign template.
+ */
+export async function updateCampaignTemplate(
+  tenantDb: string,
+  templateId: string,
+  input: UpdateCampaignTemplateInput
+): Promise<INotificationTemplateDocument | null> {
+  const { NotificationTemplate } = await connectWithModels(tenantDb);
+
+  const updateFields: Record<string, unknown> = {};
+
+  if (input.name !== undefined) updateFields.name = input.name;
+  if (input.title !== undefined) updateFields.title = input.title;
+  if (input.body !== undefined) updateFields.body = input.body;
+  if (input.products !== undefined) updateFields.products = input.products;
+  if (input.filters !== undefined) updateFields.filters = input.filters;
+  if (input.url !== undefined) updateFields.url = input.url;
+  if (input.image !== undefined) updateFields.image = input.image;
+  if (input.open_in_new_tab !== undefined) updateFields.open_in_new_tab = input.open_in_new_tab;
+  if (input.template_channels !== undefined) updateFields.template_channels = input.template_channels;
+  if (input.updated_by) updateFields.updated_by = input.updated_by;
+
+  const result = await NotificationTemplate.findOneAndUpdate(
+    { template_id: templateId },
+    { $set: updateFields },
+    { new: true, runValidators: true }
+  ).lean<INotificationTemplateDocument>();
+
+  return result;
+}
+
+/**
+ * Generate notification payload for mobile/in-app based on template type.
+ */
+export function generateNotificationPayload(
+  template: INotificationTemplate
+): ReturnType<typeof generateProductPayload> | ReturnType<typeof generateGenericPayload> {
+  if (template.type === "product") {
+    return generateProductPayload(
+      template.products || [],
+      template.filters
+    );
+  } else {
+    return generateGenericPayload(
+      template.url,
+      template.image,
+      template.open_in_new_tab
+    );
+  }
+}
+
+/**
+ * Preview campaign template with all 3 channel formats.
+ */
+export async function previewCampaignTemplate(
+  tenantDb: string,
+  templateId: string
+): Promise<{
+  email: { subject: string; html: string } | null;
+  mobile: { title: string; body: string; payload: unknown };
+  web_in_app: { title: string; body: string; icon?: string; action_url?: string };
+} | null> {
+  const template = await getTemplate(tenantDb, templateId);
+
+  if (!template || !template.type) {
+    return null;
+  }
+
+  // Generate email preview
+  let emailPreview: { subject: string; html: string } | null = null;
+
+  if (template.template_channels?.email?.enabled) {
+    // Build sample data from template
+    const sampleData: Record<string, string> = {
+      title: template.title,
+      body: template.body,
+    };
+
+    if (template.url) sampleData.url = template.url;
+    if (template.image) sampleData.image = template.image;
+
+    // Use the new template_channels email structure
+    const emailChannel = template.template_channels.email;
+    if (emailChannel.html_body) {
+      emailPreview = await previewTemplateInline(
+        tenantDb,
+        {
+          html_body: emailChannel.html_body,
+          subject: emailChannel.subject || template.title,
+          use_default_header: template.use_default_header,
+          use_default_footer: template.use_default_footer,
+          header_id: template.header_id,
+          footer_id: template.footer_id,
+        },
+        sampleData
+      );
+    }
+  }
+
+  // Generate mobile preview
+  const payload = generateNotificationPayload(template);
+  const mobilePreview = {
+    title: template.title,
+    body: template.body,
+    payload,
+  };
+
+  // Generate web/in-app preview
+  const webInAppChannel = template.template_channels?.web_in_app;
+  const webInAppPreview = {
+    title: template.title,
+    body: template.body,
+    icon: webInAppChannel?.icon,
+    action_url: webInAppChannel?.action_url || template.url,
+  };
+
+  return {
+    email: emailPreview,
+    mobile: mobilePreview,
+    web_in_app: webInAppPreview,
+  };
 }
