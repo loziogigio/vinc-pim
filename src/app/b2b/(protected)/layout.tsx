@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Public_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import { getB2BSession } from "@/lib/auth/b2b-session";
@@ -25,6 +26,22 @@ export default async function B2BProtectedLayout({
   // Redirect to login if not authenticated
   if (!session.isLoggedIn) {
     redirect("/login");
+  }
+
+  // Validate URL tenant matches session tenant
+  const headersList = await headers();
+  const urlTenant = headersList.get("x-resolved-tenant-id");
+
+  // If URL has a different tenant than session, redirect to correct URL
+  if (urlTenant && urlTenant !== session.tenantId) {
+    // Get the original pathname from middleware header
+    const originalPath = headersList.get("x-original-pathname") || "/b2b";
+    // Extract the path after /b2b (e.g., /pim, /mobile-builder)
+    const pathMatch = originalPath.match(/\/b2b(\/.*)?$/);
+    const subPath = pathMatch ? pathMatch[1] || "" : "";
+
+    // Redirect to the correct tenant URL
+    redirect(`/${session.tenantId}/b2b${subPath}`);
   }
 
   // Serialize session to plain object for Client Component

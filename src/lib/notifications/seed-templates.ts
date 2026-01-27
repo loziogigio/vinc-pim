@@ -517,3 +517,93 @@ export async function getTemplateCount(tenantDb: string): Promise<number> {
   const { NotificationTemplate } = await connectWithModels(tenantDb);
   return NotificationTemplate.countDocuments();
 }
+
+// ============================================
+// CAMPAIGN TEMPLATES (NEW)
+// ============================================
+
+import { CAMPAIGN_SEED_TEMPLATES } from "./seed-campaign-templates";
+
+/**
+ * Seeds campaign templates (product and generic types) for a tenant.
+ * These are the new simplified templates for the 3-channel system.
+ *
+ * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
+ * @param force - If true, replaces existing campaign templates
+ */
+export async function seedCampaignTemplates(
+  tenantDb: string,
+  force = false
+): Promise<{ created: number; skipped: number }> {
+  const { NotificationTemplate } = await connectWithModels(tenantDb);
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const template of CAMPAIGN_SEED_TEMPLATES) {
+    const existing = await NotificationTemplate.findOne({
+      template_id: template.template_id
+    });
+
+    if (existing) {
+      if (force && existing.is_default) {
+        // Replace default template
+        await NotificationTemplate.updateOne(
+          { template_id: template.template_id },
+          {
+            $set: {
+              name: template.name,
+              description: template.description,
+              type: template.type,
+              trigger: template.trigger,
+              title: template.title,
+              body: template.body,
+              products: template.products,
+              filters: template.filters,
+              url: template.url,
+              image: template.image,
+              open_in_new_tab: template.open_in_new_tab,
+              template_channels: template.template_channels,
+              variables: template.variables,
+              use_default_header: template.use_default_header,
+              use_default_footer: template.use_default_footer,
+              is_default: true,
+              is_active: true,
+              updated_by: "system"
+            }
+          }
+        );
+        created++;
+      } else {
+        skipped++;
+      }
+      continue;
+    }
+
+    // Create new template
+    await NotificationTemplate.create({
+      template_id: template.template_id,
+      name: template.name,
+      description: template.description,
+      type: template.type,
+      trigger: template.trigger,
+      title: template.title,
+      body: template.body,
+      products: template.products,
+      filters: template.filters,
+      url: template.url,
+      image: template.image,
+      open_in_new_tab: template.open_in_new_tab,
+      template_channels: template.template_channels,
+      variables: template.variables,
+      use_default_header: template.use_default_header,
+      use_default_footer: template.use_default_footer,
+      is_active: true,
+      is_default: true,
+      created_by: "system"
+    });
+    created++;
+  }
+
+  return { created, skipped };
+}

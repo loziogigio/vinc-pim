@@ -236,12 +236,10 @@ export default function TemplateEditorPage() {
 
     setIsSendingTest(true);
     try {
-      const res = await fetch("/api/b2b/notifications/campaigns/test", {
+      const res = await fetch(`/api/b2b/notifications/templates/${templateId}/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          template_id: templateId,
-          channels: ["email"],
           test_email: testEmail,
         }),
       });

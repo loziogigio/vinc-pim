@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -123,6 +123,23 @@ const CompanyContactInfoSchema = new Schema(
 );
 
 // ============================================================================
+// Web Push Settings Schema
+// ============================================================================
+
+// Web push settings schema for VAPID keys and configuration
+const WebPushSettingsSchema = new Schema(
+  {
+    vapid_public_key: { type: String },
+    vapid_private_key: { type: String },
+    vapid_subject: { type: String },
+    enabled: { type: Boolean, default: false },
+    default_icon: { type: String },
+    default_badge: { type: String }
+  },
+  { _id: false }
+);
+
+// ============================================================================
 // SEO Meta Tags Schema
 // ============================================================================
 
@@ -186,6 +203,7 @@ const HeaderWidgetSchema = new Schema(
         "favorites",
         "compare",
         "profile",
+        "notifications",
         "button",
         "spacer",
         "divider"
@@ -270,6 +288,9 @@ const HomeSettingsSchema = new Schema(
     },
     company_info: {
       type: CompanyContactInfoSchema
+    },
+    web_push_settings: {
+      type: WebPushSettingsSchema
     },
     footerHtml: { type: String },
     footerHtmlDraft: { type: String },

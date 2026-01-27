@@ -43,9 +43,10 @@ interface SettingsWithDefaults {
 
 /**
  * Get branding and defaults from home settings
+ * @param tenantDb Optional tenant database name (e.g., 'vinc-hidros-it')
  */
-async function getSettings(): Promise<SettingsWithDefaults> {
-  const settings = await getHomeSettings();
+async function getSettings(tenantDb?: string): Promise<SettingsWithDefaults> {
+  const settings = await getHomeSettings(tenantDb);
   const fallbackUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
   return {
@@ -64,10 +65,11 @@ async function getSettings(): Promise<SettingsWithDefaults> {
 
 /**
  * Get branding from home settings including URLs
+ * @param tenantDb Optional tenant database name (e.g., 'vinc-hidros-it')
  * @deprecated Use getSettings() instead
  */
-async function getBranding(): Promise<BrandingWithUrls> {
-  const { branding } = await getSettings();
+async function getBranding(tenantDb?: string): Promise<BrandingWithUrls> {
+  const { branding } = await getSettings(tenantDb);
   return branding;
 }
 
@@ -205,15 +207,19 @@ export async function sendWelcomeEmail(
 
 /**
  * Send B2B Forgot Password email with temporary password
+ * @param data Password data
+ * @param toEmail Recipient email
+ * @param loginUrl Optional login URL
+ * @param options Optional config including tenantDb for multi-tenant support
  */
 export async function sendForgotPasswordEmail(
   data: ForgotPasswordData,
   toEmail: string,
   loginUrl?: string,
-  options?: { immediate?: boolean }
+  options?: { immediate?: boolean; tenantDb?: string }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const branding = await getBranding();
+    const branding = await getBranding(options?.tenantDb);
     const finalLoginUrl = loginUrl || `${branding.shopUrl}/login`;
 
     const html = renderForgotPasswordEmail({
@@ -233,7 +239,8 @@ export async function sendForgotPasswordEmail(
       subject: `La tua nuova password temporanea - ${branding.companyName}`,
       html,
       text,
-      immediate: options?.immediate ?? true
+      immediate: options?.immediate ?? true,
+      tenantDb: options?.tenantDb
     });
 
     return { success: true, messageId: result.messageId };
@@ -248,15 +255,19 @@ export async function sendForgotPasswordEmail(
 
 /**
  * Send B2B Password Reset Confirmation email
+ * @param data Reset data
+ * @param toEmail Recipient email
+ * @param loginUrl Optional login URL
+ * @param options Optional config including tenantDb for multi-tenant support
  */
 export async function sendResetPasswordEmail(
   data: ResetPasswordData,
   toEmail: string,
   loginUrl?: string,
-  options?: { supportEmail?: string; immediate?: boolean }
+  options?: { supportEmail?: string; immediate?: boolean; tenantDb?: string }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const branding = await getBranding();
+    const branding = await getBranding(options?.tenantDb);
     const finalLoginUrl = loginUrl || `${branding.shopUrl}/login`;
 
     const html = renderResetPasswordEmail({
@@ -278,7 +289,8 @@ export async function sendResetPasswordEmail(
       subject: `Password reimpostata con successo - ${branding.companyName}`,
       html,
       text,
-      immediate: options?.immediate ?? true
+      immediate: options?.immediate ?? true,
+      tenantDb: options?.tenantDb
     });
 
     return { success: true, messageId: result.messageId };

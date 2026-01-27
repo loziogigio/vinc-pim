@@ -179,6 +179,7 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-resolved-tenant-id", tenantId);
     requestHeaders.set("x-resolved-tenant-db", `vinc-${tenantId}`);
+    requestHeaders.set("x-original-pathname", pathname);
 
     // Rewrite URL to remove tenant prefix
     const url = request.nextUrl.clone();

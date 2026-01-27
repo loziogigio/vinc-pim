@@ -217,7 +217,7 @@ const TenantSchema = new Schema<ITenantDocument>(
 // INDEXES
 // ============================================
 
-TenantSchema.index({ tenant_id: 1 }, { unique: true });
+// Note: tenant_id index already created by unique: true in field definition
 TenantSchema.index({ status: 1 });
 TenantSchema.index({ admin_email: 1 });
 TenantSchema.index({ "domains.hostname": 1 });

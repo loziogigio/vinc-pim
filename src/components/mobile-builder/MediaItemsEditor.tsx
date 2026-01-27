@@ -161,7 +161,7 @@ function AddMediaModal({
 
       try {
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("image", file);
 
         const response = await fetch("/api/b2b/editor/upload-image", {
           method: "POST",

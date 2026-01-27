@@ -44,6 +44,13 @@ REST API documentation for the VINC Commerce Suite.
   - CDN credentials management
   - SMTP settings for email
 
+- **[Notifications API](./notifications-api.md)** - In-app notifications system
+  - List user notifications (paginated)
+  - Create notifications (admin/system)
+  - Mark as read (single/bulk)
+  - Unread count endpoint
+  - Multi-channel template integration (email, web_push, in_app)
+
 ### AI Search API
 
 - **[ELIA AI Search](./elia-api.md)** - AI-powered natural language product search

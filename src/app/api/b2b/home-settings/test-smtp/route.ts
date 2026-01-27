@@ -11,23 +11,39 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { host, port, secure, user, password, from, from_name, default_to } = body;
 
-    if (!host || !port || !user || !password || !from) {
+    // Allow localhost without auth for local dev testing (MailHog, Mailpit)
+    const isLocalhost = host === "localhost" || host === "127.0.0.1";
+    const hasAuth = user && password;
+
+    if (!host || !port || !from) {
       return NextResponse.json(
-        { error: "Missing required SMTP credentials" },
+        { error: "Missing required SMTP settings (host, port, from)" },
         { status: 400 }
       );
     }
 
-    // Create transporter with provided credentials
-    const transporter = nodemailer.createTransport({
+    if (!hasAuth && !isLocalhost) {
+      return NextResponse.json(
+        { error: "Missing SMTP credentials (user and password required for non-localhost)" },
+        { status: 400 }
+      );
+    }
+
+    // Create transporter - skip auth for localhost without credentials
+    const transportOptions: nodemailer.TransportOptions = {
       host,
       port: Number(port),
       secure: secure === true,
-      auth: {
+    } as nodemailer.TransportOptions;
+
+    if (hasAuth) {
+      (transportOptions as { auth?: { user: string; pass: string } }).auth = {
         user,
         pass: password,
-      },
-    });
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transportOptions);
 
     // Verify connection
     await transporter.verify();

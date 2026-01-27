@@ -87,7 +87,7 @@ export const EmailLogSchema = new Schema<IEmailLog>(
       type: String,
       enum: ["queued", "sending", "sent", "failed", "bounced"],
       default: "queued",
-      index: true,
+      // Note: index created via schema.index() below
     },
     error: String,
     message_id: String,

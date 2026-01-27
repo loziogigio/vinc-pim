@@ -835,7 +835,7 @@ export default function MobileBuilderPage() {
         {/* Right side - Preview + Settings */}
         <section className="flex flex-1 overflow-hidden">
           {/* Phone Preview */}
-          <div className="flex flex-1 items-center justify-center bg-gray-100 p-8">
+          <div className="flex flex-1 items-start justify-center bg-gray-100 px-8 pt-6 pb-8 overflow-y-auto">
             <MobilePreview blocks={blocks} appIdentity={appIdentity} />
           </div>
 

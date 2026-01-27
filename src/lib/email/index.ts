@@ -8,7 +8,9 @@ import nodemailer from "nodemailer";
 import { Queue } from "bullmq";
 import { nanoid } from "nanoid";
 import type { IEmailLog, EmailStatus } from "@/lib/db/models/email-log";
+import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
+import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 
 // ============================================
 // CONFIGURATION
@@ -59,11 +61,11 @@ export function getEmailConfig(): EmailConfig {
 /**
  * Fetch email config from database (async)
  */
-export async function fetchEmailConfigFromDb(): Promise<EmailConfig> {
+export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailConfig> {
   try {
     // Dynamic import to avoid circular dependencies
     const { getHomeSettings } = await import("@/lib/db/home-settings");
-    const settings = await getHomeSettings();
+    const settings = await getHomeSettings(tenantDb);
 
     if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
       cachedDbConfig = {
@@ -87,12 +89,16 @@ export async function fetchEmailConfigFromDb(): Promise<EmailConfig> {
 
 export function isEmailEnabled(): boolean {
   const config = getEmailConfig();
-  return !!(config.host && config.user && config.password && config.from);
+  const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
+  const hasAuth = config.user && config.password;
+  return !!(config.host && config.from && (hasAuth || isLocalhost));
 }
 
-export async function isEmailEnabledAsync(): Promise<boolean> {
-  const config = await fetchEmailConfigFromDb();
-  return !!(config.host && config.user && config.password && config.from);
+export async function isEmailEnabledAsync(tenantDb?: string): Promise<boolean> {
+  const config = await fetchEmailConfigFromDb(tenantDb);
+  const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
+  const hasAuth = config.user && config.password;
+  return !!(config.host && config.from && (hasAuth || isLocalhost));
 }
 
 // ============================================
@@ -130,6 +136,20 @@ async function getEmailLogModel() {
   return getEmailLogModelForDb(dbName);
 }
 
+/**
+ * Get EmailLog model from admin database (for tracking without tenant context)
+ * Email logs are stored centrally in vinc-admin for cross-tenant tracking
+ */
+async function getAdminEmailLogModel() {
+  const adminConn = await connectToAdminDatabase();
+  // Return existing model if already registered on this connection
+  if (adminConn.models.EmailLog) {
+    return adminConn.models.EmailLog;
+  }
+  // Register the model on the admin connection
+  return adminConn.model("EmailLog", EmailLogSchema);
+}
+
 // ============================================
 // TRANSPORTER
 // ============================================
@@ -146,15 +166,22 @@ function getTransporter(config: EmailConfig): nodemailer.Transporter {
 
   // Recreate transporter if config changed
   if (!transporter || transporterConfigHash !== hash) {
-    transporter = nodemailer.createTransport({
+    // Build transport options - skip auth for localhost without credentials
+    const transportOptions: nodemailer.TransportOptions = {
       host: config.host,
       port: config.port,
       secure: config.secure,
-      auth: {
+    } as nodemailer.TransportOptions;
+
+    // Only add auth if credentials are provided
+    if (config.user && config.password) {
+      (transportOptions as { auth?: { user: string; pass: string } }).auth = {
         user: config.user,
         pass: config.password,
-      },
-    });
+      };
+    }
+
+    transporter = nodemailer.createTransport(transportOptions);
     transporterConfigHash = hash;
   }
   return transporter;
@@ -217,6 +244,8 @@ export interface SendEmailOptions {
   tags?: string[];
   /** Custom metadata */
   metadata?: Record<string, any>;
+  /** Tenant database name for multi-tenant support (e.g., 'vinc-hidros-it') */
+  tenantDb?: string;
 }
 
 export interface SendEmailResult {
@@ -299,9 +328,14 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   const emailId = nanoid(12);
 
   // Fetch config from DB (with fallback to env)
-  const config = await fetchEmailConfigFromDb();
+  const config = await fetchEmailConfigFromDb(options.tenantDb);
 
-  if (!(config.host && config.user && config.password && config.from)) {
+  // Check if email is configured - allow localhost without auth for dev testing
+  const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
+  const hasAuth = config.user && config.password;
+  const isConfigured = config.host && config.from && (hasAuth || isLocalhost);
+
+  if (!isConfigured) {
     console.warn("[Email] Email sending is not configured");
     return {
       success: false,
@@ -312,10 +346,21 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   }
 
   // Get tenant database name for queue processing
-  const tenantDb = await getTenantDbName();
+  // Use provided tenantDb or try to auto-detect
+  let tenantDb: string;
+  if (options.tenantDb) {
+    tenantDb = options.tenantDb;
+  } else {
+    try {
+      tenantDb = await getTenantDbName();
+    } catch {
+      console.warn("[Email] Could not auto-detect tenant, using default");
+      tenantDb = "vinc-default";
+    }
+  }
 
-  // Get EmailLog model for current tenant
-  const EmailLogModel = await getEmailLogModelForDb(tenantDb);
+  // Get EmailLog model from admin database (centralized for tracking)
+  const EmailLogModel = await getAdminEmailLogModel();
 
   // Prepare HTML with tracking if enabled
   let html = options.html;
@@ -358,7 +403,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
  * Send email immediately (bypasses queue)
  */
 async function sendEmailNow(emailLog: IEmailLog): Promise<SendEmailResult> {
-  const config = await fetchEmailConfigFromDb();
+  // Use tenant_db from emailLog if available for multi-tenant SMTP config
+  const config = await fetchEmailConfigFromDb(emailLog.tenant_db);
 
   try {
     const transport = getTransporter(config);
@@ -472,19 +518,11 @@ async function queueEmail(
 /**
  * Process a queued email (called by worker)
  * @param emailId - The email ID to process
- * @param tenantDb - The tenant database name (required for worker context)
+ * @param tenantDb - The tenant database name (optional, used for SMTP config fallback)
  */
 export async function processQueuedEmail(emailId: string, tenantDb?: string): Promise<SendEmailResult> {
-  if (!tenantDb) {
-    return {
-      success: false,
-      emailId,
-      status: "failed",
-      error: "Tenant database not specified",
-    };
-  }
-
-  const EmailLogModel = await getEmailLogModelForDb(tenantDb);
+  // Email logs are stored centrally in admin database
+  const EmailLogModel = await getAdminEmailLogModel();
 
   const emailLog = await EmailLogModel.findOne({ email_id: emailId });
   if (!emailLog) {
@@ -508,13 +546,14 @@ export async function processQueuedEmail(emailId: string, tenantDb?: string): Pr
 
 /**
  * Record email open event
+ * Uses admin database for tracking (works without tenant context)
  */
 export async function recordEmailOpen(
   emailId: string,
   ip?: string,
   userAgent?: string
 ): Promise<boolean> {
-  const EmailLogModel = await getEmailLogModel();
+  const EmailLogModel = await getAdminEmailLogModel();
 
   const now = new Date();
   const result = await EmailLogModel.updateOne(
@@ -538,6 +577,7 @@ export async function recordEmailOpen(
 
 /**
  * Record email click event
+ * Uses admin database for tracking (works without tenant context)
  */
 export async function recordEmailClick(
   emailId: string,
@@ -545,7 +585,7 @@ export async function recordEmailClick(
   ip?: string,
   userAgent?: string
 ): Promise<boolean> {
-  const EmailLogModel = await getEmailLogModel();
+  const EmailLogModel = await getAdminEmailLogModel();
 
   const result = await EmailLogModel.updateOne(
     { email_id: emailId, tracking_enabled: true },
@@ -571,19 +611,23 @@ export async function recordEmailClick(
 
 /**
  * Get email log by ID
+ * Uses admin database (centralized email logs)
  */
 export async function getEmailLog(emailId: string): Promise<IEmailLog | null> {
-  const EmailLogModel = await getEmailLogModel();
+  const EmailLogModel = await getAdminEmailLogModel();
   return EmailLogModel.findOne({ email_id: emailId }) as Promise<IEmailLog | null>;
 }
 
 /**
  * Get email stats
+ * Uses admin database (centralized email logs)
+ * Can filter by tenant_db for tenant-specific stats
  */
 export async function getEmailStats(filter?: {
   from?: Date;
   to?: Date;
   tags?: string[];
+  tenantDb?: string;
 }): Promise<{
   total: number;
   sent: number;
@@ -594,9 +638,14 @@ export async function getEmailStats(filter?: {
   openRate: number;
   clickRate: number;
 }> {
-  const EmailLogModel = await getEmailLogModel();
+  const EmailLogModel = await getAdminEmailLogModel();
 
   const query: Record<string, any> = {};
+
+  // Filter by tenant if specified
+  if (filter?.tenantDb) {
+    query.tenant_db = filter.tenantDb;
+  }
 
   if (filter?.from || filter?.to) {
     query.created_at = {};

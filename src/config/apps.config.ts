@@ -17,6 +17,7 @@ import {
   Settings,
   Smartphone,
   Bell,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -133,6 +134,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/notifications",
     icon: Bell,
     color: "bg-rose-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "admin",
+    name: "Admin",
+    description: "Sessioni e sicurezza",
+    href: "/b2b/admin",
+    icon: ShieldCheck,
+    color: "bg-orange-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,

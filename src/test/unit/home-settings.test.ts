@@ -819,9 +819,9 @@ describe("unit: Home Settings - HeaderWidget Interface", () => {
 });
 
 describe("unit: Home Settings - HEADER_WIDGET_LIBRARY", () => {
-  it("should have 13 widget types defined", () => {
+  it("should have 14 widget types defined", () => {
     const widgetCount = Object.keys(HEADER_WIDGET_LIBRARY).length;
-    expect(widgetCount).toBe(13);
+    expect(widgetCount).toBe(14);
   });
 
   it("should have label and description for each widget", () => {

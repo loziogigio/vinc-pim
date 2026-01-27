@@ -183,10 +183,15 @@ export async function POST(req: NextRequest) {
       currentConfig.status = "draft"; // Ensure it's marked as draft after edit
       await currentConfig.save();
 
+      // Show "Hot fix" only if saving to the currently published version
+      const message = currentConfig.is_current_published
+        ? `Hot fix (version ${currentConfig.version})`
+        : `Draft saved (version ${currentConfig.version})`;
+
       return NextResponse.json({
         success: true,
         config: currentConfig.toObject(),
-        message: `Draft saved (version ${currentConfig.version})`,
+        message,
       });
     } else {
       // No current version exists, create version 1

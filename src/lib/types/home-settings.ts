@@ -125,6 +125,25 @@ export interface CompanyContactInfo {
   vat_number?: string;
 }
 
+/**
+ * Web Push Notification Settings
+ * VAPID keys and configuration for web push notifications
+ */
+export interface WebPushSettings {
+  /** VAPID public key (Base64 URL-safe) - shared with clients */
+  vapid_public_key?: string;
+  /** VAPID private key (Base64 URL-safe) - server-side only */
+  vapid_private_key?: string;
+  /** Subject (mailto: or https: URL for push service identification) */
+  vapid_subject?: string;
+  /** Is web push enabled for this tenant */
+  enabled?: boolean;
+  /** Default icon URL for push notifications */
+  default_icon?: string;
+  /** Default badge URL for push notifications */
+  default_badge?: string;
+}
+
 // ============================================================================
 // SEO Meta Tags
 // ============================================================================
@@ -240,6 +259,7 @@ export type HeaderWidgetType =
   | "favorites"
   | "compare"
   | "profile"
+  | "notifications"
   | "button"
   | "spacer"
   | "divider";
@@ -310,6 +330,13 @@ export interface DividerWidgetConfig {
   color?: string;
 }
 
+export interface NotificationsWidgetConfig {
+  /** Show text label next to icon */
+  showLabel?: boolean;
+  /** Show unread count badge */
+  showBadge?: boolean;
+}
+
 /** Union type for all widget configurations */
 export type WidgetConfig =
   | LogoWidgetConfig
@@ -321,6 +348,7 @@ export type WidgetConfig =
   | CompanyInfoWidgetConfig
   | SpacerWidgetConfig
   | DividerWidgetConfig
+  | NotificationsWidgetConfig
   | Record<string, unknown>;
 
 /** A single widget in the header */
@@ -374,6 +402,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "favorites": { label: "Favorites", icon: "Heart", description: "Wishlist" },
   "compare": { label: "Compare", icon: "GitCompare", description: "Product comparison" },
   "profile": { label: "Profile", icon: "User", description: "User profile/login" },
+  "notifications": { label: "Notifications", icon: "Bell", description: "Push notifications toggle" },
   "button": { label: "Button", icon: "Square", description: "Custom button/link", allowMultiple: true },
   "spacer": { label: "Spacer", icon: "Space", description: "Flexible space", allowMultiple: true },
   "divider": { label: "Divider", icon: "Minus", description: "Vertical divider", allowMultiple: true },
@@ -394,6 +423,8 @@ export interface HomeSettings {
   smtp_settings?: SMTPSettings;
   /** Company contact information for email footers */
   company_info?: CompanyContactInfo;
+  /** Web push notification settings (VAPID keys, etc.) */
+  web_push_settings?: WebPushSettings;
   /** Custom footer HTML content (published version, sanitized with DOMPurify on render) */
   footerHtml?: string;
   /** Draft footer HTML content (for preview before publishing) */

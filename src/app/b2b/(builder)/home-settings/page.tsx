@@ -43,7 +43,8 @@ import {
   Minus,
   Settings2,
   Globe,
-  X
+  X,
+  Bell
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
@@ -1722,8 +1723,11 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
     }
   };
 
-  const canTest = smtpSettings.host && smtpSettings.port && smtpSettings.user &&
-                  smtpSettings.password && smtpSettings.from;
+  // Allow localhost without auth for local dev testing (MailHog, Mailpit)
+  const isLocalhost = smtpSettings.host === "localhost" || smtpSettings.host === "127.0.0.1";
+  const hasAuth = smtpSettings.user && smtpSettings.password;
+  const canTest = smtpSettings.host && smtpSettings.port && smtpSettings.from &&
+                  (hasAuth || isLocalhost);
 
   return (
     <SectionCard
@@ -2990,6 +2994,7 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "favorites": Heart,
   "compare": GitCompare,
   "profile": User,
+  "notifications": Bell,
   "button": Square,
   "spacer": Space,
   "divider": Minus,
@@ -4041,8 +4046,11 @@ function WidgetAdder({ onAdd, usedTypes }: WidgetAdderProps) {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white shadow-lg">
-            <div className="max-h-64 overflow-y-auto p-1">
+          <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-slate-200 bg-white shadow-xl">
+            <div className="border-b border-slate-100 px-3 py-2">
+              <span className="text-xs font-medium text-slate-600">Add Widget</span>
+            </div>
+            <div className="max-h-80 overflow-y-auto p-1.5">
               {availableWidgets.map(([type, meta]) => {
                 const Icon = WIDGET_ICONS[type];
                 return (
@@ -4053,10 +4061,15 @@ function WidgetAdder({ onAdd, usedTypes }: WidgetAdderProps) {
                       onAdd(type);
                       setIsOpen(false);
                     }}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-slate-100"
+                    className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-slate-50"
                   >
-                    <Icon className="h-3.5 w-3.5 text-slate-500" />
-                    <span className="text-slate-700">{meta.label}</span>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100">
+                      <Icon className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-slate-700">{meta.label}</div>
+                      <div className="text-xs text-slate-500 truncate">{meta.description}</div>
+                    </div>
                   </button>
                 );
               })}
@@ -4081,10 +4094,15 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
   const block = row?.blocks.find((b) => b.id === selectedWidget.blockId);
   const widget = block?.widgets.find((w) => w.id === selectedWidget.widgetId);
 
-  if (!widget) return null;
+  if (!widget || !block) return null;
 
   const meta = HEADER_WIDGET_LIBRARY[widget.type];
   const Icon = WIDGET_ICONS[widget.type];
+
+  // Get current position (1-based for display)
+  const currentIndex = block.widgets.findIndex((w) => w.id === selectedWidget.widgetId);
+  const currentPosition = currentIndex + 1;
+  const totalWidgets = block.widgets.length;
 
   const updateWidgetConfig = (updates: Record<string, unknown>) => {
     onUpdate({
@@ -4111,17 +4129,78 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
     });
   };
 
+  const moveWidgetToPosition = (newPosition: number) => {
+    // Convert to 0-based index
+    const newIndex = Math.max(0, Math.min(newPosition - 1, totalWidgets - 1));
+    if (newIndex === currentIndex) return;
+
+    const newWidgets = [...block.widgets];
+    const [movedWidget] = newWidgets.splice(currentIndex, 1);
+    newWidgets.splice(newIndex, 0, movedWidget);
+
+    onUpdate({
+      ...headerConfig,
+      rows: headerConfig.rows.map((r) =>
+        r.id === selectedWidget.rowId
+          ? {
+              ...r,
+              blocks: r.blocks.map((b) =>
+                b.id === selectedWidget.blockId
+                  ? { ...b, widgets: newWidgets }
+                  : b
+              ),
+            }
+          : r
+      ),
+    });
+  };
+
   return (
     <SectionCard
       title={`Configure: ${meta.label}`}
       description={meta.description}
     >
       <div className="space-y-4">
-        <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-3">
+        <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
           <Icon className="h-5 w-5 text-slate-500" />
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-slate-700">{meta.label}</div>
             <div className="text-xs text-slate-500">Widget ID: {widget.id}</div>
+          </div>
+          {/* Position controls */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => moveWidgetToPosition(currentPosition - 1)}
+              disabled={currentPosition === 1}
+              className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Move left"
+            >
+              <ChevronUp className="h-4 w-4 -rotate-90" />
+            </button>
+            <div className="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1">
+              <input
+                type="number"
+                min={1}
+                max={totalWidgets}
+                value={currentPosition}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) moveWidgetToPosition(val);
+                }}
+                className="w-6 text-center text-xs font-medium text-slate-700 focus:outline-none"
+              />
+              <span className="text-xs text-slate-400">/ {totalWidgets}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => moveWidgetToPosition(currentPosition + 1)}
+              disabled={currentPosition === totalWidgets}
+              className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Move right"
+            >
+              <ChevronDown className="h-4 w-4 -rotate-90" />
+            </button>
           </div>
         </div>
 
