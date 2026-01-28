@@ -82,6 +82,7 @@ export default function CustomerDetailPage({
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [addressFilter, setAddressFilter] = useState<string>("all");
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -117,7 +118,7 @@ export default function CustomerDetailPage({
     }
   }
 
-  async function fetchOrders(filter?: string) {
+  async function fetchOrders(filter?: string, addrFilter?: string) {
     setOrdersLoading(true);
     try {
       const params = new URLSearchParams();
@@ -145,6 +146,12 @@ export default function CustomerDetailPage({
         params.set("date_from", dateFrom.toISOString().split("T")[0]);
       }
 
+      // Apply address filter
+      const addressValue = addrFilter !== undefined ? addrFilter : addressFilter;
+      if (addressValue !== "all") {
+        params.set("shipping_address_id", addressValue);
+      }
+
       const res = await fetch(`/api/b2b/orders?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
@@ -159,7 +166,12 @@ export default function CustomerDetailPage({
 
   function handleDateFilterChange(filter: string) {
     setDateFilter(filter);
-    fetchOrders(filter);
+    fetchOrders(filter, addressFilter);
+  }
+
+  function handleAddressFilterChange(addrId: string) {
+    setAddressFilter(addrId);
+    fetchOrders(dateFilter, addrId);
   }
 
   async function handleDelete() {
@@ -799,6 +811,22 @@ export default function CustomerDetailPage({
             Orders ({orders.length})
           </h2>
           <div className="flex items-center gap-3">
+            {/* Address Filter */}
+            {customer.addresses && customer.addresses.length > 0 && (
+              <select
+                value={addressFilter}
+                onChange={(e) => handleAddressFilterChange(e.target.value)}
+                className="text-sm rounded border border-border bg-background px-3 py-1.5 focus:border-primary focus:outline-none"
+              >
+                <option value="all">All Addresses</option>
+                {customer.addresses.map((addr: Address) => (
+                  <option key={addr.address_id} value={addr.address_id}>
+                    {addr.label || addr.recipient_name || addr.city || addr.address_id}
+                  </option>
+                ))}
+              </select>
+            )}
+            {/* Date Filter */}
             <select
               value={dateFilter}
               onChange={(e) => handleDateFilterChange(e.target.value)}

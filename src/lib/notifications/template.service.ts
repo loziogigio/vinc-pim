@@ -20,6 +20,10 @@ import {
   generateGenericPayload,
 } from "./seed-campaign-templates";
 
+import { getCompanyInfo, companyInfoToRecord } from "./company-info";
+import { replaceTemplateVariables, wrapEmailContent } from "./email-builder";
+import { DEFAULT_PRIMARY_COLOR } from "@/lib/constants/notification";
+
 // ============================================
 // TYPES
 // ============================================
@@ -355,50 +359,6 @@ export function getAvailableTriggers(): { value: NotificationTrigger; label: str
   }));
 }
 
-/**
- * Get company info from home settings for email variables.
- */
-async function getCompanyInfoFromSettings(
-  tenantDb: string
-): Promise<Record<string, string>> {
-  const { HomeSettings } = await connectWithModels(tenantDb);
-
-  try {
-    const settings = await HomeSettings.findOne({}).lean();
-    if (!settings) return {};
-
-    const companyInfo = (settings as { company_info?: Record<string, string>; branding?: { title?: string; logo?: string; primaryColor?: string; shopUrl?: string } }).company_info || {};
-    const branding = (settings as { branding?: { title?: string; logo?: string; primaryColor?: string; shopUrl?: string } }).branding || {};
-
-    // Build contact_info from phone and email
-    const contactParts = [];
-    if (companyInfo.phone) contactParts.push(`📞 ${companyInfo.phone}`);
-    if (companyInfo.email) contactParts.push(`✉️ ${companyInfo.email}`);
-
-    // Build address from address lines
-    const addressParts = [companyInfo.address_line1, companyInfo.address_line2].filter(Boolean);
-
-    return {
-      company_name: companyInfo.legal_name || branding.title || "",
-      logo: branding.logo || "",
-      address: addressParts.join(", "),
-      address_line1: companyInfo.address_line1 || "",
-      address_line2: companyInfo.address_line2 || "",
-      phone: companyInfo.phone || "",
-      email: companyInfo.email || "",
-      vat_number: companyInfo.vat_number || "",
-      support_email: companyInfo.support_email || companyInfo.email || "",
-      business_hours: companyInfo.business_hours || "",
-      contact_info: contactParts.join(" | ") || "",
-      primary_color: branding.primaryColor || "#009f7f",
-      shop_name: branding.title || "",
-      shop_url: branding.shopUrl || "",
-    };
-  } catch (error) {
-    console.error("Error fetching company info:", error);
-    return {};
-  }
-}
 
 /**
  * Preview template with sample data.
@@ -419,8 +379,8 @@ export async function previewTemplate(
 
   const email = template.channels.email;
 
-  // Get company info from home settings
-  const companyInfo = await getCompanyInfoFromSettings(tenantDb);
+  // Get company info from shared utility
+  const companyInfo = companyInfoToRecord(await getCompanyInfo(tenantDb));
 
   // Get header and footer components
   let headerHtml = "";
@@ -428,13 +388,11 @@ export async function previewTemplate(
 
   // Get header
   if (template.use_default_header !== false) {
-    // Use default header
     const defaultHeader = await EmailComponent.findOne({ type: "header", is_default: true }).lean();
     if (defaultHeader) {
       headerHtml = (defaultHeader as { html_content: string }).html_content;
     }
   } else if (template.header_id) {
-    // Use specific header
     const header = await EmailComponent.findOne({ component_id: template.header_id }).lean();
     if (header) {
       headerHtml = (header as { html_content: string }).html_content;
@@ -443,86 +401,37 @@ export async function previewTemplate(
 
   // Get footer
   if (template.use_default_footer !== false) {
-    // Use default footer
     const defaultFooter = await EmailComponent.findOne({ type: "footer", is_default: true }).lean();
     if (defaultFooter) {
       footerHtml = (defaultFooter as { html_content: string }).html_content;
     }
   } else if (template.footer_id) {
-    // Use specific footer
     const footer = await EmailComponent.findOne({ component_id: template.footer_id }).lean();
     if (footer) {
       footerHtml = (footer as { html_content: string }).html_content;
     }
   }
 
-  // Replace variables with sample data
-  let subject = email.subject;
-
   // Combine header + content + footer
   let html = "";
-
-  // Wrap content in a container if we have header or footer
   if (headerHtml || footerHtml) {
-    const contentWrapper = `
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f6fa;">
-  <tr>
-    <td align="center" style="padding: 0 20px;">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
-        <tr>
-          <td style="padding: 40px;">
-            ${email.html_body}
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-    `.trim();
-
-    html = headerHtml + contentWrapper + footerHtml;
+    html = headerHtml + wrapEmailContent(email.html_body) + footerHtml;
   } else {
     html = email.html_body;
   }
 
-  // Replace all variables - priority: sampleData > companyInfo > defaults
+  // Build all template variables - priority: sampleData > companyInfo > defaults
   const allData: Record<string, string> = {
-    // Defaults
-    primary_color: "#009f7f",
+    primary_color: DEFAULT_PRIMARY_COLOR,
     company_name: "Your Company",
     current_year: new Date().getFullYear().toString(),
-    address: "",
-    contact_info: "",
-    business_hours: "",
-    // From home settings
     ...companyInfo,
-    // From sample/custom data (highest priority)
     ...sampleData,
   };
 
-  for (const [key, value] of Object.entries(allData)) {
-    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
-    subject = subject.replace(regex, value);
-    html = html.replace(regex, value);
-  }
-
-  // Handle conditional blocks with else - {{#if variable}}...{{else}}...{{/if}}
-  html = html.replace(
-    /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
-    (_, varName, ifContent, elseContent) => {
-      const hasValue = allData[varName] && allData[varName].trim() !== "";
-      return hasValue ? ifContent : elseContent;
-    }
-  );
-
-  // Handle conditional blocks without else - {{#if variable}}...{{/if}}
-  html = html.replace(
-    /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
-    (_, varName, content) => {
-      const hasValue = allData[varName] && allData[varName].trim() !== "";
-      return hasValue ? content : "";
-    }
-  );
+  // Replace variables using shared utility
+  const subject = replaceTemplateVariables(email.subject, allData);
+  html = replaceTemplateVariables(html, allData);
 
   return { subject, html };
 }
@@ -543,34 +452,10 @@ export async function previewTemplateInline(
   },
   sampleData: Record<string, string>
 ): Promise<{ subject: string; html: string }> {
-  const { EmailComponent, HomeSettings } = await connectWithModels(tenantDb);
+  const { EmailComponent } = await connectWithModels(tenantDb);
 
-  // Get company info from home settings
-  let companyInfo: Record<string, string> = {};
-  try {
-    const settings = await HomeSettings.findOne({}).lean();
-    if (settings) {
-      const ci = (settings as { company_info?: Record<string, string>; branding?: { title?: string; logo?: string; primaryColor?: string } }).company_info || {};
-      const br = (settings as { branding?: { title?: string; logo?: string; primaryColor?: string } }).branding || {};
-
-      const contactParts = [];
-      if (ci.phone) contactParts.push(`📞 ${ci.phone}`);
-      if (ci.email) contactParts.push(`✉️ ${ci.email}`);
-
-      companyInfo = {
-        company_name: ci.legal_name || br.title || "",
-        logo: br.logo || "",
-        address: [ci.address_line1, ci.address_line2].filter(Boolean).join(", "),
-        phone: ci.phone || "",
-        email: ci.email || "",
-        contact_info: contactParts.join(" | ") || "",
-        business_hours: ci.business_hours || "",
-        primary_color: br.primaryColor || "#009f7f",
-      };
-    }
-  } catch (error) {
-    console.error("Error fetching company info for preview:", error);
-  }
+  // Get company info from shared utility
+  const companyInfo = companyInfoToRecord(await getCompanyInfo(tenantDb));
 
   // Get header and footer components
   let headerHtml = "";
@@ -602,67 +487,26 @@ export async function previewTemplateInline(
     }
   }
 
-  let subject = templateData.subject || "";
+  // Combine header + content + footer
   let html = "";
-
-  // Wrap content in a container if we have header or footer
   if (headerHtml || footerHtml) {
-    const contentWrapper = `
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f6fa;">
-  <tr>
-    <td align="center" style="padding: 0 20px;">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
-        <tr>
-          <td style="padding: 40px;">
-            ${templateData.html_body}
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-    `.trim();
-
-    html = headerHtml + contentWrapper + footerHtml;
+    html = headerHtml + wrapEmailContent(templateData.html_body) + footerHtml;
   } else {
     html = templateData.html_body;
   }
 
-  // Replace variables
+  // Build all template variables - priority: sampleData > companyInfo > defaults
   const allData: Record<string, string> = {
-    primary_color: "#009f7f",
+    primary_color: DEFAULT_PRIMARY_COLOR,
     company_name: "Your Company",
     current_year: new Date().getFullYear().toString(),
-    address: "",
-    contact_info: "",
-    business_hours: "",
     ...companyInfo,
     ...sampleData,
   };
 
-  for (const [key, value] of Object.entries(allData)) {
-    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
-    subject = subject.replace(regex, value);
-    html = html.replace(regex, value);
-  }
-
-  // Handle conditional blocks with else - {{#if variable}}...{{else}}...{{/if}}
-  html = html.replace(
-    /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
-    (_, varName, ifContent, elseContent) => {
-      const hasValue = allData[varName] && allData[varName].trim() !== "";
-      return hasValue ? ifContent : elseContent;
-    }
-  );
-
-  // Handle conditional blocks without else - {{#if variable}}...{{/if}}
-  html = html.replace(
-    /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
-    (_, varName, content) => {
-      const hasValue = allData[varName] && allData[varName].trim() !== "";
-      return hasValue ? content : "";
-    }
-  );
+  // Replace variables using shared utility
+  const subject = replaceTemplateVariables(templateData.subject || "", allData);
+  html = replaceTemplateVariables(html, allData);
 
   return { subject, html };
 }

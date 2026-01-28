@@ -44,7 +44,8 @@ import {
   Settings2,
   Globe,
   X,
-  Bell
+  Bell,
+  History
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
@@ -2995,6 +2996,7 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "compare": GitCompare,
   "profile": User,
   "notifications": Bell,
+  "reminders": History,
   "button": Square,
   "spacer": Space,
   "divider": Minus,
@@ -4559,7 +4561,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
           );
         })()}
 
-        {(widget.type === "cart" || widget.type === "favorites" || widget.type === "compare" || widget.type === "profile" || widget.type === "no-price") && (() => {
+        {(widget.type === "cart" || widget.type === "favorites" || widget.type === "compare" || widget.type === "profile" || widget.type === "no-price" || widget.type === "notifications" || widget.type === "reminders") && (() => {
           const config = (widget.config || {}) as { showLabel?: boolean; showBadge?: boolean };
           return (
             <div className="space-y-3">

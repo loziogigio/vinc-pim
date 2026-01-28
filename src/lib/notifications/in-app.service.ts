@@ -39,7 +39,7 @@ export interface NotificationListResult {
     page: number;
     limit: number;
     total: number;
-    total_pages: number;
+    totalPages: number;
   };
   unread_count: number;
 }
@@ -138,7 +138,7 @@ export async function getNotifications(
       page,
       limit: cappedLimit,
       total,
-      total_pages: Math.ceil(total / cappedLimit),
+      totalPages: Math.ceil(total / cappedLimit),
     },
     unread_count: unreadCount,
   };

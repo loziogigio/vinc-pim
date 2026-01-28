@@ -4,9 +4,13 @@
  * Shared functions for building campaign emails with header/footer.
  */
 
-import { connectWithModels } from "@/lib/db/connection";
 import { getDefaultHeader, getDefaultFooter } from "./template.service";
+import { getCompanyInfo, companyInfoToRecord } from "./company-info";
 import type { ITemplateProduct } from "@/lib/constants/notification";
+
+// Re-export company info utilities for convenience
+export { getCompanyInfo, companyInfoToRecord, extractCompanyInfo, getDefaultCompanyInfo } from "./company-info";
+export type { CompanyInfo } from "./company-info";
 
 /**
  * Replace template variables in HTML content.
@@ -66,55 +70,6 @@ export function wrapEmailContent(content: string): string {
 `.trim();
 }
 
-/**
- * Get company info from home settings.
- */
-export async function getCompanyInfo(tenantDb: string): Promise<Record<string, string>> {
-  const { HomeSettings } = await connectWithModels(tenantDb);
-
-  try {
-    const settings = await HomeSettings.findOne({}).lean();
-    if (!settings) return getDefaultCompanyInfo();
-
-    const ci = (settings as { company_info?: Record<string, string>; branding?: { title?: string; logo?: string; primaryColor?: string } }).company_info || {};
-    const br = (settings as { branding?: { title?: string; logo?: string; primaryColor?: string } }).branding || {};
-
-    const contactParts = [];
-    if (ci.phone) contactParts.push(`📞 ${ci.phone}`);
-    if (ci.email) contactParts.push(`✉️ ${ci.email}`);
-
-    return {
-      company_name: ci.legal_name || br.title || "Your Company",
-      logo: br.logo || "",
-      address: [ci.address_line1, ci.address_line2].filter(Boolean).join(", "),
-      phone: ci.phone || "",
-      email: ci.email || "",
-      contact_info: contactParts.join(" | ") || "",
-      business_hours: ci.business_hours || "",
-      primary_color: br.primaryColor || "#009f7f",
-      shop_name: br.title || "Shop",
-      current_year: new Date().getFullYear().toString(),
-    };
-  } catch (error) {
-    console.error("Error fetching company info:", error);
-    return getDefaultCompanyInfo();
-  }
-}
-
-function getDefaultCompanyInfo(): Record<string, string> {
-  return {
-    company_name: "Your Company",
-    logo: "",
-    address: "",
-    phone: "",
-    email: "",
-    contact_info: "",
-    business_hours: "",
-    primary_color: "#009f7f",
-    shop_name: "Shop",
-    current_year: new Date().getFullYear().toString(),
-  };
-}
 
 /**
  * Truncate text to a maximum length.
@@ -242,8 +197,9 @@ export async function buildCampaignEmail(
   tenantDb: string,
   content: string
 ): Promise<string> {
-  // Get company info
+  // Get company info and convert to record for template variables
   const companyInfo = await getCompanyInfo(tenantDb);
+  const templateVars = companyInfoToRecord(companyInfo);
 
   // Fetch header and footer
   const [defaultHeader, defaultFooter] = await Promise.all([
@@ -255,8 +211,8 @@ export async function buildCampaignEmail(
   let headerHtml = defaultHeader?.html_content || "";
   let footerHtml = defaultFooter?.html_content || "";
 
-  headerHtml = replaceTemplateVariables(headerHtml, companyInfo);
-  footerHtml = replaceTemplateVariables(footerHtml, companyInfo);
+  headerHtml = replaceTemplateVariables(headerHtml, templateVars);
+  footerHtml = replaceTemplateVariables(footerHtml, templateVars);
 
   // Wrap content in container
   const wrappedContent = wrapEmailContent(content);

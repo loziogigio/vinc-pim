@@ -6,6 +6,19 @@
  */
 
 // ============================================
+// SHARED DEFAULTS
+// ============================================
+
+/** Default primary color for email templates and buttons */
+export const DEFAULT_PRIMARY_COLOR = "#009f7f";
+
+/** Default pagination limit for notification lists */
+export const DEFAULT_PAGINATION_LIMIT = 20;
+
+/** Default max pagination limit */
+export const MAX_PAGINATION_LIMIT = 100;
+
+// ============================================
 // TEMPLATE TYPES
 // ============================================
 

@@ -204,6 +204,7 @@ const HeaderWidgetSchema = new Schema(
         "compare",
         "profile",
         "notifications",
+        "reminders",
         "button",
         "spacer",
         "divider"

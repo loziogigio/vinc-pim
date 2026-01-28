@@ -98,6 +98,8 @@ export async function GET(req: NextRequest) {
     const publicCode = searchParams.get("public_code");
     const customerCode = searchParams.get("customer_code"); // ERP code
     const isCurrent = searchParams.get("is_current"); // Active cart filter
+    const shippingAddressId = searchParams.get("shipping_address_id"); // Address filter (internal ID)
+    const shippingAddressCode = searchParams.get("shipping_address_code"); // Address filter (external/ERP code)
 
     // Build query - always filter by tenant
     const query: Record<string, unknown> = {
@@ -139,6 +141,14 @@ export async function GET(req: NextRequest) {
       query.is_current = true;
     } else if (isCurrent === "false") {
       query.is_current = { $ne: true }; // false or undefined/null
+    }
+
+    if (shippingAddressId) {
+      query.shipping_address_id = shippingAddressId;
+    }
+
+    if (shippingAddressCode) {
+      query.shipping_address_code = shippingAddressCode;
     }
 
     // Public code filter - need to lookup customer_ids first (within tenant)

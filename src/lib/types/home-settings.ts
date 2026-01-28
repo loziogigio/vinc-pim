@@ -260,6 +260,7 @@ export type HeaderWidgetType =
   | "compare"
   | "profile"
   | "notifications"
+  | "reminders"
   | "button"
   | "spacer"
   | "divider";
@@ -337,6 +338,13 @@ export interface NotificationsWidgetConfig {
   showBadge?: boolean;
 }
 
+export interface RemindersWidgetConfig {
+  /** Show text label next to icon */
+  showLabel?: boolean;
+  /** Show count badge */
+  showBadge?: boolean;
+}
+
 /** Union type for all widget configurations */
 export type WidgetConfig =
   | LogoWidgetConfig
@@ -349,6 +357,7 @@ export type WidgetConfig =
   | SpacerWidgetConfig
   | DividerWidgetConfig
   | NotificationsWidgetConfig
+  | RemindersWidgetConfig
   | Record<string, unknown>;
 
 /** A single widget in the header */
@@ -403,6 +412,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "compare": { label: "Compare", icon: "GitCompare", description: "Product comparison" },
   "profile": { label: "Profile", icon: "User", description: "User profile/login" },
   "notifications": { label: "Notifications", icon: "Bell", description: "Push notifications toggle" },
+  "reminders": { label: "Reminders", icon: "History", description: "User reminders and saved items" },
   "button": { label: "Button", icon: "Square", description: "Custom button/link", allowMultiple: true },
   "spacer": { label: "Spacer", icon: "Space", description: "Flexible space", allowMultiple: true },
   "divider": { label: "Divider", icon: "Minus", description: "Vertical divider", allowMultiple: true },
