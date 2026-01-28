@@ -866,7 +866,7 @@ export default function CustomerDetailPage({
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Order ID
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Items
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
@@ -902,10 +902,26 @@ export default function CustomerDetailPage({
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                          {order.items?.length || 0}
-                        </span>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {/* First item thumbnail */}
+                          <div className="w-10 h-10 rounded border border-border bg-muted overflow-hidden flex-shrink-0">
+                            {order.items?.[0]?.image_url ? (
+                              <img
+                                src={order.items[0].image_url}
+                                alt={order.items[0].name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                {order.items?.[0]?.sku?.substring(0, 2) || "?"}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-sm text-foreground">
+                            {order.items?.length || 0} items
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="font-medium text-foreground">
