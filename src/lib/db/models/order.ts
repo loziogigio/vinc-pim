@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import type { DiscountStep } from "@/lib/types/pim";
 
 /**
  * Order Model
@@ -76,6 +77,7 @@ export interface ILineItem {
   promo_label?: string;
   promo_discount_pct?: number;
   promo_discount_amt?: number;
+  discount_chain?: DiscountStep[]; // Full discount chain with type, value, source, order
 
   // Raw source payload (auto-captured from request body)
   raw_data?: Record<string, unknown>;
@@ -220,6 +222,12 @@ const LineItemSchema = new Schema<ILineItem>(
     promo_label: { type: String },
     promo_discount_pct: { type: Number },
     promo_discount_amt: { type: Number },
+    discount_chain: [{
+      type: { type: String, enum: ["percentage", "amount", "net"] },
+      value: { type: Number },
+      source: { type: String, enum: ["price_list", "price_list_sale", "promo"] },
+      order: { type: Number },
+    }],
 
     // Raw source payload (auto-captured from request body)
     raw_data: { type: Schema.Types.Mixed },

@@ -5,6 +5,8 @@
  * Same document evolves: draft → pending → confirmed → shipped
  */
 
+import type { DiscountStep } from "./pim";
+
 // ============================================
 // ENUMS & CONSTANTS
 // ============================================
@@ -101,6 +103,7 @@ export interface LineItem {
   promo_label?: string; // Promotion description (e.g., "Sconto quantità")
   promo_discount_pct?: number; // Promotion discount percentage (e.g., -10)
   promo_discount_amt?: number; // Promotion discount amount (e.g., -5.00)
+  discount_chain?: DiscountStep[]; // Full discount chain with type, value, source, order
 
   // Raw source payload (auto-captured from request body)
   raw_data?: Record<string, unknown>;
@@ -285,6 +288,7 @@ export interface AddItemRequest {
   promo_label?: string;
   promo_discount_pct?: number;
   promo_discount_amt?: number;
+  discount_chain?: DiscountStep[]; // Full discount chain with type, value, source, order
 }
 
 export interface UpdateItemRequest {

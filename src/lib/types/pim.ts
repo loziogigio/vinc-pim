@@ -98,6 +98,17 @@ export type PackagingOption = {
 };
 
 /**
+ * Individual discount step in a discount chain
+ * Tracks type, value, source, and order of application
+ */
+export type DiscountStep = {
+  type: "percentage" | "amount" | "net";  // Type of discount
+  value?: number;                          // Discount value (e.g., 10 for 10%, 5.00 for €5)
+  source: "price_list" | "price_list_sale" | "promo";  // Origin of the discount
+  order: number;                           // Application order (1, 2, 3...)
+};
+
+/**
  * Promotion data for packaging-level discounts
  * Supports multilingual labels and various discount types
  * Each promotion is tied to a specific packaging option
@@ -121,6 +132,7 @@ export type Promotion = {
   min_quantity?: number;          // Minimum quantity to qualify
   min_order_value?: number;       // Minimum order value to qualify
   promo_price?: number;           // Final price when this promotion applies
+  discount_chain?: DiscountStep[];  // Array of discount steps with type, value, source, and order
 };
 
 // ============================================
@@ -317,6 +329,7 @@ export type ProductData = ProductCore &
     promotions?: Promotion[];
     promo_code?: string[];          // Array of active promotion codes
     promo_type?: string[];          // Array of business categories for faceting
+    discount_chains?: DiscountStep[];  // Aggregated discount steps from all active promotions
     has_active_promo?: boolean;     // Has any active promotion
 
     // SEO

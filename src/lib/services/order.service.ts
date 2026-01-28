@@ -191,6 +191,7 @@ export function findMergeableItem(
   const index = order.items.findIndex(
     (item: ILineItem) =>
       item.entity_code === body.entity_code &&
+      item.packaging_code === body.packaging_code &&
       item.promo_code === body.promo_code &&
       item.promo_row === body.promo_row &&
       item.pack_size === body.pack_size &&
@@ -305,6 +306,7 @@ export function createLineItem(
     promo_label: body.promo_label,
     promo_discount_pct: body.promo_discount_pct,
     promo_discount_amt: body.promo_discount_amt,
+    discount_chain: body.discount_chain,
 
     // Raw source payload
     raw_data: body as unknown as Record<string, unknown>,

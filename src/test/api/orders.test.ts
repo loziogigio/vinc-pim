@@ -362,6 +362,179 @@ describe("integration: Orders API", () => {
       expect(res.status).toBe(400);
       expect(data.error).toContain("multiple of");
     });
+
+    it("should store image_url, brand, and category (product snapshot)", async () => {
+      /**
+       * Test that product snapshot fields are preserved.
+       * Mobile app needs image_url for cart display.
+       */
+      // Arrange
+      const cartRes = await getActiveCart(
+        createRequest("GET", undefined, "http://localhost:3000/api/b2b/orders/active")
+      );
+      const { order } = await cartRes.json();
+
+      const itemPayload = {
+        ...LineItemFactory.createPayload({
+          entity_code: "PROD-IMAGE",
+          sku: "PROD-IMAGE",
+          quantity: 1,
+        }),
+        image_url: "https://cdn.example.com/products/test.jpg",
+        brand: "Test Brand",
+        category: "Test Category",
+      };
+
+      // Act
+      const res = await addItem(
+        createRequest("POST", itemPayload),
+        createParams({ id: order.order_id })
+      );
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.item.image_url).toBe("https://cdn.example.com/products/test.jpg");
+      expect(data.item.brand).toBe("Test Brand");
+      expect(data.item.category).toBe("Test Category");
+    });
+
+    it("should store promo tracking fields", async () => {
+      /**
+       * Test promo fields: promo_code, promo_label, promo_discount_pct, promo_discount_amt.
+       * These track promotion details for reporting and display.
+       */
+      // Arrange
+      const cartRes = await getActiveCart(
+        createRequest("GET", undefined, "http://localhost:3000/api/b2b/orders/active")
+      );
+      const { order } = await cartRes.json();
+
+      const itemPayload = {
+        ...LineItemFactory.createPayload({
+          entity_code: "PROD-PROMO",
+          sku: "PROD-PROMO",
+          quantity: 1,
+          list_price: 100,
+          unit_price: 80,
+        }),
+        promo_code: "SUMMER-SALE",
+        promo_label: "Summer Sale -20%",
+        promo_discount_pct: -20,
+      };
+
+      // Act
+      const res = await addItem(
+        createRequest("POST", itemPayload),
+        createParams({ id: order.order_id })
+      );
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.item.promo_code).toBe("SUMMER-SALE");
+      expect(data.item.promo_label).toBe("Summer Sale -20%");
+      expect(data.item.promo_discount_pct).toBe(-20);
+    });
+
+    it("should store discount_chain for price calculation tracking", async () => {
+      /**
+       * Test discount_chain: array of discount steps tracking full price calculation.
+       * Each step has type, value, source, and order.
+       */
+      // Arrange
+      const cartRes = await getActiveCart(
+        createRequest("GET", undefined, "http://localhost:3000/api/b2b/orders/active")
+      );
+      const { order } = await cartRes.json();
+
+      const discountChain = [
+        { type: "percentage", value: -10, source: "price_list", order: 1 },
+        { type: "percentage", value: -15, source: "promo", order: 2 },
+      ];
+
+      const itemPayload = {
+        ...LineItemFactory.createPayload({
+          entity_code: "PROD-CHAIN",
+          sku: "PROD-CHAIN",
+          quantity: 1,
+          list_price: 100,
+          unit_price: 76.5, // 100 * 0.9 * 0.85
+        }),
+        promo_code: "CHAIN-TEST",
+        promo_label: "Chained Discount",
+        discount_chain: discountChain,
+      };
+
+      // Act
+      const res = await addItem(
+        createRequest("POST", itemPayload),
+        createParams({ id: order.order_id })
+      );
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.item.discount_chain).toHaveLength(2);
+      expect(data.item.discount_chain[0]).toMatchObject({
+        type: "percentage",
+        value: -10,
+        source: "price_list",
+        order: 1,
+      });
+      expect(data.item.discount_chain[1]).toMatchObject({
+        type: "percentage",
+        value: -15,
+        source: "promo",
+        order: 2,
+      });
+    });
+
+    it("should store discount_chain with net price type", async () => {
+      /**
+       * Test discount_chain with direct net price (overrides calculation).
+       */
+      // Arrange
+      const cartRes = await getActiveCart(
+        createRequest("GET", undefined, "http://localhost:3000/api/b2b/orders/active")
+      );
+      const { order } = await cartRes.json();
+
+      const discountChain = [
+        { type: "percentage", value: -10, source: "price_list", order: 1 },
+        { type: "net", value: 50, source: "promo", order: 2 },
+      ];
+
+      const itemPayload = {
+        ...LineItemFactory.createPayload({
+          entity_code: "PROD-NET",
+          sku: "PROD-NET",
+          quantity: 1,
+          list_price: 100,
+          unit_price: 50, // Direct net price from promo
+        }),
+        promo_code: "NET-PRICE",
+        promo_label: "Fixed Price €50",
+        discount_chain: discountChain,
+      };
+
+      // Act
+      const res = await addItem(
+        createRequest("POST", itemPayload),
+        createParams({ id: order.order_id })
+      );
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.item.discount_chain).toHaveLength(2);
+      expect(data.item.discount_chain[1]).toMatchObject({
+        type: "net",
+        value: 50,
+        source: "promo",
+        order: 2,
+      });
+    });
   });
 
   // ==========================================
@@ -398,6 +571,64 @@ describe("integration: Orders API", () => {
       expect(res.status).toBe(200);
       expect(data.order.items[0].quantity).toBe(20);
       expect(data.order.items[0].line_net).toBe(1600); // 20 * 80
+    });
+
+    it("should preserve promo fields and discount_chain when updating quantity", async () => {
+      /**
+       * Test that all promo data is preserved when updating quantity.
+       * Critical for mobile app: promo_code, promo_label, discount_chain must not be lost.
+       */
+      // Arrange
+      const cartRes = await getActiveCart(
+        createRequest("GET", undefined, "http://localhost:3000/api/b2b/orders/active")
+      );
+      const { order } = await cartRes.json();
+
+      const discountChain = [
+        { type: "percentage", value: -10, source: "price_list", order: 1 },
+        { type: "percentage", value: -20, source: "promo", order: 2 },
+      ];
+
+      const addRes = await addItem(
+        createRequest("POST", {
+          ...LineItemFactory.createPayload({
+            entity_code: "PROD-PRESERVE",
+            sku: "PROD-PRESERVE",
+            quantity: 1,
+            list_price: 100,
+            unit_price: 72, // 100 * 0.9 * 0.8
+          }),
+          image_url: "https://cdn.example.com/test.jpg",
+          brand: "Preserved Brand",
+          promo_code: "PRESERVE-TEST",
+          promo_label: "20% Off",
+          promo_discount_pct: -20,
+          discount_chain: discountChain,
+        }),
+        createParams({ id: order.order_id })
+      );
+      const addData = await addRes.json();
+      const lineNumber = addData.item.line_number;
+
+      // Act - Update quantity
+      const res = await updateItems(
+        createRequest("PATCH", { items: [{ line_number: lineNumber, quantity: 5 }] }),
+        createParams({ id: order.order_id })
+      );
+      const data = await res.json();
+
+      // Assert - Quantity updated, promo fields preserved
+      expect(res.status).toBe(200);
+      const updatedItem = data.order.items.find((i: { line_number: number }) => i.line_number === lineNumber);
+      expect(updatedItem.quantity).toBe(5);
+      expect(updatedItem.image_url).toBe("https://cdn.example.com/test.jpg");
+      expect(updatedItem.brand).toBe("Preserved Brand");
+      expect(updatedItem.promo_code).toBe("PRESERVE-TEST");
+      expect(updatedItem.promo_label).toBe("20% Off");
+      expect(updatedItem.promo_discount_pct).toBe(-20);
+      expect(updatedItem.discount_chain).toHaveLength(2);
+      expect(updatedItem.discount_chain[0].source).toBe("price_list");
+      expect(updatedItem.discount_chain[1].source).toBe("promo");
     });
   });
 

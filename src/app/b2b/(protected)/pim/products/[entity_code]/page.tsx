@@ -31,6 +31,7 @@ import {
   PIMPricing,
   PackagingOption,
   Promotion,
+  DiscountStep,
 } from "@/lib/types/pim";
 import {
   ArrowLeft,
@@ -661,6 +662,48 @@ export default function ProductDetailPage({
     }
   }
 
+  // Helper function to aggregate promo data from all packaging options
+  function aggregatePromoData(packagingOptions: PackagingOption[]) {
+    const allDiscountSteps: DiscountStep[] = [];
+    const allPromoCodes: string[] = [];
+    const allPromoTypes: string[] = [];
+    let hasActivePromo = false;
+
+    for (const pkg of packagingOptions) {
+      for (const promo of pkg.promotions || []) {
+        if (promo.is_active) {
+          hasActivePromo = true;
+          // Collect discount chain steps from each promotion
+          if (promo.discount_chain && Array.isArray(promo.discount_chain)) {
+            allDiscountSteps.push(...promo.discount_chain);
+          }
+          if (promo.promo_code) {
+            allPromoCodes.push(promo.promo_code);
+          }
+          if (promo.promo_type) {
+            allPromoTypes.push(promo.promo_type);
+          }
+        }
+      }
+    }
+
+    // Unique values for arrays
+    const uniquePromoCodes = [...new Set(allPromoCodes)];
+    const uniquePromoTypes = [...new Set(allPromoTypes)];
+
+    // De-duplicate discount steps by comparing type, value, and source
+    const uniqueDiscountSteps = allDiscountSteps.filter((step, index, arr) =>
+      arr.findIndex(s => s.type === step.type && s.value === step.value && s.source === step.source) === index
+    );
+
+    return {
+      promo_code: uniquePromoCodes.length > 0 ? uniquePromoCodes : undefined,
+      promo_type: uniquePromoTypes.length > 0 ? uniquePromoTypes : undefined,
+      discount_chains: uniqueDiscountSteps.length > 0 ? uniqueDiscountSteps : undefined,
+      has_active_promo: hasActivePromo,
+    };
+  }
+
   // Handle save promotion (create or update)
   async function handleSavePromotion(packagingCode: string, promotion: Promotion) {
     if (!product || !product.packaging_options) return;
@@ -684,11 +727,18 @@ export default function ProductDetailPage({
       return { ...pkg, promotions: updatedPromos };
     });
 
+    // Aggregate promo data from all packaging options
+    const promoAggregations = aggregatePromoData(updatedOptions);
+
     try {
       const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packaging_options: updatedOptions }),
+        body: JSON.stringify({
+          packaging_options: updatedOptions,
+          // Product-level promo aggregations
+          ...promoAggregations,
+        }),
       });
 
       if (res.ok) {
@@ -1912,13 +1962,26 @@ export default function ProductDetailPage({
                                     : promo.promo_type || "Promo"}
                                 </td>
                                 <td className="py-2 px-3 text-right text-foreground">
-                                  {promo.discount_percentage ? `-${promo.discount_percentage}%` : "—"}
+                                  {promo.discount_percentage
+                                    ? `-${promo.discount_percentage}%`
+                                    : promo.discount_amount
+                                    ? `-€${promo.discount_amount.toFixed(2)}`
+                                    : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right text-foreground">
                                   {promo.min_quantity || "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right text-emerald-600 font-medium">
-                                  {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
+                                  {promo.promo_price ? (
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span>€{promo.promo_price.toFixed(2)}</span>
+                                      {pkg.qty > 1 && (
+                                        <span className="text-xs text-muted-foreground font-normal">
+                                          €{(promo.promo_price * pkg.qty).toFixed(2)} / {pkg.code}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-muted-foreground">
                                   {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}
@@ -1948,11 +2011,13 @@ export default function ProductDetailPage({
                                             promotions: (p.promotions || []).filter((pr) => pr.promo_code !== promo.promo_code),
                                           };
                                         });
+                                        // Recalculate promo aggregations after deletion
+                                        const promoAggregations = aggregatePromoData(updatedOptions);
                                         try {
                                           const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ packaging_options: updatedOptions }),
+                                            body: JSON.stringify({ packaging_options: updatedOptions, ...promoAggregations }),
                                           });
                                           if (res.ok) {
                                             const data = await res.json();
@@ -2016,7 +2081,11 @@ export default function ProductDetailPage({
                                   : promo.promo_type || "Promotion"}
                               </td>
                               <td className="py-2 px-3 text-right text-foreground">
-                                {promo.discount_percentage ? `-${promo.discount_percentage}%` : "—"}
+                                {promo.discount_percentage
+                                  ? `-${promo.discount_percentage}%`
+                                  : promo.discount_amount
+                                  ? `-€${promo.discount_amount.toFixed(2)}`
+                                  : "—"}
                               </td>
                               <td className="py-2 px-3 text-right text-emerald-600 font-medium">
                                 {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}

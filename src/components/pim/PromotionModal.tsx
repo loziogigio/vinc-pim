@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Promotion, PackagingOption } from "@/lib/types/pim";
+import { Promotion, PackagingOption, DiscountStep } from "@/lib/types/pim";
 
 interface PromotionModalProps {
   open: boolean;
@@ -42,24 +42,152 @@ export function PromotionModal({
 }: PromotionModalProps) {
   const [formData, setFormData] = useState<Promotion>(emptyPromotion);
   const [selectedPackagingCode, setSelectedPackagingCode] = useState(packagingCode);
+  const [pricingMethod, setPricingMethod] = useState<"percentage" | "amount" | "direct">("percentage");
   const isEditMode = promotion !== null;
 
   useEffect(() => {
     if (open) {
-      setFormData(promotion || { ...emptyPromotion });
-      setSelectedPackagingCode(packagingCode || packagingOptions[0]?.code || "");
+      const promo = promotion || { ...emptyPromotion };
+      setFormData(promo);
+      const selectedCode = packagingCode || packagingOptions[0]?.code || "";
+      setSelectedPackagingCode(selectedCode);
+
+      // Check if selected packaging has list price (derive unit price if needed)
+      const pkg = packagingOptions.find((p) => p.code === selectedCode);
+      const qty = pkg?.qty || 1;
+      const unitListPrice = pkg?.pricing?.list_unit ?? (pkg?.pricing?.list ? pkg.pricing.list / qty : 0);
+      const hasListPrice = unitListPrice > 0;
+
+      // Determine pricing method from existing data
+      if (!hasListPrice) {
+        // No list price - can only use direct/net price
+        setPricingMethod("direct");
+      } else if (promo.discount_percentage && promo.discount_percentage > 0) {
+        setPricingMethod("percentage");
+      } else if (promo.discount_amount && promo.discount_amount > 0) {
+        setPricingMethod("amount");
+      } else if (promo.promo_price && promo.promo_price > 0) {
+        setPricingMethod("direct");
+      } else {
+        setPricingMethod("percentage"); // default when list price available
+      }
     }
   }, [open, promotion, packagingCode, packagingOptions]);
+
+  // Get the selected packaging's pricing (always use UNIT prices for promo calculation)
+  const selectedPackaging = packagingOptions.find((p) => p.code === selectedPackagingCode);
+  const pkgQty = selectedPackaging?.qty || 1;
+
+  // Calculate unit prices: prefer list_unit, otherwise derive from list/qty
+  const listPrice = selectedPackaging?.pricing?.list_unit
+    ?? (selectedPackaging?.pricing?.list ? selectedPackaging.pricing.list / pkgQty : 0);
+  // Calculate sale unit price: prefer sale_unit, otherwise derive from sale/qty
+  const salePrice = selectedPackaging?.pricing?.sale_unit
+    ?? (selectedPackaging?.pricing?.sale ? selectedPackaging.pricing.sale / pkgQty : undefined);
+  // Use sale_price as base if available (promo stacks on sale), otherwise use list_price
+  const basePrice = salePrice && salePrice > 0 ? salePrice : listPrice;
+  const hasSalePrice = salePrice && salePrice > 0 && salePrice !== listPrice;
+
+  // Auto-switch to "direct" when no list price available
+  useEffect(() => {
+    if (listPrice <= 0 && pricingMethod !== "direct") {
+      setPricingMethod("direct");
+      // Clear discount fields since they can't be used without list price
+      setFormData((prev) => ({
+        ...prev,
+        discount_percentage: undefined,
+        discount_amount: undefined,
+      }));
+    }
+  }, [listPrice, pricingMethod]);
+
+  // Auto-calculate promo_price when using discount methods
+  useEffect(() => {
+    if (basePrice <= 0) return;
+
+    if (pricingMethod === "percentage" && formData.discount_percentage && formData.discount_percentage > 0) {
+      const calculatedPrice = basePrice * (1 - formData.discount_percentage / 100);
+      const roundedPrice = Math.round(Math.max(0, calculatedPrice) * 100) / 100;
+      if (formData.promo_price !== roundedPrice) {
+        setFormData((prev) => ({ ...prev, promo_price: roundedPrice }));
+      }
+    } else if (pricingMethod === "amount" && formData.discount_amount && formData.discount_amount > 0) {
+      const calculatedPrice = basePrice - formData.discount_amount;
+      const roundedPrice = Math.round(Math.max(0, calculatedPrice) * 100) / 100;
+      if (formData.promo_price !== roundedPrice) {
+        setFormData((prev) => ({ ...prev, promo_price: roundedPrice }));
+      }
+    }
+  }, [pricingMethod, basePrice, formData.discount_percentage, formData.discount_amount, formData.promo_price]);
 
   if (!open) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(selectedPackagingCode, formData);
+
+    // Build structured discount_chain array
+    const discountChain: DiscountStep[] = [];
+    let orderNum = 1;
+
+    if (pricingMethod === "direct") {
+      // Direct net price
+      discountChain.push({
+        type: "net",
+        source: "promo",
+        order: orderNum,
+      });
+    } else {
+      // Add sale discount step if applicable (from price_list_sale)
+      if (hasSalePrice && listPrice > 0) {
+        const salePct = Math.round((1 - salePrice! / listPrice) * 100);
+        discountChain.push({
+          type: "percentage",
+          value: salePct,
+          source: "price_list_sale",
+          order: orderNum++,
+        });
+      }
+
+      // Add promo discount step
+      if (pricingMethod === "percentage" && formData.discount_percentage) {
+        discountChain.push({
+          type: "percentage",
+          value: formData.discount_percentage,
+          source: "promo",
+          order: orderNum++,
+        });
+      } else if (pricingMethod === "amount" && formData.discount_amount) {
+        discountChain.push({
+          type: "amount",
+          value: formData.discount_amount,
+          source: "promo",
+          order: orderNum++,
+        });
+      }
+    }
+
+    // Save with structured discount_chain
+    const promoToSave = {
+      ...formData,
+      discount_chain: discountChain.length > 0 ? discountChain : undefined,
+    };
+
+    onSave(selectedPackagingCode, promoToSave);
   };
 
   const updateField = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Switch pricing method and clear other fields
+  const switchPricingMethod = (method: "percentage" | "amount" | "direct") => {
+    setPricingMethod(method);
+    setFormData((prev) => ({
+      ...prev,
+      discount_percentage: undefined,
+      discount_amount: undefined,
+      promo_price: undefined,
+    }));
   };
 
   const updateLabel = (value: string) => {
@@ -164,50 +292,203 @@ export function PromotionModal({
             />
           </div>
 
-          {/* Discount */}
+          {/* Pricing Method - Tab Selection */}
           <div className="border-t pt-4">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3">Discount</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Discount %
-                </label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={formData.discount_percentage || ""}
-                  onChange={(e) => updateField("discount_percentage", e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="e.g., 10"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Discount Amount
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.discount_amount || ""}
-                  onChange={(e) => updateField("discount_amount", e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="e.g., 5.00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Promo Price
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.promo_price || ""}
-                  onChange={(e) => updateField("promo_price", e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="e.g., 99.00"
-                />
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-slate-900">Pricing Method</h4>
+              {listPrice > 0 ? (
+                <div className="text-xs text-right">
+                  {hasSalePrice ? (
+                    <>
+                      <span className="text-slate-400 line-through">€{listPrice.toFixed(2)}</span>
+                      <span className="ml-2 text-emerald-600 font-medium">Sale: €{salePrice!.toFixed(2)}</span>
+                    </>
+                  ) : (
+                    <span className="text-slate-500">List: €{listPrice.toFixed(2)}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-amber-600">No list price set</div>
+              )}
+            </div>
+
+            {/* Method Tabs */}
+            <div className="flex rounded-lg bg-slate-100 p-1 mb-4">
+              <button
+                type="button"
+                onClick={() => listPrice > 0 && switchPricingMethod("percentage")}
+                disabled={listPrice <= 0}
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                  pricingMethod === "percentage"
+                    ? "bg-white text-amber-700 shadow-sm"
+                    : listPrice <= 0
+                    ? "text-slate-400 cursor-not-allowed"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Discount %
+              </button>
+              <button
+                type="button"
+                onClick={() => listPrice > 0 && switchPricingMethod("amount")}
+                disabled={listPrice <= 0}
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                  pricingMethod === "amount"
+                    ? "bg-white text-amber-700 shadow-sm"
+                    : listPrice <= 0
+                    ? "text-slate-400 cursor-not-allowed"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Discount €
+              </button>
+              <button
+                type="button"
+                onClick={() => switchPricingMethod("direct")}
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                  pricingMethod === "direct"
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Net Price
+              </button>
+            </div>
+
+            {/* Active Input */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              {pricingMethod === "percentage" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Discount Percentage
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={formData.discount_percentage || ""}
+                      onChange={(e) => updateField("discount_percentage", e.target.value ? parseFloat(e.target.value) : undefined)}
+                      placeholder="e.g., 10"
+                      className="text-lg"
+                    />
+                    <span className="text-2xl text-slate-400">%</span>
+                  </div>
+                  {/* Promo Price Result with Calculation Breakdown */}
+                  {formData.discount_percentage && formData.discount_percentage > 0 && listPrice > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      {/* Calculation breakdown */}
+                      <div className="text-xs text-slate-600 mb-3 font-mono bg-white rounded p-2 border border-slate-200">
+                        €{listPrice.toFixed(2)}
+                        {hasSalePrice && (
+                          <> <span className="text-amber-600">→ -{Math.round((1 - salePrice! / listPrice) * 100)}% sale</span> → €{salePrice!.toFixed(2)}</>
+                        )}
+                        <span className="text-amber-600"> → -{formData.discount_percentage}% promo</span>
+                        <span className="text-emerald-700 font-bold"> = €{(formData.promo_price || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-xs text-emerald-600 mb-1">Promo Unit Price</div>
+                          <div className="text-2xl font-bold text-emerald-700">€{(formData.promo_price || 0).toFixed(2)}</div>
+                        </div>
+                        {selectedPackaging && selectedPackaging.qty > 1 && formData.promo_price && (
+                          <div className="text-right">
+                            <div className="text-xs text-slate-500 mb-1">Package ({selectedPackaging.code} × {selectedPackaging.qty})</div>
+                            <div className="text-lg font-semibold text-slate-700">€{(formData.promo_price * selectedPackaging.qty).toFixed(2)}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pricingMethod === "amount" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Discount Amount
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl text-slate-400">€</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.discount_amount || ""}
+                      onChange={(e) => updateField("discount_amount", e.target.value ? parseFloat(e.target.value) : undefined)}
+                      placeholder="e.g., 5.00"
+                      className="text-lg"
+                    />
+                  </div>
+                  {/* Promo Price Result with Calculation Breakdown */}
+                  {formData.discount_amount && formData.discount_amount > 0 && listPrice > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      {/* Calculation breakdown */}
+                      <div className="text-xs text-slate-600 mb-3 font-mono bg-white rounded p-2 border border-slate-200">
+                        €{listPrice.toFixed(2)}
+                        {hasSalePrice && (
+                          <> <span className="text-amber-600">→ -{Math.round((1 - salePrice! / listPrice) * 100)}% sale</span> → €{salePrice!.toFixed(2)}</>
+                        )}
+                        <span className="text-amber-600"> → -€{formData.discount_amount.toFixed(2)} promo</span>
+                        <span className="text-emerald-700 font-bold"> = €{(formData.promo_price || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-xs text-emerald-600 mb-1">Promo Unit Price</div>
+                          <div className="text-2xl font-bold text-emerald-700">€{(formData.promo_price || 0).toFixed(2)}</div>
+                        </div>
+                        {selectedPackaging && selectedPackaging.qty > 1 && formData.promo_price && (
+                          <div className="text-right">
+                            <div className="text-xs text-slate-500 mb-1">Package ({selectedPackaging.code} × {selectedPackaging.qty})</div>
+                            <div className="text-lg font-semibold text-slate-700">€{(formData.promo_price * selectedPackaging.qty).toFixed(2)}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pricingMethod === "direct" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Net Price (Direct)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl text-slate-400">€</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.promo_price || ""}
+                      onChange={(e) => updateField("promo_price", e.target.value ? parseFloat(e.target.value) : undefined)}
+                      placeholder="e.g., 45.00"
+                      className="text-lg"
+                    />
+                  </div>
+                  {/* Result display */}
+                  {formData.promo_price && formData.promo_price > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      <div className="text-xs text-slate-500 mb-2 font-mono bg-white rounded p-2 border border-slate-200">
+                        Net price (no discount calculation)
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-xs text-emerald-600 mb-1">Promo Unit Price</div>
+                          <div className="text-2xl font-bold text-emerald-700">€{formData.promo_price.toFixed(2)}</div>
+                        </div>
+                        {selectedPackaging && selectedPackaging.qty > 1 && (
+                          <div className="text-right">
+                            <div className="text-xs text-slate-500 mb-1">Package ({selectedPackaging.code} × {selectedPackaging.qty})</div>
+                            <div className="text-lg font-semibold text-slate-700">€{(formData.promo_price * selectedPackaging.qty).toFixed(2)}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
