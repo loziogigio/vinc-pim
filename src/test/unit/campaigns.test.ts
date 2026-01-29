@@ -12,11 +12,12 @@ import {
 
 describe("unit: Campaign Channels", () => {
   describe("NOTIFICATION_CHANNELS", () => {
-    it("should have exactly 4 channels", () => {
+    it("should have exactly 3 channels", () => {
       /**
-       * Verify that all 4 notification channels are defined.
+       * Verify that all 3 notification channels are defined.
+       * email, mobile (FCM), web_in_app
        */
-      expect(NOTIFICATION_CHANNELS).toHaveLength(4);
+      expect(NOTIFICATION_CHANNELS).toHaveLength(3);
     });
 
     it("should include email as first channel", () => {
@@ -32,9 +33,8 @@ describe("unit: Campaign Channels", () => {
        */
       const expectedChannels: NotificationChannel[] = [
         "email",
-        "web_push",
-        "mobile_push",
-        "sms",
+        "mobile",
+        "web_in_app",
       ];
       expectedChannels.forEach((channel) => {
         expect(NOTIFICATION_CHANNELS).toContain(channel);

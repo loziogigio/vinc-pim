@@ -8,7 +8,7 @@
  */
 
 import mongoose, { Schema, Document } from "mongoose";
-import type { IPortalUser, ICustomerAccess } from "@/lib/types/portal-user";
+import type { IPortalUser, ICustomerAccess, IUserTagRef } from "@/lib/types/portal-user";
 
 // ============================================
 // INTERFACES
@@ -26,6 +26,16 @@ const CustomerAccessSchema = new Schema<ICustomerAccess>(
   {
     customer_id: { type: String, required: true },
     address_access: { type: Schema.Types.Mixed, required: true }, // "all" or string[]
+  },
+  { _id: false }
+);
+
+const UserTagRefSchema = new Schema<IUserTagRef>(
+  {
+    tag_id: { type: String, required: true },
+    name: { type: String, required: true },
+    slug: { type: String, required: true },
+    color: { type: String },
   },
   { _id: false }
 );
@@ -70,6 +80,12 @@ const PortalUserSchema = new Schema<IPortalUserDocument>(
       default: [],
     },
 
+    // User tags for campaign targeting
+    tags: {
+      type: [UserTagRefSchema],
+      default: [],
+    },
+
     // Status
     is_active: {
       type: Boolean,
@@ -108,6 +124,11 @@ PortalUserSchema.index(
 // Filter by active status
 PortalUserSchema.index(
   { tenant_id: 1, is_active: 1 }
+);
+
+// Find users by tags (for campaign targeting)
+PortalUserSchema.index(
+  { tenant_id: 1, "tags.tag_id": 1 }
 );
 
 // ============================================

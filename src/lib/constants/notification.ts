@@ -31,6 +31,34 @@ export const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
 };
 
 // ============================================
+// CAMPAIGN STATUS
+// ============================================
+
+export const CAMPAIGN_STATUSES = [
+  "draft",
+  "scheduled",
+  "sending",
+  "sent",
+  "failed",
+] as const;
+export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number];
+
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  draft: "Bozza",
+  scheduled: "Programmata",
+  sending: "In Invio",
+  sent: "Inviata",
+  failed: "Fallita",
+};
+
+// ============================================
+// RECIPIENT TYPES
+// ============================================
+
+export const RECIPIENT_TYPES = ["all", "selected", "tagged"] as const;
+export type RecipientType = (typeof RECIPIENT_TYPES)[number];
+
+// ============================================
 // CHANNELS (simplified to 3)
 // ============================================
 

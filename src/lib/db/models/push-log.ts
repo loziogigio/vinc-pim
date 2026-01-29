@@ -32,6 +32,9 @@ export interface IPushLog {
   template_id?: string;
   trigger?: string;
 
+  // Campaign reference
+  campaign_id?: string;
+
   // Status tracking
   status: PushStatus;
   error?: string;
@@ -112,6 +115,10 @@ export const PushLogSchema = new Schema<IPushLogDocument>(
     },
     template_id: { type: String },
     trigger: { type: String },
+    campaign_id: {
+      type: String,
+      index: true
+    },
     status: {
       type: String,
       enum: ["queued", "sending", "sent", "failed", "expired"],

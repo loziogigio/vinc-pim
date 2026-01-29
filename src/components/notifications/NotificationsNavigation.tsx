@@ -1,7 +1,7 @@
 "use client";
 
 import { AppSidebar, NavLink } from "@/components/navigation";
-import { LayoutDashboard, Send, FileText, History, Settings, Puzzle } from "lucide-react";
+import { LayoutDashboard, Send, FileText, History, Settings, Puzzle, Smartphone } from "lucide-react";
 
 export function NotificationsNavigation() {
   return (
@@ -26,6 +26,11 @@ export function NotificationsNavigation() {
         href="/b2b/notifications/logs"
         icon={History}
         label="Logs"
+      />
+      <NavLink
+        href="/b2b/notifications/devices"
+        icon={Smartphone}
+        label="Devices"
       />
       <NavLink
         href="/b2b/notifications/components"

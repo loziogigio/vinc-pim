@@ -144,6 +144,48 @@ export interface WebPushSettings {
   default_badge?: string;
 }
 
+/**
+ * Firebase Cloud Messaging (FCM) Settings
+ * Used for native mobile app push notifications (iOS/Android)
+ */
+export interface FCMSettings {
+  // ===== Server-side config (Admin SDK) =====
+  /** Is FCM enabled for this tenant */
+  enabled?: boolean;
+  /** Firebase project ID */
+  project_id?: string;
+  /** Firebase private key (from service account JSON) - SECRET */
+  private_key?: string;
+  /** Firebase client email (from service account JSON) */
+  client_email?: string;
+  /** Default notification icon for Android */
+  default_icon?: string;
+  /** Default notification color for Android (hex) */
+  default_color?: string;
+  /** iOS badge count behavior */
+  ios_badge_behavior?: "increment" | "set" | "none";
+
+  // ===== Client-side config (safe to expose to mobile apps) =====
+  /** Firebase Cloud Messaging sender ID (from google-services.json) */
+  messaging_sender_id?: string;
+  /** Firebase storage bucket URL */
+  storage_bucket?: string;
+
+  // ===== Android-specific config =====
+  /** Android API key (from google-services.json) */
+  android_api_key?: string;
+  /** Android app ID (from google-services.json) */
+  android_app_id?: string;
+
+  // ===== iOS-specific config =====
+  /** iOS API key (from GoogleService-Info.plist) */
+  ios_api_key?: string;
+  /** iOS app ID (from GoogleService-Info.plist) */
+  ios_app_id?: string;
+  /** iOS bundle identifier */
+  ios_bundle_id?: string;
+}
+
 // ============================================================================
 // SEO Meta Tags
 // ============================================================================
@@ -435,6 +477,8 @@ export interface HomeSettings {
   company_info?: CompanyContactInfo;
   /** Web push notification settings (VAPID keys, etc.) */
   web_push_settings?: WebPushSettings;
+  /** FCM settings for mobile app push notifications (iOS/Android) */
+  fcm_settings?: FCMSettings;
   /** Custom footer HTML content (published version, sanitized with DOMPurify on render) */
   footerHtml?: string;
   /** Draft footer HTML content (for preview before publishing) */

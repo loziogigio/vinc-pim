@@ -16,6 +16,16 @@ export interface ICustomerAccess {
 }
 
 /**
+ * User tag reference (embedded in portal user)
+ */
+export interface IUserTagRef {
+  tag_id: string;
+  name: string;
+  slug: string;
+  color?: string;
+}
+
+/**
  * Portal User document interface
  */
 export interface IPortalUser {
@@ -33,6 +43,9 @@ export interface IPortalUser {
 
   /** List of customers and addresses this user can access */
   customer_access: ICustomerAccess[];
+
+  /** Tags assigned to this user for campaign targeting */
+  tags?: IUserTagRef[];
 
   /** Whether the user account is active */
   is_active: boolean;

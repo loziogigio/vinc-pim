@@ -15,11 +15,12 @@ import {
 
 describe("unit: Notification Template Constants", () => {
   describe("NOTIFICATION_CHANNELS", () => {
-    it("should have exactly 4 channels", () => {
+    it("should have exactly 3 channels", () => {
       /**
-       * Verify that all 4 notification channels are defined.
+       * Verify that all 3 notification channels are defined.
+       * email, mobile (FCM), web_in_app
        */
-      expect(NOTIFICATION_CHANNELS).toHaveLength(4);
+      expect(NOTIFICATION_CHANNELS).toHaveLength(3);
     });
 
     it("should include all expected channels", () => {
@@ -27,9 +28,8 @@ describe("unit: Notification Template Constants", () => {
        * Verify channel names match expected values.
        */
       expect(NOTIFICATION_CHANNELS).toContain("email");
-      expect(NOTIFICATION_CHANNELS).toContain("web_push");
-      expect(NOTIFICATION_CHANNELS).toContain("mobile_push");
-      expect(NOTIFICATION_CHANNELS).toContain("sms");
+      expect(NOTIFICATION_CHANNELS).toContain("mobile");
+      expect(NOTIFICATION_CHANNELS).toContain("web_in_app");
     });
 
     it("should have channels in correct order", () => {

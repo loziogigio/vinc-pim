@@ -16,6 +16,8 @@ import {
 import type { INotificationTemplate } from "@/lib/constants/notification";
 import { sendEmail } from "@/lib/email";
 import { sendPush, isWebPushEnabled } from "@/lib/push";
+import { sendFCM, isFCMEnabled } from "@/lib/fcm";
+import type { SendFCMResult } from "@/lib/fcm/types";
 import { createInAppNotification } from "./in-app.service";
 import type { NotificationTrigger } from "@/lib/db/models/notification-template";
 import type { PushPreferences, SendPushResult } from "@/lib/push/types";
@@ -57,8 +59,10 @@ export interface SendNotificationResult {
   emailId?: string;
   messageId?: string;
   error?: string;
-  /** Push notification results */
+  /** Web Push notification results */
   pushResult?: SendPushResult;
+  /** FCM (mobile push) notification results */
+  fcmResult?: SendFCMResult;
   /** In-app notification ID if created */
   inAppNotificationId?: string;
 }
@@ -215,7 +219,52 @@ export async function sendNotification(
       }
     }
 
-    // 6. Create in-app notification if in_app channel is enabled
+    // 6. Send FCM (mobile push) notification if mobile channel is enabled
+    let fcmResult: SendFCMResult | undefined;
+
+    if (template.channels?.mobile?.enabled) {
+      try {
+        const fcmEnabled = await isFCMEnabled(tenantDb);
+
+        if (fcmEnabled) {
+          // Replace variables in mobile content
+          let mobileTitle = template.channels.mobile.title || "";
+          let mobileBody = template.channels.mobile.body || "";
+          let mobileActionUrl = template.channels.mobile.action_url || "";
+
+          for (const [key, value] of Object.entries(variables)) {
+            const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+            mobileTitle = mobileTitle.replace(pattern, value);
+            mobileBody = mobileBody.replace(pattern, value);
+            mobileActionUrl = mobileActionUrl.replace(pattern, value);
+          }
+
+          fcmResult = await sendFCM({
+            tenantDb,
+            title: mobileTitle,
+            body: mobileBody,
+            icon: template.channels.mobile.icon,
+            action_url: mobileActionUrl || undefined,
+            userIds: pushUserIds,
+            preferenceType: pushPreferenceType,
+            templateId: template.template_id,
+            trigger,
+            queue: queuePush,
+          });
+
+          if (fcmResult.sent || fcmResult.queued) {
+            console.log(
+              `[Notifications] FCM ${trigger}: ${fcmResult.queued ? `queued ${fcmResult.queued}` : `sent ${fcmResult.sent}`}`
+            );
+          }
+        }
+      } catch (fcmError) {
+        console.error(`[Notifications] FCM error for ${trigger}:`, fcmError);
+        // Don't fail the overall notification if FCM fails
+      }
+    }
+
+    // 7. Create in-app notification if in_app channel is enabled
     let inAppNotificationId: string | undefined;
 
     if (template.channels?.in_app?.enabled && targetUserId) {
@@ -258,6 +307,7 @@ export async function sendNotification(
       messageId: result.messageId,
       error: result.error,
       pushResult,
+      fcmResult,
       inAppNotificationId,
     };
   } catch (error) {
@@ -420,6 +470,7 @@ export interface SendCampaignResult {
   mobile_results?: {
     sent: number;
     failed: number;
+    queued: number;
   };
   in_app_results?: {
     created: number;
@@ -538,7 +589,7 @@ export async function sendCampaignNotification(
 
     // 6. Send to each recipient
     const emailResults = { sent: 0, failed: 0, queued: 0 };
-    const mobileResults = { sent: 0, failed: 0 };
+    const mobileResults = { sent: 0, failed: 0, queued: 0 };
     const inAppResults = { created: 0, failed: 0 };
 
     for (const recipient of recipients) {
@@ -566,22 +617,34 @@ export async function sendCampaignNotification(
         }
       }
 
-      // Send mobile push (via push service)
+      // Send mobile push (via FCM for native mobile apps)
       if (shouldSendMobile) {
         try {
-          const pushEnabled = await isWebPushEnabled(tenantDb);
-          if (pushEnabled) {
-            await sendPush({
+          const fcmEnabled = await isFCMEnabled(tenantDb);
+          if (fcmEnabled) {
+            const fcmResult = await sendFCM({
               tenantDb,
               title: template.title,
               body: template.body,
+              icon: templateChannels.mobile?.icon,
+              action_url: templateChannels.mobile?.action_url || template.url,
               userIds: [recipient.user_id],
+              templateId: template.template_id,
+              trigger: template.trigger,
               queue,
             });
-            mobileResults.sent++;
+            if (fcmResult.sent) {
+              mobileResults.sent += fcmResult.sent;
+            }
+            if (fcmResult.queued) {
+              mobileResults.queued += fcmResult.queued;
+            }
+            if (fcmResult.failed) {
+              mobileResults.failed += fcmResult.failed;
+            }
           }
         } catch (error) {
-          console.error(`[Campaign] Push error for ${recipient.user_id}:`, error);
+          console.error(`[Campaign] FCM error for ${recipient.user_id}:`, error);
           mobileResults.failed++;
         }
       }

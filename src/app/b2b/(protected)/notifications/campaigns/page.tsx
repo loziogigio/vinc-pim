@@ -21,12 +21,17 @@ import {
   X,
   Upload,
   Trash2,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { ProductPicker } from "@/components/notifications/ProductPicker";
 import { UserSelector, type SelectedUser } from "@/components/notifications/UserSelector";
+import { CampaignList } from "@/components/notifications/CampaignList";
+import { CampaignResults } from "@/components/notifications/CampaignResults";
 import type { ITemplateProduct, TemplateType } from "@/lib/constants/notification";
+
+type PageTab = "create" | "history";
 
 type RecipientType = "all" | "selected";
 type CampaignChannel = "email" | "mobile" | "web_in_app";
@@ -62,6 +67,14 @@ const TEMPLATE_TYPES: { id: TemplateType; label: string; description: string; ic
 ];
 
 export default function CampaignsPage() {
+  // Page tab state
+  const [activeTab, setActiveTab] = useState<PageTab>("create");
+  const [viewingResultsId, setViewingResultsId] = useState<string | null>(null);
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+
+  // Campaign identification
+  const [campaignName, setCampaignName] = useState("");
+
   // Campaign type and content
   const [campaignType, setCampaignType] = useState<TemplateType>("product");
   const [title, setTitle] = useState("");
@@ -94,6 +107,7 @@ export default function CampaignsPage() {
 
   // UI state
   const [isSending, setIsSending] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [showTestModal, setShowTestModal] = useState(false);
@@ -327,13 +341,156 @@ export default function CampaignsPage() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    // Validate campaign name
+    if (!campaignName.trim()) {
+      setToast({ type: "error", message: "Inserisci un nome per la campagna" });
+      return;
+    }
+
+    // Minimal validation for draft content
+    if (!title.trim() && !body.trim() && !emailHtml.trim()) {
+      setToast({ type: "error", message: "Inserisci almeno un titolo, descrizione o contenuto email" });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      const payload = {
+        name: campaignName.trim(),
+        type: campaignType,
+        title: title || "Bozza senza titolo",
+        body: body || "",
+        channels: Array.from(enabledChannels),
+        recipient_type: recipientType,
+        email_subject: emailSubject,
+        email_html: emailHtml,
+        products_url: productsUrl,
+        push_image: pushImage,
+        ...(recipientType === "selected" && selectedUsers.length > 0 && {
+          selected_user_ids: selectedUsers.map(u => u.id)
+        }),
+        ...(campaignType === "product" && products.length > 0 && { products }),
+        ...(campaignType === "generic" && { url, image, open_in_new_tab: openInNewTab }),
+      };
+
+      const res = await fetch("/api/b2b/notifications/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save draft");
+      }
+
+      const data = await res.json();
+      setToast({
+        type: "success",
+        message: `Bozza "${data.campaign.name}" salvata! (${data.campaign.slug})`,
+      });
+
+      // Reset form after successful save
+      setCampaignName("");
+      setTitle("");
+      setBody("");
+      setEmailSubject("");
+      setEmailHtml("");
+      setPushImage("");
+      setProducts([]);
+      setProductsUrl("");
+      setUrl("");
+      setImage("");
+      setSelectedUsers([]);
+      setRecipientType("all");
+    } catch (error) {
+      setToast({ type: "error", message: error instanceof Error ? error.message : "Errore nel salvataggio della bozza" });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  // Load draft for editing
+  const loadDraft = async (campaignId: string) => {
+    try {
+      const res = await fetch(`/api/b2b/notifications/campaigns/${campaignId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const campaign = data.campaign;
+
+        // Populate form with draft data
+        setCampaignName(campaign.name || "");
+        setCampaignType(campaign.type || "product");
+        setTitle(campaign.title || "");
+        setBody(campaign.body || "");
+        setPushImage(campaign.push_image || "");
+        setEmailSubject(campaign.email_subject || "");
+        setEmailHtml(campaign.email_html || "");
+        setProductsUrl(campaign.products_url || "");
+        setProducts(campaign.products || []);
+        setUrl(campaign.url || "");
+        setImage(campaign.image || "");
+        setOpenInNewTab(campaign.open_in_new_tab ?? true);
+        setEnabledChannels(new Set(campaign.channels || ["email", "mobile", "web_in_app"]));
+        setRecipientType(campaign.recipient_type || "all");
+
+        // Note: selected_user_ids would need to be loaded separately
+        setEditingDraftId(campaignId);
+        setActiveTab("create");
+      }
+    } catch (error) {
+      console.error("Error loading draft:", error);
+      setToast({ type: "error", message: "Errore nel caricamento della bozza" });
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Crea Campagna</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Invia notifiche ai tuoi clienti su più canali
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Campagne</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Crea e gestisci campagne di notifica
+            </p>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mt-4 border-b border-slate-200">
+          <button
+            onClick={() => {
+              setActiveTab("create");
+              setViewingResultsId(null);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition",
+              activeTab === "create"
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Send className="w-4 h-4" />
+            {editingDraftId ? "Modifica Bozza" : "Crea Campagna"}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("history");
+              setViewingResultsId(null);
+              setEditingDraftId(null);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition",
+              activeTab === "history"
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Clock className="w-4 h-4" />
+            Storico
+          </button>
+        </div>
       </div>
 
       {/* Toast */}
@@ -355,8 +512,47 @@ export default function CampaignsPage() {
         </div>
       )}
 
+      {/* History Tab */}
+      {activeTab === "history" && !viewingResultsId && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <CampaignList
+            onEditDraft={(id) => loadDraft(id)}
+            onViewResults={(id) => setViewingResultsId(id)}
+          />
+        </div>
+      )}
+
+      {/* Results View */}
+      {activeTab === "history" && viewingResultsId && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <CampaignResults
+            campaignId={viewingResultsId}
+            onBack={() => setViewingResultsId(null)}
+          />
+        </div>
+      )}
+
+      {/* Create Tab */}
+      {activeTab === "create" && (
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <div className="space-y-8">
+          {/* Campaign Name */}
+          <div className="max-w-xl">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Nome Campagna
+            </label>
+            <input
+              type="text"
+              value={campaignName}
+              onChange={(e) => setCampaignName(e.target.value)}
+              placeholder="es. Promozione Inverno 2026, Lancio Nuovi Prodotti..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Un nome descrittivo per identificare questa campagna
+            </p>
+          </div>
+
           {/* Campaign Type Selector */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-3">
@@ -766,6 +962,19 @@ export default function CampaignsPage() {
               Pianifica
             </Button>
             <Button
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft || !campaignName.trim() || (!title.trim() && !body.trim() && !emailHtml.trim())}
+              className="gap-2"
+            >
+              {isSavingDraft ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Salva Bozza
+            </Button>
+            <Button
               onClick={handleSendCampaign}
               disabled={!isValid() || isSending}
               className="gap-2"
@@ -780,6 +989,7 @@ export default function CampaignsPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Preview Modal */}
       {showPreview && (

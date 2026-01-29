@@ -49,6 +49,8 @@ export interface IEmailLog extends Document {
   // Metadata
   tags?: string[];
   metadata?: Record<string, any>;
+  // Campaign reference
+  campaign_id?: string;
   // Tenant info (for queue processing)
   tenant_db?: string;
   created_at: Date;
@@ -139,6 +141,11 @@ export const EmailLogSchema = new Schema<IEmailLog>(
     // Metadata
     tags: [String],
     metadata: Schema.Types.Mixed,
+    // Campaign reference
+    campaign_id: {
+      type: String,
+      index: true,
+    },
     // Tenant info (for queue processing)
     tenant_db: String,
   },

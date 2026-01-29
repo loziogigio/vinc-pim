@@ -56,6 +56,9 @@ export interface INotification {
   // Typed payload by category (generic, product, order, price)
   payload?: NotificationPayload;
 
+  // Campaign reference (if created from a campaign)
+  campaign_id?: string;
+
   // Status
   is_read: boolean;
   read_at?: Date;
@@ -179,6 +182,10 @@ export const NotificationSchema = new Schema<INotificationDocument>(
         },
         { _id: false }
       )
+    },
+    campaign_id: {
+      type: String,
+      index: true
     },
     is_read: {
       type: Boolean,

@@ -14,7 +14,7 @@ import type { INotificationTemplate, NotificationChannel } from "@/lib/constants
 
 describe("unit: Template Editor", () => {
   describe("Channel Tabs", () => {
-    const CHANNEL_TABS = ["email", "web_push", "mobile_push", "sms"] as const;
+    const CHANNEL_TABS = ["email", "mobile", "web_in_app"] as const;
 
     it("should have tabs for all channels", () => {
       /**

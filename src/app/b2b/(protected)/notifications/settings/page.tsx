@@ -1,10 +1,34 @@
 "use client";
 
-import { Mail, Bell, Smartphone, MessageSquare, ExternalLink, Building2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Mail, Bell, Smartphone, MessageSquare, ExternalLink, Building2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function NotificationSettingsPage() {
+  const [fcmStatus, setFcmStatus] = useState<{
+    loading: boolean;
+    configured: boolean;
+    enabled: boolean;
+    project_id?: string;
+  }>({ loading: true, configured: false, enabled: false });
+
+  useEffect(() => {
+    fetch("/api/b2b/settings/fcm")
+      .then((res) => res.json())
+      .then((data) => {
+        setFcmStatus({
+          loading: false,
+          configured: data.configured || false,
+          enabled: data.enabled || false,
+          project_id: data.project_id,
+        });
+      })
+      .catch(() => {
+        setFcmStatus({ loading: false, configured: false, enabled: false });
+      });
+  }, []);
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -54,12 +78,23 @@ export default function NotificationSettingsPage() {
         comingSoon
       />
 
-      {/* Mobile Push Channel */}
+      {/* Mobile Push Channel (FCM) */}
       <ChannelCard
         icon={Smartphone}
-        name="Mobile Push"
-        description="Push notifications to mobile apps"
-        comingSoon
+        name="Mobile Push (FCM)"
+        description="Push notifications to iOS and Android apps"
+        configured={fcmStatus.configured && fcmStatus.enabled}
+        configUrl="/b2b/notifications/settings/fcm"
+        status={
+          fcmStatus.loading
+            ? "Loading..."
+            : fcmStatus.configured
+              ? fcmStatus.enabled
+                ? `Enabled - Project: ${fcmStatus.project_id}`
+                : "Configured but disabled"
+              : "Not configured"
+        }
+        loading={fcmStatus.loading}
       />
 
       {/* SMS Channel */}
@@ -74,10 +109,9 @@ export default function NotificationSettingsPage() {
       <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <h3 className="font-medium text-blue-900 mb-2">Multi-Channel Support</h3>
         <p className="text-sm text-blue-700">
-          Currently, only the Email channel is available. Web Push, Mobile Push, and SMS
-          channels are planned for future releases. Templates are already designed to
-          support all channels - when a new channel becomes available, you can simply
-          enable it in your existing templates.
+          Email and Mobile Push (FCM) channels are available. Web Push and SMS
+          channels are planned for future releases. Templates are designed to
+          support all channels - configure each channel and enable it in your templates.
         </p>
       </div>
     </div>
@@ -92,6 +126,7 @@ function ChannelCard({
   configUrl,
   status,
   comingSoon,
+  loading,
 }: {
   icon: React.ElementType;
   name: string;
@@ -100,6 +135,7 @@ function ChannelCard({
   configUrl?: string;
   status?: string;
   comingSoon?: boolean;
+  loading?: boolean;
 }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
@@ -107,10 +143,18 @@ function ChannelCard({
         <div className="flex items-center gap-4">
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              configured ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
+              loading
+                ? "bg-slate-100 text-slate-400"
+                : configured
+                  ? "bg-emerald-100 text-emerald-600"
+                  : "bg-slate-100 text-slate-400"
             }`}
           >
-            <Icon className="w-5 h-5" />
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Icon className="w-5 h-5" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">

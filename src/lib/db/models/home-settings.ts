@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings, FCMSettings } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -135,6 +135,42 @@ const WebPushSettingsSchema = new Schema(
     enabled: { type: Boolean, default: false },
     default_icon: { type: String },
     default_badge: { type: String }
+  },
+  { _id: false }
+);
+
+// ============================================================================
+// FCM Settings Schema (Firebase Cloud Messaging for iOS/Android)
+// ============================================================================
+
+// FCM settings schema for Firebase credentials and configuration
+const FCMSettingsSchema = new Schema(
+  {
+    // Server-side config (Admin SDK)
+    enabled: { type: Boolean, default: false },
+    project_id: { type: String },
+    private_key: { type: String },
+    client_email: { type: String },
+    default_icon: { type: String },
+    default_color: { type: String },
+    ios_badge_behavior: {
+      type: String,
+      enum: ["increment", "set", "none"],
+      default: "increment"
+    },
+
+    // Client-side config (safe to expose)
+    messaging_sender_id: { type: String },
+    storage_bucket: { type: String },
+
+    // Android-specific
+    android_api_key: { type: String },
+    android_app_id: { type: String },
+
+    // iOS-specific
+    ios_api_key: { type: String },
+    ios_app_id: { type: String },
+    ios_bundle_id: { type: String }
   },
   { _id: false }
 );
@@ -292,6 +328,9 @@ const HomeSettingsSchema = new Schema(
     },
     web_push_settings: {
       type: WebPushSettingsSchema
+    },
+    fcm_settings: {
+      type: FCMSettingsSchema
     },
     footerHtml: { type: String },
     footerHtmlDraft: { type: String },

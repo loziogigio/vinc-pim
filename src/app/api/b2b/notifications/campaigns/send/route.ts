@@ -2,10 +2,12 @@
  * Campaign Send API
  *
  * POST /api/b2b/notifications/campaigns/send - Send campaign to recipients
+ *
+ * Supports both B2B Session and API Key authentication.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { sendEmail } from "@/lib/email";
 import {
@@ -14,6 +16,7 @@ import {
   generateGenericEmailHtml,
 } from "@/lib/notifications/email-builder";
 import { createInAppNotification } from "@/lib/notifications/in-app.service";
+import { sendFCM, isFCMEnabled, getActiveTokens } from "@/lib/fcm";
 import type { ITemplateProduct, TemplateType } from "@/lib/constants/notification";
 
 interface SelectedUserInput {
@@ -46,12 +49,10 @@ interface CampaignSendPayload {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const payload: CampaignSendPayload = await req.json();
 
     const {
@@ -96,14 +97,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email HTML content is required" }, { status: 400 });
     }
 
-    // Get recipients based on type
-    const { Customer } = await connectWithModels(tenantDb);
-    let recipients: { _id: string; email: string; company_name?: string }[] = [];
+    // Check if FCM is enabled for mobile channel
+    let fcmEnabled = false;
+    if (channels.includes("mobile")) {
+      fcmEnabled = await isFCMEnabled(tenantDb);
+      if (!fcmEnabled) {
+        return NextResponse.json(
+          { error: "FCM push notifications not enabled. Configure FCM in settings first." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Get models once for reuse (DRY principle)
+    const { PortalUser } = await connectWithModels(tenantDb);
+    let recipients: { _id: string; portal_user_id: string; email: string; username?: string }[] = [];
 
     switch (recipient_type) {
       case "all":
-        recipients = await Customer.find({ status: "active" })
-          .select("_id email company_name")
+        // Get all active portal users (they have the mobile app)
+        recipients = await PortalUser.find({ is_active: true })
+          .select("_id portal_user_id email username")
           .lean();
         break;
       case "selected":
@@ -114,10 +128,12 @@ export async function POST(req: NextRequest) {
           );
         }
         // Use selected users directly (they come with id, email, name)
+        // id should be portal_user_id
         recipients = selected_users.map((u) => ({
           _id: u.id,
+          portal_user_id: u.id,
           email: u.email,
-          company_name: u.name,
+          username: u.name,
         }));
         break;
       default:
@@ -195,14 +211,17 @@ export async function POST(req: NextRequest) {
       // Create in-app notification if enabled
       if (channels.includes("web_in_app")) {
         try {
-          await createInAppNotification(tenantDb, {
-            user_id: recipient._id.toString(),
-            type: type === "product" ? "campaign_product" : "campaign_generic",
-            title,
-            body: messageBody,
+          await createInAppNotification({
+            tenantDb,
+            user_id: recipient.portal_user_id,
+            trigger: "custom",
+            title: title || "Nuova comunicazione",
+            body: messageBody || "",
             icon: notificationIcon,
             action_url: url,
-            data: notificationPayload,
+            payload: type === "product"
+              ? { category: "product", products: products || [] }
+              : { category: "generic", url, open_in_new_tab },
           });
           results.web_in_app.sent++;
         } catch {
@@ -210,10 +229,43 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Mobile push notification (TODO: implement push service)
-      if (channels.includes("mobile")) {
-        // TODO: Queue mobile push notifications
-        results.mobile.sent++;
+      // Mobile push notification (FCM)
+      if (channels.includes("mobile") && recipient.portal_user_id) {
+        try {
+          // Check if user has registered FCM tokens
+          const tokens = await getActiveTokens(tenantDb, { userIds: [recipient.portal_user_id] });
+
+          if (tokens.length > 0) {
+            // Send FCM notification (queued for better performance)
+            const fcmResult = await sendFCM({
+              tenantDb,
+              title: title || "Nuova comunicazione",
+              body: messageBody || "",
+              icon: notificationIcon,
+              image: push_image || image,
+              action_url: url,
+              userIds: [recipient.portal_user_id],
+              queue: true, // Queue for better performance on bulk sends
+              priority: "normal",
+              trigger: "campaign",
+              data: {
+                campaign_type: type,
+                ...(type === "product" && products?.[0]?.sku
+                  ? { sku: products[0].sku }
+                  : {}),
+              },
+            });
+
+            if (fcmResult.success) {
+              results.mobile.sent += fcmResult.queued || fcmResult.sent || 1;
+            } else {
+              results.mobile.failed++;
+            }
+          }
+          // If no tokens, silently skip (user hasn't registered a device)
+        } catch {
+          results.mobile.failed++;
+        }
       }
     }
 

@@ -42,7 +42,10 @@ import { MobileHomeConfigSchema } from "./models/mobile-home-config";
 import { NotificationTemplateSchema } from "./models/notification-template";
 import { EmailComponentSchema } from "./models/email-component";
 import { PushSubscriptionSchema } from "./models/push-subscription";
+import { FCMTokenSchema } from "./models/fcm-token";
 import { NotificationSchema } from "./models/notification";
+import { CampaignSchema } from "./models/campaign";
+import { UserTagSchema } from "./models/user-tag";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -79,7 +82,10 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   NotificationTemplate: NotificationTemplateSchema,
   EmailComponent: EmailComponentSchema,
   PushSubscription: PushSubscriptionSchema,
+  FCMToken: FCMTokenSchema,
   Notification: NotificationSchema,
+  Campaign: CampaignSchema,
+  UserTag: UserTagSchema,
 };
 
 /**
@@ -158,7 +164,10 @@ export async function getTenantModels(dbName: string) {
     NotificationTemplate: connection.models.NotificationTemplate,
     EmailComponent: connection.models.EmailComponent,
     PushSubscription: connection.models.PushSubscription,
+    FCMToken: connection.models.FCMToken,
     Notification: connection.models.Notification,
+    Campaign: connection.models.Campaign,
+    UserTag: connection.models.UserTag,
   };
 }
 
