@@ -17,6 +17,12 @@ import {
 } from "../db/models/admin-tenant";
 import { LanguageModel } from "../db/models/language";
 import { notifyTenantCacheClear } from "./cache-clear.service";
+import { removeFromPool } from "../db/connection-pool";
+import {
+  seedDefaultTemplates,
+  seedCampaignTemplates,
+} from "../notifications/seed-templates";
+import { initializeHomeSettings } from "../db/home-settings";
 
 // ============================================
 // TYPES
@@ -366,6 +372,37 @@ async function seedInitialLanguages(connection: mongoose.Connection): Promise<vo
   console.log(`Seeded ${initialLanguages.length} languages (only Italian enabled by default)`);
 }
 
+async function seedInitialNotificationTemplates(dbName: string): Promise<void> {
+  try {
+    const defaultResult = await seedDefaultTemplates(dbName);
+    const campaignResult = await seedCampaignTemplates(dbName);
+
+    const totalCreated = defaultResult.created + campaignResult.created;
+    const totalSkipped = defaultResult.skipped + campaignResult.skipped;
+
+    if (totalCreated > 0) {
+      console.log(`Seeded ${totalCreated} notification templates (${totalSkipped} skipped)`);
+    } else if (totalSkipped > 0) {
+      console.log(`Notification templates already seeded (${totalSkipped} found), skipping`);
+    }
+  } catch (error) {
+    // Log but don't fail tenant creation if template seeding fails
+    console.warn(`Warning: Failed to seed notification templates:`, error);
+  }
+}
+
+async function seedInitialHomeSettings(dbName: string, tenantName: string): Promise<void> {
+  try {
+    const result = await initializeHomeSettings(tenantName, dbName);
+    if (result) {
+      console.log(`Seeded home settings with default header configuration`);
+    }
+  } catch (error) {
+    // Log but don't fail tenant creation if home settings seeding fails
+    console.warn(`Warning: Failed to seed home settings:`, error);
+  }
+}
+
 async function dropTenantDatabase(dbName: string): Promise<void> {
   const mongoUrl = process.env.VINC_MONGO_URL;
   if (!mongoUrl) {
@@ -427,7 +464,7 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
   // Step 1: Create Solr collection
   await createSolrCollection(solrCore);
 
-  // Step 2: Create tenant database, initial admin user, and seed languages
+  // Step 2: Create tenant database, initial admin user, and seed data
   let tenantConnection: mongoose.Connection | null = null;
   try {
     tenantConnection = await createTenantDatabase(mongoDb);
@@ -445,7 +482,13 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
     }
   }
 
-  // Step 3: Register tenant in admin database
+  // Step 3: Seed notification templates (using connectWithModels)
+  await seedInitialNotificationTemplates(mongoDb);
+
+  // Step 4: Seed home settings with default header
+  await seedInitialHomeSettings(mongoDb, name);
+
+  // Step 5: Register tenant in admin database
   const tenant = await TenantModel.create({
     tenant_id,
     name,
@@ -530,13 +573,16 @@ export async function deleteTenant(tenantId: string): Promise<void> {
     throw new Error(`Tenant '${tenantId}' not found`);
   }
 
-  // Step 1: Delete Solr core
+  // Step 1: Delete Solr core/collection
   await deleteSolrCore(tenant.solr_core);
 
   // Step 2: Drop MongoDB database
   await dropTenantDatabase(tenant.mongo_db);
 
-  // Step 3: Remove from admin database
+  // Step 3: Remove from connection pool (prevents stale connections on re-creation)
+  removeFromPool(tenant.mongo_db);
+
+  // Step 4: Remove from admin database
   await TenantModel.deleteOne({ tenant_id: tenantId });
 
   console.log(`Deleted tenant: ${tenantId}`);

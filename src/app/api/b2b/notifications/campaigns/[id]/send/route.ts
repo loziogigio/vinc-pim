@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { sendEmail } from "@/lib/email";
 import {
@@ -23,13 +23,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { Campaign, PortalUser } = await connectWithModels(tenantDb);
 
     // Get campaign
@@ -169,14 +169,16 @@ export async function POST(
         // Web In-App
         if (campaign.channels.includes("web_in_app")) {
           try {
-            await createInAppNotification(tenantDb, {
+            await createInAppNotification({
+              tenantDb,
               user_id: recipient.portal_user_id,
-              type: campaign.type === "product" ? "campaign_product" : "campaign_generic",
+              trigger: campaign.type === "product" ? "campaign_product" : "campaign_generic",
               title: campaign.title,
               body: campaign.body,
               icon: notificationIcon,
               action_url: campaign.url,
-              data: { ...notificationPayload, campaign_id: campaign.campaign_id },
+              payload: notificationPayload,
+              campaign_id: campaign.campaign_id,
             });
             results.web_in_app.sent++;
           } catch {

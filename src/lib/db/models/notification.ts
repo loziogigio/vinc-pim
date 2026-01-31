@@ -178,7 +178,11 @@ export const NotificationSchema = new Schema<INotificationDocument>(
           filters: {
             type: Schema.Types.Mixed,
             default: undefined
-          }
+          },
+          // Raw search URL for "See All" navigation (e.g., "shop?text=moon&filters-brand_id=004")
+          products_url: { type: String },
+          // Notification log ID for tracking (format: nlog_XXXXXXXXXXXX)
+          notification_log_id: { type: String }
         },
         { _id: false }
       )

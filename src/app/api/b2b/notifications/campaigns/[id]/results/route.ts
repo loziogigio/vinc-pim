@@ -4,28 +4,39 @@
  * GET /api/b2b/notifications/campaigns/[id]/results - Get campaign results
  *
  * Returns detailed results per channel for a sent campaign.
+ * Response format matches CampaignResults component interface.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
+import { getCampaignStats } from "@/lib/notifications/notification-log.service";
+import type { NotificationChannel } from "@/lib/constants/notification";
+
+interface ChannelResults {
+  sent: number;
+  failed: number;
+  opened?: number;
+  clicked?: number;
+  read?: number;
+}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { Campaign } = await connectWithModels(tenantDb);
 
     const campaign = await Campaign.findOne({ campaign_id: id })
-      .select("campaign_id status type title channels recipient_type recipient_count sent_at results")
+      .select("campaign_id name status type title channels recipient_type recipient_count sent_at results")
       .lean();
 
     if (!campaign) {
@@ -40,66 +51,98 @@ export async function GET(
       );
     }
 
-    // Calculate summary metrics
-    const results = campaign.results || {
-      email: { sent: 0, failed: 0, opened: 0, clicked: 0 },
-      mobile: { sent: 0, failed: 0, clicked: 0 },
-      web_in_app: { sent: 0, failed: 0, read: 0 },
-    };
+    // Get live stats from unified notification log (with platform separation)
+    const liveStats = await getCampaignStats(id);
 
-    const summary = {
-      total_recipients: campaign.recipient_count || 0,
-      total_sent: results.email.sent + results.mobile.sent + results.web_in_app.sent,
-      total_failed: results.email.failed + results.mobile.failed + results.web_in_app.failed,
-      channels_used: campaign.channels,
-    };
+    // Build results by display channel: email, mobile_app, web
+    // - email: Email channel tracking
+    // - mobile_app: In-app notifications tracked from Flutter/mobile (platform: "mobile")
+    // - web: In-app notifications tracked from web browser (platform: "web")
+    const results: {
+      email?: ChannelResults;
+      mobile_app?: ChannelResults;
+      web?: ChannelResults;
+    } = {};
 
-    // Calculate rates per channel
-    const channelMetrics: Record<string, unknown> = {};
+    const channels = campaign.channels as NotificationChannel[];
+    const hasInAppChannel = channels.includes("web_in_app") || channels.includes("mobile");
 
-    if (campaign.channels.includes("email")) {
-      const emailTotal = results.email.sent + results.email.failed;
-      channelMetrics.email = {
-        sent: results.email.sent,
-        failed: results.email.failed,
-        opened: results.email.opened,
-        clicked: results.email.clicked,
-        delivery_rate: emailTotal > 0 ? Math.round((results.email.sent / emailTotal) * 100) : 0,
-        open_rate: results.email.sent > 0 ? Math.round((results.email.opened / results.email.sent) * 100) : 0,
-        click_rate: results.email.sent > 0 ? Math.round((results.email.clicked / results.email.sent) * 100) : 0,
+    // Email channel
+    if (channels.includes("email")) {
+      results.email = {
+        sent: liveStats.email.sent,
+        failed: liveStats.email.failed,
+        opened: liveStats.email.opened,
+        clicked: liveStats.email.clicked,
       };
     }
 
-    if (campaign.channels.includes("mobile")) {
-      const mobileTotal = results.mobile.sent + results.mobile.failed;
-      channelMetrics.mobile = {
-        sent: results.mobile.sent,
-        failed: results.mobile.failed,
-        clicked: results.mobile.clicked,
-        delivery_rate: mobileTotal > 0 ? Math.round((results.mobile.sent / mobileTotal) * 100) : 0,
-        click_rate: results.mobile.sent > 0 ? Math.round((results.mobile.clicked / results.mobile.sent) * 100) : 0,
+    // Mobile App tracking (in-app notifications tracked from mobile platform)
+    if (hasInAppChannel) {
+      results.mobile_app = {
+        sent: liveStats.mobile_app.sent,
+        failed: liveStats.mobile_app.failed,
+        opened: liveStats.mobile_app.opened,
+        clicked: liveStats.mobile_app.clicked,
+        read: liveStats.mobile_app.read,
       };
     }
 
-    if (campaign.channels.includes("web_in_app")) {
-      const webTotal = results.web_in_app.sent + results.web_in_app.failed;
-      channelMetrics.web_in_app = {
-        sent: results.web_in_app.sent,
-        failed: results.web_in_app.failed,
-        read: results.web_in_app.read,
-        delivery_rate: webTotal > 0 ? Math.round((results.web_in_app.sent / webTotal) * 100) : 0,
-        read_rate: results.web_in_app.sent > 0 ? Math.round((results.web_in_app.read / results.web_in_app.sent) * 100) : 0,
+    // Web tracking (in-app notifications tracked from web platform)
+    if (hasInAppChannel) {
+      results.web = {
+        sent: liveStats.web.sent,
+        failed: liveStats.web.failed,
+        opened: liveStats.web.opened,
+        clicked: liveStats.web.clicked,
+        read: liveStats.web.read,
       };
+    }
+
+    // Calculate totals (email sent + web_in_app sent, avoid double counting mobile_app/web)
+    const emailSent = liveStats.email.sent;
+    const inAppSent = liveStats.mobile_app.sent; // Same as web.sent (shared)
+    const totalSent = emailSent + inAppSent;
+
+    const emailFailed = liveStats.email.failed;
+    const inAppFailed = liveStats.mobile_app.failed; // Same as web.failed (shared)
+    const totalFailed = emailFailed + inAppFailed;
+
+    const total = totalSent + totalFailed;
+
+    const totals: {
+      sent: number;
+      failed: number;
+      delivery_rate: number;
+      open_rate?: number;
+      click_rate?: number;
+    } = {
+      sent: totalSent,
+      failed: totalFailed,
+      delivery_rate: total > 0 ? totalSent / total : 0,
+    };
+
+    // Add open_rate based on all channels (combining mobile + web opens)
+    const totalOpened = liveStats.email.opened + liveStats.mobile_app.opened + liveStats.web.opened;
+    if (totalSent > 0) {
+      totals.open_rate = Math.min(totalOpened / totalSent, 1);
+    }
+
+    // Add click_rate based on all channels
+    const totalClicks = liveStats.email.clicked + liveStats.mobile_app.clicked + liveStats.web.clicked;
+    if (totalSent > 0) {
+      totals.click_rate = Math.min(totalClicks / totalSent, 1);
     }
 
     return NextResponse.json({
       campaign_id: campaign.campaign_id,
+      name: campaign.name || campaign.title,
       status: campaign.status,
-      type: campaign.type,
-      title: campaign.title,
       sent_at: campaign.sent_at,
-      summary,
-      channels: channelMetrics,
+      recipient_count: campaign.recipient_count || 0,
+      channels,
+      results,
+      totals,
     });
   } catch (error) {
     console.error("Error fetching campaign results:", error);

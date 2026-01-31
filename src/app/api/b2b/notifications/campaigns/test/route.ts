@@ -22,26 +22,17 @@ import {
 } from "@/lib/notifications/email-builder";
 import { createInAppNotification } from "@/lib/notifications/in-app.service";
 import { sendFCM, isFCMEnabled, getActiveTokens } from "@/lib/fcm";
-import type { ITemplateProduct, TemplateType } from "@/lib/constants/notification";
+import {
+  validateCampaignPayload,
+  buildInAppPayload,
+  getNotificationIcon,
+  createResultsTracker,
+  type CampaignPayload,
+} from "@/lib/notifications/campaign.utils";
+import type { NotificationChannel } from "@/lib/constants/notification";
 
-interface CampaignTestPayload {
-  type: TemplateType;
-  // Push notification fields
-  title?: string;
-  body?: string;
-  // Email fields
-  email_subject?: string;
-  email_html?: string;
-  products_url?: string;
-  // Products (for product campaigns)
-  products?: ITemplateProduct[];
-  // Test
-  channels: ("email" | "mobile" | "web_in_app")[];
+interface CampaignTestPayload extends CampaignPayload {
   test_email: string;
-  // Generic type (for backwards compatibility)
-  url?: string;
-  image?: string;
-  open_in_new_tab?: boolean;
 }
 
 export async function POST(req: NextRequest) {
@@ -50,52 +41,48 @@ export async function POST(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const { tenantDb } = auth;
-    const body: CampaignTestPayload = await req.json();
+    const payload: CampaignTestPayload = await req.json();
 
-    const { type, title, body: messageBody, email_subject, email_html, products_url, products, channels, test_email, url, image, open_in_new_tab } = body;
+    const {
+      type,
+      title,
+      body: messageBody,
+      push_image,
+      email_subject,
+      email_html,
+      products_url,
+      products,
+      channels,
+      test_email,
+      url,
+      image,
+      open_in_new_tab,
+    } = payload;
 
-    // Validate required fields
-    if (!type || !["product", "generic"].includes(type)) {
-      return NextResponse.json({ error: "Invalid campaign type" }, { status: 400 });
-    }
-
+    // Validate test email
     if (!test_email) {
       return NextResponse.json({ error: "Test email address is required" }, { status: 400 });
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(test_email)) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
     }
 
-    // Check at least one channel is selected
-    if (!channels || !Array.isArray(channels) || channels.length === 0) {
-      return NextResponse.json(
-        { error: "At least one channel must be selected" },
-        { status: 400 }
-      );
+    // Use shared validation
+    const validation = validateCampaignPayload(payload);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Title and body required for push notifications (mobile/web_in_app)
-    const hasPush = channels.includes("mobile") || channels.includes("web_in_app");
-    if (hasPush) {
-      if (!title?.trim()) {
-        return NextResponse.json({ error: "Title is required for push notifications" }, { status: 400 });
-      }
-      if (!messageBody?.trim()) {
-        return NextResponse.json({ error: "Message body is required for push notifications" }, { status: 400 });
-      }
-    }
-
-    // Track results
-    const results: Record<string, { sent: number; failed: number; error?: string }> = {};
+    // Track results using shared tracker
+    const results = createResultsTracker() as Record<NotificationChannel, { sent: number; failed: number; error?: string }>;
     const channelsSent: string[] = [];
 
-    // Get models once for reuse (DRY principle)
     const { PortalUser } = await connectWithModels(tenantDb);
 
-    // Lookup portal user once if needed for mobile or web_in_app (DRY)
+    // Lookup portal user once if needed for mobile or web_in_app
+    const hasPush = channels.includes("mobile") || channels.includes("web_in_app");
     let portalUser: { portal_user_id?: string } | null = null;
     if (hasPush) {
       portalUser = await PortalUser.findOne(
@@ -104,13 +91,13 @@ export async function POST(req: NextRequest) {
       ).lean();
     }
 
+    // Get notification icon using shared utility
+    const notificationIcon = getNotificationIcon(push_image, image);
+
     // =========================================
     // EMAIL CHANNEL
     // =========================================
     if (channels.includes("email")) {
-      results.email = { sent: 0, failed: 0 };
-
-      // Generate email content
       let emailContent: string;
       if (email_html) {
         emailContent = generateCustomEmailHtml(email_html, products_url, products);
@@ -120,11 +107,9 @@ export async function POST(req: NextRequest) {
         emailContent = "<p>Nessun contenuto email configurato.</p>";
       }
 
-      // Build complete email with header, wrapper, and footer
       const fullHtml = await buildCampaignEmail(tenantDb, emailContent);
-
-      // Send test email
       const subject = email_subject || title || "Campagna";
+
       const emailResult = await sendEmail({
         to: test_email,
         subject: `[TEST] ${subject}`,
@@ -147,47 +132,39 @@ export async function POST(req: NextRequest) {
     // MOBILE CHANNEL (FCM)
     // =========================================
     if (channels.includes("mobile")) {
-      results.mobile = { sent: 0, failed: 0 };
-
-      // Check if FCM is enabled
       const fcmEnabled = await isFCMEnabled(tenantDb);
       if (!fcmEnabled) {
         results.mobile.error = "FCM not enabled for this tenant";
         results.mobile.failed = 1;
+      } else if (!portalUser?.portal_user_id) {
+        results.mobile.error = `No portal user found with email ${test_email}`;
+        results.mobile.failed = 1;
       } else {
-        // Use pre-fetched portal user
-        if (!portalUser || !portalUser.portal_user_id) {
-          results.mobile.error = `No portal user found with email ${test_email}`;
+        const tokens = await getActiveTokens(tenantDb, { userIds: [portalUser.portal_user_id] });
+
+        if (tokens.length === 0) {
+          results.mobile.error = `User has no registered mobile devices`;
           results.mobile.failed = 1;
         } else {
-          // Check if user has registered devices
-          const tokens = await getActiveTokens(tenantDb, { userIds: [portalUser.portal_user_id] });
+          const fcmResult = await sendFCM({
+            tenantDb,
+            title: `[TEST] ${title}`,
+            body: messageBody || "",
+            icon: notificationIcon,
+            image: push_image || image,
+            action_url: url,
+            userIds: [portalUser.portal_user_id],
+            queue: false,
+            priority: "high",
+            trigger: "campaign_test",
+          });
 
-          if (tokens.length === 0) {
-            results.mobile.error = `User has no registered mobile devices`;
-            results.mobile.failed = 1;
+          if (fcmResult.success && fcmResult.sent > 0) {
+            results.mobile.sent = fcmResult.sent;
+            channelsSent.push("mobile");
           } else {
-            // Send FCM notification
-            const fcmResult = await sendFCM({
-              tenantDb,
-              title: `[TEST] ${title}`,
-              body: messageBody || "",
-              icon: image,
-              image: image,
-              action_url: url,
-              userIds: [portalUser.portal_user_id],
-              queue: false, // Send immediately for test
-              priority: "high",
-              trigger: "campaign_test",
-            });
-
-            if (fcmResult.success && fcmResult.sent > 0) {
-              results.mobile.sent = fcmResult.sent;
-              channelsSent.push("mobile");
-            } else {
-              results.mobile.failed = fcmResult.failed || 1;
-              results.mobile.error = fcmResult.errors?.[0]?.error || "Failed to send FCM";
-            }
+            results.mobile.failed = fcmResult.failed || 1;
+            results.mobile.error = fcmResult.errors?.[0]?.error || "Failed to send FCM";
           }
         }
       }
@@ -197,25 +174,23 @@ export async function POST(req: NextRequest) {
     // WEB IN-APP CHANNEL
     // =========================================
     if (channels.includes("web_in_app")) {
-      results.web_in_app = { sent: 0, failed: 0 };
-
-      // Use pre-fetched portal user
-      if (!portalUser || !portalUser.portal_user_id) {
+      if (!portalUser?.portal_user_id) {
         results.web_in_app.error = `No portal user found with email ${test_email}`;
         results.web_in_app.failed = 1;
       } else {
         try {
+          // Use shared payload builder
+          const inAppPayload = buildInAppPayload(type, { products, url, open_in_new_tab });
+
           await createInAppNotification({
             tenantDb,
             user_id: portalUser.portal_user_id,
             trigger: "custom",
             title: `[TEST] ${title}`,
             body: messageBody || "",
-            icon: image,
+            icon: notificationIcon,
             action_url: url,
-            payload: type === "product"
-              ? { category: "product", products: products || [] }
-              : { category: "generic", url, open_in_new_tab },
+            payload: inAppPayload,
           });
           results.web_in_app.sent = 1;
           channelsSent.push("web_in_app");
@@ -226,7 +201,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if any channel succeeded
     const anySuccess = channelsSent.length > 0;
 
     return NextResponse.json({
@@ -239,9 +213,9 @@ export async function POST(req: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error("Error sending test email:", error);
+    console.error("Error sending test:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send test email" },
+      { error: error instanceof Error ? error.message : "Failed to send test" },
       { status: 500 }
     );
   }

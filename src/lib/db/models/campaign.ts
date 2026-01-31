@@ -23,7 +23,7 @@ import {
 
 // Re-export for convenience
 export { CAMPAIGN_STATUSES, RECIPIENT_TYPES };
-export type { CampaignStatus, RecipientType };
+export type { CampaignStatus, RecipientType, ISelectedUser };
 
 // ============================================
 // INTERFACES
@@ -46,6 +46,15 @@ export interface ICampaignResults {
     failed: number;
     read: number;
   };
+}
+
+/**
+ * Selected user for campaign targeting
+ */
+export interface ISelectedUser {
+  id: string;
+  email: string;
+  name: string;
 }
 
 export interface ICampaign {
@@ -73,6 +82,7 @@ export interface ICampaign {
   // Recipients
   recipient_type: RecipientType;
   selected_user_ids?: string[];
+  selected_users?: ISelectedUser[];
   tag_ids?: string[];
   recipient_count?: number;
 
@@ -130,6 +140,15 @@ const TemplateProductSchema = new Schema(
     name: { type: String, required: true },
     image: { type: String, required: true },
     item_ref: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const SelectedUserSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    email: { type: String, required: true },
+    name: { type: String, required: true },
   },
   { _id: false }
 );
@@ -247,6 +266,10 @@ const CampaignSchema = new Schema<ICampaignDocument>(
       type: [String],
       default: undefined,
     },
+    selected_users: {
+      type: [SelectedUserSchema],
+      default: undefined,
+    },
     tag_ids: {
       type: [String],
       default: undefined,
@@ -296,10 +319,12 @@ CampaignSchema.index({ slug: 1 });
 CampaignSchema.index({ name: "text" }); // Text search on name
 
 // ============================================
-// PRE-SAVE HOOK
+// PRE-VALIDATE HOOK
 // ============================================
 
-CampaignSchema.pre("save", function (next) {
+// Use pre-validate to generate slug BEFORE validation runs
+// (required fields are validated after this hook)
+CampaignSchema.pre("validate", function (next) {
   // Auto-generate slug from name if not set or if name changed
   if (this.isModified("name") || !this.slug) {
     this.slug = generateSlug(this.name);

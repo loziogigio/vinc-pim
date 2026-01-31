@@ -17,9 +17,11 @@ import {
   FileText,
   Play,
   RefreshCw,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
+import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 
 interface EmailLog {
   _id: string;
@@ -123,6 +125,18 @@ export default function LogsPage() {
   const [customDateTo, setCustomDateTo] = useState("");
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Copy log ID to clipboard
+  const copyToClipboard = async (emailId: string) => {
+    try {
+      await navigator.clipboard.writeText(emailId);
+      setCopiedId(emailId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const handleSendNow = async (emailId: string) => {
     setSendingIds((prev) => new Set(prev).add(emailId));
@@ -206,6 +220,14 @@ export default function LogsPage() {
 
   return (
     <div className="p-6">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs items={[
+          { label: "Notifiche", href: "/b2b/notifications" },
+          { label: "Logs" },
+        ]} />
+      </div>
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Notification Logs</h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -286,6 +308,9 @@ export default function LogsPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Log ID
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Date
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -308,6 +333,20 @@ export default function LogsPage() {
             <tbody className="divide-y divide-slate-200">
               {logs.map((log) => (
                 <tr key={log._id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => copyToClipboard(log.email_id)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
+                      title="Copy log ID for API calls"
+                    >
+                      {copiedId === log.email_id ? (
+                        <Check className="w-3 h-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                      {log.email_id}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {formatDate(log.created_at)}
                   </td>

@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { MonacoHtmlEditor } from "@/components/shared/MonacoHtmlEditor";
+import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 
 interface EmailComponent {
   _id: string;
@@ -189,6 +190,14 @@ export default function ComponentsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs items={[
+          { label: "Notifiche", href: "/b2b/notifications" },
+          { label: "Componenti" },
+        ]} />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">

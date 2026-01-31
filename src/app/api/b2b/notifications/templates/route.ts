@@ -6,17 +6,17 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { listTemplates, createTemplate } from "@/lib/notifications/template.service";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { searchParams } = new URL(req.url);
 
     const result = await listTemplates(tenantDb, {
@@ -40,17 +40,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const body = await req.json();
 
     const template = await createTemplate(tenantDb, {
       ...body,
-      created_by: session.email || "unknown",
+      created_by: auth.email || "unknown",
     });
 
     return NextResponse.json(template, { status: 201 });

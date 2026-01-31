@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { EMAIL_COMPONENT_TYPES } from "@/lib/db/models/email-component";
 
@@ -16,13 +16,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { EmailComponent } = await connectWithModels(tenantDb);
 
     const component = await EmailComponent.findOne({ component_id: id }).lean();
@@ -45,16 +45,16 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await req.json();
     const { name, description, html_content, variables, is_default, is_active } = body;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { EmailComponent } = await connectWithModels(tenantDb);
 
     const component = await EmailComponent.findOne({ component_id: id });
@@ -98,13 +98,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { EmailComponent, NotificationTemplate } = await connectWithModels(tenantDb);
 
     const component = await EmailComponent.findOne({ component_id: id });

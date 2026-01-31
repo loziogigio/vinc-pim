@@ -6,13 +6,10 @@
  */
 
 import { connectWithModels } from "@/lib/db/connection";
-import { sendEmail } from "@/lib/email";
-import {
-  buildCampaignEmail,
-  generateCustomEmailHtml,
-} from "@/lib/notifications/email-builder";
-import { createInAppNotification } from "@/lib/notifications/in-app.service";
-import { sendFCM, isFCMEnabled, getActiveTokens } from "@/lib/fcm";
+import { buildCampaignEmail, generateCustomEmailHtml } from "@/lib/notifications/email-builder";
+import { sendCampaignDirect } from "@/lib/notifications/send.service";
+import { getCampaignStats } from "@/lib/notifications/notification-log.service";
+import { isFCMEnabled } from "@/lib/fcm";
 import type {
   CampaignStatus,
   TemplateType,
@@ -312,14 +309,7 @@ export async function sendCampaign(
       return { error: "No recipients found", status: 400 };
     }
 
-    // Track results
-    const results: CampaignResults = {
-      email: { sent: 0, failed: 0, opened: 0, clicked: 0 },
-      mobile: { sent: 0, failed: 0, clicked: 0 },
-      web_in_app: { sent: 0, failed: 0, read: 0 },
-    };
-
-    // Generate email HTML if needed
+    // Generate email HTML if needed (pre-render once for all recipients)
     let fullEmailHtml: string | undefined;
     if (campaign.channels.includes("email") && campaign.email_html) {
       const emailContent = generateCustomEmailHtml(
@@ -330,106 +320,60 @@ export async function sendCampaign(
       fullEmailHtml = await buildCampaignEmail(tenantDb, emailContent);
     }
 
-    const notificationIcon = campaign.push_image || campaign.image;
-
-    const notificationPayload =
-      campaign.type === "product"
-        ? {
-            category: "product" as const,
-            products: campaign.products?.map((p: ITemplateProduct) => ({
-              sku: p.sku,
-              name: p.name,
-              image: p.image,
-              item_ref: p.item_ref,
-            })),
-            campaign_id: campaign.campaign_id,
-          }
-        : {
-            category: "generic" as const,
-            url: campaign.url,
-            open_in_new_tab: campaign.open_in_new_tab,
-            campaign_id: campaign.campaign_id,
-          };
-
-    // Process each recipient
-    for (const recipient of recipients) {
-      // Email
-      if (campaign.channels.includes("email") && fullEmailHtml && recipient.email) {
-        try {
-          const subject = campaign.email_subject || campaign.title || "Nuova comunicazione";
-          const result = await sendEmail({
-            to: recipient.email,
-            subject,
-            html: fullEmailHtml,
-            text: campaign.body || "Visualizza questa email nel tuo browser.",
-            tags: ["campaign", campaign.type, campaign.campaign_id],
-          });
-
-          if (result.success) {
-            results.email.sent++;
-          } else {
-            results.email.failed++;
-          }
-        } catch {
-          results.email.failed++;
-        }
-      }
-
-      // Web In-App
-      if (campaign.channels.includes("web_in_app")) {
-        try {
-          await createInAppNotification(tenantDb, {
-            user_id: recipient.portal_user_id,
-            type: campaign.type === "product" ? "campaign_product" : "campaign_generic",
-            title: campaign.title,
-            body: campaign.body,
-            icon: notificationIcon,
-            action_url: campaign.url,
-            data: { ...notificationPayload, campaign_id: campaign.campaign_id },
-          });
-          results.web_in_app.sent++;
-        } catch {
-          results.web_in_app.failed++;
-        }
-      }
-
-      // Mobile (FCM)
-      if (campaign.channels.includes("mobile") && recipient.portal_user_id) {
-        try {
-          const tokens = await getActiveTokens(tenantDb, { userIds: [recipient.portal_user_id] });
-
-          if (tokens.length > 0) {
-            const fcmResult = await sendFCM({
-              tenantDb,
-              title: campaign.title || "Nuova comunicazione",
-              body: campaign.body || "",
-              icon: notificationIcon,
-              image: campaign.push_image || campaign.image,
-              action_url: campaign.url,
-              userIds: [recipient.portal_user_id],
-              queue: true,
-              priority: "normal",
-              trigger: "campaign",
-              data: {
-                campaign_type: campaign.type,
-                campaign_id: campaign.campaign_id,
-                ...(campaign.type === "product" && campaign.products?.[0]?.sku
-                  ? { sku: campaign.products[0].sku }
-                  : {}),
-              },
-            });
-
-            if (fcmResult.success) {
-              results.mobile.sent += fcmResult.queued || fcmResult.sent || 1;
-            } else {
-              results.mobile.failed++;
-            }
-          }
-        } catch {
-          results.mobile.failed++;
-        }
-      }
+    // Pre-filter: get user IDs with active FCM tokens to avoid unnecessary mobile send attempts
+    let mobileEligibleUserIds: Set<string> | undefined;
+    if (campaign.channels.includes("mobile")) {
+      const { FCMToken } = await connectWithModels(tenantDb);
+      const recipientUserIds = recipients.map((r) => r.portal_user_id);
+      const usersWithTokens = await FCMToken.distinct("user_id", {
+        is_active: true,
+        user_id: { $in: recipientUserIds },
+      });
+      mobileEligibleUserIds = new Set(usersWithTokens as string[]);
     }
+
+    // Use unified send service (DRY - removes ~80 lines of duplicated code)
+    const sendResult = await sendCampaignDirect({
+      tenantDb,
+      content: {
+        type: campaign.type,
+        title: campaign.title,
+        body: campaign.body,
+        push_image: campaign.push_image,
+        email_subject: campaign.email_subject,
+        email_html: fullEmailHtml,
+        products_url: campaign.products_url,
+        products: campaign.products?.map((p: ITemplateProduct) => ({
+          sku: p.sku,
+          name: p.name,
+          image: p.image,
+          item_ref: p.item_ref,
+        })),
+        url: campaign.url,
+        image: campaign.image,
+        open_in_new_tab: campaign.open_in_new_tab,
+        campaign_id: campaign.campaign_id,
+      },
+      recipients: recipients.map((r) => ({
+        user_id: r.portal_user_id,
+        email: r.email,
+        name: r.username,
+      })),
+      channels: {
+        email: campaign.channels.includes("email"),
+        mobile: campaign.channels.includes("mobile"),
+        web_in_app: campaign.channels.includes("web_in_app"),
+      },
+      queue: true,
+      mobileEligibleUserIds,
+    });
+
+    // Map send result to campaign result format
+    const results: CampaignResults = {
+      email: { sent: sendResult.email.sent, failed: sendResult.email.failed, opened: 0, clicked: 0 },
+      mobile: { sent: sendResult.mobile.sent, failed: sendResult.mobile.failed, clicked: 0 },
+      web_in_app: { sent: sendResult.web_in_app.sent, failed: sendResult.web_in_app.failed, read: 0 },
+    };
 
     // Update campaign with results
     campaign.status = "sent";
@@ -470,10 +414,30 @@ export async function getCampaignResults(tenantDb: string, campaignId: string) {
     return { error: "Campaign has not been sent yet", status: 400 };
   }
 
-  const results = campaign.results || {
-    email: { sent: 0, failed: 0, opened: 0, clicked: 0 },
-    mobile: { sent: 0, failed: 0, clicked: 0 },
-    web_in_app: { sent: 0, failed: 0, read: 0 },
+  // Get live stats from unified notification log
+  const liveStats = await getCampaignStats(campaignId);
+
+  // Use live stats, fallback to stored results for backward compatibility
+  const results = {
+    email: {
+      sent: liveStats.email.sent || campaign.results?.email?.sent || 0,
+      failed: liveStats.email.failed || campaign.results?.email?.failed || 0,
+      opened: liveStats.email.opened || campaign.results?.email?.opened || 0,
+      clicked: liveStats.email.clicked || campaign.results?.email?.clicked || 0,
+    },
+    mobile: {
+      sent: liveStats.mobile.sent || campaign.results?.mobile?.sent || 0,
+      failed: liveStats.mobile.failed || campaign.results?.mobile?.failed || 0,
+      opened: liveStats.mobile.opened || campaign.results?.mobile?.opened || 0,
+      clicked: liveStats.mobile.clicked || campaign.results?.mobile?.clicked || 0,
+    },
+    web_in_app: {
+      sent: liveStats.web_in_app.sent || campaign.results?.web_in_app?.sent || 0,
+      failed: liveStats.web_in_app.failed || campaign.results?.web_in_app?.failed || 0,
+      opened: liveStats.web_in_app.opened || campaign.results?.web_in_app?.opened || 0,
+      clicked: liveStats.web_in_app.clicked || campaign.results?.web_in_app?.clicked || 0,
+      read: liveStats.web_in_app.read || campaign.results?.web_in_app?.read || 0,
+    },
   };
 
   // Calculate totals

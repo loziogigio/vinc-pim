@@ -167,6 +167,18 @@ FCMTokenSchema.index({ tenant_id: 1, user_id: 1, is_active: 1 });
 FCMTokenSchema.index({ tenant_id: 1, fcm_token: 1 }, { unique: true });
 FCMTokenSchema.index({ tenant_id: 1, platform: 1, is_active: 1 });
 
+// Device-based deduplication index (sparse: only applies when device_id exists)
+// This enables efficient lookup for "one token per device per user" pattern
+FCMTokenSchema.index(
+  { tenant_id: 1, user_id: 1, device_id: 1 },
+  { sparse: true }
+);
+
+// Index for cleanup queries
+FCMTokenSchema.index({ is_active: 1, updated_at: 1 });
+FCMTokenSchema.index({ failure_count: 1, updated_at: 1 });
+FCMTokenSchema.index({ last_used_at: 1 });
+
 // ============================================
 // STATIC METHODS
 // ============================================

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { toggleTemplateActive } from "@/lib/notifications/template.service";
 
 export async function POST(
@@ -13,13 +13,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
 
     const template = await toggleTemplateActive(tenantDb, id);
 

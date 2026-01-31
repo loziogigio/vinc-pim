@@ -1149,3 +1149,172 @@ describe("unit: Home Settings - MetaTags Interface", () => {
     expect(Object.keys(metaTags).length).toBe(19);
   });
 });
+
+// ============================================
+// DEFAULT HEADER CONFIG TESTS (TENANT SEEDING)
+// ============================================
+
+import { DEFAULT_HEADER_CONFIG } from "@/lib/db/home-settings";
+
+describe("unit: Home Settings - DEFAULT_HEADER_CONFIG (Tenant Seeding)", () => {
+  it("should have 2 header rows for tenant seeding", () => {
+    /**
+     * Default header has 2 rows:
+     * - main: Logo, Search, Icons
+     * - nav: Categories, Buttons, Quick links
+     */
+    expect(DEFAULT_HEADER_CONFIG.rows).toHaveLength(2);
+  });
+
+  it("should have main row with correct layout", () => {
+    /**
+     * Main row should be 20-60-20 layout for balanced header.
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    expect(mainRow).toBeDefined();
+    expect(mainRow?.layout).toBe("20-60-20");
+    expect(mainRow?.enabled).toBe(true);
+    expect(mainRow?.fixed).toBe(true);
+  });
+
+  it("should have nav row with correct layout", () => {
+    /**
+     * Nav row should be 50-50 layout for menu and quick links.
+     */
+    const navRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "nav");
+    expect(navRow).toBeDefined();
+    expect(navRow?.layout).toBe("50-50");
+    expect(navRow?.enabled).toBe(true);
+  });
+
+  it("should have logo widget in main row", () => {
+    /**
+     * Logo widget must be present in main row for branding.
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    const leftBlock = mainRow?.blocks.find(b => b.id === "left");
+    const logoWidget = leftBlock?.widgets.find(w => w.type === "logo");
+
+    expect(logoWidget).toBeDefined();
+    expect(logoWidget?.type).toBe("logo");
+  });
+
+  it("should have search-bar widget in main row", () => {
+    /**
+     * Search bar widget must be present for product search.
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    const centerBlock = mainRow?.blocks.find(b => b.id === "center");
+    const searchWidget = centerBlock?.widgets.find(w => w.type === "search-bar");
+
+    expect(searchWidget).toBeDefined();
+    expect(searchWidget?.type).toBe("search-bar");
+  });
+
+  it("should have cart widget in main row", () => {
+    /**
+     * Cart widget must be present for e-commerce functionality.
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    const rightBlock = mainRow?.blocks.find(b => b.id === "right");
+    const cartWidget = rightBlock?.widgets.find(w => w.type === "cart");
+
+    expect(cartWidget).toBeDefined();
+    expect(cartWidget?.type).toBe("cart");
+  });
+
+  it("should have category-menu widget in nav row", () => {
+    /**
+     * Category menu is essential for product navigation.
+     */
+    const navRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "nav");
+    const leftBlock = navRow?.blocks.find(b => b.id === "left");
+    const categoryMenu = leftBlock?.widgets.find(w => w.type === "category-menu");
+
+    expect(categoryMenu).toBeDefined();
+    expect(categoryMenu?.type).toBe("category-menu");
+  });
+
+  it("should have expected widget types in right block of main row", () => {
+    /**
+     * Right block should have user action widgets.
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    const rightBlock = mainRow?.blocks.find(b => b.id === "right");
+    const widgetTypes = rightBlock?.widgets.map(w => w.type);
+
+    expect(widgetTypes).toContain("favorites");
+    expect(widgetTypes).toContain("compare");
+    expect(widgetTypes).toContain("profile");
+    expect(widgetTypes).toContain("cart");
+  });
+
+  it("should have 3 blocks in main row", () => {
+    /**
+     * Main row: left (logo), center (search), right (icons)
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    expect(mainRow?.blocks).toHaveLength(3);
+
+    const blockIds = mainRow?.blocks.map(b => b.id);
+    expect(blockIds).toContain("left");
+    expect(blockIds).toContain("center");
+    expect(blockIds).toContain("right");
+  });
+
+  it("should have 2 blocks in nav row", () => {
+    /**
+     * Nav row: left (menu + buttons), right (quick links)
+     */
+    const navRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "nav");
+    expect(navRow?.blocks).toHaveLength(2);
+
+    const blockIds = navRow?.blocks.map(b => b.id);
+    expect(blockIds).toContain("left");
+    expect(blockIds).toContain("right");
+  });
+
+  it("should have radio-widget disabled by default", () => {
+    /**
+     * Radio widget is optional, disabled by default.
+     */
+    const mainRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "main");
+    const centerBlock = mainRow?.blocks.find(b => b.id === "center");
+    const radioWidget = centerBlock?.widgets.find(w => w.type === "radio-widget");
+
+    expect(radioWidget?.config?.enabled).toBe(false);
+  });
+
+  it("should have button widgets with URLs in nav row", () => {
+    /**
+     * Button widgets in nav row should have URLs configured.
+     */
+    const navRow = DEFAULT_HEADER_CONFIG.rows.find(r => r.id === "nav");
+    const leftBlock = navRow?.blocks.find(b => b.id === "left");
+    const buttons = leftBlock?.widgets.filter(w => w.type === "button");
+
+    expect(buttons?.length).toBeGreaterThan(0);
+    buttons?.forEach(btn => {
+      expect(btn.config?.url).toBeDefined();
+      expect(btn.config?.label).toBeDefined();
+    });
+  });
+
+  it("should have all widgets with unique IDs", () => {
+    /**
+     * Widget IDs must be unique for drag-and-drop functionality.
+     */
+    const allWidgetIds: string[] = [];
+
+    DEFAULT_HEADER_CONFIG.rows.forEach(row => {
+      row.blocks.forEach(block => {
+        block.widgets.forEach(widget => {
+          allWidgetIds.push(widget.id);
+        });
+      });
+    });
+
+    const uniqueIds = new Set(allWidgetIds);
+    expect(uniqueIds.size).toBe(allWidgetIds.length);
+  });
+});

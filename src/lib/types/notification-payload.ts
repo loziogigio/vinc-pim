@@ -137,6 +137,8 @@ export interface ProductPayload {
   products: NotificationProduct[];
   /** Search filters for the mobile/web app to use when navigating */
   filters?: NotificationFilters;
+  /** Raw search URL for "See All" navigation (e.g., "shop?text=moon&filters-brand_id=004") */
+  products_url?: string;
 }
 
 /**

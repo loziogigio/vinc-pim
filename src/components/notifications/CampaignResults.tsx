@@ -16,11 +16,14 @@ import {
   Users,
   AlertCircle,
 } from "lucide-react";
-import { CHANNEL_LABELS, type NotificationChannel } from "@/lib/constants/notification";
+import type { NotificationChannel } from "@/lib/constants/notification";
 
 // ============================================
 // TYPES
 // ============================================
+
+// Display channels for results view
+type DisplayChannel = "email" | "mobile_app" | "web";
 
 interface ChannelResults {
   sent: number;
@@ -39,8 +42,8 @@ interface CampaignResultsData {
   channels: NotificationChannel[];
   results: {
     email?: ChannelResults;
-    mobile?: ChannelResults;
-    web_in_app?: ChannelResults;
+    mobile_app?: ChannelResults;
+    web?: ChannelResults;
   };
   totals: {
     sent: number;
@@ -60,16 +63,23 @@ type Props = {
 // HELPERS
 // ============================================
 
-const channelIcons: Record<NotificationChannel, typeof Mail> = {
-  email: Mail,
-  mobile: Smartphone,
-  web_in_app: Bell,
+// Display channel labels for results view
+const DISPLAY_CHANNEL_LABELS: Record<DisplayChannel, string> = {
+  email: "Email",
+  mobile_app: "Mobile App",
+  web: "Web",
 };
 
-const channelColors: Record<NotificationChannel, { bg: string; text: string; border: string }> = {
+const channelIcons: Record<DisplayChannel, typeof Mail> = {
+  email: Mail,
+  mobile_app: Smartphone,
+  web: Bell,
+};
+
+const channelColors: Record<DisplayChannel, { bg: string; text: string; border: string }> = {
   email: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
-  mobile: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
-  web_in_app: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+  mobile_app: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
+  web: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
 };
 
 function formatPercent(value: number): string {
@@ -124,22 +134,22 @@ function ChannelCard({
   channel,
   results,
 }: {
-  channel: NotificationChannel;
+  channel: DisplayChannel;
   results: ChannelResults;
 }) {
   const Icon = channelIcons[channel];
   const colors = channelColors[channel];
   const total = results.sent + results.failed;
   const deliveryRate = total > 0 ? results.sent / total : 0;
-  const openRate = results.opened !== undefined && results.sent > 0
-    ? results.opened / results.sent
-    : undefined;
-  const clickRate = results.clicked !== undefined && results.sent > 0
-    ? results.clicked / results.sent
-    : undefined;
-  const readRate = results.read !== undefined && results.sent > 0
-    ? results.read / results.sent
-    : undefined;
+
+  // Unified metrics: use opened count, or read count as fallback for in-app
+  // Rate is capped at 100% (1.0) for display - counts can exceed sent due to multiple opens/clicks
+  const openCount = results.opened ?? results.read ?? 0;
+  const openRate = results.sent > 0 ? Math.min(openCount / results.sent, 1) : 0;
+
+  // Click rate - always show (capped at 100%)
+  const clickCount = results.clicked ?? 0;
+  const clickRate = results.sent > 0 ? Math.min(clickCount / results.sent, 1) : 0;
 
   return (
     <div className={`p-4 rounded-lg border ${colors.border} ${colors.bg}`}>
@@ -148,7 +158,7 @@ function ChannelCard({
           <Icon className={`w-4 h-4 ${colors.text}`} />
         </div>
         <h3 className={`font-semibold ${colors.text}`}>
-          {CHANNEL_LABELS[channel]}
+          {DISPLAY_CHANNEL_LABELS[channel]}
         </h3>
       </div>
 
@@ -182,31 +192,27 @@ function ChannelCard({
           </p>
         </div>
 
-        {/* Open/Read Rate */}
-        {(openRate !== undefined || readRate !== undefined) && (
-          <div className="bg-white rounded-lg p-3">
-            <div className="flex items-center gap-1 text-amber-600 mb-1">
-              <Eye className="w-3 h-3" />
-              <span className="text-xs">{openRate !== undefined ? "Aperture" : "Letti"}</span>
-            </div>
-            <p className="text-lg font-bold text-slate-900">
-              {formatPercent(openRate ?? readRate ?? 0)}
-            </p>
+        {/* Open Rate - always show */}
+        <div className="bg-white rounded-lg p-3">
+          <div className="flex items-center gap-1 text-amber-600 mb-1">
+            <Eye className="w-3 h-3" />
+            <span className="text-xs">Aperture</span>
           </div>
-        )}
+          <p className="text-lg font-bold text-slate-900">
+            {formatPercent(openRate)}
+          </p>
+        </div>
 
-        {/* Click Rate */}
-        {clickRate !== undefined && (
-          <div className="bg-white rounded-lg p-3 col-span-2">
-            <div className="flex items-center gap-1 text-purple-600 mb-1">
-              <MousePointerClick className="w-3 h-3" />
-              <span className="text-xs">Click</span>
-            </div>
-            <p className="text-lg font-bold text-slate-900">
-              {formatPercent(clickRate)}
-            </p>
+        {/* Click Rate - always show */}
+        <div className="bg-white rounded-lg p-3 col-span-2">
+          <div className="flex items-center gap-1 text-purple-600 mb-1">
+            <MousePointerClick className="w-3 h-3" />
+            <span className="text-xs">Click</span>
           </div>
-        )}
+          <p className="text-lg font-bold text-slate-900">
+            {formatPercent(clickRate)}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -338,17 +344,17 @@ export function CampaignResults({ campaignId, onBack }: Props) {
           {data.results.email && (
             <ChannelCard channel="email" results={data.results.email} />
           )}
-          {data.results.mobile && (
-            <ChannelCard channel="mobile" results={data.results.mobile} />
+          {data.results.mobile_app && (
+            <ChannelCard channel="mobile_app" results={data.results.mobile_app} />
           )}
-          {data.results.web_in_app && (
-            <ChannelCard channel="web_in_app" results={data.results.web_in_app} />
+          {data.results.web && (
+            <ChannelCard channel="web" results={data.results.web} />
           )}
         </div>
       </div>
 
       {/* No Results */}
-      {!data.results.email && !data.results.mobile && !data.results.web_in_app && (
+      {!data.results.email && !data.results.mobile_app && !data.results.web && (
         <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg">
           <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-sm text-slate-500">

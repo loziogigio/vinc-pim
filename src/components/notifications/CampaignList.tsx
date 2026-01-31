@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   FileText,
@@ -16,6 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
@@ -37,6 +40,7 @@ interface Campaign {
   channels: string[];
   recipient_type: "all" | "selected" | "tagged";
   recipient_count?: number;
+  scheduled_at?: string;
   sent_at?: string;
   created_at: string;
   updated_at: string;
@@ -46,7 +50,7 @@ type StatusFilter = "all" | CampaignStatus;
 
 type Props = {
   onEditDraft?: (campaignId: string) => void;
-  onViewResults?: (campaignId: string) => void;
+  onViewResults?: (campaignId: string, campaignName: string) => void;
   onSelectCampaign?: (campaign: Campaign) => void;
 };
 
@@ -78,6 +82,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
 // ============================================
 
 export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: Props) {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -87,6 +92,20 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
   const [total, setTotal] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [unschedulingId, setUnschedulingId] = useState<string | null>(null);
+
+  // Copy to clipboard
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const debouncedSearch = useDebounce(searchQuery, 300);
   const limit = 10;
@@ -141,6 +160,45 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
       console.error("Error deleting campaign:", error);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Duplicate campaign
+  const handleDuplicate = async (campaignId: string) => {
+    setDuplicatingId(campaignId);
+    try {
+      const res = await fetch(`/api/b2b/notifications/campaigns/${campaignId}/duplicate`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await loadCampaigns();
+        // If there's an edit handler and we want to edit the new draft immediately
+        if (onEditDraft && data.campaign?.campaign_id) {
+          onEditDraft(data.campaign.campaign_id);
+        }
+      }
+    } catch (error) {
+      console.error("Error duplicating campaign:", error);
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+
+  // Unschedule campaign (back to draft)
+  const handleUnschedule = async (campaignId: string) => {
+    setUnschedulingId(campaignId);
+    try {
+      const res = await fetch(`/api/b2b/notifications/campaigns/${campaignId}/schedule`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await loadCampaigns();
+      }
+    } catch (error) {
+      console.error("Error unscheduling campaign:", error);
+    } finally {
+      setUnschedulingId(null);
     }
   };
 
@@ -216,7 +274,17 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                 {/* Main Content */}
                 <div
                   className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => onSelectCampaign?.(campaign)}
+                  onClick={() => {
+                    if (onSelectCampaign) {
+                      onSelectCampaign(campaign);
+                    } else if (campaign.status === "sent" || campaign.status === "failed" || campaign.status === "sending") {
+                      // Navigate to detail/results page for sent campaigns
+                      router.push(`/b2b/notifications/campaigns/${campaign.campaign_id}`);
+                    } else if (campaign.status === "draft" && onEditDraft) {
+                      // Edit draft campaigns
+                      onEditDraft(campaign.campaign_id);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-slate-900 truncate">
@@ -227,13 +295,57 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                   <p className="text-sm text-slate-600 truncate mb-2">
                     {campaign.title}
                   </p>
+                  {/* ID and Slug row */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(campaign.campaign_id, campaign.campaign_id);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
+                      title="Copia ID"
+                    >
+                      {copiedId === campaign.campaign_id ? (
+                        <Check className="w-3 h-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                      {campaign.campaign_id}
+                    </button>
+                    {campaign.slug && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyToClipboard(campaign.slug, `slug-${campaign.campaign_id}`);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-xs font-mono text-primary transition"
+                        title="Copia Slug"
+                      >
+                        {copiedId === `slug-${campaign.campaign_id}` ? (
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                        /{campaign.slug}
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-4 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {campaign.sent_at
                         ? `Inviata: ${formatDate(campaign.sent_at)}`
-                        : `Creata: ${formatDate(campaign.created_at)}`}
+                        : campaign.status === "scheduled" && campaign.scheduled_at
+                          ? `Programmata: ${formatDate(campaign.scheduled_at)}`
+                          : `Creata: ${formatDate(campaign.created_at)}`}
                     </span>
+                    {/* Warning for scheduled campaigns with past date */}
+                    {campaign.status === "scheduled" && campaign.scheduled_at && new Date(campaign.scheduled_at) < new Date() && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                        <AlertCircle className="w-3 h-3" />
+                        Data passata
+                      </span>
+                    )}
                     {campaign.recipient_count !== undefined && (
                       <span>
                         {campaign.recipient_count} destinatar{campaign.recipient_count !== 1 ? "i" : "io"}
@@ -256,15 +368,49 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
-                  {(campaign.status === "sent" || campaign.status === "failed") && onViewResults && (
+                  {/* Unschedule button for scheduled campaigns */}
+                  {campaign.status === "scheduled" && (
                     <button
-                      onClick={() => onViewResults(campaign.campaign_id)}
+                      onClick={() => handleUnschedule(campaign.campaign_id)}
+                      disabled={unschedulingId === campaign.campaign_id}
+                      className="p-2 rounded-lg text-amber-500 hover:bg-amber-50 hover:text-amber-600 transition disabled:opacity-50"
+                      title="Annulla programmazione"
+                    >
+                      {unschedulingId === campaign.campaign_id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <XCircle className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
+                  {(campaign.status === "sent" || campaign.status === "failed") && (
+                    <button
+                      onClick={() => {
+                        if (onViewResults) {
+                          onViewResults(campaign.campaign_id, campaign.name);
+                        } else {
+                          router.push(`/b2b/notifications/campaigns/${campaign.campaign_id}`);
+                        }
+                      }}
                       className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition"
                       title="Risultati"
                     >
                       <BarChart3 className="w-4 h-4" />
                     </button>
                   )}
+                  {/* Duplicate button - available for all campaigns */}
+                  <button
+                    onClick={() => handleDuplicate(campaign.campaign_id)}
+                    disabled={duplicatingId === campaign.campaign_id}
+                    className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition disabled:opacity-50"
+                    title="Duplica"
+                  >
+                    {duplicatingId === campaign.campaign_id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
                   {(campaign.status === "draft" || campaign.status === "failed") && (
                     <button
                       onClick={() => setDeleteConfirm(campaign.campaign_id)}

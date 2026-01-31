@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 
 // Default Header HTML - Uses variables for branding
@@ -121,12 +121,12 @@ const MINIMAL_FOOTER_HTML = `
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { EmailComponent } = await connectWithModels(tenantDb);
 
     // Check if defaults already exist

@@ -16,6 +16,7 @@ import {
   getTokenByFCMToken,
   deleteAllUserTokens
 } from "@/lib/fcm/token.service";
+import { registerOrUpdateByDevice } from "@/lib/fcm/cleanup.service";
 import { isFCMEnabled } from "@/lib/fcm/fcm.service";
 import type { FCMPreferences, FCMPlatform } from "@/lib/fcm/types";
 
@@ -80,25 +81,48 @@ export async function POST(req: NextRequest) {
     const userId = auth.userId || body.user_id;
     const userType = body.user_type || "portal_user"; // Default to portal_user for mobile apps
 
-    // Register token
-    const token = await registerToken(tenantDb, {
-      tenant_id: tenantId,
-      user_id: userId, // Can be undefined for anonymous devices
-      user_type: userType,
-      fcm_token: body.fcm_token,
-      platform: body.platform,
-      device_id: body.device_id,
-      device_model: body.device_model,
-      app_version: body.app_version,
-      os_version: body.os_version,
-      preferences: body.preferences
-    });
+    // Best practice: Use device_id for deduplication to prevent duplicate entries
+    // If device_id is provided, use the device-based registration (recommended)
+    // This ensures one token per device per user, preventing the duplicate issues
+    let token;
+
+    if (body.device_id) {
+      // Recommended path: device-based deduplication
+      token = await registerOrUpdateByDevice(tenantDb, {
+        tenant_id: tenantId,
+        user_id: userId,
+        device_id: body.device_id,
+        fcm_token: body.fcm_token,
+        platform: body.platform,
+        device_model: body.device_model,
+        app_version: body.app_version,
+        os_version: body.os_version,
+        preferences: body.preferences,
+      });
+    } else {
+      // Legacy path: fcm_token-based lookup (can lead to duplicates)
+      // Mobile apps should always send device_id for best results
+      token = await registerToken(tenantDb, {
+        tenant_id: tenantId,
+        user_id: userId,
+        user_type: userType,
+        fcm_token: body.fcm_token,
+        platform: body.platform,
+        device_id: body.device_id,
+        device_model: body.device_model,
+        app_version: body.app_version,
+        os_version: body.os_version,
+        preferences: body.preferences,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       token_id: token.token_id,
       user_id: userId || null, // Let client know if user was associated
-      preferences: token.preferences
+      preferences: token.preferences,
+      // Hint to mobile apps to send device_id if they haven't
+      device_id_required: !body.device_id,
     });
   } catch (error) {
     console.error("[fcm/register] POST Error:", error);

@@ -8,6 +8,7 @@
 import { connectWithModels } from "@/lib/db/connection";
 import type { NotificationTrigger } from "@/lib/constants/notification";
 import type { NotificationUserType, INotificationDocument, NotificationPayload } from "@/lib/db/models/notification";
+import { createNotificationLog, recordEngagement, markLogAsSent } from "./notification-log.service";
 
 // ============================================
 // TYPES
@@ -24,6 +25,8 @@ export interface CreateInAppNotificationOptions {
   action_url?: string;
   /** Typed payload by category (generic, product, order, price) */
   payload?: NotificationPayload;
+  /** Campaign ID for linking notification to campaign stats */
+  campaign_id?: string;
 }
 
 export interface GetNotificationsOptions {
@@ -76,6 +79,7 @@ export async function createInAppNotification(
     icon,
     action_url,
     payload,
+    campaign_id,
   } = options;
 
   const { Notification } = await connectWithModels(tenantDb);
@@ -89,12 +93,37 @@ export async function createInAppNotification(
     icon,
     action_url,
     payload,
+    campaign_id,
     is_read: false,
   });
 
-  console.log(`[InApp] Created notification for user ${user_id}: ${trigger} (category: ${payload?.category || "none"})`);
+  // Create unified notification log for analytics
+  const notificationLog = await createNotificationLog({
+    channel: "web_in_app",
+    source: campaign_id ? "campaign" : (trigger && trigger !== "custom" ? "trigger" : "manual"),
+    campaign_id,
+    trigger,
+    tenant_db: tenantDb,
+    user_id,
+    title,
+    body,
+    action_url,
+    status: "sent", // In-app notifications are immediately "sent" (delivered)
+  });
 
-  return notification;
+  // Mark as sent immediately
+  await markLogAsSent(notificationLog.log_id);
+
+  // Store the log ID in payload for tracking
+  const updatedNotification = await Notification.findOneAndUpdate(
+    { notification_id: notification.notification_id },
+    { $set: { "payload.notification_log_id": notificationLog.log_id } },
+    { new: true }
+  ).lean() as INotificationDocument;
+
+  console.log(`[InApp] Created notification for user ${user_id}: ${trigger} (log_id: ${notificationLog.log_id})`);
+
+  return updatedNotification || notification;
 }
 
 /**
@@ -133,7 +162,7 @@ export async function getNotifications(
   ]);
 
   return {
-    notifications: notifications as INotificationDocument[],
+    notifications: notifications as unknown as INotificationDocument[],
     pagination: {
       page,
       limit: cappedLimit,
@@ -179,9 +208,20 @@ export async function markAsRead(
     { notification_id: notificationId, is_read: false },
     { is_read: true, read_at: new Date() },
     { new: true }
-  ).lean();
+  ).lean() as INotificationDocument | null;
 
-  return notification as INotificationDocument | null;
+  // Record read engagement in unified notification log
+  if (notification) {
+    const notificationLogId = (notification.payload as { notification_log_id?: string })?.notification_log_id;
+    if (notificationLogId) {
+      await recordEngagement({
+        log_id: notificationLogId,
+        event_type: "read",
+      });
+    }
+  }
+
+  return notification;
 }
 
 /**

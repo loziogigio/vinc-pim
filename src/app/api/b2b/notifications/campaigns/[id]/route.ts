@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import {
   TEMPLATE_TYPES,
@@ -24,13 +24,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { Campaign } = await connectWithModels(tenantDb);
 
     const campaign = await Campaign.findOne({ campaign_id: id }).lean();
@@ -69,6 +69,7 @@ interface UpdateCampaignPayload {
   channels?: ("email" | "mobile" | "web_in_app")[];
   recipient_type?: "all" | "selected" | "tagged";
   selected_user_ids?: string[];
+  selected_users?: { id: string; email: string; name: string }[];
   tag_ids?: string[];
 }
 
@@ -77,13 +78,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const payload: UpdateCampaignPayload = await req.json();
     const { Campaign } = await connectWithModels(tenantDb);
 
@@ -160,10 +161,15 @@ export async function PUT(
     if (payload.url !== undefined) campaign.url = payload.url?.trim();
     if (payload.image !== undefined) campaign.image = payload.image?.trim();
     if (payload.open_in_new_tab !== undefined) campaign.open_in_new_tab = payload.open_in_new_tab;
-    if (payload.selected_user_ids !== undefined) campaign.selected_user_ids = payload.selected_user_ids;
+    if (payload.selected_users !== undefined) {
+      campaign.selected_users = payload.selected_users;
+      campaign.selected_user_ids = payload.selected_users.map((u) => u.id);
+    } else if (payload.selected_user_ids !== undefined) {
+      campaign.selected_user_ids = payload.selected_user_ids;
+    }
     if (payload.tag_ids !== undefined) campaign.tag_ids = payload.tag_ids;
 
-    campaign.updated_by = session.user?.id || session.user?.email;
+    campaign.updated_by = auth.userId || auth.email;
 
     await campaign.save();
 
@@ -198,13 +204,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { Campaign } = await connectWithModels(tenantDb);
 
     const campaign = await Campaign.findOne({ campaign_id: id });

@@ -3,17 +3,15 @@
  *
  * Sends notifications using templates with tenant-specific SMTP configuration.
  * Supports email and web push channels with header/footer components for email.
+ *
+ * Campaign-specific sending functions are in ./campaign-send.service.ts
  */
 
 import { connectWithModels } from "@/lib/db/connection";
 import {
   getTemplateByTrigger,
-  getTemplate,
   previewTemplate,
-  previewTemplateInline,
-  generateNotificationPayload,
 } from "./template.service";
-import type { INotificationTemplate } from "@/lib/constants/notification";
 import { sendEmail } from "@/lib/email";
 import { sendPush, isWebPushEnabled } from "@/lib/push";
 import { sendFCM, isFCMEnabled } from "@/lib/fcm";
@@ -22,6 +20,16 @@ import { createInAppNotification } from "./in-app.service";
 import type { NotificationTrigger } from "@/lib/db/models/notification-template";
 import type { PushPreferences, SendPushResult } from "@/lib/push/types";
 import type { NotificationUserType, NotificationPayload } from "@/lib/db/models/notification";
+
+// Re-export campaign functions for backward compatibility
+export {
+  sendCampaignDirect,
+  sendCampaignNotification,
+  type SendCampaignDirectOptions,
+  type SendCampaignDirectResult,
+  type SendCampaignOptions,
+  type SendCampaignResult,
+} from "./campaign-send.service";
 
 // ============================================
 // TYPES
@@ -430,270 +438,4 @@ export async function sendPasswordResetConfirmation(
       shop_name: shopName,
     },
   });
-}
-
-// ============================================
-// CAMPAIGN NOTIFICATION SENDING (NEW)
-// ============================================
-
-export interface SendCampaignOptions {
-  /** Tenant database name */
-  tenantDb: string;
-  /** Campaign template ID */
-  templateId: string;
-  /** Recipients - array of { user_id, email, name? } */
-  recipients: Array<{
-    user_id: string;
-    email: string;
-    name?: string;
-  }>;
-  /** Which channels to send via (defaults to all enabled in template) */
-  channels?: {
-    email?: boolean;
-    mobile?: boolean;
-    web_in_app?: boolean;
-  };
-  /** Queue emails/push instead of sending immediately */
-  queue?: boolean;
-}
-
-export interface SendCampaignResult {
-  success: boolean;
-  template_id: string;
-  recipients_count: number;
-  channels_sent: string[];
-  email_results?: {
-    sent: number;
-    failed: number;
-    queued: number;
-  };
-  mobile_results?: {
-    sent: number;
-    failed: number;
-    queued: number;
-  };
-  in_app_results?: {
-    created: number;
-    failed: number;
-  };
-  error?: string;
-}
-
-/**
- * Send a campaign notification to multiple recipients via enabled channels.
- *
- * Uses the new campaign template structure (type: product | generic).
- *
- * @example
- * ```ts
- * await sendCampaignNotification({
- *   tenantDb: "vinc-hidros-it",
- *   templateId: "campaign-product",
- *   recipients: [
- *     { user_id: "user1", email: "user1@example.com", name: "Mario" },
- *     { user_id: "user2", email: "user2@example.com", name: "Luigi" },
- *   ],
- * });
- * ```
- */
-export async function sendCampaignNotification(
-  options: SendCampaignOptions
-): Promise<SendCampaignResult> {
-  const {
-    tenantDb,
-    templateId,
-    recipients,
-    channels,
-    queue = true,
-  } = options;
-
-  const result: SendCampaignResult = {
-    success: false,
-    template_id: templateId,
-    recipients_count: recipients.length,
-    channels_sent: [],
-  };
-
-  try {
-    // 1. Get the campaign template
-    const template = await getTemplate(tenantDb, templateId);
-
-    if (!template) {
-      return {
-        ...result,
-        error: `Template not found: ${templateId}`,
-      };
-    }
-
-    if (!template.type) {
-      return {
-        ...result,
-        error: `Template is not a campaign template (missing type): ${templateId}`,
-      };
-    }
-
-    // 2. Determine which channels to use
-    const templateChannels = template.template_channels || {};
-    const shouldSendEmail = (channels?.email ?? templateChannels.email?.enabled) ?? false;
-    const shouldSendMobile = (channels?.mobile ?? templateChannels.mobile?.enabled) ?? false;
-    const shouldSendWebInApp = (channels?.web_in_app ?? templateChannels.web_in_app?.enabled) ?? false;
-
-    if (!shouldSendEmail && !shouldSendMobile && !shouldSendWebInApp) {
-      return {
-        ...result,
-        error: "No channels enabled for sending",
-      };
-    }
-
-    // 3. Get SMTP config for email
-    let smtpFrom: string | undefined;
-    let smtpFromName: string | undefined;
-
-    if (shouldSendEmail) {
-      const { HomeSettings } = await connectWithModels(tenantDb);
-      const settings = await HomeSettings.findOne({}).lean();
-      const smtpSettings = (settings as { smtp_settings?: { from?: string; from_name?: string } })?.smtp_settings;
-      smtpFrom = smtpSettings?.from;
-      smtpFromName = smtpSettings?.from_name;
-
-      if (!smtpFrom) {
-        console.warn(`[Campaign] No SMTP config, skipping email channel`);
-      }
-    }
-
-    // 4. Generate payload for mobile/in-app
-    const payload = generateNotificationPayload(template as unknown as INotificationTemplate);
-
-    // 5. Render email template once (not per-recipient for now)
-    let renderedEmail: { subject: string; html: string } | null = null;
-
-    if (shouldSendEmail && smtpFrom && templateChannels.email?.html_body) {
-      renderedEmail = await previewTemplateInline(
-        tenantDb,
-        {
-          html_body: templateChannels.email.html_body,
-          subject: templateChannels.email.subject || template.title,
-          use_default_header: template.use_default_header,
-          use_default_footer: template.use_default_footer,
-          header_id: template.header_id,
-          footer_id: template.footer_id,
-        },
-        {
-          title: template.title,
-          body: template.body,
-          url: template.url || "",
-          image: template.image || "",
-        }
-      );
-    }
-
-    // 6. Send to each recipient
-    const emailResults = { sent: 0, failed: 0, queued: 0 };
-    const mobileResults = { sent: 0, failed: 0, queued: 0 };
-    const inAppResults = { created: 0, failed: 0 };
-
-    for (const recipient of recipients) {
-      // Send email
-      if (shouldSendEmail && smtpFrom && renderedEmail) {
-        try {
-          const emailResult = await sendEmail({
-            to: recipient.email,
-            subject: renderedEmail.subject,
-            html: renderedEmail.html,
-            from: smtpFrom,
-            fromName: smtpFromName,
-            immediate: !queue,
-            tenantDb,
-          });
-
-          if (emailResult.success) {
-            emailResults.sent++;
-          } else {
-            emailResults.failed++;
-          }
-        } catch (error) {
-          console.error(`[Campaign] Email error for ${recipient.email}:`, error);
-          emailResults.failed++;
-        }
-      }
-
-      // Send mobile push (via FCM for native mobile apps)
-      if (shouldSendMobile) {
-        try {
-          const fcmEnabled = await isFCMEnabled(tenantDb);
-          if (fcmEnabled) {
-            const fcmResult = await sendFCM({
-              tenantDb,
-              title: template.title,
-              body: template.body,
-              icon: templateChannels.mobile?.icon,
-              action_url: templateChannels.mobile?.action_url || template.url,
-              userIds: [recipient.user_id],
-              templateId: template.template_id,
-              trigger: template.trigger,
-              queue,
-            });
-            if (fcmResult.sent) {
-              mobileResults.sent += fcmResult.sent;
-            }
-            if (fcmResult.queued) {
-              mobileResults.queued += fcmResult.queued;
-            }
-            if (fcmResult.failed) {
-              mobileResults.failed += fcmResult.failed;
-            }
-          }
-        } catch (error) {
-          console.error(`[Campaign] FCM error for ${recipient.user_id}:`, error);
-          mobileResults.failed++;
-        }
-      }
-
-      // Create in-app notification
-      if (shouldSendWebInApp) {
-        try {
-          await createInAppNotification({
-            tenantDb,
-            user_id: recipient.user_id,
-            user_type: "b2b_user",
-            trigger: template.trigger,
-            title: template.title,
-            body: template.body,
-            icon: templateChannels.web_in_app?.icon,
-            action_url: templateChannels.web_in_app?.action_url || template.url,
-            payload: payload as NotificationPayload,
-          });
-          inAppResults.created++;
-        } catch (error) {
-          console.error(`[Campaign] In-app error for ${recipient.user_id}:`, error);
-          inAppResults.failed++;
-        }
-      }
-    }
-
-    // 7. Build result
-    if (shouldSendEmail) {
-      result.channels_sent.push("email");
-      result.email_results = emailResults;
-    }
-    if (shouldSendMobile) {
-      result.channels_sent.push("mobile");
-      result.mobile_results = mobileResults;
-    }
-    if (shouldSendWebInApp) {
-      result.channels_sent.push("web_in_app");
-      result.in_app_results = inAppResults;
-    }
-
-    result.success = true;
-    console.log(`[Campaign] Sent ${templateId} to ${recipients.length} recipients via ${result.channels_sent.join(", ")}`);
-
-    return result;
-  } catch (error) {
-    console.error(`[Campaign] Error sending ${templateId}:`, error);
-    return {
-      ...result,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
 }

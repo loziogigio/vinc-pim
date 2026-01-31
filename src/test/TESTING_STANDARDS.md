@@ -589,6 +589,132 @@ pnpm test -t "should create draft order"
 
 ---
 
-**Last Updated**: December 2025
-**Version**: 2.0 (Next.js)
+## Critical Infrastructure Tests
+
+### Tenant Provisioning (CRUCIAL)
+
+Tenant creation/deletion is a **critical path** that must never break. These tests verify multi-tenant infrastructure.
+
+#### Test Scripts
+
+| Script                                     | Purpose                      | When to Run                      |
+| ------------------------------------------ | ---------------------------- | -------------------------------- |
+| `node scripts/test-tenant-lifecycle.cjs`   | Direct service function test | After changes to tenant services |
+| `node scripts/test-tenant-api.cjs`         | Full API test with auth      | Before releases                  |
+| `node scripts/check-tenant.cjs <id>`       | Verify tenant state          | Debugging/auditing               |
+
+#### What Gets Tested
+
+**Creation (`createTenant()`):**
+
+| Step | Resource               | Expected                                 |
+| ---- | ---------------------- | ---------------------------------------- |
+| 1    | Solr collection        | `vinc-{tenant-id}` created               |
+| 2    | MongoDB database       | `vinc-{tenant-id}` created               |
+| 3    | Admin user             | 1 user in `b2busers`                     |
+| 4    | Languages              | 43 seeded, 1 enabled (Italian)           |
+| 5    | Notification templates | 15 seeded (13 default + 2 campaign)      |
+| 6    | Admin registry         | Entry in `vinc-admin.tenants`            |
+
+**Deletion (`deleteTenant()`):**
+
+| Step | Action                         | Verified                   |
+| ---- | ------------------------------ | -------------------------- |
+| 1    | Delete Solr collection/core    | Collection removed         |
+| 2    | Drop MongoDB database          | Database removed           |
+| 3    | Remove from connection pool    | Stale connections cleared  |
+| 4    | Remove from admin registry     | Tenant record deleted      |
+
+#### Files That Require These Tests
+
+Changes to these files **MUST** be followed by tenant tests:
+
+```text
+src/lib/services/admin-tenant.service.ts    # Core provisioning logic
+src/lib/db/connection-pool.ts               # Connection management
+src/lib/notifications/seed-templates.ts     # Template seeding
+src/app/api/admin/tenants/route.ts          # Create API
+src/app/api/admin/tenants/[id]/route.ts     # Delete API
+```
+
+#### Running Tenant Tests
+
+```bash
+# Quick test (direct service calls, ~10 seconds)
+node scripts/test-tenant-lifecycle.cjs
+
+# Full API test (creates temp super admin, ~20 seconds)
+node scripts/test-tenant-api.cjs
+
+# Check existing tenant
+node scripts/check-tenant.cjs hidros-it
+```
+
+#### Expected Output
+
+```text
+============================================================
+TEST SUMMARY
+============================================================
+
+Creation via API:  ✅ PASSED
+Deletion via API:  ✅ PASSED
+
+Overall Result: ✅ ALL TESTS PASSED
+```
+
+#### Debugging Tenant Issues
+
+```bash
+# 1. Check tenant state
+node scripts/check-tenant.cjs <tenant-id>
+
+# 2. Check Solr collections
+curl "http://149.81.163.109:8983/solr/admin/collections?action=LIST" | jq .collections
+
+# 3. Check MongoDB databases
+mongosh "$VINC_MONGO_URL" --eval "db.adminCommand('listDatabases').databases.filter(d => d.name.startsWith('vinc-'))"
+
+# 4. Check admin registry
+mongosh "$VINC_MONGO_URL/vinc-admin" --eval "db.tenants.find({}).pretty()"
+```
+
+#### Failure Recovery
+
+If tenant creation fails mid-way, clean up manually:
+
+```bash
+# Delete orphaned Solr collection
+curl "http://149.81.163.109:8983/solr/admin/collections?action=DELETE&name=vinc-{tenant-id}"
+
+# Delete orphaned MongoDB database
+mongosh "$VINC_MONGO_URL/vinc-{tenant-id}" --eval "db.dropDatabase()"
+
+# Delete orphaned admin record
+mongosh "$VINC_MONGO_URL/vinc-admin" --eval "db.tenants.deleteOne({tenant_id: '{tenant-id}'})"
+```
+
+---
+
+## Pre-Release Checklist
+
+Before any release, run these tests in order:
+
+```bash
+# 1. Unit tests (fast, no external deps)
+npm test
+
+# 2. Tenant provisioning tests (CRITICAL)
+node scripts/test-tenant-api.cjs
+
+# 3. Verify existing tenant health
+node scripts/check-tenant.cjs hidros-it
+```
+
+All must pass before deployment.
+
+---
+
+**Last Updated**: January 2026
+**Version**: 2.1 (Next.js + Tenant Provisioning)
 **Status**: Active Standard

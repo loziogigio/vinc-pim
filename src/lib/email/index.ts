@@ -11,6 +11,7 @@ import type { IEmailLog, EmailStatus } from "@/lib/db/models/email-log";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
+import { createNotificationLog, markLogAsSent, markLogAsFailed } from "@/lib/notifications/notification-log.service";
 
 // ============================================
 // CONFIGURATION
@@ -246,6 +247,8 @@ export interface SendEmailOptions {
   metadata?: Record<string, any>;
   /** Tenant database name for multi-tenant support (e.g., 'vinc-hidros-it') */
   tenantDb?: string;
+  /** Campaign ID for linking email to campaign stats */
+  campaign_id?: string;
 }
 
 export interface SendEmailResult {
@@ -389,20 +392,45 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     tags: options.tags,
     metadata: options.metadata,
     tenant_db: tenantDb,
+    campaign_id: options.campaign_id,
   });
+
+  // Create unified notification log for analytics
+  const recipient = Array.isArray(options.to) ? options.to[0] : options.to;
+  const notificationLog = await createNotificationLog({
+    channel: "email",
+    source: options.campaign_id ? "campaign" : "trigger",
+    campaign_id: options.campaign_id,
+    trigger: options.tags?.[0], // Use first tag as trigger if available
+    tenant_db: tenantDb,
+    recipient,
+    title: options.subject,
+    body: options.text || "",
+    status: options.immediate ? "sending" : "queued",
+  });
+
+  // Store notification log ID on email log for cross-reference
+  emailLog.metadata = {
+    ...emailLog.metadata,
+    notification_log_id: notificationLog.log_id,
+  };
+  await emailLog.save();
 
   // Send immediately or queue
   if (options.immediate) {
-    return await sendEmailNow(emailLog);
+    return await sendEmailNow(emailLog, notificationLog.log_id);
   } else {
-    return await queueEmail(emailLog, options.scheduledAt, tenantDb);
+    return await queueEmail(emailLog, options.scheduledAt, tenantDb, notificationLog.log_id);
   }
 }
 
 /**
  * Send email immediately (bypasses queue)
  */
-async function sendEmailNow(emailLog: IEmailLog): Promise<SendEmailResult> {
+async function sendEmailNow(
+  emailLog: IEmailLog,
+  notificationLogId?: string
+): Promise<SendEmailResult> {
   // Use tenant_db from emailLog if available for multi-tenant SMTP config
   const config = await fetchEmailConfigFromDb(emailLog.tenant_db);
 
@@ -437,6 +465,11 @@ async function sendEmailNow(emailLog: IEmailLog): Promise<SendEmailResult> {
     emailLog.attempts = (emailLog.attempts || 0) + 1;
     await emailLog.save();
 
+    // Update unified notification log
+    if (notificationLogId) {
+      await markLogAsSent(notificationLogId);
+    }
+
     console.log(`[Email] Sent immediately: ${emailLog.email_id} to ${emailLog.to}`);
 
     return {
@@ -452,6 +485,11 @@ async function sendEmailNow(emailLog: IEmailLog): Promise<SendEmailResult> {
     emailLog.error = errorMessage;
     emailLog.attempts = (emailLog.attempts || 0) + 1;
     await emailLog.save();
+
+    // Update unified notification log
+    if (notificationLogId) {
+      await markLogAsFailed(notificationLogId, errorMessage);
+    }
 
     console.error(`[Email] Send failed: ${emailLog.email_id}`, errorMessage);
 
@@ -470,7 +508,8 @@ async function sendEmailNow(emailLog: IEmailLog): Promise<SendEmailResult> {
 async function queueEmail(
   emailLog: IEmailLog,
   scheduledAt?: Date,
-  tenantDb?: string
+  tenantDb?: string,
+  notificationLogId?: string
 ): Promise<SendEmailResult> {
   try {
     const queue = getEmailQueue();
@@ -479,7 +518,7 @@ async function queueEmail(
 
     await queue.add(
       "send-email",
-      { emailId: emailLog.email_id, tenantDb },
+      { emailId: emailLog.email_id, tenantDb, notificationLogId },
       {
         priority: emailLog.priority || 0,
         delay: Math.max(0, delay),
@@ -504,6 +543,11 @@ async function queueEmail(
     emailLog.error = `Queue error: ${errorMessage}`;
     await emailLog.save();
 
+    // Update unified notification log on queue failure
+    if (notificationLogId) {
+      await markLogAsFailed(notificationLogId, `Queue error: ${errorMessage}`);
+    }
+
     console.error(`[Email] Queue failed: ${emailLog.email_id}`, errorMessage);
 
     return {
@@ -519,8 +563,13 @@ async function queueEmail(
  * Process a queued email (called by worker)
  * @param emailId - The email ID to process
  * @param tenantDb - The tenant database name (optional, used for SMTP config fallback)
+ * @param notificationLogId - The notification log ID for unified tracking
  */
-export async function processQueuedEmail(emailId: string, tenantDb?: string): Promise<SendEmailResult> {
+export async function processQueuedEmail(
+  emailId: string,
+  tenantDb?: string,
+  notificationLogId?: string
+): Promise<SendEmailResult> {
   // Email logs are stored centrally in admin database
   const EmailLogModel = await getAdminEmailLogModel();
 
@@ -534,10 +583,13 @@ export async function processQueuedEmail(emailId: string, tenantDb?: string): Pr
     };
   }
 
+  // Get notification log ID from metadata if not provided
+  const logId = notificationLogId || (emailLog.metadata as { notification_log_id?: string })?.notification_log_id;
+
   emailLog.status = "sending";
   await emailLog.save();
 
-  return await sendEmailNow(emailLog as IEmailLog);
+  return await sendEmailNow(emailLog as IEmailLog, logId);
 }
 
 // ============================================
@@ -554,6 +606,7 @@ export async function recordEmailOpen(
   userAgent?: string
 ): Promise<boolean> {
   const EmailLogModel = await getAdminEmailLogModel();
+  const { recordEngagement } = await import("@/lib/notifications/notification-log.service");
 
   const now = new Date();
   const result = await EmailLogModel.updateOne(
@@ -572,6 +625,19 @@ export async function recordEmailOpen(
     }
   );
 
+  // Also record in unified notification log
+  if (result.modifiedCount > 0) {
+    const emailLog = await EmailLogModel.findOne({ email_id: emailId });
+    const notificationLogId = (emailLog?.metadata as { notification_log_id?: string })?.notification_log_id;
+    if (notificationLogId) {
+      await recordEngagement({
+        log_id: notificationLogId,
+        event_type: "opened",
+        metadata: { ip, user_agent: userAgent },
+      });
+    }
+  }
+
   return result.modifiedCount > 0;
 }
 
@@ -586,6 +652,7 @@ export async function recordEmailClick(
   userAgent?: string
 ): Promise<boolean> {
   const EmailLogModel = await getAdminEmailLogModel();
+  const { recordEngagement } = await import("@/lib/notifications/notification-log.service");
 
   const result = await EmailLogModel.updateOne(
     { email_id: emailId, tracking_enabled: true },
@@ -601,6 +668,19 @@ export async function recordEmailClick(
       $inc: { click_count: 1 },
     }
   );
+
+  // Also record in unified notification log
+  if (result.modifiedCount > 0) {
+    const emailLog = await EmailLogModel.findOne({ email_id: emailId });
+    const notificationLogId = (emailLog?.metadata as { notification_log_id?: string })?.notification_log_id;
+    if (notificationLogId) {
+      await recordEngagement({
+        log_id: notificationLogId,
+        event_type: "clicked",
+        metadata: { url, ip, user_agent: userAgent },
+      });
+    }
+  }
 
   return result.modifiedCount > 0;
 }

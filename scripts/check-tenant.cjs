@@ -6,7 +6,9 @@
  * - MongoDB database
  * - Solr collection/core
  * - Admin user
- * - Languages
+ * - Languages (43 seeded, 1 enabled by default)
+ * - Notification templates (15 seeded: 13 default + 2 campaign)
+ * - Home settings (with default header configuration: 2 rows)
  *
  * Usage:
  *   node scripts/check-tenant.cjs <tenant-id>
@@ -110,7 +112,26 @@ async function main() {
     const Language = tenantConn.model('Language', LanguageSchema, 'languages');
     const langCount = await Language.countDocuments();
     const enabledCount = await Language.countDocuments({ isEnabled: true });
-    console.log(`   Languages: ${langCount} total, ${enabledCount} enabled\n`);
+    console.log(`   Languages: ${langCount} total, ${enabledCount} enabled`);
+
+    // Check for notification templates
+    const TemplateSchema = new mongoose.Schema({}, { strict: false });
+    const Template = tenantConn.model('NotificationTemplate', TemplateSchema, 'notificationtemplates');
+    const templateCount = await Template.countDocuments();
+    const campaignCount = await Template.countDocuments({ template_id: { $regex: /^campaign-/ } });
+    console.log(`   Notification templates: ${templateCount} total (${campaignCount} campaign)`);
+
+    // Check for home settings
+    const HomeSettingsSchema = new mongoose.Schema({}, { strict: false });
+    const HomeSettings = tenantConn.model('B2BHomeSettings', HomeSettingsSchema, 'b2bhomesettings');
+    const homeSettings = await HomeSettings.findOne().exec();
+    if (homeSettings) {
+      const hasHeader = homeSettings.headerConfig?.rows?.length > 0;
+      console.log(`   Home settings: ✅ present (header: ${hasHeader ? `${homeSettings.headerConfig.rows.length} rows` : 'not configured'})`);
+    } else {
+      console.log(`   Home settings: ❌ not found`);
+    }
+    console.log('');
 
     await tenantConn.close();
   } else {

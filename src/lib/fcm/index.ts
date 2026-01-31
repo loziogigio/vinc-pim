@@ -12,6 +12,16 @@ import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { getPushLogModel, type IPushLogDocument } from "@/lib/db/models/push-log";
 import { getFirebaseMessaging, getFCMSettings, isFCMEnabled } from "./fcm.service";
 import { getActiveTokens, incrementFailureCount, resetFailureCount } from "./token.service";
+import {
+  deleteInvalidToken,
+  isPermanentlyInvalidToken,
+  PERMANENTLY_INVALID_ERROR_CODES,
+} from "./cleanup.service";
+import {
+  createNotificationLog,
+  markLogAsSent,
+  markLogAsFailed,
+} from "@/lib/notifications/notification-log.service";
 import type {
   SendFCMOptions,
   SendFCMResult,
@@ -185,7 +195,7 @@ async function sendToToken(
     ttl?: number;
     priority?: "normal" | "high";
   }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; deleted?: boolean }> {
   try {
     const messaging = await getFirebaseMessaging(tenantDb);
     if (!messaging) {
@@ -215,17 +225,22 @@ async function sendToToken(
     if (error instanceof Error && "code" in error) {
       const firebaseError = error as { code: string };
 
-      // Token expired or invalid
-      if (
-        firebaseError.code === "messaging/registration-token-not-registered" ||
-        firebaseError.code === "messaging/invalid-registration-token"
-      ) {
-        await incrementFailureCount(tenantDb, tokenId);
-        return { success: false, error: "Token expired or invalid" };
+      // Best practice: Immediately delete permanently invalid tokens
+      // These tokens will NEVER work again, so delete them right away
+      // instead of just incrementing failure count
+      if (isPermanentlyInvalidToken(firebaseError.code)) {
+        // Delete the token immediately - it will never work again
+        await deleteInvalidToken(tenantDb, tokenId);
+        return {
+          success: false,
+          error: `Token permanently invalid (${firebaseError.code}) - deleted`,
+          deleted: true,
+        };
       }
     }
 
-    // Increment failure count for other errors
+    // For other errors (network issues, rate limits, etc.),
+    // increment failure count - these might recover
     await incrementFailureCount(tenantDb, tokenId);
 
     return { success: false, error: errorMessage };
@@ -289,6 +304,21 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
         priority: options.priority
       });
 
+      // Create unified notification log
+      const campaign_id = options.data?.campaign_id as string | undefined;
+      const notificationLog = await createNotificationLog({
+        channel: "mobile",
+        source: campaign_id ? "campaign" : (options.trigger ? "trigger" : "manual"),
+        campaign_id,
+        trigger: options.trigger,
+        tenant_db: tenantDb,
+        user_id: token.user_id,
+        title: options.title,
+        body: options.body,
+        action_url: options.action_url,
+        status: "queued",
+      });
+
       // Add to queue
       const jobData: FCMJobData = {
         tenantDb,
@@ -301,7 +331,10 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
           icon: options.icon || settings?.default_icon,
           image: options.image,
           action_url: options.action_url,
-          data: options.data
+          data: {
+            ...options.data,
+            notification_log_id: notificationLog.log_id, // For mobile tracking
+          }
         },
         templateId: options.templateId,
         trigger: options.trigger,
@@ -311,7 +344,11 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
         ttl: options.ttl
       };
 
-      await fcmQ.add("send-fcm", { ...jobData, fcmLogId: log.push_id }, {
+      await fcmQ.add("send-fcm", {
+        ...jobData,
+        fcmLogId: log.push_id,
+        notificationLogId: notificationLog.log_id
+      }, {
         priority: options.priority === "high" ? 1 : 5
       });
 
@@ -347,13 +384,31 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
       priority: options.priority
     });
 
+    // Create unified notification log
+    const campaign_id = options.data?.campaign_id as string | undefined;
+    const notificationLog = await createNotificationLog({
+      channel: "mobile",
+      source: campaign_id ? "campaign" : (options.trigger ? "trigger" : "manual"),
+      campaign_id,
+      trigger: options.trigger,
+      tenant_db: tenantDb,
+      user_id: token.user_id,
+      title: options.title,
+      body: options.body,
+      action_url: options.action_url,
+      status: "sending",
+    });
+
     const payload: FCMPayload = {
       title: options.title,
       body: options.body,
       icon: options.icon || settings?.default_icon,
       image: options.image,
       action_url: options.action_url,
-      data: options.data
+      data: {
+        ...options.data,
+        notification_log_id: notificationLog.log_id, // For mobile tracking
+      }
     };
 
     const result = await sendToToken(
@@ -372,9 +427,11 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
 
     if (result.success) {
       await updateFCMLogStatus(log.push_id, "sent");
+      await markLogAsSent(notificationLog.log_id);
       sent++;
     } else {
       await updateFCMLogStatus(log.push_id, "failed", result.error);
+      await markLogAsFailed(notificationLog.log_id, result.error || "Unknown error");
       failed++;
       errors.push({
         tokenId: token.token_id,
@@ -394,8 +451,22 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
 /**
  * Process a queued FCM notification (called by worker)
  */
-export async function processQueuedFCM(jobData: FCMJobData & { fcmLogId: string }): Promise<boolean> {
-  const { fcmLogId, tenantDb, tokenId, fcmToken, platform, payload, badge, channelId, ttl, priority } = jobData;
+export async function processQueuedFCM(
+  jobData: FCMJobData & { fcmLogId: string; notificationLogId?: string }
+): Promise<boolean> {
+  const {
+    fcmLogId,
+    notificationLogId,
+    tenantDb,
+    tokenId,
+    fcmToken,
+    platform,
+    payload,
+    badge,
+    channelId,
+    ttl,
+    priority
+  } = jobData;
 
   const result = await sendToToken(
     tenantDb,
@@ -407,6 +478,15 @@ export async function processQueuedFCM(jobData: FCMJobData & { fcmLogId: string 
   );
 
   await updateFCMLogStatus(fcmLogId, result.success ? "sent" : "failed", result.error);
+
+  // Update unified notification log
+  if (notificationLogId) {
+    if (result.success) {
+      await markLogAsSent(notificationLogId);
+    } else {
+      await markLogAsFailed(notificationLogId, result.error || "Unknown error");
+    }
+  }
 
   return result.success;
 }
@@ -501,3 +581,4 @@ export async function getFCMLogs(
 export * from "./types";
 export * from "./fcm.service";
 export * from "./token.service";
+export * from "./cleanup.service";

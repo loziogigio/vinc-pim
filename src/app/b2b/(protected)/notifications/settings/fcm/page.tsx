@@ -9,7 +9,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  ArrowLeft,
   Loader2,
   Trash2,
 } from "lucide-react";
@@ -17,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import Link from "next/link";
+import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 
 interface FCMSettings {
   configured: boolean;
@@ -231,15 +230,17 @@ export default function FCMSettingsPage() {
 
   return (
     <div className="p-6 max-w-3xl">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs items={[
+          { label: "Notifiche", href: "/b2b/notifications" },
+          { label: "Impostazioni", href: "/b2b/notifications/settings" },
+          { label: "FCM" },
+        ]} />
+      </div>
+
       {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/b2b/notifications/settings"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Settings
-        </Link>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
             <Smartphone className="w-6 h-6" />

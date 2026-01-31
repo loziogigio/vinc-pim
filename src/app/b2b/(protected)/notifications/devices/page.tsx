@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
+import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 
 interface FCMDevice {
   _id: string;
@@ -135,6 +136,14 @@ export default function DevicesPage() {
 
   return (
     <div className="p-6">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs items={[
+          { label: "Notifiche", href: "/b2b/notifications" },
+          { label: "Dispositivi" },
+        ]} />
+      </div>
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">FCM Devices</h1>
         <p className="text-sm text-slate-500 mt-1">

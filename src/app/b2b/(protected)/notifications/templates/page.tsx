@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Search, RefreshCcw, Loader2, Check, X, Mail, Pencil } from "lucide-react";
+import { Plus, Search, RefreshCcw, Loader2, Check, X, Mail, Pencil, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { TRIGGER_LABELS } from "@/lib/constants/notification";
 import type { INotificationTemplate, NotificationTrigger } from "@/lib/constants/notification";
+import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 
 interface TemplatesResponse {
   templates: INotificationTemplate[];
@@ -24,6 +25,18 @@ export default function TemplatesPage() {
   const [search, setSearch] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [copiedTrigger, setCopiedTrigger] = useState<string | null>(null);
+
+  // Copy trigger to clipboard
+  const copyTrigger = async (trigger: string) => {
+    try {
+      await navigator.clipboard.writeText(trigger);
+      setCopiedTrigger(trigger);
+      setTimeout(() => setCopiedTrigger(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const loadTemplates = useCallback(async () => {
     setIsLoading(true);
@@ -95,6 +108,14 @@ export default function TemplatesPage() {
 
   return (
     <div className="p-6">
+      {/* Breadcrumbs */}
+      <div className="mb-4">
+        <Breadcrumbs items={[
+          { label: "Notifiche", href: "/b2b/notifications" },
+          { label: "Templates" },
+        ]} />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Notification Templates</h1>
@@ -115,7 +136,7 @@ export default function TemplatesPage() {
             ) : (
               <RefreshCcw className="w-4 h-4" />
             )}
-            Seed Defaults
+            Ripristina Predefiniti
           </Button>
           <Button size="sm" className="gap-2">
             <Plus className="w-4 h-4" />
@@ -200,9 +221,23 @@ export default function TemplatesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 text-xs font-medium text-slate-700">
-                      {TRIGGER_LABELS[template.trigger as NotificationTrigger] || template.trigger}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm text-slate-700">
+                        {TRIGGER_LABELS[template.trigger as NotificationTrigger] || template.trigger}
+                      </span>
+                      <button
+                        onClick={() => copyTrigger(template.trigger)}
+                        className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
+                        title="Copy trigger ID for API calls"
+                      >
+                        {copiedTrigger === template.trigger ? (
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                        {template.trigger}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">

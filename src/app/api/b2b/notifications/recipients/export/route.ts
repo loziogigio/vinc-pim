@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 
 interface ExportPayload {
@@ -24,12 +24,12 @@ interface ExportPayload {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const payload: ExportPayload = await req.json();
     const { PortalUser } = await connectWithModels(tenantDb);
     const format = payload.format || "csv";
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       is_active?: boolean;
     };
 
-    const query: QueryType = { tenant_id: session.tenantId };
+    const query: QueryType = { tenant_id: auth.tenantId };
 
     if (payload.user_ids && payload.user_ids.length > 0) {
       query.portal_user_id = { $in: payload.user_ids };

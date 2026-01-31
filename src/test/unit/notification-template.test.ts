@@ -41,12 +41,12 @@ describe("unit: Notification Template Constants", () => {
   });
 
   describe("NOTIFICATION_TRIGGERS", () => {
-    it("should have exactly 14 triggers", () => {
+    it("should have exactly 16 triggers", () => {
       /**
-       * Verify that all 14 notification triggers are defined.
-       * 5 Account + 4 Order + 4 Marketing + 1 Custom = 14
+       * Verify that all 16 notification triggers are defined.
+       * 5 Account + 4 Order + 4 Marketing + 2 Campaign + 1 Custom = 16
        */
-      expect(NOTIFICATION_TRIGGERS).toHaveLength(14);
+      expect(NOTIFICATION_TRIGGERS).toHaveLength(16);
     });
 
     it("should include all account triggers", () => {

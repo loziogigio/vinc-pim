@@ -178,3 +178,15 @@ export function getPoolStats() {
     baseConnected: baseConnection?.readyState === 1,
   };
 }
+
+/**
+ * Remove a specific database from the pool (for tenant deletion).
+ * This ensures no stale connections remain after a tenant is deleted.
+ */
+export function removeFromPool(dbName: string): boolean {
+  const deleted = pool.delete(dbName);
+  if (deleted) {
+    console.log(`[Pool] Removed connection from pool: ${dbName}`);
+  }
+  return deleted;
+}

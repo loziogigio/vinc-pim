@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 
 interface ImportPayload {
@@ -28,12 +28,12 @@ interface MatchedUser {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const payload: ImportPayload = await req.json();
     const { PortalUser } = await connectWithModels(tenantDb);
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // Find matching portal users (case-insensitive)
     const users = await PortalUser.find({
-      tenant_id: session.tenantId,
+      tenant_id: auth.tenantId,
       username: { $in: uniqueUsernames.map((u) => new RegExp(`^${escapeRegex(u)}$`, "i")) },
     })
       .select("portal_user_id username email is_active")

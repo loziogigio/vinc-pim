@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import {
   CAMPAIGN_STATUSES,
@@ -22,16 +22,17 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const { searchParams } = new URL(req.url);
 
     // Parse query params
     const status = searchParams.get("status") as CampaignStatus | null;
+    const search = searchParams.get("search");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const skip = (page - 1) * limit;
@@ -40,6 +41,17 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = {};
     if (status && CAMPAIGN_STATUSES.includes(status)) {
       query.status = status;
+    }
+
+    // Add search filter
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      query.$or = [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { title: { $regex: searchTerm, $options: "i" } },
+        { campaign_id: { $regex: searchTerm, $options: "i" } },
+        { slug: { $regex: searchTerm, $options: "i" } },
+      ];
     }
 
     const { Campaign } = await connectWithModels(tenantDb);
@@ -91,17 +103,18 @@ interface CreateCampaignPayload {
   channels: ("email" | "mobile" | "web_in_app")[];
   recipient_type: "all" | "selected" | "tagged";
   selected_user_ids?: string[];
+  selected_users?: { id: string; email: string; name: string }[];
   tag_ids?: string[];
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authenticateTenant(req);
+    if (!auth.authenticated || !auth.tenantDb) {
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const tenantDb = auth.tenantDb;
     const payload: CreateCampaignPayload = await req.json();
 
     // Validate required fields
@@ -138,6 +151,9 @@ export async function POST(req: NextRequest) {
 
     const { Campaign } = await connectWithModels(tenantDb);
 
+    // Extract user IDs from selected_users if provided
+    const selectedUserIds = payload.selected_users?.map((u) => u.id) || payload.selected_user_ids;
+
     // Create campaign as draft
     const campaign = new Campaign({
       name: payload.name.trim(),
@@ -155,9 +171,10 @@ export async function POST(req: NextRequest) {
       open_in_new_tab: payload.open_in_new_tab,
       channels: payload.channels,
       recipient_type: payload.recipient_type,
-      selected_user_ids: payload.selected_user_ids,
+      selected_user_ids: selectedUserIds,
+      selected_users: payload.selected_users,
       tag_ids: payload.tag_ids,
-      created_by: session.user?.id || session.user?.email,
+      created_by: auth.userId || auth.email,
     });
 
     await campaign.save();

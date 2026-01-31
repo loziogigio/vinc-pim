@@ -6,6 +6,25 @@
  */
 
 // ============================================
+// NOTIFICATION LOG CONSTANTS (Unified Logging)
+// ============================================
+
+export const LOG_CHANNELS = ["email", "mobile", "web_in_app"] as const;
+export type LogChannel = (typeof LOG_CHANNELS)[number];
+
+export const LOG_SOURCES = ["campaign", "trigger", "manual"] as const;
+export type LogSource = (typeof LOG_SOURCES)[number];
+
+export const LOG_STATUSES = ["queued", "sending", "sent", "failed", "bounced"] as const;
+export type LogStatus = (typeof LOG_STATUSES)[number];
+
+export const LOG_EVENT_TYPES = ["delivered", "opened", "clicked", "read", "dismissed"] as const;
+export type LogEventType = (typeof LOG_EVENT_TYPES)[number];
+
+export const TRACKING_PLATFORMS = ["mobile", "web"] as const;
+export type TrackingPlatform = (typeof TRACKING_PLATFORMS)[number];
+
+// ============================================
 // SHARED DEFAULTS
 // ============================================
 
@@ -71,6 +90,34 @@ export const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   web_in_app: "Web Push / In-App",
 };
 
+/** Channel UI configuration for consistent styling across components */
+export const CHANNEL_UI_CONFIG: Record<
+  NotificationChannel,
+  { label: string; color: string; bgColor: string; textColor: string; borderColor: string }
+> = {
+  email: {
+    label: "Email",
+    color: "blue",
+    bgColor: "bg-blue-50",
+    textColor: "text-blue-600",
+    borderColor: "#3b82f6",
+  },
+  mobile: {
+    label: "Mobile App",
+    color: "emerald",
+    bgColor: "bg-emerald-50",
+    textColor: "text-emerald-600",
+    borderColor: "#10b981",
+  },
+  web_in_app: {
+    label: "Web / In-App",
+    color: "amber",
+    bgColor: "bg-amber-50",
+    textColor: "text-amber-600",
+    borderColor: "#f59e0b",
+  },
+};
+
 // Legacy channel mapping for backward compatibility
 export const LEGACY_CHANNELS = ["email", "web_push", "mobile_push", "sms", "in_app"] as const;
 export type LegacyNotificationChannel = (typeof LEGACY_CHANNELS)[number];
@@ -96,8 +143,11 @@ export const NOTIFICATION_TRIGGERS = [
   "back_in_stock",
   "abandoned_cart",
   "newsletter",
+  // Campaign types
+  "campaign_product",
+  "campaign_generic",
   // Custom
-  "custom"
+  "custom",
 ] as const;
 export type NotificationTrigger = (typeof NOTIFICATION_TRIGGERS)[number];
 
@@ -116,7 +166,9 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   back_in_stock: "Back in Stock",
   abandoned_cart: "Abandoned Cart",
   newsletter: "Newsletter",
-  custom: "Custom Template"
+  campaign_product: "Product Campaign",
+  campaign_generic: "Generic Campaign",
+  custom: "Custom Template",
 };
 
 // ============================================
