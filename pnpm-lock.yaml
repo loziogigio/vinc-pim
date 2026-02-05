@@ -164,6 +164,9 @@ importers:
       tailwind-merge:
         specifier: ^2.2.1
         version: 2.6.0
+      vinc-cdn:
+        specifier: ^1.0.0
+        version: 1.0.0(@aws-sdk/client-s3@3.908.0)
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -5444,6 +5447,11 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  vinc-cdn@1.0.0:
+    resolution: {integrity: sha512-CZPNQnFERyqwyYE2DSHsDmh/7+R0jf0TfXeUQW0TE22t72ZRIC6FqflvcltQ91+iInU3PoYhtmNXHsPsQ0IvFw==}
+    peerDependencies:
+      '@aws-sdk/client-s3': ^3.0.0
 
   vite-node@0.34.6:
     resolution: {integrity: sha512-nlBMJ9x6n7/Amaz6F3zJ97EBwR2FkzhBRxF5e+jE6LA3yi6Wtc2lyTij1OnDMIr34v5g/tVQtsVAzhT0jc5ygA==}
@@ -12032,6 +12040,10 @@ snapshots:
   uuid@9.0.1: {}
 
   vary@1.1.2: {}
+
+  vinc-cdn@1.0.0(@aws-sdk/client-s3@3.908.0):
+    dependencies:
+      '@aws-sdk/client-s3': 3.908.0
 
   vite-node@0.34.6(@types/node@20.19.21):
     dependencies:

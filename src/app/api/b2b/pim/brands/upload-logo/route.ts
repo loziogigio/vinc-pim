@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { uploadImage } from "@/lib/cdn/image-upload";
+import { uploadImage } from "vinc-cdn";
+import { getCdnConfig } from "@/lib/services/cdn-config";
 
 // POST /api/b2b/pim/brands/upload-logo - Upload brand logo to CDN
 export async function POST(req: NextRequest) {
@@ -17,13 +18,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    // Get CDN config
+    const config = await getCdnConfig();
+    if (!config) {
+      return NextResponse.json({ error: "CDN not configured" }, { status: 500 });
+    }
+
     // Upload to CDN in brands folder
-    const result = await uploadImage(file, `brands`);
+    const result = await uploadImage(config, file, "brands");
 
     return NextResponse.json({
       url: result.url,
-      cdn_key: result.cdn_key,
-      file_name: result.file_name,
+      cdn_key: result.key,
+      file_name: result.fileName,
       message: "Logo uploaded successfully",
     });
   } catch (error: any) {

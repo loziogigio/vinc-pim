@@ -2,7 +2,8 @@ import { Buffer } from "node:buffer";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth/session";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { isCdnConfigured, uploadToCdn } from "@/lib/services/cdn-upload.service";
+import { uploadToCdn } from "vinc-cdn";
+import { getCdnConfig, isCdnConfigured } from "@/lib/services/cdn-config";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -44,11 +45,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const config = await getCdnConfig();
+    if (!config) {
+      return NextResponse.json({ error: "CDN configuration not found" }, { status: 500 });
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadToCdn({
+    const result = await uploadToCdn(config, {
       buffer,
-      content_type: file.type || "application/octet-stream",
-      file_name: file.name
+      contentType: file.type || "application/octet-stream",
+      fileName: file.name
     });
 
     return NextResponse.json(

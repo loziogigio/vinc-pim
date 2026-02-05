@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { uploadMultipleMedia } from "@/lib/cdn/media-upload";
-import { deleteFromCdn } from "@/lib/services/cdn-upload.service";
+import { uploadMultipleMedia, deleteFromCdn } from "vinc-cdn";
+import { getCdnConfig } from "@/lib/services/cdn-config";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/media
@@ -41,8 +41,15 @@ export async function POST(
       );
     }
 
+    // Get CDN config
+    const config = await getCdnConfig();
+    if (!config) {
+      return NextResponse.json({ error: "CDN not configured" }, { status: 500 });
+    }
+
     // Upload media to CDN
     const uploadResults = await uploadMultipleMedia(
+      config,
       files,
       `products/${entity_code}`
     );
@@ -87,11 +94,11 @@ export async function POST(
     // Prepare new media entries
     const newMedia = uploadResults.successful.map((result, index) => ({
       type: type,
-      file_type: result.file_type,
+      file_type: result.fileType,
       url: result.url,
-      cdn_key: result.cdn_key,
-      label: result.file_name,
-      size_bytes: result.size_bytes,
+      cdn_key: result.key,
+      label: result.fileName,
+      size_bytes: result.sizeBytes,
       uploaded_at: new Date(),
       uploaded_by: session.userId,
       is_external_link: false,
@@ -247,9 +254,14 @@ export async function DELETE(
 
     if (cdnKeyForDeletion && !mediaItem.is_external_link) {
       try {
-        cdnDeleted = await deleteFromCdn(cdnKeyForDeletion);
-        if (!cdnDeleted) {
-          cdnError = "CDN deletion skipped (disabled or not configured)";
+        const deleteConfig = await getCdnConfig();
+        if (deleteConfig) {
+          cdnDeleted = await deleteFromCdn(deleteConfig, cdnKeyForDeletion);
+          if (!cdnDeleted) {
+            cdnError = "CDN deletion skipped (disabled or not configured)";
+          }
+        } else {
+          cdnError = "CDN deletion skipped (not configured)";
         }
       } catch (err) {
         cdnError = err instanceof Error ? err.message : "CDN deletion failed (permission denied or network error)";
