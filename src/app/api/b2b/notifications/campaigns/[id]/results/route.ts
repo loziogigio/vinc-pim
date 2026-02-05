@@ -56,8 +56,11 @@ export async function GET(
 
     // Build results by display channel: email, mobile_app, web
     // - email: Email channel tracking
-    // - mobile_app: In-app notifications tracked from Flutter/mobile (platform: "mobile")
-    // - web: In-app notifications tracked from web browser (platform: "web")
+    // - mobile_app: FCM push notifications (channel "mobile")
+    // - web: web_in_app notifications (viewed on web or mobile app)
+    //
+    // Note: web_in_app creates ONE notification that can be viewed on any platform.
+    // We show it as "Web" but track opens/clicks by platform (mobile vs web).
     const results: {
       email?: ChannelResults;
       mobile_app?: ChannelResults;
@@ -65,10 +68,9 @@ export async function GET(
     } = {};
 
     const channels = campaign.channels as NotificationChannel[];
-    const hasInAppChannel = channels.includes("web_in_app") || channels.includes("mobile");
 
     // Email channel
-    if (channels.includes("email")) {
+    if (channels.includes("email") && (liveStats.email.sent > 0 || liveStats.email.failed > 0)) {
       results.email = {
         sent: liveStats.email.sent,
         failed: liveStats.email.failed,
@@ -77,36 +79,46 @@ export async function GET(
       };
     }
 
-    // Mobile App tracking (in-app notifications tracked from mobile platform)
-    if (hasInAppChannel) {
+    // Mobile App - only show if FCM push was enabled AND there are actual FCM logs
+    // Currently FCM doesn't create notification logs, so we check campaign.results
+    const campaignResults = campaign.results as {
+      mobile?: { sent?: number; failed?: number };
+    } | undefined;
+    const hasMobileSends = campaignResults?.mobile?.sent || campaignResults?.mobile?.failed;
+    if (channels.includes("mobile") && hasMobileSends) {
+      // Use campaign.results for FCM stats (not tracked in notification_log yet)
       results.mobile_app = {
-        sent: liveStats.mobile_app.sent,
-        failed: liveStats.mobile_app.failed,
-        opened: liveStats.mobile_app.opened,
+        sent: campaignResults?.mobile?.sent || 0,
+        failed: campaignResults?.mobile?.failed || 0,
+        opened: liveStats.mobile_app.opened, // From in-app tracking
         clicked: liveStats.mobile_app.clicked,
         read: liveStats.mobile_app.read,
       };
     }
 
-    // Web tracking (in-app notifications tracked from web platform)
-    if (hasInAppChannel) {
+    // Web In-App - show when web_in_app channel is enabled
+    // This is the in-app notification visible in web browser AND mobile app notification center
+    if (channels.includes("web_in_app") && (liveStats.web.sent > 0 || liveStats.web.failed > 0)) {
       results.web = {
         sent: liveStats.web.sent,
         failed: liveStats.web.failed,
-        opened: liveStats.web.opened,
-        clicked: liveStats.web.clicked,
+        // Combine mobile + web opens for in-app notifications since they share the notification
+        opened: liveStats.mobile_app.opened + liveStats.web.opened,
+        clicked: liveStats.mobile_app.clicked + liveStats.web.clicked,
         read: liveStats.web.read,
       };
     }
 
-    // Calculate totals (email sent + web_in_app sent, avoid double counting mobile_app/web)
+    // Calculate totals (email + web_in_app, not counting FCM separately for now)
     const emailSent = liveStats.email.sent;
-    const inAppSent = liveStats.mobile_app.sent; // Same as web.sent (shared)
-    const totalSent = emailSent + inAppSent;
+    const inAppSent = liveStats.web.sent; // web_in_app notifications
+    const fcmSent = campaignResults?.mobile?.sent || 0;
+    const totalSent = emailSent + inAppSent + fcmSent;
 
     const emailFailed = liveStats.email.failed;
-    const inAppFailed = liveStats.mobile_app.failed; // Same as web.failed (shared)
-    const totalFailed = emailFailed + inAppFailed;
+    const inAppFailed = liveStats.web.failed;
+    const fcmFailed = campaignResults?.mobile?.failed || 0;
+    const totalFailed = emailFailed + inAppFailed + fcmFailed;
 
     const total = totalSent + totalFailed;
 
@@ -122,7 +134,7 @@ export async function GET(
       delivery_rate: total > 0 ? totalSent / total : 0,
     };
 
-    // Add open_rate based on all channels (combining mobile + web opens)
+    // Add open_rate based on all channels
     const totalOpened = liveStats.email.opened + liveStats.mobile_app.opened + liveStats.web.opened;
     if (totalSent > 0) {
       totals.open_rate = Math.min(totalOpened / totalSent, 1);

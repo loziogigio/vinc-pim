@@ -13,7 +13,9 @@ import {
   TrendingUp,
   Package,
   Euro,
+  Plus,
 } from "lucide-react";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 
 interface OrderStats {
   draft: number;
@@ -41,6 +43,7 @@ export default function OrdersOverviewPage() {
 
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -104,11 +107,20 @@ export default function OrdersOverviewPage() {
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: "Orders" }]} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Orders Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Overview of your orders and carts
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Orders Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Overview of your orders and carts
+          </p>
+        </div>
+        <button
+          onClick={() => setShowNewOrderModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition"
+        >
+          <Plus className="h-4 w-4" />
+          New Order
+        </button>
       </div>
 
       {isLoading ? (
@@ -256,6 +268,12 @@ export default function OrdersOverviewPage() {
           </div>
         </>
       )}
+
+      {/* New Order Modal */}
+      <NewOrderModal
+        isOpen={showNewOrderModal}
+        onClose={() => setShowNewOrderModal(false)}
+      />
     </div>
   );
 }

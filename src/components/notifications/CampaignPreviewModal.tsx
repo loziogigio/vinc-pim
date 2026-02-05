@@ -13,12 +13,11 @@ interface CampaignPreviewModalProps {
   title: string;
   body: string;
   pushImage?: string;
-  image?: string;
   emailSubject?: string;
   emailHtml?: string;
-  productsUrl?: string;
+  emailLink?: string; // Separate link for email "Vedi tutti"
+  productsUrl?: string; // Push notification action URL
   products?: ITemplateProduct[];
-  url?: string;
   openInNewTab?: boolean;
 }
 
@@ -30,12 +29,11 @@ export function CampaignPreviewModal({
   title,
   body,
   pushImage,
-  image,
   emailSubject,
   emailHtml,
+  emailLink,
   productsUrl,
   products,
-  url,
   openInNewTab,
 }: CampaignPreviewModalProps) {
   const [previewChannel, setPreviewChannel] = useState<NotificationChannel>("email");
@@ -51,10 +49,11 @@ export function CampaignPreviewModal({
         body,
         email_subject: emailSubject,
         email_html: emailHtml,
-        products_url: productsUrl,
+        email_link: emailLink, // Separate link for email
+        products_url: productsUrl, // Push notification action URL
         push_image: pushImage,
+        open_in_new_tab: openInNewTab,
         ...(campaignType === "product" && { products }),
-        ...(campaignType === "generic" && { url, image, open_in_new_tab: openInNewTab }),
       };
 
       const res = await fetch("/api/b2b/notifications/campaigns/preview", {
@@ -72,7 +71,7 @@ export function CampaignPreviewModal({
     } finally {
       setIsLoadingPreview(false);
     }
-  }, [campaignType, title, body, emailSubject, emailHtml, products, productsUrl, pushImage, url, image, openInNewTab]);
+  }, [campaignType, title, body, emailSubject, emailHtml, emailLink, products, productsUrl, pushImage, openInNewTab]);
 
   useEffect(() => {
     if (isOpen && previewChannel === "email") {
@@ -90,7 +89,7 @@ export function CampaignPreviewModal({
 
   if (!isOpen) return null;
 
-  const notificationImage = pushImage || image;
+  const notificationImage = pushImage;
   const channels = Array.from(enabledChannels);
 
   return (

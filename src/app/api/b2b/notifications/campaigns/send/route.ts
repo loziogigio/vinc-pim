@@ -17,11 +17,13 @@ interface SelectedUserInput {
   id: string;
   email: string;
   name: string;
+  type: "b2b" | "portal";
 }
 
 interface CampaignSendPayload extends CampaignPayload {
   recipient_type: RecipientType;
   selected_users?: SelectedUserInput[];
+  email_link?: string; // Separate link for email "Vedi tutti"
 }
 
 export async function POST(req: NextRequest) {
@@ -39,12 +41,14 @@ export async function POST(req: NextRequest) {
     }
 
     const {
+      name,
       type,
       title,
       body: messageBody,
       push_image,
       email_subject,
       email_html,
+      email_link,
       products_url,
       channels,
       recipient_type = "all",
@@ -60,8 +64,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No users selected" }, { status: 400 });
     }
 
-    // Create campaign record (generates campaign_id, stores in history)
-    const campaignName = `${type === "product" ? "Prodotto" : "Generica"} - ${new Date().toLocaleDateString("it-IT")}`;
+    // Use provided name or generate one as fallback
+    const campaignName = name?.trim() || `${type === "product" ? "Prodotto" : "Generica"} - ${new Date().toLocaleDateString("it-IT")}`;
 
     const campaign = await createCampaign(tenantDb, {
       name: campaignName,
@@ -71,6 +75,7 @@ export async function POST(req: NextRequest) {
       push_image,
       email_subject,
       email_html,
+      email_link,
       products_url,
       products,
       url,
@@ -79,6 +84,7 @@ export async function POST(req: NextRequest) {
       channels,
       recipient_type,
       selected_user_ids: selected_users?.map((u) => u.id),
+      selected_users, // Store full user info for email lookup
       created_by: userId,
     });
 

@@ -23,7 +23,7 @@ import {
 
 // Re-export for convenience
 export { CAMPAIGN_STATUSES, RECIPIENT_TYPES };
-export type { CampaignStatus, RecipientType, ISelectedUser };
+export type { CampaignStatus, RecipientType, ISelectedUser, SelectedUserType };
 
 // ============================================
 // INTERFACES
@@ -49,12 +49,18 @@ export interface ICampaignResults {
 }
 
 /**
+ * User type for campaign targeting
+ */
+export type SelectedUserType = "b2b" | "portal";
+
+/**
  * Selected user for campaign targeting
  */
 export interface ISelectedUser {
   id: string;
   email: string;
   name: string;
+  type: SelectedUserType;
 }
 
 export interface ICampaign {
@@ -70,7 +76,8 @@ export interface ICampaign {
   push_image?: string;
   email_subject?: string;
   email_html?: string;
-  products_url?: string;
+  email_link?: string; // Separate link for email "Vedi tutti" button
+  products_url?: string; // Push notification action URL (relative for in-app navigation)
   products?: ITemplateProduct[];
   url?: string;
   image?: string;
@@ -149,6 +156,7 @@ const SelectedUserSchema = new Schema(
     id: { type: String, required: true },
     email: { type: String, required: true },
     name: { type: String, required: true },
+    type: { type: String, enum: ["b2b", "portal"], default: "portal" },
   },
   { _id: false }
 );
@@ -223,6 +231,10 @@ const CampaignSchema = new Schema<ICampaignDocument>(
     },
     email_html: {
       type: String,
+    },
+    email_link: {
+      type: String,
+      trim: true,
     },
     products_url: {
       type: String,

@@ -36,7 +36,8 @@ export interface CreateCampaignData {
   push_image?: string;
   email_subject?: string;
   email_html?: string;
-  products_url?: string;
+  email_link?: string; // Separate link for email "Vedi tutti" button
+  products_url?: string; // Push notification action URL
   products?: ITemplateProduct[];
   url?: string;
   image?: string;
@@ -44,6 +45,7 @@ export interface CreateCampaignData {
   channels: NotificationChannel[];
   recipient_type: RecipientType;
   selected_user_ids?: string[];
+  selected_users?: { id: string; email: string; name: string; type: "b2b" | "portal" }[]; // Full user info for B2B/Portal users
   tag_ids?: string[];
   created_by?: string;
 }
@@ -56,7 +58,8 @@ export interface UpdateCampaignData {
   push_image?: string;
   email_subject?: string;
   email_html?: string;
-  products_url?: string;
+  email_link?: string; // Separate link for email "Vedi tutti" button
+  products_url?: string; // Push notification action URL
   products?: ITemplateProduct[];
   url?: string;
   image?: string;
@@ -141,6 +144,7 @@ export async function createCampaign(tenantDb: string, data: CreateCampaignData)
     push_image: data.push_image?.trim(),
     email_subject: data.email_subject?.trim(),
     email_html: data.email_html,
+    email_link: data.email_link?.trim(),
     products_url: data.products_url?.trim(),
     products: data.products,
     url: data.url?.trim(),
@@ -149,6 +153,7 @@ export async function createCampaign(tenantDb: string, data: CreateCampaignData)
     channels: data.channels,
     recipient_type: data.recipient_type,
     selected_user_ids: data.selected_user_ids,
+    selected_users: data.selected_users, // Store full user info for B2B users (email lookup)
     tag_ids: data.tag_ids,
     created_by: data.created_by,
   });
@@ -195,6 +200,7 @@ export async function updateCampaign(
   if (data.push_image !== undefined) campaign.push_image = data.push_image?.trim();
   if (data.email_subject !== undefined) campaign.email_subject = data.email_subject?.trim();
   if (data.email_html !== undefined) campaign.email_html = data.email_html;
+  if (data.email_link !== undefined) campaign.email_link = data.email_link?.trim();
   if (data.products_url !== undefined) campaign.products_url = data.products_url?.trim();
   if (data.products !== undefined) campaign.products = data.products;
   if (data.url !== undefined) campaign.url = data.url?.trim();
@@ -271,34 +277,83 @@ export async function sendCampaign(
   campaign.status = "sending";
   await campaign.save();
 
-  // Get recipients
-  let recipients: { _id: string; portal_user_id: string; email: string; username?: string }[] = [];
+  // Get recipients - supports both Portal users (from MongoDB) and B2B users (from external VINC_API)
+  // Both use user_id: Portal users use portal_user_id, B2B users use VINC API user_id (NOT customer_id)
+  type RecipientUserType = "b2b_user" | "portal_user";
+  let recipients: { _id: string; user_id: string; email: string; username?: string; user_type: RecipientUserType }[] = [];
 
   try {
     switch (campaign.recipient_type) {
       case "all":
-        recipients = await PortalUser.find({ is_active: true })
+        // "all" only sends to Portal users (they have active accounts)
+        const allPortalUsers = await PortalUser.find({ is_active: true })
           .select("_id portal_user_id email username")
           .lean();
+        recipients = allPortalUsers.map((p) => ({
+          _id: p._id.toString(),
+          user_id: p.portal_user_id,
+          email: p.email,
+          username: p.username,
+          user_type: "portal_user" as RecipientUserType,
+        }));
         break;
       case "selected":
-        if (campaign.selected_user_ids?.length) {
-          recipients = await PortalUser.find({
-            portal_user_id: { $in: campaign.selected_user_ids },
+        // Separate B2B and Portal users based on type field
+        const b2bUsers = campaign.selected_users?.filter(
+          (u: { type?: string }) => u.type === "b2b"
+        ) || [];
+        const portalUserSelections = campaign.selected_users?.filter(
+          (u: { type?: string }) => u.type === "portal" || !u.type // Default to portal for backward compatibility
+        ) || [];
+
+        // 1. Portal users: lookup by portal_user_id to verify they exist and are active
+        if (portalUserSelections.length > 0) {
+          const portalIds = portalUserSelections.map((u: { id: string }) => u.id);
+          const foundPortal = await PortalUser.find({
+            portal_user_id: { $in: portalIds },
             is_active: true,
           })
             .select("_id portal_user_id email username")
             .lean();
+
+          recipients.push(
+            ...foundPortal.map((p) => ({
+              _id: p._id.toString(),
+              user_id: p.portal_user_id,
+              email: p.email,
+              username: p.username,
+              user_type: "portal_user" as RecipientUserType,
+            }))
+          );
+        }
+
+        // 2. B2B users: add directly using VINC API user_id (NOT customer_id)
+        for (const b2b of b2bUsers) {
+          recipients.push({
+            _id: b2b.id,
+            user_id: b2b.id, // VINC API user_id
+            email: b2b.email,
+            username: b2b.name,
+            user_type: "b2b_user" as RecipientUserType,
+          });
         }
         break;
       case "tagged":
+        // Tagged recipients are Portal users only
         if (campaign.tag_ids?.length) {
-          recipients = await PortalUser.find({
+          const taggedUsers = await PortalUser.find({
             "tags.tag_id": { $in: campaign.tag_ids },
             is_active: true,
           })
             .select("_id portal_user_id email username")
             .lean();
+          recipients = taggedUsers.map((p) => ({
+            _id: p._id.toString(),
+            user_id: p.portal_user_id,
+            email: p.email,
+            username: p.username,
+            user_type: "portal_user" as RecipientUserType,
+          }));
         }
         break;
     }
@@ -306,30 +361,41 @@ export async function sendCampaign(
     if (recipients.length === 0) {
       campaign.status = "failed";
       await campaign.save();
-      return { error: "No recipients found", status: 400 };
+      return { error: "Nessun destinatario trovato", status: 400 };
     }
 
     // Generate email HTML if needed (pre-render once for all recipients)
     let fullEmailHtml: string | undefined;
     if (campaign.channels.includes("email") && campaign.email_html) {
+      // Use email_link for email CTA button (separate from products_url for push)
       const emailContent = generateCustomEmailHtml(
         campaign.email_html,
-        campaign.products_url,
-        campaign.products
+        campaign.email_link,
+        campaign.products,
+        campaign.type as "product" | "generic"
       );
       fullEmailHtml = await buildCampaignEmail(tenantDb, emailContent);
     }
 
     // Pre-filter: get user IDs with active FCM tokens to avoid unnecessary mobile send attempts
+    // Uses user_id for BOTH Portal users and B2B users (B2B uses VINC API user_id, NOT customer_id)
     let mobileEligibleUserIds: Set<string> | undefined;
     if (campaign.channels.includes("mobile")) {
       const { FCMToken } = await connectWithModels(tenantDb);
-      const recipientUserIds = recipients.map((r) => r.portal_user_id);
-      const usersWithTokens = await FCMToken.distinct("user_id", {
+
+      // Get all recipient user_ids (works for both Portal and B2B)
+      const allUserIds = recipients.map((r) => r.user_id);
+
+      // Query FCM tokens by user_id (unified for all user types)
+      const fcmTokens = await FCMToken.find({
         is_active: true,
-        user_id: { $in: recipientUserIds },
-      });
-      mobileEligibleUserIds = new Set(usersWithTokens as string[]);
+        user_id: { $in: allUserIds },
+      })
+        .select("user_id")
+        .lean();
+
+      // Build set of users with FCM tokens
+      mobileEligibleUserIds = new Set(fcmTokens.map((t) => t.user_id).filter(Boolean));
     }
 
     // Use unified send service (DRY - removes ~80 lines of duplicated code)
@@ -355,9 +421,10 @@ export async function sendCampaign(
         campaign_id: campaign.campaign_id,
       },
       recipients: recipients.map((r) => ({
-        user_id: r.portal_user_id,
+        user_id: r.user_id,
         email: r.email,
         name: r.username,
+        user_type: r.user_type,
       })),
       channels: {
         email: campaign.channels.includes("email"),
@@ -464,4 +531,142 @@ export async function getCampaignResults(tenantDb: string, campaignId: string) {
       open_rate: results.email.sent > 0 ? results.email.opened / results.email.sent : undefined,
     },
   };
+}
+
+// ============================================
+// SCHEDULE CAMPAIGN
+// ============================================
+
+export interface ScheduleCampaignResult {
+  success: boolean;
+  campaign_id: string;
+  scheduled_at: Date;
+  job_id: string;
+  delay_minutes: number;
+}
+
+/**
+ * Schedule a campaign for future delivery.
+ *
+ * Uses two-tier scheduling:
+ * 1. PRIMARY: BullMQ delayed job (exact timing)
+ * 2. FALLBACK: Polling every 5 min catches jobs lost after Redis restart
+ *
+ * @param tenantDb - Tenant database name
+ * @param tenantId - Tenant ID for queue job
+ * @param campaignId - Campaign to schedule
+ * @param scheduledAt - When to send (must be in the future)
+ */
+export async function scheduleCampaign(
+  tenantDb: string,
+  tenantId: string,
+  campaignId: string,
+  scheduledAt: Date
+): Promise<ScheduleCampaignResult | { error: string; status: number }> {
+  const { Campaign } = await connectWithModels(tenantDb);
+
+  const campaign = await Campaign.findOne({ campaign_id: campaignId });
+
+  if (!campaign) {
+    return { error: "Campaign not found", status: 404 };
+  }
+
+  if (campaign.status !== "draft") {
+    return {
+      error: `Campaign cannot be scheduled (current status: ${campaign.status})`,
+      status: 400,
+    };
+  }
+
+  // Validate scheduled_at is in the future
+  const now = new Date();
+  if (scheduledAt <= now) {
+    return {
+      error: "scheduled_at must be in the future",
+      status: 400,
+    };
+  }
+
+  // Check FCM if mobile channel enabled
+  if (campaign.channels.includes("mobile")) {
+    const fcmEnabled = await isFCMEnabled(tenantDb);
+    if (!fcmEnabled) {
+      return { error: "FCM push notifications not enabled", status: 400 };
+    }
+  }
+
+  // Import queue function (avoid circular dependency)
+  const { scheduleCampaignJob } = await import("@/lib/queue/notification-worker");
+
+  // Add delayed job to BullMQ (PRIMARY scheduling mechanism)
+  const { jobId, delay } = await scheduleCampaignJob(
+    tenantDb,
+    tenantId,
+    campaignId,
+    scheduledAt
+  );
+
+  // Update campaign status and scheduled_at
+  campaign.status = "scheduled";
+  campaign.scheduled_at = scheduledAt;
+  await campaign.save();
+
+  const delayMinutes = Math.round(delay / 60000);
+
+  console.log(
+    `[Campaign] Scheduled ${campaignId} for ${scheduledAt.toISOString()} ` +
+      `(in ${delayMinutes} minutes)`
+  );
+
+  return {
+    success: true,
+    campaign_id: campaignId,
+    scheduled_at: scheduledAt,
+    job_id: jobId,
+    delay_minutes: delayMinutes,
+  };
+}
+
+// ============================================
+// CANCEL SCHEDULED CAMPAIGN
+// ============================================
+
+/**
+ * Cancel a scheduled campaign and return to draft status.
+ */
+export async function cancelScheduledCampaign(
+  tenantDb: string,
+  campaignId: string
+): Promise<{ success: boolean } | { error: string; status: number }> {
+  const { Campaign } = await connectWithModels(tenantDb);
+
+  const campaign = await Campaign.findOne({ campaign_id: campaignId });
+
+  if (!campaign) {
+    return { error: "Campaign not found", status: 404 };
+  }
+
+  if (campaign.status !== "scheduled") {
+    return {
+      error: `Campaign is not scheduled (current status: ${campaign.status})`,
+      status: 400,
+    };
+  }
+
+  // Import queue function (avoid circular dependency)
+  const { cancelScheduledCampaign: cancelJob } = await import(
+    "@/lib/queue/notification-worker"
+  );
+
+  // Remove the delayed job from BullMQ
+  await cancelJob(campaignId);
+
+  // Reset campaign to draft
+  campaign.status = "draft";
+  campaign.scheduled_at = undefined;
+  await campaign.save();
+
+  console.log(`[Campaign] Cancelled scheduled campaign ${campaignId}`);
+
+  return { success: true };
 }

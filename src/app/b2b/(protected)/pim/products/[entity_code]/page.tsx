@@ -1661,9 +1661,8 @@ export default function ProductDetailPage({
             </div>
           )}
 
-          {/* Pricing & Packaging - Show if pricing or packaging data exists */}
-          {(product.pricing || (product.packaging_options && product.packaging_options.length > 0) || (product.promotions && product.promotions.length > 0)) && (
-            <div className="rounded-lg bg-card p-6 shadow-sm">
+          {/* Pricing & Packaging - Always show to allow adding packaging options */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 Pricing & Packaging
               </h3>
@@ -2105,7 +2104,6 @@ export default function ProductDetailPage({
                 )}
               </div>
             </div>
-          )}
 
           {/* Basic Information */}
           <div className="rounded-lg bg-card p-6 shadow-sm">

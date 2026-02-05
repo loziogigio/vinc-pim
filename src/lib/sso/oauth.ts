@@ -48,27 +48,6 @@ export interface TokenExchangeResult {
 // ============================================
 
 /**
- * Validate a client ID and redirect URI.
- * @deprecated Use validateClientForTenant for tenant-aware validation
- */
-export async function validateClient(
-  clientId: string,
-  redirectUri: string
-): Promise<IAuthClientDocument | null> {
-  const AuthClient = await getAuthClientModel();
-
-  const client = await AuthClient.findByClientId(clientId);
-  if (!client) return null;
-
-  // Validate redirect URI is registered
-  if (!client.redirect_uris.includes(redirectUri)) {
-    return null;
-  }
-
-  return client;
-}
-
-/**
  * Validate redirect URI against tenant configuration.
  *
  * Checks if the redirect URI's origin matches:

@@ -16,7 +16,11 @@ import {
   XCircle,
   X,
   Eye,
+  FileText,
+  Package,
+  Plus,
 } from "lucide-react";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 
 type FilterState = {
   search: string;
@@ -34,9 +38,11 @@ type FilterState = {
 
 type OrderStats = {
   draft: number;
+  quotation: number;
   pending: number;
   confirmed: number;
   shipped: number;
+  delivered: number;
   cancelled: number;
   total: number;
   totalValue: number;
@@ -96,11 +102,14 @@ export default function OrdersListPage() {
   });
 
   const [customerName, setCustomerName] = useState<string | null>(null);
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [stats, setStats] = useState<OrderStats>({
     draft: 0,
+    quotation: 0,
     pending: 0,
     confirmed: 0,
     shipped: 0,
+    delivered: 0,
     cancelled: 0,
     total: 0,
     totalValue: 0,
@@ -199,9 +208,11 @@ export default function OrdersListPage() {
         // Calculate stats from current page (or use API stats if available)
         const newStats: OrderStats = {
           draft: 0,
+          quotation: 0,
           pending: 0,
           confirmed: 0,
           shipped: 0,
+          delivered: 0,
           cancelled: 0,
           total: data.pagination?.total || ordersList.length,
           totalValue: 0,
@@ -251,9 +262,11 @@ export default function OrdersListPage() {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; icon: React.ElementType }> = {
       draft: { bg: "bg-amber-100 text-amber-700", icon: ShoppingCart },
+      quotation: { bg: "bg-indigo-100 text-indigo-700", icon: FileText },
       pending: { bg: "bg-blue-100 text-blue-700", icon: Clock },
       confirmed: { bg: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
       shipped: { bg: "bg-purple-100 text-purple-700", icon: Truck },
+      delivered: { bg: "bg-teal-100 text-teal-700", icon: Package },
       cancelled: { bg: "bg-gray-100 text-gray-700", icon: XCircle },
     };
     return styles[status] || { bg: "bg-gray-100 text-gray-700", icon: ShoppingCart };
@@ -286,7 +299,7 @@ export default function OrdersListPage() {
       />
 
       {/* Stats Summary - Compact */}
-      <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 md:grid-cols-9 gap-2">
         <button
           onClick={() => updateFilters({ status: "draft" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
@@ -297,6 +310,18 @@ export default function OrdersListPage() {
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.draft}</div>
             <div className="text-[10px] text-muted-foreground">Carts</div>
+          </div>
+        </button>
+        <button
+          onClick={() => updateFilters({ status: "quotation" })}
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
+            filters.status === "quotation" ? "border-indigo-400 bg-indigo-50" : "border-border bg-card hover:bg-muted/50"
+          }`}
+        >
+          <FileText className="h-4 w-4 text-indigo-600" />
+          <div className="text-left">
+            <div className="text-lg font-bold text-foreground">{stats.quotation}</div>
+            <div className="text-[10px] text-muted-foreground">Quotes</div>
           </div>
         </button>
         <button
@@ -333,6 +358,18 @@ export default function OrdersListPage() {
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.shipped}</div>
             <div className="text-[10px] text-muted-foreground">Shipped</div>
+          </div>
+        </button>
+        <button
+          onClick={() => updateFilters({ status: "delivered" })}
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
+            filters.status === "delivered" ? "border-teal-400 bg-teal-50" : "border-border bg-card hover:bg-muted/50"
+          }`}
+        >
+          <Package className="h-4 w-4 text-teal-600" />
+          <div className="text-left">
+            <div className="text-lg font-bold text-foreground">{stats.delivered}</div>
+            <div className="text-[10px] text-muted-foreground">Delivered</div>
           </div>
         </button>
         <button
@@ -411,6 +448,13 @@ export default function OrdersListPage() {
         <h1 className="text-xl font-bold text-foreground">
           {filters.customer_id && customerName ? `Orders: ${customerName}` : "Orders"}
         </h1>
+        <button
+          onClick={() => setShowNewOrderModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition"
+        >
+          <Plus className="h-4 w-4" />
+          New Order
+        </button>
       </div>
 
       {/* Filters */}
@@ -437,9 +481,11 @@ export default function OrdersListPage() {
           >
             <option value="">All Status</option>
             <option value="draft">Draft (Cart)</option>
+            <option value="quotation">Quotation</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
             <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
           </select>
 
@@ -857,6 +903,12 @@ export default function OrdersListPage() {
           </>
         )}
       </div>
+
+      {/* New Order Modal */}
+      <NewOrderModal
+        isOpen={showNewOrderModal}
+        onClose={() => setShowNewOrderModal(false)}
+      />
     </div>
   );
 }

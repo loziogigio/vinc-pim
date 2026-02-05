@@ -456,12 +456,17 @@ export async function getCleanupStats(
 /**
  * Register or update token using device_id as unique key per user
  * This is the recommended approach to prevent duplicates
+ *
+ * Uses user_id for BOTH Portal users and B2B users:
+ * - Portal users: user_id = portal_user_id
+ * - B2B users: user_id = VINC API user_id (NOT customer_id)
  */
 export async function registerOrUpdateByDevice(
   tenantDb: string,
   input: {
     tenant_id: string;
-    user_id?: string;
+    user_id?: string; // user_id for ALL user types
+    user_type?: "portal_user" | "b2b_user";
     device_id: string;
     fcm_token: string;
     platform: "ios" | "android";
@@ -478,12 +483,15 @@ export async function registerOrUpdateByDevice(
 ): Promise<IFCMTokenDocument> {
   const { FCMToken } = await connectWithModels(tenantDb);
 
-  // Find existing token by device_id + user_id (or just device_id for anonymous)
+  const userType = input.user_type || "portal_user";
+
+  // Find existing token by device_id + user_id
   const query: Record<string, unknown> = {
     tenant_id: input.tenant_id,
     device_id: input.device_id,
   };
 
+  // Always use user_id for both Portal and B2B users
   if (input.user_id) {
     query.user_id = input.user_id;
   } else {
@@ -499,6 +507,7 @@ export async function registerOrUpdateByDevice(
     existingByDevice.device_model = input.device_model;
     existingByDevice.app_version = input.app_version;
     existingByDevice.os_version = input.os_version;
+    existingByDevice.user_type = userType;
     existingByDevice.is_active = true;
     existingByDevice.failure_count = 0;
 
@@ -522,6 +531,7 @@ export async function registerOrUpdateByDevice(
   if (existingByToken) {
     // Update existing token record
     existingByToken.user_id = input.user_id;
+    existingByToken.user_type = userType;
     existingByToken.device_id = input.device_id;
     existingByToken.platform = input.platform;
     existingByToken.device_model = input.device_model;
@@ -541,11 +551,11 @@ export async function registerOrUpdateByDevice(
     return existingByToken;
   }
 
-  // Create new token
+  // Create new token - always use user_id for all user types
   const token = new FCMToken({
     tenant_id: input.tenant_id,
     user_id: input.user_id,
-    user_type: "portal_user",
+    user_type: userType,
     fcm_token: input.fcm_token,
     platform: input.platform,
     device_id: input.device_id,

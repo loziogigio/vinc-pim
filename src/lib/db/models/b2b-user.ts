@@ -18,6 +18,12 @@ const B2BUserSchema = new Schema<B2BUser>(
       minlength: 3,
       maxlength: 50,
     },
+    /** VINC API user_id from SSO token (sub field). Used for notification targeting. */
+    user_id: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
     email: {
       type: String,
       required: true,

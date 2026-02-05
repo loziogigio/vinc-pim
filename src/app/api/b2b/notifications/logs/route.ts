@@ -2,11 +2,15 @@
  * Notification Logs API
  *
  * GET /api/b2b/notifications/logs - List email logs
+ *
+ * Email logs are stored centrally in vinc-admin database for tracking.
+ * This endpoint filters by tenant_db to return only tenant-specific logs.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
-import { connectWithModels } from "@/lib/db/connection";
+import { connectToAdminDatabase } from "@/lib/db/admin-connection";
+import { EmailLogSchema } from "@/lib/db/models/email-log";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +20,10 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantDb = auth.tenantDb;
-    const { EmailLog } = await connectWithModels(tenantDb);
+
+    // Email logs are stored in the admin database
+    const adminConn = await connectToAdminDatabase();
+    const EmailLog = adminConn.models.EmailLog || adminConn.model("EmailLog", EmailLogSchema);
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -27,8 +34,8 @@ export async function GET(req: NextRequest) {
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
 
-    // Build query
-    const query: Record<string, unknown> = {};
+    // Build query - filter by tenant
+    const query: Record<string, unknown> = { tenant_db: tenantDb };
 
     if (search) {
       query.$or = [

@@ -46,6 +46,7 @@ import { FCMTokenSchema } from "./models/fcm-token";
 import { NotificationSchema } from "./models/notification";
 import { CampaignSchema } from "./models/campaign";
 import { UserTagSchema } from "./models/user-tag";
+import { ThreadSchema } from "./models/thread";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -86,6 +87,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Notification: NotificationSchema,
   Campaign: CampaignSchema,
   UserTag: UserTagSchema,
+  Thread: ThreadSchema,
 };
 
 /**
@@ -168,6 +170,61 @@ export async function getTenantModels(dbName: string) {
     Notification: connection.models.Notification,
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
+    Thread: connection.models.Thread,
+  };
+}
+
+/**
+ * Synchronous model registry getter for use with an existing connection.
+ * Use this when you already have a connection and need to get models.
+ */
+export function getModelRegistry(connection: mongoose.Connection) {
+  // Register all models on this connection if not already done
+  for (const [name, schema] of Object.entries(MODEL_SCHEMAS)) {
+    if (!connection.models[name]) {
+      connection.model(name, schema);
+    }
+  }
+
+  return {
+    PIMProduct: connection.models.PIMProduct,
+    Customer: connection.models.Customer,
+    Order: connection.models.Order,
+    APIKey: connection.models.APIKey,
+    B2BUser: connection.models.B2BUser,
+    ImportJob: connection.models.ImportJob,
+    Language: connection.models.Language,
+    Brand: connection.models.Brand,
+    Category: connection.models.Category,
+    Tag: connection.models.Tag,
+    Collection: connection.models.Collection,
+    ActivityLog: connection.models.ActivityLog,
+    B2BProduct: connection.models.B2BProduct,
+    MenuItem: connection.models.MenuItem,
+    ProductType: connection.models.ProductType,
+    TechnicalSpecification: connection.models.TechnicalSpecification,
+    Page: connection.models.Page,
+    HomeSettings: connection.models.HomeSettings,
+    HomeTemplate: connection.models.HomeTemplate,
+    ProductTemplate: connection.models.ProductTemplate,
+    ProductTemplateSimple: connection.models.ProductTemplateSimple,
+    SynonymDictionary: connection.models.SynonymDictionary,
+    PortalUser: connection.models.PortalUser,
+    Counter: connection.models.Counter,
+    ImportSource: connection.models.ImportSource,
+    AssociationJob: connection.models.AssociationJob,
+    UOM: connection.models.UOM,
+    EmailLog: connection.models.EmailLog,
+    ProductCorrelation: connection.models.ProductCorrelation,
+    MobileHomeConfig: connection.models.MobileHomeConfig,
+    NotificationTemplate: connection.models.NotificationTemplate,
+    EmailComponent: connection.models.EmailComponent,
+    PushSubscription: connection.models.PushSubscription,
+    FCMToken: connection.models.FCMToken,
+    Notification: connection.models.Notification,
+    Campaign: connection.models.Campaign,
+    UserTag: connection.models.UserTag,
+    Thread: connection.models.Thread,
   };
 }
 

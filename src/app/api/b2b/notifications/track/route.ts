@@ -15,10 +15,12 @@ import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { recordEngagement, findLogById } from "@/lib/notifications/notification-log.service";
 import type { LogEventType } from "@/lib/constants/notification";
 
+type TrackPlatform = "mobile" | "web" | "email" | "ios" | "android";
+
 interface TrackPayload {
   log_id: string;
   event: LogEventType;
-  platform?: "mobile" | "web";
+  platform?: TrackPlatform;
   metadata?: {
     url?: string;
     sku?: string;

@@ -39,9 +39,15 @@ export interface IFCMToken {
   token_id: string;
   tenant_id: string;
 
-  // User identification (optional for anonymous/pre-login devices)
+  /**
+   * User identification (optional for anonymous/pre-login devices).
+   * user_id is used for ALL user types:
+   * - Portal users: user_id = portal_user_id
+   * - B2B users: user_id = VINC API user_id (NOT customer_id)
+   */
   user_id?: string;
   user_type: FCMUserType;
+  /** @deprecated Use user_id instead. Kept for backward compatibility. */
   customer_id?: string;
 
   // FCM token data
@@ -107,6 +113,7 @@ export const FCMTokenSchema = new Schema<IFCMTokenDocument>(
       required: true,
       index: true
     },
+    // user_id is used for ALL user types (portal_user_id or VINC API user_id)
     user_id: {
       type: String,
       required: false, // Optional for anonymous/pre-login devices
@@ -117,6 +124,7 @@ export const FCMTokenSchema = new Schema<IFCMTokenDocument>(
       enum: ["b2b_user", "portal_user"],
       default: "portal_user"
     },
+    // @deprecated - Use user_id instead. Kept for backward compatibility.
     customer_id: {
       type: String,
       index: true

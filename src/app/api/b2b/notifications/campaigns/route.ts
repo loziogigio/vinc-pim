@@ -95,7 +95,8 @@ interface CreateCampaignPayload {
   push_image?: string;
   email_subject?: string;
   email_html?: string;
-  products_url?: string;
+  email_link?: string; // Separate link for email "Vedi tutti"
+  products_url?: string; // Push notification action URL
   products?: { sku: string; name: string; image: string; item_ref: string }[];
   url?: string;
   image?: string;
@@ -103,7 +104,7 @@ interface CreateCampaignPayload {
   channels: ("email" | "mobile" | "web_in_app")[];
   recipient_type: "all" | "selected" | "tagged";
   selected_user_ids?: string[];
-  selected_users?: { id: string; email: string; name: string }[];
+  selected_users?: { id: string; email: string; name: string; type: "b2b" | "portal" }[];
   tag_ids?: string[];
 }
 
@@ -164,6 +165,7 @@ export async function POST(req: NextRequest) {
       push_image: payload.push_image?.trim(),
       email_subject: payload.email_subject?.trim(),
       email_html: payload.email_html,
+      email_link: payload.email_link?.trim(),
       products_url: payload.products_url?.trim(),
       products: payload.products,
       url: payload.url?.trim(),

@@ -39,11 +39,13 @@ export interface SendCampaignDirectOptions {
     open_in_new_tab?: boolean;
     campaign_id?: string;
   };
-  /** Recipients - array of { user_id, email, name? } */
+  /** Recipients - array of { user_id, email, name?, user_type } */
   recipients: Array<{
     user_id: string;
     email: string;
     name?: string;
+    /** User type: both use user_id (B2B uses VINC API user_id, Portal uses portal_user_id) */
+    user_type: "b2b_user" | "portal_user";
   }>;
   /** Which channels to send via */
   channels: {
@@ -103,7 +105,8 @@ export async function sendCampaignDirect(
           }
         : {
             category: "generic" as const,
-            url: content.url,
+            // For generic, use products_url as the action URL
+            url: content.products_url || content.url,
             open_in_new_tab: content.open_in_new_tab,
             campaign_id: content.campaign_id,
           };
@@ -135,18 +138,18 @@ export async function sendCampaignDirect(
         }
       }
 
-      // Web In-App
+      // Web In-App - create for both B2B and Portal users
       if (channels.web_in_app) {
         try {
           await createInAppNotification({
             tenantDb,
             user_id: recipient.user_id,
-            user_type: "portal_user",
+            user_type: recipient.user_type, // Use actual user type
             trigger: "custom",
             title: content.title,
             body: content.body,
             icon: notificationIcon,
-            action_url: content.url,
+            action_url: content.products_url || content.url,
             payload: notificationPayload as NotificationPayload,
             campaign_id: content.campaign_id,
           });
@@ -157,7 +160,7 @@ export async function sendCampaignDirect(
         }
       }
 
-      // Mobile (FCM) - skip if user has no active FCM tokens
+      // Mobile (FCM) - send if user has active FCM tokens
       const hasFCMToken = !mobileEligibleUserIds || mobileEligibleUserIds.has(recipient.user_id);
       if (channels.mobile && recipient.user_id && hasFCMToken) {
         try {
@@ -169,7 +172,7 @@ export async function sendCampaignDirect(
               body: content.body || "",
               icon: notificationIcon,
               image: content.push_image || content.image,
-              action_url: content.url,
+              action_url: content.products_url || content.url,
               userIds: [recipient.user_id],
               queue,
               priority: "normal",
@@ -181,8 +184,10 @@ export async function sendCampaignDirect(
                 ...(content.type === "product" && content.products?.[0]?.sku
                   ? { sku: content.products[0].sku }
                   : {}),
-                // Products URL for "See All" / search navigation
+                // URL for navigation (products_url for "See All" or generic action)
                 ...(content.products_url ? { products_url: content.products_url } : {}),
+                // Include open_in_new_tab setting (as string for FCM data)
+                ...(content.open_in_new_tab !== undefined ? { open_in_new_tab: String(content.open_in_new_tab) } : {}),
               },
             });
 

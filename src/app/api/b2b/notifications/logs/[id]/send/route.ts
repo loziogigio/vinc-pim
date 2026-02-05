@@ -5,12 +5,15 @@
  *
  * This retries sending an existing email without creating a duplicate log entry.
  * It updates the existing log with the new status and attempt count.
+ *
+ * Email logs are stored in vinc-admin database for centralized tracking.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
-import { connectWithModels } from "@/lib/db/connection";
+import { connectToAdminDatabase } from "@/lib/db/admin-connection";
+import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { fetchEmailConfigFromDb } from "@/lib/email";
 
 export async function POST(
@@ -26,10 +29,12 @@ export async function POST(
     const { id } = await params;
     const tenantDb = auth.tenantDb;
 
-    const { EmailLog } = await connectWithModels(tenantDb);
+    // Email logs are stored in the admin database
+    const adminConn = await connectToAdminDatabase();
+    const EmailLog = adminConn.models.EmailLog || adminConn.model("EmailLog", EmailLogSchema);
 
-    // Find the email log
-    const emailLog = await EmailLog.findOne({ email_id: id });
+    // Find the email log - verify it belongs to this tenant
+    const emailLog = await EmailLog.findOne({ email_id: id, tenant_db: tenantDb });
     if (!emailLog) {
       return NextResponse.json({ error: "Email not found" }, { status: 404 });
     }
@@ -50,9 +55,12 @@ export async function POST(
       );
     }
 
-    // Get email config
-    const config = await fetchEmailConfigFromDb();
-    if (!(config.host && config.user && config.password && config.from)) {
+    // Get email config for this tenant
+    const config = await fetchEmailConfigFromDb(tenantDb);
+    // Allow localhost without auth for dev testing
+    const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
+    const hasAuth = config.user && config.password;
+    if (!(config.host && config.from && (hasAuth || isLocalhost))) {
       return NextResponse.json(
         { error: "Email service not configured" },
         { status: 500 }

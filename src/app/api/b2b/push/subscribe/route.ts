@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const auth = await requireTenantAuth(req);
     if (!auth.success) return auth.response;
 
-    const { tenantId, tenantDb, userId } = auth;
+    const { tenantId, tenantDb, userId, userType } = auth;
 
     // Check if web push is enabled
     const enabled = await isWebPushEnabled(tenantDb);
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const subscription = await createSubscription(tenantDb, {
       tenant_id: tenantId,
       user_id: userId,
-      user_type: "b2b_user",
+      user_type: userType || "portal_user",
       endpoint: body.endpoint,
       keys: body.keys,
       user_agent: userAgent,

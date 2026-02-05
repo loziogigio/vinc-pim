@@ -15,6 +15,7 @@ import {
   Upload,
   Trash2,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { ProductPicker } from "@/components/notifications/ProductPicker";
@@ -27,6 +28,7 @@ import {
   type TemplateType,
   type ITemplateProduct,
 } from "@/lib/constants/notification";
+import type { ChannelAvailability } from "@/hooks/useCampaignForm";
 
 // Icon mapping for channels
 const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
@@ -37,7 +39,7 @@ const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
 
 const TEMPLATE_TYPES: { id: TemplateType; label: string; description: string; icon: React.ElementType }[] = [
   { id: "product", label: "Prodotti", description: "Seleziona prodotti dal PIM con anteprima", icon: Package },
-  { id: "generic", label: "Comunicazione Generica", description: "URL, immagine e testo personalizzato", icon: FileText },
+  { id: "generic", label: "Comunicazione Generica", description: "Testo personalizzato con link opzionale", icon: FileText },
 ];
 
 interface CampaignFormProps {
@@ -49,12 +51,12 @@ interface CampaignFormProps {
   pushImage: string;
   emailSubject: string;
   emailHtml: string;
-  productsUrl: string;
+  emailLink: string; // Separate link for email "Vedi tutti" button
+  productsUrl: string; // Push notification action URL
   products: ITemplateProduct[];
-  url: string;
-  image: string;
   openInNewTab: boolean;
   enabledChannels: Set<NotificationChannel>;
+  availableChannels: ChannelAvailability | null;
   recipientType: "all" | "selected";
   selectedUsers: SelectedUser[];
 
@@ -66,10 +68,9 @@ interface CampaignFormProps {
   onPushImageChange: (image: string) => void;
   onEmailSubjectChange: (subject: string) => void;
   onEmailHtmlChange: (html: string) => void;
+  onEmailLinkChange: (link: string) => void;
   onProductsUrlChange: (url: string) => void;
   onProductsChange: (products: ITemplateProduct[]) => void;
-  onUrlChange: (url: string) => void;
-  onImageChange: (image: string) => void;
   onOpenInNewTabChange: (open: boolean) => void;
   onToggleChannel: (channel: NotificationChannel) => void;
   onRecipientTypeChange: (type: "all" | "selected") => void;
@@ -85,12 +86,12 @@ export function CampaignForm({
   pushImage,
   emailSubject,
   emailHtml,
+  emailLink,
   productsUrl,
   products,
-  url,
-  image,
   openInNewTab,
   enabledChannels,
+  availableChannels,
   recipientType,
   selectedUsers,
   onCampaignNameChange,
@@ -100,10 +101,9 @@ export function CampaignForm({
   onPushImageChange,
   onEmailSubjectChange,
   onEmailHtmlChange,
+  onEmailLinkChange,
   onProductsUrlChange,
   onProductsChange,
-  onUrlChange,
-  onImageChange,
   onOpenInNewTabChange,
   onToggleChannel,
   onRecipientTypeChange,
@@ -208,6 +208,7 @@ export function CampaignForm({
         <div className="flex flex-wrap gap-3">
           {NOTIFICATION_CHANNELS.map((channelId) => {
             const isEnabled = enabledChannels.has(channelId);
+            const isAvailable = availableChannels?.[channelId] ?? true;
             const config = CHANNEL_UI_CONFIG[channelId];
             const Icon = CHANNEL_ICONS[channelId];
 
@@ -215,21 +216,29 @@ export function CampaignForm({
               <button
                 key={channelId}
                 type="button"
-                onClick={() => onToggleChannel(channelId)}
+                onClick={() => isAvailable && onToggleChannel(channelId)}
+                disabled={!isAvailable}
                 className={cn(
                   "relative flex flex-col items-center justify-center w-28 h-28 rounded-xl border-2 transition-all",
-                  isEnabled ? config.bgColor : "border-slate-200 bg-white hover:border-slate-300"
+                  !isAvailable && "opacity-50 cursor-not-allowed",
+                  isEnabled && isAvailable ? config.bgColor : "border-slate-200 bg-white",
+                  isAvailable && !isEnabled && "hover:border-slate-300"
                 )}
-                style={{ borderColor: isEnabled ? config.borderColor : undefined }}
+                style={{ borderColor: isEnabled && isAvailable ? config.borderColor : undefined }}
               >
-                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-2", isEnabled ? config.bgColor : "bg-slate-100")}>
-                  <Icon className={cn("w-5 h-5", isEnabled ? config.textColor : "text-slate-400")} />
+                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-2", isEnabled && isAvailable ? config.bgColor : "bg-slate-100")}>
+                  <Icon className={cn("w-5 h-5", isEnabled && isAvailable ? config.textColor : "text-slate-400")} />
                 </div>
-                <span className={cn("text-xs font-medium", isEnabled ? "text-slate-700" : "text-slate-400")}>{config.label}</span>
-                {isEnabled && (
+                <span className={cn("text-xs font-medium", isEnabled && isAvailable ? "text-slate-700" : "text-slate-400")}>{config.label}</span>
+                {isEnabled && isAvailable && (
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
+                )}
+                {!isAvailable && (
+                  <span className="absolute top-2 right-2 text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    Non configurato
+                  </span>
                 )}
               </button>
             );
@@ -309,19 +318,46 @@ export function CampaignForm({
                 />
               </div>
             </div>
-            {/* Search/Shop URL - View All */}
+            {/* URL Action - different input based on campaign type */}
             <div className="pt-2 border-t border-emerald-200">
-              <SearchUrlInput
-                value={productsUrl}
-                onChange={onProductsUrlChange}
-                label="URL Azione / Vedi Tutti"
-                placeholder="shop?text=prodotto&filters-brand_id=004"
-              />
-              <p className="text-xs text-emerald-600 mt-1">
-                URL per il pulsante &quot;Vedi tutti&quot; o azione della notifica. Incolla una keyword o una query avanzata (es.{" "}
-                <code className="rounded bg-emerald-100 px-1 py-0.5 text-[10px]">shop?text=moon&amp;filters-brand_id=004</code> o{" "}
-                <code className="rounded bg-emerald-100 px-1 py-0.5 text-[10px]">search?text=moon&amp;filters-brand_id=004</code>).
-              </p>
+              {campaignType === "product" ? (
+                <>
+                  <SearchUrlInput
+                    value={productsUrl}
+                    onChange={onProductsUrlChange}
+                    label="URL Azione / Vedi Tutti"
+                    placeholder="shop?text=prodotto&filters-brand_id=004"
+                  />
+                  <p className="text-xs text-emerald-600 mt-1">
+                    URL per il pulsante &quot;Vedi tutti&quot; o azione della notifica. Incolla una keyword o una query avanzata (es.{" "}
+                    <code className="rounded bg-emerald-100 px-1 py-0.5 text-[10px]">shop?text=moon&amp;filters-brand_id=004</code> o{" "}
+                    <code className="rounded bg-emerald-100 px-1 py-0.5 text-[10px]">search?text=moon&amp;filters-brand_id=004</code>).
+                  </p>
+                </>
+              ) : (
+                <>
+                  <label className="block text-sm font-medium text-emerald-700 mb-1">
+                    <LinkIcon className="w-4 h-4 inline mr-1" />
+                    URL Azione (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={productsUrl}
+                    onChange={(e) => onProductsUrlChange(e.target.value)}
+                    placeholder="https://esempio.com/pagina o /percorso-interno"
+                    className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
+                  />
+                  <p className="text-xs text-emerald-600 mt-1">
+                    URL esterno (https://...) o percorso interno (/pagina). Cliccando la notifica si aprirà questo link.
+                  </p>
+                </>
+              )}
+              {productsUrl && (
+                <label className="flex items-center gap-2 mt-2">
+                  <input type="checkbox" checked={openInNewTab} onChange={(e) => onOpenInNewTabChange(e.target.checked)} className="w-4 h-4 rounded text-emerald-500" />
+                  <span className="text-xs text-emerald-700">Apri in una nuova scheda</span>
+                </label>
+              )}
             </div>
           </div>
         </div>
@@ -368,8 +404,8 @@ export function CampaignForm({
               </label>
               <input
                 type="url"
-                value={productsUrl}
-                onChange={(e) => onProductsUrlChange(e.target.value)}
+                value={emailLink}
+                onChange={(e) => onEmailLinkChange(e.target.value)}
                 placeholder="https://shop.esempio.com/prodotti"
                 className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
               />
@@ -385,48 +421,6 @@ export function CampaignForm({
         </div>
       )}
 
-      {/* Generic Type: URL & Image */}
-      {campaignType === "generic" && (
-        <div className="grid gap-4 max-w-xl">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              <LinkIcon className="w-4 h-4 inline mr-1" />
-              URL (opzionale)
-            </label>
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => onUrlChange(e.target.value)}
-              placeholder="https://esempio.com/pagina"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            {url && (
-              <label className="flex items-center gap-2 mt-2">
-                <input type="checkbox" checked={openInNewTab} onChange={(e) => onOpenInNewTabChange(e.target.checked)} className="w-4 h-4 rounded text-primary" />
-                <span className="text-xs text-slate-500">Apri in una nuova scheda</span>
-              </label>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              <ImageIcon className="w-4 h-4 inline mr-1" />
-              Immagine URL (opzionale)
-            </label>
-            <input
-              type="url"
-              value={image}
-              onChange={(e) => onImageChange(e.target.value)}
-              placeholder="https://esempio.com/immagine.jpg"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            {image && (
-              <div className="mt-2 relative">
-                <img src={image} alt="Preview" className="w-full max-h-40 object-cover rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Recipients */}
       <div>
@@ -455,6 +449,110 @@ export function CampaignForm({
             <UserSelector value={selectedUsers} onChange={onSelectedUsersChange} />
           </div>
         )}
+      </div>
+
+      {/* Validation Errors */}
+      <ValidationErrors
+        campaignName={campaignName}
+        title={title}
+        body={body}
+        emailSubject={emailSubject}
+        emailHtml={emailHtml}
+        enabledChannels={enabledChannels}
+        recipientType={recipientType}
+        selectedUsers={selectedUsers}
+        campaignType={campaignType}
+        products={products}
+      />
+    </div>
+  );
+}
+
+// Validation Errors Component
+function ValidationErrors({
+  campaignName,
+  title,
+  body,
+  emailSubject,
+  emailHtml,
+  enabledChannels,
+  recipientType,
+  selectedUsers,
+  campaignType,
+  products,
+}: {
+  campaignName: string;
+  title: string;
+  body: string;
+  emailSubject: string;
+  emailHtml: string;
+  enabledChannels: Set<NotificationChannel>;
+  recipientType: "all" | "selected";
+  selectedUsers: SelectedUser[];
+  campaignType: TemplateType;
+  products: ITemplateProduct[];
+}) {
+  const errors: string[] = [];
+
+  // Check campaign name
+  if (!campaignName.trim()) {
+    errors.push("Nome campagna richiesto");
+  }
+
+  // Check channels
+  if (enabledChannels.size === 0) {
+    errors.push("Seleziona almeno un canale di invio");
+  }
+
+  const hasPush = enabledChannels.has("mobile") || enabledChannels.has("web_in_app");
+
+  // Check push notification content
+  if (hasPush) {
+    if (!title.trim()) {
+      errors.push("Titolo notifica push richiesto");
+    }
+    if (!body.trim()) {
+      errors.push("Descrizione notifica push richiesta");
+    }
+  }
+
+  // Check email content
+  if (enabledChannels.has("email")) {
+    if (!emailSubject.trim()) {
+      errors.push("Oggetto email richiesto");
+    }
+    if (!emailHtml.trim()) {
+      errors.push("Contenuto HTML email richiesto");
+    }
+  }
+
+  // Check products for product campaigns
+  if (campaignType === "product" && hasPush && products.length === 0) {
+    errors.push("Seleziona almeno un prodotto");
+  }
+
+  // Check recipients
+  if (recipientType === "selected" && selectedUsers.length === 0) {
+    errors.push("Seleziona almeno un destinatario");
+  }
+
+  if (errors.length === 0) return null;
+
+  return (
+    <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 max-w-xl">
+      <div className="flex items-start gap-2">
+        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium text-amber-800 mb-2">Informazioni mancanti</p>
+          <ul className="space-y-1">
+            {errors.map((error, idx) => (
+              <li key={idx} className="text-sm text-amber-700 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                {error}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );

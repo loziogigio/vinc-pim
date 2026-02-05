@@ -198,12 +198,13 @@ class NotificationHandler {
     );
   }
 
-  void _trackNotificationOpen(String? campaignId) {
-    if (campaignId != null) {
+  void _trackNotificationOpen(String? logId) {
+    if (logId != null) {
       // Call API to track the open event
-      api.post('/api/b2b/notifications/campaigns/$campaignId/track', {
+      api.post('/api/b2b/notifications/track', {
+        'log_id': logId,
         'event': 'opened',
-        'platform': Platform.isIOS ? 'ios' : 'android',
+        'platform': 'mobile',  // Use 'mobile' for iOS/Android, 'web' for web
       });
     }
   }
@@ -224,10 +225,12 @@ FirebaseMessaging.onMessage.listen((message) {
 ### 2. Notification Opened (Required)
 ```dart
 void onNotificationOpened(RemoteMessage message) {
-  final campaignId = message.data['campaign_id'];
-  if (campaignId != null) {
-    api.post('/api/b2b/notifications/campaigns/$campaignId/track', {
+  final logId = message.data['log_id'];
+  if (logId != null) {
+    api.post('/api/b2b/notifications/track', {
+      'log_id': logId,
       'event': 'opened',
+      'platform': 'mobile',
     });
   }
 }
@@ -235,11 +238,17 @@ void onNotificationOpened(RemoteMessage message) {
 
 ### 3. Action Clicked (Optional)
 ```dart
-void onProductViewed(String sku, String? campaignId) {
-  if (campaignId != null) {
-    api.post('/api/b2b/notifications/campaigns/$campaignId/track', {
+void onProductViewed(String sku, String? logId) {
+  if (logId != null) {
+    api.post('/api/b2b/notifications/track', {
+      'log_id': logId,
       'event': 'clicked',
-      'sku': sku,
+      'platform': 'mobile',
+      'metadata': {
+        'type': 'product',
+        'sku': sku,
+        'screen': 'product_detail',
+      },
     });
   }
 }

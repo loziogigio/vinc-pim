@@ -8,12 +8,200 @@ The notification system supports multiple channels under a unified template syst
 
 ```
 Template (e.g., "order_shipped")
-├── email        → sends email
-├── web_push     → browser push notification
-├── mobile_push  → mobile app push
-├── sms          → sends SMS
-└── in_app       → creates in-app notification ← This API
+├── email        → sends email via SMTP
+├── mobile       → FCM push notification (iOS/Android)
+├── web_in_app   → creates in-app notification (bell icon)
+└── sms          → sends SMS (planned)
 ```
+
+---
+
+## Infrastructure
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     NOTIFICATION FLOW                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Campaign/Trigger                                              │
+│        │                                                        │
+│        ▼                                                        │
+│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐      │
+│   │   Email     │     │   Mobile    │     │  Web In-App │      │
+│   │   Queue     │     │ (FCM) Queue │     │   Direct    │      │
+│   └──────┬──────┘     └──────┬──────┘     └──────┬──────┘      │
+│          │                   │                   │              │
+│          ▼                   ▼                   ▼              │
+│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐      │
+│   │   Email     │     │    FCM      │     │  MongoDB    │      │
+│   │   Worker    │     │   Worker    │     │ (immediate) │      │
+│   └──────┬──────┘     └──────┬──────┘     └─────────────┘      │
+│          │                   │                                  │
+│          ▼                   ▼                                  │
+│   ┌─────────────┐     ┌─────────────┐                          │
+│   │    SMTP     │     │  Firebase   │                          │
+│   │   Server    │     │   Cloud     │                          │
+│   └─────────────┘     └─────────────┘                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Components
+
+| Component | Purpose | Technology |
+|-----------|---------|------------|
+| **Redis** | Job queue backend | Redis 6+ |
+| **BullMQ** | Queue management | Node.js |
+| **Email Worker** | Processes email queue | SMTP |
+| **FCM Worker** | Processes push queue | Firebase Cloud Messaging |
+| **Notification Worker** | Scheduled campaigns | BullMQ delayed jobs |
+
+### Required Workers
+
+Workers must be running for queued notifications to be delivered:
+
+```bash
+# Development - run all workers
+pnpm worker:all
+
+# Or run individually
+pnpm worker:email         # Email queue processing
+pnpm worker:fcm           # FCM push notifications
+pnpm worker:notification  # Scheduled campaigns
+```
+
+### Queue Names
+
+| Queue | Purpose | Worker |
+|-------|---------|--------|
+| `email` | Email delivery | `worker:email` |
+| `fcm` | FCM push notifications | `worker:fcm` |
+| `notification` | Scheduled campaigns | `worker:notification` |
+
+### Channel Availability
+
+Channels are enabled per-tenant based on configuration:
+
+| Channel | Enabled When |
+|---------|--------------|
+| `email` | SMTP settings configured in HomeSettings |
+| `mobile` | FCM credentials configured for tenant |
+| `web_in_app` | Always available (stored in MongoDB) |
+
+Check channel availability via API:
+
+```bash
+GET /api/b2b/notifications/channels
+
+# Response:
+{
+  "channels": {
+    "email": true,
+    "mobile": false,
+    "web_in_app": true
+  }
+}
+```
+
+---
+
+## User Types
+
+The notification system supports two user types:
+
+| Type | Storage | ID Field | Use Case |
+|------|---------|----------|----------|
+| `portal_user` | MongoDB (PortalUser) | `portal_user_id` | B2C customers |
+| `b2b_user` | VINC API (PostgreSQL) | VINC API `user_id` (UUID) | B2B customers |
+
+### User ID Resolution
+
+- **Portal Users**: Use `portal_user_id` from MongoDB PortalUser collection
+- **B2B Users**: Use VINC API `user_id` (UUID format: `973058c3-68b7-4bef-b955-c882b72b7324`)
+
+> **Important**: B2B users use VINC API `user_id`, NOT `customer_id`. The `user_id` is the user account identifier, while `customer_id` is the business entity.
+
+### FCM Token Registration
+
+FCM tokens are registered using `user_id` for both user types:
+
+```bash
+POST /api/b2b/fcm/register
+{
+  "token": "fcm_device_token_here",
+  "device_type": "android",  // or "ios"
+  "device_name": "Pixel 7"
+}
+```
+
+---
+
+## Campaigns
+
+Campaigns allow bulk notification sending to multiple recipients.
+
+### Campaign Channels
+
+```typescript
+type NotificationChannel = "email" | "mobile" | "web_in_app";
+```
+
+### Recipient Types
+
+| Type | Description |
+|------|-------------|
+| `all` | All active Portal users |
+| `selected` | Specific users (B2B or Portal) |
+| `tagged` | Portal users with specific tags |
+
+### Selected Users Format
+
+When using `recipient_type: "selected"`, provide user details:
+
+```json
+{
+  "selected_users": [
+    {
+      "id": "973058c3-68b7-4bef-b955-c882b72b7324",
+      "email": "user@example.com",
+      "name": "Mario Rossi",
+      "type": "b2b"
+    },
+    {
+      "id": "portal_user_abc123",
+      "email": "customer@example.com",
+      "name": "Luigi Verdi",
+      "type": "portal"
+    }
+  ]
+}
+```
+
+### Campaign API
+
+```bash
+# Create campaign (draft)
+POST /api/b2b/notifications/campaigns
+
+# Update draft
+PUT /api/b2b/notifications/campaigns/{id}
+
+# Send immediately
+POST /api/b2b/notifications/campaigns/send
+
+# Schedule for later
+POST /api/b2b/notifications/campaigns/{id}/schedule
+{
+  "scheduled_at": "2026-02-05T10:00:00Z"
+}
+
+# Get campaign results
+GET /api/b2b/notifications/campaigns/{id}/results
+```
+
+---
 
 ## Authentication
 
@@ -336,6 +524,110 @@ curl -X POST "http://localhost:3001/api/b2b/notifications/bulk" \
   -H "Authorization: Bearer <token>" \
   -d '{"action": "delete", "notification_ids": ["notif_1", "notif_2"]}'
 ```
+
+---
+
+### Track Notification Event
+
+```
+POST /api/b2b/notifications/track
+```
+
+Track engagement events for notifications (opened, clicked, read, dismissed). Used by mobile apps and web clients to record user interactions.
+
+**Request Body:**
+
+```json
+{
+  "log_id": "log_abc123xyz",
+  "event": "opened",
+  "platform": "mobile",
+  "metadata": {
+    "sku": "ARPA160",
+    "screen": "product_detail",
+    "type": "product"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `log_id` | string | Yes | The notification log ID (from notification's `log_id` field) |
+| `event` | string | Yes | Event type: `delivered`, `opened`, `clicked`, `read`, `dismissed` |
+| `platform` | string | No | Platform: `mobile`, `web`, `email`, `ios`, `android` (default: `web`) |
+| `metadata` | object | No | Additional event data |
+
+**Metadata Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | URL that was clicked |
+| `sku` | string | Product SKU (for product clicks) |
+| `order_number` | string | Order number (for order clicks) |
+| `screen` | string | Screen navigated to (e.g., `product_detail`, `order_detail`) |
+| `type` | string | Click type: `product`, `link`, `order` |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "log_id": "log_abc123xyz",
+  "event": "opened",
+  "platform": "mobile"
+}
+```
+
+**Example - Track notification opened:**
+
+```bash
+curl -X POST "http://localhost:3001/api/b2b/notifications/track" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "log_id": "log_abc123xyz",
+    "event": "opened",
+    "platform": "mobile"
+  }'
+```
+
+**Example - Track product click:**
+
+```bash
+curl -X POST "http://localhost:3001/api/b2b/notifications/track" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "log_id": "log_abc123xyz",
+    "event": "clicked",
+    "platform": "mobile",
+    "metadata": {
+      "type": "product",
+      "sku": "ARPA160",
+      "screen": "product_detail"
+    }
+  }'
+```
+
+**Example - Track link click:**
+
+```bash
+curl -X POST "http://localhost:3001/api/b2b/notifications/track" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "log_id": "log_abc123xyz",
+    "event": "clicked",
+    "platform": "web",
+    "metadata": {
+      "type": "link",
+      "url": "https://example.com/catalog.pdf",
+      "screen": "external"
+    }
+  }'
+```
+
+> **Note:** Tracking failures are handled silently on the client side to avoid blocking user experience. The endpoint returns 404 if `log_id` is not found.
 
 ---
 

@@ -17,11 +17,12 @@
  *   x-auth-method: api-key
  *   x-api-key-id: ak_{tenant}_{key}
  *   x-api-secret: sk_{secret}
- *   Authorization: Bearer <portal-user-jwt>   // For user identity
+ *   Authorization: Bearer <access-token>   // SSO access token for user identity
  * ```
  *
- * The Bearer token (portal user JWT) is verified to extract userId.
- * This is the standard OAuth2-style approach.
+ * The Bearer token can be either:
+ * - SSO access token (from /api/auth/token) - uses tenant_id, sub (userId)
+ * - Portal user token (legacy) - uses tenantId, portalUserId
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -29,6 +30,7 @@ import { getB2BSession } from "./b2b-session";
 import { verifyAPIKey } from "./api-key-auth";
 import { validateAccessToken } from "@/lib/sso/tokens";
 import { verifyPortalUserToken } from "./portal-user-token";
+import { getSSOSessionModel } from "@/lib/db/models/sso-session";
 
 // ============================================
 // TYPES
@@ -98,40 +100,95 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
       };
     }
 
+    // Check for B2B user identification headers
+    // B2B mobile apps send: x-user-type: b2b_user + x-customer-id: <customer_id>
+    const b2bUserType = req.headers.get("x-user-type");
+    const customerId = req.headers.get("x-customer-id");
+
+    if (b2bUserType === "b2b_user" && customerId) {
+      console.log("[authenticateTenant] API key + B2B user:", {
+        tenant: result.tenantId,
+        customerId,
+      });
+      return {
+        authenticated: true,
+        tenantId: result.tenantId,
+        tenantDb: `vinc-${result.tenantId}`,
+        userId: customerId, // Use customer_id as userId for B2B users
+        userType: "b2b_user",
+        authMethod: "api-key",
+      };
+    }
+
     // Check for Bearer token to get user identity (standard OAuth2 pattern)
-    // Mobile apps send: x-auth-method: api-key + Authorization: Bearer <portal-user-jwt>
+    // Mobile apps send: x-auth-method: api-key + Authorization: Bearer <token>
+    // Token can be either: SSO access token (tenant_id, sub) or portal user token (tenantId, portalUserId)
     let userId: string | undefined = result.keyDoc?.created_by;
+    let email: string | undefined;
+    let userType: UserType = "portal_user";
 
     if (authHeader?.startsWith("Bearer ")) {
       const bearerToken = authHeader.slice(7);
       if (bearerToken && bearerToken !== "null" && bearerToken.trim() !== "") {
-        // Try portal user token first (most common for mobile apps)
-        const portalPayload = await verifyPortalUserToken(bearerToken);
-        if (portalPayload) {
-          // Verify tenant matches
-          if (portalPayload.tenantId === result.tenantId) {
+        // Try SSO access token first (most common after OAuth login)
+        const ssoPayload = await validateAccessToken(bearerToken);
+        if (ssoPayload && ssoPayload.tenant_id === result.tenantId) {
+          userId = ssoPayload.sub;
+          email = ssoPayload.email;
+
+          // Check if user has customers in session (B2B user)
+          // SSO users with customers are B2B users
+          try {
+            const SSOSession = await getSSOSessionModel();
+            const session = await SSOSession.findBySessionId(ssoPayload.session_id);
+            console.log("[authenticateTenant] SSO session lookup:", {
+              sessionId: ssoPayload.session_id,
+              found: !!session,
+              hasCustomers: session?.vinc_profile?.customers?.length || 0
+            });
+            if (session?.vinc_profile?.customers?.length > 0) {
+              userType = "b2b_user";
+            }
+          } catch (err) {
+            console.warn("[authenticateTenant] SSO session lookup failed:", err);
+            // Fallback: SSO users are typically B2B users
+            // If they came through SSO login, they're likely B2B
+            userType = "b2b_user";
+          }
+
+          console.log("[authenticateTenant] API key + Bearer (SSO token):", {
+            tenant: result.tenantId,
+            userId,
+            userType
+          });
+        } else {
+          // Try portal user token (legacy or custom auth)
+          const portalPayload = await verifyPortalUserToken(bearerToken);
+          if (portalPayload && portalPayload.tenantId === result.tenantId) {
             userId = portalPayload.portalUserId;
             console.log("[authenticateTenant] API key + Bearer (portal user):", {
               tenant: result.tenantId,
               userId
             });
-          } else {
+          } else if (ssoPayload || portalPayload) {
+            // Token valid but tenant mismatch
             console.warn("[authenticateTenant] Bearer token tenant mismatch:", {
               apiKeyTenant: result.tenantId,
-              tokenTenant: portalPayload.tenantId,
+              tokenTenant: ssoPayload?.tenant_id || portalPayload?.tenantId,
             });
           }
         }
       }
     }
 
-    console.log("[authenticateTenant] API key auth success:", { tenant: result.tenantId, userId });
+    console.log("[authenticateTenant] API key auth success:", { tenant: result.tenantId, userId, userType });
     return {
       authenticated: true,
       tenantId: result.tenantId,
       tenantDb: `vinc-${result.tenantId}`,
       userId,
-      userType: "portal_user", // API key auth from mobile = portal user
+      email,
+      userType,
       authMethod: "api-key",
     };
   }
@@ -147,14 +204,37 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
         const payload = await validateAccessToken(token);
 
         if (payload) {
-          console.log("[authenticateTenant] Bearer auth (SSO) success:", { tenant: payload.tenant_id, userId: payload.sub });
+          // Check if user has customers in session (B2B user)
+          let userType: UserType = "portal_user";
+          try {
+            const SSOSession = await getSSOSessionModel();
+            const session = await SSOSession.findBySessionId(payload.session_id);
+            console.log("[authenticateTenant] SSO session lookup (Bearer):", {
+              sessionId: payload.session_id,
+              found: !!session,
+              hasCustomers: session?.vinc_profile?.customers?.length || 0
+            });
+            if (session?.vinc_profile?.customers?.length > 0) {
+              userType = "b2b_user";
+            }
+          } catch (err) {
+            console.warn("[authenticateTenant] SSO session lookup failed (Bearer):", err);
+            // Fallback: SSO users are typically B2B users
+            userType = "b2b_user";
+          }
+
+          console.log("[authenticateTenant] Bearer auth (SSO) success:", {
+            tenant: payload.tenant_id,
+            userId: payload.sub,
+            userType
+          });
           return {
             authenticated: true,
             tenantId: payload.tenant_id,
             tenantDb: `vinc-${payload.tenant_id}`,
             userId: payload.sub,
             email: payload.email,
-            userType: "portal_user", // JWT from mobile SSO = portal user
+            userType,
             authMethod: "bearer",
           };
         }

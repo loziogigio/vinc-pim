@@ -85,6 +85,10 @@ export default function CustomerDetailPage({
   const [addressFilter, setAddressFilter] = useState<string>("all");
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [requiresDelivery, setRequiresDelivery] = useState(true);
 
   useEffect(() => {
     fetchCustomer();
@@ -172,6 +176,50 @@ export default function CustomerDetailPage({
   function handleAddressFilterChange(addrId: string) {
     setAddressFilter(addrId);
     fetchOrders(dateFilter, addrId);
+  }
+
+  function openCreateOrderModal() {
+    // Pre-select default delivery address if available
+    const defaultAddress = customer?.addresses?.find(
+      (a) => a.is_default && (a.address_type === "delivery" || a.address_type === "both")
+    );
+    const firstDeliveryAddress = customer?.addresses?.find(
+      (a) => a.address_type === "delivery" || a.address_type === "both"
+    );
+    setSelectedAddressId(defaultAddress?.address_id || firstDeliveryAddress?.address_id || "");
+    setRequiresDelivery(true); // Default to product order
+    setShowCreateOrderModal(true);
+  }
+
+  async function handleCreateOrder() {
+    if (!customer) return;
+
+    setIsCreatingOrder(true);
+    try {
+      const res = await fetch("/api/b2b/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_id: customer.customer_id,
+          shipping_address_id: requiresDelivery && selectedAddressId ? selectedAddressId : undefined,
+          requires_delivery: requiresDelivery,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setShowCreateOrderModal(false);
+        router.push(`${tenantPrefix}/b2b/store/orders/${data.order.order_id}`);
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to create order");
+      }
+    } catch (err) {
+      console.error("Error creating order:", err);
+      alert("Failed to create order");
+    } finally {
+      setIsCreatingOrder(false);
+    }
   }
 
   async function handleDelete() {
@@ -344,6 +392,13 @@ export default function CustomerDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={openCreateOrderModal}
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+          >
+            <Plus className="h-4 w-4" />
+            Create Order
+          </button>
           <button className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-muted transition">
             <Edit className="h-4 w-4" />
             Edit
@@ -357,6 +412,149 @@ export default function CustomerDetailPage({
           </button>
         </div>
       </div>
+
+      {/* Create Order Modal */}
+      {showCreateOrderModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Create Order for {displayName}
+            </h3>
+            {/* Order Type Selection */}
+            <div className="mb-4">
+              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Order Type</p>
+              <div className="grid grid-cols-2 gap-2">
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                    requiresDelivery
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="orderType"
+                    checked={requiresDelivery}
+                    onChange={() => setRequiresDelivery(true)}
+                  />
+                  <div>
+                    <span className="font-medium text-foreground flex items-center gap-1">
+                      <Truck className="h-4 w-4" />
+                      Product
+                    </span>
+                    <p className="text-xs text-muted-foreground">Requires delivery</p>
+                  </div>
+                </label>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                    !requiresDelivery
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="orderType"
+                    checked={!requiresDelivery}
+                    onChange={() => setRequiresDelivery(false)}
+                  />
+                  <div>
+                    <span className="font-medium text-foreground flex items-center gap-1">
+                      <Briefcase className="h-4 w-4" />
+                      Service
+                    </span>
+                    <p className="text-xs text-muted-foreground">No delivery needed</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Address Selection - Only show for Product orders */}
+            {requiresDelivery && (
+              <>
+                <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Delivery Address</p>
+                {customer.addresses && customer.addresses.filter((a) => a.address_type === "delivery" || a.address_type === "both").length > 0 ? (
+                  <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                    {customer.addresses
+                      .filter((a) => a.address_type === "delivery" || a.address_type === "both")
+                      .map((address: Address) => (
+                        <label
+                          key={address.address_id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                            selectedAddressId === address.address_id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:bg-muted/50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="address"
+                            value={address.address_id}
+                            checked={selectedAddressId === address.address_id}
+                            onChange={(e) => setSelectedAddressId(e.target.value)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground">
+                                {address.label || address.recipient_name}
+                              </span>
+                              {address.is_default && (
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {address.street_address}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {address.postal_code} {address.city} ({address.province})
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-amber-700">
+                      No delivery addresses found. The order will be created without a shipping address.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowCreateOrderModal(false)}
+                disabled={isCreatingOrder}
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateOrder}
+                disabled={isCreatingOrder}
+                className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {isCreatingOrder ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Create Order
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

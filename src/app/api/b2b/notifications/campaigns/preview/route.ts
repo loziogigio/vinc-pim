@@ -20,7 +20,8 @@ interface CampaignPreviewPayload {
   body?: string;
   // Email fields
   email_html?: string;
-  products_url?: string;
+  email_link?: string; // Separate link for email "Vedi tutti" button
+  products_url?: string; // Push notification action URL (not used in email preview)
   // Products (for product campaigns)
   products?: ITemplateProduct[];
   // Generic type (for backwards compatibility)
@@ -39,13 +40,14 @@ export async function POST(req: NextRequest) {
     const tenantDb = auth.tenantDb;
     const payload: CampaignPreviewPayload = await req.json();
 
-    const { type, email_html, products_url, products, url, image, open_in_new_tab } = payload;
+    const { type, email_html, email_link, products, url, image, open_in_new_tab } = payload;
 
     // Generate email content
     let emailContent: string;
     if (email_html) {
-      // Use custom HTML with optional products and "Vedi tutti" link
-      emailContent = generateCustomEmailHtml(email_html, products_url, products);
+      // Use custom HTML with optional products and CTA link
+      // email_link is used for email (separate from products_url which is for push notifications)
+      emailContent = generateCustomEmailHtml(email_html, email_link, products, type);
     } else if (type === "generic") {
       emailContent = generateGenericEmailHtml(
         "Titolo campagna",

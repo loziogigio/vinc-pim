@@ -11,19 +11,19 @@ import { getAuthClientModel } from "@/lib/db/models/sso-auth-client";
 interface ClientConfig {
   client_id: string;
   name: string;
-  redirect_uris: string[];
   description: string;
   type: "web" | "mobile" | "api";
-  allowed_origins?: string[];
   is_first_party: boolean;
+  // Only needed for mobile apps (deep links) - web apps use tenant domains
+  redirect_uris?: string[];
 }
 
 /**
  * Default VINC first-party OAuth clients.
  *
- * NOTE: Production redirect URIs are validated against tenant configuration
+ * NOTE: For web clients, redirect URIs are validated against tenant configuration
  * (domains in superadmin and branding URLs in home-settings).
- * Only localhost development URIs are listed here.
+ * Only mobile apps need explicit redirect_uris for deep links.
  */
 const DEFAULT_CLIENTS: ClientConfig[] = [
   {
@@ -31,17 +31,6 @@ const DEFAULT_CLIENTS: ClientConfig[] = [
     name: "VINC B2B Portal",
     description: "B2B e-commerce portal for suppliers and retailers",
     type: "web",
-    redirect_uris: [
-      // Development only - production URIs validated via tenant config
-      "http://localhost:3000/callback",
-      "http://localhost:3000/api/auth/callback",
-      "http://localhost:3001/callback",
-      "http://localhost:3001/api/auth/callback",
-    ],
-    allowed_origins: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ],
     is_first_party: true,
   },
   {
@@ -49,14 +38,6 @@ const DEFAULT_CLIENTS: ClientConfig[] = [
     name: "VINC Vetrina",
     description: "Public storefront for retailers",
     type: "web",
-    redirect_uris: [
-      // Development only - production URIs validated via tenant config
-      "http://localhost:3002/callback",
-      "http://localhost:3002/api/auth/callback",
-    ],
-    allowed_origins: [
-      "http://localhost:3002",
-    ],
     is_first_party: true,
   },
   {
@@ -64,15 +45,6 @@ const DEFAULT_CLIENTS: ClientConfig[] = [
     name: "VINC Commerce Suite",
     description: "Main commerce suite admin panel",
     type: "web",
-    redirect_uris: [
-      // Development only - production URIs validated via tenant config
-      "http://localhost:3001/callback",
-      "http://localhost:3001/api/auth/callback",
-      "http://localhost:3001/b2b",
-    ],
-    allowed_origins: [
-      "http://localhost:3001",
-    ],
     is_first_party: true,
   },
   {
@@ -80,8 +52,8 @@ const DEFAULT_CLIENTS: ClientConfig[] = [
     name: "VINC Mobile App",
     description: "Native mobile application for iOS and Android",
     type: "mobile",
+    // Deep links for mobile apps (app-specific, not tenant-specific)
     redirect_uris: [
-      // Deep links for mobile apps (app-specific, not tenant-specific)
       "vincmobile://auth/callback",
       "com.vendereincloud.mobile://auth/callback",
     ],
@@ -92,13 +64,6 @@ const DEFAULT_CLIENTS: ClientConfig[] = [
     name: "VINC PIM",
     description: "Product Information Management system",
     type: "web",
-    redirect_uris: [
-      // Development only - production URIs validated via tenant config
-      "http://localhost:3001/b2b/pim",
-    ],
-    allowed_origins: [
-      "http://localhost:3001",
-    ],
     is_first_party: true,
   },
 ];
@@ -145,10 +110,9 @@ export async function seedOAuthClients(
       const { client, clientSecret } = await createAuthClient(
         config.client_id,
         config.name,
-        config.redirect_uris,
+        config.redirect_uris || [],
         {
           type: config.type,
-          allowedOrigins: config.allowed_origins,
           description: config.description,
           isFirstParty: config.is_first_party,
         }

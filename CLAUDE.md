@@ -303,6 +303,78 @@ useEffect(() => {
 }, [data]);  // Don't include onSave in deps
 ```
 
+### Decimal Input Fields
+
+For numeric inputs that need to support decimal values (prices, quantities, etc.), use the **dual-state pattern** with both a string input value and a numeric value. This allows users to:
+
+- Clear the field completely and type a new value
+- Type partial decimals like "25." before completing with "25.50"
+- Use comma as decimal separator (Italian keyboard friendly)
+
+**Pattern:**
+
+```typescript
+// State includes both numeric value and string input
+interface EditingState {
+  quantity: number;
+  quantityInput: string;  // String for input display
+  unitPrice: number;
+  unitPriceInput: string; // String for input display
+}
+
+// Initialize with string representation
+function startEditing(item: Item) {
+  setEditing({
+    quantity: item.quantity,
+    quantityInput: String(item.quantity),
+    unitPrice: item.unit_price,
+    unitPriceInput: String(item.unit_price),
+  });
+}
+
+// Update from +/- buttons (updates both values)
+function updateQuantity(quantity: number) {
+  if (!editing) return;
+  const newQty = Math.max(0, quantity);
+  setEditing({ ...editing, quantity: newQty, quantityInput: String(newQty) });
+}
+
+// Update from text input (allows typing decimals)
+function updateQuantityInput(value: string) {
+  if (!editing) return;
+  // Replace comma with dot for decimal (Italian keyboard support)
+  const normalizedValue = value.replace(",", ".");
+  // Allow empty, partial decimals like "1." or just numbers
+  if (normalizedValue === "" || /^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
+    const parsed = parseFloat(normalizedValue);
+    setEditing({
+      ...editing,
+      quantityInput: normalizedValue,
+      quantity: isNaN(parsed) ? 0 : parsed,
+    });
+  }
+}
+```
+
+**Input field:**
+
+```tsx
+<input
+  type="text"
+  inputMode="decimal"
+  value={editing.quantityInput}
+  onChange={(e) => updateQuantityInput(e.target.value)}
+/>
+```
+
+**Key points:**
+
+- Use `type="text"` with `inputMode="decimal"` (not `type="number"`)
+- Store string value for display, numeric value for calculations
+- Regex `/^[0-9]*\.?[0-9]*$/` allows empty, partial, and complete decimals
+- Replace comma with dot for Italian/European keyboard compatibility
+- Parse to number on every change, default to 0 if invalid
+
 ### Database Queries
 
 ```typescript

@@ -6,8 +6,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { toast } from "sonner";
-import type { Order } from "@/lib/types/order";
+import type { Order, LineItem } from "@/lib/types/order";
 import type { Customer, Address } from "@/lib/types/customer";
+
+// Simple line editing state (just edit quantity and price of a single line)
+interface EditingLineState {
+  lineNumber: number;
+  name: string;
+  sku: string;
+  imageUrl?: string;
+  packagingLabel?: string;
+  packSize: number;
+  quantity: number;
+  quantityInput: string; // String for input field to allow decimal typing
+  unitPrice: number;
+  unitPriceInput: string; // String for input field to allow decimal typing
+  listPrice: number;
+  minOrderQuantity: number;
+}
 import {
   ShoppingCart,
   Package,
@@ -35,7 +51,13 @@ import {
   ExternalLink,
   PenLine,
   Tag,
+  MessageSquare,
 } from "lucide-react";
+
+// Import lifecycle components
+import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal } from "@/components/orders";
+import { ThreadPanel } from "@/components/threads";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface PaginationMeta {
   page: number;
@@ -62,9 +84,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
-  const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
-  const [newQuantity, setNewQuantity] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedForDelete, setSelectedForDelete] = useState<Set<number>>(new Set());
+
+  // Simple line editor state
+  const [editingLine, setEditingLine] = useState<EditingLineState | null>(null);
 
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,6 +100,19 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   // Customer and address details
   const [customer, setCustomer] = useState<Partial<Customer> | null>(null);
   const [shippingAddress, setShippingAddress] = useState<Address | null>(null);
+
+  // Thread panel visibility
+  const [showThread, setShowThread] = useState(false);
+
+  // Add items modal
+  const [showAddItemsModal, setShowAddItemsModal] = useState(false);
+
+  // Delete confirmation dialog state
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean;
+    type: "single" | "multiple";
+    lineNumber?: number;
+  }>({ open: false, type: "single" });
 
   // Debounce search input
   useEffect(() => {
@@ -142,48 +179,126 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     }
   }, [currentPage, pageSize, debouncedSearch]);
 
-  async function updateItemQuantity(entityCode: string, quantity: number) {
-    if (!order) return;
+  // Start editing a line item (simple quantity + price editor)
+  function startEditingLine(item: LineItem) {
+    setEditingLine({
+      lineNumber: item.line_number,
+      name: item.name,
+      sku: item.sku,
+      imageUrl: item.image_url,
+      packagingLabel: item.packaging_label || item.packaging_code,
+      packSize: item.pack_size || 1,
+      quantity: item.quantity,
+      quantityInput: String(item.quantity),
+      unitPrice: item.unit_price,
+      unitPriceInput: String(item.unit_price),
+      listPrice: item.list_price,
+      minOrderQuantity: item.pack_size || 1, // Can't order partial boxes
+    });
+  }
+
+  // Update quantity in the editing line (from +/- buttons)
+  function updateEditingLineQuantity(quantity: number) {
+    if (!editingLine) return;
+    const newQty = Math.max(0, quantity);
+    setEditingLine({ ...editingLine, quantity: newQty, quantityInput: String(newQty) });
+  }
+
+  // Update quantity from input field (allows typing decimals)
+  function updateEditingLineQuantityInput(value: string) {
+    if (!editingLine) return;
+    // Replace comma with dot for decimal
+    const normalizedValue = value.replace(",", ".");
+    // Allow empty, partial decimals like "1." or just numbers
+    if (normalizedValue === "" || /^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
+      const parsed = parseFloat(normalizedValue);
+      setEditingLine({
+        ...editingLine,
+        quantityInput: normalizedValue,
+        quantity: isNaN(parsed) ? 0 : parsed,
+      });
+    }
+  }
+
+  // Update price in the editing line (from direct value)
+  function updateEditingLinePrice(price: number) {
+    if (!editingLine) return;
+    const newPrice = Math.max(0, price);
+    setEditingLine({ ...editingLine, unitPrice: newPrice, unitPriceInput: String(newPrice) });
+  }
+
+  // Update price from input field (allows typing decimals)
+  function updateEditingLinePriceInput(value: string) {
+    if (!editingLine) return;
+    // Replace comma with dot for decimal
+    const normalizedValue = value.replace(",", ".");
+    // Allow empty, partial decimals like "25." or just numbers
+    if (normalizedValue === "" || /^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
+      const parsed = parseFloat(normalizedValue);
+      setEditingLine({
+        ...editingLine,
+        unitPriceInput: normalizedValue,
+        unitPrice: isNaN(parsed) ? 0 : parsed,
+      });
+    }
+  }
+
+  // Cancel editing
+  function cancelEditingLine() {
+    setEditingLine(null);
+  }
+
+  // Save line changes (single PATCH)
+  async function saveLineChanges() {
+    if (!order || !editingLine) return;
 
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/b2b/orders/${order.order_id}/items/${entityCode}`, {
+      const res = await fetch(`/api/b2b/orders/${order.order_id}/items`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity }),
+        body: JSON.stringify({
+          items: [{
+            line_number: editingLine.lineNumber,
+            quantity: editingLine.quantity,
+            unit_price: editingLine.unitPrice,
+          }],
+        }),
       });
 
-      if (res.ok) {
-        setEditingQuantity(null);
-        toast.success("Quantity updated");
-        // Refetch to get updated data with current pagination
-        await fetchOrder(false);
-      } else {
+      if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to update quantity");
+        throw new Error(error.error || "Failed to update item");
       }
+
+      toast.success("Item updated");
+      setEditingLine(null);
+      await fetchOrder(false);
     } catch (error) {
-      console.error("Error updating quantity:", error);
-      toast.error("Failed to update quantity");
+      console.error("Error saving line changes:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save changes");
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function removeItem(entityCode: string) {
-    if (!order) return;
+  function confirmRemoveItem(lineNumber: number) {
+    setDeleteConfirmDialog({ open: true, type: "single", lineNumber });
+  }
 
-    if (!confirm("Are you sure you want to remove this item?")) return;
+  async function executeRemoveItem(lineNumber: number) {
+    if (!order) return;
 
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/b2b/orders/${order.order_id}/items/${entityCode}`, {
+      const res = await fetch(`/api/b2b/orders/${order.order_id}/items`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ line_numbers: [lineNumber] }),
       });
 
       if (res.ok) {
         toast.success("Item removed");
-        // Refetch to get updated data with current pagination
         await fetchOrder(false);
       } else {
         const error = await res.json();
@@ -194,6 +309,74 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       toast.error("Failed to remove item");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function confirmRemoveSelectedItems() {
+    if (!order || selectedForDelete.size === 0) return;
+    setDeleteConfirmDialog({ open: true, type: "multiple" });
+  }
+
+  async function executeRemoveSelectedItems() {
+    if (!order || selectedForDelete.size === 0) return;
+
+    const count = selectedForDelete.size;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/b2b/orders/${order.order_id}/items`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ line_numbers: Array.from(selectedForDelete) }),
+      });
+
+      if (res.ok) {
+        toast.success(`${count} item${count > 1 ? "s" : ""} removed`);
+        setSelectedForDelete(new Set());
+        await fetchOrder(false);
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to remove items");
+      }
+    } catch (error) {
+      console.error("Error removing items:", error);
+      toast.error("Failed to remove items");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleDeleteConfirm() {
+    setDeleteConfirmDialog({ open: false, type: "single" });
+    if (deleteConfirmDialog.type === "single" && deleteConfirmDialog.lineNumber !== undefined) {
+      executeRemoveItem(deleteConfirmDialog.lineNumber);
+    } else if (deleteConfirmDialog.type === "multiple") {
+      executeRemoveSelectedItems();
+    }
+  }
+
+  function handleDeleteCancel() {
+    setDeleteConfirmDialog({ open: false, type: "single" });
+  }
+
+  function toggleSelectItem(lineNumber: number) {
+    setSelectedForDelete((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(lineNumber)) {
+        newSet.delete(lineNumber);
+      } else {
+        newSet.add(lineNumber);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!order) return;
+    const allLineNumbers = order.items?.map((item) => item.line_number) || [];
+    if (selectedForDelete.size === allLineNumbers.length) {
+      setSelectedForDelete(new Set());
+    } else {
+      setSelectedForDelete(new Set(allLineNumbers));
     }
   }
 
@@ -241,7 +424,6 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const totalPages = pagination?.totalPages || 1;
   const totalItemsCount = pagination?.totalItemsCount || 0;
   const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
 
   return (
     <div className="space-y-6">
@@ -300,17 +482,38 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Show:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
-                    className="text-sm border border-border rounded px-2 py-1 bg-background"
-                    disabled={isLoadingItems}
-                  >
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
+                <div className="flex items-center gap-3">
+                  {order.status === "draft" && selectedForDelete.size > 0 && (
+                    <button
+                      onClick={confirmRemoveSelectedItems}
+                      disabled={isSaving}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete ({selectedForDelete.size})
+                    </button>
+                  )}
+                  {order.status === "draft" && (
+                    <button
+                      onClick={() => setShowAddItemsModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Items
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Show:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="text-sm border border-border rounded px-2 py-1 bg-background"
+                      disabled={isLoadingItems}
+                    >
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -343,10 +546,183 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             </div>
 
             {items.length > 0 ? (
-              <div className={`divide-y divide-border ${isLoadingItems ? "opacity-50" : ""}`}>
-                {items.map((item) => (
-                  <div key={item.line_number} className="p-4">
+              <>
+                {/* Select All Header (only for draft) */}
+                {isDraft && items.length > 1 && (
+                  <div className="px-4 py-2 border-b border-border bg-muted/20 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedForDelete.size === items.length && items.length > 0}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {selectedForDelete.size > 0
+                        ? `${selectedForDelete.size} selected`
+                        : "Select all"}
+                    </span>
+                  </div>
+                )}
+                <div className={`divide-y divide-border ${isLoadingItems ? "opacity-50" : ""}`}>
+                {items.map((item) => {
+                  const isEditing = editingLine?.lineNumber === item.line_number;
+
+                  // Inline editing mode for this row
+                  if (isEditing && editingLine) {
+                    return (
+                      <div key={item.line_number} className="p-4 bg-primary/5 border-l-4 border-primary">
+                        <div className="flex items-center gap-4">
+                          {/* Product Image */}
+                          <div className="w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
+                            {editingLine.imageUrl ? (
+                              <Image
+                                src={editingLine.imageUrl}
+                                alt={editingLine.name}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Product Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
+                                #{editingLine.lineNumber}
+                              </span>
+                              <h3 className="font-semibold text-foreground truncate">{editingLine.name}</h3>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-muted-foreground font-mono">{editingLine.sku}</span>
+                              {editingLine.packagingLabel && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
+                                  <Package className="h-3 w-3" />
+                                  {editingLine.packagingLabel}
+                                  {editingLine.packSize > 1 && ` (${editingLine.packSize} pz)`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quantity Controls */}
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs text-muted-foreground">Quantity</span>
+                            <div className="flex items-center border border-border rounded-md overflow-hidden bg-background">
+                              <button
+                                onClick={() => {
+                                  const minQty = editingLine.minOrderQuantity;
+                                  const newQty = editingLine.quantity - minQty;
+                                  updateEditingLineQuantity(newQty < minQty ? minQty : newQty);
+                                }}
+                                disabled={editingLine.quantity <= editingLine.minOrderQuantity || isSaving}
+                                className="p-2 hover:bg-muted disabled:opacity-30 transition"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={editingLine.quantityInput}
+                                onChange={(e) => updateEditingLineQuantityInput(e.target.value)}
+                                disabled={isSaving}
+                                className="w-16 text-center border-x border-border py-2 text-sm font-medium bg-background focus:outline-none disabled:opacity-50"
+                              />
+                              <button
+                                onClick={() => {
+                                  updateEditingLineQuantity(editingLine.quantity + editingLine.minOrderQuantity);
+                                }}
+                                disabled={isSaving}
+                                className="p-2 hover:bg-muted transition disabled:opacity-50"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Price Input */}
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs text-muted-foreground">Unit Price</span>
+                            <div className="flex items-center border border-border rounded-md overflow-hidden bg-background">
+                              <span className="px-2 py-2 text-sm text-muted-foreground bg-muted border-r border-border">€</span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={editingLine.unitPriceInput}
+                                onChange={(e) => updateEditingLinePriceInput(e.target.value)}
+                                disabled={isSaving}
+                                className="w-20 text-center py-2 text-sm font-medium bg-background focus:outline-none disabled:opacity-50"
+                              />
+                            </div>
+                            {editingLine.listPrice > editingLine.unitPrice && (
+                              <span className="text-xs text-muted-foreground line-through">
+                                List: €{editingLine.listPrice.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Line Total */}
+                          <div className="flex flex-col items-end gap-1 min-w-[100px]">
+                            <span className="text-xs text-muted-foreground">Line Total</span>
+                            <span className="font-bold text-foreground">
+                              {new Intl.NumberFormat("it-IT", {
+                                style: "currency",
+                                currency: order.currency || "EUR",
+                              }).format(editingLine.unitPrice * editingLine.packSize * editingLine.quantity)}
+                            </span>
+                            {editingLine.packSize > 1 && (
+                              <span className="text-xs text-muted-foreground">
+                                {editingLine.quantity} × {editingLine.packSize} pz
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={cancelEditingLine}
+                              className="px-3 py-2 text-sm rounded border border-border hover:bg-muted transition"
+                              disabled={isSaving}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={saveLineChanges}
+                              disabled={isSaving}
+                              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Normal display mode
+                  return (
+                  <div key={item.line_number} className={`p-4 ${selectedForDelete.has(item.line_number) ? "bg-red-50" : ""}`}>
                     <div className="flex items-start gap-4">
+                      {/* Checkbox for delete (only for draft) */}
+                      {isDraft && !editingLine && (
+                        <div className="pt-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedForDelete.has(item.line_number)}
+                            onChange={() => toggleSelectItem(item.line_number)}
+                            className="h-4 w-4 rounded border-border text-red-600 focus:ring-red-500 cursor-pointer"
+                          />
+                        </div>
+                      )}
                       {/* Product Image */}
                       <div className="w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
                         {item.image_url ? (
@@ -379,6 +755,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           )}
                         </h3>
                         <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                          {/* Line Number Badge */}
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                            #{item.line_number}
+                          </span>
                           {(!item.product_source || item.product_source === "pim") ? (
                             <Link
                               href={`${tenantPrefix}/b2b/pim/products/${item.entity_code}`}
@@ -483,8 +863,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               </span>
                             </div>
                           )}
-                          {/* Unit Price (Net) */}
-                          <div>
+                          {/* Unit Price (Net) - with inline editing for draft */}
+                          <div className="flex items-center gap-1">
                             <span className="text-muted-foreground">Net: </span>
                             <span className="font-semibold text-foreground">
                               {new Intl.NumberFormat("it-IT", {
@@ -492,6 +872,15 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                                 currency: order.currency || "EUR",
                               }).format(item.unit_price)}
                             </span>
+                            {isDraft && !editingLine && (
+                              <button
+                                onClick={() => startEditingLine(item)}
+                                className="p-1 rounded border border-border hover:bg-muted ml-1"
+                                title="Edit item"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                           {/* Discount Badge - calculated from highest reference price */}
                           {(() => {
@@ -533,61 +922,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
                       {/* Quantity & Actions */}
                       <div className="flex flex-col items-end gap-2">
-                        {editingQuantity === item.entity_code ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setNewQuantity(Math.max(1, newQuantity - 1))}
-                              className="p-1 rounded border border-border hover:bg-muted"
-                              disabled={isSaving}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                            <input
-                              type="number"
-                              value={newQuantity}
-                              onChange={(e) => setNewQuantity(parseInt(e.target.value) || 0)}
-                              className="w-16 text-center rounded border border-border px-2 py-1 text-sm"
-                              min={1}
-                            />
-                            <button
-                              onClick={() => setNewQuantity(newQuantity + 1)}
-                              className="p-1 rounded border border-border hover:bg-muted"
-                              disabled={isSaving}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => updateItemQuantity(item.entity_code, newQuantity)}
-                              className="p-1 rounded bg-primary text-white hover:bg-primary/90"
-                              disabled={isSaving || newQuantity < 1}
-                            >
-                              <Save className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setEditingQuantity(null)}
-                              className="p-1 rounded border border-border hover:bg-muted"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">
-                              Qty: {item.quantity}
-                            </span>
-                            {isDraft && (
-                              <button
-                                onClick={() => {
-                                  setEditingQuantity(item.entity_code);
-                                  setNewQuantity(item.quantity);
-                                }}
-                                className="p-1 rounded border border-border hover:bg-muted"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">
+                            Qty: {item.quantity}
+                          </span>
+                        </div>
 
                         {/* Line Total */}
                         <div className="text-right">
@@ -607,9 +946,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         </div>
 
                         {/* Remove Button */}
-                        {isDraft && (
+                        {isDraft && !editingLine && (
                           <button
-                            onClick={() => removeItem(item.entity_code)}
+                            onClick={() => confirmRemoveItem(item.line_number)}
                             className="text-red-600 hover:text-red-700 text-xs flex items-center gap-1"
                             disabled={isSaving}
                           >
@@ -620,8 +959,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
+              </>
             ) : (
               <div className="p-8 text-center text-muted-foreground">
                 <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -714,6 +1055,57 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
         {/* Sidebar - Summary */}
         <div className="space-y-6">
+          {/* Status & Actions Card */}
+          <StatusActionsCard
+            order={order}
+            userRole="admin"
+            onStatusChange={() => fetchOrder(false)}
+            tenantPrefix={tenantPrefix}
+          />
+
+          {/* Quotation Card (only for quotation status) */}
+          {order.status === "quotation" && order.quotation && (
+            <QuotationCard
+              order={order}
+              onQuotationChange={() => fetchOrder(false)}
+            />
+          )}
+
+          {/* Payment Card (for confirmed/shipped/delivered) */}
+          <PaymentCard
+            order={order}
+            onPaymentChange={() => fetchOrder(false)}
+          />
+
+          {/* Delivery Card (for shipped/delivered) */}
+          <DeliveryCard
+            order={order}
+            onDeliveryChange={() => fetchOrder(false)}
+          />
+
+          {/* Thread/Discussion Button */}
+          <div className="rounded-lg bg-card shadow-sm border border-border p-4">
+            <button
+              onClick={() => setShowThread(!showThread)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {showThread ? "Hide Discussion" : "Show Discussion"}
+            </button>
+          </div>
+
+          {/* Thread Panel */}
+          {showThread && (
+            <ThreadPanel
+              refType="order"
+              refId={order.order_id}
+              mode="panel"
+              currentUserId="admin"
+              currentUserName="Admin"
+              currentUserType="admin"
+            />
+          )}
+
           {/* Order Summary */}
           <div className="rounded-lg bg-card shadow-sm border border-border">
             <div className="p-4 border-b border-border">
@@ -1019,6 +1411,39 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           )}
         </div>
       </div>
+
+      {/* Add Items Modal */}
+      <AddItemsModal
+        isOpen={showAddItemsModal}
+        onClose={() => setShowAddItemsModal(false)}
+        orderId={order.order_id}
+        existingCartItems={order.items?.map((item) => ({
+          entity_code: item.entity_code,
+          packaging_code: item.packaging_code,
+          promo_code: item.promo_code,
+          promo_row: item.promo_row,
+          line_number: item.line_number,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })) || []}
+        onItemsAdded={() => fetchOrder(false)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmDialog.open}
+        title="Remove Item"
+        message={
+          deleteConfirmDialog.type === "single"
+            ? "Are you sure you want to remove this item from the order?"
+            : `Are you sure you want to remove ${selectedForDelete.size} item${selectedForDelete.size > 1 ? "s" : ""} from the order?`
+        }
+        confirmText="Remove"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 }

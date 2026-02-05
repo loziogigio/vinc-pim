@@ -102,6 +102,61 @@ export interface B2BCustomer {
 }
 
 // =============================================================================
+// USERS
+// =============================================================================
+
+export interface B2BUserAddress {
+  id: string;
+  erp_address_id: string;
+  erp_customer_id?: string;
+  customer_id: string;
+  customer_name?: string;
+  label?: string;
+  street?: string;
+  city?: string;
+  zip?: string;
+  country?: string;
+  province?: string;
+  type?: string;
+  is_default?: boolean;
+  pricelist_code?: string;
+  channel_code?: string;
+}
+
+export interface B2BUserCustomer {
+  id: string;
+  erp_customer_id: string;
+  name?: string;
+  addresses: {
+    id: string;
+    erp_address_id: string;
+    label?: string;
+  }[];
+}
+
+export interface B2BUserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  role: string;
+  status: string;
+  supplier_id?: string;
+  supplier_name?: string;
+  customers: B2BUserCustomer[];
+  addresses: B2BUserAddress[];
+  has_password: boolean;
+}
+
+export interface B2BUsersListParams {
+  tenant_id?: string;
+  supplier_id?: string;
+  email?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// =============================================================================
 // API ERROR
 // =============================================================================
 

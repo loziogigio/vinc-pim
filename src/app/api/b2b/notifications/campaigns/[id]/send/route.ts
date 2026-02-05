@@ -63,34 +63,82 @@ export async function POST(
     await campaign.save();
 
     // Get recipients based on recipient_type
-    let recipients: { _id: string; portal_user_id: string; email: string; username?: string }[] = [];
+    // B2B users use customer_id, Portal users use portal_user_id
+    type RecipientUserType = "b2b_user" | "portal_user";
+    let recipients: { _id: string; user_id: string; email: string; username?: string; user_type: RecipientUserType }[] = [];
 
     try {
       switch (campaign.recipient_type) {
         case "all":
-          recipients = await PortalUser.find({ is_active: true })
+          // "all" only sends to Portal users (they have active accounts)
+          const allPortalUsers = await PortalUser.find({ is_active: true })
             .select("_id portal_user_id email username")
             .lean();
+          recipients = allPortalUsers.map((p) => ({
+            _id: p._id.toString(),
+            user_id: p.portal_user_id,
+            email: p.email,
+            username: p.username,
+            user_type: "portal_user" as RecipientUserType,
+          }));
           break;
         case "selected":
-          if (campaign.selected_user_ids?.length) {
-            recipients = await PortalUser.find({
-              portal_user_id: { $in: campaign.selected_user_ids },
+          // Separate B2B and Portal users based on type field
+          const b2bUsers = campaign.selected_users?.filter(
+            (u: { type?: string }) => u.type === "b2b"
+          ) || [];
+          const portalUserSelections = campaign.selected_users?.filter(
+            (u: { type?: string }) => u.type === "portal" || !u.type // Default to portal for backward compatibility
+          ) || [];
+
+          // 1. Portal users: lookup by portal_user_id to verify they exist and are active
+          if (portalUserSelections.length > 0) {
+            const portalIds = portalUserSelections.map((u: { id: string }) => u.id);
+            const foundPortal = await PortalUser.find({
+              portal_user_id: { $in: portalIds },
               is_active: true,
             })
               .select("_id portal_user_id email username")
               .lean();
+
+            recipients.push(
+              ...foundPortal.map((p) => ({
+                _id: p._id.toString(),
+                user_id: p.portal_user_id,
+                email: p.email,
+                username: p.username,
+                user_type: "portal_user" as RecipientUserType,
+              }))
+            );
+          }
+
+          // 2. B2B users: add directly (no Portal lookup needed - they use customer_id)
+          for (const b2b of b2bUsers) {
+            recipients.push({
+              _id: b2b.id,
+              user_id: b2b.id, // customer_id
+              email: b2b.email,
+              username: b2b.name,
+              user_type: "b2b_user" as RecipientUserType,
+            });
           }
           break;
         case "tagged":
-          // TODO: Implement tagged recipients when UserTag model is ready
+          // Tagged recipients are Portal users only
           if (campaign.tag_ids?.length) {
-            recipients = await PortalUser.find({
+            const taggedUsers = await PortalUser.find({
               "tags.tag_id": { $in: campaign.tag_ids },
               is_active: true,
             })
               .select("_id portal_user_id email username")
               .lean();
+            recipients = taggedUsers.map((p) => ({
+              _id: p._id.toString(),
+              user_id: p.portal_user_id,
+              email: p.email,
+              username: p.username,
+              user_type: "portal_user" as RecipientUserType,
+            }));
           }
           break;
       }
@@ -98,7 +146,7 @@ export async function POST(
       if (recipients.length === 0) {
         campaign.status = "failed";
         await campaign.save();
-        return NextResponse.json({ error: "No recipients found" }, { status: 400 });
+        return NextResponse.json({ error: "Nessun destinatario trovato" }, { status: 400 });
       }
 
       // Track results
@@ -111,10 +159,12 @@ export async function POST(
       // Generate email HTML if needed
       let fullEmailHtml: string | undefined;
       if (campaign.channels.includes("email") && campaign.email_html) {
+        // Use email_link for email CTA button (separate from products_url for push)
         const emailContent = generateCustomEmailHtml(
           campaign.email_html,
-          campaign.products_url,
-          campaign.products
+          campaign.email_link,
+          campaign.products,
+          campaign.type as "product" | "generic"
         );
         fullEmailHtml = await buildCampaignEmail(tenantDb, emailContent);
       }
@@ -166,12 +216,13 @@ export async function POST(
           }
         }
 
-        // Web In-App
+        // Web In-App - create for both B2B and Portal users
         if (campaign.channels.includes("web_in_app")) {
           try {
             await createInAppNotification({
               tenantDb,
-              user_id: recipient.portal_user_id,
+              user_id: recipient.user_id,
+              user_type: recipient.user_type,
               trigger: campaign.type === "product" ? "campaign_product" : "campaign_generic",
               title: campaign.title,
               body: campaign.body,
@@ -186,10 +237,14 @@ export async function POST(
           }
         }
 
-        // Mobile (FCM)
-        if (campaign.channels.includes("mobile") && recipient.portal_user_id) {
+        // Mobile (FCM) - send to users with active tokens
+        if (campaign.channels.includes("mobile") && recipient.user_id) {
           try {
-            const tokens = await getActiveTokens(tenantDb, { userIds: [recipient.portal_user_id] });
+            // Get active tokens based on user type
+            const tokenQuery = recipient.user_type === "portal_user"
+              ? { userIds: [recipient.user_id] }
+              : { customerIds: [recipient.user_id] };
+            const tokens = await getActiveTokens(tenantDb, tokenQuery);
 
             if (tokens.length > 0) {
               const fcmResult = await sendFCM({
@@ -199,7 +254,7 @@ export async function POST(
                 icon: notificationIcon,
                 image: campaign.push_image || campaign.image,
                 action_url: campaign.url,
-                userIds: [recipient.portal_user_id],
+                userIds: [recipient.user_id],
                 queue: true,
                 priority: "normal",
                 trigger: "campaign",

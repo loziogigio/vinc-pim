@@ -33,6 +33,7 @@ import type { NotificationChannel } from "@/lib/constants/notification";
 
 interface CampaignTestPayload extends CampaignPayload {
   test_email: string;
+  email_link?: string; // Separate link for email "Vedi tutti" (distinct from products_url for push)
 }
 
 export async function POST(req: NextRequest) {
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       push_image,
       email_subject,
       email_html,
+      email_link,
       products_url,
       products,
       channels,
@@ -100,7 +102,8 @@ export async function POST(req: NextRequest) {
     if (channels.includes("email")) {
       let emailContent: string;
       if (email_html) {
-        emailContent = generateCustomEmailHtml(email_html, products_url, products);
+        // Use email_link for email CTA (separate from products_url for push)
+        emailContent = generateCustomEmailHtml(email_html, email_link, products, type);
       } else if (type === "generic") {
         emailContent = generateGenericEmailHtml(title || "Test", messageBody || "", url, image, open_in_new_tab);
       } else {

@@ -51,19 +51,41 @@ export function replaceTemplateVariables(
 
 /**
  * Wrap email content in a proper table-based container.
+ * Uses max-width for responsive behavior on mobile.
+ * No border-radius as this sits between header (rounded top) and footer (rounded bottom).
  */
 export function wrapEmailContent(content: string): string {
   return `
+<style type="text/css">
+  @media only screen and (max-width: 620px) {
+    .email-container {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .email-content {
+      padding: 28px 20px !important;
+    }
+  }
+</style>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f6fa;">
   <tr>
-    <td align="center" style="padding: 0 20px;">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
-        <tr>
-          <td style="padding: 40px;">
-            ${content}
-          </td>
-        </tr>
-      </table>
+    <td align="center" style="padding: 0 12px;">
+      <!--[if mso]>
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" align="center">
+      <tr><td>
+      <![endif]-->
+      <div class="email-container" style="max-width: 600px; width: 100%; margin: 0 auto;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
+          <tr>
+            <td class="email-content" style="padding: 36px 32px;">
+              ${content}
+            </td>
+          </tr>
+        </table>
+      </div>
+      <!--[if mso]>
+      </td></tr></table>
+      <![endif]-->
     </td>
   </tr>
 </table>
@@ -81,56 +103,66 @@ function truncateText(text: string, maxLength: number): string {
 
 /**
  * Generate product grid HTML for email.
- * Uses table layout for email compatibility with fixed height boxes.
+ * Uses mobile-first responsive design that stacks on small screens.
+ *
+ * Technique: Uses inline-block divs that wrap naturally on narrow screens.
+ * Each product card has max-width for desktop, but becomes full-width on mobile.
  */
 function generateProductGridHtml(products: ITemplateProduct[]): string {
   if (!products || products.length === 0) return "";
 
-  // Build product rows (2 per row)
-  const productRows: string[] = [];
-  for (let i = 0; i < products.length; i += 2) {
-    const p1 = products[i];
-    const p2 = products[i + 1];
-
-    productRows.push(`
-    <tr>
-      <td style="width: 50%; padding: 8px; vertical-align: top;">
-        <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; height: 240px; box-sizing: border-box;">
-          <img src="${p1.image || "/placeholder-product.png"}" alt="${truncateText(p1.name, 50)}" style="width: 100%; height: 140px; object-fit: contain; margin-bottom: 8px;" />
-          <p style="font-size: 11px; color: #999; margin: 0; text-transform: uppercase;">${p1.sku}</p>
-          <p style="font-size: 13px; font-weight: 600; color: #333; margin: 4px 0 0 0; line-height: 1.3; overflow: hidden; max-height: 34px;">${truncateText(p1.name, 60)}</p>
+  const productCards = products.map((p) => `
+    <!--[if mso]>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="280" align="left">
+    <tr><td style="padding: 8px;">
+    <![endif]-->
+    <div style="display: inline-block; width: 100%; max-width: 280px; vertical-align: top; box-sizing: border-box; padding: 8px;">
+      <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #fff;">
+        <div style="text-align: center; margin-bottom: 12px;">
+          <img src="${p.image || "/placeholder-product.png"}" alt="${truncateText(p.name, 50)}" width="200" height="160" style="max-width: 100%; height: auto; object-fit: contain;" />
         </div>
-      </td>
-      ${p2 ? `
-      <td style="width: 50%; padding: 8px; vertical-align: top;">
-        <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; height: 240px; box-sizing: border-box;">
-          <img src="${p2.image || "/placeholder-product.png"}" alt="${truncateText(p2.name, 50)}" style="width: 100%; height: 140px; object-fit: contain; margin-bottom: 8px;" />
-          <p style="font-size: 11px; color: #999; margin: 0; text-transform: uppercase;">${p2.sku}</p>
-          <p style="font-size: 13px; font-weight: 600; color: #333; margin: 4px 0 0 0; line-height: 1.3; overflow: hidden; max-height: 34px;">${truncateText(p2.name, 60)}</p>
-        </div>
-      </td>
-      ` : '<td style="width: 50%; padding: 8px;"></td>'}
-    </tr>
-    `);
-  }
+        <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px;">${p.sku}</p>
+        <p style="font-size: 14px; font-weight: 600; color: #1f2937; margin: 0; line-height: 1.4;">${truncateText(p.name, 80)}</p>
+      </div>
+    </div>
+    <!--[if mso]>
+    </td></tr></table>
+    <![endif]-->
+  `).join("");
 
   return `
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 24px;">
-  ${productRows.join("")}
-</table>
+<style type="text/css">
+  @media only screen and (max-width: 600px) {
+    .product-grid-container {
+      text-align: center !important;
+    }
+    .product-grid-container > div {
+      max-width: 100% !important;
+      display: block !important;
+      margin: 0 auto 16px auto !important;
+    }
+  }
+</style>
+<div class="product-grid-container" style="margin-top: 24px; text-align: center; font-size: 0;">
+  ${productCards}
+</div>
 `;
 }
 
 /**
- * Generate email HTML from custom HTML content with optional products and "Vedi tutti" link.
+ * Generate email HTML from custom HTML content with optional products and CTA link.
  * Used when user provides their own HTML content.
+ *
+ * @param campaignType - "product" uses "Vedi tutti", "generic" uses "Apri"
  */
 export function generateCustomEmailHtml(
   htmlContent: string,
   ctaUrl?: string,
-  products?: ITemplateProduct[]
+  products?: ITemplateProduct[],
+  campaignType: "product" | "generic" = "product"
 ): string {
   const productGridHtml = generateProductGridHtml(products || []);
+  const ctaLabel = campaignType === "generic" ? "Apri" : "Vedi tutti";
 
   return `
 ${htmlContent}
@@ -142,7 +174,7 @@ ${
     ? `
 <div style="margin-top: 24px; text-align: center;">
   <a href="${ctaUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600;" target="_blank">
-    Vedi tutti
+    ${ctaLabel}
   </a>
 </div>
 `

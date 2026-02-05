@@ -35,10 +35,9 @@ export async function registerToken(
   });
 
   if (existing) {
-    // Update existing token
+    // Update existing token - always use user_id for all user types
     existing.user_id = input.user_id;
     existing.user_type = input.user_type || "portal_user";
-    existing.customer_id = input.customer_id;
     existing.platform = input.platform;
     existing.device_id = input.device_id;
     existing.device_model = input.device_model;
@@ -58,12 +57,11 @@ export async function registerToken(
     return existing;
   }
 
-  // Create new token
+  // Create new token - always use user_id for all user types
   const token = new FCMToken({
     tenant_id: input.tenant_id,
     user_id: input.user_id,
     user_type: input.user_type || "portal_user",
-    customer_id: input.customer_id,
     fcm_token: input.fcm_token,
     platform: input.platform,
     device_id: input.device_id,
@@ -125,12 +123,16 @@ export async function getTokensByUser(
 
 /**
  * Get all active tokens for a tenant
+ *
+ * Uses user_id for BOTH Portal users and B2B users:
+ * - Portal users: user_id = portal_user_id
+ * - B2B users: user_id = VINC API user_id (NOT customer_id)
  */
 export async function getActiveTokens(
   tenantDb: string,
   options?: {
     preferenceType?: keyof FCMPreferences;
-    userIds?: string[];
+    userIds?: string[]; // user_id for ALL user types
     tokenIds?: string[];
     platform?: FCMPlatform;
     limit?: number;
@@ -145,7 +147,7 @@ export async function getActiveTokens(
     query[`preferences.${options.preferenceType}`] = true;
   }
 
-  // Filter by user IDs
+  // Filter by user IDs (works for both Portal and B2B users)
   if (options?.userIds?.length) {
     query.user_id = { $in: options.userIds };
   }

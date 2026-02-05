@@ -19,6 +19,8 @@ export type B2BSessionData = {
 export type B2BUser = {
   _id: string;
   username: string;
+  /** VINC API user_id from SSO token (sub field). Used for notification targeting. */
+  user_id?: string;
   email: string;
   passwordHash: string;
   role: B2BUserRole;

@@ -2,15 +2,25 @@
  * Campaign Schedule API
  *
  * POST /api/b2b/notifications/campaigns/[id]/schedule - Schedule a draft campaign
- * DELETE /api/b2b/notifications/campaigns/[id]/schedule - Unschedule (back to draft)
+ * DELETE /api/b2b/notifications/campaigns/[id]/schedule - Cancel scheduled campaign
+ *
+ * Uses two-tier scheduling:
+ * - PRIMARY: BullMQ delayed job (exact timing)
+ * - FALLBACK: Polling every 5 min catches missed jobs after Redis restart
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
-import { connectWithModels } from "@/lib/db/connection";
+import {
+  scheduleCampaign,
+  cancelScheduledCampaign,
+} from "@/lib/services/campaign.service";
 
 /**
  * POST - Schedule a draft campaign for future delivery
+ *
+ * Uses BullMQ delayed job for precise timing.
+ * Fallback polling catches jobs lost after Redis restart.
  */
 export async function POST(
   req: NextRequest,
@@ -18,21 +28,29 @@ export async function POST(
 ) {
   try {
     const auth = await authenticateTenant(req);
-    if (!auth.authenticated || !auth.tenantDb) {
-      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
+    if (!auth.authenticated || !auth.tenantDb || !auth.tenantId) {
+      return NextResponse.json(
+        { error: auth.error || "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const { id } = await params;
-    const tenantDb = auth.tenantDb;
     const { scheduled_at } = await req.json();
 
     if (!scheduled_at) {
-      return NextResponse.json({ error: "scheduled_at is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "scheduled_at is required" },
+        { status: 400 }
+      );
     }
 
     const scheduledDate = new Date(scheduled_at);
     if (isNaN(scheduledDate.getTime())) {
-      return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid date format" },
+        { status: 400 }
+      );
     }
 
     // Must be at least 5 minutes in the future
@@ -46,38 +64,28 @@ export async function POST(
       );
     }
 
-    const { Campaign } = await connectWithModels(tenantDb);
+    // Use service function (creates BullMQ delayed job + updates campaign)
+    const result = await scheduleCampaign(
+      auth.tenantDb,
+      auth.tenantId,
+      id,
+      scheduledDate
+    );
 
-    const campaign = await Campaign.findOne({ campaign_id: id });
-
-    if (!campaign) {
-      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
-    }
-
-    // Only draft campaigns can be scheduled
-    if (campaign.status !== "draft") {
+    if ("error" in result) {
       return NextResponse.json(
-        { error: "Only draft campaigns can be scheduled" },
-        { status: 400 }
+        { error: result.error },
+        { status: result.status }
       );
     }
 
-    // Update campaign
-    campaign.status = "scheduled";
-    campaign.scheduled_at = scheduledDate;
-    campaign.updated_by = auth.userId || auth.email;
-
-    await campaign.save();
-
     return NextResponse.json({
       success: true,
-      campaign: {
-        campaign_id: campaign.campaign_id,
-        name: campaign.name,
-        status: campaign.status,
-        scheduled_at: campaign.scheduled_at,
-      },
-      message: "Campaign scheduled successfully",
+      campaign_id: result.campaign_id,
+      scheduled_at: result.scheduled_at,
+      job_id: result.job_id,
+      delay_minutes: result.delay_minutes,
+      message: `Campaign scheduled for ${result.scheduled_at.toISOString()} (in ${result.delay_minutes} minutes)`,
     });
   } catch (error) {
     console.error("Error scheduling campaign:", error);
@@ -89,7 +97,9 @@ export async function POST(
 }
 
 /**
- * DELETE - Unschedule a campaign (back to draft)
+ * DELETE - Cancel a scheduled campaign (back to draft)
+ *
+ * Removes the BullMQ delayed job and reverts campaign to draft.
  */
 export async function DELETE(
   req: NextRequest,
@@ -98,41 +108,26 @@ export async function DELETE(
   try {
     const auth = await authenticateTenant(req);
     if (!auth.authenticated || !auth.tenantDb) {
-      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const tenantDb = auth.tenantDb;
-    const { Campaign } = await connectWithModels(tenantDb);
-
-    const campaign = await Campaign.findOne({ campaign_id: id });
-
-    if (!campaign) {
-      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
-    }
-
-    // Only scheduled campaigns can be unscheduled
-    if (campaign.status !== "scheduled") {
       return NextResponse.json(
-        { error: "Only scheduled campaigns can be unscheduled" },
-        { status: 400 }
+        { error: auth.error || "Unauthorized" },
+        { status: 401 }
       );
     }
 
-    // Update campaign
-    campaign.status = "draft";
-    campaign.scheduled_at = undefined;
-    campaign.updated_by = auth.userId || auth.email;
+    const { id } = await params;
 
-    await campaign.save();
+    // Use service function (removes BullMQ job + updates campaign)
+    const result = await cancelScheduledCampaign(auth.tenantDb, id);
+
+    if ("error" in result) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: result.status }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      campaign: {
-        campaign_id: campaign.campaign_id,
-        name: campaign.name,
-        status: campaign.status,
-      },
       message: "Campaign unscheduled, reverted to draft",
     });
   } catch (error) {

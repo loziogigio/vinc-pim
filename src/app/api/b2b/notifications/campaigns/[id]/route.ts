@@ -61,7 +61,8 @@ interface UpdateCampaignPayload {
   push_image?: string;
   email_subject?: string;
   email_html?: string;
-  products_url?: string;
+  email_link?: string; // Separate link for email "Vedi tutti"
+  products_url?: string; // Push notification action URL
   products?: { sku: string; name: string; image: string; item_ref: string }[];
   url?: string;
   image?: string;
@@ -69,7 +70,7 @@ interface UpdateCampaignPayload {
   channels?: ("email" | "mobile" | "web_in_app")[];
   recipient_type?: "all" | "selected" | "tagged";
   selected_user_ids?: string[];
-  selected_users?: { id: string; email: string; name: string }[];
+  selected_users?: { id: string; email: string; name: string; type: "b2b" | "portal" }[];
   tag_ids?: string[];
 }
 
@@ -156,6 +157,7 @@ export async function PUT(
     if (payload.push_image !== undefined) campaign.push_image = payload.push_image?.trim();
     if (payload.email_subject !== undefined) campaign.email_subject = payload.email_subject?.trim();
     if (payload.email_html !== undefined) campaign.email_html = payload.email_html;
+    if (payload.email_link !== undefined) campaign.email_link = payload.email_link?.trim();
     if (payload.products_url !== undefined) campaign.products_url = payload.products_url?.trim();
     if (payload.products !== undefined) campaign.products = payload.products;
     if (payload.url !== undefined) campaign.url = payload.url?.trim();

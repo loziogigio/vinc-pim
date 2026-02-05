@@ -1,11 +1,29 @@
 import mongoose, { Schema, Document } from "mongoose";
 import type { DiscountStep } from "@/lib/types/pim";
+import {
+  ORDER_STATUSES,
+  QUOTATION_STATUSES,
+  PAYMENT_STATUSES,
+  ORDER_TYPES,
+  PRICE_LIST_TYPES,
+  ORDER_SOURCES,
+  ADJUSTMENT_REASONS,
+} from "@/lib/constants/order";
+import type {
+  OrderStatus,
+  QuotationStatus,
+  PaymentStatus,
+  OrderType,
+  PriceListType,
+  OrderSource,
+  AdjustmentReason,
+} from "@/lib/constants/order";
 
 /**
  * Order Model
  *
  * Unified order document where status: "draft" represents a cart.
- * Same document evolves: draft → pending → confirmed → shipped
+ * Same document evolves: draft → quotation → pending → confirmed → shipped → delivered
  *
  * Collection: orders (lowercase, pluralized per CLAUDE.md)
  */
@@ -18,7 +36,7 @@ export interface IDiscountTier {
   tier: number; // 1-6, order of application
   type: "percentage" | "fixed" | "override";
   value: number; // -50 = 50% off for percentage
-  reason?: "customer_group" | "quantity" | "promo" | "manual";
+  reason?: AdjustmentReason;
 }
 
 export interface ILineItem {
@@ -83,13 +101,157 @@ export interface ILineItem {
   raw_data?: Record<string, unknown>;
 }
 
+// ============================================
+// CART DISCOUNT (for quotation negotiation)
+// ============================================
+
+export interface ICartDiscount {
+  discount_id: string; // nanoid(8)
+  type: "percentage" | "fixed";
+  value: number; // -10 = 10% off, -50 = €50 off
+  reason: AdjustmentReason;
+  description?: string; // "Volume discount", "Loyalty bonus"
+  applied_by?: string; // User ID who applied
+  applied_at: Date;
+  revision?: number; // Which revision this was added in
+}
+
+// ============================================
+// LINE ADJUSTMENT (price overrides during quotation)
+// ============================================
+
+export interface ILineAdjustment {
+  adjustment_id: string; // nanoid(8)
+  line_number: number; // Reference to line item
+  type: "price_override" | "discount_percentage" | "discount_fixed";
+  original_value: number; // Original unit_price or 0
+  new_value: number; // New price or discount amount
+  reason: AdjustmentReason;
+  description?: string;
+  applied_by?: string;
+  applied_at: Date;
+  revision?: number;
+}
+
+// ============================================
+// QUOTATION REVISION (history tracking)
+// ============================================
+
+export interface IQuotationRevision {
+  revision_number: number; // 1, 2, 3...
+  created_at: Date;
+  created_by: string; // User ID
+  created_by_name?: string; // Cached user name
+  actor_type: "sales" | "customer";
+
+  // Snapshot of totals at this revision
+  subtotal_net: number;
+  total_discount: number;
+  order_total: number;
+
+  // Changes in this revision
+  cart_discounts_added: ICartDiscount[];
+  line_adjustments_added: ILineAdjustment[];
+  items_added: number[]; // line_numbers
+  items_removed: number[]; // line_numbers
+  items_qty_changed: Array<{
+    line_number: number;
+    old_qty: number;
+    new_qty: number;
+  }>;
+
+  // Notes for this revision
+  notes?: string;
+  internal_notes?: string;
+}
+
+// ============================================
+// QUOTATION DATA
+// ============================================
+
+export interface IQuotationData {
+  quotation_number?: string; // Q-2025-00001 format
+  quotation_status: QuotationStatus;
+
+  // Validity
+  valid_until?: Date;
+  days_valid: number; // Default: 30
+
+  // Revisions
+  current_revision: number;
+  revisions: IQuotationRevision[];
+
+  // Negotiation summary
+  total_rounds: number;
+  last_actor: "sales" | "customer";
+  last_activity_at: Date;
+
+  // Timestamps
+  sent_at?: Date;
+  accepted_at?: Date;
+  rejected_at?: Date;
+  expired_at?: Date;
+}
+
+// ============================================
+// PAYMENT RECORD
+// ============================================
+
+export interface IPaymentRecord {
+  payment_id: string; // nanoid(8)
+  amount: number;
+  method: string; // "bank_transfer", "credit_card", etc.
+  reference?: string; // External payment ID
+  recorded_at: Date;
+  recorded_by?: string;
+  notes?: string;
+}
+
+// ============================================
+// PAYMENT DATA
+// ============================================
+
+export interface IPaymentData {
+  payment_status: PaymentStatus;
+  payment_method?: string;
+  payment_terms?: string; // "NET30", "NET60", "COD"
+
+  // Amounts
+  amount_due: number;
+  amount_paid: number;
+  amount_remaining: number;
+
+  // Tracking
+  payment_reference?: string;
+  payment_date?: Date;
+  due_date?: Date;
+
+  // For partial payments
+  payments: IPaymentRecord[];
+}
+
+// ============================================
+// DELIVERY DATA
+// ============================================
+
+export interface IDeliveryData {
+  carrier?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+  shipped_at?: Date;
+  estimated_delivery?: Date;
+  delivered_at?: Date;
+  delivery_proof?: string; // URL to signed delivery receipt
+  delivery_notes?: string;
+}
+
 export interface IOrder extends Document {
   // Identity
   order_id: string;
   order_number?: number;
   cart_number?: number; // Sequential cart number per year (assigned on cart creation)
   year: number;
-  status: "draft" | "pending" | "confirmed" | "shipped" | "cancelled";
+  status: OrderStatus;
   is_current: boolean; // Only ONE draft per customer+address can be current
 
   // Tenant (multi-tenant support)
@@ -107,11 +269,12 @@ export interface IOrder extends Document {
   delivery_slot?: string;
   delivery_route?: string;
   shipping_method?: string;
+  requires_delivery?: boolean;
 
   // Pricing Context
   price_list_id: string;
-  price_list_type: "retail" | "wholesale" | "promo";
-  order_type: "b2b" | "b2c" | "quote" | "sample";
+  price_list_type: PriceListType;
+  order_type: OrderType;
   currency: string;
   pricelist_type?: string; // External pricelist type (e.g., "VEND")
   pricelist_code?: string; // External pricelist code (e.g., "02")
@@ -138,10 +301,48 @@ export interface IOrder extends Document {
   // Tracking
   session_id: string;
   flow_id: string;
-  source?: "web" | "mobile" | "api" | "import";
+  source?: OrderSource;
 
   // Items
   items: ILineItem[];
+
+  // ============================================
+  // Quotation Data (when status = "quotation")
+  // ============================================
+  quotation?: IQuotationData;
+
+  // Cart-level discounts (applicable in any status)
+  cart_discounts?: ICartDiscount[];
+
+  // Line-level negotiation adjustments
+  line_adjustments?: ILineAdjustment[];
+
+  // ============================================
+  // Payment Tracking
+  // ============================================
+  payment?: IPaymentData;
+
+  // ============================================
+  // Delivery Tracking
+  // ============================================
+  delivery?: IDeliveryData;
+
+  // ============================================
+  // Duplication Tracking
+  // ============================================
+  duplicated_from?: string; // Original order_id
+  duplicated_at?: Date;
+  duplications?: string[]; // order_ids of copies
+
+  // ============================================
+  // Lifecycle Timestamps
+  // ============================================
+  submitted_at?: Date; // When customer submitted
+  shipped_at?: Date;
+  delivered_at?: Date;
+  cancelled_at?: Date;
+  cancelled_by?: string;
+  cancellation_reason?: string;
 }
 
 // ============================================
@@ -159,8 +360,193 @@ const DiscountTierSchema = new Schema<IDiscountTier>(
     value: { type: Number, required: true },
     reason: {
       type: String,
-      enum: ["customer_group", "quantity", "promo", "manual"],
+      enum: ADJUSTMENT_REASONS,
     },
+  },
+  { _id: false }
+);
+
+// ============================================
+// CART DISCOUNT SCHEMA
+// ============================================
+
+const CartDiscountSchema = new Schema<ICartDiscount>(
+  {
+    discount_id: { type: String, required: true },
+    type: { type: String, required: true, enum: ["percentage", "fixed"] },
+    value: { type: Number, required: true },
+    reason: { type: String, required: true, enum: ADJUSTMENT_REASONS },
+    description: { type: String },
+    applied_by: { type: String },
+    applied_at: { type: Date, default: Date.now },
+    revision: { type: Number },
+  },
+  { _id: false }
+);
+
+// ============================================
+// LINE ADJUSTMENT SCHEMA
+// ============================================
+
+const LineAdjustmentSchema = new Schema<ILineAdjustment>(
+  {
+    adjustment_id: { type: String, required: true },
+    line_number: { type: Number, required: true },
+    type: {
+      type: String,
+      required: true,
+      enum: ["price_override", "discount_percentage", "discount_fixed"],
+    },
+    original_value: { type: Number, required: true },
+    new_value: { type: Number, required: true },
+    reason: { type: String, required: true, enum: ADJUSTMENT_REASONS },
+    description: { type: String },
+    applied_by: { type: String },
+    applied_at: { type: Date, default: Date.now },
+    revision: { type: Number },
+  },
+  { _id: false }
+);
+
+// ============================================
+// QUOTATION REVISION SCHEMA
+// ============================================
+
+const QtyChangeSchema = new Schema(
+  {
+    line_number: { type: Number, required: true },
+    old_qty: { type: Number, required: true },
+    new_qty: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const QuotationRevisionSchema = new Schema<IQuotationRevision>(
+  {
+    revision_number: { type: Number, required: true },
+    created_at: { type: Date, default: Date.now },
+    created_by: { type: String, required: true },
+    created_by_name: { type: String },
+    actor_type: { type: String, required: true, enum: ["sales", "customer"] },
+
+    // Snapshot
+    subtotal_net: { type: Number, required: true },
+    total_discount: { type: Number, required: true },
+    order_total: { type: Number, required: true },
+
+    // Changes
+    cart_discounts_added: { type: [CartDiscountSchema], default: [] },
+    line_adjustments_added: { type: [LineAdjustmentSchema], default: [] },
+    items_added: { type: [Number], default: [] },
+    items_removed: { type: [Number], default: [] },
+    items_qty_changed: { type: [QtyChangeSchema], default: [] },
+
+    // Notes
+    notes: { type: String },
+    internal_notes: { type: String },
+  },
+  { _id: false }
+);
+
+// ============================================
+// QUOTATION DATA SCHEMA
+// ============================================
+
+const QuotationDataSchema = new Schema<IQuotationData>(
+  {
+    quotation_number: { type: String },
+    quotation_status: {
+      type: String,
+      required: true,
+      enum: QUOTATION_STATUSES,
+      default: "draft",
+    },
+
+    // Validity
+    valid_until: { type: Date },
+    days_valid: { type: Number, default: 30 },
+
+    // Revisions
+    current_revision: { type: Number, default: 0 },
+    revisions: { type: [QuotationRevisionSchema], default: [] },
+
+    // Negotiation
+    total_rounds: { type: Number, default: 0 },
+    last_actor: { type: String, enum: ["sales", "customer"] },
+    last_activity_at: { type: Date },
+
+    // Timestamps
+    sent_at: { type: Date },
+    accepted_at: { type: Date },
+    rejected_at: { type: Date },
+    expired_at: { type: Date },
+  },
+  { _id: false }
+);
+
+// ============================================
+// PAYMENT RECORD SCHEMA
+// ============================================
+
+const PaymentRecordSchema = new Schema<IPaymentRecord>(
+  {
+    payment_id: { type: String, required: true },
+    amount: { type: Number, required: true },
+    method: { type: String, required: true },
+    reference: { type: String },
+    recorded_at: { type: Date, default: Date.now },
+    recorded_by: { type: String },
+    notes: { type: String },
+    confirmed: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+// ============================================
+// PAYMENT DATA SCHEMA
+// ============================================
+
+const PaymentDataSchema = new Schema<IPaymentData>(
+  {
+    payment_status: {
+      type: String,
+      required: true,
+      enum: PAYMENT_STATUSES,
+      default: "awaiting",
+    },
+    payment_method: { type: String },
+    payment_terms: { type: String },
+
+    // Amounts
+    amount_due: { type: Number, required: true, default: 0 },
+    amount_paid: { type: Number, required: true, default: 0 },
+    amount_remaining: { type: Number, required: true, default: 0 },
+
+    // Tracking
+    payment_reference: { type: String },
+    payment_date: { type: Date },
+    due_date: { type: Date },
+
+    // Payments
+    payments: { type: [PaymentRecordSchema], default: [] },
+  },
+  { _id: false }
+);
+
+// ============================================
+// DELIVERY DATA SCHEMA
+// ============================================
+
+const DeliveryDataSchema = new Schema<IDeliveryData>(
+  {
+    carrier: { type: String },
+    tracking_number: { type: String },
+    tracking_url: { type: String },
+    shipped_at: { type: Date },
+    estimated_delivery: { type: Date },
+    delivered_at: { type: Date },
+    delivery_proof: { type: String },
+    delivery_notes: { type: String },
   },
   { _id: false }
 );
@@ -250,7 +636,7 @@ const OrderSchema = new Schema<IOrder>(
     status: {
       type: String,
       required: true,
-      enum: ["draft", "pending", "confirmed", "shipped", "cancelled"],
+      enum: ORDER_STATUSES,
       default: "draft",
       index: true,
     },
@@ -275,19 +661,20 @@ const OrderSchema = new Schema<IOrder>(
     delivery_slot: { type: String },
     delivery_route: { type: String },
     shipping_method: { type: String },
+    requires_delivery: { type: Boolean, default: true },
 
     // Pricing Context
     price_list_id: { type: String, required: true, default: "default" },
     price_list_type: {
       type: String,
       required: true,
-      enum: ["retail", "wholesale", "promo"],
+      enum: PRICE_LIST_TYPES,
       default: "wholesale",
     },
     order_type: {
       type: String,
       required: true,
-      enum: ["b2b", "b2c", "quote", "sample"],
+      enum: ORDER_TYPES,
       default: "b2b",
     },
     currency: { type: String, required: true, default: "EUR" },
@@ -316,12 +703,50 @@ const OrderSchema = new Schema<IOrder>(
     flow_id: { type: String, required: true },
     source: {
       type: String,
-      enum: ["web", "mobile", "api", "import"],
+      enum: ORDER_SOURCES,
       default: "web",
     },
 
     // Items
     items: { type: [LineItemSchema], default: [] },
+
+    // ============================================
+    // Quotation Data
+    // ============================================
+    quotation: { type: QuotationDataSchema },
+
+    // Cart-level discounts
+    cart_discounts: { type: [CartDiscountSchema], default: [] },
+
+    // Line-level adjustments
+    line_adjustments: { type: [LineAdjustmentSchema], default: [] },
+
+    // ============================================
+    // Payment Tracking
+    // ============================================
+    payment: { type: PaymentDataSchema },
+
+    // ============================================
+    // Delivery Tracking
+    // ============================================
+    delivery: { type: DeliveryDataSchema },
+
+    // ============================================
+    // Duplication Tracking
+    // ============================================
+    duplicated_from: { type: String },
+    duplicated_at: { type: Date },
+    duplications: { type: [String], default: [] },
+
+    // ============================================
+    // Lifecycle Timestamps
+    // ============================================
+    submitted_at: { type: Date },
+    shipped_at: { type: Date },
+    delivered_at: { type: Date },
+    cancelled_at: { type: Date },
+    cancelled_by: { type: String },
+    cancellation_reason: { type: String },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -365,28 +790,93 @@ OrderSchema.index({ status: 1, created_at: -1 });
 // Find orders containing specific product
 OrderSchema.index({ "items.entity_code": 1 });
 
+// Quotation indexes
+OrderSchema.index(
+  { "quotation.quotation_number": 1 },
+  {
+    unique: true,
+    partialFilterExpression: { "quotation.quotation_number": { $exists: true, $ne: null } },
+  }
+);
+OrderSchema.index({ "quotation.quotation_status": 1 });
+OrderSchema.index({ "quotation.valid_until": 1 }); // For expiration checks
+
+// Find duplications
+OrderSchema.index({ duplicated_from: 1 });
+
+// Lifecycle date indexes
+OrderSchema.index({ submitted_at: -1 });
+OrderSchema.index({ shipped_at: -1 });
+OrderSchema.index({ delivered_at: -1 });
+OrderSchema.index({ cancelled_at: -1 });
+
 // ============================================
 // HELPER METHODS
 // ============================================
 
 /**
- * Recalculate all order totals based on line items
+ * Recalculate all order totals based on line items, cart discounts, and line adjustments
  */
 OrderSchema.methods.recalculateTotals = function (): void {
   const items = this.items as ILineItem[];
+  const cartDiscounts = (this.cart_discounts || []) as ICartDiscount[];
+  const lineAdjustments = (this.line_adjustments || []) as ILineAdjustment[];
 
-  this.subtotal_gross = items.reduce((sum, i) => sum + i.line_gross, 0);
-  this.subtotal_net = items.reduce((sum, i) => sum + i.line_net, 0);
-  this.total_vat = items.reduce((sum, i) => sum + i.line_vat, 0);
-  this.total_discount = this.subtotal_gross - this.subtotal_net;
-  this.order_total = this.subtotal_net + this.total_vat + this.shipping_cost;
+  // Calculate base totals from line items
+  let subtotalGross = items.reduce((sum, i) => sum + i.line_gross, 0);
+  let subtotalNet = items.reduce((sum, i) => sum + i.line_net, 0);
+  let totalVat = items.reduce((sum, i) => sum + i.line_vat, 0);
 
-  // Round to 2 decimal places
-  this.subtotal_gross = Math.round(this.subtotal_gross * 100) / 100;
-  this.subtotal_net = Math.round(this.subtotal_net * 100) / 100;
-  this.total_vat = Math.round(this.total_vat * 100) / 100;
-  this.total_discount = Math.round(this.total_discount * 100) / 100;
-  this.order_total = Math.round(this.order_total * 100) / 100;
+  // Apply line-level adjustments
+  for (const adj of lineAdjustments) {
+    const item = items.find((i) => i.line_number === adj.line_number);
+    if (!item) continue;
+
+    if (adj.type === "price_override") {
+      // Price override: recalculate line with new price
+      const priceDiff = (item.unit_price - adj.new_value) * item.quantity;
+      subtotalNet -= priceDiff;
+      totalVat -= priceDiff * (item.vat_rate / 100);
+    } else if (adj.type === "discount_percentage") {
+      // Percentage discount on line
+      const lineDiscount = item.line_net * Math.abs(adj.new_value) / 100;
+      subtotalNet -= lineDiscount;
+      totalVat -= lineDiscount * (item.vat_rate / 100);
+    } else if (adj.type === "discount_fixed") {
+      // Fixed discount on line
+      subtotalNet -= Math.abs(adj.new_value);
+      totalVat -= Math.abs(adj.new_value) * (item.vat_rate / 100);
+    }
+  }
+
+  // Apply cart-level discounts
+  let cartDiscountTotal = 0;
+  for (const discount of cartDiscounts) {
+    if (discount.type === "percentage") {
+      const discountAmount = subtotalNet * Math.abs(discount.value) / 100;
+      cartDiscountTotal += discountAmount;
+    } else if (discount.type === "fixed") {
+      cartDiscountTotal += Math.abs(discount.value);
+    }
+  }
+
+  // Apply cart discount proportionally to VAT
+  if (cartDiscountTotal > 0 && subtotalNet > 0) {
+    const avgVatRate = totalVat / subtotalNet;
+    totalVat -= cartDiscountTotal * avgVatRate;
+  }
+  subtotalNet -= cartDiscountTotal;
+
+  // Ensure non-negative values
+  subtotalNet = Math.max(0, subtotalNet);
+  totalVat = Math.max(0, totalVat);
+
+  // Set final values
+  this.subtotal_gross = Math.round(subtotalGross * 100) / 100;
+  this.subtotal_net = Math.round(subtotalNet * 100) / 100;
+  this.total_vat = Math.round(totalVat * 100) / 100;
+  this.total_discount = Math.round((subtotalGross - subtotalNet) * 100) / 100;
+  this.order_total = Math.round((subtotalNet + totalVat + this.shipping_cost) * 100) / 100;
 };
 
 // ============================================
@@ -404,22 +894,64 @@ export const OrderModel =
 
 /**
  * Recalculate order totals (standalone function for use outside model)
+ * Accounts for cart discounts and line adjustments
  */
 export function recalculateOrderTotals(order: IOrder): void {
   const items = order.items;
+  const cartDiscounts = order.cart_discounts || [];
+  const lineAdjustments = order.line_adjustments || [];
 
-  order.subtotal_gross = items.reduce((sum, i) => sum + i.line_gross, 0);
-  order.subtotal_net = items.reduce((sum, i) => sum + i.line_net, 0);
-  order.total_vat = items.reduce((sum, i) => sum + i.line_vat, 0);
-  order.total_discount = order.subtotal_gross - order.subtotal_net;
-  order.order_total = order.subtotal_net + order.total_vat + order.shipping_cost;
+  // Calculate base totals from line items
+  let subtotalGross = items.reduce((sum, i) => sum + i.line_gross, 0);
+  let subtotalNet = items.reduce((sum, i) => sum + i.line_net, 0);
+  let totalVat = items.reduce((sum, i) => sum + i.line_vat, 0);
 
-  // Round to 2 decimal places
-  order.subtotal_gross = Math.round(order.subtotal_gross * 100) / 100;
-  order.subtotal_net = Math.round(order.subtotal_net * 100) / 100;
-  order.total_vat = Math.round(order.total_vat * 100) / 100;
-  order.total_discount = Math.round(order.total_discount * 100) / 100;
-  order.order_total = Math.round(order.order_total * 100) / 100;
+  // Apply line-level adjustments
+  for (const adj of lineAdjustments) {
+    const item = items.find((i) => i.line_number === adj.line_number);
+    if (!item) continue;
+
+    if (adj.type === "price_override") {
+      const priceDiff = (item.unit_price - adj.new_value) * item.quantity;
+      subtotalNet -= priceDiff;
+      totalVat -= priceDiff * (item.vat_rate / 100);
+    } else if (adj.type === "discount_percentage") {
+      const lineDiscount = item.line_net * Math.abs(adj.new_value) / 100;
+      subtotalNet -= lineDiscount;
+      totalVat -= lineDiscount * (item.vat_rate / 100);
+    } else if (adj.type === "discount_fixed") {
+      subtotalNet -= Math.abs(adj.new_value);
+      totalVat -= Math.abs(adj.new_value) * (item.vat_rate / 100);
+    }
+  }
+
+  // Apply cart-level discounts
+  let cartDiscountTotal = 0;
+  for (const discount of cartDiscounts) {
+    if (discount.type === "percentage") {
+      cartDiscountTotal += subtotalNet * Math.abs(discount.value) / 100;
+    } else if (discount.type === "fixed") {
+      cartDiscountTotal += Math.abs(discount.value);
+    }
+  }
+
+  // Apply cart discount proportionally to VAT
+  if (cartDiscountTotal > 0 && subtotalNet > 0) {
+    const avgVatRate = totalVat / subtotalNet;
+    totalVat -= cartDiscountTotal * avgVatRate;
+  }
+  subtotalNet -= cartDiscountTotal;
+
+  // Ensure non-negative values
+  subtotalNet = Math.max(0, subtotalNet);
+  totalVat = Math.max(0, totalVat);
+
+  // Set final values
+  order.subtotal_gross = Math.round(subtotalGross * 100) / 100;
+  order.subtotal_net = Math.round(subtotalNet * 100) / 100;
+  order.total_vat = Math.round(totalVat * 100) / 100;
+  order.total_discount = Math.round((subtotalGross - subtotalNet) * 100) / 100;
+  order.order_total = Math.round((subtotalNet + totalVat + order.shipping_cost) * 100) / 100;
 }
 
 /**
@@ -452,3 +984,67 @@ export function getNextLineNumber(items: ILineItem[]): number {
   const maxLine = Math.max(...items.map((i) => i.line_number));
   return maxLine + 10;
 }
+
+/**
+ * Calculate total cart discount amount
+ */
+export function calculateCartDiscountTotal(
+  subtotalNet: number,
+  cartDiscounts: ICartDiscount[]
+): number {
+  let total = 0;
+  for (const discount of cartDiscounts) {
+    if (discount.type === "percentage") {
+      total += subtotalNet * Math.abs(discount.value) / 100;
+    } else if (discount.type === "fixed") {
+      total += Math.abs(discount.value);
+    }
+  }
+  return Math.round(total * 100) / 100;
+}
+
+/**
+ * Check if quotation is expired
+ */
+export function isQuotationExpired(order: IOrder): boolean {
+  if (!order.quotation?.valid_until) return false;
+  return new Date() > new Date(order.quotation.valid_until);
+}
+
+/**
+ * Get the effective unit price for a line item after adjustments
+ */
+export function getEffectiveUnitPrice(
+  item: ILineItem,
+  lineAdjustments: ILineAdjustment[]
+): number {
+  const adjustment = lineAdjustments.find(
+    (adj) => adj.line_number === item.line_number
+  );
+  if (!adjustment) return item.unit_price;
+
+  if (adjustment.type === "price_override") {
+    return adjustment.new_value;
+  } else if (adjustment.type === "discount_percentage") {
+    return item.unit_price * (1 - Math.abs(adjustment.new_value) / 100);
+  } else if (adjustment.type === "discount_fixed") {
+    return item.unit_price - Math.abs(adjustment.new_value) / item.quantity;
+  }
+  return item.unit_price;
+}
+
+// ============================================
+// SCHEMA EXPORTS (for composition)
+// ============================================
+
+export {
+  CartDiscountSchema,
+  LineAdjustmentSchema,
+  QuotationRevisionSchema,
+  QuotationDataSchema,
+  PaymentRecordSchema,
+  PaymentDataSchema,
+  DeliveryDataSchema,
+  DiscountTierSchema,
+  LineItemSchema,
+};

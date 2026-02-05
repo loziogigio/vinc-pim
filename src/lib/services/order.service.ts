@@ -136,8 +136,15 @@ export function validateQuantity(opts: QuantityValidation): string | undefined {
     return `Minimum order quantity is ${min_order_quantity}`;
   }
 
-  if (pack_size && quantity % pack_size !== 0) {
-    return `Quantity must be a multiple of ${pack_size}`;
+  // Floating-point-safe modulo check for pack_size validation
+  // Allow small epsilon for floating point precision errors
+  if (pack_size && pack_size > 0) {
+    const remainder = quantity % pack_size;
+    const epsilon = 0.0001;
+    const isMultiple = remainder < epsilon || Math.abs(remainder - pack_size) < epsilon;
+    if (!isMultiple) {
+      return `Quantity must be a multiple of ${pack_size}`;
+    }
   }
 
   return undefined;
@@ -145,23 +152,20 @@ export function validateQuantity(opts: QuantityValidation): string | undefined {
 
 /**
  * Validate quantity for update operations (cannot use DELETE message).
+ * More lenient than validateQuantity - allows decimal quantities for manual edits.
  */
 export function validateQuantityForUpdate(
   opts: QuantityValidation
 ): string | undefined {
-  const { quantity, min_order_quantity, pack_size } = opts;
+  const { quantity } = opts;
 
   if (quantity <= 0) {
     return "Quantity must be greater than 0. Use DELETE to remove.";
   }
 
-  if (min_order_quantity && quantity < min_order_quantity) {
-    return `Minimum order quantity is ${min_order_quantity}`;
-  }
-
-  if (pack_size && quantity % pack_size !== 0) {
-    return `Quantity must be a multiple of ${pack_size}`;
-  }
+  // For manual updates, allow any positive quantity (including decimals)
+  // Pack size validation is only enforced during initial add, not during edits
+  // This allows sales/admin to override quantities for special cases
 
   return undefined;
 }
@@ -219,6 +223,28 @@ export function updateItemQuantity(
   );
 
   item.quantity = newQuantity;
+  item.line_gross = totals.line_gross;
+  item.line_net = totals.line_net;
+  item.line_vat = totals.line_vat;
+  item.line_total = totals.line_total;
+  item.updated_at = new Date();
+}
+
+/**
+ * Update item unit price and recalculate line totals.
+ */
+export function updateItemPrice(
+  item: ILineItem,
+  newUnitPrice: number
+): void {
+  const totals = calculateLineItemTotals(
+    item.quantity,
+    item.list_price,
+    newUnitPrice,
+    item.vat_rate
+  );
+
+  item.unit_price = newUnitPrice;
   item.line_gross = totals.line_gross;
   item.line_net = totals.line_net;
   item.line_vat = totals.line_vat;
@@ -319,7 +345,13 @@ export function createLineItem(
 
 interface UpdateItemInput {
   line_number: number;
-  quantity: number;
+  quantity?: number;
+  unit_price?: number;
+  // Packaging fields
+  packaging_code?: string;
+  packaging_label?: string;
+  pack_size?: number;
+  list_price?: number;
 }
 
 /**
@@ -333,7 +365,7 @@ export function batchUpdateItems(
   const results: BatchItemResult[] = [];
 
   for (const update of updates) {
-    const { line_number, quantity } = update;
+    const { line_number, quantity, unit_price, packaging_code, packaging_label, pack_size, list_price } = update;
 
     if (line_number === undefined) {
       results.push({
@@ -355,6 +387,21 @@ export function batchUpdateItems(
       continue;
     }
 
+    // Update packaging info if provided
+    if (packaging_code !== undefined) {
+      item.packaging_code = packaging_code;
+    }
+    if (packaging_label !== undefined) {
+      item.packaging_label = packaging_label;
+    }
+    if (pack_size !== undefined) {
+      item.pack_size = pack_size;
+    }
+    if (list_price !== undefined && list_price >= 0) {
+      item.list_price = list_price;
+    }
+
+    // Validate and update quantity if provided
     if (quantity !== undefined) {
       const validationError = validateQuantityForUpdate({
         quantity,
@@ -373,6 +420,23 @@ export function batchUpdateItems(
 
       updateItemQuantity(item, quantity);
     }
+
+    // Update unit price if provided
+    if (unit_price !== undefined) {
+      if (unit_price < 0) {
+        results.push({
+          line_number,
+          success: false,
+          error: "Unit price cannot be negative",
+        });
+        continue;
+      }
+
+      updateItemPrice(item, unit_price);
+    }
+
+    // Mark item as updated
+    item.updated_at = new Date();
 
     results.push({ line_number, success: true });
   }

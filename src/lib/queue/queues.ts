@@ -61,9 +61,47 @@ export const syncQueue = new Queue("sync-queue", {
   },
 });
 
+// FCM Token cleanup queue (runs periodically per tenant)
+export const cleanupQueue = new Queue("cleanup-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 2,
+    backoff: {
+      type: "fixed",
+      delay: 60000, // 1 minute retry delay
+    },
+    removeOnComplete: {
+      count: 50, // Keep recent cleanup history
+    },
+    removeOnFail: {
+      count: 100,
+    },
+  },
+});
+
+// Notification scheduler queue (processes scheduled campaigns)
+export const notificationQueue = new Queue("notification-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 10000, // 10 second initial delay
+    },
+    removeOnComplete: {
+      count: 200, // Keep campaign history
+    },
+    removeOnFail: {
+      count: 500,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
   ANALYTICS: "analytics-queue",
   SYNC: "sync-queue",
+  CLEANUP: "cleanup-queue",
+  NOTIFICATION: "notification-queue",
 } as const;

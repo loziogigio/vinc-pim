@@ -19,6 +19,8 @@ import type {
   ChangePasswordResponse,
   B2BAddress,
   B2BCustomer,
+  B2BUserProfile,
+  B2BUsersListParams,
 } from "./types";
 
 // =============================================================================
@@ -288,6 +290,39 @@ class VincApiClient {
      */
     getAddress: (customerId: string, addressId: string): Promise<B2BAddress> =>
       this.request(`/b2b/customers/${customerId}/addresses/${addressId}`),
+  };
+
+  // ==========================================================================
+  // USERS
+  // ==========================================================================
+
+  users = {
+    /**
+     * List B2B users from VINC API (PostgreSQL)
+     * Uses tenant_id from config to filter users by supplier slug
+     */
+    list: (params?: B2BUsersListParams): Promise<B2BUserProfile[]> => {
+      const searchParams = new URLSearchParams();
+
+      // Use config tenant_id by default for tenant filtering
+      const tenantId = params?.tenant_id ?? this.config.tenantId;
+      if (tenantId) searchParams.set("tenant_id", tenantId);
+
+      if (params?.supplier_id) searchParams.set("supplier_id", params.supplier_id);
+      if (params?.email) searchParams.set("email", params.email);
+      if (params?.status) searchParams.set("status", params.status);
+      if (params?.limit) searchParams.set("limit", String(params.limit));
+      if (params?.offset) searchParams.set("offset", String(params.offset));
+
+      const query = searchParams.toString();
+      return this.request(`/users${query ? `?${query}` : ""}`);
+    },
+
+    /**
+     * Get a single B2B user by ID
+     */
+    get: (userId: string): Promise<B2BUserProfile> =>
+      this.request(`/users/${userId}`),
   };
 }
 

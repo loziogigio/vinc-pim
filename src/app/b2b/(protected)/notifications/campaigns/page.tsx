@@ -34,6 +34,10 @@ export default function CampaignsPage() {
     recipientCount?: number;
     scheduledAt?: Date;
   } | null>(null);
+  const [errorModal, setErrorModal] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
@@ -110,7 +114,10 @@ export default function CampaignsPage() {
       });
       form.resetForm();
     } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Errore nell'invio della campagna" });
+      setErrorModal({
+        title: "Errore nell'invio della campagna",
+        message: error instanceof Error ? error.message : "Si è verificato un errore durante l'invio",
+      });
     } finally {
       setIsSending(false);
     }
@@ -132,8 +139,14 @@ export default function CampaignsPage() {
       // getPayload() already includes selected_users with full objects
       const payload = form.getPayload();
 
-      const res = await fetch("/api/b2b/notifications/campaigns", {
-        method: "POST",
+      // Use PUT if editing existing draft, POST for new
+      const isUpdate = !!form.editingDraftId;
+      const url = isUpdate
+        ? `/api/b2b/notifications/campaigns/${form.editingDraftId}`
+        : "/api/b2b/notifications/campaigns";
+
+      const res = await fetch(url, {
+        method: isUpdate ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -144,8 +157,12 @@ export default function CampaignsPage() {
       }
 
       const data = await res.json();
-      setToast({ type: "success", message: `Bozza "${data.campaign.name}" salvata! (${data.campaign.slug})` });
-      form.resetForm();
+      const action = isUpdate ? "aggiornata" : "salvata";
+      setToast({ type: "success", message: `Bozza "${data.campaign.name}" ${action}!` });
+
+      if (!isUpdate) {
+        form.resetForm();
+      }
     } catch (error) {
       setToast({ type: "error", message: error instanceof Error ? error.message : "Errore nel salvataggio della bozza" });
     } finally {
@@ -217,11 +234,12 @@ export default function CampaignsPage() {
         const data = await res.json();
         const campaign = data.campaign;
 
-        // Map selected_users from API to form format
-        const selectedUsers = campaign.selected_users?.map((u: { id: string; email: string; name: string }) => ({
+        // Map selected_users from API to form format (include type)
+        const selectedUsers = campaign.selected_users?.map((u: { id: string; email: string; name: string; type?: "b2b" | "portal" }) => ({
           id: u.id,
           email: u.email,
           name: u.name,
+          type: u.type || "portal",
         })) || [];
 
         form.loadDraft({
@@ -232,10 +250,9 @@ export default function CampaignsPage() {
           pushImage: campaign.push_image || "",
           emailSubject: campaign.email_subject || "",
           emailHtml: campaign.email_html || "",
+          emailLink: campaign.email_link || "",
           productsUrl: campaign.products_url || "",
           products: campaign.products || [],
-          url: campaign.url || "",
-          image: campaign.image || "",
           openInNewTab: campaign.open_in_new_tab ?? true,
           channels: campaign.channels || ["email", "mobile", "web_in_app"],
           recipientType: campaign.recipient_type || "all",
@@ -324,10 +341,9 @@ export default function CampaignsPage() {
             onPushImageChange={form.setPushImage}
             onEmailSubjectChange={form.setEmailSubject}
             onEmailHtmlChange={form.setEmailHtml}
+            onEmailLinkChange={form.setEmailLink}
             onProductsUrlChange={form.setProductsUrl}
             onProductsChange={form.setProducts}
-            onUrlChange={form.setUrl}
-            onImageChange={form.setImage}
             onOpenInNewTabChange={form.setOpenInNewTab}
             onToggleChannel={form.toggleChannel}
             onRecipientTypeChange={form.setRecipientType}
@@ -380,12 +396,11 @@ export default function CampaignsPage() {
         title={form.title}
         body={form.body}
         pushImage={form.pushImage}
-        image={form.image}
         emailSubject={form.emailSubject}
         emailHtml={form.emailHtml}
+        emailLink={form.emailLink}
         productsUrl={form.productsUrl}
         products={form.products}
-        url={form.url}
         openInNewTab={form.openInNewTab}
       />
 
@@ -415,6 +430,24 @@ export default function CampaignsPage() {
         recipientCount={successModal?.recipientCount}
         scheduledAt={successModal?.scheduledAt}
       />
+
+      {/* Error Modal */}
+      {errorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900">{errorModal.title}</h3>
+            </div>
+            <p className="text-slate-600 mb-6">{errorModal.message}</p>
+            <div className="flex justify-end">
+              <Button onClick={() => setErrorModal(null)}>Chiudi</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

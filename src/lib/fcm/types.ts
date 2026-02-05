@@ -27,9 +27,14 @@ export const DEFAULT_FCM_PREFERENCES: FCMPreferences = {
 
 export interface RegisterFCMTokenInput {
   tenant_id: string;
-  user_id?: string; // Optional for anonymous/pre-login devices
+  /**
+   * user_id for ALL user types:
+   * - Portal users: portal_user_id
+   * - B2B users: VINC API user_id (NOT customer_id)
+   * Optional for anonymous/pre-login devices
+   */
+  user_id?: string;
   user_type?: FCMUserType;
-  customer_id?: string;
   fcm_token: string;
   platform: FCMPlatform;
   device_id?: string;

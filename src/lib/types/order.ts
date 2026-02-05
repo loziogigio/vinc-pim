@@ -2,27 +2,41 @@
  * Order/Cart Type Definitions
  *
  * Unified order document - cart is status: "draft"
- * Same document evolves: draft → pending → confirmed → shipped
+ * Same document evolves: draft → quotation → pending → confirmed → shipped → delivered
  */
 
 import type { DiscountStep } from "./pim";
 
+// Re-export from constants for backwards compatibility
+export type {
+  OrderStatus,
+  QuotationStatus,
+  PaymentStatus,
+  OrderType,
+  PriceListType,
+  OrderSource,
+  AdjustmentReason,
+  UserRole,
+} from "@/lib/constants/order";
+
+export {
+  ORDER_STATUSES,
+  QUOTATION_STATUSES,
+  PAYMENT_STATUSES,
+  ORDER_TYPES,
+  PRICE_LIST_TYPES,
+  ORDER_SOURCES,
+  ADJUSTMENT_REASONS,
+  STATUS_TRANSITIONS,
+  canTransition,
+  getAllowedTransitions,
+  canModifyOrder,
+  isTerminalStatus,
+} from "@/lib/constants/order";
+
 // ============================================
-// ENUMS & CONSTANTS
+// DISCOUNT TYPES (kept here for backwards compat)
 // ============================================
-
-export type OrderStatus =
-  | "draft" // cart (use is_current to identify the active one)
-  | "pending"
-  | "confirmed"
-  | "shipped"
-  | "cancelled";
-
-export type OrderType = "b2b" | "b2c" | "quote" | "sample";
-
-export type PriceListType = "retail" | "wholesale" | "promo";
-
-export type OrderSource = "web" | "mobile" | "api" | "import";
 
 export type DiscountType = "percentage" | "fixed" | "override";
 
@@ -30,7 +44,10 @@ export type DiscountReason =
   | "customer_group"
   | "quantity"
   | "promo"
-  | "manual";
+  | "manual"
+  | "negotiation"
+  | "loyalty"
+  | "clearance";
 
 // ============================================
 // DISCOUNT TIER
@@ -110,6 +127,147 @@ export interface LineItem {
 }
 
 // ============================================
+// CART-LEVEL DISCOUNT (for quotation negotiation)
+// ============================================
+
+export interface CartDiscount {
+  discount_id: string; // nanoid(8)
+  type: "percentage" | "fixed";
+  value: number; // -10 = 10% off, -50 = €50 off
+  reason: DiscountReason;
+  description?: string; // "Volume discount", "Loyalty bonus"
+  applied_by?: string; // User ID who applied
+  applied_at: Date;
+  revision?: number; // Which revision this was added in
+}
+
+// ============================================
+// LINE-LEVEL ADJUSTMENT (price overrides during quotation)
+// ============================================
+
+export interface LineAdjustment {
+  adjustment_id: string; // nanoid(8)
+  line_number: number; // Reference to line item
+  type: "price_override" | "discount_percentage" | "discount_fixed";
+  original_value: number; // Original unit_price or 0
+  new_value: number; // New price or discount amount
+  reason: DiscountReason;
+  description?: string;
+  applied_by?: string;
+  applied_at: Date;
+  revision?: number;
+}
+
+// ============================================
+// QUOTATION REVISION (history tracking)
+// ============================================
+
+export interface QuotationRevision {
+  revision_number: number; // 1, 2, 3...
+  created_at: Date;
+  created_by: string; // User ID
+  created_by_name?: string; // Cached user name
+  actor_type: "sales" | "customer";
+
+  // Snapshot of totals at this revision
+  subtotal_net: number;
+  total_discount: number;
+  order_total: number;
+
+  // Changes in this revision
+  cart_discounts_added: CartDiscount[];
+  line_adjustments_added: LineAdjustment[];
+  items_added: number[]; // line_numbers
+  items_removed: number[]; // line_numbers
+  items_qty_changed: Array<{
+    line_number: number;
+    old_qty: number;
+    new_qty: number;
+  }>;
+
+  // Notes for this revision
+  notes?: string;
+  internal_notes?: string;
+}
+
+// ============================================
+// QUOTATION DATA
+// ============================================
+
+export interface QuotationData {
+  quotation_number?: string; // Q-2025-00001 format
+  quotation_status: QuotationStatus;
+
+  // Validity
+  valid_until?: Date;
+  days_valid: number; // Default: 30
+
+  // Revisions
+  current_revision: number;
+  revisions: QuotationRevision[];
+
+  // Negotiation summary
+  total_rounds: number;
+  last_actor: "sales" | "customer";
+  last_activity_at: Date;
+
+  // Timestamps
+  sent_at?: Date;
+  accepted_at?: Date;
+  rejected_at?: Date;
+  expired_at?: Date;
+}
+
+// ============================================
+// PAYMENT DATA
+// ============================================
+
+export interface PaymentRecord {
+  payment_id: string; // nanoid(8)
+  amount: number;
+  method: string; // "bank_transfer", "credit_card", etc.
+  reference?: string; // External payment ID
+  recorded_at: Date;
+  recorded_by?: string;
+  notes?: string;
+  confirmed: boolean; // Whether payment has been verified/confirmed
+}
+
+export interface PaymentData {
+  payment_status: PaymentStatus;
+  payment_method?: string;
+  payment_terms?: string; // "NET30", "NET60", "COD"
+
+  // Amounts
+  amount_due: number;
+  amount_paid: number;
+  amount_remaining: number;
+
+  // Tracking
+  payment_reference?: string;
+  payment_date?: Date;
+  due_date?: Date;
+
+  // For partial payments
+  payments: PaymentRecord[];
+}
+
+// ============================================
+// DELIVERY DATA
+// ============================================
+
+export interface DeliveryData {
+  carrier?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+  shipped_at?: Date;
+  estimated_delivery?: Date;
+  delivered_at?: Date;
+  delivery_proof?: string; // URL to signed delivery receipt
+  delivery_notes?: string;
+}
+
+// ============================================
 // ORDER
 // ============================================
 
@@ -136,6 +294,7 @@ export interface Order {
   delivery_slot?: string; // morning, afternoon
   delivery_route?: string;
   shipping_method?: string; // courier, pickup
+  requires_delivery: boolean; // false for service orders
 
   // Pricing Context
   price_list_id: string;
@@ -171,6 +330,47 @@ export interface Order {
 
   // Items
   items: LineItem[];
+
+  // ============================================
+  // NEW: Quotation Data (when status = "quotation")
+  // ============================================
+  quotation?: QuotationData;
+
+  // Cart-level discounts (applicable in any status)
+  cart_discounts?: CartDiscount[];
+
+  // Line-level negotiation adjustments
+  line_adjustments?: LineAdjustment[];
+
+  // ============================================
+  // NEW: Payment Tracking
+  // ============================================
+  payment?: PaymentData;
+
+  // ============================================
+  // NEW: Delivery Tracking
+  // ============================================
+  delivery?: DeliveryData;
+
+  // ============================================
+  // NEW: Duplication Tracking
+  // ============================================
+  duplicated_from?: string; // Original order_id
+  duplicated_at?: Date;
+  duplications?: string[]; // order_ids of copies
+
+  // ============================================
+  // NEW: Lifecycle Timestamps
+  // ============================================
+  submitted_at?: Date; // When customer submitted
+  shipped_at?: Date;
+  delivered_at?: Date;
+  cancelled_at?: Date;
+  cancelled_by?: string;
+  cancellation_reason?: string;
+
+  // Cart-specific fields
+  cart_number?: number; // Sequential per year, assigned on cart creation
 }
 
 // ============================================
@@ -235,6 +435,7 @@ export interface CreateOrderRequest {
   delivery_slot?: string;
   delivery_route?: string;
   shipping_method?: string;
+  requires_delivery?: boolean; // false for service orders
   po_reference?: string;
   cost_center?: string;
   notes?: string;

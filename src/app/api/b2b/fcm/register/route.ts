@@ -28,9 +28,6 @@ interface RegisterRequestBody {
   app_version?: string;
   os_version?: string;
   preferences?: Partial<FCMPreferences>;
-  // Optional: can be provided from body when using API key auth
-  user_id?: string;
-  user_type?: "portal_user" | "b2b_user";
 }
 
 /**
@@ -76,14 +73,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Determine user_id and user_type:
-    // Priority: auth context > request body > undefined (anonymous)
-    const userId = auth.userId || body.user_id;
-    const userType = body.user_type || "portal_user"; // Default to portal_user for mobile apps
+    // Use user_id and user_type from authentication
+    // For B2B users: auth.userId = VINC API user_id (from SSO token sub)
+    // For Portal users: auth.userId = portal_user_id
+    const userId = auth.userId;
+    const userType = auth.userType || "portal_user";
 
     // Best practice: Use device_id for deduplication to prevent duplicate entries
-    // If device_id is provided, use the device-based registration (recommended)
-    // This ensures one token per device per user, preventing the duplicate issues
     let token;
 
     if (body.device_id) {
@@ -91,6 +87,7 @@ export async function POST(req: NextRequest) {
       token = await registerOrUpdateByDevice(tenantDb, {
         tenant_id: tenantId,
         user_id: userId,
+        user_type: userType,
         device_id: body.device_id,
         fcm_token: body.fcm_token,
         platform: body.platform,
@@ -101,7 +98,6 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Legacy path: fcm_token-based lookup (can lead to duplicates)
-      // Mobile apps should always send device_id for best results
       token = await registerToken(tenantDb, {
         tenant_id: tenantId,
         user_id: userId,
@@ -119,9 +115,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       token_id: token.token_id,
-      user_id: userId || null, // Let client know if user was associated
+      user_id: userId,
+      user_type: userType,
       preferences: token.preferences,
-      // Hint to mobile apps to send device_id if they haven't
       device_id_required: !body.device_id,
     });
   } catch (error) {

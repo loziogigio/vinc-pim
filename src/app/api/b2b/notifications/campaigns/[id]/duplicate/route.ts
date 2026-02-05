@@ -41,6 +41,7 @@ export async function POST(
       push_image: original.push_image,
       email_subject: original.email_subject,
       email_html: original.email_html,
+      email_link: original.email_link,
       products_url: original.products_url,
       products: original.products,
       url: original.url,

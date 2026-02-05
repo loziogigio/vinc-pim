@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Key, RefreshCw } from "lucide-react";
+import { Copy, Check, Key, RefreshCw, Shield } from "lucide-react";
+import Link from "next/link";
 
 interface Tenant {
   _id: string;
@@ -139,9 +140,26 @@ export default function SuperAdminDashboardPage() {
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">VINC Admin</h1>
-            <p className="text-sm text-slate-400">Tenant Management</p>
+          <div className="flex items-center gap-8">
+            <div>
+              <h1 className="text-xl font-bold text-white">VINC Admin</h1>
+              <p className="text-sm text-slate-400">Super Admin Dashboard</p>
+            </div>
+            <nav className="flex items-center gap-4">
+              <Link
+                href="/super-admin/dashboard"
+                className="px-3 py-1.5 text-sm text-white bg-slate-700 rounded transition-colors"
+              >
+                Tenants
+              </Link>
+              <Link
+                href="/super-admin/oauth-clients"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+              >
+                <Shield className="h-4 w-4" />
+                OAuth Clients
+              </Link>
+            </nav>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-slate-300">{admin?.email}</span>

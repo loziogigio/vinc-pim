@@ -126,6 +126,7 @@ export default function LogsPage() {
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // Copy log ID to clipboard
   const copyToClipboard = async (emailId: string) => {
@@ -148,11 +149,13 @@ export default function LogsPage() {
         const data = await res.json();
         throw new Error(data.error || "Failed to send email");
       }
+      // Show success toast
+      setToast({ type: "success", message: "Email inviata con successo" });
       // Reload logs to show updated status
       await loadLogs();
     } catch (error) {
       console.error("Error sending email:", error);
-      alert(error instanceof Error ? error.message : "Failed to send email");
+      setToast({ type: "error", message: error instanceof Error ? error.message : "Failed to send email" });
     } finally {
       setSendingIds((prev) => {
         const next = new Set(prev);
@@ -200,6 +203,14 @@ export default function LogsPage() {
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString("it-IT", {
@@ -446,6 +457,29 @@ export default function LogsPage() {
           onSendNow={handleSendNow}
           isSending={sendingIds.has(selectedLog.email_id)}
         />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={cn(
+            "fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-bottom-2",
+            toast.type === "success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+          )}
+        >
+          {toast.type === "success" ? (
+            <Check className="w-5 h-5" />
+          ) : (
+            <AlertCircle className="w-5 h-5" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-2 hover:opacity-70"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   );

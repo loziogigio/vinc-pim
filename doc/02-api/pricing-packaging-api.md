@@ -35,16 +35,33 @@ Packaging options can reference another packaging for price derivation. The refe
 
 ## Packaging Pricing Fields
 
+### Unit Prices (per single piece) - PRIMARY
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `list` | number | List price (B2B cost price) |
-| `retail` | number | Retail price (MSRP) |
-| `sale` | number | Sale/discounted price |
+| `list_unit` | number | List price **per unit** (e.g., €45/pz) |
+| `retail_unit` | number | Retail price **per unit** (e.g., €90/pz) |
+| `sale_unit` | number | Sale price **per unit** (e.g., €40.50/pz) |
+
+### Package Prices (unit × qty) - CALCULATED
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `list` | number | Total list price for packaging (list_unit × qty) |
+| `retail` | number | Total retail price for packaging (retail_unit × qty) |
+| `sale` | number | Total sale price for packaging (sale_unit × qty) |
+
+### Reference & Discount Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
 | `price_ref` | string | Reference packaging code (e.g., "PZ", "BOX") |
 | `list_discount_pct` | number | Percentage discount from retail to list (e.g., 50 for -50%) |
 | `list_discount_amt` | number | Fixed amount discount from retail to list (e.g., 5 for -€5) |
 | `sale_discount_pct` | number | Percentage discount from list to sale (e.g., 10 for -10%) |
 | `sale_discount_amt` | number | Fixed amount discount from list to sale (e.g., 150 for -€150) |
+
+> **Note:** You can provide either unit prices OR package prices. If only package prices are provided, unit prices can be derived by dividing by `qty`.
 
 ## Import API
 
@@ -62,7 +79,9 @@ POST /api/b2b/pim/import/api
 -H "x-api-secret: sk_{secret}"
 ```
 
-### Request Body
+### Request Body (Package Prices)
+
+This example uses **package prices** (total per packaging):
 
 ```json
 {
@@ -134,6 +153,58 @@ POST /api/b2b/pim/import/api
 }
 ```
 
+### Request Body (Unit Prices)
+
+This example uses **unit prices** (per single piece) - simpler and recommended:
+
+```json
+{
+  "source_id": "erp-sync",
+  "products": [
+    {
+      "entity_code": "PROD-002",
+      "sku": "PROD-002",
+      "name": { "it": "Prodotto con prezzi unitari" },
+      "status": "published",
+      "packaging_options": [
+        {
+          "code": "PZ",
+          "qty": 1,
+          "uom": "PZ",
+          "is_default": false,
+          "is_smallest": true,
+          "is_sellable": false,
+          "pricing": {
+            "retail_unit": 100,
+            "list_unit": 50
+          }
+        },
+        {
+          "code": "BOX",
+          "qty": 6,
+          "uom": "PZ",
+          "is_default": true,
+          "is_smallest": false,
+          "is_sellable": true,
+          "pricing": {
+            "retail_unit": 90,
+            "list_unit": 45,
+            "sale_unit": 40.50
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Result for BOX (qty: 6):**
+| Unit Price | × qty | = Package Price |
+|------------|-------|-----------------|
+| `retail_unit`: €90 | × 6 | `retail`: €540 |
+| `list_unit`: €45 | × 6 | `list`: €270 |
+| `sale_unit`: €40.50 | × 6 | `sale`: €243 |
+
 ### Response
 
 ```json
@@ -169,6 +240,7 @@ POST /api/b2b/pim/import/api
 | Field | Type | Description |
 |-------|------|-------------|
 | `label` | MultiLangString | Multilingual label |
+| `is_sellable` | boolean | Can this packaging be sold? (default: `true`) |
 | `ean` | string | EAN barcode |
 | `position` | number | Display order |
 | `pricing` | object | Pricing details (see above) |
@@ -214,7 +286,7 @@ Promotions have to be tied to specific packaging options:
 | `is_stackable` | boolean | Can combine with other promotions sharing the same promo_code? |
 | `priority` | number | Promotion priority (lower = higher priority) |
 
-## Complete Example
+## Complete Example (Unit Prices - Recommended)
 
 ```bash
 curl -X POST "https://api.example.com/api/b2b/pim/import/api" \
@@ -243,9 +315,8 @@ curl -X POST "https://api.example.com/api/b2b/pim/import/api" \
             "is_smallest": true,
             "ean": "8001234567890",
             "pricing": {
-              "retail": 199.99,
-              "list": 149.99,
-              "list_discount_pct": 25
+              "retail_unit": 199.99,
+              "list_unit": 149.99
             }
           },
           {
@@ -257,12 +328,9 @@ curl -X POST "https://api.example.com/api/b2b/pim/import/api" \
             "is_smallest": false,
             "ean": "8001234567891",
             "pricing": {
-              "retail": 799.96,
-              "list": 549.96,
-              "sale": 499.96,
-              "price_ref": "PZ",
-              "list_discount_pct": 31,
-              "sale_discount_pct": 9
+              "retail_unit": 199.99,
+              "list_unit": 137.49,
+              "sale_unit": 124.99
             },
             "promotions": [
               {
@@ -284,6 +352,12 @@ curl -X POST "https://api.example.com/api/b2b/pim/import/api" \
     ]
   }'
 ```
+
+**Calculated package prices for BOX (qty: 4):**
+
+- `retail`: 199.99 × 4 = €799.96
+- `list`: 137.49 × 4 = €549.96
+- `sale`: 124.99 × 4 = €499.96
 
 ## Get Product API
 
@@ -330,9 +404,10 @@ curl "https://api.example.com/api/b2b/pim/products/DRILL-PRO-750" \
         "is_default": false,
         "is_smallest": true,
         "pricing": {
-          "list": 50,
+          "retail_unit": 100,
+          "list_unit": 50,
           "retail": 100,
-          "list_discount_pct": 50
+          "list": 50
         },
         "promotions": []
       },
@@ -344,12 +419,12 @@ curl "https://api.example.com/api/b2b/pim/products/DRILL-PRO-750" \
         "is_default": true,
         "is_smallest": false,
         "pricing": {
-          "list": 270,
+          "retail_unit": 90,
+          "list_unit": 45,
+          "sale_unit": 40.50,
           "retail": 540,
-          "sale": 243,
-          "price_ref": "PZ",
-          "list_discount_pct": 50,
-          "sale_discount_pct": 10
+          "list": 270,
+          "sale": 243
         },
         "promotions": [
           {

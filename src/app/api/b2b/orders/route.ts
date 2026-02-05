@@ -392,6 +392,7 @@ export async function POST(req: NextRequest) {
       delivery_slot: body.delivery_slot,
       delivery_route: body.delivery_route,
       shipping_method: body.shipping_method,
+      requires_delivery: body.requires_delivery ?? true,
 
       // Pricing Context
       price_list_id: body.price_list_id || "default",
