@@ -310,6 +310,9 @@ export interface PromotionData {
   end_date?: string;
   min_quantity?: number;
   min_order_value?: number;
+  promo_price?: number;
+  /** Computed: cumulative discount chain e.g. "-50% -20%" */
+  text_discount?: string;
 }
 
 export interface PackagingPricing {
@@ -327,6 +330,8 @@ export interface PackagingPricing {
   list_discount_amt?: number;
   sale_discount_pct?: number;
   sale_discount_amt?: number;
+  /** Computed: base discount chain e.g. "-50%" or "-50% -10%" */
+  text_discount?: string;
 }
 
 export interface PackagingData {

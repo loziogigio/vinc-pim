@@ -30,6 +30,8 @@ export interface IAuthClient {
   description?: string;
   is_active: boolean;
   is_first_party: boolean;
+  /** Allow this client to use reseller custom domains for redirect URIs */
+  allow_reseller_domains: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -80,6 +82,10 @@ const AuthClientSchema = new Schema<IAuthClientDocument>(
       default: true,
     },
     is_first_party: {
+      type: Boolean,
+      default: false,
+    },
+    allow_reseller_domains: {
       type: Boolean,
       default: false,
     },

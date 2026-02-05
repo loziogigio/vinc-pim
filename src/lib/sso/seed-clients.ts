@@ -16,6 +16,8 @@ interface ClientConfig {
   is_first_party: boolean;
   // Only needed for mobile apps (deep links) - web apps use tenant domains
   redirect_uris?: string[];
+  // Allow this client to use reseller custom domains for redirect URIs
+  allow_reseller_domains?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ const DEFAULT_CLIENTS: ClientConfig[] = [
     description: "Public storefront for retailers",
     type: "web",
     is_first_party: true,
+    allow_reseller_domains: true, // Enable reseller custom domains
   },
   {
     client_id: "vinc-commerce-suite",
@@ -115,6 +118,7 @@ export async function seedOAuthClients(
           type: config.type,
           description: config.description,
           isFirstParty: config.is_first_party,
+          allowResellerDomains: config.allow_reseller_domains,
         }
       );
 

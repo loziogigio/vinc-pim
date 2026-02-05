@@ -10,6 +10,7 @@ import { getAuthClientModel, type IAuthClientDocument } from "@/lib/db/models/ss
 import { getAuthCodeModel, type IAuthCodeDocument, type IAuthCodeVincProfile } from "@/lib/db/models/sso-auth-code";
 import { getTenantModel } from "@/lib/db/models/admin-tenant";
 import { getHomeSettings } from "@/lib/db/home-settings";
+import { getResellerDomainModel } from "@/lib/db/models/admin-reseller-domain";
 
 // ============================================
 // TYPES
@@ -54,10 +55,12 @@ export interface TokenExchangeResult {
  * 1. Localhost (always allowed for development)
  * 2. Tenant's configured domains (from superadmin)
  * 3. Tenant's branding URLs (shopUrl, websiteUrl from home-settings)
+ * 4. Reseller domains (only for clients with allow_reseller_domains flag)
  */
 export async function validateRedirectUriForTenant(
   redirectUri: string,
-  tenantId: string
+  tenantId: string,
+  options?: { allowResellerDomains?: boolean }
 ): Promise<boolean> {
   try {
     const redirectUrl = new URL(redirectUri);
@@ -103,6 +106,31 @@ export async function validateRedirectUriForTenant(
       } catch {
         // Invalid URL, skip
         continue;
+      }
+    }
+
+    // 4. Check reseller domains (only for clients with allow_reseller_domains flag)
+    if (options?.allowResellerDomains) {
+      try {
+        const ResellerDomainModel = await getResellerDomainModel();
+        const resellerDomain = await ResellerDomainModel.findByHostname(
+          redirectUrl.hostname
+        );
+
+        if (resellerDomain && resellerDomain.tenant_ids.includes(tenantId)) {
+          // Verify subscription is valid and domain is verified
+          if (resellerDomain.is_verified) {
+            return true;
+          }
+          // Allow unverified domains in development (localhost check already passed above)
+          // For production, require verification
+          console.warn(
+            `[OAuth] Reseller domain ${redirectUrl.hostname} not verified yet`
+          );
+        }
+      } catch (resellerError) {
+        // Log but don't fail - reseller domains are optional
+        console.warn("[OAuth] Error checking reseller domains:", resellerError);
       }
     }
 
@@ -152,7 +180,10 @@ export async function validateClientForTenant(
   if (!client) return null;
 
   // Validate redirect URI against tenant configuration
-  const isValidUri = await validateRedirectUriForTenant(redirectUri, tenantId);
+  // Pass allow_reseller_domains flag from client config
+  const isValidUri = await validateRedirectUriForTenant(redirectUri, tenantId, {
+    allowResellerDomains: client.allow_reseller_domains,
+  });
   if (!isValidUri) return null;
 
   return client;
@@ -190,6 +221,7 @@ export async function createAuthClient(
     logoUrl?: string;
     description?: string;
     isFirstParty?: boolean;
+    allowResellerDomains?: boolean;
   }
 ): Promise<{ client: IAuthClientDocument; clientSecret: string }> {
   const AuthClient = await getAuthClientModel();
@@ -208,6 +240,7 @@ export async function createAuthClient(
     logo_url: options?.logoUrl,
     description: options?.description,
     is_first_party: options?.isFirstParty || false,
+    allow_reseller_domains: options?.allowResellerDomains || false,
     is_active: true,
   });
 

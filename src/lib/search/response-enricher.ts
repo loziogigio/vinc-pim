@@ -325,11 +325,28 @@ function enrichTags(solrTags: any[], tagsMap: Map<string, any>): any[] {
 // ============================================
 
 /**
+ * Build text_discount string from discount percentages
+ * Examples:
+ *   - buildTextDiscount(50) → "-50%"
+ *   - buildTextDiscount(50, 10) → "-50% -10%"
+ *   - buildTextDiscount(50, 10, 20) → "-50% -10% -20%"
+ */
+function buildTextDiscount(...discounts: (number | undefined | null)[]): string | undefined {
+  const validDiscounts = discounts.filter((d): d is number => d != null && d > 0);
+  if (validDiscounts.length === 0) return undefined;
+  return validDiscounts.map(d => `-${d}%`).join(" ");
+}
+
+/**
  * Calculate prices for packaging options (bi-directional)
  *
  * Supports two pricing sources:
  * 1. Total price stored (list, retail, sale) → calculate unit prices
  * 2. Unit price stored (list_unit, retail_unit, sale_unit) → calculate total prices
+ *
+ * Also calculates text_discount for pricing and promotions:
+ * - pricing.text_discount: "-50%" or "-50% -10%" (from list_discount_pct + sale_discount_pct)
+ * - promotion.text_discount: "-50% -20%" (pricing discounts + promo discount_percentage)
  *
  * Formula:
  * - unit_price = total_price / qty
@@ -376,6 +393,37 @@ function enrichPackagingWithUnitPrices(
       sale = round2(saleUnit * qty);
     }
 
+    // Build text_discount for pricing level
+    // Combines list_discount_pct and sale_discount_pct: "-50%" or "-50% -10%"
+    const pricingTextDiscount = buildTextDiscount(
+      pricing.list_discount_pct,
+      pricing.sale_discount_pct
+    );
+
+    // Enrich promotions with text_discount
+    // Each promotion gets pricing discounts + its own discount_percentage
+    // Net price promotions (no discount_percentage, only promo_price) are skipped
+    const enrichedPromotions = pkg.promotions?.map(promo => {
+      // Skip text_discount for net price promotions
+      // These use a fixed promo_price instead of percentage discounts
+      if (!promo.discount_percentage) {
+        return promo; // Keep promo as-is, mobile app shows promo_price directly
+      }
+
+      // Build text_discount: pricing discounts + promo discount
+      // e.g., "-50% -20%" or "-50% -10% -20%"
+      const promoTextDiscount = buildTextDiscount(
+        pricing.list_discount_pct,
+        pricing.sale_discount_pct,
+        promo.discount_percentage
+      );
+
+      return {
+        ...promo,
+        text_discount: promoTextDiscount,
+      };
+    });
+
     return {
       ...pkg,
       pricing: {
@@ -386,7 +434,9 @@ function enrichPackagingWithUnitPrices(
         list_unit: listUnit,
         retail_unit: retailUnit,
         sale_unit: saleUnit,
+        text_discount: pricingTextDiscount,
       },
+      promotions: enrichedPromotions,
     };
   });
 }
