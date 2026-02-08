@@ -249,6 +249,12 @@ export interface SendEmailOptions {
   tenantDb?: string;
   /** Campaign ID for linking email to campaign stats */
   campaign_id?: string;
+  /** File attachments (e.g., PDF documents) */
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }
 
 export interface SendEmailResult {
@@ -416,6 +422,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   };
   await emailLog.save();
 
+  // Attach files to the email log object (transient, not persisted)
+  if (options.attachments?.length) {
+    (emailLog as any)._attachments = options.attachments;
+  }
+
   // Send immediately or queue
   if (options.immediate) {
     return await sendEmailNow(emailLog, notificationLog.log_id);
@@ -456,6 +467,7 @@ async function sendEmailNow(
       subject: emailLog.subject,
       html: emailLog.html,
       text: emailLog.text,
+      attachments: (emailLog as any)._attachments || undefined,
     });
 
     // Update log with success

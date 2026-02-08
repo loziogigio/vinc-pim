@@ -47,6 +47,12 @@ import { NotificationSchema } from "./models/notification";
 import { CampaignSchema } from "./models/campaign";
 import { UserTagSchema } from "./models/user-tag";
 import { ThreadSchema } from "./models/thread";
+import { DocumentSchema } from "./models/document";
+import { DocumentTemplateSchema } from "./models/document-template";
+import { DocumentSettingsSchema } from "./models/document-settings";
+import { PaymentTransactionSchema } from "./models/payment-transaction";
+import { TenantPaymentConfigSchema } from "./models/tenant-payment-config";
+import { RecurringContractSchema } from "./models/recurring-contract";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -88,6 +94,12 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Campaign: CampaignSchema,
   UserTag: UserTagSchema,
   Thread: ThreadSchema,
+  Document: DocumentSchema,
+  DocumentTemplate: DocumentTemplateSchema,
+  DocumentSettings: DocumentSettingsSchema,
+  PaymentTransaction: PaymentTransactionSchema,
+  TenantPaymentConfig: TenantPaymentConfigSchema,
+  RecurringContract: RecurringContractSchema,
 };
 
 /**
@@ -171,6 +183,12 @@ export async function getTenantModels(dbName: string) {
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
     Thread: connection.models.Thread,
+    Document: connection.models.Document,
+    DocumentTemplate: connection.models.DocumentTemplate,
+    DocumentSettings: connection.models.DocumentSettings,
+    PaymentTransaction: connection.models.PaymentTransaction,
+    TenantPaymentConfig: connection.models.TenantPaymentConfig,
+    RecurringContract: connection.models.RecurringContract,
   };
 }
 
@@ -225,6 +243,9 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
     Thread: connection.models.Thread,
+    PaymentTransaction: connection.models.PaymentTransaction,
+    TenantPaymentConfig: connection.models.TenantPaymentConfig,
+    RecurringContract: connection.models.RecurringContract,
   };
 }
 

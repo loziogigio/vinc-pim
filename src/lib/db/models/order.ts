@@ -205,6 +205,15 @@ export interface IPaymentRecord {
   recorded_at: Date;
   recorded_by?: string;
   notes?: string;
+  confirmed?: boolean;
+  // Provider integration (optional, backwards-compatible)
+  provider?: string; // "stripe" | "nexi" | "axerve" | "mangopay" | "paypal" | "manual"
+  provider_data?: {
+    provider_payment_id?: string;
+    provider_contract_id?: string;
+    payment_type?: "onclick" | "moto" | "recurrent";
+    three_ds_status?: string;
+  };
 }
 
 // ============================================
@@ -488,6 +497,16 @@ const QuotationDataSchema = new Schema<IQuotationData>(
 // PAYMENT RECORD SCHEMA
 // ============================================
 
+const ProviderDataSchema = new Schema(
+  {
+    provider_payment_id: { type: String },
+    provider_contract_id: { type: String },
+    payment_type: { type: String, enum: ["onclick", "moto", "recurrent"] },
+    three_ds_status: { type: String },
+  },
+  { _id: false }
+);
+
 const PaymentRecordSchema = new Schema<IPaymentRecord>(
   {
     payment_id: { type: String, required: true },
@@ -498,6 +517,8 @@ const PaymentRecordSchema = new Schema<IPaymentRecord>(
     recorded_by: { type: String },
     notes: { type: String },
     confirmed: { type: Boolean, default: false },
+    provider: { type: String },
+    provider_data: { type: ProviderDataSchema },
   },
   { _id: false }
 );

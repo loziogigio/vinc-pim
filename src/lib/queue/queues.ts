@@ -97,6 +97,24 @@ export const notificationQueue = new Queue("notification-queue", {
   },
 });
 
+// Payment processing queue (webhooks, commissions, recurring retries)
+export const paymentQueue = new Queue("payment-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+    removeOnComplete: {
+      count: 500,
+    },
+    removeOnFail: {
+      count: 1000,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
@@ -104,4 +122,5 @@ export const QUEUE_NAMES = {
   SYNC: "sync-queue",
   CLEANUP: "cleanup-queue",
   NOTIFICATION: "notification-queue",
+  PAYMENT: "payment-queue",
 } as const;

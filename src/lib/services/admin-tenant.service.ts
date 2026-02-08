@@ -485,6 +485,10 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
   // Step 3: Seed notification templates (using connectWithModels)
   await seedInitialNotificationTemplates(mongoDb);
 
+  // Step 3b: Seed document templates
+  const { seedDocumentTemplates } = await import("./seed-document-templates");
+  await seedDocumentTemplates(mongoDb, tenant_id);
+
   // Step 4: Seed home settings with default header
   await seedInitialHomeSettings(mongoDb, name);
 
