@@ -2,6 +2,10 @@ import { nanoid } from "nanoid";
 import type { ICustomer, IAddress, ILegalInfo } from "@/lib/db/models/customer";
 import { connectWithModels } from "@/lib/db/connection";
 import { getNextCustomerPublicCode } from "@/lib/db/models/counter";
+import {
+  upsertCustomerTagsBatch,
+  upsertAddressTagOverridesBatch,
+} from "@/lib/services/tag-pricing.service";
 
 /**
  * Customer Service
@@ -26,6 +30,8 @@ export interface CustomerInput {
   company_name?: string;
   legal_info?: ILegalInfo;
   addresses?: AddressInput[];
+  /** Full tag strings to upsert (e.g., ["categoria-di-sconto:sconto-45"]) */
+  tags?: string[];
 }
 
 export interface AddressInput {
@@ -42,6 +48,8 @@ export interface AddressInput {
   country?: string;
   phone?: string;
   delivery_notes?: string;
+  /** Full tag strings for address-level overrides (e.g., ["categoria-di-sconto:sconto-50"]) */
+  tag_overrides?: string[];
 }
 
 export interface FindOrCreateCustomerInput {
@@ -85,13 +93,30 @@ export async function findOrCreateCustomer(
   const tenantDb = `vinc-${tenant_id}`;
   const { Customer: CustomerModel } = await connectWithModels(tenantDb);
 
+  // Helper: upsert tags on found customer if provided
+  async function applyTags(customer: ICustomer): Promise<ICustomer> {
+    if (input.customer?.tags && input.customer.tags.length > 0) {
+      await upsertCustomerTagsBatch(
+        tenantDb, tenant_id, customer.customer_id, input.customer.tags,
+      );
+      // Re-fetch to get updated tags
+      const updated = await CustomerModel.findOne({
+        tenant_id, customer_id: customer.customer_id,
+      });
+      if (updated) return updated as ICustomer;
+    }
+    return customer;
+  }
+
   // 1. Try lookup by customer_id (internal)
   if (input.customer_id) {
     const customer = await CustomerModel.findOne({
       tenant_id,
       customer_id: input.customer_id,
     });
-    if (customer) return { customer: customer as ICustomer, isNew: false };
+    if (customer) {
+      return { customer: await applyTags(customer as ICustomer), isNew: false };
+    }
   }
 
   // 2. Try lookup by external_code (from customer_code parameter)
@@ -100,7 +125,9 @@ export async function findOrCreateCustomer(
       tenant_id,
       external_code: input.customer_code,
     });
-    if (customer) return { customer: customer as ICustomer, isNew: false };
+    if (customer) {
+      return { customer: await applyTags(customer as ICustomer), isNew: false };
+    }
   }
 
   // 3. If customer object provided, try additional lookups
@@ -111,7 +138,9 @@ export async function findOrCreateCustomer(
         tenant_id,
         external_code: input.customer.external_code,
       });
-      if (customer) return { customer: customer as ICustomer, isNew: false };
+      if (customer) {
+        return { customer: await applyTags(customer as ICustomer), isNew: false };
+      }
     }
 
     // 3b. Try by public_code in customer object
@@ -120,7 +149,9 @@ export async function findOrCreateCustomer(
         tenant_id,
         public_code: input.customer.public_code,
       });
-      if (customer) return { customer: customer as ICustomer, isNew: false };
+      if (customer) {
+        return { customer: await applyTags(customer as ICustomer), isNew: false };
+      }
     }
 
     // 3c. Try by VAT number for business customers
@@ -129,7 +160,9 @@ export async function findOrCreateCustomer(
         tenant_id,
         "legal_info.vat_number": input.customer.legal_info.vat_number,
       });
-      if (customer) return { customer: customer as ICustomer, isNew: false };
+      if (customer) {
+        return { customer: await applyTags(customer as ICustomer), isNew: false };
+      }
     }
 
     // 3d. Create new customer
@@ -151,6 +184,7 @@ export async function findOrCreateCustomer(
           delivery_notes: addr.delivery_notes,
           external_code: addr.external_code,
           label: addr.label,
+          tag_overrides: [],
           created_at: new Date(),
           updated_at: new Date(),
         });
@@ -178,7 +212,34 @@ export async function findOrCreateCustomer(
       default_billing_address_id: addresses[0]?.address_id,
     });
 
-    return { customer: newCustomer as ICustomer, isNew: true };
+    // Apply customer-level tags if provided
+    const finalCustomer = await applyTags(newCustomer as ICustomer);
+
+    // Apply address-level tag overrides if provided
+    if (input.customer.addresses) {
+      for (let i = 0; i < input.customer.addresses.length; i++) {
+        const addrInput = input.customer.addresses[i];
+        if (addrInput.tag_overrides && addrInput.tag_overrides.length > 0 && addresses[i]) {
+          await upsertAddressTagOverridesBatch(
+            tenantDb, tenant_id, finalCustomer.customer_id,
+            addresses[i].address_id, addrInput.tag_overrides,
+          );
+        }
+      }
+    }
+
+    // Re-fetch if address overrides were applied
+    const hasAddressOverrides = input.customer.addresses?.some(
+      (a) => a.tag_overrides && a.tag_overrides.length > 0,
+    );
+    if (hasAddressOverrides) {
+      const refreshed = await CustomerModel.findOne({
+        tenant_id, customer_id: finalCustomer.customer_id,
+      });
+      if (refreshed) return { customer: refreshed as ICustomer, isNew: true };
+    }
+
+    return { customer: finalCustomer, isNew: true };
   }
 
   throw new Error("Customer not found and no data to create");
@@ -203,7 +264,8 @@ export async function findOrCreateCustomer(
  */
 export async function findOrCreateAddress(
   customer: ICustomer,
-  input: FindOrCreateAddressInput
+  input: FindOrCreateAddressInput,
+  tenant_id?: string,
 ): Promise<IAddress> {
   // 1. Try lookup by address_id (internal)
   if (input.address_id) {
@@ -239,12 +301,23 @@ export async function findOrCreateAddress(
       delivery_notes: input.address.delivery_notes,
       external_code: input.address.external_code,
       label: input.address.label,
+      tag_overrides: [],
       created_at: new Date(),
       updated_at: new Date(),
     };
 
     customer.addresses.push(newAddress);
     await customer.save();
+
+    // Apply address-level tag overrides if provided and tenant context available
+    if (tenant_id && input.address.tag_overrides && input.address.tag_overrides.length > 0) {
+      const tenantDb = `vinc-${tenant_id}`;
+      await upsertAddressTagOverridesBatch(
+        tenantDb, tenant_id, customer.customer_id,
+        newAddress.address_id, input.address.tag_overrides,
+      );
+    }
+
     return newAddress;
   }
 

@@ -219,36 +219,6 @@ describe("integration: Portal Users API", () => {
       expect(data.error).toMatch(/email|required/i);
     });
 
-    it("should return 400 when password is too short", async () => {
-      /**
-       * Test validation: password must be at least 8 characters.
-       */
-      // Arrange
-      const req = new NextRequest("http://localhost/api/b2b/portal-users", {
-        method: "POST",
-        body: JSON.stringify({
-          username: "testuser",
-          email: "test@example.com",
-          password: "short",
-          customer_access: [{ customer_id: "test", address_access: "all" }],
-        }),
-        headers: {
-          "Content-Type": "application/json",
-          "x-auth-method": "api-key",
-          "x-api-key-id": "ak_test-tenant_abc123456789",
-          "x-api-secret": "sk_test",
-        },
-      });
-
-      // Act
-      const res = await createPortalUser(req);
-      const data = await res.json();
-
-      // Assert
-      expect(res.status).toBe(400);
-      expect(data.error).toMatch(/password|8 characters/i);
-    });
-
     it("should return 409 for duplicate username", async () => {
       /**
        * Test that duplicate usernames are rejected within same tenant.

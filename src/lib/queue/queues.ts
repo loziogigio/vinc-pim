@@ -115,6 +115,42 @@ export const paymentQueue = new Queue("payment-queue", {
   },
 });
 
+// Customer import queue (bulk customer import with tags and addresses)
+export const customerImportQueue = new Queue("customer-import-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 2000,
+    },
+    removeOnComplete: {
+      count: 100,
+    },
+    removeOnFail: {
+      count: 500,
+    },
+  },
+});
+
+// Portal user import queue (bulk portal user import with customer access)
+export const portalUserImportQueue = new Queue("portal-user-import-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 2000,
+    },
+    removeOnComplete: {
+      count: 100,
+    },
+    removeOnFail: {
+      count: 500,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
@@ -123,4 +159,6 @@ export const QUEUE_NAMES = {
   CLEANUP: "cleanup-queue",
   NOTIFICATION: "notification-queue",
   PAYMENT: "payment-queue",
+  CUSTOMER_IMPORT: "customer-import-queue",
+  PORTAL_USER_IMPORT: "portal-user-import-queue",
 } as const;

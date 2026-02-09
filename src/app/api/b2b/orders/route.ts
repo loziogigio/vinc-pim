@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
       try {
         const address = await findOrCreateAddress(customer, {
           address: body.shipping_address,
-        });
+        }, tenant_id);
         shipping_address_id = address.address_id;
       } catch (error) {
         console.error("Error finding/creating address:", error);

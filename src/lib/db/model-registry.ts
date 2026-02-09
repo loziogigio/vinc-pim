@@ -46,6 +46,7 @@ import { FCMTokenSchema } from "./models/fcm-token";
 import { NotificationSchema } from "./models/notification";
 import { CampaignSchema } from "./models/campaign";
 import { UserTagSchema } from "./models/user-tag";
+import { CustomerTagSchema } from "./models/customer-tag";
 import { ThreadSchema } from "./models/thread";
 import { DocumentSchema } from "./models/document";
 import { DocumentTemplateSchema } from "./models/document-template";
@@ -93,6 +94,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Notification: NotificationSchema,
   Campaign: CampaignSchema,
   UserTag: UserTagSchema,
+  CustomerTag: CustomerTagSchema,
   Thread: ThreadSchema,
   Document: DocumentSchema,
   DocumentTemplate: DocumentTemplateSchema,
@@ -182,6 +184,7 @@ export async function getTenantModels(dbName: string) {
     Notification: connection.models.Notification,
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
+    CustomerTag: connection.models.CustomerTag,
     Thread: connection.models.Thread,
     Document: connection.models.Document,
     DocumentTemplate: connection.models.DocumentTemplate,
@@ -242,6 +245,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Notification: connection.models.Notification,
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
+    CustomerTag: connection.models.CustomerTag,
     Thread: connection.models.Thread,
     PaymentTransaction: connection.models.PaymentTransaction,
     TenantPaymentConfig: connection.models.TenantPaymentConfig,

@@ -832,6 +832,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
           list_discount_amt: { type: Number },
           sale_discount_pct: { type: Number },
           sale_discount_amt: { type: Number },
+          // Customer tag filter — empty = all customers, otherwise requires matching tag
+          tag_filter: [{ type: String }],
         },
         // Promotions specific to this packaging option
         promotions: [
@@ -854,6 +856,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
             min_quantity: { type: Number },
             min_order_value: { type: Number },
             promo_price: { type: Number },          // Final price when this promotion applies
+            // Customer tag filter — empty = all customers, otherwise requires matching tag
+            tag_filter: [{ type: String }],
           },
         ],
       },
@@ -880,6 +884,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         min_quantity: { type: Number },
         min_order_value: { type: Number },
         promo_price: { type: Number },              // Final price when this promotion applies
+        // Customer tag filter — empty = all customers, otherwise requires matching tag
+        tag_filter: [{ type: String }],
       },
     ],
 

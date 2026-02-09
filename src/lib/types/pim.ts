@@ -134,6 +134,8 @@ export type Promotion = {
   promo_price?: number;           // Final price when this promotion applies
   discount_chain?: DiscountStep[];  // Array of discount steps with type, value, source, and order
   text_discount?: string;         // Computed: cumulative discount chain (e.g., "-50% -20%")
+  /** Customer tag filter — empty/undefined = applies to all; otherwise requires matching customer tag */
+  tag_filter?: string[];          // e.g., ["categoria-di-sconto:sconto-45"]
 };
 
 // ============================================
@@ -181,6 +183,8 @@ export type PackagingPricing = {
   sale_discount_pct?: number;     // Percentage discount from list to get sale (e.g., 10 for -10%)
   sale_discount_amt?: number;     // Fixed amount discount from list to get sale (e.g., 5 for -€5)
   text_discount?: string;         // Computed: base discount chain (e.g., "-50%" or "-50% -10%")
+  /** Customer tag filter — empty/undefined = applies to all; otherwise requires matching customer tag */
+  tag_filter?: string[];          // e.g., ["categoria-di-sconto:sconto-45"]
 };
 
 // ============================================

@@ -17,7 +17,9 @@
     "worker:cleanup": "dotenv -e .env -o -- vite-node workers/cleanup.ts",
     "worker:notification": "dotenv -e .env -o -- vite-node workers/notification.ts",
     "worker:scheduler": "dotenv -e .env -o -- vite-node workers/scheduler.ts",
-    "worker:all": "concurrently \"pnpm worker:pim\" \"pnpm worker:sync\" \"pnpm worker:email\" \"pnpm worker:push\" \"pnpm worker:fcm\" \"pnpm worker:cleanup\" \"pnpm worker:notification\" \"pnpm worker:scheduler\"",
+    "worker:customer": "dotenv -e .env -o -- vite-node workers/customer-import.ts",
+    "worker:portal-user": "dotenv -e .env -o -- vite-node workers/portal-user-import.ts",
+    "worker:all": "concurrently \"pnpm worker:pim\" \"pnpm worker:sync\" \"pnpm worker:email\" \"pnpm worker:push\" \"pnpm worker:fcm\" \"pnpm worker:cleanup\" \"pnpm worker:notification\" \"pnpm worker:scheduler\" \"pnpm worker:customer\" \"pnpm worker:portal-user\"",
     "worker:pim:prod": "vite-node --config vite.config.ts workers/pim-import.ts",
     "worker:sync:prod": "vite-node --config vite.config.ts workers/sync-marketplace.ts",
     "worker:email:prod": "vite-node --config vite.config.ts workers/email.ts",
@@ -26,12 +28,15 @@
     "worker:cleanup:prod": "vite-node --config vite.config.ts workers/cleanup.ts",
     "worker:notification:prod": "vite-node --config vite.config.ts workers/notification.ts",
     "worker:scheduler:prod": "vite-node --config vite.config.ts workers/scheduler.ts",
-    "worker:all:prod": "concurrently \"pnpm worker:pim:prod\" \"pnpm worker:sync:prod\" \"pnpm worker:email:prod\" \"pnpm worker:push:prod\" \"pnpm worker:fcm:prod\" \"pnpm worker:cleanup:prod\" \"pnpm worker:notification:prod\" \"pnpm worker:scheduler:prod\"",
+    "worker:customer:prod": "vite-node --config vite.config.ts workers/customer-import.ts",
+    "worker:portal-user:prod": "vite-node --config vite.config.ts workers/portal-user-import.ts",
+    "worker:all:prod": "concurrently \"pnpm worker:pim:prod\" \"pnpm worker:sync:prod\" \"pnpm worker:email:prod\" \"pnpm worker:push:prod\" \"pnpm worker:fcm:prod\" \"pnpm worker:cleanup:prod\" \"pnpm worker:notification:prod\" \"pnpm worker:scheduler:prod\" \"pnpm worker:customer:prod\" \"pnpm worker:portal-user:prod\"",
     "solr:schema": "dotenv -e .env -o -- vite-node src/scripts/sync-solr-schema.ts",
     "solr:resync": "dotenv -e .env -o -- vite-node src/scripts/resync-solr.ts",
     "bulk-publish": "dotenv -e .env -o -- vite-node scripts/bulk-publish.ts",
     "migrate:product-type-ids": "dotenv -e .env -o -- vite-node scripts/migrate-product-type-ids.ts",
-    "sso:seed-clients": "dotenv -e .env -o -- vite-node scripts/seed-oauth-clients.ts"
+    "sso:seed-clients": "dotenv -e .env -o -- vite-node scripts/seed-oauth-clients.ts",
+    "test:real-import": "dotenv -e .env -o -- npx tsx scripts/test-real-import-api.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",

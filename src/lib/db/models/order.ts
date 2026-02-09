@@ -337,6 +337,11 @@ export interface IOrder extends Document {
   delivery?: IDeliveryData;
 
   // ============================================
+  // Customer Tags (resolved at cart creation)
+  // ============================================
+  effective_tags?: string[]; // e.g., ["categoria-di-sconto:sconto-45", "categoria-clienti:idraulico"]
+
+  // ============================================
   // Duplication Tracking
   // ============================================
   duplicated_from?: string; // Original order_id
@@ -751,6 +756,11 @@ const OrderSchema = new Schema<IOrder>(
     // Delivery Tracking
     // ============================================
     delivery: { type: DeliveryDataSchema },
+
+    // ============================================
+    // Customer Tags (resolved at cart creation for audit/pricing)
+    // ============================================
+    effective_tags: { type: [String], default: [] },
 
     // ============================================
     // Duplication Tracking

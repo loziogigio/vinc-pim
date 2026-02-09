@@ -4,6 +4,7 @@ import { validateLegalInfo } from "@/lib/db/models/customer";
 import { getNextCustomerPublicCode } from "@/lib/db/models/counter";
 import { nanoid } from "nanoid";
 import type { CreateCustomerRequest } from "@/lib/types/customer";
+import { upsertCustomerTagsBatch } from "@/lib/services/tag-pricing.service";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import {
@@ -293,6 +294,11 @@ export async function POST(req: NextRequest) {
       default_billing_address_id,
     });
 
+    // Upsert customer-level tags if provided
+    if (body.tags && body.tags.length > 0) {
+      await upsertCustomerTagsBatch(auth.tenantDb!, tenant_id, customer_id, body.tags);
+    }
+
     // Auto-assign customer to portal user if they created it
     if (auth.portalUserId) {
       await PortalUserModel.updateOne(
@@ -308,7 +314,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, customer }, { status: 201 });
+    // Re-fetch to include tags if they were applied
+    const finalCustomer = (body.tags && body.tags.length > 0)
+      ? await CustomerModel.findOne({ customer_id, tenant_id }).lean() || customer
+      : customer;
+
+    return NextResponse.json({ success: true, customer: finalCustomer }, { status: 201 });
   } catch (error) {
     console.error("Error creating customer:", error);
     return NextResponse.json(

@@ -146,6 +146,9 @@ export interface CreateCustomerRequest {
 
   // Initial addresses
   addresses?: Omit<Address, "address_id" | "created_at" | "updated_at">[];
+
+  /** Full tag strings to upsert on the customer (e.g., ["categoria-di-sconto:sconto-45"]) */
+  tags?: string[];
 }
 
 /**
@@ -164,6 +167,8 @@ export interface UpdateCustomerRequest {
   legal_info?: LegalInfo;
   default_shipping_address_id?: string;
   default_billing_address_id?: string;
+  /** Full tag strings to upsert on the customer (e.g., ["categoria-di-sconto:sconto-45"]) */
+  tags?: string[];
 }
 
 /**

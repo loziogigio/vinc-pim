@@ -328,7 +328,8 @@ describe("POST /api/b2b/cart/active", () => {
             recipient_name: "Test Recipient",
             external_code: "ADDR-001",
           }),
-        })
+        }),
+        "test-tenant",
       );
     });
   });
