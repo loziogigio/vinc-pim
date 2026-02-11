@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, Check, ChevronDown } from "lucide-react";
+import { normalizeDecimalInput, parseDecimalValue, toDecimalInputValue } from "@/lib/utils/decimal-input";
 
 type FeatureDefinition = {
   technical_specification_id?: string;
@@ -178,6 +179,13 @@ function FeatureInput({
   const hasValue = value !== undefined && value !== "" && value !== null;
   // Default to "text" if type is not specified
   const featureType = feature.type || "text";
+  // Dual-state for number inputs: string for display, numeric for value
+  const [numberInput, setNumberInput] = useState(() => toDecimalInputValue(typeof value === "number" ? value : undefined));
+  useEffect(() => {
+    if (featureType === "number") {
+      setNumberInput(toDecimalInputValue(typeof value === "number" ? value : undefined));
+    }
+  }, [value, featureType]);
 
   return (
     <div className="space-y-2">
@@ -215,12 +223,18 @@ function FeatureInput({
         <div className="flex gap-2">
           <div className="relative flex-1">
             <input
-              type="number"
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value ? parseFloat(e.target.value) : "")}
+              type="text"
+              inputMode="decimal"
+              value={numberInput}
+              onChange={(e) => {
+                const normalized = normalizeDecimalInput(e.target.value);
+                if (normalized === null) return;
+                setNumberInput(normalized);
+                const parsed = parseDecimalValue(normalized);
+                onChange(parsed !== undefined ? parsed : "");
+              }}
               disabled={disabled}
               required={feature.required}
-              step="any"
               className={`w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 ${hasValue ? "pr-8" : ""}`}
               placeholder={`Enter ${feature.label.toLowerCase()}`}
             />

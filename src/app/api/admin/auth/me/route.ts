@@ -7,7 +7,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSuperAdminModel } from "@/lib/db/models/super-admin";
 
-const JWT_SECRET = process.env.SUPER_ADMIN_JWT_SECRET || "super-admin-secret-change-me";
+function getJwtSecret(): string {
+  const secret = process.env.SUPER_ADMIN_JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("SUPER_ADMIN_JWT_SECRET env var must be set and at least 32 characters long");
+  }
+  return secret;
+}
 const COOKIE_NAME = "admin_session";
 
 export async function GET(req: NextRequest) {
@@ -22,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Verify JWT
-    const secret = new TextEncoder().encode(JWT_SECRET);
+    const secret = new TextEncoder().encode(getJwtSecret());
     let payload;
     try {
       const result = await jwtVerify(token, secret);

@@ -7,23 +7,29 @@ import { getIronSession, IronSession } from "iron-session";
 import { cookies } from "next/headers";
 import type { B2BSessionData } from "@/lib/types/b2b";
 
-const sessionOptions = {
-  password: process.env.SESSION_SECRET || "complex_password_at_least_32_characters_long",
-  cookieName: "vinc_b2b_session",
-  cookieOptions: {
-    // Only use secure cookies if explicitly enabled via env var (requires HTTPS)
-    // Set SECURE_COOKIES=true when HTTPS is configured
-    secure: process.env.SECURE_COOKIES === "true",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    httpOnly: true,
-    sameSite: "lax" as const,
-    path: "/", // Required for cookie to be sent to all routes (including /api/*)
-  },
-};
+function getSessionOptions() {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("SESSION_SECRET env var must be set and at least 32 characters long");
+  }
+  return {
+    password: secret,
+    cookieName: "vinc_b2b_session",
+    cookieOptions: {
+      // Only use secure cookies if explicitly enabled via env var (requires HTTPS)
+      // Set SECURE_COOKIES=true when HTTPS is configured
+      secure: process.env.SECURE_COOKIES === "true",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/", // Required for cookie to be sent to all routes (including /api/*)
+    },
+  };
+}
 
 export async function getB2BSession(): Promise<IronSession<B2BSessionData>> {
   const cookieStore = await cookies();
-  return getIronSession<B2BSessionData>(cookieStore, sessionOptions);
+  return getIronSession<B2BSessionData>(cookieStore, getSessionOptions());
 }
 
 export async function createB2BSession(userData: Omit<B2BSessionData, "isLoggedIn" | "lastLoginAt">) {

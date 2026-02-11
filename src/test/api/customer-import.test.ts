@@ -26,13 +26,13 @@ import { NextRequest } from "next/server";
 
 // Mock BullMQ so the worker module doesn't try to connect to Redis
 vi.mock("bullmq", () => ({
-  Worker: vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-    close: vi.fn(),
-  })),
-  Queue: vi.fn().mockImplementation(() => ({
-    add: vi.fn(),
-  })),
+  Worker: class MockWorker {
+    on = vi.fn();
+    close = vi.fn();
+  },
+  Queue: class MockQueue {
+    add = vi.fn();
+  },
   Job: vi.fn(),
 }));
 

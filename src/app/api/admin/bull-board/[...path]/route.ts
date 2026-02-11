@@ -7,15 +7,26 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { serverAdapter } from "@/lib/queue/bull-board";
+import { verifyAdminAuth } from "@/lib/auth/admin-auth";
 
 // Get the Express app from the server adapter
 const handler = serverAdapter.getRouter();
+
+async function requireAdmin(req: NextRequest): Promise<NextResponse | null> {
+  const auth = await verifyAdminAuth(req);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return null;
+}
 
 // Convert Express middleware to Next.js route handler
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
   const resolvedParams = await params;
   return handleRequest(req, resolvedParams);
 }
@@ -24,6 +35,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
   const resolvedParams = await params;
   return handleRequest(req, resolvedParams);
 }
@@ -32,6 +45,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
   const resolvedParams = await params;
   return handleRequest(req, resolvedParams);
 }
@@ -40,6 +55,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
   const resolvedParams = await params;
   return handleRequest(req, resolvedParams);
 }

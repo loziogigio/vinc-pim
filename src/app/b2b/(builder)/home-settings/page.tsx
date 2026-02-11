@@ -726,6 +726,7 @@ export default function HomeSettingsPage() {
             <CDNForm
               cdnCredentials={cdnCredentials}
               onChange={updateCdnCredentials}
+              hasUnsavedChanges={dirty}
             />
           )}
           {activeSection === "smtp" && (
@@ -1433,9 +1434,10 @@ function CardStyleForm({
 interface CDNFormProps {
   cdnCredentials: CDNCredentials;
   onChange: <K extends keyof CDNCredentials>(key: K, value: CDNCredentials[K]) => void;
+  hasUnsavedChanges?: boolean;
 }
 
-function CDNForm({ cdnCredentials, onChange }: CDNFormProps) {
+function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -1631,6 +1633,11 @@ function CDNForm({ cdnCredentials, onChange }: CDNFormProps) {
 
       {/* Test Connection */}
       <div className="border-t border-slate-200 pt-6 mt-6">
+        {hasUnsavedChanges && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            Remember to save your configuration before testing the connection.
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-slate-900">Test Connection</h3>
@@ -1667,6 +1674,11 @@ function CDNForm({ cdnCredentials, onChange }: CDNFormProps) {
             )}
           >
             {testResult.message}
+            {testResult.success && hasUnsavedChanges && (
+              <span className="block mt-1 font-medium">
+                Save your settings to apply this configuration.
+              </span>
+            )}
           </div>
         )}
       </div>

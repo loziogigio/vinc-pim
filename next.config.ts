@@ -5,19 +5,16 @@ type RemotePattern = {
   hostname: string;
 };
 
-// Allow all hostnames - CDN URL is configured dynamically from MongoDB
+// Allow all HTTPS hostnames - CDN URL is configured dynamically from MongoDB
 const remotePatterns: RemotePattern[] = [
   {
     protocol: "https",
     hostname: "**"  // Allow all HTTPS hostnames
   },
-  {
-    protocol: "http",
-    hostname: "**"  // Allow all HTTP hostnames
-  }
 ];
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   reactStrictMode: true,
   typedRoutes: false,
   output: 'standalone',

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from "csv-parse/sync";
-import * as XLSX from "xlsx";
+import { readExcel } from "@/lib/utils/excel";
 
 /**
  * POST /api/b2b/pim/import/analyze
@@ -111,20 +111,20 @@ export async function POST(req: NextRequest) {
     } else {
       // Parse Excel
       try {
-        const workbook = XLSX.read(buffer, { type: "buffer" });
+        const workbook = await readExcel(buffer);
 
-        if (!workbook.SheetNames.length) {
+        if (!workbook.sheetNames.length) {
           return NextResponse.json(
             { error: "Excel file contains no sheets" },
             { status: 400 }
           );
         }
 
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+        const firstSheetName = workbook.sheetNames[0];
+        const worksheet = workbook.sheets[firstSheetName];
 
         // Convert to JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+        const jsonData = worksheet.toJSON({ defval: "" });
         rows = jsonData.slice(0, 15); // Get first 15 rows
 
         if (rows.length > 0) {

@@ -56,6 +56,7 @@ export interface CountryLabels {
     ico: string;
     dic: string;
     ic_dph: string;
+    amount_due: string;
   };
   email: {
     dear_customer: string;

@@ -5,6 +5,11 @@ import { X, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Promotion, PackagingOption, DiscountStep } from "@/lib/types/pim";
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+  toDecimalInputValue,
+} from "@/lib/utils/decimal-input";
 
 interface PromotionModalProps {
   open: boolean;
@@ -43,12 +48,18 @@ export function PromotionModal({
   const [formData, setFormData] = useState<Promotion>(emptyPromotion);
   const [selectedPackagingCode, setSelectedPackagingCode] = useState(packagingCode);
   const [pricingMethod, setPricingMethod] = useState<"percentage" | "amount" | "direct">("percentage");
+  const [promoInputs, setPromoInputs] = useState<Record<string, string>>({});
   const isEditMode = promotion !== null;
 
   useEffect(() => {
     if (open) {
       const promo = promotion || { ...emptyPromotion };
       setFormData(promo);
+      setPromoInputs({
+        discount_percentage: toDecimalInputValue(promo.discount_percentage),
+        discount_amount: toDecimalInputValue(promo.discount_amount),
+        promo_price: toDecimalInputValue(promo.promo_price),
+      });
       const selectedCode = packagingCode || packagingOptions[0]?.code || "";
       setSelectedPackagingCode(selectedCode);
 
@@ -179,6 +190,13 @@ export function PromotionModal({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updatePromoInput = (field: string, rawValue: string) => {
+    const normalized = normalizeDecimalInput(rawValue);
+    if (normalized === null) return;
+    setPromoInputs((prev) => ({ ...prev, [field]: normalized }));
+    updateField(field, parseDecimalValue(normalized));
+  };
+
   // Switch pricing method and clear other fields
   const switchPricingMethod = (method: "percentage" | "amount" | "direct") => {
     setPricingMethod(method);
@@ -188,6 +206,7 @@ export function PromotionModal({
       discount_amount: undefined,
       promo_price: undefined,
     }));
+    setPromoInputs({ discount_percentage: "", discount_amount: "", promo_price: "" });
   };
 
   const updateLabel = (value: string) => {
@@ -364,12 +383,10 @@ export function PromotionModal({
                   </label>
                   <div className="flex items-center gap-3">
                     <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={formData.discount_percentage || ""}
-                      onChange={(e) => updateField("discount_percentage", e.target.value ? parseFloat(e.target.value) : undefined)}
+                      type="text"
+                      inputMode="decimal"
+                      value={promoInputs.discount_percentage ?? toDecimalInputValue(formData.discount_percentage)}
+                      onChange={(e) => updatePromoInput("discount_percentage", e.target.value)}
                       placeholder="e.g., 10"
                       className="text-lg"
                     />
@@ -412,11 +429,10 @@ export function PromotionModal({
                   <div className="flex items-center gap-3">
                     <span className="text-2xl text-slate-400">€</span>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.discount_amount || ""}
-                      onChange={(e) => updateField("discount_amount", e.target.value ? parseFloat(e.target.value) : undefined)}
+                      type="text"
+                      inputMode="decimal"
+                      value={promoInputs.discount_amount ?? toDecimalInputValue(formData.discount_amount)}
+                      onChange={(e) => updatePromoInput("discount_amount", e.target.value)}
                       placeholder="e.g., 5.00"
                       className="text-lg"
                     />
@@ -458,11 +474,10 @@ export function PromotionModal({
                   <div className="flex items-center gap-3">
                     <span className="text-2xl text-slate-400">€</span>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.promo_price || ""}
-                      onChange={(e) => updateField("promo_price", e.target.value ? parseFloat(e.target.value) : undefined)}
+                      type="text"
+                      inputMode="decimal"
+                      value={promoInputs.promo_price ?? toDecimalInputValue(formData.promo_price)}
+                      onChange={(e) => updatePromoInput("promo_price", e.target.value)}
                       placeholder="e.g., 45.00"
                       className="text-lg"
                     />

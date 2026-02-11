@@ -84,7 +84,7 @@ export async function DELETE(
     return NextResponse.json({ error: auth.error }, { status: auth.statusCode || 401 });
   }
 
-  const result = await deleteDocument(auth.tenantDb!, id);
+  const result = await deleteDocument(auth.tenantDb!, auth.tenantId!, id);
 
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: result.status || 400 });

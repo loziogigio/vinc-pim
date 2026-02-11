@@ -7,8 +7,9 @@
 import { nanoid } from "nanoid";
 import { connectWithModels } from "@/lib/db/connection";
 import { getHomeSettings } from "@/lib/db/home-settings";
-import { assignDocumentNumber, getDocumentSettings } from "./document-numbering.service";
-import { canTransitionDocument, canEditDocument } from "@/lib/constants/document";
+import { assignDocumentNumber, getDocumentSettings, formatDocumentNumber } from "./document-numbering.service";
+import { getDocumentCounter, setDocumentCounter } from "@/lib/db/models/counter";
+import { canTransitionDocument, canEditDocument, canDeleteDocument, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, DEFAULT_NUMBERING_FORMATS } from "@/lib/constants/document";
 import { calculateDocumentTotals } from "@/lib/types/document";
 import type { DocumentType, DocumentStatus } from "@/lib/constants/document";
 import type { IDocument } from "@/lib/db/models/document";
@@ -309,14 +310,25 @@ export async function updateDocument(
 
 export async function deleteDocument(
   tenantDb: string,
+  tenantId: string,
   documentId: string
 ): Promise<ServiceResult> {
   const { Document } = await connectWithModels(tenantDb);
 
   const doc = await Document.findOne({ document_id: documentId });
   if (!doc) return { success: false, error: "Document not found", status: 404 };
-  if (!canEditDocument((doc as any).status)) {
-    return { success: false, error: "Only draft documents can be deleted", status: 400 };
+
+  const d = doc as any;
+  if (!canDeleteDocument(d.status)) {
+    return { success: false, error: "Solo bozze e documenti finalizzati (non inviati) possono essere eliminati", status: 400 };
+  }
+
+  // If finalized with a number, try to decrement counter if it was the last one
+  if (d.status === "finalized" && d.document_number_raw && d.document_type && d.year) {
+    const currentCounter = await getDocumentCounter(tenantDb, d.document_type, d.year);
+    if (d.document_number_raw === currentCounter) {
+      await setDocumentCounter(tenantDb, d.document_type, d.year, currentCounter - 1);
+    }
   }
 
   await Document.deleteOne({ document_id: documentId });
@@ -495,6 +507,81 @@ export async function duplicateDocument(
 }
 
 // ============================================
+// CONVERT DOCUMENT TYPE
+// ============================================
+
+/**
+ * Convert a document to a different type (e.g. quotation → invoice).
+ * Creates a new draft of the target type, copying all data from the source.
+ */
+export async function convertDocument(
+  tenantDb: string,
+  tenantId: string,
+  documentId: string,
+  targetType: DocumentType,
+  userId: string,
+  userName?: string
+): Promise<ServiceResult<IDocument>> {
+  if (!(DOCUMENT_TYPES as readonly string[]).includes(targetType)) {
+    return { success: false, error: "Invalid target document type", status: 400 };
+  }
+
+  const { Document } = await connectWithModels(tenantDb);
+
+  const original = await Document.findOne({ document_id: documentId }).lean();
+  if (!original) return { success: false, error: "Document not found", status: 404 };
+
+  const src = original as any;
+
+  if (src.document_type === targetType) {
+    return { success: false, error: "Il documento è già di questo tipo", status: 400 };
+  }
+
+  const company = await getCompanySnapshot(tenantDb);
+  const sourceLabel = DOCUMENT_TYPE_LABELS[src.document_type as DocumentType] || src.document_type;
+  const targetLabel = DOCUMENT_TYPE_LABELS[targetType];
+
+  const newDoc = await Document.create({
+    document_id: nanoid(12),
+    document_type: targetType,
+    year: new Date().getFullYear(),
+    status: "draft",
+    tenant_id: tenantId,
+    company,
+    customer: src.customer,
+    items: src.items,
+    totals: src.totals,
+    currency: src.currency,
+    payment_terms: src.payment_terms,
+    payment_method: src.payment_method,
+    due_date: src.due_date,
+    validity_days: src.validity_days,
+    notes: src.notes,
+    internal_notes: src.internal_notes,
+    footer_text: src.footer_text,
+    template_id: src.template_id,
+    source_document_id: documentId,
+    history: [
+      {
+        action: "created",
+        performed_by: userId,
+        performed_by_name: userName,
+        performed_at: new Date(),
+        details: `Convertito da ${sourceLabel} ${src.document_number || documentId} a ${targetLabel}`,
+      },
+    ],
+  });
+
+  // Track relation on original
+  await Document.updateOne(
+    { document_id: documentId },
+    { $push: { related_documents: (newDoc as any).document_id } }
+  );
+
+  return { success: true, data: newDoc as IDocument };
+}
+
+// ============================================
 // MARK AS SENT (update status after email)
 // ============================================
 
@@ -523,6 +610,93 @@ export async function markDocumentSent(
   }
 
   addHistory((doc as any).history, "sent", userId, userName, `Sent to ${recipientEmail}`);
+  await doc.save();
+
+  return { success: true, data: doc as IDocument };
+}
+
+// ============================================
+// MARK AS SENT MANUALLY
+// ============================================
+
+export async function markSentManually(
+  tenantDb: string,
+  documentId: string,
+  userId: string,
+  userName?: string
+): Promise<ServiceResult<IDocument>> {
+  const { Document } = await connectWithModels(tenantDb);
+
+  const doc = await Document.findOne({ document_id: documentId });
+  if (!doc) return { success: false, error: "Document not found", status: 404 };
+
+  if ((doc as any).status !== "finalized") {
+    return { success: false, error: "Solo documenti finalizzati possono essere contrassegnati come inviati", status: 400 };
+  }
+
+  (doc as any).status = "sent";
+  (doc as any).last_sent_at = new Date();
+  addHistory((doc as any).history, "sent", userId, userName, "Contrassegnato come inviato manualmente");
+  await doc.save();
+
+  return { success: true, data: doc as IDocument };
+}
+
+// ============================================
+// UPDATE DOCUMENT NUMBER (finalized only)
+// ============================================
+
+export async function updateDocumentNumber(
+  tenantDb: string,
+  tenantId: string,
+  documentId: string,
+  newNumber: number,
+  userId: string,
+  userName?: string
+): Promise<ServiceResult<IDocument>> {
+  const { Document } = await connectWithModels(tenantDb);
+
+  const doc = await Document.findOne({ document_id: documentId });
+  if (!doc) return { success: false, error: "Document not found", status: 404 };
+
+  const d = doc as any;
+  if (d.status !== "finalized") {
+    return { success: false, error: "Solo documenti finalizzati (non inviati) possono cambiare numero", status: 400 };
+  }
+
+  if (!Number.isInteger(newNumber) || newNumber < 1) {
+    return { success: false, error: "Il numero deve essere un intero positivo", status: 400 };
+  }
+
+  // Get numbering settings for formatting
+  const settings = await getDocumentSettings(tenantDb, tenantId);
+  const config = settings.numbering.find((n) => n.document_type === d.document_type);
+  const format = config?.format || DEFAULT_NUMBERING_FORMATS[d.document_type as DocumentType];
+  const padding = config?.padding || 5;
+
+  const newFormattedNumber = formatDocumentNumber(format, d.year, newNumber, padding);
+
+  // Check uniqueness
+  const existing = await Document.findOne({
+    tenant_id: tenantId,
+    document_number: newFormattedNumber,
+    document_id: { $ne: documentId },
+  });
+  if (existing) {
+    return { success: false, error: `Il numero ${newFormattedNumber} è già utilizzato da un altro documento`, status: 409 };
+  }
+
+  const oldNumber = d.document_number;
+  d.document_number = newFormattedNumber;
+  d.document_number_raw = newNumber;
+
+  // Update counter to max(current, newNumber) to avoid collisions
+  const currentCounter = await getDocumentCounter(tenantDb, d.document_type, d.year);
+  if (newNumber > currentCounter) {
+    await setDocumentCounter(tenantDb, d.document_type, d.year, newNumber);
+  }
+
+  addHistory(d.history, "number_updated", userId, userName, `Numero aggiornato da ${oldNumber} a ${newFormattedNumber}`);
   await doc.save();
 
   return { success: true, data: doc as IDocument };

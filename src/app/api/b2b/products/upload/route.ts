@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import * as XLSX from "xlsx";
+import { readExcel } from "@/lib/utils/excel";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,12 +41,12 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Parse Excel/CSV file
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
+    const workbook = await readExcel(buffer);
+    const sheetName = workbook.sheetNames[0];
+    const worksheet = workbook.sheets[sheetName];
 
     // Convert to JSON
-    const rawData: any[] = XLSX.utils.sheet_to_json(worksheet);
+    const rawData: any[] = worksheet.toJSON();
 
     if (rawData.length === 0) {
       return NextResponse.json(

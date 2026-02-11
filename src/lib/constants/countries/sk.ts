@@ -88,6 +88,7 @@ export const SK_CONFIG: CountryConfig = {
         ico: "IČO",
         dic: "DIČ",
         ic_dph: "IČ DPH",
+        amount_due: "Suma na úhradu",
       },
       email: {
         dear_customer: "Vážený",
@@ -146,6 +147,7 @@ export const SK_CONFIG: CountryConfig = {
         ico: "Company ID",
         dic: "Tax ID",
         ic_dph: "VAT ID",
+        amount_due: "Amount Due",
       },
       email: {
         dear_customer: "Dear",

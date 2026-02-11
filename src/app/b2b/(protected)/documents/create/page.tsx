@@ -6,6 +6,7 @@ import {
   Search,
   Plus,
   Trash2,
+  Copy,
   Loader2,
   Save,
   FileText,
@@ -14,7 +15,9 @@ import {
   MessageSquare,
   CreditCard,
   X,
+  UserPlus,
 } from "lucide-react";
+import { CreateCustomerModal } from "@/components/documents/CreateCustomerModal";
 import {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_LABELS,
@@ -28,6 +31,11 @@ import {
   calculateDocumentTotals,
   getNextDocumentLineNumber,
 } from "@/lib/types/document";
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+  toDecimalInputValue,
+} from "@/lib/utils/decimal-input";
 
 interface CustomerResult {
   customer_id: string;
@@ -51,9 +59,14 @@ export default function CreateDocumentPage() {
   const [customerResults, setCustomerResults] = useState<CustomerResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showCreateCustomer, setShowCreateCustomer] = useState(false);
 
   const [items, setItems] = useState<DocumentLineItem[]>([]);
+  // Display strings for decimal inputs (keyed by "lineNumber-field")
+  const [inputStrings, setInputStrings] = useState<Record<string, string>>({});
   const [paymentTerms, setPaymentTerms] = useState("");
+  const [customDays, setCustomDays] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
 
@@ -106,6 +119,12 @@ export default function CreateDocumentPage() {
       line_total: 0,
     };
     setItems([...items, newItem]);
+    setInputStrings((prev) => ({
+      ...prev,
+      [`${lineNumber}-quantity`]: "1",
+      [`${lineNumber}-unit_price`]: "0",
+      [`${lineNumber}-discount_percent`]: "",
+    }));
   };
 
   const updateItem = (
@@ -127,8 +146,48 @@ export default function CreateDocumentPage() {
     setItems(updated);
   };
 
+  const handleDecimalChange = (index: number, field: string, rawValue: string) => {
+    const normalized = normalizeDecimalInput(rawValue);
+    if (normalized === null) return;
+    const lineNumber = items[index].line_number;
+    setInputStrings((prev) => ({ ...prev, [`${lineNumber}-${field}`]: normalized }));
+    const numValue = parseDecimalValue(normalized);
+    updateItem(index, field, numValue ?? 0);
+  };
+
+  const getInputValue = (lineNumber: number, field: string, numericValue: number) => {
+    const key = `${lineNumber}-${field}`;
+    return key in inputStrings ? inputStrings[key] : toDecimalInputValue(numericValue);
+  };
+
+  const duplicateItem = (index: number) => {
+    const source = items[index];
+    const lineNumber = getNextDocumentLineNumber(items);
+    const newItem: DocumentLineItem = {
+      ...source,
+      line_number: lineNumber,
+    };
+    const updated = [...items];
+    updated.splice(index + 1, 0, newItem);
+    setItems(updated);
+    setInputStrings((prev) => ({
+      ...prev,
+      [`${lineNumber}-quantity`]: toDecimalInputValue(source.quantity),
+      [`${lineNumber}-unit_price`]: toDecimalInputValue(source.unit_price),
+      [`${lineNumber}-discount_percent`]: source.discount_percent ? toDecimalInputValue(source.discount_percent) : "",
+    }));
+  };
+
   const removeItem = (index: number) => {
+    const lineNumber = items[index].line_number;
     setItems(items.filter((_, i) => i !== index));
+    setInputStrings((prev) => {
+      const next = { ...prev };
+      delete next[`${lineNumber}-quantity`];
+      delete next[`${lineNumber}-unit_price`];
+      delete next[`${lineNumber}-discount_percent`];
+      return next;
+    });
   };
 
   const docTotals = calculateDocumentTotals(items);
@@ -150,6 +209,12 @@ export default function CreateDocumentPage() {
           customer_id: customerId,
           items,
           payment_terms: paymentTerms || undefined,
+          due_date:
+            paymentTerms === "custom_date" && dueDate
+              ? dueDate
+              : paymentTerms === "custom_days" && customDays
+                ? new Date(Date.now() + parseInt(customDays) * 86400000).toISOString()
+                : undefined,
           notes: notes || undefined,
           internal_notes: internalNotes || undefined,
         }),
@@ -249,7 +314,11 @@ export default function CreateDocumentPage() {
               </label>
               <select
                 value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
+                onChange={(e) => {
+                  setPaymentTerms(e.target.value);
+                  if (e.target.value !== "custom_days") setCustomDays("");
+                  if (e.target.value !== "custom_date") setDueDate("");
+                }}
                 className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
               >
                 <option value="">— Nessuno —</option>
@@ -259,6 +328,30 @@ export default function CreateDocumentPage() {
                   </option>
                 ))}
               </select>
+              {paymentTerms === "custom_days" && (
+                <div className="mt-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    placeholder="Numero di giorni..."
+                    className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  />
+                </div>
+              )}
+              {paymentTerms === "custom_date" && (
+                <div className="mt-2">
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="relative">
@@ -293,10 +386,9 @@ export default function CreateDocumentPage() {
                         setCustomerSearch(e.target.value);
                         searchCustomers(e.target.value);
                       }}
-                      onFocus={() =>
-                        customerResults.length > 0 &&
-                        setShowCustomerDropdown(true)
-                      }
+                      onFocus={() => {
+                        if (customerSearch.length >= 2) setShowCustomerDropdown(true);
+                      }}
                       onBlur={() =>
                         setTimeout(() => setShowCustomerDropdown(false), 200)
                       }
@@ -327,6 +419,33 @@ export default function CreateDocumentPage() {
                           </div>
                         </button>
                       ))}
+                      <button
+                        onMouseDown={() => {
+                          setShowCustomerDropdown(false);
+                          setShowCreateCustomer(true);
+                        }}
+                        className="w-full text-left px-3 py-2.5 hover:bg-[#009688]/5 text-sm transition-colors border-t border-[#ebe9f1] flex items-center gap-2 text-[#009688]"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span className="font-medium">Crea nuovo cliente</span>
+                      </button>
+                    </div>
+                  )}
+                  {showCustomerDropdown && customerResults.length === 0 && customerSearch.length >= 2 && !isSearching && (
+                    <div className="absolute z-50 top-full mt-1 w-full bg-white border border-[#ebe9f1] rounded-lg shadow-lg">
+                      <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                        Nessun cliente trovato
+                      </p>
+                      <button
+                        onMouseDown={() => {
+                          setShowCustomerDropdown(false);
+                          setShowCreateCustomer(true);
+                        }}
+                        className="w-full text-left px-3 py-2.5 hover:bg-[#009688]/5 text-sm transition-colors border-t border-[#ebe9f1] flex items-center gap-2 text-[#009688]"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span className="font-medium">Crea nuovo cliente</span>
+                      </button>
                     </div>
                   )}
                 </>
@@ -394,7 +513,7 @@ export default function CreateDocumentPage() {
                   <th className="text-right px-4 py-3 font-medium text-[#5e5873] w-32">
                     Totale
                   </th>
-                  <th className="w-12"></th>
+                  <th className="w-20"></th>
                 </tr>
               </thead>
               <tbody>
@@ -418,12 +537,8 @@ export default function CreateDocumentPage() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(",", ".");
-                          const n = parseFloat(v);
-                          if (!isNaN(n)) updateItem(idx, "quantity", n);
-                        }}
+                        value={getInputValue(item.line_number, "quantity", item.quantity)}
+                        onChange={(e) => handleDecimalChange(idx, "quantity", e.target.value)}
                         className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                       />
                     </td>
@@ -431,12 +546,8 @@ export default function CreateDocumentPage() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={item.unit_price}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(",", ".");
-                          const n = parseFloat(v);
-                          if (!isNaN(n)) updateItem(idx, "unit_price", n);
-                        }}
+                        value={getInputValue(item.line_number, "unit_price", item.unit_price)}
+                        onChange={(e) => handleDecimalChange(idx, "unit_price", e.target.value)}
                         className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                       />
                     </td>
@@ -458,16 +569,8 @@ export default function CreateDocumentPage() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={item.discount_percent || ""}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(",", ".");
-                          const n = parseFloat(v);
-                          updateItem(
-                            idx,
-                            "discount_percent",
-                            isNaN(n) ? 0 : n,
-                          );
-                        }}
+                        value={getInputValue(item.line_number, "discount_percent", item.discount_percent || 0)}
+                        onChange={(e) => handleDecimalChange(idx, "discount_percent", e.target.value)}
                         placeholder="0"
                         className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                       />
@@ -479,12 +582,22 @@ export default function CreateDocumentPage() {
                       {formatCurrency(item.line_total)}
                     </td>
                     <td className="px-2 py-2.5">
-                      <button
-                        onClick={() => removeItem(idx)}
-                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          onClick={() => duplicateItem(idx)}
+                          title="Duplica riga"
+                          className="p-1.5 text-slate-400 hover:text-[#009688] hover:bg-[#009688]/5 rounded transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => removeItem(idx)}
+                          title="Elimina riga"
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -566,6 +679,23 @@ export default function CreateDocumentPage() {
           </div>
         </div>
       </div>
+
+      {/* Create Customer Modal */}
+      {showCreateCustomer && (
+        <CreateCustomerModal
+          onCreated={(customer) => {
+            setCustomerId(customer.customer_id);
+            setCustomerName(
+              customer.company_name ||
+                [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
+                customer.email,
+            );
+            setCustomerSearch("");
+            setShowCreateCustomer(false);
+          }}
+          onClose={() => setShowCreateCustomer(false)}
+        />
+      )}
     </div>
   );
 }

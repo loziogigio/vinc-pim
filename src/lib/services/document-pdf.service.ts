@@ -6,13 +6,24 @@
  */
 
 import { connectWithModels } from "@/lib/db/connection";
-import { DOCUMENT_TYPE_LABELS } from "@/lib/constants/document";
+import { DOCUMENT_TYPE_LABELS, PAYMENT_TERMS_LABELS } from "@/lib/constants/document";
+import type { PaymentTerms } from "@/lib/constants/document";
 import type { TemplateHeaderConfig, TemplateFooterConfig } from "@/lib/constants/document";
 import { getLabels, getLocale } from "@/lib/constants/countries";
 import type { CountryLabels } from "@/lib/constants/countries/types";
 import type { IDocument } from "@/lib/db/models/document";
 import type { IDocumentTemplate } from "@/lib/db/models/document-template";
 import type { DocumentLineItem, DocumentTotals, VatBreakdownEntry } from "@/lib/types/document";
+
+/**
+ * Resolve payment_terms raw value to a human-readable label.
+ * For custom_date / custom_days, returns empty string (the due_date line handles display).
+ */
+function resolvePaymentTermsLabel(raw?: string): string {
+  if (!raw) return "";
+  if (raw === "custom_date" || raw === "custom_days") return "";
+  return PAYMENT_TERMS_LABELS[raw as PaymentTerms] || raw;
+}
 
 // ============================================
 // TEMPLATE RENDERING
@@ -217,8 +228,9 @@ function buildDisplayFields(
   if (d.footer_text) legalFooter += `<br>${d.footer_text}`;
 
   // Payment section (for Formale)
+  const paymentTermsLabel = resolvePaymentTermsLabel(d.payment_terms);
   const paymentParts: string[] = [];
-  if (d.payment_terms) paymentParts.push(`<div class="payment-line">${labels.template.payment_conditions}: ${d.payment_terms}</div>`);
+  if (paymentTermsLabel) paymentParts.push(`<div class="payment-line">${labels.template.payment_conditions}: ${paymentTermsLabel}</div>`);
   if (dueDateStr) paymentParts.push(`<div class="payment-line">${labels.template.due_date}: ${dueDateStr}</div>`);
 
   return {
@@ -237,20 +249,38 @@ function buildDisplayFields(
       : "",
     "customer.formal_info": custFormalParts.join("<br>"),
     "document.due_date_line": dueDateStr ? `${labels.template.due_date}: ${dueDateStr}<br>` : "",
-    "document.payment_terms_line": d.payment_terms ? `${labels.template.payment_terms_label}: ${d.payment_terms}` : "",
+    "document.payment_terms_line": paymentTermsLabel ? `${labels.template.payment_terms_label}: ${paymentTermsLabel}` : "",
     "document.due_date_card": dueDateStr
       ? `<div class="card-detail">${labels.template.due_date}: ${dueDateStr}</div>`
       : "",
-    "document.payment_terms_card": d.payment_terms
-      ? `<div class="card-detail">${labels.template.payment_terms_label}: ${d.payment_terms}</div>`
+    "document.payment_terms_card": paymentTermsLabel
+      ? `<div class="card-detail">${labels.template.payment_terms_label}: ${paymentTermsLabel}</div>`
       : "",
     "document.meta_line": dueDateStr
-      ? `<div class="meta">${labels.template.due_date}: ${dueDateStr}${d.payment_terms ? ` · ${d.payment_terms}` : ""}</div>`
+      ? `<div class="meta">${labels.template.due_date}: ${dueDateStr}${paymentTermsLabel ? ` · ${paymentTermsLabel}` : ""}</div>`
       : "",
     "document.payment_section": paymentParts.join("\n"),
     "totals.discount_row": discountRowHtml,
     notes_section: notesHtml,
     footer_text_section: d.footer_text ? `<div class="footer-text">${d.footer_text}</div>` : "",
+
+    // Conditional meta rows (output full <tr> or empty string)
+    "document.due_date_meta_row": dueDateStr
+      ? `<tr><td class="lbl">${labels.template.due_date}</td><td>${dueDateStr}</td></tr>`
+      : "",
+    "document.payment_terms_meta_row": paymentTermsLabel
+      ? `<tr><td class="lbl">${labels.template.payment_terms_label}</td><td>${paymentTermsLabel}</td></tr>`
+      : "",
+
+    // Amount due block (full div or empty)
+    "amount_due_block": dueDateStr
+      ? `<div class="amount-due"><div class="amount-due-text">${formatCurrency(d.totals?.total || 0, currency, locale)} ${labels.template.due_date.toLowerCase()} ${dueDateStr}</div></div>`
+      : "",
+
+    // 2-column VAT breakdown (label + vat amount only, for simple totals tables)
+    "vat_breakdown_simple": (d.totals?.vat_breakdown || []).map((v: VatBreakdownEntry) =>
+      `<tr><td>${labels.template.vat} ${v.rate}%</td><td class="val">${formatCurrency(v.vat, currency, locale)}</td></tr>`
+    ).join(""),
   };
 }
 
@@ -397,13 +427,14 @@ export function renderDocumentHtml(
     const draftLabel = labels.template.draft || "BOZZA";
 
     // Auto-generated header/footer from template config
+    const paymentTermsLabel = resolvePaymentTermsLabel(d.payment_terms);
     const headerHtml = template.header_config
       ? renderConfigHeader(template.header_config, companyData, {
           type_label: typeLabel,
           document_number: d.document_number || draftLabel,
           date: docDate,
           due_date: dueDateStr || undefined,
-          payment_terms: d.payment_terms,
+          payment_terms: paymentTermsLabel || undefined,
         }, labels)
       : "";
     const footerHtml = template.footer_config
@@ -438,7 +469,7 @@ export function renderDocumentHtml(
       "document.document_number": d.document_number || draftLabel,
       "document.date": docDate,
       "document.due_date": dueDateStr,
-      "document.payment_terms": d.payment_terms,
+      "document.payment_terms": paymentTermsLabel || undefined,
       "document.type_label": typeLabel,
       "document.notes": d.notes,
       "document.footer_text": d.footer_text,
@@ -482,6 +513,39 @@ function renderStandardTemplate(
     [d.customer?.first_name, d.customer?.last_name].filter(Boolean).join(" ") || "—";
   const tpl = labels.template;
   const draftLabel = tpl.draft || "BOZZA";
+  const fallbackPtLabel = resolvePaymentTermsLabel(d.payment_terms);
+  const docDate = formatDate(d.finalized_at || d.created_at, locale);
+  const dueDateStr = formatDate(d.due_date, locale);
+  const totalFormatted = formatCurrency(d.totals?.total || 0, currency, locale);
+
+  // Build company address lines
+  const companyLines: string[] = [];
+  if (d.company?.address_line1) companyLines.push(d.company.address_line1);
+  if (d.company?.address_line2) companyLines.push(d.company.address_line2);
+
+  // Build customer info lines
+  const customerLines: string[] = [];
+  if (addr) {
+    if (addr.street_address) customerLines.push(`${addr.street_address}${addr.street_address_2 ? `, ${addr.street_address_2}` : ""}`);
+    customerLines.push(`${addr.postal_code || ""} ${addr.city || ""} ${addr.province ? `(${addr.province})` : ""}`.trim());
+    if (addr.country && addr.country !== "IT") customerLines.push(addr.country);
+  }
+  if (d.customer?.email) customerLines.push(d.customer.email);
+  const customerFiscalParts: string[] = [];
+  if (d.customer?.vat_number) customerFiscalParts.push(`${tpl.vat_number} ${d.customer.vat_number}`);
+  if (d.customer?.fiscal_code) customerFiscalParts.push(`${tpl.fiscal_code} ${d.customer.fiscal_code}`);
+  if (customerFiscalParts.length) customerLines.push(customerFiscalParts.join(" - "));
+  if (d.customer?.pec_email) customerLines.push(`PEC: ${d.customer.pec_email}`);
+  if (d.customer?.sdi_code) customerLines.push(`SDI: ${d.customer.sdi_code}`);
+
+  // Line items as simple rows: Description, Qty, Unit price, Amount
+  const itemRows = (d.items || []).map((item: DocumentLineItem) => `
+      <tr>
+        <td class="item-desc">${item.description}${item.sku ? `<br><span class="sku">${item.sku}</span>` : ""}${item.discount_percent ? `<br><span class="sku">${tpl.discount}: ${item.discount_percent}%</span>` : ""}</td>
+        <td class="item-qty">${item.quantity}${item.quantity_unit ? ` ${item.quantity_unit}` : ""}</td>
+        <td class="item-price">${formatCurrency(item.unit_price, currency, locale)}</td>
+        <td class="item-amount">${formatCurrency(item.line_total, currency, locale)}</td>
+      </tr>`).join("");
 
   return `<!DOCTYPE html>
 <html>
@@ -489,112 +553,163 @@ function renderStandardTemplate(
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5; }
-  .container { max-width: 800px; margin: 0 auto; padding: 40px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-  .company-info { max-width: 55%; }
-  .document-info { text-align: right; }
-  .document-title { font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 8px; }
-  .document-number { font-size: 16px; color: #6b7280; }
-  .parties { display: flex; justify-content: space-between; margin-bottom: 32px; }
-  .party { width: 48%; }
-  .party-label { font-size: 11px; text-transform: uppercase; color: #9ca3af; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
-  .party-name { font-size: 15px; font-weight: 600; color: #111827; }
-  table.items { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-  table.items th { background: #f9fafb; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #6b7280; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-  table.items th:nth-child(n+3) { text-align: center; }
-  table.items th:last-child, table.items th:nth-child(4) { text-align: right; }
-  .totals-section { display: flex; justify-content: flex-end; }
-  .totals-table { width: 300px; }
-  .totals-table td { padding: 6px 12px; }
-  .totals-table .total-row td { font-size: 16px; font-weight: 700; border-top: 2px solid #111827; padding-top: 12px; }
-  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
-  .footer-notes { font-size: 12px; color: #6b7280; }
-  .legal-info { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    color: #000;
+    line-height: 1.5;
+  }
+  .page { padding: 0; }
+
+  /* Header: title left, logo right */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .doc-title { font-size: 28px; font-weight: 600; color: #000; }
+  .logo { max-height: 44px; max-width: 160px; }
+
+  /* Document meta */
+  .doc-meta { margin-bottom: 24px; }
+  .doc-meta table { border-collapse: collapse; }
+  .doc-meta td { padding: 1px 0; vertical-align: top; }
+  .doc-meta .lbl { font-weight: 700; padding-right: 12px; white-space: nowrap; }
+
+  /* Parties */
+  .parties { display: flex; gap: 48px; margin-bottom: 28px; }
+  .party { flex: 1; }
+  .party-name { font-weight: 700; margin-bottom: 2px; }
+  .party-detail { line-height: 1.5; }
+  .party-label { font-weight: 700; margin-bottom: 2px; }
+
+  /* Amount due */
+  .amount-due { margin-bottom: 40px; }
+  .amount-due-text { font-size: 20px; font-weight: 700; color: #000; }
+
+  /* Items table */
+  .items { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+  .items th {
+    text-align: left;
+    padding: 8px 0;
+    font-weight: 400;
+    color: #000;
+    border-bottom: 1px solid #000;
+  }
+  .items th.right { text-align: right; }
+  .items td { padding: 10px 0; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .item-desc { }
+  .item-qty { text-align: right; width: 60px; }
+  .item-price { text-align: right; width: 100px; }
+  .item-amount { text-align: right; width: 100px; }
+  .sku { font-size: 11px; color: #6b7280; }
+
+  /* Totals */
+  .totals-wrap { display: flex; justify-content: flex-end; }
+  .totals { width: 50%; }
+  .totals tr td { padding: 3px 0; }
+  .totals .val { text-align: right; }
+  .totals .total-row td { font-weight: 700; }
+
+  /* Notes */
+  .notes { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; line-height: 1.5; }
+  .footer-text { margin-top: 12px; font-size: 11px; color: #9ca3af; }
 </style>
 </head>
 <body>
-<div class="container">
+<div class="page">
+  <!-- Header -->
   <div class="header">
-    <div class="company-info">
-      ${d.company?.logo_url ? `<img src="${d.company.logo_url}" alt="" style="max-height: 60px; max-width: 200px; margin-bottom: 12px;" />` : ""}
-      <div style="font-size: 16px; font-weight: 700; color: #111827;">${d.company?.legal_name || ""}</div>
-      <div class="legal-info">
-        ${[d.company?.address_line1, d.company?.address_line2].filter(Boolean).join(", ")}<br>
-        ${d.company?.vat_number ? `${tpl.vat_number}: ${d.company.vat_number}` : ""}
-        ${d.company?.fiscal_code ? ` - ${tpl.fiscal_code}: ${d.company.fiscal_code}` : ""}<br>
-        ${d.company?.phone ? `Tel: ${d.company.phone}` : ""}
-        ${d.company?.email ? ` - ${d.company.email}` : ""}
+    <div class="doc-title">${typeLabel}</div>
+    ${d.company?.logo_url ? `<img src="${d.company.logo_url}" alt="" class="logo" />` : ""}
+  </div>
+
+  <!-- Document Meta -->
+  <div class="doc-meta">
+    <table>
+      <tr>
+        <td class="lbl">${typeLabel} n.</td>
+        <td>${d.document_number || draftLabel}</td>
+      </tr>
+      <tr>
+        <td class="lbl">${tpl.date}</td>
+        <td>${docDate}</td>
+      </tr>
+      ${dueDateStr ? `<tr><td class="lbl">${tpl.due_date}</td><td>${dueDateStr}</td></tr>` : ""}
+      ${fallbackPtLabel ? `<tr><td class="lbl">${tpl.payment_terms_label}</td><td>${fallbackPtLabel}</td></tr>` : ""}
+    </table>
+  </div>
+
+  <!-- Parties -->
+  <div class="parties">
+    <div class="party">
+      <div class="party-name">${d.company?.legal_name || ""}</div>
+      <div class="party-detail">
+        ${companyLines.join("<br>")}
+        ${d.company?.vat_number ? `<br>${tpl.vat_number} ${d.company.vat_number}` : ""}
+        ${d.company?.fiscal_code ? ` - ${tpl.fiscal_code} ${d.company.fiscal_code}` : ""}
+        ${d.company?.phone ? `<br>Tel: ${d.company.phone}` : ""}
+        ${d.company?.email ? `<br>${d.company.email}` : ""}
         ${d.company?.pec_email ? `<br>PEC: ${d.company.pec_email}` : ""}
       </div>
     </div>
-    <div class="document-info">
-      <div class="document-title">${typeLabel}</div>
-      <div class="document-number">${d.document_number || draftLabel}</div>
-      <div style="margin-top: 12px; font-size: 12px; color: #6b7280;">
-        ${tpl.date}: ${formatDate(d.finalized_at || d.created_at, locale)}<br>
-        ${d.due_date ? `${tpl.due_date}: ${formatDate(d.due_date, locale)}<br>` : ""}
-        ${d.payment_terms ? `${tpl.payment_terms_label}: ${d.payment_terms}` : ""}
-      </div>
-    </div>
-  </div>
-
-  <div class="parties">
     <div class="party">
       <div class="party-label">${tpl.recipient}</div>
       <div class="party-name">${customerName}</div>
-      ${addr ? `<div class="legal-info">${addr.street_address}${addr.street_address_2 ? `, ${addr.street_address_2}` : ""}<br>${addr.postal_code} ${addr.city} (${addr.province})</div>` : ""}
-      <div class="legal-info">
-        ${d.customer?.vat_number ? `${tpl.vat_number}: ${d.customer.vat_number}` : ""}
-        ${d.customer?.fiscal_code ? ` - ${tpl.fiscal_code}: ${d.customer.fiscal_code}` : ""}
-        ${d.customer?.pec_email ? `<br>PEC: ${d.customer.pec_email}` : ""}
-        ${d.customer?.sdi_code ? ` - SDI: ${d.customer.sdi_code}` : ""}
+      <div class="party-detail">
+        ${customerLines.join("<br>")}
       </div>
     </div>
   </div>
 
+  <!-- Amount Due -->
+  ${dueDateStr ? `
+  <div class="amount-due">
+    <div class="amount-due-text">${totalFormatted} ${tpl.due_date.toLowerCase()} ${dueDateStr}</div>
+  </div>` : ""}
+
+  <!-- Line Items -->
   <table class="items">
     <thead>
       <tr>
-        <th style="width:40px;">#</th>
         <th>${tpl.description}</th>
-        <th style="width:80px;">${tpl.quantity}</th>
-        <th style="width:100px;">${tpl.unit_price}</th>
-        <th style="width:70px;">${tpl.discount}</th>
-        <th style="width:60px;">${tpl.vat}</th>
-        <th style="width:110px;">${tpl.total}</th>
+        <th class="right" style="width:60px;">${tpl.quantity}</th>
+        <th class="right" style="width:100px;">${tpl.unit_price}</th>
+        <th class="right" style="width:100px;">${tpl.total}</th>
       </tr>
     </thead>
     <tbody>
-      ${renderLineItemsHtml(d.items || [], currency, locale)}
+      ${itemRows}
     </tbody>
   </table>
 
-  <div class="totals-section">
-    <table class="totals-table">
+  <!-- Totals -->
+  <div class="totals-wrap">
+    <table class="totals">
       <tr>
-        <td style="color:#6b7280;">${tpl.subtotal}</td>
-        <td style="text-align:right;">${formatCurrency(d.totals?.subtotal_net || 0, currency, locale)}</td>
+        <td>${tpl.subtotal}</td>
+        <td class="val">${formatCurrency(d.totals?.subtotal_net || 0, currency, locale)}</td>
       </tr>
       ${(d.totals?.vat_breakdown || []).map((v: VatBreakdownEntry) => `
       <tr>
-        <td style="color:#6b7280;">${tpl.vat} ${v.rate}%</td>
-        <td style="text-align:right;">${formatCurrency(v.vat, currency, locale)}</td>
+        <td>${tpl.vat} ${v.rate}%</td>
+        <td class="val">${formatCurrency(v.vat, currency, locale)}</td>
       </tr>`).join("")}
       ${d.totals?.total_discount ? `
       <tr>
-        <td style="color:#6b7280;">${tpl.discount}</td>
-        <td style="text-align:right;">-${formatCurrency(d.totals.total_discount, currency, locale)}</td>
+        <td>${tpl.discount}</td>
+        <td class="val">-${formatCurrency(d.totals.total_discount, currency, locale)}</td>
       </tr>` : ""}
-      <tr class="total-row">
+      <tr>
         <td>${tpl.total}</td>
-        <td style="text-align:right;">${formatCurrency(d.totals?.total || 0, currency, locale)}</td>
+        <td class="val">${totalFormatted}</td>
+      </tr>
+      <tr class="total-row">
+        <td>${tpl.amount_due}</td>
+        <td class="val">${totalFormatted}</td>
       </tr>
     </table>
   </div>
 
-  ${d.notes ? `<div class="footer"><div class="footer-notes">${d.notes}</div></div>` : ""}
-  ${d.footer_text ? `<div style="margin-top:16px;font-size:11px;color:#9ca3af;">${d.footer_text}</div>` : ""}
+  <!-- Notes -->
+  ${d.notes ? `<div class="notes">${d.notes}</div>` : ""}
+  ${d.footer_text ? `<div class="footer-text">${d.footer_text}</div>` : ""}
 </div>
 </body>
 </html>`;
@@ -646,7 +761,7 @@ export async function generateDocumentPdf(
 
     const pageSize = template?.page_size || "A4";
     const orientation = template?.orientation || "portrait";
-    const margins = template?.margins || { top: 15, right: 15, bottom: 15, left: 15 };
+    const margins = template?.margins || { top: 20, right: 20, bottom: 20, left: 20 };
 
     const pdfBuffer = await page.pdf({
       format: pageSize as any,

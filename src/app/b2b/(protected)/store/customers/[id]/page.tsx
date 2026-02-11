@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import type { Customer, Address } from "@/lib/types/customer";
 import type { Order } from "@/lib/types/order";
+import { CustomerTagsCard } from "@/components/orders/CustomerTagsCard";
+import { AddressTagOverrides } from "@/components/orders/AddressTagOverrides";
 import {
   ArrowLeft,
   Building2,
@@ -738,6 +740,9 @@ export default function CustomerDetailPage({
         </div>
       </div>
 
+      {/* Customer Tags */}
+      <CustomerTagsCard customerId={id} />
+
       {/* Addresses */}
       <div className="rounded-lg bg-card shadow-sm">
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -804,6 +809,11 @@ export default function CustomerDetailPage({
                           Code: {address.external_code}
                         </p>
                       )}
+                      {/* Address Tag Overrides */}
+                      <AddressTagOverrides
+                        customerId={id}
+                        addressId={address.address_id}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

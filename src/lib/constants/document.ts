@@ -88,6 +88,14 @@ export function canEditDocument(status: DocumentStatus): boolean {
 }
 
 /**
+ * Check if a document can be deleted.
+ * Drafts and finalized (not yet sent) documents can be deleted.
+ */
+export function canDeleteDocument(status: DocumentStatus): boolean {
+  return status === "draft" || status === "finalized";
+}
+
+/**
  * Check if a document is in a terminal state.
  */
 export function isTerminalDocumentStatus(status: DocumentStatus): boolean {
@@ -121,6 +129,7 @@ export const DOCUMENT_HISTORY_ACTIONS = [
   "duplicated",
   "pdf_generated",
   "number_assigned",
+  "number_updated",
 ] as const;
 
 export type DocumentHistoryAction = (typeof DOCUMENT_HISTORY_ACTIONS)[number];
@@ -136,17 +145,21 @@ export const PAYMENT_TERMS = [
   "NET60",
   "NET90",
   "COD",
+  "custom_days",
+  "custom_date",
 ] as const;
 
 export type PaymentTerms = (typeof PAYMENT_TERMS)[number];
 
 export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
   immediate: "Pagamento Immediato",
-  NET15: "30 giorni",
+  NET15: "15 giorni",
   NET30: "30 giorni",
   NET60: "60 giorni",
   NET90: "90 giorni",
   COD: "Contrassegno",
+  custom_days: "Personalizzato (giorni)",
+  custom_date: "Data specifica",
 };
 
 // ============================================

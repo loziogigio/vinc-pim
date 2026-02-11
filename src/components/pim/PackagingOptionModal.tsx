@@ -11,6 +11,11 @@ import {
   formatPrice,
   syncPackagePrices,
 } from "@/lib/utils/packaging";
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+  toDecimalInputValue,
+} from "@/lib/utils/decimal-input";
 
 interface PackagingOptionModalProps {
   open: boolean;
@@ -56,6 +61,7 @@ export function PackagingOptionModal({
 }: PackagingOptionModalProps) {
   const [formData, setFormData] = useState<PackagingOption>(emptyOption);
   const [qtyInput, setQtyInput] = useState("1"); // Separate string state for qty input
+  const [pricingInputs, setPricingInputs] = useState<Record<string, string>>({});
   const isEditMode = option !== null;
 
   useEffect(() => {
@@ -78,9 +84,18 @@ export function PackagingOptionModal({
             calculateUnitPrice(pricing.sale, option.qty),
         };
         setFormData({ ...option, pricing: migratedPricing });
+        // Initialize string inputs from pricing values
+        setPricingInputs({
+          list_unit: toDecimalInputValue(migratedPricing.list_unit),
+          retail_unit: toDecimalInputValue(migratedPricing.retail_unit),
+          sale_unit: toDecimalInputValue(migratedPricing.sale_unit),
+          list_discount_pct: toDecimalInputValue(pricing.list_discount_pct),
+          sale_discount_pct: toDecimalInputValue(pricing.sale_discount_pct),
+        });
       } else {
         setQtyInput("1");
         setFormData({ ...emptyOption, position: 1 });
+        setPricingInputs({});
       }
     }
   }, [open, option]);
@@ -107,6 +122,13 @@ export function PackagingOptionModal({
       ...prev,
       pricing: { ...prev.pricing, [field]: value },
     }));
+  };
+
+  const updatePricingInput = (field: string, rawValue: string) => {
+    const normalized = normalizeDecimalInput(rawValue);
+    if (normalized === null) return;
+    setPricingInputs((prev) => ({ ...prev, [field]: normalized }));
+    updatePricing(field, parseDecimalValue(normalized));
   };
 
   const updateLabel = (value: string) => {
@@ -251,11 +273,10 @@ export function PackagingOptionModal({
                   List (Unit)
                 </label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.pricing?.list_unit ?? formData.pricing?.list ?? ""}
-                  onChange={(e) => updatePricing("list_unit", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.list_unit ?? toDecimalInputValue(formData.pricing?.list_unit ?? formData.pricing?.list)}
+                  onChange={(e) => updatePricingInput("list_unit", e.target.value)}
                   placeholder="0.00"
                 />
                 {parsedQty !== 1 && formData.pricing?.list_unit && (
@@ -269,11 +290,10 @@ export function PackagingOptionModal({
                   Retail (Unit)
                 </label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.pricing?.retail_unit ?? formData.pricing?.retail ?? ""}
-                  onChange={(e) => updatePricing("retail_unit", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.retail_unit ?? toDecimalInputValue(formData.pricing?.retail_unit ?? formData.pricing?.retail)}
+                  onChange={(e) => updatePricingInput("retail_unit", e.target.value)}
                   placeholder="0.00"
                 />
                 {parsedQty !== 1 && formData.pricing?.retail_unit && (
@@ -287,11 +307,10 @@ export function PackagingOptionModal({
                   Sale (Unit)
                 </label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.pricing?.sale_unit ?? formData.pricing?.sale ?? ""}
-                  onChange={(e) => updatePricing("sale_unit", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.sale_unit ?? toDecimalInputValue(formData.pricing?.sale_unit ?? formData.pricing?.sale)}
+                  onChange={(e) => updatePricingInput("sale_unit", e.target.value)}
                   placeholder="0.00"
                 />
                 {parsedQty !== 1 && formData.pricing?.sale_unit && (
@@ -324,12 +343,10 @@ export function PackagingOptionModal({
                   List Discount %
                 </label>
                 <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={formData.pricing?.list_discount_pct || ""}
-                  onChange={(e) => updatePricing("list_discount_pct", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.list_discount_pct ?? toDecimalInputValue(formData.pricing?.list_discount_pct)}
+                  onChange={(e) => updatePricingInput("list_discount_pct", e.target.value)}
                   placeholder="0"
                 />
               </div>
@@ -338,12 +355,10 @@ export function PackagingOptionModal({
                   Sale Discount %
                 </label>
                 <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={formData.pricing?.sale_discount_pct || ""}
-                  onChange={(e) => updatePricing("sale_discount_pct", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.sale_discount_pct ?? toDecimalInputValue(formData.pricing?.sale_discount_pct)}
+                  onChange={(e) => updatePricingInput("sale_discount_pct", e.target.value)}
                   placeholder="0"
                 />
               </div>

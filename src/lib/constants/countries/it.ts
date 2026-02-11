@@ -83,6 +83,7 @@ export const IT_CONFIG: CountryConfig = {
         ico: "",
         dic: "",
         ic_dph: "",
+        amount_due: "Importo dovuto",
       },
       email: {
         dear_customer: "Gentile",
@@ -141,6 +142,7 @@ export const IT_CONFIG: CountryConfig = {
         ico: "",
         dic: "",
         ic_dph: "",
+        amount_due: "Amount Due",
       },
       email: {
         dear_customer: "Dear",

@@ -1,20 +1,90 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// CORS headers for cross-origin API requests
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
-  "Access-Control-Max-Age": "86400", // 24 hours
-};
+// Allowed CORS origins
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/cs\.vendereincloud\.it$/,
+  /^https:\/\/demo\.vinc\.trade$/,
+  /^https:\/\/[a-z0-9-]+\.vendereincloud\.it$/,
+  /^https:\/\/[a-z0-9-]+\.vinc\.trade$/,
+];
+
+// Add localhost in development
+if (process.env.NODE_ENV === "development") {
+  ALLOWED_ORIGIN_PATTERNS.push(/^http:\/\/localhost(:\d+)?$/);
+  ALLOWED_ORIGIN_PATTERNS.push(/^http:\/\/127\.0\.0\.1(:\d+)?$/);
+}
+
+// Add NEXT_PUBLIC_CUSTOMER_WEB_URL if set
+const customerWebUrl = process.env.NEXT_PUBLIC_CUSTOMER_WEB_URL;
+if (customerWebUrl) {
+  ALLOWED_ORIGIN_PATTERNS.push(new RegExp(`^${customerWebUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+}
+
+/**
+ * Check if an origin is allowed for CORS.
+ */
+function isAllowedOrigin(origin: string): boolean {
+  return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+}
+
+/**
+ * Get CORS headers based on the request origin and whether an API key is present.
+ * - With valid API key from allowed origin: full CORS headers
+ * - Same-origin / no Origin header (server-to-server): no CORS headers needed
+ * - Unknown origin without API key: no CORS headers (browser blocks the request)
+ */
+function getCorsHeaders(request: NextRequest): Record<string, string> {
+  const origin = request.headers.get("origin");
+
+  // No Origin header = same-origin or server-to-server, no CORS needed
+  if (!origin) return {};
+
+  // Check if origin is in the allowlist
+  if (isAllowedOrigin(origin)) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
+      "Access-Control-Max-Age": "86400",
+      "Vary": "Origin",
+    };
+  }
+
+  // Check if request has API key — allow cross-origin for authenticated API clients
+  const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
+  const apiSecret = request.headers.get("x-api-secret");
+  if (apiKey && apiSecret) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
+      "Access-Control-Max-Age": "86400",
+      "Vary": "Origin",
+    };
+  }
+
+  // Unknown origin without API key — block cross-origin access
+  return { "Vary": "Origin" };
+}
 
 const securityHeaders: Record<string, string> = {
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "X-DNS-Prefetch-Control": "off",
 };
+
+/**
+ * Apply headers to a response.
+ */
+function applyHeaders(response: NextResponse, headers: Record<string, string>) {
+  for (const [key, value] of Object.entries(headers)) {
+    response.headers.set(key, value);
+  }
+}
 
 /**
  * Extract tenant ID from API key format: "ak_{tenant-id}_{random}"
@@ -73,6 +143,8 @@ export async function middleware(request: NextRequest) {
   const isB2BPageRoute = actualPath === "/b2b" || actualPath.startsWith("/b2b/");
   const isAdminRoute = actualPath.startsWith("/api/admin");
 
+  const corsHeaders = getCorsHeaders(request);
+
   // Handle CORS preflight (OPTIONS) requests for all API routes
   if (isApiRoute && request.method === "OPTIONS") {
     return new NextResponse(null, {
@@ -84,14 +156,8 @@ export async function middleware(request: NextRequest) {
   // Admin routes - no tenant required (uses vinc-admin database)
   if (isAdminRoute) {
     const response = NextResponse.next();
-
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-
+    applyHeaders(response, securityHeaders);
+    applyHeaders(response, corsHeaders);
     return response;
   }
 
@@ -143,24 +209,16 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.rewrite(url, {
         request: { headers: requestHeaders }
       });
-      Object.entries(securityHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
-      Object.entries(corsHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
+      applyHeaders(response, securityHeaders);
+      applyHeaders(response, corsHeaders);
       return response;
     }
 
     const response = NextResponse.next({
       request: { headers: requestHeaders },
     });
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+    applyHeaders(response, securityHeaders);
+    applyHeaders(response, corsHeaders);
     return response;
   }
 
@@ -169,9 +227,7 @@ export async function middleware(request: NextRequest) {
     // For exact /{tenant}/b2b path, let Next.js use the dynamic route
     if (rewritePath === "/b2b") {
       const response = NextResponse.next();
-      Object.entries(securityHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
+      applyHeaders(response, securityHeaders);
       return response;
     }
 
@@ -188,9 +244,7 @@ export async function middleware(request: NextRequest) {
       request: { headers: requestHeaders }
     });
 
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+    applyHeaders(response, securityHeaders);
 
     return response;
   }
@@ -255,39 +309,27 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.rewrite(url, {
         request: { headers: requestHeaders }
       });
-      Object.entries(securityHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
-      Object.entries(corsHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
+      applyHeaders(response, securityHeaders);
+      applyHeaders(response, corsHeaders);
       return response;
     }
 
     const response = NextResponse.next({
       request: { headers: requestHeaders },
     });
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+    applyHeaders(response, securityHeaders);
+    applyHeaders(response, corsHeaders);
     return response;
   }
 
   // For non-B2B routes, continue as before
   const response = NextResponse.next();
 
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
+  applyHeaders(response, securityHeaders);
 
   // Add CORS headers for API routes
   if (isApiRoute) {
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+    applyHeaders(response, corsHeaders);
   }
 
   return response;

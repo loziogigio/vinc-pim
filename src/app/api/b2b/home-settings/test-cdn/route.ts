@@ -1,5 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+
+/**
+ * Validate that a URL is a safe external HTTPS endpoint (not internal/private).
+ */
+function isSafeUrl(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "https:") return false;
+    const hostname = url.hostname;
+    // Block private/internal IPs and hostnames
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("172.") ||
+      hostname === "[::1]" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal")
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * POST /api/b2b/home-settings/test-cdn
@@ -7,6 +36,11 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getB2BSession();
+    if (!session?.isLoggedIn || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { cdn_url, bucket_region, bucket_name, folder_name, cdn_key, cdn_secret } = body;
 
@@ -14,6 +48,14 @@ export async function POST(request: NextRequest) {
     if (!cdn_url || !bucket_region || !bucket_name || !cdn_key || !cdn_secret) {
       return NextResponse.json(
         { error: "Missing required fields: cdn_url, bucket_region, bucket_name, cdn_key, cdn_secret" },
+        { status: 400 }
+      );
+    }
+
+    // Validate CDN URL is safe (HTTPS, no internal IPs)
+    if (!isSafeUrl(cdn_url)) {
+      return NextResponse.json(
+        { error: "CDN URL must be a valid HTTPS URL pointing to an external host" },
         { status: 400 }
       );
     }

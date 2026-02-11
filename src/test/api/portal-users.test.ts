@@ -45,6 +45,19 @@ vi.mock("@/lib/auth/api-key-auth", () => ({
   ),
 }));
 
+// Mock rate limiting to bypass SSO database in tests
+vi.mock("@/lib/sso/rate-limit", () => ({
+  checkGlobalIPRateLimit: vi.fn(() => Promise.resolve({ allowed: true })),
+  checkRateLimit: vi.fn(() => Promise.resolve({ allowed: true, delay_ms: 0, attempts_remaining: 5 })),
+  logLoginAttempt: vi.fn(() => Promise.resolve()),
+  applyProgressiveDelay: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("@/lib/sso/device", () => ({
+  getClientIP: vi.fn(() => "127.0.0.1"),
+  parseUserAgent: vi.fn(() => ({})),
+}));
+
 // Mock portal user token generation to avoid jose library issues in tests
 // Only mock generatePortalUserToken, keep other utilities unmocked for direct testing
 vi.mock("@/lib/auth/portal-user-token", async () => {

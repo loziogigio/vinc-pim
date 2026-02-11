@@ -19,6 +19,7 @@ import {
   FACET_FIELDS_CONFIG,
   MULTILINGUAL_TEXT_FIELDS,
 } from './facet-config';
+import { filterSearchStopwords } from './stopwords';
 
 // ============================================
 // SEARCH QUERY BUILDER
@@ -220,10 +221,9 @@ const SEARCH_FIELDS_CONFIG = [
  * - Term position boosting (earlier terms get higher boost)
  * - Wildcard patterns: term*, *term*
  * - Fuzzy search support (optional)
- *
- * Note: Stop word filtering removed - Solr text analyzers handle this at index time.
- * Italian prepositions (da, di, per) are often meaningful in product names
- * (e.g., "tavolo da pranzo", "scarpe da corsa").
+ * - Stopword filtering: common articles/prepositions that Solr removes
+ *   at index time are stripped from non-last positions so they don't
+ *   block results. The last term is always kept (prefix typing support).
  */
 function buildMainQuery(
   text: string | undefined,
@@ -243,13 +243,17 @@ function buildMainQuery(
     return `*:* ${imageBoost}`;
   }
 
-  // Split into terms - no stop word filtering (Solr handles this)
-  const searchTerms = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  // Split into terms, then filter stopwords from non-last positions.
+  // Stopwords (per, di, il, …) are removed by Solr at index time,
+  // so requiring them in the query would return zero results.
+  // The last term is always kept for prefix-typing support.
+  const rawTerms = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
-  if (searchTerms.length === 0) {
+  if (rawTerms.length === 0) {
     return '*:*';
   }
 
+  const searchTerms = filterSearchStopwords(rawTerms, lang);
   const numTerms = searchTerms.length;
   const fuzzy = options?.fuzzy ?? false;
   const fuzzyNum = options?.fuzzyNum ?? 1;
@@ -310,10 +314,11 @@ function buildMainQuery(
   }
 
   // Add PHRASE BOOST for consecutive terms in name (2-term combinations)
-  if (searchTerms.length >= 2) {
-    // Boost consecutive pairs: "vaso wc", "wc sospeso", "sospeso geberit"
-    for (let i = 0; i < searchTerms.length - 1; i++) {
-      const pair = `${searchTerms[i]} ${searchTerms[i + 1]}`;
+  // Use rawTerms (before stopword filtering) so the original phrase
+  // "macchina per caffè" still boosts products with that exact sequence.
+  if (rawTerms.length >= 2) {
+    for (let i = 0; i < rawTerms.length - 1; i++) {
+      const pair = `${rawTerms[i]} ${rawTerms[i + 1]}`;
       // Exact pair in name (not stemmed)
       termQueries.push(`(name_sort_${lang}:/.*${pair}.*/^1000000)`);
       // Pair early in name
