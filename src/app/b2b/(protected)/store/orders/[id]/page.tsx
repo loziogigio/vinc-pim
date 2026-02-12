@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, useMemo, use, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -106,6 +106,20 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   // Add items modal
   const [showAddItemsModal, setShowAddItemsModal] = useState(false);
+
+  // Effective customer tags for tag-based pricing (customer defaults + address overrides)
+  const effectiveTags = useMemo(() => {
+    const customerTags = (customer as any)?.tags || [];
+    const addressOverrides = (shippingAddress as any)?.tag_overrides || [];
+    if (!customerTags.length) return [] as string[];
+    if (!addressOverrides.length) return customerTags.map((t: any) => t.full_tag);
+    const overriddenPrefixes = new Set(addressOverrides.map((t: any) => t.prefix));
+    const merged = [
+      ...customerTags.filter((t: any) => !overriddenPrefixes.has(t.prefix)),
+      ...addressOverrides,
+    ];
+    return merged.map((t: any) => t.full_tag);
+  }, [customer, shippingAddress]);
 
   // Delete confirmation dialog state
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
@@ -1417,6 +1431,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         isOpen={showAddItemsModal}
         onClose={() => setShowAddItemsModal(false)}
         orderId={order.order_id}
+        effectiveTags={effectiveTags}
         existingCartItems={order.items?.map((item) => ({
           entity_code: item.entity_code,
           packaging_code: item.packaging_code,

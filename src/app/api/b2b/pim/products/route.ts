@@ -168,6 +168,30 @@ export async function GET(req: NextRequest) {
       PIMProductModel.countDocuments(query),
     ]);
 
+    // Embed product-level promotions into packaging options
+    // (same logic as single-product GET endpoint)
+    for (const product of products as any[]) {
+      if (product.packaging_options?.length) {
+        // Normalize pkg_id to string (lean() may return numbers)
+        for (const pkg of product.packaging_options) {
+          if (pkg.pkg_id && typeof pkg.pkg_id !== "string") {
+            pkg.pkg_id = String(pkg.pkg_id);
+          }
+        }
+        // Embed promotions per packaging
+        if (product.promotions?.length) {
+          for (const pkg of product.packaging_options) {
+            pkg.promotions = product.promotions.filter((promo: any) => {
+              if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
+                return pkg.is_sellable !== false;
+              }
+              return promo.target_pkg_ids.includes(pkg.pkg_id);
+            });
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       products,
       pagination: {

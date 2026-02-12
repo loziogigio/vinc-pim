@@ -23,7 +23,7 @@ import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
 import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
-import { calculateUnitPrice, calculatePackagePrice } from "@/lib/utils/packaging";
+import { calculateUnitPrice, calculatePackagePrice, ensurePackagingIds, ensurePromoRows } from "@/lib/utils/packaging";
 import {
   ProductImage,
   extractAttributesForLanguage,
@@ -51,6 +51,7 @@ import {
   Loader2,
   Plus,
   Pencil,
+  Copy,
 } from "lucide-react";
 
 type Product = {
@@ -227,8 +228,17 @@ export default function ProductDetailPage({
   // Packaging & Promotion modals
   const [packagingModalOpen, setPackagingModalOpen] = useState(false);
   const [editingPackaging, setEditingPackaging] = useState<PackagingOption | null>(null);
+  const [duplicatingPackaging, setDuplicatingPackaging] = useState<PackagingOption | null>(null);
   const [promotionModalOpen, setPromotionModalOpen] = useState(false);
-  const [editingPromotion, setEditingPromotion] = useState<{ promotion: Promotion | null; packagingCode: string }>({ promotion: null, packagingCode: "" });
+  const [editingPromotion, setEditingPromotion] = useState<{ promotion: Promotion | null; packagingPkgIds: string[] }>({ promotion: null, packagingPkgIds: [] });
+
+  // Helper: set product with pkg_id and promo_row ensured on packaging options
+  const setProductWithIds = (prod: any) => {
+    if (prod?.packaging_options) {
+      prod.packaging_options = ensurePromoRows(ensurePackagingIds(prod.packaging_options));
+    }
+    setProduct(prod);
+  };
 
   const [formData, setFormData] = useState<FormData>({
     name: {},
@@ -353,7 +363,7 @@ export default function ProductDetailPage({
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setProduct(data.product);
+        setProductWithIds(data.product);
 
         // Check if viewing old version
         if (data.isOldVersion) {
@@ -568,7 +578,7 @@ export default function ProductDetailPage({
 
       if (res.ok) {
         const data = await res.json();
-        setProduct(data.product);
+        setProductWithIds(data.product);
 
         // Update original data to new saved state - keep full multilingual objects
         const savedData: FormData = {
@@ -631,9 +641,9 @@ export default function ProductDetailPage({
     let updatedOptions: PackagingOption[];
 
     if (editingPackaging) {
-      // Update existing
+      // Update existing - match by pkg_id for uniqueness
       updatedOptions = existingOptions.map((p) =>
-        p.code === editingPackaging.code ? option : p
+        p.pkg_id === editingPackaging.pkg_id ? option : p
       );
     } else {
       // Add new
@@ -650,10 +660,11 @@ export default function ProductDetailPage({
 
       if (res.ok) {
         const data = await res.json();
-        setProduct(data.product);
+        setProductWithIds(data.product);
         toast.success(editingPackaging ? "Packaging option updated" : "Packaging option added");
         setPackagingModalOpen(false);
         setEditingPackaging(null);
+        setDuplicatingPackaging(null);
       } else {
         toast.error("Failed to save packaging option");
       }
@@ -663,35 +674,25 @@ export default function ProductDetailPage({
   }
 
   // Helper function to aggregate promo data from all packaging options
-  function aggregatePromoData(packagingOptions: PackagingOption[]) {
+  function aggregatePromoData(promotions: Promotion[]) {
     const allDiscountSteps: DiscountStep[] = [];
     const allPromoCodes: string[] = [];
     const allPromoTypes: string[] = [];
     let hasActivePromo = false;
 
-    for (const pkg of packagingOptions) {
-      for (const promo of pkg.promotions || []) {
-        if (promo.is_active) {
-          hasActivePromo = true;
-          // Collect discount chain steps from each promotion
-          if (promo.discount_chain && Array.isArray(promo.discount_chain)) {
-            allDiscountSteps.push(...promo.discount_chain);
-          }
-          if (promo.promo_code) {
-            allPromoCodes.push(promo.promo_code);
-          }
-          if (promo.promo_type) {
-            allPromoTypes.push(promo.promo_type);
-          }
+    for (const promo of promotions) {
+      if (promo.is_active) {
+        hasActivePromo = true;
+        if (promo.discount_chain && Array.isArray(promo.discount_chain)) {
+          allDiscountSteps.push(...promo.discount_chain);
         }
+        if (promo.promo_code) allPromoCodes.push(promo.promo_code);
+        if (promo.promo_type) allPromoTypes.push(promo.promo_type);
       }
     }
 
-    // Unique values for arrays
     const uniquePromoCodes = [...new Set(allPromoCodes)];
     const uniquePromoTypes = [...new Set(allPromoTypes)];
-
-    // De-duplicate discount steps by comparing type, value, and source
     const uniqueDiscountSteps = allDiscountSteps.filter((step, index, arr) =>
       arr.findIndex(s => s.type === step.type && s.value === step.value && s.source === step.source) === index
     );
@@ -704,49 +705,47 @@ export default function ProductDetailPage({
     };
   }
 
-  // Handle save promotion (create or update)
-  async function handleSavePromotion(packagingCode: string, promotion: Promotion) {
-    if (!product || !product.packaging_options) return;
+  // Handle save promotion (create or update) — saves to product-level promotions[]
+  async function handleSavePromotion(packagingPkgIds: string[], promotion: Promotion) {
+    if (!product) return;
 
-    const updatedOptions = product.packaging_options.map((pkg) => {
-      if (pkg.code !== packagingCode) return pkg;
+    const promoToSave: Promotion = {
+      ...promotion,
+      target_pkg_ids: packagingPkgIds.length > 0 ? packagingPkgIds : undefined,
+    };
 
-      const existingPromos = pkg.promotions || [];
-      let updatedPromos: Promotion[];
+    // Auto-assign promo_row for new promotions
+    if (!promoToSave.promo_row) {
+      const maxRow = (product.promotions || [])
+        .map((p) => p.promo_row || 0)
+        .reduce((max, r) => Math.max(max, r), 0);
+      promoToSave.promo_row = maxRow + 1;
+    }
 
-      if (editingPromotion.promotion) {
-        // Update existing
-        updatedPromos = existingPromos.map((p) =>
-          p.promo_code === editingPromotion.promotion?.promo_code ? promotion : p
-        );
-      } else {
-        // Add new
-        updatedPromos = [...existingPromos, promotion];
-      }
+    let updatedPromos: Promotion[];
+    if (editingPromotion.promotion) {
+      updatedPromos = (product.promotions || []).map((p) =>
+        p.promo_row === editingPromotion.promotion?.promo_row ? promoToSave : p
+      );
+    } else {
+      updatedPromos = [...(product.promotions || []), promoToSave];
+    }
 
-      return { ...pkg, promotions: updatedPromos };
-    });
-
-    // Aggregate promo data from all packaging options
-    const promoAggregations = aggregatePromoData(updatedOptions);
+    const promoAggregations = aggregatePromoData(updatedPromos);
 
     try {
       const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          packaging_options: updatedOptions,
-          // Product-level promo aggregations
-          ...promoAggregations,
-        }),
+        body: JSON.stringify({ promotions: updatedPromos, ...promoAggregations }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setProduct(data.product);
+        setProductWithIds(data.product);
         toast.success(editingPromotion.promotion ? "Promotion updated" : "Promotion added");
         setPromotionModalOpen(false);
-        setEditingPromotion({ promotion: null, packagingCode: "" });
+        setEditingPromotion({ promotion: null, packagingPkgIds: [] });
       } else {
         toast.error("Failed to save promotion");
       }
@@ -764,7 +763,7 @@ export default function ProductDetailPage({
       });
       if (res.ok) {
         const data = await res.json();
-        setProduct(data.product);
+        setProductWithIds(data.product);
         setFormData((prev) => ({ ...prev, status: "published" }));
         toast.success("Product published!");
       } else {
@@ -787,7 +786,7 @@ export default function ProductDetailPage({
       });
       if (res.ok) {
         const data = await res.json();
-        setProduct(data.product);
+        setProductWithIds(data.product);
         setFormData((prev) => ({ ...prev, status: "draft" }));
         toast.success("Product unpublished");
       } else {
@@ -1731,6 +1730,7 @@ export default function ProductDetailPage({
                     <button
                       onClick={() => {
                         setEditingPackaging(null);
+                        setDuplicatingPackaging(null);
                         setPackagingModalOpen(true);
                       }}
                       className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
@@ -1761,10 +1761,19 @@ export default function ProductDetailPage({
                       </thead>
                         <tbody>
                           {product.packaging_options.map((pkg, idx) => (
-                            <tr key={pkg.code + idx} className={`border-b border-border/50 ${pkg.is_default ? "bg-primary/5" : ""}`}>
+                            <tr key={pkg.pkg_id || idx} className={`border-b border-border/50 ${pkg.is_default ? "bg-primary/5" : ""}`}>
                               <td className="py-2 px-3 font-mono text-foreground">{pkg.code}</td>
                               <td className="py-2 px-3 text-foreground">
-                                {getMultilingualText(pkg.label, defaultLanguageCode, pkg.code)}
+                                <div>{getMultilingualText(pkg.label, defaultLanguageCode, pkg.code)}</div>
+                                {pkg.pricing?.tag_filter && pkg.pricing.tag_filter.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {pkg.pricing.tag_filter.map((tag) => (
+                                      <span key={tag} className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] rounded border border-emerald-200">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </td>
                               <td className="py-2 px-3 text-right text-foreground">{pkg.qty}</td>
                               <td className="py-2 px-3 text-foreground">{pkg.uom}</td>
@@ -1866,12 +1875,24 @@ export default function ProductDetailPage({
                                   <button
                                     onClick={() => {
                                       setEditingPackaging(pkg);
+                                      setDuplicatingPackaging(null);
                                       setPackagingModalOpen(true);
                                     }}
                                     className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
                                     title="Edit packaging option"
                                   >
                                     <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingPackaging(null);
+                                      setDuplicatingPackaging(pkg);
+                                      setPackagingModalOpen(true);
+                                    }}
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
+                                    title="Duplicate packaging option"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
                                   </button>
                                   <button
                                     onClick={async () => {
@@ -1885,7 +1906,7 @@ export default function ProductDetailPage({
                                         });
                                         if (res.ok) {
                                           const data = await res.json();
-                                          setProduct(data.product);
+                                          setProductWithIds(data.product);
                                           toast.success(`Packaging option "${pkg.code}" deleted`);
                                         } else {
                                           toast.error("Failed to delete packaging option");
@@ -1909,16 +1930,16 @@ export default function ProductDetailPage({
                   )}
                 </div>
 
-                {/* Promotions Table - Collect from all packaging options */}
+                {/* Promotions Table — reads from product-level promotions[] */}
                 {product.packaging_options && product.packaging_options.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-sm font-medium text-muted-foreground">
-                        Promotions ({product.packaging_options.reduce((count, pkg) => count + (pkg.promotions?.filter(p => p.is_active).length || 0), 0)})
+                        Promotions ({(product.promotions || []).filter(p => p.is_active).length})
                       </h4>
                       <button
                         onClick={() => {
-                          setEditingPromotion({ promotion: null, packagingCode: product.packaging_options?.[0]?.code || "" });
+                          setEditingPromotion({ promotion: null, packagingPkgIds: [] });
                           setPromotionModalOpen(true);
                         }}
                         className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition"
@@ -1927,12 +1948,12 @@ export default function ProductDetailPage({
                         Add
                       </button>
                     </div>
-                    {product.packaging_options.some(pkg => pkg.promotions && pkg.promotions.filter(p => p.is_active).length > 0) && (
+                    {product.promotions && product.promotions.filter(p => p.is_active).length > 0 && (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border">
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Packaging</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Target</th>
                             <th className="text-left py-2 px-3 font-medium text-muted-foreground">Promo Code</th>
                             <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
                             <th className="text-right py-2 px-3 font-medium text-muted-foreground">Discount</th>
@@ -1944,16 +1965,46 @@ export default function ProductDetailPage({
                           </tr>
                         </thead>
                         <tbody>
-                          {product.packaging_options.flatMap((pkg) =>
-                            (pkg.promotions || []).filter(p => p.is_active).map((promo, promoIdx) => (
-                              <tr key={`${pkg.code}-${promo.promo_code || promoIdx}`} className="border-b border-border/50">
-                                <td className="py-2 px-3 font-mono text-foreground">{pkg.code}</td>
-                                <td className="py-2 px-3">
-                                  {promo.promo_code && (
-                                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-mono rounded">
-                                      {promo.promo_code}
-                                    </span>
+                          {product.promotions.filter(p => p.is_active).map((promo, idx) => {
+                            // Resolve target packaging display
+                            const targetIds = promo.target_pkg_ids;
+                            const isAllSellable = !targetIds || targetIds.length === 0;
+                            const targetPkgs = isAllSellable
+                              ? []
+                              : (product.packaging_options || []).filter((p) => targetIds!.includes(p.pkg_id!));
+
+                            return (
+                              <tr key={`promo-${promo.promo_row ?? idx}`} className="border-b border-border/50">
+                                <td className="py-2 px-3 text-foreground">
+                                  {isAllSellable ? (
+                                    <span className="text-xs text-muted-foreground italic">All sellable</span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1">
+                                      {targetPkgs.map((pkg) => {
+                                        const tags = pkg.pricing?.tag_filter;
+                                        const tagSuffix = tags && tags.length > 0 ? ` [${tags[0]}]` : "";
+                                        return (
+                                          <span key={pkg.pkg_id} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 text-xs font-mono rounded">
+                                            {pkg.code}{tagSuffix}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
                                   )}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <div className="flex items-center gap-1.5">
+                                    {promo.promo_code && (
+                                      <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-mono rounded">
+                                        {promo.promo_code}
+                                      </span>
+                                    )}
+                                    {promo.tag_filter && promo.tag_filter.length > 0 && (
+                                      <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 text-xs rounded border border-amber-200" title={promo.tag_filter.join(", ")}>
+                                        {promo.tag_filter.length} tag{promo.tag_filter.length > 1 ? "s" : ""}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="py-2 px-3 text-foreground">
                                   {promo.label
@@ -1971,16 +2022,7 @@ export default function ProductDetailPage({
                                   {promo.min_quantity || "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right text-emerald-600 font-medium">
-                                  {promo.promo_price ? (
-                                    <div className="flex flex-col items-end gap-0.5">
-                                      <span>€{promo.promo_price.toFixed(2)}</span>
-                                      {pkg.qty > 1 && (
-                                        <span className="text-xs text-muted-foreground font-normal">
-                                          €{(promo.promo_price * pkg.qty).toFixed(2)} / {pkg.code}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : "—"}
+                                  {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-muted-foreground">
                                   {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}
@@ -1992,7 +2034,7 @@ export default function ProductDetailPage({
                                   <div className="flex items-center justify-center gap-1">
                                     <button
                                       onClick={() => {
-                                        setEditingPromotion({ promotion: promo, packagingCode: pkg.code });
+                                        setEditingPromotion({ promotion: promo, packagingPkgIds: promo.target_pkg_ids || [] });
                                         setPromotionModalOpen(true);
                                       }}
                                       className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
@@ -2002,25 +2044,20 @@ export default function ProductDetailPage({
                                     </button>
                                     <button
                                       onClick={async () => {
-                                        if (!confirm(`Delete promotion "${promo.promo_code}"?`)) return;
-                                        const updatedOptions = product.packaging_options!.map((p) => {
-                                          if (p.code !== pkg.code) return p;
-                                          return {
-                                            ...p,
-                                            promotions: (p.promotions || []).filter((pr) => pr.promo_code !== promo.promo_code),
-                                          };
-                                        });
-                                        // Recalculate promo aggregations after deletion
-                                        const promoAggregations = aggregatePromoData(updatedOptions);
+                                        if (!confirm(`Delete promotion "${promo.promo_code}" (row ${promo.promo_row})?`)) return;
+                                        const updatedPromos = (product.promotions || []).filter(
+                                          (p) => p.promo_row !== promo.promo_row
+                                        );
+                                        const promoAggregations = aggregatePromoData(updatedPromos);
                                         try {
                                           const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ packaging_options: updatedOptions, ...promoAggregations }),
+                                            body: JSON.stringify({ promotions: updatedPromos, ...promoAggregations }),
                                           });
                                           if (res.ok) {
                                             const data = await res.json();
-                                            setProduct(data.product);
+                                            setProductWithIds(data.product);
                                             toast.success(`Promotion "${promo.promo_code}" deleted`);
                                           } else {
                                             toast.error("Failed to delete promotion");
@@ -2037,69 +2074,12 @@ export default function ProductDetailPage({
                                   </div>
                                 </td>
                               </tr>
-                            ))
-                          )}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                     )}
-                  </div>
-                )}
-
-                {/* Legacy Product-level Promotions (for backwards compatibility) */}
-                {product.promotions && product.promotions.filter(p => p.is_active).length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      Product Promotions ({product.promotions.filter(p => p.is_active).length})
-                    </h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Promo Code</th>
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Label</th>
-                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Discount</th>
-                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Promo Price</th>
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Start Date</th>
-                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">End Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {product.promotions.filter(p => p.is_active).map((promo, idx) => (
-                            <tr key={promo.promo_code || idx} className="border-b border-border/50">
-                              <td className="py-2 px-3">
-                                {promo.promo_code && (
-                                  <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-mono rounded">
-                                    {promo.promo_code}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-2 px-3 text-foreground">
-                                {promo.label
-                                  ? getMultilingualText(promo.label, defaultLanguageCode, promo.promo_type || "Promotion")
-                                  : promo.promo_type || "Promotion"}
-                              </td>
-                              <td className="py-2 px-3 text-right text-foreground">
-                                {promo.discount_percentage
-                                  ? `-${promo.discount_percentage}%`
-                                  : promo.discount_amount
-                                  ? `-€${promo.discount_amount.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                              <td className="py-2 px-3 text-right text-emerald-600 font-medium">
-                                {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
-                              </td>
-                              <td className="py-2 px-3 text-muted-foreground">
-                                {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}
-                              </td>
-                              <td className="py-2 px-3 text-muted-foreground">
-                                {promo.end_date ? new Date(promo.end_date).toLocaleDateString() : "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
                   </div>
                 )}
               </div>
@@ -2536,12 +2516,15 @@ export default function ProductDetailPage({
       <PackagingOptionModal
         open={packagingModalOpen}
         option={editingPackaging}
+        defaultValues={duplicatingPackaging}
         defaultLanguageCode={defaultLanguageCode}
-        availablePackagingCodes={(product?.packaging_options || []).map((p) => p.code)}
+        availablePackagingCodes={[...new Set((product?.packaging_options || []).map((p) => p.code))]}
+        allPackagingOptions={product?.packaging_options || []}
         onSave={handleSavePackaging}
         onClose={() => {
           setPackagingModalOpen(false);
           setEditingPackaging(null);
+          setDuplicatingPackaging(null);
         }}
       />
 
@@ -2549,13 +2532,13 @@ export default function ProductDetailPage({
       <PromotionModal
         open={promotionModalOpen}
         promotion={editingPromotion.promotion}
-        packagingCode={editingPromotion.packagingCode}
+        packagingPkgIds={editingPromotion.packagingPkgIds}
         packagingOptions={product?.packaging_options || []}
         defaultLanguageCode={defaultLanguageCode}
         onSave={handleSavePromotion}
         onClose={() => {
           setPromotionModalOpen(false);
-          setEditingPromotion({ promotion: null, packagingCode: "" });
+          setEditingPromotion({ promotion: null, packagingPkgIds: [] });
         }}
       />
     </div>

@@ -151,6 +151,7 @@ export async function GET(
           last_name: customerDoc.last_name,
           company_name: customerDoc.company_name,
           legal_info: customerDoc.legal_info,
+          tags: customerDoc.tags,
         };
 
         // Find shipping address

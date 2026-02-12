@@ -184,6 +184,43 @@ export async function GET(
       };
     }
 
+    // Auto-assign pkg_id ("1", "2", "3"...) and ensure string type (lean() may return numbers)
+    if (product.packaging_options?.length) {
+      let maxPkgId = 0;
+      for (const pkg of product.packaging_options) {
+        const n = parseInt(String(pkg.pkg_id || "0"), 10);
+        if (n > maxPkgId) maxPkgId = n;
+      }
+      let needsPkgIdSave = false;
+      for (const pkg of product.packaging_options) {
+        if (!pkg.pkg_id) {
+          pkg.pkg_id = String(++maxPkgId);
+          needsPkgIdSave = true;
+        } else if (typeof pkg.pkg_id !== "string") {
+          pkg.pkg_id = String(pkg.pkg_id);
+          needsPkgIdSave = true;
+        }
+      }
+      if (needsPkgIdSave) {
+        await PIMProductModel.updateOne(
+          { entity_code, isCurrent: true },
+          { $set: { packaging_options: product.packaging_options } }
+        );
+      }
+    }
+
+    // Compute per-packaging promotions from product-level promotions
+    if (product.promotions?.length && product.packaging_options?.length) {
+      for (const pkg of product.packaging_options) {
+        pkg.promotions = product.promotions.filter((promo: any) => {
+          if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
+            return pkg.is_sellable !== false;
+          }
+          return promo.target_pkg_ids.includes(pkg.pkg_id);
+        });
+      }
+    }
+
     const response: any = { product };
 
     // Include current version info if viewing old version
@@ -273,6 +310,10 @@ export async function PATCH(
       "share_images_with_variants",
       "share_media_with_variants",
       "packaging_options",          // Pricing & packaging (array of { code, qty, uom, pricing, ... })
+      "promotions",                 // Product-level promotions (array with target_pkg_ids)
+      "promo_code",                 // Active promotion codes (for faceting)
+      "promo_type",                 // Business categories (for faceting)
+      "has_active_promo",           // Has any active promotion (for filtering)
     ];
 
     allowedFields.forEach((field) => {

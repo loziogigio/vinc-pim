@@ -16,7 +16,7 @@ import {
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import {
-  resolveEffectiveTagsFromRefs,
+  resolveEffectiveTagsDetailed,
   upsertTagRef,
   removeTagRef,
 } from "@/lib/services/tag-pricing.service";
@@ -108,13 +108,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const customerTags: ICustomerTagRef[] = customer.tags || [];
     const addressOverrides: ICustomerTagRef[] = address.tag_overrides || [];
 
-    const effectiveTags = resolveEffectiveTagsFromRefs(customerTags, addressOverrides);
+    const effectiveTagsDetailed = resolveEffectiveTagsDetailed(customerTags, addressOverrides);
+    const effectiveTags = effectiveTagsDetailed.map((e) => e.tag.full_tag);
 
     return NextResponse.json({
       success: true,
       customer_tags: customerTags,
       address_overrides: addressOverrides,
       effective_tags: effectiveTags,
+      effective_tags_detailed: effectiveTagsDetailed,
     });
   } catch (error) {
     console.error("Error fetching address tags:", error);
@@ -196,15 +198,17 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     );
 
     // Compute effective tags for response
-    const effectiveTags = resolveEffectiveTagsFromRefs(
+    const effectiveTagsDetailed = resolveEffectiveTagsDetailed(
       updatedCustomer?.tags || [],
       updatedAddress?.tag_overrides || []
     );
+    const effectiveTags = effectiveTagsDetailed.map((e) => e.tag.full_tag);
 
     return NextResponse.json({
       success: true,
       address_overrides: updatedAddress?.tag_overrides || [],
       effective_tags: effectiveTags,
+      effective_tags_detailed: effectiveTagsDetailed,
       message: `Tag override ${full_tag} assigned to address ${address_id}`,
     });
   } catch (error) {
@@ -266,15 +270,17 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       (a: { address_id: string }) => a.address_id === address_id
     );
 
-    const effectiveTags = resolveEffectiveTagsFromRefs(
+    const effectiveTagsDetailed = resolveEffectiveTagsDetailed(
       updatedCustomer?.tags || [],
       updatedAddress?.tag_overrides || []
     );
+    const effectiveTags = effectiveTagsDetailed.map((e) => e.tag.full_tag);
 
     return NextResponse.json({
       success: true,
       address_overrides: updatedAddress?.tag_overrides || [],
       effective_tags: effectiveTags,
+      effective_tags_detailed: effectiveTagsDetailed,
       message: `Tag override ${full_tag} removed from address ${address_id}`,
     });
   } catch (error) {

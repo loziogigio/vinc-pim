@@ -202,6 +202,7 @@ interface ProductEnrichmentData {
   share_images_with_variants?: boolean;
   share_media_with_variants?: boolean;
   packaging_options?: PackagingData[];
+  promotions?: any[];
 }
 
 /**
@@ -223,7 +224,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1 })
+    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, promotions: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -238,11 +239,35 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
         share_images_with_variants: product.share_images_with_variants,
         share_media_with_variants: product.share_media_with_variants,
         packaging_options: product.packaging_options,
+        promotions: product.promotions,
       });
     }
   }
 
   return map;
+}
+
+/**
+ * Compute per-packaging promotions from product-level promotions.
+ * Each packaging option gets the promotions that target it:
+ * - target_pkg_ids empty/undefined → all sellable packaging (is_sellable !== false)
+ * - target_pkg_ids set → only those specific pkg_ids
+ */
+export function embedPromotionsInPackaging(
+  packagingOptions: PackagingData[] | undefined,
+  promotions: any[] | undefined
+): PackagingData[] | undefined {
+  if (!packagingOptions?.length || !promotions?.length) return packagingOptions;
+
+  return packagingOptions.map((pkg: any) => ({
+    ...pkg,
+    promotions: promotions.filter((promo: any) => {
+      if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
+        return pkg.is_sellable !== false;
+      }
+      return promo.target_pkg_ids.includes(pkg.pkg_id);
+    }),
+  }));
 }
 
 // ============================================
@@ -626,7 +651,10 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         images: productData?.images || result.images,
         media: mongoMedia || result.media,
         packaging_options: enrichPackagingWithUnitPrices(
-          productData?.packaging_options || result.packaging_options
+          embedPromotionsInPackaging(
+            productData?.packaging_options || result.packaging_options,
+            productData?.promotions
+          )
         ),
         // Remove gallery (doesn't exist in MongoDB schema)
         gallery: undefined,
@@ -768,7 +796,10 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         has_active_promo: hasActivePromo,
         promotions: productData.promotions || product.promotions,
         packaging_options: enrichPackagingWithUnitPrices(
-          productData.packaging_options || product.packaging_options
+          embedPromotionsInPackaging(
+            productData.packaging_options || product.packaging_options,
+            productData.promotions
+          )
         ),
         // Media
         cover_image_url: productData.cover_image_url || product.cover_image_url,

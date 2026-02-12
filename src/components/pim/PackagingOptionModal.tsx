@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Package } from "lucide-react";
+import { X, Package, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PackagingOption } from "@/lib/types/pim";
+import { nanoid } from "nanoid";
 import {
   calculatePackagePrice,
   calculateUnitPrice,
@@ -17,11 +18,22 @@ import {
   toDecimalInputValue,
 } from "@/lib/utils/decimal-input";
 
+interface CustomerTagEntry {
+  tag_id: string;
+  full_tag: string;
+  prefix: string;
+  code: string;
+  description?: string;
+  color?: string;
+}
+
 interface PackagingOptionModalProps {
   open: boolean;
   option: PackagingOption | null; // null = create mode
+  defaultValues?: PackagingOption | null; // Pre-fill values for duplicate (create mode with data)
   defaultLanguageCode: string;
   availablePackagingCodes: string[]; // Available codes for price_ref dropdown
+  allPackagingOptions: PackagingOption[]; // Full packaging options for reference price lookup
   onSave: (option: PackagingOption) => void;
   onClose: () => void;
 }
@@ -54,36 +66,57 @@ const emptyOption: PackagingOption = {
 export function PackagingOptionModal({
   open,
   option,
+  defaultValues,
   defaultLanguageCode,
   availablePackagingCodes,
+  allPackagingOptions,
   onSave,
   onClose,
 }: PackagingOptionModalProps) {
   const [formData, setFormData] = useState<PackagingOption>(emptyOption);
   const [qtyInput, setQtyInput] = useState("1"); // Separate string state for qty input
   const [pricingInputs, setPricingInputs] = useState<Record<string, string>>({});
+  const [availableTags, setAvailableTags] = useState<CustomerTagEntry[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
   const isEditMode = option !== null;
+
+  // Fetch customer tags when modal opens
+  useEffect(() => {
+    if (open && availableTags.length === 0) {
+      setTagsLoading(true);
+      fetch("/api/b2b/customer-tags")
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => { if (data?.tags) setAvailableTags(data.tags); })
+        .catch(() => {})
+        .finally(() => setTagsLoading(false));
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open) {
-      if (option) {
-        setQtyInput(String(option.qty));
+      // Use option for edit mode, or defaultValues for duplicate mode
+      const source = option || defaultValues;
+      if (source) {
+        setQtyInput(String(source.qty));
         // Migrate existing data: if we have package prices but no unit prices, calculate them
-        const pricing = option.pricing || {};
+        const pricing = source.pricing || {};
         const migratedPricing = {
           ...pricing,
           // Calculate unit prices from package prices if not set
           list_unit:
             pricing.list_unit ??
-            calculateUnitPrice(pricing.list, option.qty),
+            calculateUnitPrice(pricing.list, source.qty),
           retail_unit:
             pricing.retail_unit ??
-            calculateUnitPrice(pricing.retail, option.qty),
+            calculateUnitPrice(pricing.retail, source.qty),
           sale_unit:
             pricing.sale_unit ??
-            calculateUnitPrice(pricing.sale, option.qty),
+            calculateUnitPrice(pricing.sale, source.qty),
         };
-        setFormData({ ...option, pricing: migratedPricing });
+        // For duplicate mode (no option, has defaultValues), clear the code and pkg_id so user enters a new one
+        const code = option ? source.code : "";
+        const pkg_id = option ? source.pkg_id : undefined;
+        setFormData({ ...source, code, pkg_id, pricing: migratedPricing });
         // Initialize string inputs from pricing values
         setPricingInputs({
           list_unit: toDecimalInputValue(migratedPricing.list_unit),
@@ -98,7 +131,7 @@ export function PackagingOptionModal({
         setPricingInputs({});
       }
     }
-  }, [open, option]);
+  }, [open, option, defaultValues]);
 
   if (!open) return null;
 
@@ -109,6 +142,10 @@ export function PackagingOptionModal({
     e.preventDefault();
     // Use parsed qty value and sync package prices
     const finalData = { ...formData, qty: parsedQty };
+    // Generate pkg_id for new packaging options (create or duplicate)
+    if (!isEditMode) {
+      finalData.pkg_id = nanoid(8);
+    }
     const syncedPricing = syncPackagePrices(finalData.pricing, parsedQty);
     onSave({ ...finalData, pricing: syncedPricing });
   };
@@ -124,11 +161,130 @@ export function PackagingOptionModal({
     }));
   };
 
+  // Get retail_unit for discount calculations
+  // If price_ref points to another packaging, use that; otherwise use current form's retail_unit
+  const getRefRetailUnit = (): number | undefined => {
+    const refCode = formData.pricing?.price_ref;
+    if (!refCode || refCode === formData.code) {
+      return formData.pricing?.retail_unit;
+    }
+    const refPkg = allPackagingOptions.find((p) => p.code === refCode);
+    return refPkg?.pricing?.retail_unit;
+  };
+
   const updatePricingInput = (field: string, rawValue: string) => {
     const normalized = normalizeDecimalInput(rawValue);
     if (normalized === null) return;
     setPricingInputs((prev) => ({ ...prev, [field]: normalized }));
-    updatePricing(field, parseDecimalValue(normalized));
+    const numValue = parseDecimalValue(normalized);
+
+    const refRetail = getRefRetailUnit();
+
+    // Bi-directional: list_discount_pct → list_unit, cascade to sale_unit
+    if (field === "list_discount_pct" && numValue !== undefined && refRetail && refRetail > 0) {
+      const calcListUnit = Math.round(refRetail * (1 - numValue / 100) * 100) / 100;
+      const saleDiscountPct = formData.pricing?.sale_discount_pct;
+      const calcSaleUnit = saleDiscountPct !== undefined && calcListUnit > 0
+        ? Math.round(calcListUnit * (1 - saleDiscountPct / 100) * 100) / 100
+        : formData.pricing?.sale_unit;
+      setPricingInputs((prev) => ({
+        ...prev,
+        list_unit: toDecimalInputValue(calcListUnit),
+        ...(calcSaleUnit !== undefined ? { sale_unit: toDecimalInputValue(calcSaleUnit) } : {}),
+      }));
+      setFormData((prev) => ({
+        ...prev,
+        pricing: {
+          ...prev.pricing,
+          list_discount_pct: numValue,
+          list_unit: calcListUnit,
+          ...(calcSaleUnit !== undefined ? { sale_unit: calcSaleUnit } : {}),
+        },
+      }));
+      return;
+    }
+
+    // Bi-directional: list_unit → list_discount_pct, cascade to sale_unit
+    if (field === "list_unit" && numValue !== undefined && refRetail && refRetail > 0) {
+      const calcDiscountPct = Math.round((1 - numValue / refRetail) * 10000) / 100;
+      const saleDiscountPct = formData.pricing?.sale_discount_pct;
+      const calcSaleUnit = saleDiscountPct !== undefined && numValue > 0
+        ? Math.round(numValue * (1 - saleDiscountPct / 100) * 100) / 100
+        : formData.pricing?.sale_unit;
+      setPricingInputs((prev) => ({
+        ...prev,
+        list_discount_pct: toDecimalInputValue(calcDiscountPct),
+        ...(calcSaleUnit !== undefined ? { sale_unit: toDecimalInputValue(calcSaleUnit) } : {}),
+      }));
+      setFormData((prev) => ({
+        ...prev,
+        pricing: {
+          ...prev.pricing,
+          list_unit: numValue,
+          list_discount_pct: calcDiscountPct,
+          ...(calcSaleUnit !== undefined ? { sale_unit: calcSaleUnit } : {}),
+        },
+      }));
+      return;
+    }
+
+    // Bi-directional: sale_discount_pct → sale_unit (based on list_unit)
+    if (field === "sale_discount_pct" && numValue !== undefined) {
+      const listUnit = formData.pricing?.list_unit;
+      if (listUnit && listUnit > 0) {
+        const calcSaleUnit = Math.round(listUnit * (1 - numValue / 100) * 100) / 100;
+        setPricingInputs((prev) => ({ ...prev, sale_unit: toDecimalInputValue(calcSaleUnit) }));
+        setFormData((prev) => ({
+          ...prev,
+          pricing: { ...prev.pricing, sale_discount_pct: numValue, sale_unit: calcSaleUnit },
+        }));
+        return;
+      }
+    }
+
+    // Bi-directional: sale_unit → sale_discount_pct (based on list_unit)
+    if (field === "sale_unit" && numValue !== undefined) {
+      const listUnit = formData.pricing?.list_unit;
+      if (listUnit && listUnit > 0) {
+        const calcDiscountPct = Math.round((1 - numValue / listUnit) * 10000) / 100;
+        setPricingInputs((prev) => ({ ...prev, sale_discount_pct: toDecimalInputValue(calcDiscountPct) }));
+        setFormData((prev) => ({
+          ...prev,
+          pricing: { ...prev.pricing, sale_unit: numValue, sale_discount_pct: calcDiscountPct },
+        }));
+        return;
+      }
+    }
+
+    // When retail_unit changes, recalculate list_unit from discount and cascade to sale_unit
+    if (field === "retail_unit" && numValue !== undefined && numValue > 0) {
+      const discountPct = formData.pricing?.list_discount_pct;
+      if (discountPct !== undefined) {
+        const calcListUnit = Math.round(numValue * (1 - discountPct / 100) * 100) / 100;
+        const saleDiscountPct = formData.pricing?.sale_discount_pct;
+        const calcSaleUnit = saleDiscountPct !== undefined && calcListUnit > 0
+          ? Math.round(calcListUnit * (1 - saleDiscountPct / 100) * 100) / 100
+          : formData.pricing?.sale_unit;
+        setPricingInputs((prev) => ({
+          ...prev,
+          list_unit: toDecimalInputValue(calcListUnit),
+          ...(calcSaleUnit !== undefined ? { sale_unit: toDecimalInputValue(calcSaleUnit) } : {}),
+        }));
+        setFormData((prev) => ({
+          ...prev,
+          pricing: {
+            ...prev.pricing,
+            retail_unit: numValue,
+            list_unit: calcListUnit,
+            ...(calcSaleUnit !== undefined ? { sale_unit: calcSaleUnit } : {}),
+          },
+        }));
+        return;
+      }
+    }
+
+    // Default: just update the field
+    updatePricing(field, numValue);
   };
 
   const updateLabel = (value: string) => {
@@ -148,10 +304,10 @@ export function PackagingOptionModal({
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-slate-900">
-              {isEditMode ? "Edit Packaging Option" : "Add Packaging Option"}
+              {isEditMode ? "Edit Packaging Option" : defaultValues ? "Duplicate Packaging Option" : "Add Packaging Option"}
             </h3>
             <p className="text-sm text-slate-600">
-              {isEditMode ? `Editing ${option?.code}` : "Create a new packaging option"}
+              {isEditMode ? `Editing ${option?.code}` : defaultValues ? `Duplicating from ${defaultValues.code}` : "Create a new packaging option"}
             </p>
           </div>
           <button
@@ -263,64 +419,8 @@ export function PackagingOptionModal({
           <div className="border-t pt-4">
             <h4 className="text-sm font-semibold text-slate-900 mb-3">Pricing</h4>
 
-            {/* Unit Prices (editable) */}
-            <p className="text-xs text-slate-500 mb-2">
-              Unit Price (per piece) - Package price calculated automatically
-            </p>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  List (Unit)
-                </label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={pricingInputs.list_unit ?? toDecimalInputValue(formData.pricing?.list_unit ?? formData.pricing?.list)}
-                  onChange={(e) => updatePricingInput("list_unit", e.target.value)}
-                  placeholder="0.00"
-                />
-                {parsedQty !== 1 && formData.pricing?.list_unit && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.list_unit, parsedQty))}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Retail (Unit)
-                </label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={pricingInputs.retail_unit ?? toDecimalInputValue(formData.pricing?.retail_unit ?? formData.pricing?.retail)}
-                  onChange={(e) => updatePricingInput("retail_unit", e.target.value)}
-                  placeholder="0.00"
-                />
-                {parsedQty !== 1 && formData.pricing?.retail_unit && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.retail_unit, parsedQty))}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Sale (Unit)
-                </label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={pricingInputs.sale_unit ?? toDecimalInputValue(formData.pricing?.sale_unit ?? formData.pricing?.sale)}
-                  onChange={(e) => updatePricingInput("sale_unit", e.target.value)}
-                  placeholder="0.00"
-                />
-                {parsedQty !== 1 && formData.pricing?.sale_unit && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.sale_unit, parsedQty))}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4 mt-4">
+            {/* Row 1: Price Reference + Retail (Unit) */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Price Reference
@@ -340,6 +440,27 @@ export function PackagingOptionModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Retail (Unit)
+                </label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.retail_unit ?? toDecimalInputValue(formData.pricing?.retail_unit ?? formData.pricing?.retail)}
+                  onChange={(e) => updatePricingInput("retail_unit", e.target.value)}
+                  placeholder="0.00"
+                />
+                {parsedQty !== 1 && formData.pricing?.retail_unit && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.retail_unit, parsedQty))}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: List Discount % + List (Unit) */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   List Discount %
                 </label>
                 <Input
@@ -352,6 +473,27 @@ export function PackagingOptionModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
+                  List (Unit)
+                </label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.list_unit ?? toDecimalInputValue(formData.pricing?.list_unit ?? formData.pricing?.list)}
+                  onChange={(e) => updatePricingInput("list_unit", e.target.value)}
+                  placeholder="0.00"
+                />
+                {parsedQty !== 1 && formData.pricing?.list_unit && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.list_unit, parsedQty))}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 3: Sale Discount % + Sale (Unit) */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Sale Discount %
                 </label>
                 <Input
@@ -362,7 +504,95 @@ export function PackagingOptionModal({
                   placeholder="0"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Sale (Unit)
+                </label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={pricingInputs.sale_unit ?? toDecimalInputValue(formData.pricing?.sale_unit ?? formData.pricing?.sale)}
+                  onChange={(e) => updatePricingInput("sale_unit", e.target.value)}
+                  placeholder="0.00"
+                />
+                {parsedQty !== 1 && formData.pricing?.sale_unit && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Pkg: {formatPrice(calculatePackagePrice(formData.pricing.sale_unit, parsedQty))}
+                  </p>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Customer Tag Filter */}
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Customer Tags
+            </h4>
+            <p className="text-xs text-slate-500 mb-3">
+              Restrict this pricing to customers with specific tags. Leave empty to apply to all customers.
+            </p>
+
+            {tagsLoading ? (
+              <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading tags...
+              </div>
+            ) : availableTags.length === 0 ? (
+              <p className="text-sm text-slate-400 py-2">No customer tags defined yet.</p>
+            ) : (
+              <>
+                {/* Selected tags */}
+                {formData.pricing?.tag_filter && formData.pricing.tag_filter.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {formData.pricing.tag_filter.map((fullTag) => {
+                      const tagDef = availableTags.find((t) => t.full_tag === fullTag);
+                      return (
+                        <span
+                          key={fullTag}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        >
+                          {tagDef ? `${tagDef.prefix}:${tagDef.code}` : fullTag}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (formData.pricing?.tag_filter || []).filter((t) => t !== fullTag);
+                              updatePricing("tag_filter", updated.length > 0 ? updated : undefined);
+                            }}
+                            className="ml-0.5 hover:text-red-600 transition"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Tag selector */}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    const current = formData.pricing?.tag_filter || [];
+                    if (!current.includes(e.target.value)) {
+                      updatePricing("tag_filter", [...current, e.target.value]);
+                    }
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Add a tag filter...</option>
+                  {availableTags
+                    .filter((t) => !(formData.pricing?.tag_filter || []).includes(t.full_tag))
+                    .map((tag) => (
+                      <option key={tag.tag_id} value={tag.full_tag}>
+                        {tag.full_tag}{tag.description ? ` — ${tag.description}` : ""}
+                      </option>
+                    ))}
+                </select>
+              </>
+            )}
           </div>
 
           {/* Footer */}

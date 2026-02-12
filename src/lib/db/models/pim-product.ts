@@ -330,6 +330,7 @@ export interface IPIMProduct extends Document {
   // ERP Specific - Packaging Options with embedded promotions
   packaging_options?: {
     id?: string;              // Optional unique ID
+    pkg_id?: string;          // Unique packaging identifier (incremental: "1", "2", "3"...)
     code: string;             // Packaging code (e.g., "PZ", "BOX", "CF", "PALLET")
     label: MultilingualText;  // Multilingual: "it": "Pezzo singolo", "de": "Einzelstück", etc.
     qty: number;              // Quantity per packaging unit
@@ -363,7 +364,7 @@ export interface IPIMProduct extends Document {
     }[];
   }[];
 
-  // Product-level promotions (legacy - prefer packaging-level promotions)
+  // Product-level promotions (source of truth — computed into packaging on GET)
   promotions?: {
     promo_code?: string;            // Promotion code (e.g., "016")
     promo_row?: number;             // Row number from ERP (for tracking/sorting)
@@ -383,6 +384,7 @@ export interface IPIMProduct extends Document {
     min_quantity?: number;          // Minimum quantity to qualify
     min_order_value?: number;       // Minimum order value to qualify
     promo_price?: number;           // Final price when this promotion applies
+    target_pkg_ids?: string[];      // Target packaging options — empty = all sellable
   }[];
 
   // Product-level promotion fields (for faceting/filtering)
@@ -807,6 +809,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     packaging_options: [
       {
         id: { type: String },
+        pkg_id: { type: String },             // Unique packaging identifier (incremental: "1", "2", "3"...)
         code: { type: String, required: true },
         label: MultilingualTextSchema,
         qty: { type: Number, required: true },
@@ -863,7 +866,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       },
     ],
 
-    // Product-level promotions (legacy - prefer packaging-level promotions)
+    // Product-level promotions (source of truth — computed into packaging on GET)
     promotions: [
       {
         promo_code: { type: String },
@@ -884,6 +887,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         min_quantity: { type: Number },
         min_order_value: { type: Number },
         promo_price: { type: Number },              // Final price when this promotion applies
+        // Target packaging options — empty = all sellable; otherwise specific pkg_ids
+        target_pkg_ids: [{ type: String }],
         // Customer tag filter — empty = all customers, otherwise requires matching tag
         tag_filter: [{ type: String }],
       },

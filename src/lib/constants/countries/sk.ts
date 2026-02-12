@@ -60,6 +60,8 @@ export const SK_CONFIG: CountryConfig = {
         NET60: "60 dní",
         NET90: "90 dní",
         COD: "Dobierka",
+        custom_days: "Vlastné (dni)",
+        custom_date: "Vlastné (dátum)",
       },
       template: {
         recipient: "Príjemca",
@@ -119,6 +121,8 @@ export const SK_CONFIG: CountryConfig = {
         NET60: "Net 60 days",
         NET90: "Net 90 days",
         COD: "Cash on Delivery",
+        custom_days: "Custom (days)",
+        custom_date: "Custom (date)",
       },
       template: {
         recipient: "Recipient",

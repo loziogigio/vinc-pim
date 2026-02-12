@@ -15,9 +15,10 @@ interface CreatedCustomer {
 interface Props {
   onCreated: (customer: CreatedCustomer) => void;
   onClose: () => void;
+  subtitle?: string;
 }
 
-export function CreateCustomerModal({ onCreated, onClose }: Props) {
+export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
   // Customer type
   const [customerType, setCustomerType] = useState<"business" | "private">("business");
 
@@ -126,7 +127,7 @@ export function CreateCustomerModal({ onCreated, onClose }: Props) {
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-slate-900">Nuovo Cliente</h3>
-            <p className="text-sm text-slate-500">Crea un nuovo cliente e assegnalo al documento</p>
+            <p className="text-sm text-slate-500">{subtitle || "Crea un nuovo cliente"}</p>
           </div>
           <button
             onClick={onClose}

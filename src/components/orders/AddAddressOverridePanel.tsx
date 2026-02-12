@@ -60,6 +60,7 @@ export function AddAddressOverridePanel({ fullTag, onAssign, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<CustomerEntry[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerEntry | null>(null);
@@ -90,6 +91,7 @@ export function AddAddressOverridePanel({ fullTag, onAssign, onClose }: Props) {
       setResults([]);
     } finally {
       setIsSearching(false);
+      setHasSearched(true);
     }
   };
 
@@ -205,7 +207,7 @@ export function AddAddressOverridePanel({ fullTag, onAssign, onClose }: Props) {
               </div>
             )}
 
-            {results.length === 0 && search && !isSearching && !error && (
+            {results.length === 0 && hasSearched && !isSearching && !error && (
               <p className="text-sm text-muted-foreground text-center py-2">
                 No customers found
               </p>

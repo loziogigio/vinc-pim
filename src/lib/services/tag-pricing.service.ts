@@ -71,6 +71,35 @@ export function resolveEffectiveTagsFromRefs(
   return merged.map((t) => t.full_tag);
 }
 
+export interface EffectiveTagEntry {
+  prefix: string;
+  tag: ICustomerTagRef;
+  source: "customer" | "address_override";
+}
+
+/**
+ * Resolve effective tags with source information (for UI display).
+ * Returns rich objects indicating whether each tag is inherited or overridden.
+ */
+export function resolveEffectiveTagsDetailed(
+  customerTags: ICustomerTagRef[],
+  addressOverrides: ICustomerTagRef[],
+): EffectiveTagEntry[] {
+  const overriddenPrefixes = new Set(addressOverrides.map((t) => t.prefix));
+
+  const fromCustomer: EffectiveTagEntry[] = customerTags
+    .filter((t) => !overriddenPrefixes.has(t.prefix))
+    .map((t) => ({ prefix: t.prefix, tag: t, source: "customer" as const }));
+
+  const fromOverrides: EffectiveTagEntry[] = addressOverrides.map((t) => ({
+    prefix: t.prefix,
+    tag: t,
+    source: "address_override" as const,
+  }));
+
+  return [...fromCustomer, ...fromOverrides];
+}
+
 // ============================================
 // PROMOTION FILTERING
 // ============================================

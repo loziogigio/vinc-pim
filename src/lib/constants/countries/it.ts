@@ -55,6 +55,8 @@ export const IT_CONFIG: CountryConfig = {
         NET60: "60 giorni",
         NET90: "90 giorni",
         COD: "Contrassegno",
+        custom_days: "Personalizzato (giorni)",
+        custom_date: "Personalizzato (data)",
       },
       template: {
         recipient: "Destinatario",
@@ -114,6 +116,8 @@ export const IT_CONFIG: CountryConfig = {
         NET60: "Net 60 days",
         NET90: "Net 90 days",
         COD: "Cash on Delivery",
+        custom_days: "Custom (days)",
+        custom_date: "Custom (date)",
       },
       template: {
         recipient: "Recipient",

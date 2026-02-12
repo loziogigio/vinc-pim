@@ -681,7 +681,20 @@ export class SolrAdapter extends MarketplaceAdapter {
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
       product_type_technical_specifications_json: product.product_type?.technical_specifications ? JSON.stringify(product.product_type.technical_specifications) : undefined,
-      packaging_json: product.packaging_options ? JSON.stringify(product.packaging_options) : undefined,
+      packaging_json: product.packaging_options ? JSON.stringify(
+        // Embed per-packaging promotions from product-level promotions
+        product.promotions?.length
+          ? product.packaging_options.map((pkg: any) => ({
+              ...pkg,
+              promotions: product.promotions!.filter((promo: any) => {
+                if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
+                  return pkg.is_sellable !== false;
+                }
+                return promo.target_pkg_ids.includes(pkg.pkg_id);
+              }),
+            }))
+          : product.packaging_options
+      ) : undefined,
 
       // Relationship objects with multilingual content (stored as JSON)
       category_json: product.category ? JSON.stringify(product.category) : undefined,

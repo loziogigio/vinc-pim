@@ -83,7 +83,7 @@ export type ProductMeta = {
 };
 
 export type PackagingOption = {
-  id?: string;                    // Optional unique ID
+  pkg_id?: string;                // Unique packaging identifier (incremental: "1", "2", "3"...)
   code: string;                   // Packaging code (e.g., "PZ", "BOX", "CF", "PALLET")
   label: MultilingualText;        // Multilingual label
   qty: number;                    // Quantity per packaging unit
@@ -136,6 +136,8 @@ export type Promotion = {
   text_discount?: string;         // Computed: cumulative discount chain (e.g., "-50% -20%")
   /** Customer tag filter — empty/undefined = applies to all; otherwise requires matching customer tag */
   tag_filter?: string[];          // e.g., ["categoria-di-sconto:sconto-45"]
+  /** Target packaging options — empty/undefined = all sellable; otherwise specific pkg_ids */
+  target_pkg_ids?: string[];
 };
 
 // ============================================

@@ -588,6 +588,69 @@ describe("integration: Customer Tags E2E", () => {
       expect(data.effective_tags).toContain("categoria-di-sconto:sconto-45");
     });
 
+    it("GET should include effective_tags_detailed with source info", async () => {
+      await seedTag("categoria-di-sconto", "sconto-45", "Sconto 45%");
+      await seedTag("categoria-di-sconto", "sconto-50", "Sconto 50%");
+      await seedTag("categoria-clienti", "idraulico", "Idraulico");
+      await seedCustomerWithAddresses();
+
+      // Assign customer tags
+      await assignCustomerTag(
+        makeReq("PUT", "http://localhost/api/b2b/customers/cust-tag-test/tags", {
+          full_tag: "categoria-di-sconto:sconto-45",
+        }),
+        createParams({ id: "cust-tag-test" })
+      );
+      await assignCustomerTag(
+        makeReq("PUT", "http://localhost/api/b2b/customers/cust-tag-test/tags", {
+          full_tag: "categoria-clienti:idraulico",
+        }),
+        createParams({ id: "cust-tag-test" })
+      );
+
+      // Override sconto on branch address
+      await assignAddressTag(
+        makeReq(
+          "PUT",
+          "http://localhost/api/b2b/customers/cust-tag-test/addresses/addr-branch/tags",
+          { full_tag: "categoria-di-sconto:sconto-50" }
+        ),
+        createParams({ id: "cust-tag-test", address_id: "addr-branch" })
+      );
+
+      // Check branch address — should have detailed entries with source
+      const res = await getAddressTags(
+        makeReq(
+          "GET",
+          "http://localhost/api/b2b/customers/cust-tag-test/addresses/addr-branch/tags"
+        ),
+        createParams({ id: "cust-tag-test", address_id: "addr-branch" })
+      );
+      const data = await res.json();
+
+      // effective_tags should be string[] (backward compat)
+      expect(data.effective_tags).toContain("categoria-di-sconto:sconto-50");
+      expect(data.effective_tags).toContain("categoria-clienti:idraulico");
+      expect(data.effective_tags).not.toContain("categoria-di-sconto:sconto-45");
+
+      // effective_tags_detailed should have source info
+      expect(data.effective_tags_detailed).toHaveLength(2);
+
+      const scontoEntry = data.effective_tags_detailed.find(
+        (e: any) => e.prefix === "categoria-di-sconto"
+      );
+      expect(scontoEntry).toBeDefined();
+      expect(scontoEntry.source).toBe("address_override");
+      expect(scontoEntry.tag.full_tag).toBe("categoria-di-sconto:sconto-50");
+
+      const clientiEntry = data.effective_tags_detailed.find(
+        (e: any) => e.prefix === "categoria-clienti"
+      );
+      expect(clientiEntry).toBeDefined();
+      expect(clientiEntry.source).toBe("customer");
+      expect(clientiEntry.tag.full_tag).toBe("categoria-clienti:idraulico");
+    });
+
     it("should return 404 for nonexistent address", async () => {
       await seedCustomerWithAddresses();
 

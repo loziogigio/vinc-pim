@@ -8,6 +8,7 @@ import type { Customer, Address } from "@/lib/types/customer";
 import type { Order } from "@/lib/types/order";
 import { CustomerTagsCard } from "@/components/orders/CustomerTagsCard";
 import { AddressTagOverrides } from "@/components/orders/AddressTagOverrides";
+import { AddAddressModal } from "@/components/orders/AddAddressModal";
 import {
   ArrowLeft,
   Building2,
@@ -89,6 +90,7 @@ export default function CustomerDetailPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
+  const [showAddAddress, setShowAddAddress] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [requiresDelivery, setRequiresDelivery] = useState(true);
 
@@ -750,7 +752,10 @@ export default function CustomerDetailPage({
             <MapPin className="h-4 w-4" />
             Addresses ({customer.addresses?.length || 0})
           </h2>
-          <button className="flex items-center gap-1 text-sm text-primary hover:underline">
+          <button
+            onClick={() => setShowAddAddress(true)}
+            className="flex items-center gap-1 text-sm text-primary hover:underline"
+          >
             <Plus className="h-4 w-4" />
             Add Address
           </button>
@@ -1180,6 +1185,19 @@ export default function CustomerDetailPage({
           </div>
         )}
       </div>
+
+      {/* Add Address Modal */}
+      {showAddAddress && customer && (
+        <AddAddressModal
+          customerId={customer.customer_id}
+          customerName={customer.company_name || [customer.first_name, customer.last_name].filter(Boolean).join(" ")}
+          onClose={() => setShowAddAddress(false)}
+          onCreated={() => {
+            setShowAddAddress(false);
+            fetchCustomer();
+          }}
+        />
+      )}
     </div>
   );
 }
