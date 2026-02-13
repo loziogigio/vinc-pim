@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Connect to tenant database and get models
-    const { PortalUser: PortalUserModel } = await connectWithModels(tenantDb);
+    const { PortalUser: PortalUserModel, Customer: CustomerModel } = await connectWithModels(tenantDb);
 
     // 7. Find portal user by username
     const user = await PortalUserModel.findOne({
@@ -111,10 +111,23 @@ export async function POST(req: NextRequest) {
       { $set: { last_login_at: new Date() } }
     ).catch(console.error);
 
-    // 11. Generate JWT token
-    const token = await generatePortalUserToken(user.portal_user_id, tenantId);
+    // 11. Fetch customer tags for JWT (tag-based pricing in search)
+    const customerIds = (user.customer_access || []).map((ca: any) => ca.customer_id);
+    let customerTags: string[] = [];
+    if (customerIds.length) {
+      const customers = await CustomerModel.find(
+        { customer_id: { $in: customerIds } },
+        { tags: 1 }
+      ).lean();
+      customerTags = [...new Set(
+        customers.flatMap((c: any) => (c.tags || []).map((t: any) => t.full_tag)).filter(Boolean)
+      )];
+    }
 
-    // 12. Return token and user info (without password_hash)
+    // 12. Generate JWT token (with customer tags)
+    const token = await generatePortalUserToken(user.portal_user_id, tenantId, customerTags);
+
+    // 13. Return token and user info (without password_hash)
     const portalUser: PortalUserSafe = {
       portal_user_id: user.portal_user_id,
       tenant_id: user.tenant_id,
@@ -131,6 +144,7 @@ export async function POST(req: NextRequest) {
       token,
       portal_user: portalUser,
       customer_access: user.customer_access,
+      customer_tags: customerTags,
     });
   } catch (error) {
     console.error("Portal login error:", error);

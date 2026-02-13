@@ -16,6 +16,8 @@ import { SearchRequest } from '@/lib/types/search';
 import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
 import { getB2BSession } from '@/lib/auth/b2b-session';
 import { verifyAPIKeyFromRequest } from '@/lib/auth/api-key-auth';
+import { connectWithModels } from '@/lib/db/connection';
+import { resolveEffectiveTags } from '@/lib/services/tag-pricing.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -135,6 +137,16 @@ export async function POST(request: NextRequest) {
     // Enrich facets with full entity data
     if (response.facet_results) {
       response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, tenantDb);
+    }
+
+    // Filter packaging/promotions by effective customer+address tags
+    const effectiveTags = await resolveEffectiveTagsForSearch(
+      tenantDb, body.customer_code, body.address_code
+    );
+    if (effectiveTags === null) {
+      response.results = stripPackagingFromResults(response.results);
+    } else if (effectiveTags.length) {
+      response.results = filterResultsByTags(response.results, effectiveTags);
     }
 
     return NextResponse.json({
@@ -363,6 +375,18 @@ export async function GET(request: NextRequest) {
       response.facet_results = await enrichFacetResults(response.facet_results, lang, tenantDb);
     }
 
+    // Filter packaging/promotions by effective customer+address tags
+    const customerCode = searchParams.get('customer_code') || undefined;
+    const addressCode = searchParams.get('address_code') || undefined;
+    const effectiveTags = await resolveEffectiveTagsForSearch(
+      tenantDb, customerCode, addressCode
+    );
+    if (effectiveTags === null) {
+      response.results = stripPackagingFromResults(response.results);
+    } else if (effectiveTags.length) {
+      response.results = filterResultsByTags(response.results, effectiveTags);
+    }
+
     return NextResponse.json({
       success: true,
       data: response,
@@ -410,4 +434,77 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// ============================================
+// TAG-BASED FILTERING HELPERS
+// ============================================
+
+/**
+ * Resolve effective tags for search filtering.
+ * Looks up customer by external_code, finds address by external_code,
+ * then resolves effective tags (customer tags + address overrides).
+ * Returns null if customer_code/address_code not provided (= strip packaging).
+ */
+async function resolveEffectiveTagsForSearch(
+  tenantDb: string,
+  customerCode?: string,
+  addressCode?: string,
+): Promise<string[] | null> {
+  if (!customerCode || !addressCode) return null;
+
+  const { Customer } = await connectWithModels(tenantDb);
+  const customer = await Customer.findOne(
+    { external_code: customerCode },
+    { tags: 1, addresses: 1 }
+  ).lean();
+  if (!customer) return null;
+
+  const address = (customer as any).addresses?.find(
+    (a: any) => a.external_code === addressCode
+  ) || null;
+
+  return resolveEffectiveTags(customer as any, address);
+}
+
+/**
+ * Strip packaging_options from all results (anonymous search, no customer context).
+ */
+function stripPackagingFromResults(results: any[]): any[] {
+  return results.map((product: any) => {
+    const { packaging_options, ...rest } = product;
+    return rest;
+  });
+}
+
+/**
+ * Filter packaging options and promotions by customer tags.
+ * - Packaging with tag_filter: only keep if at least one tag matches
+ * - Packaging without tag_filter: always keep (fallback pricing)
+ * - Promotions with tag_filter: only keep if at least one tag matches
+ * - Promotions without tag_filter: always keep (applies to all)
+ */
+function filterResultsByTags(results: any[], customerTags: string[]): any[] {
+  const tagSet = new Set(customerTags);
+
+  return results.map((product: any) => {
+    if (!product.packaging_options?.length) return product;
+
+    const filteredPackaging = product.packaging_options
+      .filter((pkg: any) => {
+        const tagFilter = pkg.pricing?.tag_filter;
+        if (!tagFilter?.length) return true;
+        return tagFilter.some((tag: string) => tagSet.has(tag));
+      })
+      .map((pkg: any) => {
+        if (!pkg.promotions?.length) return pkg;
+        const filteredPromos = pkg.promotions.filter((promo: any) => {
+          if (!promo.tag_filter?.length) return true;
+          return promo.tag_filter.some((tag: string) => tagSet.has(tag));
+        });
+        return { ...pkg, promotions: filteredPromos };
+      });
+
+    return { ...product, packaging_options: filteredPackaging };
+  });
 }

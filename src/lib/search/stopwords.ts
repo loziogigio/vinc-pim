@@ -3,9 +3,8 @@
  * function words that Solr's text analyzers remove at index time.
  *
  * Because Solr removes these during indexing, requiring them in a query
- * (AND logic) causes zero results.  We filter them client-side with one
- * exception: the LAST term is always kept (the user may still be typing
- * a prefix, e.g. "macchina per…" → keep "per" for prefix matching).
+ * (AND logic) causes zero results.  We filter them client-side from ALL
+ * positions.  If all terms are stopwords, the original array is returned.
  *
  * Sources: standard Lucene / Solr stopword files (lang/stopwords_*.txt).
  * Only articles, prepositions, conjunctions, pronouns, and the most
@@ -181,9 +180,10 @@ const STOPWORDS: Record<string, Set<string>> = {
 
 /**
  * Filter stopwords from search terms.
- * - Stopwords in non-last positions are removed (they cause zero results in Solr)
- * - The LAST term is ALWAYS kept (user may be mid-typing a prefix)
- * - If filtering would remove ALL non-last terms, returns the original array
+ * - Stopwords are removed because Solr strips them at index time,
+ *   so requiring them in a query (AND logic) causes zero results.
+ * - ALL positions are filtered, including the last term.
+ * - If filtering would remove ALL terms, returns the original array.
  */
 export function filterSearchStopwords(terms: string[], lang: string): string[] {
   if (terms.length <= 1) return terms;
@@ -191,12 +191,7 @@ export function filterSearchStopwords(terms: string[], lang: string): string[] {
   const stopwords = STOPWORDS[lang];
   if (!stopwords) return terms;
 
-  const filtered = terms.filter((term, index) => {
-    // Always keep the last term
-    if (index === terms.length - 1) return true;
-    // Remove stopwords in non-last positions
-    return !stopwords.has(term);
-  });
+  const filtered = terms.filter((term) => !stopwords.has(term));
 
   // Safety: never return empty — fall back to original if everything was filtered
   return filtered.length > 0 ? filtered : terms;

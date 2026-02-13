@@ -243,10 +243,9 @@ function buildMainQuery(
     return `*:* ${imageBoost}`;
   }
 
-  // Split into terms, then filter stopwords from non-last positions.
+  // Split into terms, then filter stopwords from all positions.
   // Stopwords (per, di, il, …) are removed by Solr at index time,
   // so requiring them in the query would return zero results.
-  // The last term is always kept for prefix-typing support.
   const rawTerms = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
   if (rawTerms.length === 0) {

@@ -121,7 +121,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (status) {
-      query.status = status;
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      query.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
     }
 
     if (year) {
