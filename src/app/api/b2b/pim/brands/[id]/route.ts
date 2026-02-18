@@ -5,9 +5,10 @@ import { connectWithModels } from "@/lib/db/connection";
 // GET /api/b2b/pim/brands/[id] - Get single brand
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getB2BSession();
     if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -17,7 +18,7 @@ export async function GET(
     const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const brand = await BrandModel.findOne({
-      brand_id: params.id,
+      brand_id: id,
       // No wholesaler_id - database provides isolation
     }).lean();
 
@@ -38,9 +39,10 @@ export async function GET(
 // PATCH /api/b2b/pim/brands/[id] - Update brand
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getB2BSession();
     if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,7 +56,7 @@ export async function PATCH(
 
     // Find existing brand (no wholesaler_id - database provides isolation)
     const existingBrand = await BrandModel.findOne({
-      brand_id: params.id,
+      brand_id: id,
     });
 
     if (!existingBrand) {
@@ -65,7 +67,7 @@ export async function PATCH(
     if (slug && slug !== existingBrand.slug) {
       const conflictingBrand = await BrandModel.findOne({
         slug: slug,
-        brand_id: { $ne: params.id },
+        brand_id: { $ne: id },
       });
 
       if (conflictingBrand) {
@@ -103,9 +105,10 @@ export async function PATCH(
 // DELETE /api/b2b/pim/brands/[id] - Delete brand
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getB2BSession();
     if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -115,7 +118,7 @@ export async function DELETE(
     const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const brand = await BrandModel.findOne({
-      brand_id: params.id,
+      brand_id: id,
       // No wholesaler_id - database provides isolation
     });
 
@@ -134,7 +137,7 @@ export async function DELETE(
     }
 
     await BrandModel.deleteOne({
-      brand_id: params.id,
+      brand_id: id,
       // No wholesaler_id - database provides isolation
     });
 

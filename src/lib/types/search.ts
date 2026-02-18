@@ -143,6 +143,7 @@ export interface SolrProduct {
 
   // Pricing & inventory
   price?: number;
+  vat_rate?: number;
   quantity?: number;
   sold?: number;
   unit?: string;

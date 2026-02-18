@@ -292,6 +292,7 @@ export function createLineItem(
     quantity_unit: body.quantity_unit,
     min_order_quantity: body.min_order_quantity,
     pack_size: body.pack_size,
+    pkg_id: body.pkg_id,
     packaging_code: body.packaging_code,
     packaging_label: body.packaging_label,
 
@@ -530,4 +531,55 @@ export function parseLineNumbers(
   }
 
   return undefined;
+}
+
+// ============================================
+// ADDRESS LABEL
+// ============================================
+
+interface AddressLike {
+  street_address?: string;
+  postal_code?: string;
+  city?: string;
+  province?: string;
+  label?: string;
+}
+
+/**
+ * Build a human-readable one-line address label.
+ * e.g. "Via Roma 123, 20100 Milano (MI)"
+ * Always uses structured fields — the `label` field is user-defined and may
+ * contain non-address info (e.g., tag codes), so it's not used here.
+ */
+export function buildAddressLabel(addr: AddressLike): string {
+  const parts: string[] = [];
+  if (addr.street_address) parts.push(addr.street_address);
+  const cityPart = [addr.postal_code, addr.city].filter(Boolean).join(" ");
+  if (cityPart) parts.push(cityPart);
+  if (addr.province) parts.push(`(${addr.province})`);
+  return parts.join(", ") || addr.label || "";
+}
+
+/**
+ * Resolve shipping_address_label from customer addresses.
+ * Looks up address by address_id on the customer document.
+ */
+export async function resolveAddressLabel(
+  tenantDb: string,
+  customerId: string,
+  addressId: string
+): Promise<string | undefined> {
+  const { Customer } = await connectWithModels(tenantDb);
+  const customer = await Customer.findOne(
+    { customer_id: customerId },
+    { addresses: 1 }
+  ).lean();
+  if (!customer) return undefined;
+
+  const addr = (customer as any).addresses?.find(
+    (a: any) => a.address_id === addressId
+  );
+  if (!addr) return undefined;
+
+  return buildAddressLabel(addr);
 }

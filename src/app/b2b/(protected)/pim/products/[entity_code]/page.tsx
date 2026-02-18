@@ -2022,7 +2022,18 @@ export default function ProductDetailPage({
                                   {promo.min_quantity || "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right text-emerald-600 font-medium">
-                                  {promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
+                                  {promo.discount_percentage
+                                    ? <button
+                                        onClick={() => {
+                                          setEditingPromotion({ promotion: promo, packagingPkgIds: promo.target_pkg_ids || [] });
+                                          setPromotionModalOpen(true);
+                                        }}
+                                        className="text-emerald-600 hover:text-emerald-700 underline decoration-dotted"
+                                        title="Varies per packaging — click to see details"
+                                      >
+                                        varies
+                                      </button>
+                                    : promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-muted-foreground">
                                   {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}

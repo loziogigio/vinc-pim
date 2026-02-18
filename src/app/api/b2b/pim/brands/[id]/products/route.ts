@@ -5,9 +5,10 @@ import { connectWithModels } from "@/lib/db/connection";
 // GET /api/b2b/pim/brands/[id]/products - Get products for a brand
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getB2BSession();
     if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(
 
     // Verify brand exists
     const brand = await BrandModel.findOne({
-      brand_id: params.id,
+      brand_id: id,
       // No wholesaler_id - database provides isolation
     }).lean() as any;
 
@@ -36,7 +37,7 @@ export async function GET(
     const query: any = {
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "brand.id": params.id,
+      "brand.id": id,
     };
 
     // Add search filter
@@ -80,9 +81,10 @@ export async function GET(
 // POST /api/b2b/pim/brands/[id]/products - Bulk associate/disassociate products
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getB2BSession();
     if (!session || !session.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -110,7 +112,7 @@ export async function POST(
 
     // Verify brand exists
     const brand = await BrandModel.findOne({
-      brand_id: params.id,
+      brand_id: id,
       // No wholesaler_id - database provides isolation
     }).lean() as any;
 
@@ -121,14 +123,14 @@ export async function POST(
     if (action === "add") {
       // Associate products with brand
       const updateData: any = {
-        "brand.id": params.id,
+        "brand.id": id,
         "brand.name": brand.label,
         "brand.slug": brand.slug,
       };
 
       if (brand.logo_url) {
         updateData["brand.image"] = {
-          id: params.id,
+          id: id,
           thumbnail: brand.logo_url,
           original: brand.logo_url,
         };
@@ -147,11 +149,11 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "brand.id": params.id,
+        "brand.id": id,
       });
 
       await BrandModel.updateOne(
-        { brand_id: params.id }, // No wholesaler_id - database provides isolation
+        { brand_id: id }, // No wholesaler_id - database provides isolation
         { $set: { product_count: productCount } }
       );
 
@@ -166,7 +168,7 @@ export async function POST(
           entity_code: { $in: entity_codes },
           // No wholesaler_id - database provides isolation
           isCurrent: true,
-          "brand.id": params.id,
+          "brand.id": id,
         },
         { $unset: { brand: "" } }
       );
@@ -175,11 +177,11 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "brand.id": params.id,
+        "brand.id": id,
       });
 
       await BrandModel.updateOne(
-        { brand_id: params.id }, // No wholesaler_id - database provides isolation
+        { brand_id: id }, // No wholesaler_id - database provides isolation
         { $set: { product_count: productCount } }
       );
 

@@ -165,6 +165,13 @@ export function PromotionModal({
     }
   }, [pricingMethod, basePrice, formData.discount_percentage, formData.discount_amount, formData.promo_price]);
 
+  // Determine if multiple packaging targets are selected (for hiding inline single-result)
+  const sellablePackaging = packagingOptions.filter((p) => p.is_sellable !== false);
+  const targetPackaging = selectedPkgIds.length > 0
+    ? sellablePackaging.filter((p) => selectedPkgIds.includes(p.pkg_id!))
+    : sellablePackaging;
+  const hasMultipleTargets = targetPackaging.length > 1;
+
   if (!open) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -473,8 +480,8 @@ export function PromotionModal({
                     />
                     <span className="text-2xl text-slate-400">%</span>
                   </div>
-                  {/* Promo Price Result with Calculation Breakdown */}
-                  {formData.discount_percentage && formData.discount_percentage > 0 && listPrice > 0 && (
+                  {/* Promo Price Result with Calculation Breakdown (hidden when multiple packagings targeted) */}
+                  {!hasMultipleTargets && formData.discount_percentage && formData.discount_percentage > 0 && listPrice > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-200">
                       {/* Calculation breakdown */}
                       <div className="text-xs text-slate-600 mb-3 font-mono bg-white rounded p-2 border border-slate-200">
@@ -518,8 +525,8 @@ export function PromotionModal({
                       className="text-lg"
                     />
                   </div>
-                  {/* Promo Price Result with Calculation Breakdown */}
-                  {formData.discount_amount && formData.discount_amount > 0 && listPrice > 0 && (
+                  {/* Promo Price Result with Calculation Breakdown (hidden when multiple packagings targeted) */}
+                  {!hasMultipleTargets && formData.discount_amount && formData.discount_amount > 0 && listPrice > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-200">
                       {/* Calculation breakdown */}
                       <div className="text-xs text-slate-600 mb-3 font-mono bg-white rounded p-2 border border-slate-200">
@@ -563,8 +570,8 @@ export function PromotionModal({
                       className="text-lg"
                     />
                   </div>
-                  {/* Result display */}
-                  {formData.promo_price && formData.promo_price > 0 && (
+                  {/* Result display (hidden when multiple packagings targeted) */}
+                  {!hasMultipleTargets && formData.promo_price && formData.promo_price > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-200">
                       <div className="text-xs text-slate-500 mb-2 font-mono bg-white rounded p-2 border border-slate-200">
                         Net price (no discount calculation)

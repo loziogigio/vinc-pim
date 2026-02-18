@@ -671,6 +671,7 @@ export function transformDocument(
 
     // Inventory & pricing
     price: doc.price,
+    vat_rate: doc.vat_rate,
     quantity: doc.quantity,
     sold: doc.sold,
     unit: doc.unit,

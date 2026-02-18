@@ -1,28 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { X, MapPin, Loader2 } from "lucide-react";
+import { X, MapPin, Loader2, Edit } from "lucide-react";
+import type { Address } from "@/lib/types/customer";
 
 interface Props {
   customerId: string;
   customerName?: string;
+  /** When provided, the modal opens in edit mode */
+  address?: Address;
   onCreated: () => void;
   onClose: () => void;
 }
 
-export function AddAddressModal({ customerId, customerName, onCreated, onClose }: Props) {
-  const [addressType, setAddressType] = useState<"both" | "delivery" | "billing">("both");
-  const [label, setLabel] = useState("");
-  const [recipientName, setRecipientName] = useState(customerName || "");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [streetAddress2, setStreetAddress2] = useState("");
-  const [city, setCity] = useState("");
-  const [province, setProvince] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("IT");
-  const [phone, setPhone] = useState("");
-  const [deliveryNotes, setDeliveryNotes] = useState("");
-  const [isDefault, setIsDefault] = useState(false);
+export function AddAddressModal({ customerId, customerName, address, onCreated, onClose }: Props) {
+  const isEditMode = !!address;
+
+  const [addressType, setAddressType] = useState<"both" | "delivery" | "billing">(address?.address_type || "both");
+  const [externalCode, setExternalCode] = useState(address?.external_code || "");
+  const [label, setLabel] = useState(address?.label || "");
+  const [recipientName, setRecipientName] = useState(address?.recipient_name || customerName || "");
+  const [streetAddress, setStreetAddress] = useState(address?.street_address || "");
+  const [streetAddress2, setStreetAddress2] = useState(address?.street_address_2 || "");
+  const [city, setCity] = useState(address?.city || "");
+  const [province, setProvince] = useState(address?.province || "");
+  const [postalCode, setPostalCode] = useState(address?.postal_code || "");
+  const [country, setCountry] = useState(address?.country || "IT");
+  const [phone, setPhone] = useState(address?.phone || "");
+  const [deliveryNotes, setDeliveryNotes] = useState(address?.delivery_notes || "");
+  const [isDefault, setIsDefault] = useState(address?.is_default || false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,28 +49,35 @@ export function AddAddressModal({ customerId, customerName, onCreated, onClose }
     setError(null);
 
     try {
-      const res = await fetch(`/api/b2b/customers/${customerId}/addresses`, {
-        method: "POST",
+      const payload = {
+        external_code: externalCode.trim() || undefined,
+        address_type: addressType,
+        label: label.trim() || undefined,
+        is_default: isDefault,
+        recipient_name: recipientName.trim(),
+        street_address: streetAddress.trim(),
+        street_address_2: streetAddress2.trim() || undefined,
+        city: city.trim(),
+        province: province.trim(),
+        postal_code: postalCode.trim(),
+        country: country.trim(),
+        phone: phone.trim() || undefined,
+        delivery_notes: deliveryNotes.trim() || undefined,
+      };
+
+      const url = isEditMode
+        ? `/api/b2b/customers/${customerId}/addresses/${address.address_id}`
+        : `/api/b2b/customers/${customerId}/addresses`;
+
+      const res = await fetch(url, {
+        method: isEditMode ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address_type: addressType,
-          label: label.trim() || undefined,
-          is_default: isDefault,
-          recipient_name: recipientName.trim(),
-          street_address: streetAddress.trim(),
-          street_address_2: streetAddress2.trim() || undefined,
-          city: city.trim(),
-          province: province.trim(),
-          postal_code: postalCode.trim(),
-          country: country.trim(),
-          phone: phone.trim() || undefined,
-          delivery_notes: deliveryNotes.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Errore nella creazione");
+        setError(data.error || (isEditMode ? "Errore nel salvataggio" : "Errore nella creazione"));
         return;
       }
 
@@ -85,11 +98,15 @@ export function AddAddressModal({ customerId, customerName, onCreated, onClose }
         {/* Header */}
         <div className="flex items-center gap-4 border-b border-slate-200 p-6 sticky top-0 bg-white rounded-t-2xl z-10">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#009688]/10">
-            <MapPin className="h-5 w-5 text-[#009688]" />
+            {isEditMode ? <Edit className="h-5 w-5 text-[#009688]" /> : <MapPin className="h-5 w-5 text-[#009688]" />}
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">Nuovo Indirizzo</h3>
-            <p className="text-sm text-slate-500">Aggiungi un indirizzo al cliente</p>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {isEditMode ? "Modifica Indirizzo" : "Nuovo Indirizzo"}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {isEditMode ? "Modifica i dati dell'indirizzo" : "Aggiungi un indirizzo al cliente"}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -121,12 +138,21 @@ export function AddAddressModal({ customerId, customerName, onCreated, onClose }
             </div>
           </div>
 
-          {/* Label & Recipient */}
+          {/* Label, Code & Recipient */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
               Informazioni
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Codice esterno</label>
+                <input
+                  value={externalCode}
+                  onChange={(e) => setExternalCode(e.target.value.toUpperCase())}
+                  placeholder="Es. ADDR-001"
+                  className={`${inputClass} uppercase font-mono`}
+                />
+              </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Etichetta</label>
                 <input
@@ -281,7 +307,7 @@ export function AddAddressModal({ customerId, customerName, onCreated, onClose }
               className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[#009688] text-white hover:bg-[#00796b] transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {saving ? "Salvataggio..." : "Aggiungi Indirizzo"}
+              {saving ? "Salvataggio..." : isEditMode ? "Salva Modifiche" : "Aggiungi Indirizzo"}
             </button>
           </div>
         </form>

@@ -203,6 +203,7 @@ interface ProductEnrichmentData {
   share_media_with_variants?: boolean;
   packaging_options?: PackagingData[];
   promotions?: any[];
+  vat_rate?: number;
 }
 
 /**
@@ -224,7 +225,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, promotions: 1 })
+    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, promotions: 1, pricing: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -240,6 +241,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
         share_media_with_variants: product.share_media_with_variants,
         packaging_options: product.packaging_options,
         promotions: product.promotions,
+        vat_rate: product.pricing?.vat_rate,
       });
     }
   }
@@ -425,12 +427,11 @@ function enrichPackagingWithUnitPrices(
       pricing.sale_discount_pct
     );
 
-    // Enrich promotions with text_discount
+    // Enrich promotions with text_discount and recalculate promo_price
     // Each promotion gets pricing discounts + its own discount_percentage
     // Net price promotions (no discount_percentage, only promo_price) are skipped
     const enrichedPromotions = pkg.promotions?.map(promo => {
-      // Skip text_discount for net price promotions
-      // These use a fixed promo_price instead of percentage discounts
+      // Skip for net price promotions (fixed promo_price, no percentage)
       if (!promo.discount_percentage) {
         return promo; // Keep promo as-is, mobile app shows promo_price directly
       }
@@ -443,8 +444,17 @@ function enrichPackagingWithUnitPrices(
         promo.discount_percentage
       );
 
+      // Recalculate promo_price from the packaging's actual list_unit
+      // The stored promo_price may have been computed from a different packaging
+      const basePrice = listUnit ?? pricing.list_unit ?? pricing.list;
+      let computedPromoPrice = promo.promo_price;
+      if (basePrice != null) {
+        computedPromoPrice = round2(basePrice * (1 - promo.discount_percentage / 100));
+      }
+
       return {
         ...promo,
+        promo_price: computedPromoPrice,
         text_discount: promoTextDiscount,
       };
     });
@@ -645,6 +655,8 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         collections: enrichCollections(result.collections, collectionsMap),
         product_type: enrichProductType(result.product_type, productTypesMap),
         tags: enrichTags(result.tags, tagsMap),
+        // VAT rate: MongoDB (source of truth) → Solr → default 22%
+        vat_rate: productData?.vat_rate ?? result.vat_rate ?? 22,
         // Replace Solr data with MongoDB data (source of truth, localized)
         attributes: mongoAttributes || result.attributes,
         technical_specifications: mongoTechnicalSpecs || result.technical_specifications,
@@ -745,6 +757,7 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         // Keep has_active_promo from Solr or default to false
         return {
           ...product,
+          vat_rate: product.vat_rate ?? 22,
           has_active_promo: product.has_active_promo ?? false,
           brand: enrichBrand(product.brand, brandsMap),
           category: enrichCategory(product.category, categoriesMap),
@@ -782,6 +795,7 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         description: getLocalizedDescription(productData, lang) || product.description,
         slug: productData.slug || product.slug,
         // Pricing from MongoDB
+        vat_rate: productData.pricing?.vat_rate ?? product.vat_rate ?? 22,
         price: productData.sell_price ?? product.price,
         list_price: productData.list_price ?? product.list_price,
         // Parent/variant info

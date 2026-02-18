@@ -235,8 +235,6 @@ export async function PATCH(
 
     // Allowed fields to update
     const allowedFields = [
-      "shipping_address_id",
-      "billing_address_id",
       "requested_delivery_date",
       "delivery_slot",
       "delivery_route",

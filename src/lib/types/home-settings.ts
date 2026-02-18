@@ -303,6 +303,7 @@ export type HeaderWidgetType =
   | "profile"
   | "notifications"
   | "reminders"
+  | "app-launcher"
   | "button"
   | "spacer"
   | "divider";
@@ -455,6 +456,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "profile": { label: "Profile", icon: "User", description: "User profile/login" },
   "notifications": { label: "Notifications", icon: "Bell", description: "Push notifications toggle" },
   "reminders": { label: "Reminders", icon: "History", description: "User reminders and saved items" },
+  "app-launcher": { label: "App Launcher", icon: "LayoutGrid", description: "App launcher dropdown" },
   "button": { label: "Button", icon: "Square", description: "Custom button/link", allowMultiple: true },
   "spacer": { label: "Spacer", icon: "Space", description: "Flexible space", allowMultiple: true },
   "divider": { label: "Divider", icon: "Minus", description: "Vertical divider", allowMultiple: true },

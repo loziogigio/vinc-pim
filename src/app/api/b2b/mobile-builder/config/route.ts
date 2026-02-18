@@ -167,6 +167,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Sanitize _cached_entities and _cached_products: limit to 50 items per block
+    const MAX_CACHED_ITEMS = 50;
+    for (const block of blocks) {
+      const b = block as any;
+      if (b._cached_entities?.length > MAX_CACHED_ITEMS) {
+        b._cached_entities = b._cached_entities.slice(0, MAX_CACHED_ITEMS);
+      }
+      if (b._cached_products?.length > MAX_CACHED_ITEMS) {
+        b._cached_products = b._cached_products.slice(0, MAX_CACHED_ITEMS);
+      }
+    }
+
     // Get the current version
     const currentConfig = await MobileHomeConfig.findOne({
       config_id: DEFAULT_CONFIG_ID,

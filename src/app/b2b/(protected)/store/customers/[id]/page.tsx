@@ -91,6 +91,8 @@ export default function CustomerDetailPage({
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [showAddAddress, setShowAddAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [requiresDelivery, setRequiresDelivery] = useState(true);
 
@@ -123,6 +125,22 @@ export default function CustomerDetailPage({
       setError("Failed to load customer");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function deleteAddress(addressId: string) {
+    setDeletingAddressId(addressId);
+    try {
+      const res = await fetch(`/api/b2b/customers/${id}/addresses/${addressId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchCustomer();
+      }
+    } catch (err) {
+      console.error("Error deleting address:", err);
+    } finally {
+      setDeletingAddressId(null);
     }
   }
 
@@ -822,10 +840,19 @@ export default function CustomerDetailPage({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition">
+                    <button
+                      onClick={() => setEditingAddress(address)}
+                      className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition"
+                      title="Modifica indirizzo"
+                    >
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 transition">
+                    <button
+                      onClick={() => deleteAddress(address.address_id)}
+                      disabled={deletingAddressId === address.address_id}
+                      className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                      title="Elimina indirizzo"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -1186,14 +1213,19 @@ export default function CustomerDetailPage({
         )}
       </div>
 
-      {/* Add Address Modal */}
-      {showAddAddress && customer && (
+      {/* Add/Edit Address Modal */}
+      {(showAddAddress || editingAddress) && customer && (
         <AddAddressModal
           customerId={customer.customer_id}
           customerName={customer.company_name || [customer.first_name, customer.last_name].filter(Boolean).join(" ")}
-          onClose={() => setShowAddAddress(false)}
+          address={editingAddress || undefined}
+          onClose={() => {
+            setShowAddAddress(false);
+            setEditingAddress(null);
+          }}
           onCreated={() => {
             setShowAddAddress(false);
+            setEditingAddress(null);
             fetchCustomer();
           }}
         />

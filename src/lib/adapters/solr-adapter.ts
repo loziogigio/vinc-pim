@@ -582,11 +582,12 @@ export class SolrAdapter extends MarketplaceAdapter {
       published_at: product.published_at?.toISOString(),
       item_creation_date: product.item_creation_date?.toISOString(),  // ERP insertion date
 
-      // Inventory
+      // Inventory & pricing
       quantity: product.quantity,
       sold: product.sold,
       unit: product.unit,
       stock_status: product.stock_status,
+      vat_rate: product.pricing?.vat_rate,
 
       // Physical Attributes
       weight: product.weight,

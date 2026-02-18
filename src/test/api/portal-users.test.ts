@@ -736,6 +736,18 @@ describe("integration: Portal Users API", () => {
       // Arrange
       const password = "TestPassword123!";
       const passwordHash = await bcrypt.hash(password, 10);
+      // Create the customer that the portal user has access to
+      await CustomerModel.create({
+        customer_id: "CUST-001",
+        tenant_id: "test-tenant",
+        external_code: "C-001",
+        company_name: "Test Company",
+        email: "test@example.com",
+        customer_type: "business",
+        tags: [],
+        addresses: [],
+      });
+
       await PortalUserModel.create({
         portal_user_id: "PU-login-test",
         tenant_id: "test-tenant",

@@ -111,17 +111,73 @@ export async function POST(req: NextRequest) {
       { $set: { last_login_at: new Date() } }
     ).catch(console.error);
 
-    // 11. Fetch customer tags for JWT (tag-based pricing in search)
+    // 11. Fetch customer data for JWT tags + enriched response
     const customerIds = (user.customer_access || []).map((ca: any) => ca.customer_id);
     let customerTags: string[] = [];
+    const enrichedCustomerAccess: Array<{
+      customer_id: string;
+      customer_code: string | undefined;
+      address_access: "all" | string[];
+      default_address_code: string | undefined;
+      delivery_addresses: Array<{
+        address_id: string;
+        external_code: string | undefined;
+        label: string | undefined;
+        address_type: string;
+        is_default: boolean;
+      }>;
+    }> = [];
+
     if (customerIds.length) {
       const customers = await CustomerModel.find(
         { customer_id: { $in: customerIds } },
-        { tags: 1 }
+        { customer_id: 1, external_code: 1, tags: 1, addresses: 1 }
       ).lean();
+
+      // Build customer lookup by customer_id
+      const customerMap = new Map(
+        customers.map((c: any) => [c.customer_id, c])
+      );
+
+      // Extract tags for JWT
       customerTags = [...new Set(
         customers.flatMap((c: any) => (c.tags || []).map((t: any) => t.full_tag)).filter(Boolean)
       )];
+
+      // Build enriched customer_access with delivery addresses
+      for (const ca of user.customer_access || []) {
+        const customer = customerMap.get(ca.customer_id);
+        if (!customer) continue;
+
+        const allAddresses: any[] = (customer as any).addresses || [];
+        // Filter to delivery-capable addresses only
+        const deliveryAddresses = allAddresses.filter(
+          (a: any) => a.address_type === "delivery" || a.address_type === "both"
+        );
+
+        // Apply address_access restriction
+        const accessibleAddresses = ca.address_access === "all"
+          ? deliveryAddresses
+          : deliveryAddresses.filter((a: any) =>
+              (ca.address_access as string[]).includes(a.address_id)
+            );
+
+        const defaultAddr = accessibleAddresses.find((a: any) => a.is_default);
+
+        enrichedCustomerAccess.push({
+          customer_id: ca.customer_id,
+          customer_code: (customer as any).external_code,
+          address_access: ca.address_access,
+          default_address_code: defaultAddr?.external_code,
+          delivery_addresses: accessibleAddresses.map((a: any) => ({
+            address_id: a.address_id,
+            external_code: a.external_code,
+            label: a.label,
+            address_type: a.address_type,
+            is_default: a.is_default,
+          })),
+        });
+      }
     }
 
     // 12. Generate JWT token (with customer tags)
@@ -143,7 +199,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       token,
       portal_user: portalUser,
-      customer_access: user.customer_access,
+      customer_access: enrichedCustomerAccess,
       customer_tags: customerTags,
     });
   } catch (error) {

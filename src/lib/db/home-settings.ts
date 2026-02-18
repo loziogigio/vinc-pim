@@ -75,6 +75,7 @@ const DEFAULT_HEADER_CONFIG: HeaderConfig = {
           id: "right",
           alignment: "right",
           widgets: [
+            { id: "app-launcher", type: "app-launcher", config: {} },
             { id: "no-price", type: "no-price", config: {} },
             { id: "favorites", type: "favorites", config: {} },
             { id: "compare", type: "compare", config: {} },

@@ -415,8 +415,8 @@ export function PackagingOptionModal({
             </label>
           </div>
 
-          {/* Pricing */}
-          <div className="border-t pt-4">
+          {/* Pricing — only shown when sellable */}
+          {formData.is_sellable !== false && <div className="border-t pt-4">
             <h4 className="text-sm font-semibold text-slate-900 mb-3">Pricing</h4>
 
             {/* Row 1: Price Reference + Retail (Unit) */}
@@ -522,10 +522,10 @@ export function PackagingOptionModal({
                 )}
               </div>
             </div>
-          </div>
+          </div>}
 
-          {/* Customer Tag Filter */}
-          <div className="border-t pt-4">
+          {/* Customer Tag Filter — only shown when sellable */}
+          {formData.is_sellable !== false && <div className="border-t pt-4">
             <h4 className="text-sm font-semibold text-slate-900 mb-1 flex items-center gap-2">
               <Tag className="h-4 w-4" />
               Customer Tags
@@ -593,7 +593,7 @@ export function PackagingOptionModal({
                 </select>
               </>
             )}
-          </div>
+          </div>}
 
           {/* Footer */}
           <div className="flex gap-3 pt-4 border-t">

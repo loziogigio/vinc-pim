@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 
-// GET /api/b2b/pim/brands - List all brands with filtering
+// GET /api/b2b/pim/brands - List all brands with filtering (session + API key auth)
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const isActive = searchParams.get("is_active");
+    const hasLogo = searchParams.get("has_logo");
     const sortBy = searchParams.get("sort_by") || "created_at";
     const sortOrder = searchParams.get("sort_order") || "desc";
     const page = parseInt(searchParams.get("page") || "1");
@@ -37,16 +37,58 @@ export async function GET(req: NextRequest) {
       query.is_active = isActive === "true";
     }
 
-    // Build sort
-    const sort: any = {};
-    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+    if (hasLogo === "true") {
+      query.logo_url = { $exists: true, $nin: [null, ""] };
+    } else if (hasLogo === "false") {
+      query.$and = [
+        ...(query.$and || []),
+        { $or: [{ logo_url: { $exists: false } }, { logo_url: null }, { logo_url: "" }] },
+      ];
+    }
 
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const [brands, total] = await Promise.all([
-      BrandModel.find(query).sort(sort).skip(skip).limit(limit).lean(),
-      BrandModel.countDocuments(query),
-    ]);
+
+    let brands;
+    let total: number;
+
+    if (sortBy === "image_label") {
+      // Compound sort: brands with image first, then without, alphabetically within each group
+      const pipeline: any[] = [];
+      if (Object.keys(query).length > 0) {
+        pipeline.push({ $match: query });
+      }
+      pipeline.push(
+        {
+          $addFields: {
+            _has_logo: {
+              $cond: [
+                { $and: [{ $gt: ["$logo_url", null] }, { $ne: ["$logo_url", ""] }] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+        { $sort: { _has_logo: sortOrder === "asc" ? 1 : -1, label: 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _has_logo: 0 } }
+      );
+
+      [brands, total] = await Promise.all([
+        BrandModel.aggregate(pipeline),
+        BrandModel.countDocuments(query),
+      ]);
+    } else {
+      const sort: any = {};
+      sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+      [brands, total] = await Promise.all([
+        BrandModel.find(query).sort(sort).skip(skip).limit(limit).lean(),
+        BrandModel.countDocuments(query),
+      ]);
+    }
 
     return NextResponse.json({
       brands,

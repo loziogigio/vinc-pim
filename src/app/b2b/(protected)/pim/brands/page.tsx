@@ -24,8 +24,17 @@ export default function BrandsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterActive, setFilterActive] = useState<string>("all");
-  const [sortBy, setSortBy] = useState("created_at");
+  const [filterLogo, setFilterLogo] = useState<string>("all");
+  const [sortBy, setSortBy] = useState("image_label");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
+  const [pagination, setPagination] = useState<{
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  } | null>(null);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -44,7 +53,12 @@ export default function BrandsPage() {
 
   useEffect(() => {
     fetchBrands();
-  }, [search, filterActive, sortBy, sortOrder]);
+  }, [search, filterActive, filterLogo, sortBy, sortOrder, page]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterActive, filterLogo, sortBy, sortOrder]);
 
   async function fetchBrands() {
     setLoading(true);
@@ -52,12 +66,16 @@ export default function BrandsPage() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (filterActive !== "all") params.set("is_active", filterActive);
+      if (filterLogo !== "all") params.set("has_logo", filterLogo);
       params.set("sort_by", sortBy);
       params.set("sort_order", sortOrder);
+      params.set("page", String(page));
+      params.set("limit", String(limit));
 
       const res = await fetch(`/api/b2b/pim/brands?${params}`);
       const data = await res.json();
       setBrands(data.brands || []);
+      setPagination(data.pagination || null);
     } catch (error) {
       console.error("Failed to fetch brands:", error);
     } finally {
@@ -242,13 +260,24 @@ export default function BrandsPage() {
         </select>
 
         <select
+          value={filterLogo}
+          onChange={(e) => setFilterLogo(e.target.value)}
+          className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="all">All Images</option>
+          <option value="true">With Image</option>
+          <option value="false">Without Image</option>
+        </select>
+
+        <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
           className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
         >
+          <option value="image_label">Image + Name</option>
+          <option value="label">Name</option>
           <option value="created_at">Created Date</option>
           <option value="updated_at">Updated Date</option>
-          <option value="label">Name</option>
           <option value="product_count">Product Count</option>
           <option value="display_order">Display Order</option>
         </select>
@@ -391,6 +420,58 @@ export default function BrandsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.pages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {(pagination.page - 1) * pagination.limit + 1}–
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} brands
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page <= 1}
+              className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
+              let pageNum: number;
+              if (pagination.pages <= 7) {
+                pageNum = i + 1;
+              } else if (page <= 4) {
+                pageNum = i + 1;
+              } else if (page >= pagination.pages - 3) {
+                pageNum = pagination.pages - 6 + i;
+              } else {
+                pageNum = page - 3 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                    pageNum === page
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-input hover:bg-accent"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page >= pagination.pages}
+              className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

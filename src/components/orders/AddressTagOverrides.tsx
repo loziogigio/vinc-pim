@@ -56,7 +56,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
         const data = await addrTagsRes.json();
         setCustomerTags(data.customer_tags || []);
         setAddressOverrides(data.address_overrides || []);
-        setEffectiveTags(data.effective_tags || []);
+        setEffectiveTags(data.effective_tags_detailed || []);
       }
       if (allTagsRes.ok) {
         const data = await allTagsRes.json();
@@ -87,7 +87,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
       if (res.ok) {
         const data = await res.json();
         setAddressOverrides(data.address_overrides || []);
-        setEffectiveTags(data.effective_tags || []);
+        setEffectiveTags(data.effective_tags_detailed || []);
       }
     } catch (err) {
       console.error("Error overriding tag:", err);
@@ -111,7 +111,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
       if (res.ok) {
         const data = await res.json();
         setAddressOverrides(data.address_overrides || []);
-        setEffectiveTags(data.effective_tags || []);
+        setEffectiveTags(data.effective_tags_detailed || []);
       }
     } catch (err) {
       console.error("Error removing override:", err);

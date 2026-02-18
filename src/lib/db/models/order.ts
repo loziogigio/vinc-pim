@@ -52,6 +52,7 @@ export interface ILineItem {
   quantity_unit?: string;
   min_order_quantity?: number;
   pack_size?: number;
+  pkg_id?: string;
   packaging_code?: string;
   packaging_label?: string;
 
@@ -591,6 +592,7 @@ const LineItemSchema = new Schema<ILineItem>(
     quantity_unit: { type: String },
     min_order_quantity: { type: Number },
     pack_size: { type: Number },
+    pkg_id: { type: String },
     packaging_code: { type: String },
     packaging_label: { type: String },
 

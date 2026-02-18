@@ -473,6 +473,13 @@ async function resolveEffectiveTagsForSearch(
 function stripPackagingFromResults(results: any[]): any[] {
   return results.map((product: any) => {
     const { packaging_options, ...rest } = product;
+    // Also strip from variants (grouped results)
+    if (rest.variants?.length) {
+      rest.variants = rest.variants.map((v: any) => {
+        const { packaging_options: _, ...vRest } = v;
+        return vRest;
+      });
+    }
     return rest;
   });
 }
@@ -487,7 +494,7 @@ function stripPackagingFromResults(results: any[]): any[] {
 function filterResultsByTags(results: any[], customerTags: string[]): any[] {
   const tagSet = new Set(customerTags);
 
-  return results.map((product: any) => {
+  function filterProduct(product: any): any {
     if (!product.packaging_options?.length) return product;
 
     const filteredPackaging = product.packaging_options
@@ -506,5 +513,14 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
       });
 
     return { ...product, packaging_options: filteredPackaging };
+  }
+
+  return results.map((product: any) => {
+    const filtered = filterProduct(product);
+    // Also filter variants (grouped results)
+    if (filtered.variants?.length) {
+      filtered.variants = filtered.variants.map((v: any) => filterProduct(v));
+    }
+    return filtered;
   });
 }
