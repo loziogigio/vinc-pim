@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings, FCMSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings, FCMSettings } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -103,6 +103,19 @@ const SMTPSettingsSchema = new Schema(
     from: { type: String },
     from_name: { type: String },
     default_to: { type: String }
+  },
+  { _id: false }
+);
+
+// Graph API settings schema for Microsoft Graph email transport
+const GraphSettingsSchema = new Schema(
+  {
+    client_id: { type: String },
+    azure_tenant_id: { type: String },
+    client_secret: { type: String },
+    sender_email: { type: String },
+    sender_name: { type: String },
+    save_to_sent_items: { type: Boolean, default: false }
   },
   { _id: false }
 );
@@ -241,6 +254,7 @@ const HeaderWidgetSchema = new Schema(
         "profile",
         "notifications",
         "reminders",
+        "app-launcher",
         "button",
         "spacer",
         "divider"
@@ -322,6 +336,14 @@ const HomeSettingsSchema = new Schema(
     },
     smtp_settings: {
       type: SMTPSettingsSchema
+    },
+    email_transport: {
+      type: String,
+      enum: ["smtp", "graph"],
+      default: "smtp"
+    },
+    graph_settings: {
+      type: GraphSettingsSchema
     },
     company_info: {
       type: CompanyContactInfoSchema

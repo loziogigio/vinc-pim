@@ -97,6 +97,9 @@ interface SolrMultilingualDocument {
   tag_groups?: string[];             // Tag group IDs: ["promotions", "features"]
   tag_categories?: string[];         // Tag categories: ["promotion", "seo"]
 
+  // Sales channels
+  channels?: string[];               // Sales channel codes: ["default", "b2c"]
+
   // Synonym dictionaries for search enhancement
   synonym_keys?: string[];           // Dictionary keys: ["climatizzatore", "inverter"]
   // synonym_terms_text_{lang} added dynamically per language
@@ -648,6 +651,9 @@ export class SolrAdapter extends MarketplaceAdapter {
       // Tag groups for grouped faceting
       tag_groups: tagFacetData.tag_groups,
       tag_categories: tagFacetData.tag_categories,
+
+      // Sales channels (default to ["default"] if not set)
+      channels: product.channels?.length ? product.channels : ["default"],
 
       // Synonym dictionaries for search enhancement
       synonym_keys: product.synonym_keys || [],

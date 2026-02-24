@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: false,
   output: 'standalone',
+  // Puppeteer uses native binaries — keep it as a Node.js external so the
+  // standalone output includes the package rather than trying to bundle it
+  serverExternalPackages: ['puppeteer', 'puppeteer-core'],
   ...(process.env.NODE_ENV === 'production' && {
     typescript: {
       ignoreBuildErrors: true,

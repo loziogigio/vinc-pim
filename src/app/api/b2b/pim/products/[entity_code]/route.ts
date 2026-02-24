@@ -310,6 +310,7 @@ export async function PATCH(
       "share_images_with_variants",
       "share_media_with_variants",
       "packaging_options",          // Pricing & packaging (array of { code, qty, uom, pricing, ... })
+      "packaging_info",              // Physical packaging info (informational only — not related to selling)
       "promotions",                 // Product-level promotions (array with target_pkg_ids)
       "promo_code",                 // Active promotion codes (for faceting)
       "promo_type",                 // Business categories (for faceting)

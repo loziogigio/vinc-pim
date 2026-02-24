@@ -43,8 +43,8 @@ const emptyOption: PackagingOption = {
   label: {},
   qty: 1,
   uom: "PZ",
-  is_default: false,
-  is_smallest: false,
+  is_default: false,    // Computed from packaging_info — not editable here
+  is_smallest: false,   // Computed from packaging_info — not editable here
   is_sellable: true,
   ean: "",
   position: 1,
@@ -384,26 +384,8 @@ export function PackagingOptionModal({
             </div>
           </div>
 
-          {/* Flags */}
+          {/* Flags — is_default/is_smallest are computed from Packaging Info */}
           <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.is_default}
-                onChange={(e) => updateField("is_default", e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="text-sm text-slate-700">Default Packaging</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.is_smallest}
-                onChange={(e) => updateField("is_smallest", e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="text-sm text-slate-700">Smallest Unit</span>
-            </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"

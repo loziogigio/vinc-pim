@@ -1,5 +1,5 @@
 import type { HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, MetaTags } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, MetaTags } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectWithModels, autoDetectTenantDb } from "./connection";
 
@@ -215,6 +215,8 @@ type HomeSettingsUpdate = {
   cdn?: Partial<CDNConfiguration> | CDNConfiguration;
   cdn_credentials?: Partial<CDNCredentials> | CDNCredentials;
   smtp_settings?: Partial<SMTPSettings> | SMTPSettings;
+  email_transport?: EmailTransport;
+  graph_settings?: Partial<GraphSettings> | GraphSettings;
   company_info?: Partial<CompanyContactInfo> | CompanyContactInfo;
   footerHtml?: string;
   footerHtmlDraft?: string;
@@ -295,6 +297,19 @@ export async function upsertHomeSettings(
         });
       }
 
+      if (data.email_transport) {
+        updateFields.email_transport = data.email_transport;
+      }
+
+      if (data.graph_settings) {
+        const graphUpdate = data.graph_settings as Partial<GraphSettings>;
+        Object.entries(graphUpdate).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updateFields[`graph_settings.${key}`] = value;
+          }
+        });
+      }
+
       if (data.company_info) {
         const companyInfoUpdate = data.company_info as Partial<CompanyContactInfo>;
         Object.entries(companyInfoUpdate).forEach(([key, value]) => {
@@ -357,6 +372,8 @@ export async function upsertHomeSettings(
         cdn: data.cdn,
         cdn_credentials: data.cdn_credentials,
         smtp_settings: data.smtp_settings,
+        email_transport: data.email_transport ?? "smtp",
+        graph_settings: data.graph_settings,
         footerHtml: data.footerHtml,
         footerHtmlDraft: data.footerHtmlDraft,
         headerConfig: data.headerConfig ?? DEFAULT_HEADER_CONFIG,

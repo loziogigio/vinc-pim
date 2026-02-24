@@ -267,6 +267,9 @@ export interface IOrder extends Document {
   // Tenant (multi-tenant support)
   tenant_id: string;
 
+  // Sales channel
+  channel: string;
+
   // Customer
   customer_id: string;
   customer_code?: string;
@@ -676,6 +679,9 @@ const OrderSchema = new Schema<IOrder>(
 
     // Tenant (multi-tenant support)
     tenant_id: { type: String, required: true, index: true },
+
+    // Sales channel
+    channel: { type: String, default: "default", index: true },
 
     // Customer
     customer_id: { type: String, required: true, index: true },

@@ -16,6 +16,52 @@ import type { IDocumentTemplate } from "@/lib/db/models/document-template";
 import type { DocumentLineItem, DocumentTotals, VatBreakdownEntry } from "@/lib/types/document";
 
 /**
+ * Fetch an image URL and return a base64 data URI.
+ * This embeds images directly in the HTML so Puppeteer doesn't need to make
+ * external HTTP requests (which can fail when there's no base URL or network restrictions).
+ * Returns null if the fetch fails — the broken image placeholder is acceptable.
+ */
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) {
+      console.warn(`[DocumentPDF] Image fetch failed (${response.status}): ${url}`);
+      return null;
+    }
+    const buffer = await response.arrayBuffer();
+    const contentType = response.headers.get("content-type") || "image/png";
+    return `data:${contentType};base64,${Buffer.from(buffer).toString("base64")}`;
+  } catch (err) {
+    console.warn(`[DocumentPDF] Image fetch error: ${err instanceof Error ? err.message : err} — ${url}`);
+    return null;
+  }
+}
+
+/**
+ * Replace <img src="..."> URLs in HTML with base64 data URIs.
+ * Only processes absolute HTTP/HTTPS URLs to avoid touching relative paths or data URIs.
+ */
+async function embedImagesAsBase64(html: string): Promise<string> {
+  const imgSrcRegex = /<img([^>]*?)src="(https?:\/\/[^"]+)"([^>]*?)>/gi;
+  const matches = [...html.matchAll(imgSrcRegex)];
+  if (matches.length === 0) return html;
+
+  // Deduplicate URLs before fetching — same logo can appear in header and footer
+  const uniqueUrls = [...new Set(matches.map((m) => m[2]))];
+  const fetched = await Promise.all(
+    uniqueUrls.map(async (url) => [url, await fetchImageAsBase64(url)] as const)
+  );
+  const urlToDataUri = new Map(fetched.filter(([, dataUri]) => dataUri !== null));
+
+  if (urlToDataUri.size === 0) return html;
+
+  return html.replace(imgSrcRegex, (fullMatch, before, url, after) => {
+    const dataUri = urlToDataUri.get(url);
+    return dataUri ? `<img${before}src="${dataUri}"${after}>` : fullMatch;
+  });
+}
+
+/**
  * Resolve payment_terms raw value to a human-readable label.
  * For custom_date / custom_days, returns empty string (the due_date line handles display).
  */
@@ -746,7 +792,9 @@ export async function generateDocumentPdf(
     }).lean()) as IDocumentTemplate | null;
   }
 
-  const html = renderDocumentHtml(d as IDocument, template);
+  const rawHtml = renderDocumentHtml(d as IDocument, template);
+  // Embed images as base64 so Puppeteer doesn't need external HTTP requests
+  const html = await embedImagesAsBase64(rawHtml);
 
   // Dynamic import to avoid loading puppeteer at module level
   const puppeteer = await import("puppeteer");
@@ -798,17 +846,22 @@ export async function generateAndStorePdf(
     const creds = await getCDNCredentials(tenantDb);
 
     if (creds?.cdn_url && creds?.bucket_name && creds?.cdn_key && creds?.cdn_secret) {
-      const { uploadBuffer } = await import("vinc-cdn");
+      const { uploadToCdn } = await import("vinc-cdn");
       const config = {
         endpoint: creds.cdn_url,
         region: creds.bucket_region || "auto",
         bucket: creds.bucket_name,
-        accessKey: creds.cdn_key,
-        secretKey: creds.cdn_secret,
+        accessKeyId: creds.cdn_key,
+        secretAccessKey: creds.cdn_secret,
         folder: creds.folder_name || "",
       };
 
-      const result = await uploadBuffer(config, buffer, filename, "documents");
+      const result = await uploadToCdn(config, {
+        buffer,
+        contentType: "application/pdf",
+        fileName: filename,
+        customFolder: "documents",
+      });
       const pdfUrl = result.url;
 
       // Update document with PDF URL

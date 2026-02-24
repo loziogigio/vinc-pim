@@ -81,6 +81,10 @@ export const FACET_FIELDS_CONFIG: Record<string, FacetFieldConfig> = {
     type: 'flat',
     label: 'Tag',
   },
+  channels: {
+    type: 'flat',
+    label: 'Canale',
+  },
 
   // Boolean facets
   has_active_promo: {
@@ -248,6 +252,7 @@ export const FILTER_FIELD_MAP: Record<string, string> = {
   collection_ancestors: 'collection_ancestors',
   tag_groups: 'tag_groups',
   tag_categories: 'tag_categories',
+  channels: 'channels',
   promo_codes: 'promo_codes',
   stock_status: 'stock_status',
   status: 'status',

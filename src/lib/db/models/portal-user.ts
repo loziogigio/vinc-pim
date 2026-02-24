@@ -86,6 +86,13 @@ const PortalUserSchema = new Schema<IPortalUserDocument>(
       default: [],
     },
 
+    // Sales channel
+    channel: {
+      type: String,
+      default: "default",
+      index: true,
+    },
+
     // Status
     is_active: {
       type: Boolean,

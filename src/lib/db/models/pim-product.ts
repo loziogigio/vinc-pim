@@ -16,7 +16,7 @@ import {
   ProductTypeEmbedded,
   TagEmbedded,
 } from "@/lib/types/entities";
-import type { MultilingualText } from "@/lib/types/pim";
+import type { MultilingualText, PackagingInfo } from "@/lib/types/pim";
 
 // Re-export for backwards compatibility
 export type { MultilingualText };
@@ -72,6 +72,9 @@ export interface IPIMProduct extends Document {
   // Identity & Ownership
   // wholesaler_id removed - database per wholesaler provides isolation
   entity_code: string; // Unique product identifier
+
+  // Sales Channels (which storefronts/markets this product is visible in)
+  channels: string[];
 
   // Versioning System
   version: number; // 1, 2, 3...
@@ -364,6 +367,9 @@ export interface IPIMProduct extends Document {
     }[];
   }[];
 
+  // Physical packaging info (informational only — separate from selling packaging_options)
+  packaging_info?: PackagingInfo[];
+
   // Product-level promotions (source of truth — computed into packaging on GET)
   promotions?: {
     promo_code?: string;            // Promotion code (e.g., "016")
@@ -451,6 +457,9 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     // wholesaler_id removed - database per wholesaler provides isolation
     entity_code: { type: String, required: true, index: true },
+
+    // Sales Channels
+    channels: { type: [String], default: ["default"], index: true },
 
     version: { type: Number, required: true, default: 1 },
     isCurrent: { type: Boolean, required: true, default: true },
@@ -866,6 +875,19 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       },
     ],
 
+    // Physical packaging info — source of truth for default/smallest designation
+    packaging_info: [
+      {
+        packaging_id: { type: String },
+        code: { type: String, required: true },
+        description: { type: String },
+        qty: { type: Number, required: true },
+        uom: { type: String, required: true },
+        is_default: { type: Boolean },
+        is_smallest: { type: Boolean },
+      },
+    ],
+
     // Product-level promotions (source of truth — computed into packaging on GET)
     promotions: [
       {
@@ -929,6 +951,7 @@ PIMProductSchema.index({ status: 1, completeness_score: -1 });
 PIMProductSchema.index({ "analytics.priority_score": -1 });
 PIMProductSchema.index({ "source.source_id": 1, status: 1 });
 PIMProductSchema.index({ item_creation_date: -1 }); // For ERP insertion date sorting
+PIMProductSchema.index({ channels: 1, status: 1 }); // Channel + status queries
 
 export { PIMProductSchema };
 

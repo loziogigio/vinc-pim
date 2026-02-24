@@ -23,13 +23,14 @@ import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
 import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
-import { calculateUnitPrice, calculatePackagePrice, ensurePackagingIds, ensurePromoRows } from "@/lib/utils/packaging";
+import { calculateUnitPrice, calculatePackagePrice, ensurePackagingIds, ensurePromoRows, syncPackagingFlags } from "@/lib/utils/packaging";
 import {
   ProductImage,
   extractAttributesForLanguage,
   mergeAttributesToMultilingual,
   PIMPricing,
   PackagingOption,
+  PackagingInfo,
   Promotion,
   DiscountStep,
 } from "@/lib/types/pim";
@@ -72,6 +73,7 @@ type Product = {
   // ERP pricing structure (from pim.ts)
   pricing?: PIMPricing;
   packaging_options?: PackagingOption[];
+  packaging_info?: PackagingInfo[];
   promotions?: Promotion[];
   promo_code?: string[];
   promo_type?: string[];
@@ -231,6 +233,10 @@ export default function ProductDetailPage({
   const [duplicatingPackaging, setDuplicatingPackaging] = useState<PackagingOption | null>(null);
   const [promotionModalOpen, setPromotionModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<{ promotion: Promotion | null; packagingPkgIds: string[] }>({ promotion: null, packagingPkgIds: [] });
+
+  // Packaging info inline editing (null = not editing, -1 = adding new)
+  const [editingPackagingInfoIdx, setEditingPackagingInfoIdx] = useState<number | null>(null);
+  const [packagingInfoForm, setPackagingInfoForm] = useState({ code: "", description: "", qty: "", uom: "", is_default: false, is_smallest: false });
 
   // Helper: set product with pkg_id and promo_row ensured on packaging options
   const setProductWithIds = (prod: any) => {
@@ -1721,6 +1727,310 @@ export default function ProductDetailPage({
                   );
                 })()}
 
+                {/* Packaging Info — informational only, separate from selling packaging_options */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Packaging Info ({product.packaging_info?.length || 0})
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setPackagingInfoForm({ code: "", description: "", qty: "", uom: "", is_default: false, is_smallest: false });
+                        setEditingPackagingInfoIdx(-1);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
+                      disabled={editingPackagingInfoIdx !== null}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add
+                    </button>
+                  </div>
+                  {((product.packaging_info && product.packaging_info.length > 0) || editingPackagingInfoIdx === -1) && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Code</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Description</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Qty</th>
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">UOM</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Default</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground">Min. Sell.</th>
+                            <th className="text-center py-2 px-3 font-medium text-muted-foreground w-20"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(product.packaging_info || []).map((pi, idx) =>
+                            editingPackagingInfoIdx === idx ? (
+                              <tr key={pi.packaging_id || idx} className="border-b border-border/50 bg-emerald-50/30">
+                                <td className="py-1.5 px-2">
+                                  <input
+                                    className="w-full px-2 py-1 text-xs border border-border rounded bg-background"
+                                    value={packagingInfoForm.code}
+                                    onChange={(e) => setPackagingInfoForm((f) => ({ ...f, code: e.target.value }))}
+                                    placeholder="BOX12"
+                                  />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <input
+                                    className="w-full px-2 py-1 text-xs border border-border rounded bg-background"
+                                    value={packagingInfoForm.description}
+                                    onChange={(e) => setPackagingInfoForm((f) => ({ ...f, description: e.target.value }))}
+                                    placeholder="Standard carton box"
+                                  />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <input
+                                    className="w-20 px-2 py-1 text-xs border border-border rounded bg-background text-right"
+                                    value={packagingInfoForm.qty}
+                                    onChange={(e) => setPackagingInfoForm((f) => ({ ...f, qty: e.target.value }))}
+                                    placeholder="12"
+                                    inputMode="decimal"
+                                    type="text"
+                                  />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <input
+                                    className="w-20 px-2 py-1 text-xs border border-border rounded bg-background"
+                                    value={packagingInfoForm.uom}
+                                    onChange={(e) => setPackagingInfoForm((f) => ({ ...f, uom: e.target.value }))}
+                                    placeholder="pz"
+                                  />
+                                </td>
+                                <td className="py-1.5 px-2 text-center">
+                                  <input type="checkbox" checked={packagingInfoForm.is_default} onChange={(e) => setPackagingInfoForm((f) => ({ ...f, is_default: e.target.checked }))} className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer" />
+                                </td>
+                                <td className="py-1.5 px-2 text-center">
+                                  <input type="checkbox" checked={packagingInfoForm.is_smallest} onChange={(e) => setPackagingInfoForm((f) => ({ ...f, is_smallest: e.target.checked }))} className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer" />
+                                </td>
+                                <td className="py-1.5 px-2 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={async () => {
+                                        if (!packagingInfoForm.code || !packagingInfoForm.qty || !packagingInfoForm.uom) {
+                                          toast.error("Code, qty and uom are required");
+                                          return;
+                                        }
+                                        const qty = parseFloat(packagingInfoForm.qty);
+                                        if (isNaN(qty)) { toast.error("Invalid qty"); return; }
+                                        const current = [...(product.packaging_info || [])];
+                                        // Enforce uniqueness — only one default, one smallest
+                                        if (packagingInfoForm.is_default) {
+                                          current.forEach((entry, i) => { if (i !== idx) entry.is_default = false; });
+                                        }
+                                        if (packagingInfoForm.is_smallest) {
+                                          current.forEach((entry, i) => { if (i !== idx) entry.is_smallest = false; });
+                                        }
+                                        current[idx] = {
+                                          ...current[idx],
+                                          code: packagingInfoForm.code.trim(),
+                                          description: packagingInfoForm.description.trim(),
+                                          qty,
+                                          uom: packagingInfoForm.uom.trim(),
+                                          is_default: packagingInfoForm.is_default || undefined,
+                                          is_smallest: packagingInfoForm.is_smallest || undefined,
+                                        };
+                                        // Sync is_default/is_smallest flags on packaging_options
+                                        const syncedOptions = syncPackagingFlags(product.packaging_options || [], current);
+                                        const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+                                          method: "PATCH",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ packaging_info: current, packaging_options: syncedOptions }),
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          setProduct((p: any) => ({ ...p, packaging_info: data.product.packaging_info, packaging_options: data.product.packaging_options }));
+                                          setEditingPackagingInfoIdx(null);
+                                          toast.success("Packaging info saved");
+                                        } else {
+                                          toast.error("Failed to save packaging info");
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingPackagingInfoIdx(null)}
+                                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded transition"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : (
+                              <tr key={pi.packaging_id || idx} className="border-b border-border/50">
+                                <td className="py-2 px-3 font-mono text-foreground">{pi.code}</td>
+                                <td className="py-2 px-3 text-foreground">{pi.description || "—"}</td>
+                                <td className="py-2 px-3 text-right text-foreground">{pi.qty}</td>
+                                <td className="py-2 px-3 text-foreground">{pi.uom}</td>
+                                <td className="py-2 px-3 text-center">
+                                  <input type="checkbox" checked={!!pi.is_default} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary pointer-events-none" />
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <input type="checkbox" checked={!!pi.is_smallest} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary pointer-events-none" />
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setPackagingInfoForm({
+                                          code: pi.code,
+                                          description: pi.description || "",
+                                          qty: String(pi.qty),
+                                          uom: pi.uom,
+                                          is_default: !!pi.is_default,
+                                          is_smallest: !!pi.is_smallest,
+                                        });
+                                        setEditingPackagingInfoIdx(idx);
+                                      }}
+                                      className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
+                                      title="Edit"
+                                      disabled={editingPackagingInfoIdx !== null}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm(`Delete packaging info "${pi.code}"?`)) return;
+                                        const updated = (product.packaging_info || []).filter((_, i) => i !== idx);
+                                        const syncedOptions = syncPackagingFlags(product.packaging_options || [], updated);
+                                        const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+                                          method: "PATCH",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ packaging_info: updated, packaging_options: syncedOptions }),
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          setProduct((p: any) => ({ ...p, packaging_info: data.product.packaging_info, packaging_options: data.product.packaging_options }));
+                                          toast.success(`Packaging info "${pi.code}" deleted`);
+                                        } else {
+                                          toast.error("Failed to delete packaging info");
+                                        }
+                                      }}
+                                      className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
+                                      title="Delete"
+                                      disabled={editingPackagingInfoIdx !== null}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          )}
+                          {/* New entry row */}
+                          {editingPackagingInfoIdx === -1 && (
+                            <tr className="border-b border-border/50 bg-emerald-50/30">
+                              <td className="py-1.5 px-2">
+                                <input
+                                  className="w-full px-2 py-1 text-xs border border-border rounded bg-background"
+                                  value={packagingInfoForm.code}
+                                  onChange={(e) => setPackagingInfoForm((f) => ({ ...f, code: e.target.value }))}
+                                  placeholder="BOX12"
+                                  autoFocus
+                                />
+                              </td>
+                              <td className="py-1.5 px-2">
+                                <input
+                                  className="w-full px-2 py-1 text-xs border border-border rounded bg-background"
+                                  value={packagingInfoForm.description}
+                                  onChange={(e) => setPackagingInfoForm((f) => ({ ...f, description: e.target.value }))}
+                                  placeholder="Standard carton box"
+                                />
+                              </td>
+                              <td className="py-1.5 px-2">
+                                <input
+                                  className="w-20 px-2 py-1 text-xs border border-border rounded bg-background text-right"
+                                  value={packagingInfoForm.qty}
+                                  onChange={(e) => setPackagingInfoForm((f) => ({ ...f, qty: e.target.value }))}
+                                  placeholder="12"
+                                  inputMode="decimal"
+                                  type="text"
+                                />
+                              </td>
+                              <td className="py-1.5 px-2">
+                                <input
+                                  className="w-20 px-2 py-1 text-xs border border-border rounded bg-background"
+                                  value={packagingInfoForm.uom}
+                                  onChange={(e) => setPackagingInfoForm((f) => ({ ...f, uom: e.target.value }))}
+                                  placeholder="pz"
+                                />
+                              </td>
+                              <td className="py-1.5 px-2 text-center">
+                                <input type="checkbox" checked={packagingInfoForm.is_default} onChange={(e) => setPackagingInfoForm((f) => ({ ...f, is_default: e.target.checked }))} className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer" />
+                              </td>
+                              <td className="py-1.5 px-2 text-center">
+                                <input type="checkbox" checked={packagingInfoForm.is_smallest} onChange={(e) => setPackagingInfoForm((f) => ({ ...f, is_smallest: e.target.checked }))} className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer" />
+                              </td>
+                              <td className="py-1.5 px-2 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={async () => {
+                                      if (!packagingInfoForm.code || !packagingInfoForm.qty || !packagingInfoForm.uom) {
+                                        toast.error("Code, qty and uom are required");
+                                        return;
+                                      }
+                                      const qty = parseFloat(packagingInfoForm.qty);
+                                      if (isNaN(qty)) { toast.error("Invalid qty"); return; }
+                                      const existing = [...(product.packaging_info || [])];
+                                      // Enforce uniqueness — only one default, one smallest
+                                      if (packagingInfoForm.is_default) {
+                                        existing.forEach((entry) => { entry.is_default = false; });
+                                      }
+                                      if (packagingInfoForm.is_smallest) {
+                                        existing.forEach((entry) => { entry.is_smallest = false; });
+                                      }
+                                      const maxId = existing.reduce((max: number, pi: PackagingInfo) => {
+                                        const n = parseInt(pi.packaging_id || "0");
+                                        return isNaN(n) ? max : Math.max(max, n);
+                                      }, 0);
+                                      const newEntry: PackagingInfo = {
+                                        packaging_id: String(maxId + 1),
+                                        code: packagingInfoForm.code.trim(),
+                                        description: packagingInfoForm.description.trim(),
+                                        qty,
+                                        uom: packagingInfoForm.uom.trim(),
+                                        is_default: packagingInfoForm.is_default || undefined,
+                                        is_smallest: packagingInfoForm.is_smallest || undefined,
+                                      };
+                                      const updated = [...existing, newEntry];
+                                      const syncedOptions = syncPackagingFlags(product.packaging_options || [], updated);
+                                      const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ packaging_info: updated, packaging_options: syncedOptions }),
+                                      });
+                                      if (res.ok) {
+                                        const data = await res.json();
+                                        setProduct((p: any) => ({ ...p, packaging_info: data.product.packaging_info, packaging_options: data.product.packaging_options }));
+                                        setEditingPackagingInfoIdx(null);
+                                        toast.success("Packaging info added");
+                                      } else {
+                                        toast.error("Failed to add packaging info");
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingPackagingInfoIdx(null)}
+                                    className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded transition"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
                 {/* Packaging Options */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -1755,13 +2065,12 @@ export default function ProductDetailPage({
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sale Disc.</th>
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ref</th>
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground">Sellable</th>
-                          <th className="text-center py-2 px-3 font-medium text-muted-foreground">Flags</th>
                           <th className="text-center py-2 px-3 font-medium text-muted-foreground w-10"></th>
                         </tr>
                       </thead>
                         <tbody>
                           {product.packaging_options.map((pkg, idx) => (
-                            <tr key={pkg.pkg_id || idx} className={`border-b border-border/50 ${pkg.is_default ? "bg-primary/5" : ""}`}>
+                            <tr key={pkg.pkg_id || idx} className="border-b border-border/50">
                               <td className="py-2 px-3 font-mono text-foreground">{pkg.code}</td>
                               <td className="py-2 px-3 text-foreground">
                                 <div>{getMultilingualText(pkg.label, defaultLanguageCode, pkg.code)}</div>
@@ -1859,16 +2168,6 @@ export default function ProductDetailPage({
                                   }}
                                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                                 />
-                              </td>
-                              <td className="py-2 px-3 text-center">
-                                <div className="flex items-center justify-center gap-1 flex-wrap">
-                                  {pkg.is_default && (
-                                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded">Default</span>
-                                  )}
-                                  {pkg.is_smallest && (
-                                    <span className="px-1.5 py-0.5 bg-muted text-muted-foreground text-xs rounded">Smallest</span>
-                                  )}
-                                </div>
                               </td>
                               <td className="py-2 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1">

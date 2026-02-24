@@ -47,6 +47,9 @@ export interface IPortalUser {
   /** Tags assigned to this user for campaign targeting */
   tags?: IUserTagRef[];
 
+  /** Sales channel this portal user belongs to (default: "default") */
+  channel: string;
+
   /** Whether the user account is active */
   is_active: boolean;
   /** Last successful login timestamp */
@@ -65,6 +68,7 @@ export interface IPortalUserCreate {
   email: string;
   password: string;
   customer_access: ICustomerAccess[];
+  channel?: string;
 }
 
 /**
@@ -76,6 +80,7 @@ export interface IPortalUserUpdate {
   password?: string;
   customer_access?: ICustomerAccess[];
   is_active?: boolean;
+  channel?: string;
 }
 
 /**
@@ -86,6 +91,8 @@ export interface IPortalUserTokenPayload {
   tenantId: string;
   /** Customer pricing tags (full_tag values, e.g. "categoria-sconto:scont-50") */
   customerTags?: string[];
+  /** Sales channel (default: "default") */
+  channel?: string;
   /** Token issued at timestamp */
   iat?: number;
   /** Token expiration timestamp */

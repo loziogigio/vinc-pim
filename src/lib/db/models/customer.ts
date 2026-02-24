@@ -73,6 +73,9 @@ export interface ICustomer extends Document {
   customer_type: "business" | "private" | "reseller";
   is_guest: boolean;
 
+  // Sales channel
+  channel: string;
+
   // Contact
   email: string;
   phone?: string;
@@ -168,6 +171,9 @@ const CustomerSchema = new Schema<ICustomer>(
       enum: ["business", "private", "reseller"],
     },
     is_guest: { type: Boolean, default: false },
+
+    // Sales channel
+    channel: { type: String, default: "default", index: true },
 
     // Contact
     email: { type: String, required: true },

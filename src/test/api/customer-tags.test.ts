@@ -83,6 +83,7 @@ vi.mock("@/lib/db/models/counter", () => ({
 import {
   GET as listTags,
   POST as createTag,
+  DELETE as deleteTag,
 } from "@/app/api/b2b/customer-tags/route";
 import {
   GET as getCustomerTags,
@@ -334,6 +335,87 @@ describe("integration: Customer Tags E2E", () => {
       expect(data.tags[0].full_tag).toBe("a-prefix:a-code");
       expect(data.tags[1].full_tag).toBe("a-prefix:b-code");
       expect(data.tags[2].full_tag).toBe("b-prefix:z-code");
+    });
+  });
+
+  // ============================================
+  // TAG DEFINITION DELETE
+  // ============================================
+
+  describe("DELETE /api/b2b/customer-tags — Delete Tag Definition", () => {
+    it("should delete a tag with no customers assigned", async () => {
+      const created = await seedTag("categoria-di-sconto", "sconto-45", "Sconto 45%");
+      const tagId = created.tag.tag_id;
+
+      const res = await deleteTag(
+        makeReq("DELETE", "http://localhost/api/b2b/customer-tags", { tag_id: tagId })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+
+      // Verify it no longer appears in listing
+      const listRes = await listTags(makeReq("GET", "http://localhost/api/b2b/customer-tags"));
+      const listData = await listRes.json();
+      expect(listData.tags).toHaveLength(0);
+    });
+
+    it("should return 404 when tag_id does not exist", async () => {
+      const res = await deleteTag(
+        makeReq("DELETE", "http://localhost/api/b2b/customer-tags", { tag_id: "nonexistent-id" })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(404);
+      expect(data.error).toBeTruthy();
+    });
+
+    it("should return 400 when tag_id is missing", async () => {
+      const res = await deleteTag(
+        makeReq("DELETE", "http://localhost/api/b2b/customer-tags", {})
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error).toContain("tag_id");
+    });
+
+    it("should block deletion when tag has customers assigned", async () => {
+      const created = await seedTag("categoria-di-sconto", "sconto-45", "Sconto 45%");
+      const tagId = created.tag.tag_id;
+
+      // Manually bump customer_count to simulate assigned customers
+      await CustomerTagModel.updateOne({ tag_id: tagId }, { $set: { customer_count: 3 } });
+
+      const res = await deleteTag(
+        makeReq("DELETE", "http://localhost/api/b2b/customer-tags", { tag_id: tagId })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error).toContain("3 customer");
+
+      // Tag must still exist
+      const listRes = await listTags(makeReq("GET", "http://localhost/api/b2b/customer-tags"));
+      const listData = await listRes.json();
+      expect(listData.tags).toHaveLength(1);
+    });
+
+    it("should delete only the targeted tag, leaving others intact", async () => {
+      const tag1 = await seedTag("categoria-di-sconto", "sconto-45", "Sconto 45%");
+      await seedTag("categoria-di-sconto", "sconto-50", "Sconto 50%");
+
+      const res = await deleteTag(
+        makeReq("DELETE", "http://localhost/api/b2b/customer-tags", { tag_id: tag1.tag.tag_id })
+      );
+
+      expect(res.status).toBe(200);
+
+      const listRes = await listTags(makeReq("GET", "http://localhost/api/b2b/customer-tags"));
+      const listData = await listRes.json();
+      expect(listData.tags).toHaveLength(1);
+      expect(listData.tags[0].full_tag).toBe("categoria-di-sconto:sconto-50");
     });
   });
 

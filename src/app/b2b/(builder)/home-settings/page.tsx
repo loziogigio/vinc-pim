@@ -45,14 +45,15 @@ import {
   Globe,
   X,
   Bell,
-  History
+  History,
+  LayoutGrid
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation } from "@/lib/types/home-settings";
 import { LAYOUT_WIDTHS, LAYOUT_BLOCK_COUNT, HEADER_WIDGET_LIBRARY } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
@@ -123,6 +124,15 @@ const DEFAULT_SMTP_SETTINGS: SMTPSettings = {
   from: "",
   from_name: "",
   default_to: ""
+};
+
+const DEFAULT_GRAPH_SETTINGS: GraphSettings = {
+  client_id: "",
+  azure_tenant_id: "",
+  client_secret: "",
+  sender_email: "",
+  sender_name: "",
+  save_to_sent_items: false
 };
 
 const DEFAULT_COMPANY_INFO: CompanyContactInfo = {
@@ -325,6 +335,8 @@ export default function HomeSettingsPage() {
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
   const [cdnCredentials, setCdnCredentials] = useState<CDNCredentials>(DEFAULT_CDN_CREDENTIALS);
   const [smtpSettings, setSmtpSettings] = useState<SMTPSettings>(DEFAULT_SMTP_SETTINGS);
+  const [emailTransport, setEmailTransport] = useState<EmailTransport>("smtp");
+  const [graphSettings, setGraphSettings] = useState<GraphSettings>(DEFAULT_GRAPH_SETTINGS);
   const [companyInfo, setCompanyInfo] = useState<CompanyContactInfo>(DEFAULT_COMPANY_INFO);
   const [footerHtml, setFooterHtml] = useState<string>("");
   const [footerHtmlDraft, setFooterHtmlDraft] = useState<string>("");
@@ -394,6 +406,11 @@ export default function HomeSettingsPage() {
       setSmtpSettings({
         ...DEFAULT_SMTP_SETTINGS,
         ...(data.smtp_settings ?? {})
+      });
+      setEmailTransport(data.email_transport || "smtp");
+      setGraphSettings({
+        ...DEFAULT_GRAPH_SETTINGS,
+        ...(data.graph_settings ?? {})
       });
       setCompanyInfo({
         ...DEFAULT_COMPANY_INFO,
@@ -471,6 +488,16 @@ export default function HomeSettingsPage() {
     setDirty(true);
   };
 
+  const updateEmailTransport = (transport: EmailTransport) => {
+    setEmailTransport(transport);
+    setDirty(true);
+  };
+
+  const updateGraphSettings = <K extends keyof GraphSettings>(key: K, value: GraphSettings[K]) => {
+    setGraphSettings((prev: GraphSettings) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
   const updateCompanyInfo = <K extends keyof CompanyContactInfo>(key: K, value: CompanyContactInfo[K]) => {
     setCompanyInfo((prev: CompanyContactInfo) => ({ ...prev, [key]: value }));
     setDirty(true);
@@ -490,6 +517,8 @@ export default function HomeSettingsPage() {
           cardStyle,
           cdn_credentials: cdnCredentials,
           smtp_settings: smtpSettings,
+          email_transport: emailTransport,
+          graph_settings: graphSettings,
           company_info: companyInfo,
           footerHtmlDraft,
           headerConfigDraft,
@@ -638,8 +667,8 @@ export default function HomeSettingsPage() {
             />
             <SidebarItem
               icon={Mail}
-              label="SMTP Settings"
-              description="Email sending configuration"
+              label="Email Settings"
+              description="SMTP or Microsoft Graph"
               active={activeSection === "smtp"}
               onClick={() => setActiveSection("smtp")}
             />
@@ -730,9 +759,13 @@ export default function HomeSettingsPage() {
             />
           )}
           {activeSection === "smtp" && (
-            <SMTPForm
+            <EmailSettingsForm
+              emailTransport={emailTransport}
+              onTransportChange={updateEmailTransport}
               smtpSettings={smtpSettings}
-              onChange={updateSmtpSettings}
+              onSmtpChange={updateSmtpSettings}
+              graphSettings={graphSettings}
+              onGraphChange={updateGraphSettings}
             />
           )}
           {activeSection === "company" && (
@@ -1686,17 +1719,28 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
   );
 }
 
-interface SMTPFormProps {
+interface EmailSettingsFormProps {
+  emailTransport: EmailTransport;
+  onTransportChange: (transport: EmailTransport) => void;
   smtpSettings: SMTPSettings;
-  onChange: <K extends keyof SMTPSettings>(key: K, value: SMTPSettings[K]) => void;
+  onSmtpChange: <K extends keyof SMTPSettings>(key: K, value: SMTPSettings[K]) => void;
+  graphSettings: GraphSettings;
+  onGraphChange: <K extends keyof GraphSettings>(key: K, value: GraphSettings[K]) => void;
 }
 
-function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
+function EmailSettingsForm({
+  emailTransport,
+  onTransportChange,
+  smtpSettings,
+  onSmtpChange,
+  graphSettings,
+  onGraphChange,
+}: EmailSettingsFormProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleTestConnection = async () => {
+  const handleTestSmtp = async () => {
     setIsTesting(true);
     setTestResult(null);
 
@@ -1726,7 +1770,7 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
           message: data.error + (data.details ? `: ${data.details}` : ""),
         });
       }
-    } catch (error) {
+    } catch {
       setTestResult({
         success: false,
         message: "Failed to test connection. Please check your network.",
@@ -1736,148 +1780,352 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
     }
   };
 
-  // Allow localhost without auth for local dev testing (MailHog, Mailpit)
+  const handleTestGraph = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch("/api/b2b/home-settings/test-graph", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: graphSettings.client_id,
+          azure_tenant_id: graphSettings.azure_tenant_id,
+          client_secret: graphSettings.client_secret,
+          sender_email: graphSettings.sender_email,
+          sender_name: graphSettings.sender_name,
+          test_recipient: testEmail || graphSettings.sender_email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTestResult({ success: true, message: data.message || "Graph API test successful!" });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error + (data.details ? `: ${data.details}` : ""),
+        });
+      }
+    } catch {
+      setTestResult({
+        success: false,
+        message: "Failed to test Graph API. Please check your network.",
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // SMTP validation
   const isLocalhost = smtpSettings.host === "localhost" || smtpSettings.host === "127.0.0.1";
-  const hasAuth = smtpSettings.user && smtpSettings.password;
-  const canTest = smtpSettings.host && smtpSettings.port && smtpSettings.from &&
-                  (hasAuth || isLocalhost);
+  const hasSmtpAuth = smtpSettings.user && smtpSettings.password;
+  const canTestSmtp = smtpSettings.host && smtpSettings.port && smtpSettings.from &&
+                      (hasSmtpAuth || isLocalhost);
+
+  // Graph validation
+  const canTestGraph = graphSettings.client_id && graphSettings.azure_tenant_id &&
+                       graphSettings.client_secret && graphSettings.sender_email;
+
+  const canTest = emailTransport === "smtp" ? canTestSmtp : canTestGraph;
+  const handleTest = emailTransport === "smtp" ? handleTestSmtp : handleTestGraph;
+
+  // Reset test result when switching transport
+  const handleTransportSwitch = (transport: EmailTransport) => {
+    setTestResult(null);
+    onTransportChange(transport);
+  };
+
+  const inputClass = "w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
   return (
     <SectionCard
-      title="SMTP Settings"
-      description="Configure email sending for notifications and transactional emails."
+      title="Email Settings"
+      description="Configure how emails are sent for notifications and transactional emails."
     >
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <label htmlFor="smtp-host" className="text-sm font-medium text-slate-600">
-            SMTP Host
-          </label>
-          <input
-            id="smtp-host"
-            type="text"
-            value={smtpSettings.host || ""}
-            onChange={(e) => onChange("host", e.target.value)}
-            placeholder="smtp.example.com"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="smtp-port" className="text-sm font-medium text-slate-600">
-            Port
-          </label>
-          <input
-            id="smtp-port"
-            type="number"
-            value={smtpSettings.port || 587}
-            onChange={(e) => onChange("port", Number(e.target.value))}
-            placeholder="587"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-xs text-slate-500">
-            Common ports: 587 (STARTTLS), 465 (SSL/TLS)
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="smtp-user" className="text-sm font-medium text-slate-600">
-            Username
-          </label>
-          <input
-            id="smtp-user"
-            type="text"
-            value={smtpSettings.user || ""}
-            onChange={(e) => onChange("user", e.target.value)}
-            placeholder="noreply@example.com"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="smtp-password" className="text-sm font-medium text-slate-600">
-            Password
-          </label>
-          <input
-            id="smtp-password"
-            type="password"
-            value={smtpSettings.password || ""}
-            onChange={(e) => onChange("password", e.target.value)}
-            placeholder="••••••••••••"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="smtp-from" className="text-sm font-medium text-slate-600">
-            From Email
-          </label>
-          <input
-            id="smtp-from"
-            type="email"
-            value={smtpSettings.from || ""}
-            onChange={(e) => onChange("from", e.target.value)}
-            placeholder="noreply@example.com"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="smtp-from-name" className="text-sm font-medium text-slate-600">
-            From Name
-          </label>
-          <input
-            id="smtp-from-name"
-            type="text"
-            value={smtpSettings.from_name || ""}
-            onChange={(e) => onChange("from_name", e.target.value)}
-            placeholder="My Company"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="smtp-default-to" className="text-sm font-medium text-slate-600">
-            Default Recipient
-          </label>
-          <input
-            id="smtp-default-to"
-            type="email"
-            value={smtpSettings.default_to || ""}
-            onChange={(e) => onChange("default_to", e.target.value)}
-            placeholder="info@example.com"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-xs text-slate-500">
-            For system notifications and alerts
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600">
-            Secure Connection (TLS)
-          </label>
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => onChange("secure", !smtpSettings.secure)}
-              className={cn(
-                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                smtpSettings.secure ? "bg-primary" : "bg-slate-200"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                  smtpSettings.secure ? "translate-x-6" : "translate-x-1"
-                )}
-              />
-            </button>
-            <span className="text-sm text-slate-600">
-              {smtpSettings.secure ? "Enabled (port 465)" : "Disabled (port 587)"}
-            </span>
-          </div>
+      {/* Transport Selector */}
+      <div className="mb-6">
+        <label className="text-sm font-medium text-slate-600 mb-3 block">
+          Email Transport
+        </label>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => handleTransportSwitch("smtp")}
+            className={cn(
+              "flex-1 rounded-xl border-2 px-4 py-3 text-left transition-all",
+              emailTransport === "smtp"
+                ? "border-primary bg-primary/5"
+                : "border-slate-200 hover:border-slate-300"
+            )}
+          >
+            <div className="text-sm font-semibold text-slate-900">SMTP</div>
+            <div className="text-xs text-slate-500 mt-0.5">Direct SMTP server connection</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTransportSwitch("graph")}
+            className={cn(
+              "flex-1 rounded-xl border-2 px-4 py-3 text-left transition-all",
+              emailTransport === "graph"
+                ? "border-primary bg-primary/5"
+                : "border-slate-200 hover:border-slate-300"
+            )}
+          >
+            <div className="text-sm font-semibold text-slate-900">Microsoft Graph</div>
+            <div className="text-xs text-slate-500 mt-0.5">Azure AD / Microsoft 365</div>
+          </button>
         </div>
       </div>
+
+      {/* SMTP Fields */}
+      {emailTransport === "smtp" && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="smtp-host" className="text-sm font-medium text-slate-600">
+              SMTP Host
+            </label>
+            <input
+              id="smtp-host"
+              type="text"
+              value={smtpSettings.host || ""}
+              onChange={(e) => onSmtpChange("host", e.target.value)}
+              placeholder="smtp.example.com"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="smtp-port" className="text-sm font-medium text-slate-600">
+              Port
+            </label>
+            <input
+              id="smtp-port"
+              type="number"
+              value={smtpSettings.port || 587}
+              onChange={(e) => onSmtpChange("port", Number(e.target.value))}
+              placeholder="587"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-500">
+              Common ports: 587 (STARTTLS), 465 (SSL/TLS)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="smtp-user" className="text-sm font-medium text-slate-600">
+              Username
+            </label>
+            <input
+              id="smtp-user"
+              type="text"
+              value={smtpSettings.user || ""}
+              onChange={(e) => onSmtpChange("user", e.target.value)}
+              placeholder="noreply@example.com"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="smtp-password" className="text-sm font-medium text-slate-600">
+              Password
+            </label>
+            <input
+              id="smtp-password"
+              type="password"
+              value={smtpSettings.password || ""}
+              onChange={(e) => onSmtpChange("password", e.target.value)}
+              placeholder="••••••••••••"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="smtp-from" className="text-sm font-medium text-slate-600">
+              From Email
+            </label>
+            <input
+              id="smtp-from"
+              type="email"
+              value={smtpSettings.from || ""}
+              onChange={(e) => onSmtpChange("from", e.target.value)}
+              placeholder="noreply@example.com"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="smtp-from-name" className="text-sm font-medium text-slate-600">
+              From Name
+            </label>
+            <input
+              id="smtp-from-name"
+              type="text"
+              value={smtpSettings.from_name || ""}
+              onChange={(e) => onSmtpChange("from_name", e.target.value)}
+              placeholder="My Company"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="smtp-default-to" className="text-sm font-medium text-slate-600">
+              Default Recipient
+            </label>
+            <input
+              id="smtp-default-to"
+              type="email"
+              value={smtpSettings.default_to || ""}
+              onChange={(e) => onSmtpChange("default_to", e.target.value)}
+              placeholder="info@example.com"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-500">
+              For system notifications and alerts
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-600">
+              Secure Connection (TLS)
+            </label>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => onSmtpChange("secure", !smtpSettings.secure)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                  smtpSettings.secure ? "bg-primary" : "bg-slate-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    smtpSettings.secure ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+              <span className="text-sm text-slate-600">
+                {smtpSettings.secure ? "Enabled (port 465)" : "Disabled (port 587)"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Graph API Fields */}
+      {emailTransport === "graph" && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="graph-client-id" className="text-sm font-medium text-slate-600">
+              Client ID
+            </label>
+            <input
+              id="graph-client-id"
+              type="text"
+              value={graphSettings.client_id || ""}
+              onChange={(e) => onGraphChange("client_id", e.target.value)}
+              placeholder="00000000-0000-0000-0000-000000000000"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-500">
+              Azure AD Application (client) ID
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="graph-tenant-id" className="text-sm font-medium text-slate-600">
+              Azure Tenant ID
+            </label>
+            <input
+              id="graph-tenant-id"
+              type="text"
+              value={graphSettings.azure_tenant_id || ""}
+              onChange={(e) => onGraphChange("azure_tenant_id", e.target.value)}
+              placeholder="00000000-0000-0000-0000-000000000000"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-500">
+              Azure AD directory (tenant) ID
+            </p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label htmlFor="graph-secret" className="text-sm font-medium text-slate-600">
+              Client Secret
+            </label>
+            <input
+              id="graph-secret"
+              type="password"
+              value={graphSettings.client_secret || ""}
+              onChange={(e) => onGraphChange("client_secret", e.target.value)}
+              placeholder="••••••••••••••••••••••••"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="graph-sender" className="text-sm font-medium text-slate-600">
+              Sender Email
+            </label>
+            <input
+              id="graph-sender"
+              type="email"
+              value={graphSettings.sender_email || ""}
+              onChange={(e) => onGraphChange("sender_email", e.target.value)}
+              placeholder="noreply@company.com"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-500">
+              Must be a licensed mailbox in Azure AD
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="graph-sender-name" className="text-sm font-medium text-slate-600">
+              Sender Name
+            </label>
+            <input
+              id="graph-sender-name"
+              type="text"
+              value={graphSettings.sender_name || ""}
+              onChange={(e) => onGraphChange("sender_name", e.target.value)}
+              placeholder="My Company"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-600">
+              Save to Sent Items
+            </label>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => onGraphChange("save_to_sent_items", !graphSettings.save_to_sent_items)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                  graphSettings.save_to_sent_items ? "bg-primary" : "bg-slate-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    graphSettings.save_to_sent_items ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+              <span className="text-sm text-slate-600">
+                {graphSettings.save_to_sent_items ? "Enabled" : "Disabled"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Save sent emails in the sender&apos;s Sent Items folder
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Test Connection */}
       <div className="border-t border-slate-200 pt-6 mt-6">
@@ -1885,7 +2133,7 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
           <div>
             <h3 className="text-sm font-semibold text-slate-900">Test Connection</h3>
             <p className="text-xs text-slate-500">
-              Send a test email to verify SMTP credentials
+              Send a test email to verify {emailTransport === "smtp" ? "SMTP" : "Graph API"} credentials
             </p>
           </div>
 
@@ -1899,15 +2147,19 @@ function SMTPForm({ smtpSettings, onChange }: SMTPFormProps) {
                 type="email"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
-                placeholder={smtpSettings.default_to || smtpSettings.from || "test@example.com"}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder={
+                  emailTransport === "smtp"
+                    ? (smtpSettings.default_to || smtpSettings.from || "test@example.com")
+                    : (graphSettings.sender_email || "test@example.com")
+                }
+                className={inputClass}
               />
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleTestConnection}
+              onClick={handleTest}
               disabled={!canTest || isTesting}
               className="gap-2 h-[38px]"
             >
@@ -3009,6 +3261,7 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "profile": User,
   "notifications": Bell,
   "reminders": History,
+  "app-launcher": LayoutGrid,
   "button": Square,
   "spacer": Space,
   "divider": Minus,

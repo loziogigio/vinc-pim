@@ -104,6 +104,30 @@ export interface SMTPSettings {
 }
 
 /**
+ * Email transport type - determines how emails are sent
+ */
+export type EmailTransport = "smtp" | "graph";
+
+/**
+ * Microsoft Graph API settings for email sending
+ * Uses OAuth2 client_credentials flow
+ */
+export interface GraphSettings {
+  /** Azure AD application (client) ID */
+  client_id?: string;
+  /** Azure AD tenant ID (NOT the VINC tenant) */
+  azure_tenant_id?: string;
+  /** Client secret value */
+  client_secret?: string;
+  /** Sender email address (must be a licensed mailbox in Azure AD) */
+  sender_email?: string;
+  /** Sender display name */
+  sender_name?: string;
+  /** Save sent emails to Sent Items folder (default: false) */
+  save_to_sent_items?: boolean;
+}
+
+/**
  * Company contact information for email footers and legal compliance
  */
 export interface CompanyContactInfo {
@@ -475,6 +499,10 @@ export interface HomeSettings {
   cdn?: CDNConfiguration;
   cdn_credentials?: CDNCredentials;
   smtp_settings?: SMTPSettings;
+  /** Email transport method: "smtp" (default) or "graph" */
+  email_transport?: EmailTransport;
+  /** Microsoft Graph API email settings */
+  graph_settings?: GraphSettings;
   /** Company contact information for email footers */
   company_info?: CompanyContactInfo;
   /** Web push notification settings (VAPID keys, etc.) */

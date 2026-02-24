@@ -5,7 +5,7 @@
  * The pricing model stores unit prices and calculates package prices on the fly.
  */
 
-import type { PackagingOption, PackagingPricing } from "@/lib/types/pim";
+import type { PackagingOption, PackagingPricing, PackagingInfo } from "@/lib/types/pim";
 
 /**
  * Ensure every packaging option has a unique pkg_id (incremental string: "1", "2", "3"...).
@@ -204,6 +204,25 @@ export function getEffectivePrice(
   }
 
   return { price: undefined, type: null };
+}
+
+/**
+ * Sync is_default/is_smallest flags on packaging_options from packaging_info.
+ * packaging_info is the source of truth — is_default/is_smallest booleans on each entry
+ * map to a code that matches a packaging_option code.
+ */
+export function syncPackagingFlags(
+  packagingOptions: PackagingOption[],
+  packagingInfo: PackagingInfo[] | undefined
+): PackagingOption[] {
+  const defaultCode = packagingInfo?.find((pi) => pi.is_default)?.code;
+  const smallestCode = packagingInfo?.find((pi) => pi.is_smallest)?.code;
+
+  return packagingOptions.map((opt) => ({
+    ...opt,
+    is_default: defaultCode ? opt.code === defaultCode : false,
+    is_smallest: smallestCode ? opt.code === smallestCode : false,
+  }));
 }
 
 /**
