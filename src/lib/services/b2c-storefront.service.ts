@@ -10,7 +10,12 @@ import {
   initB2CHomeTemplate,
   deleteB2CHomeTemplates,
 } from "@/lib/db/b2c-home-templates";
-import type { IB2CStorefront } from "@/lib/db/models/b2c-storefront";
+import type {
+  IB2CStorefront,
+  IB2CStorefrontBranding,
+  IB2CStorefrontHeader,
+  IB2CStorefrontFooter,
+} from "@/lib/db/models/b2c-storefront";
 
 const logPrefix = "[b2c-storefront]";
 
@@ -22,6 +27,9 @@ export interface CreateStorefrontInput {
   name: string;
   slug: string;
   domains?: string[];
+  branding?: IB2CStorefrontBranding;
+  header?: IB2CStorefrontHeader;
+  footer?: IB2CStorefrontFooter;
   settings?: {
     default_language?: string;
     theme?: string;
@@ -32,6 +40,9 @@ export interface UpdateStorefrontInput {
   name?: string;
   domains?: string[];
   status?: "active" | "inactive";
+  branding?: IB2CStorefrontBranding;
+  header?: IB2CStorefrontHeader;
+  footer?: IB2CStorefrontFooter;
   settings?: {
     default_language?: string;
     theme?: string;
@@ -96,6 +107,9 @@ export async function createStorefront(
     slug: input.slug.trim().toLowerCase(),
     domains,
     status: "active",
+    branding: input.branding || {},
+    header: input.header || { show_search: true, show_cart: true, show_account: true },
+    footer: input.footer || {},
     settings: input.settings || {},
   });
 
@@ -143,11 +157,17 @@ export async function updateStorefront(
 
   if (input.name !== undefined) storefront.name = input.name.trim();
   if (input.status !== undefined) storefront.status = input.status;
+  if (input.branding !== undefined) {
+    storefront.branding = { ...storefront.branding, ...input.branding };
+  }
+  if (input.header !== undefined) {
+    storefront.header = { ...storefront.header, ...input.header };
+  }
+  if (input.footer !== undefined) {
+    storefront.footer = { ...storefront.footer, ...input.footer };
+  }
   if (input.settings !== undefined) {
-    storefront.settings = {
-      ...storefront.settings,
-      ...input.settings,
-    };
+    storefront.settings = { ...storefront.settings, ...input.settings };
   }
 
   await storefront.save();
