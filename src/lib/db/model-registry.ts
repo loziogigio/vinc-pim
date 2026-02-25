@@ -47,6 +47,7 @@ import { NotificationSchema } from "./models/notification";
 import { CampaignSchema } from "./models/campaign";
 import { UserTagSchema } from "./models/user-tag";
 import { ThreadSchema } from "./models/thread";
+import { B2CStorefrontSchema } from "./models/b2c-storefront";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -88,6 +89,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Campaign: CampaignSchema,
   UserTag: UserTagSchema,
   Thread: ThreadSchema,
+  B2CStorefront: B2CStorefrontSchema,
 };
 
 /**
@@ -171,6 +173,7 @@ export async function getTenantModels(dbName: string) {
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
     Thread: connection.models.Thread,
+    B2CStorefront: connection.models.B2CStorefront,
   };
 }
 
@@ -225,6 +228,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
     Thread: connection.models.Thread,
+    B2CStorefront: connection.models.B2CStorefront,
   };
 }
 

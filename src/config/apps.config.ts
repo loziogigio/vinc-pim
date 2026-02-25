@@ -18,6 +18,7 @@ import {
   Smartphone,
   Bell,
   ShieldCheck,
+  Globe,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -145,6 +146,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/admin",
     icon: ShieldCheck,
     color: "bg-orange-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "b2c",
+    name: "B2C",
+    description: "Storefront web builders",
+    href: "/b2b/b2c",
+    icon: Globe,
+    color: "bg-pink-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,

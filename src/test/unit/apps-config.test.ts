@@ -32,6 +32,7 @@ describe("unit: Apps Config - APPS Array", () => {
       "store-customers",
       "store-portal-users",
       "builder",
+      "b2c",
       "settings",
     ];
     const actualAppIds = APPS.map((app) => app.id);
@@ -108,6 +109,7 @@ describe("unit: Apps Config - getAppById", () => {
       { id: "store-portal-users", expectedName: "Portal Users" },
       { id: "correlations", expectedName: "Correlazioni" },
       { id: "builder", expectedName: "Builder" },
+      { id: "b2c", expectedName: "B2C" },
       { id: "settings", expectedName: "Settings" },
     ];
 
@@ -398,5 +400,49 @@ describe("unit: Apps Config - Integration", () => {
       expect(app?.showInLauncher).toBe(true);
       expect(app?.hasNavigation).toBe(true);
     });
+  });
+});
+
+// ============================================
+// B2C APP TESTS
+// ============================================
+
+describe("unit: Apps Config - B2C App", () => {
+  it("should be registered in app registry", () => {
+    const b2c = getAppById("b2c");
+    expect(b2c).toBeDefined();
+    expect(b2c?.name).toBe("B2C");
+    expect(b2c?.href).toBe("/b2b/b2c");
+  });
+
+  it("should have navigation enabled", () => {
+    const b2c = getAppById("b2c");
+    expect(b2c?.hasNavigation).toBe(true);
+  });
+
+  it("should appear in launcher and header", () => {
+    const b2c = getAppById("b2c");
+    expect(b2c?.showInLauncher).toBe(true);
+    expect(b2c?.showInHeader).toBe(true);
+  });
+
+  it("should match B2C sub-paths correctly", () => {
+    const app = getAppByPath("/b2b/b2c/storefronts");
+    expect(app?.id).toBe("b2c");
+  });
+
+  it("should match B2C nested paths", () => {
+    const app = getAppByPath("/b2b/b2c/storefronts/main-shop");
+    expect(app?.id).toBe("b2c");
+  });
+
+  it("should handle B2C with tenant prefix", () => {
+    const app = getAppByPath("/hidros-it/b2b/b2c/storefronts");
+    expect(app?.id).toBe("b2c");
+  });
+
+  it("should return B2C section from getCurrentSection", () => {
+    const section = getCurrentSection("/b2b/b2c/storefronts");
+    expect(section.name).toBe("B2C");
   });
 });
