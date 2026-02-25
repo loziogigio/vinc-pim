@@ -15,6 +15,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Settings,
+  Globe,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -112,6 +113,17 @@ export const APPS: AppConfig[] = [
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: false,
+  },
+  {
+    id: "b2c",
+    name: "B2C",
+    description: "Storefront web builders",
+    href: "/b2b/b2c",
+    icon: Globe,
+    color: "bg-pink-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
   },
   {
     id: "settings",

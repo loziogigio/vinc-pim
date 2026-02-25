@@ -38,6 +38,7 @@ import { AssociationJobSchema } from "./models/association-job";
 import { UOMSchema } from "./models/uom";
 import { EmailLogSchema } from "./models/email-log";
 import { ProductCorrelationSchema } from "./models/product-correlation";
+import { B2CStorefrontSchema } from "./models/b2c-storefront";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -70,6 +71,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   UOM: UOMSchema,
   EmailLog: EmailLogSchema,
   ProductCorrelation: ProductCorrelationSchema,
+  B2CStorefront: B2CStorefrontSchema,
 };
 
 /**
@@ -144,6 +146,7 @@ export async function getTenantModels(dbName: string) {
     UOM: connection.models.UOM,
     EmailLog: connection.models.EmailLog,
     ProductCorrelation: connection.models.ProductCorrelation,
+    B2CStorefront: connection.models.B2CStorefront,
   };
 }
 
