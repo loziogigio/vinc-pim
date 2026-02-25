@@ -17,7 +17,7 @@ import { getPublishedB2CHomeTemplate } from "@/lib/db/b2c-home-templates";
  *   Origin: https://shop.example.com
  *
  * Response:
- *   { blocks, seo, storefront: { name, slug } }
+ *   { blocks, seo, storefront: { name, slug, branding, header, footer } }
  */
 export async function GET(req: NextRequest) {
   try {
@@ -61,17 +61,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 4. Get published home template
+    // 4. Build storefront metadata (branding, header, footer)
+    const storefrontMeta = {
+      name: storefront.name,
+      slug: storefront.slug,
+      branding: storefront.branding || {},
+      header: storefront.header || {},
+      footer: storefront.footer || {},
+    };
+
+    // 5. Get published home template
     const template = await getPublishedB2CHomeTemplate(storefront.slug, tenantDb);
     if (!template) {
       return NextResponse.json(
-        { blocks: [], seo: {}, storefront: { name: storefront.name, slug: storefront.slug } }
+        { blocks: [], seo: {}, storefront: storefrontMeta }
       );
     }
 
     return NextResponse.json({
       ...template,
-      storefront: { name: storefront.name, slug: storefront.slug },
+      storefront: storefrontMeta,
     });
   } catch (error) {
     console.error("[GET /api/b2b/b2c/public/home]", error);
