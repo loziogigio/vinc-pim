@@ -580,6 +580,70 @@ export const CorrelationFactory = {
   },
 };
 
+/**
+ * Factory for creating test B2C storefronts.
+ */
+export const B2CStorefrontFactory = {
+  createPayload(overrides?: Record<string, unknown>) {
+    // nanoid can produce uppercase/special chars; strip to match slug regex [a-z0-9-]
+    const id = nanoid(6).replace(/[^a-z0-9]/g, "").slice(0, 4) || "0000";
+    return {
+      name: `Test Store ${id}`,
+      slug: `store-${id}`,
+      domains: [`${id}.example.com`],
+      ...overrides,
+    };
+  },
+
+  createWithBranding(overrides?: Record<string, unknown>) {
+    return this.createPayload({
+      branding: {
+        title: "Test Brand",
+        logo_url: "https://example.com/logo.svg",
+        favicon_url: "https://example.com/favicon.ico",
+        primary_color: "#009688",
+        secondary_color: "#00796b",
+        accent_color: "#ff5722",
+        font_family: "Inter",
+      },
+      ...overrides,
+    });
+  },
+
+  createFull(overrides?: Record<string, unknown>) {
+    return this.createWithBranding({
+      header: {
+        announcement_enabled: true,
+        announcement_text: "Free shipping over €50",
+        announcement_bg_color: "#009688",
+        announcement_text_color: "#ffffff",
+        nav_links: [
+          { label: "Shop", href: "/shop" },
+          { label: "About", href: "/about", open_in_new_tab: true },
+        ],
+        show_search: true,
+        show_cart: true,
+        show_account: false,
+      },
+      footer: {
+        columns: [
+          { title: "Company", links: [{ label: "About", href: "/about" }] },
+        ],
+        social_links: [
+          { platform: "instagram", url: "https://instagram.com/test" },
+        ],
+        copyright_text: "© 2026 Test Company",
+        show_newsletter: true,
+        newsletter_heading: "Subscribe",
+        newsletter_placeholder: "Enter your email",
+        bg_color: "#1a1a1a",
+        text_color: "#ffffff",
+      },
+      ...overrides,
+    });
+  },
+};
+
 // ============================================
 // ASSERTIONS
 // ============================================
