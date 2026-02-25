@@ -46,7 +46,8 @@ import {
   X,
   Bell,
   History,
-  LayoutGrid
+  LayoutGrid,
+  Store
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
@@ -102,7 +103,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "company" | "apikeys" | "footer" | "header" | "seo";
+type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "company" | "apikeys" | "footer" | "header" | "seo" | "vetrina";
 
 const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_url: "",
@@ -355,6 +356,10 @@ export default function HomeSettingsPage() {
   const logoUploader = useImageUpload();
   const faviconUploader = useImageUpload();
 
+  // Vetrina listing state
+  const [vetrinaListed, setVetrinaListed] = useState(false);
+  const [vetrinaLoading, setVetrinaLoading] = useState(false);
+
   const loadSettings = async () => {
     setIsLoading(true);
     setError(null);
@@ -437,6 +442,13 @@ export default function HomeSettingsPage() {
 
   useEffect(() => {
     loadSettings();
+    // Load vetrina status
+    fetch("/api/b2b/vetrina/status")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setVetrinaListed(data.is_listed);
+      })
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -544,6 +556,26 @@ export default function HomeSettingsPage() {
   useEffect(() => {
     setPreviewVariant(cardVariant);
   }, [cardVariant]);
+
+  const handleVetrinaSave = async () => {
+    setVetrinaLoading(true);
+    try {
+      const res = await fetch("/api/b2b/vetrina/status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_listed: vetrinaListed }),
+      });
+      if (res.ok) {
+        setToast("Vetrina listing updated.");
+      } else {
+        setError("Failed to update vetrina listing.");
+      }
+    } catch {
+      setError("Failed to update vetrina listing.");
+    } finally {
+      setVetrinaLoading(false);
+    }
+  };
 
   const showInitialLoader = isLoading && !hasLoadedOnce;
 
@@ -707,6 +739,13 @@ export default function HomeSettingsPage() {
               active={activeSection === "seo"}
               onClick={() => setActiveSection("seo")}
             />
+            <SidebarItem
+              icon={Store}
+              label="Vetrina"
+              description="Public storefront listing"
+              active={activeSection === "vetrina"}
+              onClick={() => setActiveSection("vetrina")}
+            />
           </nav>
         </aside>
 
@@ -836,6 +875,64 @@ export default function HomeSettingsPage() {
                 setDirty(true);
               }}
             />
+          )}
+
+          {activeSection === "vetrina" && (
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 px-6 py-4">
+                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <Store className="h-5 w-5 text-primary" />
+                  Vetrina — Public Listing
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Choose whether to display your store in the public storefront directory.
+                  Your store name, logo, and contact info from the Branding and Company sections will be shown.
+                </p>
+              </div>
+              <div className="px-6 py-5 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">List in Vetrina</p>
+                    <p className="text-xs text-slate-500">
+                      Your store will appear in the public storefront directory
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setVetrinaListed(!vetrinaListed)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      vetrinaListed ? "bg-primary" : "bg-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                        vetrinaListed ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleVetrinaSave}
+                    disabled={vetrinaLoading}
+                    className="gap-2"
+                  >
+                    {vetrinaLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Vetrina Setting
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>

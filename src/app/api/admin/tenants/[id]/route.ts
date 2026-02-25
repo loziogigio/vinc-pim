@@ -92,6 +92,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       require_login,
       home_settings_customer_id,
       builder_url,
+      vetrina,
     } = body;
 
     // Handle status changes with special functions
@@ -124,6 +125,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     if (require_login !== undefined) updates.require_login = require_login;
     if (home_settings_customer_id !== undefined) updates.home_settings_customer_id = home_settings_customer_id;
     if (builder_url !== undefined) updates.builder_url = builder_url;
+    if (vetrina !== undefined) updates.vetrina = vetrina;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
