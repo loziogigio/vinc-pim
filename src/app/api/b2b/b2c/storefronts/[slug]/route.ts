@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeB2BRoute } from "@/lib/auth/b2b-helpers";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import {
   getStorefrontBySlug,
   updateStorefront,
@@ -14,11 +14,11 @@ type RouteParams = { params: Promise<{ slug: string }> };
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { slug } = await params;
-    const storefront = await getStorefrontBySlug(auth.tenantDb!, slug);
+    const storefront = await getStorefrontBySlug(auth.tenantDb, slug);
 
     if (!storefront) {
       return NextResponse.json({ error: "Storefront not found" }, { status: 404 });
@@ -38,13 +38,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { slug } = await params;
     const body = await req.json();
 
-    const storefront = await updateStorefront(auth.tenantDb!, slug, body);
+    const storefront = await updateStorefront(auth.tenantDb, slug, body);
     return NextResponse.json({ success: true, data: storefront });
   } catch (error) {
     console.error("[PATCH /api/b2b/b2c/storefronts/[slug]]", error);
@@ -60,11 +60,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { slug } = await params;
-    await deleteStorefront(auth.tenantDb!, slug);
+    await deleteStorefront(auth.tenantDb, slug);
 
     return NextResponse.json({ success: true });
   } catch (error) {

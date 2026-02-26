@@ -11,6 +11,7 @@ import {
   getAccessibleCustomerIds,
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
+import { DEFAULT_CHANNEL, isValidChannelCode } from "@/lib/constants/channel";
 
 /**
  * Authenticate request via session or API key
@@ -90,6 +91,8 @@ export async function GET(req: NextRequest) {
     const customerType = searchParams.get("customer_type");
     const isGuest = searchParams.get("is_guest");
     const search = searchParams.get("search");
+    const customerCode = searchParams.get("customer_code");
+    const addressCode = searchParams.get("address_code");
 
     // Build query
     const query: Record<string, unknown> = { tenant_id: tenantId };
@@ -106,6 +109,16 @@ export async function GET(req: NextRequest) {
 
     if (isGuest !== null && isGuest !== undefined) {
       query.is_guest = isGuest === "true";
+    }
+
+    // Exact match on customer external_code
+    if (customerCode) {
+      query.external_code = customerCode;
+    }
+
+    // Exact match on address external_code
+    if (addressCode) {
+      query["addresses.external_code"] = addressCode;
     }
 
     // Search across email, name, company, and codes
@@ -221,6 +234,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "email is required" }, { status: 400 });
     }
 
+    // Validate channel if provided
+    if (body.channel && !isValidChannelCode(body.channel)) {
+      return NextResponse.json(
+        { error: "Invalid channel code (e.g. B2C, SLOVAKIA)" },
+        { status: 400 }
+      );
+    }
+
     // Check for duplicate email
     const existingCustomer = await CustomerModel.findOne({
       tenant_id,
@@ -252,12 +273,16 @@ export async function POST(req: NextRequest) {
     const public_code = body.public_code || await getNextCustomerPublicCode(auth.tenantDb!);
 
     // Process addresses - generate IDs
-    const addresses = (body.addresses || []).map((addr) => ({
-      ...addr,
-      address_id: nanoid(8),
-      created_at: new Date(),
-      updated_at: new Date(),
-    }));
+    const addresses = (body.addresses || []).map((addr) => {
+      const address_id = nanoid(8);
+      return {
+        ...addr,
+        address_id,
+        external_code: addr.external_code || address_id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+    });
 
     // Find default addresses
     let default_shipping_address_id: string | undefined;
@@ -280,8 +305,9 @@ export async function POST(req: NextRequest) {
       tenant_id,
       customer_type: body.customer_type,
       is_guest: body.is_guest ?? false,
+      channel: body.channel || DEFAULT_CHANNEL,
       email: body.email,
-      external_code: body.external_code,
+      external_code: body.external_code || customer_id,
       public_code,
       phone: body.phone,
       first_name: body.first_name,

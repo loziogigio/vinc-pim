@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Link2,
-  BarChart3,
-  Sparkles,
+  Heart,
+  BellRing,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -24,18 +24,16 @@ const navItems = [
     description: "Related products",
   },
   {
-    label: "Analytics",
-    href: "/b2b/correlations/analytics",
-    icon: BarChart3,
-    description: "Views & clicks",
-    disabled: true,
+    label: "Likes",
+    href: "/b2b/correlations/likes",
+    icon: Heart,
+    description: "Wishlist analytics",
   },
   {
-    label: "Recommendations",
-    href: "/b2b/correlations/recommendations",
-    icon: Sparkles,
-    description: "Auto-generated",
-    disabled: true,
+    label: "Reminders",
+    href: "/b2b/correlations/reminders",
+    icon: BellRing,
+    description: "Back-in-stock",
   },
 ];
 
@@ -58,21 +56,6 @@ export function CorrelationsNavigation() {
         const isActive = item.href === "/b2b/correlations"
           ? pathname === fullHref
           : pathname === fullHref || pathname?.startsWith(`${fullHref}/`);
-
-        if (item.disabled) {
-          return (
-            <div
-              key={item.href}
-              className="flex items-center gap-3 rounded-[0.358rem] px-4 py-2.5 text-[0.875rem] font-medium text-[#b9b9c3] cursor-not-allowed"
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span>{item.label}</span>
-              <span className="ml-auto text-[0.65rem] bg-[#f3f2f7] px-1.5 py-0.5 rounded">
-                Soon
-              </span>
-            </div>
-          );
-        }
 
         return (
           <Link

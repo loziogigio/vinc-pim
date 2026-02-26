@@ -57,6 +57,7 @@ import {
 // Import lifecycle components
 import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal } from "@/components/orders";
 import { ThreadPanel } from "@/components/threads";
+import { ShippingMethodSelector } from "@/components/store/ShippingMethodSelector";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface PaginationMeta {
@@ -1104,6 +1105,23 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               currentUserName="Admin"
               currentUserType="admin"
             />
+          )}
+
+          {/* Shipping Method Selector — draft orders with a shipping address */}
+          {order.status === "draft" && order.shipping_address_id && (
+            <div className="rounded-lg bg-card shadow-sm border border-border p-4">
+              <ShippingMethodSelector
+                orderId={order.order_id}
+                currency={order.currency || "EUR"}
+                subtotalNet={order.subtotal_net}
+                currentShippingMethod={order.shipping_method}
+                onApplied={(result) =>
+                  setOrder((prev) =>
+                    prev ? { ...prev, ...result } : prev
+                  )
+                }
+              />
+            </div>
           )}
 
           {/* Order Summary */}

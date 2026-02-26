@@ -12,6 +12,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import type { IPortalUserCreate, PortalUserSafe } from "@/lib/types/portal-user";
+import { DEFAULT_CHANNEL, isValidChannelCode } from "@/lib/constants/channel";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -218,28 +219,40 @@ export async function POST(req: NextRequest) {
     const normalizedUsername = username.toLowerCase().trim();
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check for existing username
+    // Validate channel early (needed for duplicate checks)
+    const { channel } = body as IPortalUserCreate;
+    if (channel && !isValidChannelCode(channel)) {
+      return NextResponse.json(
+        { error: "Invalid channel code (e.g. B2C, SLOVAKIA)" },
+        { status: 400 }
+      );
+    }
+    const resolvedChannel = channel || DEFAULT_CHANNEL;
+
+    // Check for existing username in same channel
     const existingUsername = await PortalUserModel.findOne({
       tenant_id: auth.tenantId,
       username: normalizedUsername,
+      channel: resolvedChannel,
     });
 
     if (existingUsername) {
       return NextResponse.json(
-        { error: "Username already exists" },
+        { error: "Username already exists in this channel" },
         { status: 409 }
       );
     }
 
-    // Check for existing email
+    // Check for existing email in same channel
     const existingEmail = await PortalUserModel.findOne({
       tenant_id: auth.tenantId,
       email: normalizedEmail,
+      channel: resolvedChannel,
     });
 
     if (existingEmail) {
       return NextResponse.json(
-        { error: "Email already exists" },
+        { error: "Email already exists in this channel" },
         { status: 409 }
       );
     }
@@ -276,6 +289,7 @@ export async function POST(req: NextRequest) {
       email: normalizedEmail,
       password_hash: passwordHash,
       customer_access: customer_access || [],
+      channel: resolvedChannel,
       is_active: true,
     });
 
@@ -286,6 +300,7 @@ export async function POST(req: NextRequest) {
       username: newUser.username,
       email: newUser.email,
       customer_access: newUser.customer_access,
+      channel: newUser.channel,
       is_active: newUser.is_active,
       last_login_at: newUser.last_login_at,
       created_at: newUser.created_at,

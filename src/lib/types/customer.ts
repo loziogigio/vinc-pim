@@ -115,6 +115,9 @@ export interface Customer {
   /** Default billing address ID */
   default_billing_address_id?: string;
 
+  /** Sales channel this customer belongs to (e.g. "default", "b2c", "slovakia") */
+  channel?: string;
+
   // Timestamps
   created_at: Date;
   updated_at: Date;
@@ -146,6 +149,9 @@ export interface CreateCustomerRequest {
 
   // Initial addresses
   addresses?: Omit<Address, "address_id" | "created_at" | "updated_at">[];
+
+  /** Sales channel */
+  channel?: string;
 }
 
 /**
@@ -164,6 +170,7 @@ export interface UpdateCustomerRequest {
   legal_info?: LegalInfo;
   default_shipping_address_id?: string;
   default_billing_address_id?: string;
+  channel?: string;
 }
 
 /**

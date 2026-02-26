@@ -34,9 +34,9 @@ export interface IPortalUser {
   /** Tenant this user belongs to */
   tenant_id: string;
 
-  /** Username for login - unique per tenant */
+  /** Username for login - unique per tenant + channel */
   username: string;
-  /** Email address - can equal username */
+  /** Email address - unique per tenant + channel */
   email: string;
   /** bcrypt hashed password */
   password_hash: string;
@@ -46,6 +46,9 @@ export interface IPortalUser {
 
   /** Tags assigned to this user for campaign targeting */
   tags?: IUserTagRef[];
+
+  /** Sales channel this user belongs to (e.g. "default", "b2c", "slovakia") */
+  channel: string;
 
   /** Whether the user account is active */
   is_active: boolean;
@@ -65,6 +68,7 @@ export interface IPortalUserCreate {
   email: string;
   password: string;
   customer_access: ICustomerAccess[];
+  channel?: string;
 }
 
 /**
@@ -76,6 +80,7 @@ export interface IPortalUserUpdate {
   password?: string;
   customer_access?: ICustomerAccess[];
   is_active?: boolean;
+  channel?: string;
 }
 
 /**

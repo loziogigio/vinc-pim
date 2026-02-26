@@ -35,3 +35,6 @@ scripts/e2e-*.ts
 scripts/test-*.ts
 scripts/migrate-*.ts
 scripts/.test-api-keys.json
+
+# Traefik dynamic config (dev fallback)
+.traefik/

@@ -97,6 +97,24 @@ export const notificationQueue = new Queue("notification-queue", {
   },
 });
 
+// Booking hold expiry queue (delayed jobs to expire unheld bookings)
+export const bookingExpiryQueue = new Queue("booking-expiry-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+    removeOnComplete: {
+      count: 200,
+    },
+    removeOnFail: {
+      count: 500,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
@@ -104,4 +122,5 @@ export const QUEUE_NAMES = {
   SYNC: "sync-queue",
   CLEANUP: "cleanup-queue",
   NOTIFICATION: "notification-queue",
+  BOOKING_EXPIRY: "booking-expiry-queue",
 } as const;

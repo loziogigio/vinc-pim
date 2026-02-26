@@ -48,3 +48,12 @@ export async function isB2BAuthenticated(): Promise<boolean> {
   const session = await getB2BSession();
   return session.isLoggedIn === true;
 }
+
+/**
+ * Verify B2B session and return session data if authenticated, null otherwise.
+ */
+export async function verifyB2BSession(): Promise<B2BSessionData | null> {
+  const session = await getB2BSession();
+  if (!session.isLoggedIn) return null;
+  return session;
+}

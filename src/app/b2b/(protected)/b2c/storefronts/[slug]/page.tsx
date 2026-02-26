@@ -11,7 +11,86 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  X,
 } from "lucide-react";
+
+// ============================================================
+// Domain helpers
+// ============================================================
+
+interface DomainEntry {
+  protocol: "https" | "http";
+  host: string;
+}
+
+function parseDomain(raw: string): DomainEntry {
+  if (raw.startsWith("https://")) return { protocol: "https", host: raw.slice(8) };
+  if (raw.startsWith("http://")) return { protocol: "http", host: raw.slice(7) };
+  return { protocol: "https", host: raw };
+}
+
+function formatDomain(d: DomainEntry): string {
+  return `${d.protocol}://${d.host.trim()}`;
+}
+
+function DomainListInput({
+  domains,
+  onChange,
+}: {
+  domains: DomainEntry[];
+  onChange: (domains: DomainEntry[]) => void;
+}) {
+  function add() {
+    onChange([...domains, { protocol: "https", host: "" }]);
+  }
+
+  function update(index: number, field: keyof DomainEntry, value: string) {
+    onChange(domains.map((d, i) => (i === index ? { ...d, [field]: value } : d)));
+  }
+
+  function remove(index: number) {
+    onChange(domains.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-2">
+      {domains.map((d, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <select
+            value={d.protocol}
+            onChange={(e) => update(i, "protocol", e.target.value)}
+            className="rounded-lg border border-[#ebe9f1] px-2 py-2 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none bg-gray-50"
+          >
+            <option value="https">https://</option>
+            <option value="http">http://</option>
+          </select>
+          <input
+            type="text"
+            value={d.host}
+            onChange={(e) => update(i, "host", e.target.value)}
+            placeholder="www.example.com"
+            className="flex-1 rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => remove(i)}
+            className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-500 hover:bg-red-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add domain
+      </button>
+    </div>
+  );
+}
 import type {
   IB2CStorefrontBranding,
   IB2CStorefrontHeader,
@@ -158,7 +237,7 @@ export default function StorefrontDetailPage({
 
   // General
   const [name, setName] = useState("");
-  const [domainsInput, setDomainsInput] = useState("");
+  const [domains, setDomains] = useState<DomainEntry[]>([]);
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [defaultLanguage, setDefaultLanguage] = useState("");
 
@@ -183,7 +262,7 @@ export default function StorefrontDetailPage({
           const sf = data.data as Storefront;
           setStorefront(sf);
           setName(sf.name);
-          setDomainsInput(sf.domains.join(", "));
+          setDomains(sf.domains.map(parseDomain));
           setStatus(sf.status);
           setDefaultLanguage(sf.settings?.default_language || "");
           setBranding(sf.branding || {});
@@ -201,17 +280,16 @@ export default function StorefrontDetailPage({
     setSuccess("");
 
     try {
-      const domains = domainsInput
-        .split(",")
-        .map((d) => d.trim())
-        .filter(Boolean);
+      const formattedDomains = domains
+        .map(formatDomain)
+        .filter((d) => d.replace(/^https?:\/\//, "").trim() !== "");
 
       const res = await fetch(`/api/b2b/b2c/storefronts/${slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          domains,
+          domains: formattedDomains,
           status,
           branding,
           header,
@@ -407,18 +485,13 @@ export default function StorefrontDetailPage({
               />
             </Field>
 
-            <Field
-              label="Domains (comma-separated)"
-              helper="These domains are used to identify which storefront a B2C frontend belongs to via the Origin header."
-            >
-              <input
-                type="text"
-                value={domainsInput}
-                onChange={(e) => setDomainsInput(e.target.value)}
-                placeholder="shop.example.com, www.example.com"
-                className={inputClass}
-              />
-            </Field>
+            <div>
+              <label className={labelClass}>Domains</label>
+              <DomainListInput domains={domains} onChange={setDomains} />
+              <p className={helperClass}>
+                Used to identify which storefront a B2C frontend belongs to via the Origin header.
+              </p>
+            </div>
 
             <Field label="Status">
               <select

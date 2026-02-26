@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import type { UpdateCustomerRequest } from "@/lib/types/customer";
+import { isValidChannelCode } from "@/lib/constants/channel";
 
 /**
  * Authenticate and get tenant ID
@@ -88,7 +89,11 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const customer = await CustomerModel.findOne({ customer_id, tenant_id: tenantId }).lean();
+    // Try lookup by customer_id first, then by external_code
+    let customer = await CustomerModel.findOne({ customer_id, tenant_id: tenantId }).lean();
+    if (!customer) {
+      customer = await CustomerModel.findOne({ external_code: customer_id, tenant_id: tenantId }).lean();
+    }
 
     if (!customer) {
       return NextResponse.json(
@@ -313,6 +318,14 @@ export async function PATCH(
       }
     }
 
+    // Validate channel if provided
+    if (body.channel !== undefined && !isValidChannelCode(body.channel)) {
+      return NextResponse.json(
+        { error: "Invalid channel code (e.g. B2C, SLOVAKIA)" },
+        { status: 400 }
+      );
+    }
+
     // Allowed fields to update
     const allowedFields = [
       "customer_type",
@@ -326,6 +339,7 @@ export async function PATCH(
       "legal_info",
       "default_shipping_address_id",
       "default_billing_address_id",
+      "channel",
     ];
 
     // Build update object

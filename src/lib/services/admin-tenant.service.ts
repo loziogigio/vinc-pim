@@ -23,6 +23,7 @@ import {
   seedCampaignTemplates,
 } from "../notifications/seed-templates";
 import { initializeHomeSettings } from "../db/home-settings";
+import { regenerateB2BConfig } from "./traefik-config.service";
 
 // ============================================
 // TYPES
@@ -637,7 +638,8 @@ export async function updateTenant(
 
   // Multi-tenant support fields
   if (updates.project_code !== undefined) tenant.project_code = updates.project_code;
-  if (updates.domains !== undefined) tenant.domains = updates.domains;
+  const domainsChanged = updates.domains !== undefined;
+  if (domainsChanged) tenant.domains = updates.domains;
   if (updates.api !== undefined) tenant.api = updates.api;
   if (updates.database !== undefined) tenant.database = updates.database;
   if (updates.require_login !== undefined) tenant.require_login = updates.require_login;
@@ -650,6 +652,13 @@ export async function updateTenant(
   notifyTenantCacheClear({ tenantId }).catch((err) => {
     console.error("[updateTenant] Cache clear notification failed:", err);
   });
+
+  // Regenerate Traefik config when domains change
+  if (domainsChanged) {
+    regenerateB2BConfig().catch((err) =>
+      console.error("[traefik] Failed to regenerate B2B config:", err)
+    );
+  }
 
   return tenant;
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
 import type { IPortalUser, ICustomerAccess } from "@/lib/types/portal-user";
 import type { Customer } from "@/lib/types/customer";
 import {
@@ -27,6 +28,7 @@ import {
   Store,
   Eye,
   EyeOff,
+  Radio,
 } from "lucide-react";
 
 type CustomerWithDetails = Customer & {
@@ -64,7 +66,7 @@ export default function PortalUserDetailPage({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
-  const [basicForm, setBasicForm] = useState({ username: "", email: "" });
+  const [basicForm, setBasicForm] = useState({ username: "", email: "", channel: "default" });
   const [passwordForm, setPasswordForm] = useState({ password: "", confirm: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -87,6 +89,7 @@ export default function PortalUserDetailPage({
         setBasicForm({
           username: data.portal_user.username,
           email: data.portal_user.email,
+          channel: data.portal_user.channel ?? "default",
         });
       } else if (res.status === 404) {
         setError("Portal user not found");
@@ -172,6 +175,7 @@ export default function PortalUserDetailPage({
         body: JSON.stringify({
           username: basicForm.username,
           email: basicForm.email,
+          channel: basicForm.channel,
         }),
       });
 
@@ -630,6 +634,11 @@ export default function PortalUserDetailPage({
                   required
                 />
               </div>
+              <ChannelSelect
+                value={basicForm.channel}
+                onChange={(code) => setBasicForm({ ...basicForm, channel: code })}
+                label="Channel"
+              />
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="submit"
@@ -646,6 +655,7 @@ export default function PortalUserDetailPage({
                     setBasicForm({
                       username: portalUser.username,
                       email: portalUser.email,
+                      channel: portalUser.channel ?? "default",
                     });
                   }}
                   className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -670,6 +680,15 @@ export default function PortalUserDetailPage({
                   <a href={`mailto:${portalUser.email}`} className="text-sm text-primary hover:underline">
                     {portalUser.email}
                   </a>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Radio className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Channel</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {portalUser.channel ?? "default"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">

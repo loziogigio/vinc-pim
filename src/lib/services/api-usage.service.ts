@@ -3,19 +3,7 @@
  * Tracks API calls per tenant and API key using Redis counters
  */
 
-import Redis from 'ioredis';
-
-const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
-
-let redis: Redis | null = null;
-
-function getRedis(): Redis {
-  if (!redis) {
-    redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
-  }
-  return redis;
-}
+import { getRedis } from "@/lib/cache/redis-client";
 
 // Key patterns:
 // api:usage:{tenant_id}:daily:{YYYY-MM-DD} → total calls today

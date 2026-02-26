@@ -234,6 +234,59 @@ describe("unit: Customer Service", () => {
         expect(dbCustomer).not.toBeNull();
       });
 
+      it("should auto-generate customer external_code from customer_id when not provided", async () => {
+        /**
+         * When external_code is not provided, it defaults to the generated customer_id.
+         */
+        // Arrange
+        const customerInput = {
+          email: "noerp@example.com",
+          customer_type: "business" as const,
+          company_name: "No ERP Code Company",
+        };
+
+        // Act
+        const result = await findOrCreateCustomer(TEST_TENANT, {
+          customer: customerInput,
+        });
+
+        // Assert
+        expect(result.customer.external_code).toBeDefined();
+        expect(result.customer.external_code).toBe(result.customer.customer_id);
+      });
+
+      it("should auto-generate address external_code from address_id when not provided", async () => {
+        /**
+         * When address external_code is not provided, it defaults to address_id.
+         */
+        // Arrange
+        const customerInput = {
+          email: "addrnoerp@example.com",
+          customer_type: "business" as const,
+          company_name: "No Address ERP",
+          addresses: [
+            {
+              address_type: "both" as const,
+              recipient_name: "Test",
+              street_address: "Via Roma 1",
+              city: "Milano",
+              province: "MI",
+              postal_code: "20100",
+            },
+          ],
+        };
+
+        // Act
+        const result = await findOrCreateCustomer(TEST_TENANT, {
+          customer: customerInput,
+        });
+
+        // Assert
+        const addr = result.customer.addresses[0];
+        expect(addr.external_code).toBeDefined();
+        expect(addr.external_code).toBe(addr.address_id);
+      });
+
       it("should create customer with addresses", async () => {
         /**
          * Test creating customer with initial addresses.
@@ -441,6 +494,32 @@ describe("unit: Customer Service", () => {
           customer_id: "addr-test-customer",
         });
         expect(updatedCustomer?.addresses).toHaveLength(2);
+      });
+
+      it("should auto-generate address external_code from address_id when not provided", async () => {
+        /**
+         * When creating a new address without external_code,
+         * it should default to the generated address_id.
+         */
+        // Arrange
+        const addressInput = {
+          address_type: "delivery" as const,
+          recipient_name: "No ERP Address",
+          street_address: "Via Senza ERP 1",
+          city: "Torino",
+          province: "TO",
+          postal_code: "10100",
+          // No external_code
+        };
+
+        // Act
+        const result = await findOrCreateAddress(testCustomer, {
+          address: addressInput,
+        });
+
+        // Assert
+        expect(result.external_code).toBeDefined();
+        expect(result.external_code).toBe(result.address_id);
       });
 
       it("should default country to IT", async () => {

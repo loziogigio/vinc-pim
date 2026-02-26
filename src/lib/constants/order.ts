@@ -96,11 +96,15 @@ export const PRICE_LIST_TYPES = ["retail", "wholesale", "promo"] as const;
 export type PriceListType = (typeof PRICE_LIST_TYPES)[number];
 
 // ============================================
-// ORDER SOURCES
+// ORDER SOURCES (legacy — kept for backwards compat)
 // ============================================
 
 export const ORDER_SOURCES = ["web", "mobile", "api", "import"] as const;
 export type OrderSource = (typeof ORDER_SOURCES)[number];
+
+// ============================================
+// ORDER CHANNELS
+// ============================================
 
 // ============================================
 // DISCOUNT TYPES & REASONS

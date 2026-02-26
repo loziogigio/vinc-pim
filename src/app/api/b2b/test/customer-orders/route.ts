@@ -233,6 +233,7 @@ export async function POST(req: NextRequest) {
           session_id: `sess_${nanoid(16)}`,
           flow_id: `flow_${nanoid(16)}`,
           source: "api",
+          channel: "api",
           items,
           created_at: orderDate,
           updated_at: orderDate,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeB2BRoute } from "@/lib/auth/b2b-helpers";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { loadB2CHomeTemplateVersion } from "@/lib/db/b2c-home-templates";
 
 type RouteParams = { params: Promise<{ slug: string }> };
@@ -10,8 +10,8 @@ type RouteParams = { params: Promise<{ slug: string }> };
  */
 export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { slug } = await params;
     const { version } = await req.json();
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "version is required (number)" }, { status: 400 });
     }
 
-    const config = await loadB2CHomeTemplateVersion(slug, version, auth.tenantDb!);
+    const config = await loadB2CHomeTemplateVersion(slug, version, auth.tenantDb);
     return NextResponse.json(config);
   } catch (error) {
     console.error("[POST .../load-version]", error);

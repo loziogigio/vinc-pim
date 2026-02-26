@@ -302,6 +302,10 @@ export interface IOrder extends Document {
   session_id: string;
   flow_id: string;
   source?: OrderSource;
+  /** Channel of provenance — which interface or integration produced this order */
+  channel?: string;
+  /** Optional reference within the channel (e.g. storefront slug, API key ID, "ios"/"android") */
+  channel_ref?: string;
 
   // Items
   items: ILineItem[];
@@ -705,6 +709,14 @@ const OrderSchema = new Schema<IOrder>(
       type: String,
       enum: ORDER_SOURCES,
       default: "web",
+    },
+    channel: {
+      type: String,
+      trim: true,
+    },
+    channel_ref: {
+      type: String,
+      trim: true,
     },
 
     // Items

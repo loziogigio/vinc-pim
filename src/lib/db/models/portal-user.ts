@@ -9,6 +9,7 @@
 
 import mongoose, { Schema, Document } from "mongoose";
 import type { IPortalUser, ICustomerAccess, IUserTagRef } from "@/lib/types/portal-user";
+import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 
 // ============================================
 // INTERFACES
@@ -86,6 +87,12 @@ const PortalUserSchema = new Schema<IPortalUserDocument>(
       default: [],
     },
 
+    // Sales channel
+    channel: {
+      type: String,
+      default: DEFAULT_CHANNEL,
+    },
+
     // Status
     is_active: {
       type: Boolean,
@@ -104,15 +111,15 @@ const PortalUserSchema = new Schema<IPortalUserDocument>(
 // INDEXES
 // ============================================
 
-// Unique username per tenant (used for login)
+// Unique username per tenant + channel (used for login)
 PortalUserSchema.index(
-  { tenant_id: 1, username: 1 },
+  { tenant_id: 1, username: 1, channel: 1 },
   { unique: true }
 );
 
-// Unique email per tenant
+// Unique email per tenant + channel
 PortalUserSchema.index(
-  { tenant_id: 1, email: 1 },
+  { tenant_id: 1, email: 1, channel: 1 },
   { unique: true }
 );
 

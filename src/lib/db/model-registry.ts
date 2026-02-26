@@ -48,6 +48,12 @@ import { CampaignSchema } from "./models/campaign";
 import { UserTagSchema } from "./models/user-tag";
 import { ThreadSchema } from "./models/thread";
 import { B2CStorefrontSchema } from "./models/b2c-storefront";
+import { ShippingConfigSchema } from "./models/shipping-config";
+import { DepartureSchema } from "./models/departure";
+import { BookingSchema } from "./models/booking";
+import { ProductLikeSchema, LikeStatsSchema } from "./models/product-like";
+import { ProductReminderSchema } from "./models/product-reminder";
+import { SalesChannelSchema } from "./models/sales-channel";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -90,6 +96,13 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   UserTag: UserTagSchema,
   Thread: ThreadSchema,
   B2CStorefront: B2CStorefrontSchema,
+  ShippingConfig: ShippingConfigSchema,
+  Departure: DepartureSchema,
+  Booking: BookingSchema,
+  ProductLike: ProductLikeSchema,
+  LikeStats: LikeStatsSchema,
+  ProductReminder: ProductReminderSchema,
+  SalesChannel: SalesChannelSchema,
 };
 
 /**
@@ -174,6 +187,13 @@ export async function getTenantModels(dbName: string) {
     UserTag: connection.models.UserTag,
     Thread: connection.models.Thread,
     B2CStorefront: connection.models.B2CStorefront,
+    ShippingConfig: connection.models.ShippingConfig,
+    Departure: connection.models.Departure,
+    Booking: connection.models.Booking,
+    ProductLike: connection.models.ProductLike,
+    LikeStats: connection.models.LikeStats,
+    ProductReminder: connection.models.ProductReminder,
+    SalesChannel: connection.models.SalesChannel,
   };
 }
 
@@ -229,6 +249,13 @@ export function getModelRegistry(connection: mongoose.Connection) {
     UserTag: connection.models.UserTag,
     Thread: connection.models.Thread,
     B2CStorefront: connection.models.B2CStorefront,
+    ShippingConfig: connection.models.ShippingConfig,
+    Departure: connection.models.Departure,
+    Booking: connection.models.Booking,
+    ProductLike: connection.models.ProductLike,
+    LikeStats: connection.models.LikeStats,
+    ProductReminder: connection.models.ProductReminder,
+    SalesChannel: connection.models.SalesChannel,
   };
 }
 

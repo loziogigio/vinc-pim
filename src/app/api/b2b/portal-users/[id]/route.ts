@@ -12,6 +12,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import type { IPortalUserUpdate, PortalUserSafe } from "@/lib/types/portal-user";
+import { isValidChannelCode } from "@/lib/constants/channel";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -149,20 +150,34 @@ export async function PUT(
     // Build update object
     const update: Record<string, unknown> = {};
 
+    // Resolve channel: use new channel if being changed, otherwise existing
+    const { channel } = body as IPortalUserUpdate;
+    if (channel !== undefined) {
+      if (!isValidChannelCode(channel)) {
+        return NextResponse.json(
+          { error: "Invalid channel code (e.g. B2C, SLOVAKIA)" },
+          { status: 400 }
+        );
+      }
+      update.channel = channel;
+    }
+    const effectiveChannel = channel ?? existingUser.channel;
+
     // Update username
     if (username !== undefined) {
       const normalizedUsername = username.toLowerCase().trim();
 
-      // Check for duplicate username
+      // Check for duplicate username in same channel
       const duplicate = await PortalUserModel.findOne({
         tenant_id: auth.tenantId,
         username: normalizedUsername,
+        channel: effectiveChannel,
         portal_user_id: { $ne: portalUserId },
       });
 
       if (duplicate) {
         return NextResponse.json(
-          { error: "Username already exists" },
+          { error: "Username already exists in this channel" },
           { status: 409 }
         );
       }
@@ -174,16 +189,17 @@ export async function PUT(
     if (email !== undefined) {
       const normalizedEmail = email.toLowerCase().trim();
 
-      // Check for duplicate email
+      // Check for duplicate email in same channel
       const duplicate = await PortalUserModel.findOne({
         tenant_id: auth.tenantId,
         email: normalizedEmail,
+        channel: effectiveChannel,
         portal_user_id: { $ne: portalUserId },
       });
 
       if (duplicate) {
         return NextResponse.json(
-          { error: "Email already exists" },
+          { error: "Email already exists in this channel" },
           { status: 409 }
         );
       }

@@ -19,6 +19,7 @@ import {
   Bell,
   ShieldCheck,
   Globe,
+  CalendarCheck,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -157,6 +158,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/b2c",
     icon: Globe,
     color: "bg-pink-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "bookings",
+    name: "Prenotazioni",
+    description: "Gestione prenotazioni e partenze",
+    href: "/b2b/bookings",
+    icon: CalendarCheck,
+    color: "bg-teal-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,

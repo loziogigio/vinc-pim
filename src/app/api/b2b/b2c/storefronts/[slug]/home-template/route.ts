@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeB2BRoute } from "@/lib/auth/b2b-helpers";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import {
   getB2CHomeTemplateConfig,
   loadB2CHomeTemplateVersion,
@@ -14,8 +14,8 @@ type RouteParams = { params: Promise<{ slug: string }> };
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
@@ -24,12 +24,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     if (versionParam) {
       const version = parseInt(versionParam, 10);
       if (!isNaN(version) && version > 0) {
-        const config = await loadB2CHomeTemplateVersion(slug, version, auth.tenantDb!);
+        const config = await loadB2CHomeTemplateVersion(slug, version, auth.tenantDb);
         return NextResponse.json(config);
       }
     }
 
-    const config = await getB2CHomeTemplateConfig(slug, auth.tenantDb!);
+    const config = await getB2CHomeTemplateConfig(slug, auth.tenantDb);
     return NextResponse.json(config);
   } catch (error) {
     console.error("[GET /api/b2b/b2c/.../home-template]", error);

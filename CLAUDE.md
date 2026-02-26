@@ -227,6 +227,47 @@ return NextResponse.json({ success: true, data: result });
 return NextResponse.json({ error: "Message" }, { status: 400 });
 ```
 
+### API Route Authentication (ALWAYS use `requireTenantAuth`)
+
+**Every B2B API route MUST use `requireTenantAuth` from `src/lib/auth/tenant-auth.ts`** as the default authentication method. It supports all clients (browser session, API key, Bearer JWT) without any extra code.
+
+```typescript
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { connectWithModels } from "@/lib/db/connection";
+
+export async function GET(req: NextRequest) {
+  const auth = await requireTenantAuth(req);
+  if (!auth.success) return auth.response; // 401 handled automatically
+
+  const { tenantDb, tenantId, userId } = auth;
+  const { MyModel } = await connectWithModels(tenantDb);
+
+  // ... business logic
+}
+```
+
+**Why `requireTenantAuth` instead of `getB2BSession`:**
+
+|                                 | `getB2BSession()` | `requireTenantAuth()` |
+| ------------------------------- | ----------------- | --------------------- |
+| Browser session                 | ✅                | ✅                    |
+| API key (external integrations) | ❌                | ✅                    |
+| Bearer JWT (mobile apps)        | ❌                | ✅                    |
+| Returns 401 automatically       | ❌ (manual)       | ✅                    |
+
+**If you need the user's identity** (e.g. the route is user-specific):
+
+```typescript
+const auth = await requireTenantAuth(req, { requireUserId: true });
+if (!auth.success) return auth.response;
+
+const { tenantDb, userId } = auth; // userId guaranteed non-null
+```
+
+**Never** call `getB2BSession()` or `verifyAPIKeyFromRequest()` directly in new API routes — always go through `requireTenantAuth`.
+
+Exception: internal server-side helpers (e.g. cron jobs, workers) that don't receive HTTP requests.
+
 ### Search (SolrCloud)
 
 This project uses **SolrCloud** (not standalone Solr). Key differences:

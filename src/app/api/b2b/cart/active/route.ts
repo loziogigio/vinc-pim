@@ -10,6 +10,7 @@ import {
   CustomerInput,
   AddressInput,
 } from "@/lib/services/customer.service";
+import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 
 /**
  * Authenticate and get tenant ID
@@ -260,6 +261,7 @@ export async function POST(req: NextRequest) {
       session_id,
       flow_id,
       source: "web",
+      channel: (customer as { channel?: string }).channel || DEFAULT_CHANNEL,
 
       // Items (empty)
       items: [],

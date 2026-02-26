@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, Pencil, Trash2, Store } from "lucide-react";
+import { Plus, Pencil, Trash2, Store, X } from "lucide-react";
 
 interface Storefront {
   _id: string;
@@ -21,6 +21,87 @@ interface PaginationInfo {
   totalPages: number;
 }
 
+interface DomainEntry {
+  protocol: "https" | "http";
+  host: string;
+}
+
+function parseDomain(raw: string): DomainEntry {
+  if (raw.startsWith("https://")) return { protocol: "https", host: raw.slice(8) };
+  if (raw.startsWith("http://")) return { protocol: "http", host: raw.slice(7) };
+  return { protocol: "https", host: raw };
+}
+
+function formatDomain(d: DomainEntry): string {
+  return `${d.protocol}://${d.host.trim()}`;
+}
+
+// ============================================================
+// DomainListInput – reusable domain tag input
+// ============================================================
+
+function DomainListInput({
+  domains,
+  onChange,
+}: {
+  domains: DomainEntry[];
+  onChange: (domains: DomainEntry[]) => void;
+}) {
+  function add() {
+    onChange([...domains, { protocol: "https", host: "" }]);
+  }
+
+  function update(index: number, field: keyof DomainEntry, value: string) {
+    const next = domains.map((d, i) =>
+      i === index ? { ...d, [field]: value } : d
+    );
+    onChange(next);
+  }
+
+  function remove(index: number) {
+    onChange(domains.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-2">
+      {domains.map((d, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <select
+            value={d.protocol}
+            onChange={(e) => update(i, "protocol", e.target.value)}
+            className="rounded-lg border border-[#ebe9f1] px-2 py-2 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none bg-gray-50"
+          >
+            <option value="https">https://</option>
+            <option value="http">http://</option>
+          </select>
+          <input
+            type="text"
+            value={d.host}
+            onChange={(e) => update(i, "host", e.target.value)}
+            placeholder="www.example.com"
+            className="flex-1 rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => remove(i)}
+            className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-500 hover:bg-red-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add domain
+      </button>
+    </div>
+  );
+}
+
 export default function StorefrontsListPage() {
   const pathname = usePathname() || "";
   const tenantPrefix =
@@ -36,7 +117,8 @@ export default function StorefrontsListPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
-  const [newDomains, setNewDomains] = useState("");
+  const [newDomains, setNewDomains] = useState<DomainEntry[]>([]);
+  const [slugTouched, setSlugTouched] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
@@ -64,6 +146,15 @@ export default function StorefrontsListPage() {
     fetchStorefronts();
   }, [fetchStorefronts]);
 
+  function resetCreateForm() {
+    setShowCreate(false);
+    setNewName("");
+    setNewSlug("");
+    setNewDomains([]);
+    setSlugTouched(false);
+    setError("");
+  }
+
   async function handleCreate() {
     if (!newName.trim() || !newSlug.trim()) {
       setError("Name and slug are required");
@@ -75,9 +166,8 @@ export default function StorefrontsListPage() {
 
     try {
       const domains = newDomains
-        .split(",")
-        .map((d) => d.trim())
-        .filter(Boolean);
+        .map(formatDomain)
+        .filter((d) => d.replace(/^https?:\/\//, "").trim() !== "");
 
       const res = await fetch("/api/b2b/b2c/storefronts", {
         method: "POST",
@@ -91,12 +181,9 @@ export default function StorefrontsListPage() {
         return;
       }
 
-      setShowCreate(false);
-      setNewName("");
-      setNewSlug("");
-      setNewDomains("");
+      resetCreateForm();
       fetchStorefronts();
-    } catch (err) {
+    } catch {
       setError("Network error");
     } finally {
       setCreating(false);
@@ -161,7 +248,7 @@ export default function StorefrontsListPage() {
                 value={newName}
                 onChange={(e) => {
                   setNewName(e.target.value);
-                  if (!newSlug) {
+                  if (!slugTouched) {
                     setNewSlug(
                       e.target.value
                         .toLowerCase()
@@ -181,7 +268,10 @@ export default function StorefrontsListPage() {
               <input
                 type="text"
                 value={newSlug}
-                onChange={(e) => setNewSlug(e.target.value)}
+                onChange={(e) => {
+                  setNewSlug(e.target.value);
+                  setSlugTouched(true);
+                }}
                 placeholder="my-shop"
                 className="w-full rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
               />
@@ -191,15 +281,9 @@ export default function StorefrontsListPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Domains (comma-separated)
+                Domains
               </label>
-              <input
-                type="text"
-                value={newDomains}
-                onChange={(e) => setNewDomains(e.target.value)}
-                placeholder="shop.example.com, www.example.com"
-                className="w-full rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
-              />
+              <DomainListInput domains={newDomains} onChange={setNewDomains} />
             </div>
             {error && (
               <p className="text-sm text-red-600">{error}</p>
@@ -213,10 +297,7 @@ export default function StorefrontsListPage() {
                 {creating ? "Creating..." : "Create"}
               </button>
               <button
-                onClick={() => {
-                  setShowCreate(false);
-                  setError("");
-                }}
+                onClick={resetCreateForm}
                 className="rounded-lg border border-[#ebe9f1] px-4 py-2 text-sm text-[#5e5873] hover:bg-gray-50"
               >
                 Cancel
@@ -273,7 +354,7 @@ export default function StorefrontsListPage() {
                       {sf.domains.map((d) => (
                         <span
                           key={d}
-                          className="rounded bg-gray-100 px-1.5 py-0.5 text-xs"
+                          className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono"
                         >
                           {d}
                         </span>

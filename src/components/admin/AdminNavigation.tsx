@@ -7,6 +7,7 @@ import {
   History,
   ShieldCheck,
   Ban,
+  Radio,
 } from "lucide-react";
 
 export function AdminNavigation() {
@@ -37,6 +38,11 @@ export function AdminNavigation() {
         href="/b2b/admin/blocked-ips"
         icon={Ban}
         label="IP Bloccati"
+      />
+      <NavLink
+        href="/b2b/admin/channels"
+        icon={Radio}
+        label="Canali"
       />
     </AppSidebar>
   );

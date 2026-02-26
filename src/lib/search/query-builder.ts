@@ -20,6 +20,13 @@ import {
   MULTILINGUAL_TEXT_FIELDS,
 } from './facet-config';
 
+/** Filter fields that are multilingual and need _text_{lang} suffix in Solr */
+const MULTILINGUAL_FILTER_FIELDS: Record<string, true> = {
+  slug: true,
+  category_slug: true,
+  product_type_slug: true,
+};
+
 // ============================================
 // SEARCH QUERY BUILDER
 // ============================================
@@ -168,10 +175,12 @@ const SEARCH_FIELDS_CONFIG = [
   // Exact match fields (HIGHEST weight - codes should always come first)
   { field: 'entity_code', weight: 50000, noWildcard: true },
   { field: 'ean', weight: 45000, noWildcard: true },
-  { field: 'sku', weight: 40000, wildcardWeight: 30000 }, // Allow prefix matching on SKU
+  // SKU: exact, prefix, and contains wildcards — containsWeight handles codes like "NAT.BIO 4082"
+  // where a user searches for the suffix "4082" alone
+  { field: 'sku', weight: 40000, wildcardWeight: 30000, containsWeight: 15000 },
   // Parent codes - find children by parent's code
   { field: 'parent_entity_code', weight: 35000, noWildcard: true },
-  { field: 'parent_sku', weight: 30000, wildcardWeight: 20000 },
+  { field: 'parent_sku', weight: 30000, wildcardWeight: 20000, containsWeight: 12000 },
   // Name sort field - for "starts with" prefix matching (NOT stemmed)
   { field: 'name_sort_{lang}', weight: 0, wildcardWeight: 10000, noExact: true, noContains: true },
   // Name tokenized text - HIGH PRIORITY (but lower than codes)
@@ -254,8 +263,9 @@ function buildMainQuery(
   const fuzzy = options?.fuzzy ?? false;
   const fuzzyNum = options?.fuzzyNum ?? 1;
 
-  // Build query for each term
-  const termQueries: string[] = [];
+  // Separate required term queries (AND logic) from optional boost queries
+  const requiredTerms: string[] = [];
+  const boostTerms: string[] = [];
 
   for (let termIndex = 0; termIndex < searchTerms.length; termIndex++) {
     const term = escapeQueryChars(searchTerms[termIndex]);
@@ -297,7 +307,7 @@ function buildMainQuery(
     const termQuery = `((${fieldQueries.join(' ')})^${termBoost})`;
 
     // All terms are REQUIRED (AND logic) - use + prefix
-    termQueries.push(`+${termQuery}`);
+    requiredTerms.push(`+${termQuery}`);
   }
 
   // Add POSITION BOOST - each term appearing EARLY in name gets boost
@@ -305,8 +315,10 @@ function buildMainQuery(
   // But products with terms early in NAME rank highest
   for (const term of searchTerms) {
     const escapedTerm = escapeQueryChars(term);
+    // Escape dots for Solr regex context (. means any char in regex, but we want literal dot)
+    const regexSafeTerm = escapedTerm.replace(/\./g, '\\.');
     // Term appears in first 25 chars of name → high boost
-    termQueries.push(`(name_sort_${lang}:/.{0,25}${escapedTerm}.*/^500000)`);
+    boostTerms.push(`(name_sort_${lang}:/.{0,25}${regexSafeTerm}.*/^500000)`);
   }
 
   // Add PHRASE BOOST for consecutive terms in name (2-term combinations)
@@ -314,17 +326,41 @@ function buildMainQuery(
     // Boost consecutive pairs: "vaso wc", "wc sospeso", "sospeso geberit"
     for (let i = 0; i < searchTerms.length - 1; i++) {
       const pair = `${searchTerms[i]} ${searchTerms[i + 1]}`;
+      // Escape dots for Solr regex context
+      const regexSafePair = pair.replace(/\./g, '\\.');
       // Exact pair in name (not stemmed)
-      termQueries.push(`(name_sort_${lang}:/.*${pair}.*/^1000000)`);
+      boostTerms.push(`(name_sort_${lang}:/.*${regexSafePair}.*/^1000000)`);
       // Pair early in name
-      termQueries.push(`(name_sort_${lang}:/.{0,20}${pair}.*/^2000000)`);
+      boostTerms.push(`(name_sort_${lang}:/.{0,20}${regexSafePair}.*/^2000000)`);
     }
   }
 
   // Add image boost (same as free search)
-  termQueries.push(imageBoost);
+  boostTerms.push(imageBoost);
 
-  return termQueries.join(' ');
+  // For multi-term searches, also try the full unsplit text as an exact code match.
+  // This handles product codes that contain spaces (e.g., SKU = "NAT.BIO 4082"):
+  // splitting into ["nat.bio", "4082"] with AND logic would fail because "4082" can't
+  // match the SKU string field (stored as a single token "nat.bio 4082"). By adding an
+  // OR path for the full code, the product is found directly even when the individual
+  // terms don't all match independently.
+  let mainRequired: string;
+  if (searchTerms.length > 1) {
+    const fullCode = escapeQueryChars(text.trim().toLowerCase());
+    const fullCodeMatch = [
+      `entity_code:"${fullCode}"^49000`,
+      `sku:"${fullCode}"^44000`,
+      `ean:"${fullCode}"^43000`,
+      `parent_entity_code:"${fullCode}"^34000`,
+      `parent_sku:"${fullCode}"^29000`,
+    ].join(' ');
+    // Product is found if the full code matches a code field OR all terms match individually
+    mainRequired = `+(${fullCodeMatch} OR (${requiredTerms.join(' ')}))`;
+  } else {
+    mainRequired = requiredTerms.join(' ');
+  }
+
+  return [mainRequired, ...boostTerms].join(' ');
 }
 
 /**
@@ -378,7 +414,11 @@ function buildFilterQueries(
       continue; // Handled separately
     }
 
-    const solrField = getFilterField(key);
+    // Multilingual filter fields need language suffix
+    const lang = request?.lang || 'it';
+    const solrField = MULTILINGUAL_FILTER_FIELDS[key]
+      ? `${key}_text_${lang}`
+      : getFilterField(key);
     const filterClause = buildFilterClause(solrField, value);
 
     if (filterClause) {

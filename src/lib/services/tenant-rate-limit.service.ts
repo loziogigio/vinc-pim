@@ -10,19 +10,7 @@
  * If no limit is configured for a tenant, requests are not limited.
  */
 
-import Redis from "ioredis";
-
-const REDIS_HOST = process.env.REDIS_HOST || "localhost";
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379");
-
-let redis: Redis | null = null;
-
-function getRedis(): Redis {
-  if (!redis) {
-    redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
-  }
-  return redis;
-}
+import { getRedis } from "@/lib/cache/redis-client";
 
 // Cache TTL for tenant settings (5 minutes)
 const SETTINGS_CACHE_TTL = 300;

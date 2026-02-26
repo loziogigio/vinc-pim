@@ -26,12 +26,14 @@ const B2CStorefrontModel =
 // MOCKS — must be before route imports
 // ============================================
 
-// Mock auth — initializeB2BRoute returns tenant info
-vi.mock("@/lib/auth/b2b-helpers", () => ({
-  initializeB2BRoute: vi.fn(() =>
+// Mock auth — requireTenantAuth returns tenant info
+vi.mock("@/lib/auth/tenant-auth", () => ({
+  requireTenantAuth: vi.fn(() =>
     Promise.resolve({
-      session: { isLoggedIn: true, userId: "test-user", tenantId: "test-tenant" },
+      success: true,
+      tenantId: "test-tenant",
       tenantDb: "vinc-test-tenant",
+      userId: "test-user",
     })
   ),
 }));

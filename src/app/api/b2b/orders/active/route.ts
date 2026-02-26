@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         session_id,
         flow_id,
         source: "web",
+        channel: "b2b-portal",
 
         // Items (empty)
         items: [],

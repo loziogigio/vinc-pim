@@ -17,6 +17,8 @@ import {
   TagEmbedded,
 } from "@/lib/types/entities";
 import type { MultilingualText } from "@/lib/types/pim";
+import { PRODUCT_KINDS } from "@/lib/constants/booking";
+import type { ProductKind } from "@/lib/constants/booking";
 
 // Re-export for backwards compatibility
 export type { MultilingualText };
@@ -392,6 +394,9 @@ export interface IPIMProduct extends Document {
 
   // Pricing (from ERP or manual entry)
   pricing?: ProductPricing;
+
+  // Product Kind (standard, bookable, service)
+  product_kind?: ProductKind;
 
   // SEO
   meta_title?: MultilingualText;        // Multilingual: "it": "Bosch PSB 750 - Trapano...", etc.
@@ -895,6 +900,13 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       sale: { type: Number },                     // Discounted price
       currency: { type: String },                 // Currency code (EUR, USD, etc.)
       vat_rate: { type: Number },                 // VAT percentage (22, 10, 4, 0)
+    },
+
+    // Product Kind (standard, bookable, service)
+    product_kind: {
+      type: String,
+      enum: PRODUCT_KINDS,
+      default: "standard",
     },
 
     meta_title: MultilingualTextSchema,

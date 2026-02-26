@@ -19,6 +19,13 @@ export type TenantStatus = (typeof TENANT_STATUSES)[number];
 // INTERFACE
 // ============================================
 
+export interface ITenantDomain {
+  hostname: string;
+  protocol: string;
+  is_primary: boolean;
+  is_active: boolean;
+}
+
 export interface ITenantRateLimit {
   enabled: boolean;
   requests_per_minute: number;
@@ -72,6 +79,7 @@ export interface ITenant {
   solr_core: string;
   solr_url?: string;
   mongo_db: string;
+  domains?: ITenantDomain[];
   settings?: ITenantSettings;
   created_at: Date;
   updated_at: Date;
@@ -180,6 +188,10 @@ const TenantSchema = new Schema<ITenantDocument>(
     mongo_db: {
       type: String,
       required: true,
+    },
+    domains: {
+      type: [TenantDomainSchema],
+      default: [],
     },
     settings: TenantSettingsSchema,
     created_by: {

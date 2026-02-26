@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
         session_id: `sess_${nanoid(16)}`,
         flow_id: `flow_${nanoid(16)}`,
         source: "api",
+        channel: "api",
         items: data.items,
       });
       created.push({ order_id: order.order_id, status: order.status, total: order.order_total });

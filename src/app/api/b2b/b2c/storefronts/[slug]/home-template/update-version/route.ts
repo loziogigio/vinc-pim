@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeB2BRoute } from "@/lib/auth/b2b-helpers";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { renameB2CHomeTemplateVersion } from "@/lib/db/b2c-home-templates";
 
 type RouteParams = { params: Promise<{ slug: string }> };
@@ -10,8 +10,8 @@ type RouteParams = { params: Promise<{ slug: string }> };
  */
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { slug } = await params;
     const { version, label } = await req.json();
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const config = await renameB2CHomeTemplateVersion(
       slug,
       { version, label },
-      auth.tenantDb!
+      auth.tenantDb
     );
     return NextResponse.json(config);
   } catch (error) {

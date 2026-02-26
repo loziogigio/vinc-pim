@@ -2,7 +2,7 @@
 
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { BackButton } from "@/components/b2b/BackButton";
-import { Settings, Database, Bell, Shield, Palette } from "lucide-react";
+import { Settings, Database, Bell, Shield, Palette, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -32,6 +32,13 @@ export default function B2BSettingsPage() {
       title: "Access Control",
       description: "Manage user permissions and roles",
       action: "Manage Users",
+    },
+    {
+      icon: Truck,
+      title: "Shipping",
+      description: "Configure delivery zones, methods, and tiered pricing for B2B orders",
+      action: "Configure",
+      href: "/b2b/settings/shipping",
     },
   ];
 

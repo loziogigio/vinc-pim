@@ -136,8 +136,9 @@ export async function findOrCreateCustomer(
     const addresses: IAddress[] = [];
     if (input.customer.addresses && input.customer.addresses.length > 0) {
       for (const addr of input.customer.addresses) {
+        const address_id = nanoid(8);
         addresses.push({
-          address_id: nanoid(8),
+          address_id,
           address_type: addr.address_type || "both",
           is_default: addr.is_default ?? addresses.length === 0, // First address is default
           recipient_name: addr.recipient_name,
@@ -149,7 +150,7 @@ export async function findOrCreateCustomer(
           country: addr.country || "IT",
           phone: addr.phone,
           delivery_notes: addr.delivery_notes,
-          external_code: addr.external_code,
+          external_code: addr.external_code || address_id,
           label: addr.label,
           created_at: new Date(),
           updated_at: new Date(),
@@ -160,10 +161,11 @@ export async function findOrCreateCustomer(
     // Auto-generate public_code if not provided
     const public_code = input.customer.public_code || await getNextCustomerPublicCode(tenantDb);
 
+    const customer_id = nanoid(12);
     const newCustomer = await CustomerModel.create({
-      customer_id: nanoid(12),
+      customer_id,
       tenant_id,
-      external_code: input.customer.external_code,
+      external_code: input.customer.external_code || customer_id,
       public_code,
       customer_type: input.customer.customer_type || "business",
       is_guest: input.customer.is_guest ?? false,
@@ -224,8 +226,9 @@ export async function findOrCreateAddress(
     }
 
     // 2b. Create new address and add to customer
+    const address_id = nanoid(8);
     const newAddress: IAddress = {
-      address_id: nanoid(8),
+      address_id,
       address_type: input.address.address_type || "both",
       is_default: input.address.is_default ?? customer.addresses.length === 0,
       recipient_name: input.address.recipient_name,
@@ -237,7 +240,7 @@ export async function findOrCreateAddress(
       country: input.address.country || "IT",
       phone: input.address.phone,
       delivery_notes: input.address.delivery_notes,
-      external_code: input.address.external_code,
+      external_code: input.address.external_code || address_id,
       label: input.address.label,
       created_at: new Date(),
       updated_at: new Date(),

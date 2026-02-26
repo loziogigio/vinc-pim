@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
 import type { IPortalUser, ICustomerAccess } from "@/lib/types/portal-user";
 import {
   Search,
@@ -68,6 +69,7 @@ export default function PortalUsersListPage() {
     username: "",
     email: "",
     password: "",
+    channel: "default",
   });
 
   useEffect(() => {
@@ -134,13 +136,14 @@ export default function PortalUsersListPage() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
+          channel: formData.channel,
           customer_access: [],
         }),
       });
 
       if (res.ok) {
         setShowCreateModal(false);
-        setFormData({ username: "", email: "", password: "" });
+        setFormData({ username: "", email: "", password: "", channel: "default" });
         fetchPortalUsers();
       } else {
         const data = await res.json();
@@ -595,6 +598,11 @@ export default function PortalUsersListPage() {
                     minLength={8}
                   />
                 </div>
+                <ChannelSelect
+                  value={formData.channel}
+                  onChange={(code) => setFormData({ ...formData, channel: code })}
+                  label="Channel"
+                />
               </div>
               <div className="p-4 border-t border-border flex items-center justify-end gap-2">
                 <button

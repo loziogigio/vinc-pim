@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeB2BRoute } from "@/lib/auth/b2b-helpers";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import {
   listStorefronts,
   createStorefront,
@@ -11,15 +11,15 @@ import {
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const search = searchParams.get("search") || "";
 
-    const result = await listStorefronts(auth.tenantDb!, { page, limit, search });
+    const result = await listStorefronts(auth.tenantDb, { page, limit, search });
     return NextResponse.json(result);
   } catch (error) {
     console.error("[GET /api/b2b/b2c/storefronts]", error);
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = await initializeB2BRoute(req);
-    if ("error" in auth && auth.error) return auth.error;
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const body = await req.json();
     const { name, slug, domains, settings } = body;
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const storefront = await createStorefront(auth.tenantDb!, {
+    const storefront = await createStorefront(auth.tenantDb, {
       name,
       slug,
       domains,

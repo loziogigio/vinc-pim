@@ -442,6 +442,101 @@ describe("integration: Customers API", () => {
       expect(data.customer.external_code).toBe("ERP-12345");
       expect(data.customer.public_code).toBeDefined(); // Also auto-generated
     });
+
+    // ============================================
+    // External Code Auto-Generation Tests
+    // ============================================
+
+    it("should auto-generate customer external_code from customer_id when not provided", async () => {
+      /**
+       * When external_code is not provided, it should default to customer_id.
+       */
+      // Arrange
+      const payload = CustomerFactory.createPayload();
+      const req = new NextRequest("http://localhost/api/b2b/customers", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-method": "api-key",
+        },
+      });
+
+      // Act
+      const res = await createCustomer(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(201);
+      expect(data.customer.external_code).toBeDefined();
+      expect(data.customer.external_code).toBe(data.customer.customer_id);
+    });
+
+    it("should auto-generate address external_code from address_id when not provided", async () => {
+      /**
+       * When address external_code is not provided, it should default to address_id.
+       */
+      // Arrange
+      const payload = CustomerFactory.createWithAddress();
+      const req = new NextRequest("http://localhost/api/b2b/customers", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-method": "api-key",
+        },
+      });
+
+      // Act
+      const res = await createCustomer(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(201);
+      const addr = data.customer.addresses[0];
+      expect(addr.external_code).toBeDefined();
+      expect(addr.external_code).toBe(addr.address_id);
+    });
+
+    it("should preserve explicit external_code and not overwrite with ID", async () => {
+      /**
+       * When external_code is explicitly provided, it should be used as-is.
+       */
+      // Arrange
+      const payload = CustomerFactory.createPayload({
+        external_code: "MY-ERP-CODE",
+        addresses: [
+          {
+            address_type: "both",
+            recipient_name: "Test",
+            street_address: "Via Roma 1",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+            country: "IT",
+            is_default: true,
+            external_code: "ADDR-ERP-001",
+          },
+        ],
+      });
+      const req = new NextRequest("http://localhost/api/b2b/customers", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-method": "api-key",
+        },
+      });
+
+      // Act
+      const res = await createCustomer(req);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(201);
+      expect(data.customer.external_code).toBe("MY-ERP-CODE");
+      expect(data.customer.addresses[0].external_code).toBe("ADDR-ERP-001");
+    });
   });
 
   // ============================================
@@ -647,6 +742,139 @@ describe("integration: Customers API", () => {
       expect(data.customers).toHaveLength(1);
       expect(data.customers[0].external_code).toBe("ERP-12345");
     });
+
+    // ============================================
+    // Filter by customer_code and address_code
+    // ============================================
+
+    it("should filter by customer_code (exact match on external_code)", async () => {
+      /**
+       * Test exact match filter using customer_code query param.
+       */
+      // Arrange
+      await CustomerModel.create({
+        customer_id: "code-filter-1",
+        tenant_id: "test-tenant",
+        customer_type: "business",
+        email: "code1@example.com",
+        external_code: "CLI-001",
+        addresses: [],
+      });
+      await CustomerModel.create({
+        customer_id: "code-filter-2",
+        tenant_id: "test-tenant",
+        customer_type: "business",
+        email: "code2@example.com",
+        external_code: "CLI-002",
+        addresses: [],
+      });
+
+      const req = new NextRequest(
+        "http://localhost/api/b2b/customers?customer_code=CLI-001",
+        { headers: { "x-auth-method": "api-key" } }
+      );
+
+      // Act
+      const res = await listCustomers(req);
+      const data = await res.json();
+
+      // Assert
+      expect(data.customers).toHaveLength(1);
+      expect(data.customers[0].external_code).toBe("CLI-001");
+      expect(data.customers[0].customer_id).toBe("code-filter-1");
+    });
+
+    it("should filter by address_code (exact match on address external_code)", async () => {
+      /**
+       * Test exact match filter using address_code query param.
+       */
+      // Arrange
+      await CustomerModel.create({
+        customer_id: "addr-code-1",
+        tenant_id: "test-tenant",
+        customer_type: "business",
+        email: "addrcode1@example.com",
+        addresses: [
+          {
+            address_id: "a1",
+            external_code: "ADDR-100",
+            address_type: "both",
+            is_default: true,
+            recipient_name: "Test 1",
+            street_address: "Via Roma 1",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+            country: "IT",
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        ],
+      });
+      await CustomerModel.create({
+        customer_id: "addr-code-2",
+        tenant_id: "test-tenant",
+        customer_type: "business",
+        email: "addrcode2@example.com",
+        addresses: [
+          {
+            address_id: "a2",
+            external_code: "ADDR-200",
+            address_type: "both",
+            is_default: true,
+            recipient_name: "Test 2",
+            street_address: "Via Torino 2",
+            city: "Roma",
+            province: "RM",
+            postal_code: "00100",
+            country: "IT",
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        ],
+      });
+
+      const req = new NextRequest(
+        "http://localhost/api/b2b/customers?address_code=ADDR-200",
+        { headers: { "x-auth-method": "api-key" } }
+      );
+
+      // Act
+      const res = await listCustomers(req);
+      const data = await res.json();
+
+      // Assert
+      expect(data.customers).toHaveLength(1);
+      expect(data.customers[0].customer_id).toBe("addr-code-2");
+    });
+
+    it("should return empty when customer_code does not match", async () => {
+      /**
+       * Test that non-matching customer_code returns empty results.
+       */
+      // Arrange
+      await CustomerModel.create({
+        customer_id: "nomatch-1",
+        tenant_id: "test-tenant",
+        customer_type: "business",
+        email: "nomatch@example.com",
+        external_code: "CLI-999",
+        addresses: [],
+      });
+
+      const req = new NextRequest(
+        "http://localhost/api/b2b/customers?customer_code=NONEXISTENT",
+        { headers: { "x-auth-method": "api-key" } }
+      );
+
+      // Act
+      const res = await listCustomers(req);
+      const data = await res.json();
+
+      // Assert
+      expect(data.customers).toHaveLength(0);
+      expect(data.pagination.total).toBe(0);
+    });
   });
 
   // ============================================
@@ -679,6 +907,35 @@ describe("integration: Customers API", () => {
       expect(res.status).toBe(200);
       expect(data.customer.customer_id).toBe("get-test-1");
       expect(data.customer.email).toBe("get@example.com");
+    });
+
+    it("should get customer by external_code (fallback lookup)", async () => {
+      /**
+       * Test fetching a customer using external_code in the [id] param.
+       * When customer_id lookup fails, it falls back to external_code.
+       */
+      // Arrange
+      await CustomerModel.create({
+        customer_id: "get-ext-1",
+        tenant_id: "test-tenant",
+        customer_type: "business",
+        email: "getext@example.com",
+        company_name: "External Code Lookup",
+        external_code: "ERP-GET-001",
+        addresses: [],
+      });
+
+      const req = new NextRequest("http://localhost/api/b2b/customers/ERP-GET-001");
+      const params = createParams({ id: "ERP-GET-001" });
+
+      // Act
+      const res = await getCustomer(req, params);
+      const data = await res.json();
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(data.customer.customer_id).toBe("get-ext-1");
+      expect(data.customer.external_code).toBe("ERP-GET-001");
     });
 
     it("should return 404 for non-existent customer", async () => {
