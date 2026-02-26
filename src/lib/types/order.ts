@@ -459,6 +459,7 @@ export interface AddItemRequest {
   external_ref?: string; // External system reference (ERP code, etc.)
 
   // Packaging information
+  pkg_id?: string;                // Packaging option ID (from PIM)
   packaging_code?: string;        // e.g., "PZ", "BOX", "CF"
   packaging_label?: string;       // e.g., "Scatola da 6"
   pack_size?: number;             // e.g., 6

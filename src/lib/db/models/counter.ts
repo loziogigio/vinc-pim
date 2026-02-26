@@ -190,3 +190,76 @@ export async function setSequenceValue(
     { upsert: true }
   );
 }
+
+// ============================================
+// DOCUMENT COUNTERS
+// ============================================
+
+/**
+ * Get the next sequential document number for a given type and year.
+ * Uses atomic increment for thread-safe uniqueness.
+ *
+ * @param tenantDb - The tenant database name (e.g., "vinc-hidros-it")
+ * @param documentType - Document type (e.g., "invoice", "quotation")
+ * @param year - The year for the sequence (e.g., 2026)
+ * @returns The next number in the sequence
+ */
+export async function getNextDocumentNumber(
+  tenantDb: string,
+  documentType: string,
+  year: number
+): Promise<number> {
+  const Counter = await getCounterModel(tenantDb);
+  const result = await Counter.findOneAndUpdate(
+    { _id: `document_${documentType}_number_${year}` },
+    { $inc: { value: 1 } },
+    { upsert: true, returnDocument: "after", new: true }
+  );
+
+  if (!result) {
+    throw new Error(`Failed to generate ${documentType} number for year ${year}`);
+  }
+
+  return result.value;
+}
+
+/**
+ * Set the document counter to a specific value (admin override).
+ * The next document will receive value + 1.
+ *
+ * @param tenantDb - The tenant database name
+ * @param documentType - Document type (e.g., "invoice")
+ * @param year - The year for the sequence
+ * @param value - The value to set (next document gets value + 1)
+ */
+export async function setDocumentCounter(
+  tenantDb: string,
+  documentType: string,
+  year: number,
+  value: number
+): Promise<void> {
+  const Counter = await getCounterModel(tenantDb);
+  await Counter.findOneAndUpdate(
+    { _id: `document_${documentType}_number_${year}` },
+    { value },
+    { upsert: true }
+  );
+}
+
+/**
+ * Get the current document counter value without incrementing.
+ *
+ * @param tenantDb - The tenant database name
+ * @param documentType - Document type
+ * @param year - The year for the sequence
+ * @returns Current counter value, or 0 if not set
+ */
+export async function getDocumentCounter(
+  tenantDb: string,
+  documentType: string,
+  year: number
+): Promise<number> {
+  const Counter = await getCounterModel(tenantDb);
+  const result = await Counter.findById(`document_${documentType}_number_${year}`);
+  return result?.value ?? 0;
+}

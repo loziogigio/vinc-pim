@@ -8,7 +8,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, JWTPayload } from "jose";
 import { getSuperAdminModel, ISuperAdminDocument } from "@/lib/db/models/super-admin";
 
-const JWT_SECRET = process.env.SUPER_ADMIN_JWT_SECRET || "super-admin-secret-change-me";
+function getJwtSecret(): string {
+  const secret = process.env.SUPER_ADMIN_JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("SUPER_ADMIN_JWT_SECRET env var must be set and at least 32 characters long");
+  }
+  return secret;
+}
+
 const COOKIE_NAME = "admin_session";
 
 export interface AdminAuthResult {
@@ -28,7 +35,7 @@ export async function verifyAdminAuth(req: NextRequest): Promise<AdminAuthResult
   }
 
   try {
-    const secret = new TextEncoder().encode(JWT_SECRET);
+    const secret = new TextEncoder().encode(getJwtSecret());
     const { payload } = await jwtVerify(token, secret);
 
     if (!payload.sub) {

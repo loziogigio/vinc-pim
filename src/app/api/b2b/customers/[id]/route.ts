@@ -10,6 +10,7 @@ import {
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import type { UpdateCustomerRequest } from "@/lib/types/customer";
 import { isValidChannelCode } from "@/lib/constants/channel";
+import { upsertCustomerTagsBatch } from "@/lib/services/tag-pricing.service";
 
 /**
  * Authenticate and get tenant ID
@@ -376,11 +377,21 @@ export async function PATCH(
     }
 
     // Update the customer
-    const updatedCustomer = await CustomerModel.findOneAndUpdate(
+    await CustomerModel.findOneAndUpdate(
       { customer_id },
       { $set: updateDoc },
       { new: true }
-    ).lean();
+    );
+
+    // Upsert customer-level tags if provided
+    if (body.tags && body.tags.length > 0) {
+      await upsertCustomerTagsBatch(auth.tenantDb!, tenantId, customer_id, body.tags);
+    }
+
+    // Re-fetch to include updated tags
+    const updatedCustomer = await CustomerModel.findOne({
+      customer_id, tenant_id: tenantId,
+    }).lean();
 
     return NextResponse.json({
       success: true,

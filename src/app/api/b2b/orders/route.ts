@@ -96,10 +96,10 @@ export async function GET(req: NextRequest) {
     const customerId = searchParams.get("customer_id");
     const cartNumber = searchParams.get("cart_number");
     const publicCode = searchParams.get("public_code");
-    const customerCode = searchParams.get("customer_code"); // ERP code
+    const customerCode = searchParams.get("customer_code"); // ERP / external_code
     const isCurrent = searchParams.get("is_current"); // Active cart filter
     const shippingAddressId = searchParams.get("shipping_address_id"); // Address filter (internal ID)
-    const shippingAddressCode = searchParams.get("shipping_address_code"); // Address filter (external/ERP code)
+    const addressCode = searchParams.get("address_code") || searchParams.get("shipping_address_code"); // Address filter (external_code)
 
     // Build query - always filter by tenant
     const query: Record<string, unknown> = {
@@ -121,7 +121,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (status) {
-      query.status = status;
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      query.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
     }
 
     if (year) {
@@ -133,8 +134,38 @@ export async function GET(req: NextRequest) {
     }
 
     if (customerCode) {
-      // ERP code filter - direct match on order's customer_code field
-      query.customer_code = { $regex: customerCode, $options: "i" };
+      // Resolve external_code → customer_id for reliable matching
+      const cust = await CustomerModel.findOne(
+        { tenant_id: tenantId, external_code: customerCode },
+        { customer_id: 1, addresses: 1 }
+      ).lean();
+      if (!cust) {
+        return NextResponse.json({
+          success: true,
+          orders: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+          stats: { draft: 0, pending: 0, confirmed: 0, shipped: 0, cancelled: 0, total: 0, totalValue: 0 },
+        });
+      }
+      query.customer_id = (cust as any).customer_id;
+
+      // Resolve address_code → address_id on the same customer
+      if (addressCode) {
+        const addr = (cust as any).addresses?.find(
+          (a: any) => a.external_code === addressCode
+        );
+        if (addr) {
+          query.shipping_address_id = addr.address_id;
+        } else {
+          // Address not found — no orders can match
+          return NextResponse.json({
+            success: true,
+            orders: [],
+            pagination: { page, limit, total: 0, pages: 0 },
+            stats: { draft: 0, pending: 0, confirmed: 0, shipped: 0, cancelled: 0, total: 0, totalValue: 0 },
+          });
+        }
+      }
     }
 
     if (isCurrent === "true") {
@@ -145,10 +176,6 @@ export async function GET(req: NextRequest) {
 
     if (shippingAddressId) {
       query.shipping_address_id = shippingAddressId;
-    }
-
-    if (shippingAddressCode) {
-      query.shipping_address_code = shippingAddressCode;
     }
 
     // Public code filter - need to lookup customer_ids first (within tenant)
@@ -238,10 +265,10 @@ export async function GET(req: NextRequest) {
       tenant_id: tenantId,
       customer_id: { $in: customerIds },
     })
-      .select("customer_id company_name first_name last_name email external_code public_code")
+      .select("customer_id company_name first_name last_name email external_code public_code addresses")
       .lean();
 
-    // Create a map for quick lookup
+    // Create a map for quick lookup (include addresses for label backfill)
     const customerMap = new Map(
       customers.map((c) => [
         c.customer_id,
@@ -254,18 +281,57 @@ export async function GET(req: NextRequest) {
           email: c.email,
           external_code: c.external_code,
           public_code: c.public_code,
+          addresses: (c as any).addresses || [],
         },
       ])
     );
 
-    // Enrich orders with customer info
-    const enrichedOrders = orders.map((order) => ({
-      ...order,
-      customer_name: customerMap.get(order.customer_id)?.customer_name || order.customer_id,
-      customer_company: customerMap.get(order.customer_id)?.company_name,
-      customer_email: customerMap.get(order.customer_id)?.email,
-      customer_public_code: customerMap.get(order.customer_id)?.public_code,
-    }));
+    // Enrich orders with customer info + resolve shipping address
+    const enrichedOrders = orders.map((order) => {
+      const cust = customerMap.get(order.customer_id);
+      // Resolve full shipping address from customer addresses
+      let shippingAddress = null;
+      if (order.shipping_address_id && cust) {
+        const addr = cust.addresses.find(
+          (a: any) => a.address_id === order.shipping_address_id
+        );
+        if (addr) {
+          shippingAddress = {
+            address_id: addr.address_id,
+            external_code: addr.external_code || null,
+            customer_code: order.customer_code || cust?.external_code || null,
+            label: addr.label || null,
+            recipient_name: addr.recipient_name || null,
+            street_address: addr.street_address || null,
+            street_address_2: addr.street_address_2 || null,
+            city: addr.city || null,
+            province: addr.province || null,
+            postal_code: addr.postal_code || null,
+            country: addr.country || null,
+            phone: addr.phone || null,
+          };
+        }
+      }
+      // Build human-readable display reference
+      // Draft → #CAR/2026/25, non-draft → #ORD/2026/3 (or fallback to cart_number)
+      const prefix = order.status === "draft" ? "CAR" : "ORD";
+      const num = order.status !== "draft" && order.order_number
+        ? order.order_number
+        : order.cart_number;
+      const display_ref = `#${prefix}/${order.year}/${num}`;
+
+      return {
+        ...order,
+        display_ref,
+        shipping_address: shippingAddress,
+        shipping_address_code: order.shipping_address_code || shippingAddress?.external_code || null,
+        customer_code: order.customer_code || cust?.external_code || null,
+        customer_name: cust?.customer_name || order.customer_id,
+        customer_company: cust?.company_name,
+        customer_email: cust?.email,
+        customer_public_code: cust?.public_code,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -351,7 +417,7 @@ export async function POST(req: NextRequest) {
       try {
         const address = await findOrCreateAddress(customer, {
           address: body.shipping_address,
-        });
+        }, tenant_id);
         shipping_address_id = address.address_id;
       } catch (error) {
         console.error("Error finding/creating address:", error);

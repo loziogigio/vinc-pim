@@ -16,7 +16,7 @@ import {
   ProductTypeEmbedded,
   TagEmbedded,
 } from "@/lib/types/entities";
-import type { MultilingualText } from "@/lib/types/pim";
+import type { MultilingualText, PackagingInfo } from "@/lib/types/pim";
 import { PRODUCT_KINDS } from "@/lib/constants/booking";
 import type { ProductKind } from "@/lib/constants/booking";
 
@@ -74,6 +74,9 @@ export interface IPIMProduct extends Document {
   // Identity & Ownership
   // wholesaler_id removed - database per wholesaler provides isolation
   entity_code: string; // Unique product identifier
+
+  // Sales Channels (which storefronts/markets this product is visible in)
+  channels: string[];
 
   // Versioning System
   version: number; // 1, 2, 3...
@@ -332,6 +335,7 @@ export interface IPIMProduct extends Document {
   // ERP Specific - Packaging Options with embedded promotions
   packaging_options?: {
     id?: string;              // Optional unique ID
+    pkg_id?: string;          // Unique packaging identifier (incremental: "1", "2", "3"...)
     code: string;             // Packaging code (e.g., "PZ", "BOX", "CF", "PALLET")
     label: MultilingualText;  // Multilingual: "it": "Pezzo singolo", "de": "Einzelstück", etc.
     qty: number;              // Quantity per packaging unit
@@ -365,7 +369,10 @@ export interface IPIMProduct extends Document {
     }[];
   }[];
 
-  // Product-level promotions (legacy - prefer packaging-level promotions)
+  // Physical packaging info (informational only — separate from selling packaging_options)
+  packaging_info?: PackagingInfo[];
+
+  // Product-level promotions (source of truth — computed into packaging on GET)
   promotions?: {
     promo_code?: string;            // Promotion code (e.g., "016")
     promo_row?: number;             // Row number from ERP (for tracking/sorting)
@@ -385,6 +392,7 @@ export interface IPIMProduct extends Document {
     min_quantity?: number;          // Minimum quantity to qualify
     min_order_value?: number;       // Minimum order value to qualify
     promo_price?: number;           // Final price when this promotion applies
+    target_pkg_ids?: string[];      // Target packaging options — empty = all sellable
   }[];
 
   // Product-level promotion fields (for faceting/filtering)
@@ -454,6 +462,9 @@ const PIMProductSchema = new Schema<IPIMProduct>(
 
     // wholesaler_id removed - database per wholesaler provides isolation
     entity_code: { type: String, required: true, index: true },
+
+    // Sales Channels
+    channels: { type: [String], default: ["default"], index: true },
 
     version: { type: Number, required: true, default: 1 },
     isCurrent: { type: Boolean, required: true, default: true },
@@ -812,6 +823,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     packaging_options: [
       {
         id: { type: String },
+        pkg_id: { type: String },             // Unique packaging identifier (incremental: "1", "2", "3"...)
         code: { type: String, required: true },
         label: MultilingualTextSchema,
         qty: { type: Number, required: true },
@@ -837,6 +849,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
           list_discount_amt: { type: Number },
           sale_discount_pct: { type: Number },
           sale_discount_amt: { type: Number },
+          // Customer tag filter — empty = all customers, otherwise requires matching tag
+          tag_filter: [{ type: String }],
         },
         // Promotions specific to this packaging option
         promotions: [
@@ -859,12 +873,27 @@ const PIMProductSchema = new Schema<IPIMProduct>(
             min_quantity: { type: Number },
             min_order_value: { type: Number },
             promo_price: { type: Number },          // Final price when this promotion applies
+            // Customer tag filter — empty = all customers, otherwise requires matching tag
+            tag_filter: [{ type: String }],
           },
         ],
       },
     ],
 
-    // Product-level promotions (legacy - prefer packaging-level promotions)
+    // Physical packaging info — source of truth for default/smallest designation
+    packaging_info: [
+      {
+        packaging_id: { type: String },
+        code: { type: String, required: true },
+        description: { type: String },
+        qty: { type: Number, required: true },
+        uom: { type: String, required: true },
+        is_default: { type: Boolean },
+        is_smallest: { type: Boolean },
+      },
+    ],
+
+    // Product-level promotions (source of truth — computed into packaging on GET)
     promotions: [
       {
         promo_code: { type: String },
@@ -885,6 +914,10 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         min_quantity: { type: Number },
         min_order_value: { type: Number },
         promo_price: { type: Number },              // Final price when this promotion applies
+        // Target packaging options — empty = all sellable; otherwise specific pkg_ids
+        target_pkg_ids: [{ type: String }],
+        // Customer tag filter — empty = all customers, otherwise requires matching tag
+        tag_filter: [{ type: String }],
       },
     ],
 
@@ -930,6 +963,7 @@ PIMProductSchema.index({ status: 1, completeness_score: -1 });
 PIMProductSchema.index({ "analytics.priority_score": -1 });
 PIMProductSchema.index({ "source.source_id": 1, status: 1 });
 PIMProductSchema.index({ item_creation_date: -1 }); // For ERP insertion date sorting
+PIMProductSchema.index({ channels: 1, status: 1 }); // Channel + status queries
 
 export { PIMProductSchema };
 

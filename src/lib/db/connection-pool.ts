@@ -8,6 +8,7 @@
 
 import mongoose from "mongoose";
 import { LRUCache } from "lru-cache";
+import { assertNotBuildPhase } from "./build-guard";
 
 const MONGO_URI =
   process.env.VINC_MONGO_URL ||
@@ -43,6 +44,8 @@ const pool = new LRUCache<string, PoolEntry>({
  * Get or create the base MongoDB connection
  */
 async function getBaseConnection(): Promise<mongoose.Connection> {
+  assertNotBuildPhase("MongoDB connection");
+
   if (baseConnection?.readyState === 1) {
     return baseConnection;
   }
@@ -52,27 +55,30 @@ async function getBaseConnection(): Promise<mongoose.Connection> {
   }
 
   console.log("[Pool] Creating base connection");
-  baseConnectionPromise = mongoose
-    .createConnection(MONGO_URI, {
-      minPoolSize: 0,
-      maxPoolSize: PER_DB_POOL_SIZE,
-      bufferCommands: false,
-    })
-    .asPromise();
+  const conn = mongoose.createConnection(MONGO_URI, {
+    minPoolSize: 0,
+    maxPoolSize: PER_DB_POOL_SIZE,
+    bufferCommands: false,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+  });
 
-  baseConnection = await baseConnectionPromise;
-  baseConnectionPromise = null;
-
-  baseConnection.on("error", (err) => {
+  // Attach error handler BEFORE awaiting to prevent unhandled rejection warnings
+  // during the initial connection phase
+  conn.on("error", (err) => {
     console.error("[Pool] Base connection error:", err.message);
     baseConnection = null;
   });
 
-  baseConnection.on("disconnected", () => {
+  conn.on("disconnected", () => {
     console.log("[Pool] Base connection disconnected");
     baseConnection = null;
     pool.clear(); // Clear all useDb connections since base is gone
   });
+
+  baseConnectionPromise = conn.asPromise();
+  baseConnection = await baseConnectionPromise;
+  baseConnectionPromise = null;
 
   console.log("[Pool] Base connection established");
   return baseConnection;

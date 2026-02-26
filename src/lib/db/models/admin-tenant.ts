@@ -44,6 +44,13 @@ export interface ITenantSettings {
 }
 
 /**
+ * Vetrina (public storefront directory) configuration
+ */
+export interface ITenantVetrina {
+  is_listed: boolean;
+}
+
+/**
  * Domain configuration for multi-tenant hostname resolution
  */
 export interface ITenantDomain {
@@ -93,6 +100,7 @@ export interface ITenant {
   require_login?: boolean;
   home_settings_customer_id?: string;
   builder_url?: string;
+  vetrina?: ITenantVetrina;
 }
 
 export interface ITenantDocument extends ITenant, Document {}
@@ -148,6 +156,13 @@ const TenantDbConfigSchema = new Schema(
   {
     mongo_url: { type: String },
     mongo_db: { type: String },
+  },
+  { _id: false }
+);
+
+const TenantVetrinaSchema = new Schema(
+  {
+    is_listed: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -219,6 +234,7 @@ const TenantSchema = new Schema<ITenantDocument>(
       type: String,
       trim: true,
     },
+    vetrina: TenantVetrinaSchema,
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -233,6 +249,7 @@ const TenantSchema = new Schema<ITenantDocument>(
 TenantSchema.index({ status: 1 });
 TenantSchema.index({ admin_email: 1 });
 TenantSchema.index({ "domains.hostname": 1 });
+TenantSchema.index({ "vetrina.is_listed": 1, status: 1 });
 
 // ============================================
 // STATICS

@@ -11,6 +11,7 @@ import {
   AddressInput,
 } from "@/lib/services/customer.service";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
+import { resolveEffectiveTags } from "@/lib/services/tag-pricing.service";
 
 /**
  * Authenticate and get tenant ID
@@ -197,7 +198,7 @@ export async function POST(req: NextRequest) {
               ...body.address,
               external_code: body.address_code, // Ensure external_code matches
             },
-          });
+          }, tenant_id);
           addressIsNew = true;
         } else {
           // No address details - return error
@@ -218,7 +219,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Create new current cart
+    // 3. Resolve effective tags for customer + delivery address
+    const effectiveTags = resolveEffectiveTags(customer, address);
+
+    // 4. Create new current cart
     const order_id = nanoid(12);
     const session_id = `sess_${nanoid(16)}`;
     const flow_id = `flow_${nanoid(16)}`;
@@ -240,6 +244,9 @@ export async function POST(req: NextRequest) {
       customer_code: body.customer_code,
       shipping_address_id: address.address_id,
       shipping_address_code: body.address_code,
+
+      // Customer tags (resolved for this customer + delivery address)
+      effective_tags: effectiveTags,
 
       // Pricing Context
       price_list_id: "default",

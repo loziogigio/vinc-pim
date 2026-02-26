@@ -12,6 +12,8 @@ import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { createNotificationLog, markLogAsSent, markLogAsFailed } from "@/lib/notifications/notification-log.service";
+import { sendViaGraph, isGraphConfigured } from "./graph-transport";
+import type { GraphSettings, EmailTransport } from "@/lib/types/home-settings";
 
 // ============================================
 // CONFIGURATION
@@ -96,10 +98,65 @@ export function isEmailEnabled(): boolean {
 }
 
 export async function isEmailEnabledAsync(tenantDb?: string): Promise<boolean> {
-  const config = await fetchEmailConfigFromDb(tenantDb);
+  const tenantConfig = await fetchTenantEmailConfig(tenantDb);
+
+  if (tenantConfig.transport === "graph") {
+    return isGraphConfigured(tenantConfig.graph);
+  }
+
+  const config = tenantConfig.smtp;
   const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
   const hasAuth = config.user && config.password;
   return !!(config.host && config.from && (hasAuth || isLocalhost));
+}
+
+// ============================================
+// TENANT EMAIL CONFIG (multi-transport)
+// ============================================
+
+export interface TenantEmailConfig {
+  transport: EmailTransport;
+  smtp: EmailConfig;
+  graph?: GraphSettings;
+}
+
+/**
+ * Fetch full email transport config from database (async)
+ * Returns transport type + relevant settings for each transport
+ */
+export async function fetchTenantEmailConfig(tenantDb?: string): Promise<TenantEmailConfig> {
+  try {
+    const { getHomeSettings } = await import("@/lib/db/home-settings");
+    const settings = await getHomeSettings(tenantDb);
+
+    const transport: EmailTransport = settings?.email_transport || "smtp";
+
+    // Build SMTP config (always needed as fallback)
+    let smtpConfig: EmailConfig = getEmailConfigFromEnv();
+    if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
+      smtpConfig = {
+        host: settings.smtp_settings.host,
+        port: settings.smtp_settings.port || 587,
+        secure: settings.smtp_settings.secure || false,
+        user: settings.smtp_settings.user || "",
+        password: settings.smtp_settings.password || "",
+        from: settings.smtp_settings.from,
+        fromName: settings.smtp_settings.from_name || "VINC Commerce",
+      };
+    }
+
+    return {
+      transport,
+      smtp: smtpConfig,
+      graph: settings?.graph_settings ?? undefined,
+    };
+  } catch (error) {
+    console.warn("[Email] Failed to fetch tenant email config from DB:", error);
+    return {
+      transport: "smtp",
+      smtp: getEmailConfigFromEnv(),
+    };
+  }
 }
 
 // ============================================
@@ -249,6 +306,12 @@ export interface SendEmailOptions {
   tenantDb?: string;
   /** Campaign ID for linking email to campaign stats */
   campaign_id?: string;
+  /** File attachments (e.g., PDF documents) */
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }
 
 export interface SendEmailResult {
@@ -330,13 +393,19 @@ export function addTrackingToHtml(
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const emailId = nanoid(12);
 
-  // Fetch config from DB (with fallback to env)
-  const config = await fetchEmailConfigFromDb(options.tenantDb);
+  // Fetch tenant email config (transport type + settings)
+  const tenantConfig = await fetchTenantEmailConfig(options.tenantDb);
 
-  // Check if email is configured - allow localhost without auth for dev testing
-  const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
-  const hasAuth = config.user && config.password;
-  const isConfigured = config.host && config.from && (hasAuth || isLocalhost);
+  // Check if email is configured based on transport type
+  const isConfigured =
+    tenantConfig.transport === "graph"
+      ? isGraphConfigured(tenantConfig.graph)
+      : (() => {
+          const c = tenantConfig.smtp;
+          const isLocalhost = c.host === "localhost" || c.host === "127.0.0.1";
+          const hasAuth = c.user && c.password;
+          return !!(c.host && c.from && (hasAuth || isLocalhost));
+        })();
 
   if (!isConfigured) {
     console.warn("[Email] Email sending is not configured");
@@ -347,6 +416,18 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       error: "Email service not configured",
     };
   }
+
+  // Resolve from/fromName based on transport
+  const effectiveFrom =
+    options.from ||
+    (tenantConfig.transport === "graph"
+      ? tenantConfig.graph?.sender_email || ""
+      : tenantConfig.smtp.from);
+  const effectiveFromName =
+    options.fromName ||
+    (tenantConfig.transport === "graph"
+      ? tenantConfig.graph?.sender_name || "VINC Commerce"
+      : tenantConfig.smtp.fromName);
 
   // Get tenant database name for queue processing
   // Use provided tenantDb or try to auto-detect
@@ -379,8 +460,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     to: options.to,
     cc: options.cc,
     bcc: options.bcc,
-    from: options.from || config.from,
-    from_name: options.fromName || config.fromName,
+    from: effectiveFrom,
+    from_name: effectiveFromName,
     reply_to: options.replyTo,
     subject: options.subject,
     html,
@@ -416,6 +497,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   };
   await emailLog.save();
 
+  // Attach files to the email log object (transient, not persisted)
+  if (options.attachments?.length) {
+    (emailLog as any)._attachments = options.attachments;
+  }
+
   // Send immediately or queue
   if (options.immediate) {
     return await sendEmailNow(emailLog, notificationLog.log_id);
@@ -426,41 +512,67 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
 /**
  * Send email immediately (bypasses queue)
+ * Dispatches to SMTP or Graph API based on tenant config
  */
 async function sendEmailNow(
   emailLog: IEmailLog,
   notificationLogId?: string
 ): Promise<SendEmailResult> {
-  // Use tenant_db from emailLog if available for multi-tenant SMTP config
-  const config = await fetchEmailConfigFromDb(emailLog.tenant_db);
+  const tenantConfig = await fetchTenantEmailConfig(emailLog.tenant_db);
 
   try {
-    const transport = getTransporter(config);
+    let messageId: string | undefined;
 
-    const result = await transport.sendMail({
-      from: emailLog.from_name
-        ? `"${emailLog.from_name}" <${emailLog.from}>`
-        : emailLog.from,
-      to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
-      cc: emailLog.cc
-        ? Array.isArray(emailLog.cc)
-          ? emailLog.cc.join(", ")
-          : emailLog.cc
-        : undefined,
-      bcc: emailLog.bcc
-        ? Array.isArray(emailLog.bcc)
-          ? emailLog.bcc.join(", ")
-          : emailLog.bcc
-        : undefined,
-      replyTo: emailLog.reply_to,
-      subject: emailLog.subject,
-      html: emailLog.html,
-      text: emailLog.text,
-    });
+    if (tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)) {
+      // ---- GRAPH API TRANSPORT ----
+      const result = await sendViaGraph(tenantConfig.graph!, {
+        to: emailLog.to,
+        subject: emailLog.subject,
+        html: emailLog.html,
+        text: emailLog.text,
+        cc: emailLog.cc,
+        bcc: emailLog.bcc,
+        from: emailLog.from,
+        fromName: emailLog.from_name,
+        replyTo: emailLog.reply_to,
+        attachments: (emailLog as any)._attachments || undefined,
+      });
 
-    // Update log with success
+      if (!result.success) {
+        throw new Error(result.error || "Graph API send failed");
+      }
+      messageId = result.messageId;
+    } else {
+      // ---- SMTP TRANSPORT ----
+      const smtpTransport = getTransporter(tenantConfig.smtp);
+
+      const result = await smtpTransport.sendMail({
+        from: emailLog.from_name
+          ? `"${emailLog.from_name}" <${emailLog.from}>`
+          : emailLog.from,
+        to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
+        cc: emailLog.cc
+          ? Array.isArray(emailLog.cc)
+            ? emailLog.cc.join(", ")
+            : emailLog.cc
+          : undefined,
+        bcc: emailLog.bcc
+          ? Array.isArray(emailLog.bcc)
+            ? emailLog.bcc.join(", ")
+            : emailLog.bcc
+          : undefined,
+        replyTo: emailLog.reply_to,
+        subject: emailLog.subject,
+        html: emailLog.html,
+        text: emailLog.text,
+        attachments: (emailLog as any)._attachments || undefined,
+      });
+      messageId = result.messageId;
+    }
+
+    // Update log with success (same for both transports)
     emailLog.status = "sent";
-    emailLog.message_id = result.messageId;
+    emailLog.message_id = messageId;
     emailLog.sent_at = new Date();
     emailLog.attempts = (emailLog.attempts || 0) + 1;
     await emailLog.save();
@@ -470,13 +582,13 @@ async function sendEmailNow(
       await markLogAsSent(notificationLogId);
     }
 
-    console.log(`[Email] Sent immediately: ${emailLog.email_id} to ${emailLog.to}`);
+    console.log(`[Email] Sent via ${tenantConfig.transport}: ${emailLog.email_id} to ${emailLog.to}`);
 
     return {
       success: true,
       emailId: emailLog.email_id,
       status: "sent",
-      messageId: result.messageId,
+      messageId,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -491,7 +603,7 @@ async function sendEmailNow(
       await markLogAsFailed(notificationLogId, errorMessage);
     }
 
-    console.error(`[Email] Send failed: ${emailLog.email_id}`, errorMessage);
+    console.error(`[Email] Send failed (${tenantConfig.transport}): ${emailLog.email_id}`, errorMessage);
 
     return {
       success: false,

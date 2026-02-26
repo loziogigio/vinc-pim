@@ -6,6 +6,7 @@
  */
 
 import mongoose from "mongoose";
+import { assertNotBuildPhase } from "./build-guard";
 
 const ADMIN_DB = "vinc-admin";
 
@@ -17,6 +18,8 @@ let connectionPromise: Promise<mongoose.Connection> | null = null;
  * Uses singleton pattern to reuse connections.
  */
 export async function connectToAdminDatabase(): Promise<mongoose.Connection> {
+  assertNotBuildPhase("Admin database connection");
+
   // Return existing connection if ready
   if (adminConnection?.readyState === 1) {
     return adminConnection;
@@ -32,36 +35,37 @@ export async function connectToAdminDatabase(): Promise<mongoose.Connection> {
     throw new Error("VINC_MONGO_URL environment variable is not set");
   }
 
-  // Create new connection
-  connectionPromise = mongoose
-    .createConnection(mongoUrl, {
-      dbName: ADMIN_DB,
-      minPoolSize: 0,
-      maxPoolSize: 10,
-    })
-    .asPromise();
+  // Create new connection — attach error handlers BEFORE awaiting to prevent
+  // unhandled rejection warnings during the initial connection phase
+  const conn = mongoose.createConnection(mongoUrl, {
+    dbName: ADMIN_DB,
+    minPoolSize: 0,
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+  });
 
-  adminConnection = await connectionPromise;
-  connectionPromise = null;
-
-  console.log(`Connected to admin database: ${ADMIN_DB}`);
-
-  // Handle connection errors
-  adminConnection.on("error", (err) => {
+  conn.on("error", (err) => {
     console.error("Admin database connection error:", err);
     adminConnection = null;
   });
 
-  adminConnection.on("disconnected", () => {
+  conn.on("disconnected", () => {
     console.log("Admin database disconnected");
     adminConnection = null;
   });
 
-  adminConnection.on("close", () => {
+  conn.on("close", () => {
     console.log("Admin database connection closed");
     adminConnection = null;
     connectionPromise = null;
   });
+
+  connectionPromise = conn.asPromise();
+  adminConnection = await connectionPromise;
+  connectionPromise = null;
+
+  console.log(`Connected to admin database: ${ADMIN_DB}`);
 
   return adminConnection;
 }

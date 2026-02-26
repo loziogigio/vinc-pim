@@ -152,10 +152,23 @@ export async function POST(
     const address_id = nanoid(8);
     const now = new Date();
 
+    // Auto-generate external_code if not provided (ADDR-001, ADDR-002, ...)
+    let externalCode = body.external_code;
+    if (!externalCode) {
+      const existingCodes = new Set(
+        (customer.addresses || []).map((a: { external_code?: string }) => a.external_code)
+      );
+      let n = (customer.addresses?.length || 0) + 1;
+      do {
+        externalCode = `ADDR-${String(n).padStart(3, "0")}`;
+        n++;
+      } while (existingCodes.has(externalCode));
+    }
+
     // Create new address
     const newAddress = {
       address_id,
-      external_code: body.external_code,
+      external_code: externalCode,
       address_type: body.address_type,
       label: body.label,
       is_default: body.is_default ?? false,

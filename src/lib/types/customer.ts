@@ -152,6 +152,9 @@ export interface CreateCustomerRequest {
 
   /** Sales channel */
   channel?: string;
+
+  /** Full tag strings to upsert on the customer (e.g., ["categoria-di-sconto:sconto-45"]) */
+  tags?: string[];
 }
 
 /**
@@ -171,6 +174,9 @@ export interface UpdateCustomerRequest {
   default_shipping_address_id?: string;
   default_billing_address_id?: string;
   channel?: string;
+
+  /** Full tag strings to upsert on the customer (e.g., ["categoria-di-sconto:sconto-45"]) */
+  tags?: string[];
 }
 
 /**

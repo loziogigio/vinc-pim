@@ -4,7 +4,7 @@
  */
 
 import { parse } from "csv-parse/sync";
-import * as XLSX from "xlsx";
+import { readExcel } from "@/lib/utils/excel";
 import { IImportSource } from "../db/models/import-source";
 import { IPIMProduct } from "../db/models/pim-product";
 import { projectConfig, MULTILINGUAL_FIELDS } from "../../config/project.config";
@@ -63,18 +63,17 @@ export async function parseExcel(
   languageCodes?: string[]
 ): Promise<ParsedRow[]> {
   try {
-    const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+    const workbook = await readExcel(fileBuffer);
 
     // Use specified sheet or first sheet
-    const sheet = sheetName
-      ? workbook.Sheets[sheetName]
-      : workbook.Sheets[workbook.SheetNames[0]];
+    const targetName = sheetName || workbook.sheetNames[0];
+    const sheet = workbook.sheets[targetName];
 
     if (!sheet) {
       throw new Error(`Sheet ${sheetName || "first"} not found`);
     }
 
-    const jsonData = XLSX.utils.sheet_to_json(sheet);
+    const jsonData = sheet.toJSON();
 
     return jsonData.map((row: any) => mapRowToProduct(row, source, languageCodes));
   } catch (error: any) {
@@ -117,9 +116,16 @@ function mapRowToProduct(
         }
       }
 
-      // Parse boolean values for hide_in_commerce fields
-      if (mapping.pim_field.endsWith('.hide_in_commerce')) {
-        value = parseBoolean(value) ?? false;  // Default to false (visible)
+      // Parse boolean values for known boolean fields
+      if (
+        mapping.pim_field.endsWith('.hide_in_commerce') ||
+        mapping.pim_field.endsWith('.is_default') ||
+        mapping.pim_field.endsWith('.is_smallest') ||
+        mapping.pim_field.endsWith('.is_sellable') ||
+        mapping.pim_field.endsWith('.is_active') ||
+        mapping.pim_field.endsWith('.is_stackable')
+      ) {
+        value = parseBoolean(value) ?? false;
       }
 
       // Set nested values (e.g., "brand.cprec_darti")
@@ -274,6 +280,16 @@ function cleanupIncompleteArrays(data: any): void {
     );
     if (data.meta.length === 0) {
       delete data.meta;
+    }
+  }
+
+  // Clean up packaging_info - remove entries missing required fields (code, qty, uom)
+  if (data.packaging_info && Array.isArray(data.packaging_info)) {
+    data.packaging_info = data.packaging_info.filter((item: any) =>
+      item && item.code && item.qty != null && item.uom
+    );
+    if (data.packaging_info.length === 0) {
+      delete data.packaging_info;
     }
   }
 }

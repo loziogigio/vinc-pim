@@ -89,6 +89,10 @@ export interface IPortalUserUpdate {
 export interface IPortalUserTokenPayload {
   portalUserId: string;
   tenantId: string;
+  /** Customer pricing tags (full_tag values, e.g. "categoria-sconto:scont-50") */
+  customerTags?: string[];
+  /** Sales channel (default: "default") */
+  channel?: string;
   /** Token issued at timestamp */
   iat?: number;
   /** Token expiration timestamp */

@@ -315,6 +315,71 @@ export const PIM_PRODUCT_SCHEMA: PIMField[] = [
     description: "Packaging options with code, label (multilingual), qty, uom, is_default, is_smallest, ean, position, pricing object (list, retail, sale), and promotions array (promo_code, promo_row, promo_type, label, discount_percentage, promo_price, etc.)",
     example: '[{"code": "PZ", "label": {"it": "Pezzo", "en": "Piece"}, "qty": 1, "uom": "PZ", "is_default": false, "is_smallest": true, "pricing": {"list": 80.02, "retail": 160.04}}, {"code": "BOX", "label": {"it": "Scatola", "en": "Box"}, "qty": 4, "uom": "PZ", "is_default": true, "is_smallest": false, "pricing": {"list": 320.08, "retail": 640.16, "sale": 288.07}, "promotions": [{"promo_code": "BREVE-SCAD", "promo_row": 1, "is_active": true, "promo_type": "BREVE-SCAD", "label": {"it": "Merce a breve scadenza", "en": "Short expiry goods"}, "discount_percentage": 10, "promo_price": 288.07, "is_stackable": false, "priority": 1, "end_date": "2026-02-07"}]}]'
   },
+  // Physical packaging info (informational, not related to selling packaging_options)
+  {
+    name: "packaging_info",
+    type: "array",
+    category: "inventory",
+    required: false,
+    description: "Physical packaging information (informational only, not related to selling). Each entry has: packaging_id (unique), code, description, qty (decimal supported), uom",
+    example: '[{"packaging_id": "1", "code": "BOX12", "description": "Standard box", "qty": 12, "uom": "pz"}]'
+  },
+  {
+    name: "packaging_info[0].packaging_id",
+    type: "string",
+    category: "inventory",
+    required: false,
+    description: "Unique identifier for this packaging record",
+    example: "1"
+  },
+  {
+    name: "packaging_info[0].code",
+    type: "string",
+    category: "inventory",
+    required: false,
+    description: "Short packaging code (e.g., BOX12, PALLET)",
+    example: "BOX12"
+  },
+  {
+    name: "packaging_info[0].description",
+    type: "string",
+    category: "inventory",
+    required: false,
+    description: "Human-readable description of this packaging format",
+    example: "Standard carton box"
+  },
+  {
+    name: "packaging_info[0].qty",
+    type: "number",
+    category: "inventory",
+    required: false,
+    description: "Quantity per packaging unit (supports decimals, e.g., 0.75)",
+    example: "12"
+  },
+  {
+    name: "packaging_info[0].uom",
+    type: "string",
+    category: "inventory",
+    required: false,
+    description: "Unit of measure (e.g., pz, kg)",
+    example: "pz"
+  },
+  {
+    name: "packaging_info[0].is_default",
+    type: "boolean",
+    category: "inventory",
+    required: false,
+    description: "Whether this packaging is the default selling unit. Syncs is_default to matching packaging_option.",
+    example: "true"
+  },
+  {
+    name: "packaging_info[0].is_smallest",
+    type: "boolean",
+    category: "inventory",
+    required: false,
+    description: "Whether this packaging is the minimum sellable quantity. Syncs is_smallest to matching packaging_option.",
+    example: "true"
+  },
   // Import source
   {
     name: "source",

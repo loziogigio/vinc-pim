@@ -3,7 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { nanoid } from "nanoid";
-import * as XLSX from "xlsx";
+import { readExcel } from "@/lib/utils/excel";
 
 // POST /api/b2b/pim/synonym-dictionaries/[id]/import - Import product associations
 export async function POST(
@@ -86,9 +86,9 @@ export async function POST(
     } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
       // Excel format: use xlsx library
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json<Record<string, any>>(firstSheet, { header: 1 });
+      const workbook = await readExcel(buffer);
+      const firstSheet = workbook.sheets[workbook.sheetNames[0]];
+      const data = firstSheet.toJSON({ header: 1 });
 
       entityCodes = data
         .map((row: any[]) => String(row[0] || "").trim())

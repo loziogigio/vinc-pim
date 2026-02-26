@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   Globe,
   CalendarCheck,
+  FileText,
+  CreditCard,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -136,6 +138,28 @@ export const APPS: AppConfig[] = [
     href: "/b2b/notifications",
     icon: Bell,
     color: "bg-rose-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "documents",
+    name: "Documents",
+    description: "Preventivi, fatture e documenti",
+    href: "/b2b/documents",
+    icon: FileText,
+    color: "bg-teal-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "payments",
+    name: "Payments",
+    description: "Gestione pagamenti e gateway",
+    href: "/b2b/payments",
+    icon: CreditCard,
+    color: "bg-green-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,

@@ -23,12 +23,19 @@ const TOKEN_EXPIRATION = "7d";
 
 /**
  * Generate a JWT token for a portal user
+ * @param customerTags - Customer pricing tags (full_tag values) for tag-based search filtering
  */
 export async function generatePortalUserToken(
   portalUserId: string,
-  tenantId: string
+  tenantId: string,
+  customerTags?: string[]
 ): Promise<string> {
-  const token = await new SignJWT({ portalUserId, tenantId })
+  const payload: Record<string, unknown> = { portalUserId, tenantId };
+  if (customerTags?.length) {
+    payload.customerTags = customerTags;
+  }
+
+  const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRATION)

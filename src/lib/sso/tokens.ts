@@ -44,12 +44,16 @@ export interface RefreshResult {
 // CONFIG
 // ============================================
 
-const JWT_SECRET_STRING = process.env.JWT_SECRET || process.env.SESSION_SECRET || "default-secret-change-me";
 const ACCESS_TOKEN_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "15m";
 const REFRESH_TOKEN_EXPIRY_DAYS = parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || "7", 10);
 
-// Convert secret to Uint8Array for jose
-const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING);
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET or SESSION_SECRET env var must be set and at least 32 characters long");
+  }
+  return new TextEncoder().encode(secret);
+}
 
 /**
  * Parse expiry string to seconds.
@@ -89,7 +93,7 @@ export async function generateAccessToken(payload: Omit<TokenPayload, "jti" | "i
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${ACCESS_TOKEN_SECONDS}s`)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 
   return token;
 }
@@ -171,7 +175,7 @@ export async function createTokenPair(
  */
 export async function validateAccessToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload as unknown as TokenPayload;
   } catch {
     return null;

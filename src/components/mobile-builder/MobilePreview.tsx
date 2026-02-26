@@ -8,6 +8,10 @@ import { MobileMediaSliderPreview } from "./blocks/MobileMediaSliderPreview";
 import { MobileProductSliderPreview } from "./blocks/MobileProductSliderPreview";
 import { MobileMediaGalleryPreview } from "./blocks/MobileMediaGalleryPreview";
 import { MobileProductGalleryPreview } from "./blocks/MobileProductGalleryPreview";
+import { MobileCategorySliderPreview } from "./blocks/MobileCategorySliderPreview";
+import { MobileCategoryGalleryPreview } from "./blocks/MobileCategoryGalleryPreview";
+import { MobileEntitySliderPreview } from "./blocks/MobileEntitySliderPreview";
+import { MobileEntityGalleryPreview } from "./blocks/MobileEntityGalleryPreview";
 import { cn } from "@/components/ui/utils";
 
 // Device configurations
@@ -50,6 +54,14 @@ function renderBlock(block: MobileBlock, primaryColor: string) {
       return <MobileMediaGalleryPreview key={block.id} block={block} />;
     case "mobile_product_gallery":
       return <MobileProductGalleryPreview key={block.id} block={block} primaryColor={primaryColor} />;
+    case "mobile_category_slider":
+      return <MobileCategorySliderPreview key={block.id} block={block} primaryColor={primaryColor} />;
+    case "mobile_category_gallery":
+      return <MobileCategoryGalleryPreview key={block.id} block={block} primaryColor={primaryColor} />;
+    case "mobile_entity_slider":
+      return <MobileEntitySliderPreview key={block.id} block={block} primaryColor={primaryColor} />;
+    case "mobile_entity_gallery":
+      return <MobileEntityGalleryPreview key={block.id} block={block} primaryColor={primaryColor} />;
     default:
       return null;
   }

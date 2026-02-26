@@ -1,11 +1,69 @@
 /**
- * Packaging Price Utilities
+ * Packaging Utilities
  *
- * Helper functions for calculating unit and package prices.
+ * Helper functions for packaging options: ID management, price calculations.
  * The pricing model stores unit prices and calculates package prices on the fly.
  */
 
-import type { PackagingOption, PackagingPricing } from "@/lib/types/pim";
+import type { PackagingOption, PackagingPricing, PackagingInfo } from "@/lib/types/pim";
+
+/**
+ * Ensure every packaging option has a unique pkg_id (incremental string: "1", "2", "3"...).
+ * Returns the original array reference if no changes were needed.
+ */
+export function ensurePackagingIds(options: PackagingOption[]): PackagingOption[] {
+  let maxId = 0;
+  for (const pkg of options) {
+    const n = parseInt(String(pkg.pkg_id || "0"), 10);
+    if (n > maxId) maxId = n;
+  }
+
+  let changed = false;
+  const result = options.map((pkg) => {
+    if (!pkg.pkg_id) {
+      changed = true;
+      return { ...pkg, pkg_id: String(++maxId) };
+    }
+    if (typeof pkg.pkg_id !== "string") {
+      changed = true;
+      return { ...pkg, pkg_id: String(pkg.pkg_id) };
+    }
+    return pkg;
+  });
+  return changed ? result : options;
+}
+
+/**
+ * Ensure every promotion across all packaging options has a unique promo_row.
+ * Auto-assigns incrementing promo_row to promotions that lack one.
+ * Returns the original array reference if no changes were needed.
+ */
+export function ensurePromoRows(options: PackagingOption[]): PackagingOption[] {
+  // Find current max promo_row across all packaging options
+  let maxRow = 0;
+  for (const pkg of options) {
+    for (const promo of pkg.promotions || []) {
+      if (promo.promo_row && promo.promo_row > maxRow) maxRow = promo.promo_row;
+    }
+  }
+
+  let changed = false;
+  const result = options.map((pkg) => {
+    if (!pkg.promotions || pkg.promotions.length === 0) return pkg;
+
+    const needsUpdate = pkg.promotions.some((p) => !p.promo_row);
+    if (!needsUpdate) return pkg;
+
+    changed = true;
+    const updatedPromos = pkg.promotions.map((promo) => {
+      if (promo.promo_row) return promo;
+      return { ...promo, promo_row: ++maxRow };
+    });
+    return { ...pkg, promotions: updatedPromos };
+  });
+
+  return changed ? result : options;
+}
 
 /**
  * Calculate package price from unit price and quantity
@@ -146,6 +204,25 @@ export function getEffectivePrice(
   }
 
   return { price: undefined, type: null };
+}
+
+/**
+ * Sync is_default/is_smallest flags on packaging_options from packaging_info.
+ * packaging_info is the source of truth — is_default/is_smallest booleans on each entry
+ * map to a code that matches a packaging_option code.
+ */
+export function syncPackagingFlags(
+  packagingOptions: PackagingOption[],
+  packagingInfo: PackagingInfo[] | undefined
+): PackagingOption[] {
+  const defaultCode = packagingInfo?.find((pi) => pi.is_default)?.code;
+  const smallestCode = packagingInfo?.find((pi) => pi.is_smallest)?.code;
+
+  return packagingOptions.map((opt) => ({
+    ...opt,
+    is_default: defaultCode ? opt.code === defaultCode : false,
+    is_smallest: smallestCode ? opt.code === smallestCode : false,
+  }));
 }
 
 /**

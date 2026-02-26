@@ -9,7 +9,7 @@ export interface IImportJob extends Document {
   // wholesaler_id removed - database per wholesaler provides isolation
   source_id: string;
   job_id: string; // BullMQ job ID
-  job_type: "import" | "bulk_update"; // Type of job
+  job_type: "import" | "bulk_update" | "customer_import" | "portal_user_import"; // Type of job
 
   status: "pending" | "processing" | "completed" | "failed";
 
@@ -56,7 +56,7 @@ const ImportJobSchema = new Schema<IImportJob>(
     job_id: { type: String, required: true, unique: true },
     job_type: {
       type: String,
-      enum: ["import", "bulk_update"],
+      enum: ["import", "bulk_update", "customer_import", "portal_user_import"],
       default: "import",
       index: true,
     },

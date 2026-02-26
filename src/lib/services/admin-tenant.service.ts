@@ -14,6 +14,7 @@ import {
   ITenantDomain,
   ITenantApiConfig,
   ITenantDbConfig,
+  ITenantVetrina,
 } from "../db/models/admin-tenant";
 import { LanguageModel } from "../db/models/language";
 import { notifyTenantCacheClear } from "./cache-clear.service";
@@ -486,6 +487,10 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
   // Step 3: Seed notification templates (using connectWithModels)
   await seedInitialNotificationTemplates(mongoDb);
 
+  // Step 3b: Seed document templates
+  const { seedDocumentTemplates } = await import("./seed-document-templates");
+  await seedDocumentTemplates(mongoDb, tenant_id);
+
   // Step 4: Seed home settings with default header
   await seedInitialHomeSettings(mongoDb, name);
 
@@ -623,6 +628,7 @@ export async function updateTenant(
     | "require_login"
     | "home_settings_customer_id"
     | "builder_url"
+    | "vetrina"
   >>
 ): Promise<ITenantDocument> {
   const TenantModel = await getTenantModel();
@@ -645,6 +651,7 @@ export async function updateTenant(
   if (updates.require_login !== undefined) tenant.require_login = updates.require_login;
   if (updates.home_settings_customer_id !== undefined) tenant.home_settings_customer_id = updates.home_settings_customer_id;
   if (updates.builder_url !== undefined) tenant.builder_url = updates.builder_url;
+  if (updates.vetrina !== undefined) tenant.vetrina = updates.vetrina;
 
   await tenant.save();
 

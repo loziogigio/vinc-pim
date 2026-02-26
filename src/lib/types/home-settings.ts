@@ -104,6 +104,30 @@ export interface SMTPSettings {
 }
 
 /**
+ * Email transport type - determines how emails are sent
+ */
+export type EmailTransport = "smtp" | "graph";
+
+/**
+ * Microsoft Graph API settings for email sending
+ * Uses OAuth2 client_credentials flow
+ */
+export interface GraphSettings {
+  /** Azure AD application (client) ID */
+  client_id?: string;
+  /** Azure AD tenant ID (NOT the VINC tenant) */
+  azure_tenant_id?: string;
+  /** Client secret value */
+  client_secret?: string;
+  /** Sender email address (must be a licensed mailbox in Azure AD) */
+  sender_email?: string;
+  /** Sender display name */
+  sender_name?: string;
+  /** Save sent emails to Sent Items folder (default: false) */
+  save_to_sent_items?: boolean;
+}
+
+/**
  * Company contact information for email footers and legal compliance
  */
 export interface CompanyContactInfo {
@@ -303,6 +327,7 @@ export type HeaderWidgetType =
   | "profile"
   | "notifications"
   | "reminders"
+  | "app-launcher"
   | "button"
   | "spacer"
   | "divider";
@@ -455,6 +480,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "profile": { label: "Profile", icon: "User", description: "User profile/login" },
   "notifications": { label: "Notifications", icon: "Bell", description: "Push notifications toggle" },
   "reminders": { label: "Reminders", icon: "History", description: "User reminders and saved items" },
+  "app-launcher": { label: "App Launcher", icon: "LayoutGrid", description: "App launcher dropdown" },
   "button": { label: "Button", icon: "Square", description: "Custom button/link", allowMultiple: true },
   "spacer": { label: "Spacer", icon: "Space", description: "Flexible space", allowMultiple: true },
   "divider": { label: "Divider", icon: "Minus", description: "Vertical divider", allowMultiple: true },
@@ -473,6 +499,10 @@ export interface HomeSettings {
   cdn?: CDNConfiguration;
   cdn_credentials?: CDNCredentials;
   smtp_settings?: SMTPSettings;
+  /** Email transport method: "smtp" (default) or "graph" */
+  email_transport?: EmailTransport;
+  /** Microsoft Graph API email settings */
+  graph_settings?: GraphSettings;
   /** Company contact information for email footers */
   company_info?: CompanyContactInfo;
   /** Web push notification settings (VAPID keys, etc.) */

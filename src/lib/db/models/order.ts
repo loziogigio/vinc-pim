@@ -52,6 +52,7 @@ export interface ILineItem {
   quantity_unit?: string;
   min_order_quantity?: number;
   pack_size?: number;
+  pkg_id?: string;
   packaging_code?: string;
   packaging_label?: string;
 
@@ -205,6 +206,15 @@ export interface IPaymentRecord {
   recorded_at: Date;
   recorded_by?: string;
   notes?: string;
+  confirmed?: boolean;
+  // Provider integration (optional, backwards-compatible)
+  provider?: string; // "stripe" | "nexi" | "axerve" | "mangopay" | "paypal" | "manual"
+  provider_data?: {
+    provider_payment_id?: string;
+    provider_contract_id?: string;
+    payment_type?: "onclick" | "moto" | "recurrent";
+    three_ds_status?: string;
+  };
 }
 
 // ============================================
@@ -256,6 +266,9 @@ export interface IOrder extends Document {
 
   // Tenant (multi-tenant support)
   tenant_id: string;
+
+  // Sales channel
+  channel: string;
 
   // Customer
   customer_id: string;
@@ -330,6 +343,11 @@ export interface IOrder extends Document {
   // Delivery Tracking
   // ============================================
   delivery?: IDeliveryData;
+
+  // ============================================
+  // Customer Tags (resolved at cart creation)
+  // ============================================
+  effective_tags?: string[]; // e.g., ["categoria-di-sconto:sconto-45", "categoria-clienti:idraulico"]
 
   // ============================================
   // Duplication Tracking
@@ -492,6 +510,16 @@ const QuotationDataSchema = new Schema<IQuotationData>(
 // PAYMENT RECORD SCHEMA
 // ============================================
 
+const ProviderDataSchema = new Schema(
+  {
+    provider_payment_id: { type: String },
+    provider_contract_id: { type: String },
+    payment_type: { type: String, enum: ["onclick", "moto", "recurrent"] },
+    three_ds_status: { type: String },
+  },
+  { _id: false }
+);
+
 const PaymentRecordSchema = new Schema<IPaymentRecord>(
   {
     payment_id: { type: String, required: true },
@@ -502,6 +530,8 @@ const PaymentRecordSchema = new Schema<IPaymentRecord>(
     recorded_by: { type: String },
     notes: { type: String },
     confirmed: { type: Boolean, default: false },
+    provider: { type: String },
+    provider_data: { type: ProviderDataSchema },
   },
   { _id: false }
 );
@@ -569,6 +599,7 @@ const LineItemSchema = new Schema<ILineItem>(
     quantity_unit: { type: String },
     min_order_quantity: { type: Number },
     pack_size: { type: Number },
+    pkg_id: { type: String },
     packaging_code: { type: String },
     packaging_label: { type: String },
 
@@ -652,6 +683,9 @@ const OrderSchema = new Schema<IOrder>(
 
     // Tenant (multi-tenant support)
     tenant_id: { type: String, required: true, index: true },
+
+    // Sales channel
+    channel: { type: String, default: "default", index: true },
 
     // Customer
     customer_id: { type: String, required: true, index: true },
@@ -742,6 +776,11 @@ const OrderSchema = new Schema<IOrder>(
     // Delivery Tracking
     // ============================================
     delivery: { type: DeliveryDataSchema },
+
+    // ============================================
+    // Customer Tags (resolved at cart creation for audit/pricing)
+    // ============================================
+    effective_tags: { type: [String], default: [] },
 
     // ============================================
     // Duplication Tracking

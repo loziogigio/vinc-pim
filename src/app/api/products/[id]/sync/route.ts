@@ -11,9 +11,10 @@ import { syncProductToMarketplaces, getEnabledChannels } from '@/lib/sync/market
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { channels, operation, priority } = body;
 
@@ -38,7 +39,7 @@ export async function POST(
     }
 
     // Queue sync job
-    const job = await syncProductToMarketplaces(params.id, {
+    const job = await syncProductToMarketplaces(id, {
       channels: requestedChannels,
       operation: operation || 'update',
       priority: priority || 'normal',
@@ -48,7 +49,7 @@ export async function POST(
       success: true,
       message: 'Sync job queued',
       job_id: job.id,
-      product_id: params.id,
+      product_id: id,
       channels: requestedChannels,
       operation: operation || 'update',
     });
@@ -70,12 +71,13 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const enabledChannels = getEnabledChannels();
 
   return NextResponse.json({
-    product_id: params.id,
+    product_id: id,
     available_channels: enabledChannels,
     channel_info: {
       solr: {

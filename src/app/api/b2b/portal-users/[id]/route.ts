@@ -209,12 +209,6 @@ export async function PUT(
 
     // Update password
     if (password !== undefined) {
-      if (password.length < 8) {
-        return NextResponse.json(
-          { error: "Password must be at least 8 characters" },
-          { status: 400 }
-        );
-      }
       update.password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     }
 

@@ -4,7 +4,7 @@
  * Helper functions for authenticating requests using API keys.
  */
 
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { getPooledConnection } from "@/lib/db/connection";
 import type { IAPIKeyDocument, APIKeyPermission } from "@/lib/db/models/api-key";
@@ -19,6 +19,54 @@ import {
 import { getTenantModel } from "@/lib/db/models/admin-tenant";
 
 const BCRYPT_ROUNDS = 10;
+
+// ─── In-Memory Auth Cache ────────────────────────────────────────────────────
+// Caches successful API key verifications to skip MongoDB + bcrypt on repeat
+// requests. Keyed by SHA-256 of keyId:secret so raw secrets are never stored.
+
+const AUTH_CACHE_TTL_MS = 60_000; // 60 seconds
+const AUTH_CACHE_MAX_ENTRIES = 1_000;
+
+interface AuthCacheEntry {
+  tenantId: string;
+  permissions: string[];
+  expires: number; // Date.now() + TTL
+}
+
+const authCache = new Map<string, AuthCacheEntry>();
+
+function authCacheKey(keyId: string, secret: string): string {
+  return createHash("sha256").update(`${keyId}:${secret}`).digest("hex");
+}
+
+function getFromAuthCache(keyId: string, secret: string): AuthCacheEntry | null {
+  const key = authCacheKey(keyId, secret);
+  const entry = authCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) {
+    authCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function setAuthCache(keyId: string, secret: string, tenantId: string, permissions: string[]): void {
+  // Evict oldest entries if at capacity
+  if (authCache.size >= AUTH_CACHE_MAX_ENTRIES) {
+    const firstKey = authCache.keys().next().value;
+    if (firstKey) authCache.delete(firstKey);
+  }
+  authCache.set(authCacheKey(keyId, secret), {
+    tenantId,
+    permissions,
+    expires: Date.now() + AUTH_CACHE_TTL_MS,
+  });
+}
+
+/** Clear the auth cache (useful for testing or key revocation) */
+export function clearAuthCache(): void {
+  authCache.clear();
+}
 
 /**
  * Extract tenant ID from API key format: "ak_{tenant-id}_{random}"
@@ -67,11 +115,23 @@ export async function verifyAPIKey(
       return { valid: false, error: "Invalid API key format" };
     }
 
-    // 2. Connect to tenant DB via connection pool
+    // 2. Check in-memory cache (skips MongoDB + bcrypt)
+    const cached = getFromAuthCache(keyId, secret);
+    if (cached) {
+      // Still track usage (non-blocking)
+      trackApiCall(tenantId, keyId).catch(() => {});
+      return {
+        valid: true,
+        tenantId: cached.tenantId,
+        permissions: cached.permissions,
+      };
+    }
+
+    // 3. Connect to tenant DB via connection pool
     const tenantDb = `vinc-${tenantId}`;
     const connection = await getPooledConnection(tenantDb);
 
-    // 3. Query the apikeys collection directly from the pooled connection
+    // 4. Query the apikeys collection directly from the pooled connection
     const keyDoc = await connection.db
       .collection("apikeys")
       .findOne({ key_id: keyId }) as IAPIKeyDocument | null;
@@ -80,27 +140,30 @@ export async function verifyAPIKey(
       return { valid: false, error: "API key not found" };
     }
 
-    // 4. Check if active
+    // 5. Check if active
     if (!keyDoc.is_active) {
       return { valid: false, error: "API key is inactive" };
     }
 
-    // 5. Verify secret with bcrypt
+    // 6. Verify secret with bcrypt
     const secretValid = await bcrypt.compare(secret, keyDoc.secret_hash);
     if (!secretValid) {
       return { valid: false, error: "Invalid API secret" };
     }
 
-    // 6. Update last_used_at (non-blocking)
+    // 7. Cache successful verification (60s TTL)
+    setAuthCache(keyId, secret, tenantId, keyDoc.permissions);
+
+    // 8. Update last_used_at (non-blocking)
     connection.db
       .collection("apikeys")
       .updateOne({ _id: keyDoc._id }, { $set: { last_used_at: new Date() } })
       .catch(console.error);
 
-    // 7. Track API usage (non-blocking)
+    // 9. Track API usage (non-blocking)
     trackApiCall(tenantId, keyId).catch(() => {}); // Fire-and-forget
 
-    // 8. Return success
+    // 10. Return success
     return {
       valid: true,
       tenantId,

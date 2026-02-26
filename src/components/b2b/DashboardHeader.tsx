@@ -1,9 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, User } from "lucide-react";
+import { Bell, User, Maximize2, Minimize2 } from "lucide-react";
 import type { B2BSessionData } from "@/lib/types/b2b";
 import { getCurrentSection } from "@/config/apps.config";
+import { useLayoutStore } from "@/lib/stores/layoutStore";
 import { AppLauncherDropdown } from "./AppLauncherDropdown";
 
 type DashboardHeaderProps = {
@@ -14,6 +15,7 @@ type DashboardHeaderProps = {
 export function DashboardHeader({ session, notificationCount = 0 }: DashboardHeaderProps) {
   const pathname = usePathname() || "";
   const currentSection = getCurrentSection(pathname);
+  const { fullWidth, toggleFullWidth } = useLayoutStore();
 
   const tenantId = session.tenantId;
 
@@ -22,7 +24,7 @@ export function DashboardHeader({ session, notificationCount = 0 }: DashboardHea
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
-      <div className="mx-auto max-w-[1600px] px-6">
+      <div className={fullWidth ? "px-6" : "mx-auto max-w-[1600px] px-6"}>
         <div className="flex h-[64px] items-center justify-between">
           {/* Left: Current Section */}
           <div className="flex items-center gap-3">
@@ -37,6 +39,17 @@ export function DashboardHeader({ session, notificationCount = 0 }: DashboardHea
 
           {/* Right: App Launcher + Notifications + User */}
           <div className="flex items-center gap-3">
+            {/* Full-width toggle */}
+            <button
+              type="button"
+              className={iconButtonClass}
+              aria-label={fullWidth ? "Switch to compact layout" : "Switch to full-width layout"}
+              title={fullWidth ? "Compact layout" : "Full-width layout"}
+              onClick={toggleFullWidth}
+            >
+              {fullWidth ? <Minimize2 className="h-[1rem] w-[1rem]" /> : <Maximize2 className="h-[1rem] w-[1rem]" />}
+            </button>
+
             {/* Google-style App Launcher */}
             <AppLauncherDropdown tenantId={tenantId} />
 

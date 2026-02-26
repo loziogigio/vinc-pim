@@ -17,6 +17,7 @@ import {
   ListFilter,
   KeyRound,
   UserCog,
+  Tags,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -37,6 +38,7 @@ const customerPaths = [
   { label: "Business", path: "/b2b/store/customers/business", icon: Building2 },
   { label: "Private", path: "/b2b/store/customers/private", icon: User },
   { label: "Reseller", path: "/b2b/store/customers/reseller", icon: Store },
+  { label: "Customer Tags", path: "/b2b/store/customers/tags", icon: Tags },
 ];
 
 const portalUserPaths = [

@@ -97,6 +97,9 @@ interface SolrMultilingualDocument {
   tag_groups?: string[];             // Tag group IDs: ["promotions", "features"]
   tag_categories?: string[];         // Tag categories: ["promotion", "seo"]
 
+  // Sales channels
+  channels?: string[];               // Sales channel codes: ["default", "b2c"]
+
   // Synonym dictionaries for search enhancement
   synonym_keys?: string[];           // Dictionary keys: ["climatizzatore", "inverter"]
   // synonym_terms_text_{lang} added dynamically per language
@@ -582,11 +585,12 @@ export class SolrAdapter extends MarketplaceAdapter {
       published_at: product.published_at?.toISOString(),
       item_creation_date: product.item_creation_date?.toISOString(),  // ERP insertion date
 
-      // Inventory
+      // Inventory & pricing
       quantity: product.quantity,
       sold: product.sold,
       unit: product.unit,
       stock_status: product.stock_status,
+      vat_rate: product.pricing?.vat_rate,
 
       // Physical Attributes
       weight: product.weight,
@@ -648,6 +652,9 @@ export class SolrAdapter extends MarketplaceAdapter {
       tag_groups: tagFacetData.tag_groups,
       tag_categories: tagFacetData.tag_categories,
 
+      // Sales channels (default to ["default"] if not set)
+      channels: product.channels?.length ? product.channels : ["default"],
+
       // Synonym dictionaries for search enhancement
       synonym_keys: product.synonym_keys || [],
       // synonym_terms are added per-language in the loop below as synonym_terms_text_{lang}
@@ -681,7 +688,20 @@ export class SolrAdapter extends MarketplaceAdapter {
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
       product_type_technical_specifications_json: product.product_type?.technical_specifications ? JSON.stringify(product.product_type.technical_specifications) : undefined,
-      packaging_json: product.packaging_options ? JSON.stringify(product.packaging_options) : undefined,
+      packaging_json: product.packaging_options ? JSON.stringify(
+        // Embed per-packaging promotions from product-level promotions
+        product.promotions?.length
+          ? product.packaging_options.map((pkg: any) => ({
+              ...pkg,
+              promotions: product.promotions!.filter((promo: any) => {
+                if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
+                  return pkg.is_sellable !== false;
+                }
+                return promo.target_pkg_ids.includes(pkg.pkg_id);
+              }),
+            }))
+          : product.packaging_options
+      ) : undefined,
 
       // Relationship objects with multilingual content (stored as JSON)
       category_json: product.category ? JSON.stringify(product.category) : undefined,

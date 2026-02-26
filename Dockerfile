@@ -13,6 +13,8 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 # Install dependencies (cached by lockfile)
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
+# Skip Puppeteer's bundled Chrome download — system Chromium is used at runtime
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Use BuildKit cache for the pnpm store for faster repeated builds
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
@@ -22,6 +24,10 @@ FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Skip DB connections during build — pages are marked dynamic and rendered at request time
+ENV NEXT_BUILD_PHASE=1
+# Skip Puppeteer's bundled Chrome download — system Chromium is used at runtime
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 # Accept build-time args and expose them as env for Next build
 ARG VINC_TENANT_ID
@@ -90,6 +96,20 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+
+# Install Chromium for Puppeteer PDF generation
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto
+
+# Tell Puppeteer to use system Chromium instead of downloading its own
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Re-declare args and set runtime envs for SSR/server usage
 ARG VINC_TENANT_ID

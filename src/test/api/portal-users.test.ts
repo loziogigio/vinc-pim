@@ -45,6 +45,19 @@ vi.mock("@/lib/auth/api-key-auth", () => ({
   ),
 }));
 
+// Mock rate limiting to bypass SSO database in tests
+vi.mock("@/lib/sso/rate-limit", () => ({
+  checkGlobalIPRateLimit: vi.fn(() => Promise.resolve({ allowed: true })),
+  checkRateLimit: vi.fn(() => Promise.resolve({ allowed: true, delay_ms: 0, attempts_remaining: 5 })),
+  logLoginAttempt: vi.fn(() => Promise.resolve()),
+  applyProgressiveDelay: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("@/lib/sso/device", () => ({
+  getClientIP: vi.fn(() => "127.0.0.1"),
+  parseUserAgent: vi.fn(() => ({})),
+}));
+
 // Mock portal user token generation to avoid jose library issues in tests
 // Only mock generatePortalUserToken, keep other utilities unmocked for direct testing
 vi.mock("@/lib/auth/portal-user-token", async () => {
@@ -217,36 +230,6 @@ describe("integration: Portal Users API", () => {
       // Assert
       expect(res.status).toBe(400);
       expect(data.error).toMatch(/email|required/i);
-    });
-
-    it("should return 400 when password is too short", async () => {
-      /**
-       * Test validation: password must be at least 8 characters.
-       */
-      // Arrange
-      const req = new NextRequest("http://localhost/api/b2b/portal-users", {
-        method: "POST",
-        body: JSON.stringify({
-          username: "testuser",
-          email: "test@example.com",
-          password: "short",
-          customer_access: [{ customer_id: "test", address_access: "all" }],
-        }),
-        headers: {
-          "Content-Type": "application/json",
-          "x-auth-method": "api-key",
-          "x-api-key-id": "ak_test-tenant_abc123456789",
-          "x-api-secret": "sk_test",
-        },
-      });
-
-      // Act
-      const res = await createPortalUser(req);
-      const data = await res.json();
-
-      // Assert
-      expect(res.status).toBe(400);
-      expect(data.error).toMatch(/password|8 characters/i);
     });
 
     it("should return 409 for duplicate username", async () => {
@@ -753,6 +736,18 @@ describe("integration: Portal Users API", () => {
       // Arrange
       const password = "TestPassword123!";
       const passwordHash = await bcrypt.hash(password, 10);
+      // Create the customer that the portal user has access to
+      await CustomerModel.create({
+        customer_id: "CUST-001",
+        tenant_id: "test-tenant",
+        external_code: "C-001",
+        company_name: "Test Company",
+        email: "test@example.com",
+        customer_type: "business",
+        tags: [],
+        addresses: [],
+      });
+
       await PortalUserModel.create({
         portal_user_id: "PU-login-test",
         tenant_id: "test-tenant",

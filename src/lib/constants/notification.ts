@@ -146,6 +146,16 @@ export const NOTIFICATION_TRIGGERS = [
   // Campaign types
   "campaign_product",
   "campaign_generic",
+  // Payment triggers
+  "payment_received",
+  "payment_failed",
+  "payment_refunded",
+  // Subscription triggers
+  "subscription_created",
+  "subscription_renewed",
+  "subscription_cancelled",
+  "subscription_payment_failed",
+  "subscription_expiring",
   // Custom
   "custom",
 ] as const;
@@ -168,6 +178,14 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   newsletter: "Newsletter",
   campaign_product: "Product Campaign",
   campaign_generic: "Generic Campaign",
+  payment_received: "Pagamento Ricevuto",
+  payment_failed: "Pagamento Fallito",
+  payment_refunded: "Rimborso Effettuato",
+  subscription_created: "Abbonamento Attivato",
+  subscription_renewed: "Abbonamento Rinnovato",
+  subscription_cancelled: "Abbonamento Cancellato",
+  subscription_payment_failed: "Pagamento Abbonamento Fallito",
+  subscription_expiring: "Abbonamento in Scadenza",
   custom: "Custom Template",
 };
 

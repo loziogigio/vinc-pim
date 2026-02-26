@@ -5,16 +5,11 @@ import {
   Loader2,
   Save,
   Upload,
-  GripVertical,
-  Trash2,
-  Settings,
   Plus,
   Smartphone,
   ChevronLeft,
   ChevronRight,
   Eye,
-  Image as ImageIcon,
-  Link as LinkIcon,
   Copy,
   History,
   ChevronDown,
@@ -32,15 +27,12 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/components/ui/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   type MobileBlock,
   type MobileBlockType,
@@ -51,296 +43,11 @@ import {
 } from "@/lib/types/mobile-builder";
 import { MobilePreview } from "@/components/mobile-builder/MobilePreview";
 import { MobileBlockSettings } from "@/components/mobile-builder/MobileBlockSettings";
+import { AppIdentitySettings } from "@/components/mobile-builder/AppIdentitySettings";
+import { SortableBlockItem } from "@/components/mobile-builder/SortableBlockItem";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
-
-// Sortable block item component
-function SortableBlockItem({
-  block,
-  index,
-  isSelected,
-  onClick,
-  onDelete,
-}: {
-  block: MobileBlock;
-  index: number;
-  isSelected: boolean;
-  onClick: () => void;
-  onDelete: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const blockMeta = MOBILE_BLOCK_LIBRARY.find((b) => b.type === block.type);
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center gap-2 rounded-md border bg-white p-3 transition-all",
-        isDragging ? "opacity-50 shadow-lg" : "",
-        isSelected ? "border-slate-500 ring-2 ring-slate-200" : "border-gray-200"
-      )}
-    >
-      {/* Block number */}
-      <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-xs font-medium text-slate-600">
-        {index + 1}
-      </span>
-
-      <button
-        type="button"
-        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex flex-1 items-center gap-2 text-left"
-      >
-        <span className="text-sm font-medium text-gray-700">
-          {blockMeta?.name || block.type}
-        </span>
-      </button>
-
-      <button
-        type="button"
-        onClick={onClick}
-        className="p-1 text-gray-400 hover:text-gray-600"
-        title="Settings"
-      >
-        <Settings className="h-4 w-4" />
-      </button>
-
-      <button
-        type="button"
-        onClick={onDelete}
-        className="p-1 text-gray-400 hover:text-red-500"
-        title="Delete"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
-// App Identity Settings Component
-function AppIdentitySettings({
-  appIdentity,
-  onChange,
-}: {
-  appIdentity: MobileAppIdentity;
-  onChange: (updates: Partial<MobileAppIdentity>) => void;
-}) {
-  const [logoInputMode, setLogoInputMode] = useState<"upload" | "url">("upload");
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch("/api/b2b/editor/upload-image", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Upload failed");
-      }
-
-      const data = await response.json();
-      onChange({ logo_url: data.url });
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
-  return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-      <div className="flex items-center gap-2">
-        <Smartphone className="h-4 w-4 text-slate-600" />
-        <h3 className="text-sm font-semibold text-gray-700">App Identity</h3>
-      </div>
-
-      {/* App Name */}
-      <div className="space-y-1.5">
-        <Label className="text-xs">App Name</Label>
-        <Input
-          value={appIdentity.app_name}
-          onChange={(e) => onChange({ app_name: e.target.value })}
-          placeholder="My App"
-          className="h-8 text-sm"
-        />
-      </div>
-
-      {/* Logo */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Logo</Label>
-          <div className="flex rounded-md border bg-white">
-            <button
-              type="button"
-              onClick={() => setLogoInputMode("upload")}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 text-xs transition",
-                logoInputMode === "upload"
-                  ? "bg-slate-100 text-slate-700"
-                  : "text-gray-500 hover:text-gray-700"
-              )}
-            >
-              <Upload className="h-3 w-3" />
-              Upload
-            </button>
-            <button
-              type="button"
-              onClick={() => setLogoInputMode("url")}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 text-xs transition",
-                logoInputMode === "url"
-                  ? "bg-slate-100 text-slate-700"
-                  : "text-gray-500 hover:text-gray-700"
-              )}
-            >
-              <LinkIcon className="h-3 w-3" />
-              URL
-            </button>
-          </div>
-        </div>
-
-        {logoInputMode === "upload" ? (
-          <div className="space-y-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="w-full gap-2"
-            >
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ImageIcon className="h-4 w-4" />
-              )}
-              {isUploading ? "Uploading..." : "Choose Image"}
-            </Button>
-            {uploadError && (
-              <p className="text-xs text-red-500">{uploadError}</p>
-            )}
-          </div>
-        ) : (
-          <Input
-            value={appIdentity.logo_url}
-            onChange={(e) => onChange({ logo_url: e.target.value })}
-            placeholder="https://example.com/logo.png"
-            className="h-8 text-sm"
-          />
-        )}
-
-        {/* Logo Preview */}
-        {appIdentity.logo_url && (
-          <div className="flex items-center gap-2 rounded border bg-white p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={appIdentity.logo_url}
-              alt="Logo preview"
-              className="h-10 w-auto object-contain"
-            />
-            <button
-              type="button"
-              onClick={() => onChange({ logo_url: "" })}
-              className="ml-auto text-gray-400 hover:text-red-500"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Logo Size */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Width (px)</Label>
-          <Input
-            type="number"
-            value={appIdentity.logo_width}
-            onChange={(e) => onChange({ logo_width: parseInt(e.target.value) || 64 })}
-            min={20}
-            max={200}
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Height (px)</Label>
-          <Input
-            type="number"
-            value={appIdentity.logo_height || ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              onChange({ logo_height: val ? parseInt(val) : undefined });
-            }}
-            placeholder="Auto"
-            min={20}
-            max={100}
-            className="h-8 text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Primary Color */}
-      <div className="space-y-1.5">
-        <Label className="text-xs">Primary Color (Buttons)</Label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={appIdentity.primary_color || "#ec4899"}
-            onChange={(e) => onChange({ primary_color: e.target.value })}
-            className="h-8 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
-          />
-          <Input
-            value={appIdentity.primary_color || "#ec4899"}
-            onChange={(e) => onChange({ primary_color: e.target.value })}
-            placeholder="#ec4899"
-            className="h-8 text-sm font-mono flex-1"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface VersionInfo {
   version: number;
@@ -366,6 +73,13 @@ export default function MobileBuilderPage() {
   const [currentVersion, setCurrentVersion] = useState(1);
   const [versions, setVersions] = useState<VersionInfo[]>([]);
   const [showVersionDropdown, setShowVersionDropdown] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    variant: "danger" | "warning" | "info" | "success";
+    confirmText: string;
+    onConfirm: () => void;
+  } | null>(null);
   const versionDropdownRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
@@ -412,7 +126,7 @@ export default function MobileBuilderPage() {
       const data = await response.json();
       if (data.config) {
         setBlocks(data.config.blocks || []);
-        setAppIdentity(data.config.app_identity || DEFAULT_APP_IDENTITY);
+        setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
         setCurrentVersion(data.config.version || 1);
       }
     } catch (err) {
@@ -454,7 +168,7 @@ export default function MobileBuilderPage() {
 
       const data = await response.json();
       setBlocks(data.config.blocks || []);
-      setAppIdentity(data.config.app_identity || DEFAULT_APP_IDENTITY);
+      setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
@@ -467,19 +181,11 @@ export default function MobileBuilderPage() {
     }
   };
 
-  // Switch to a different version
-  const handleSwitchVersion = async (version: number) => {
-    if (isDirty) {
-      const confirmed = window.confirm(
-        "You have unsaved changes. Switch version anyway? Changes will be lost."
-      );
-      if (!confirmed) return;
-    }
-
+  // Actually perform the version switch
+  const performSwitchVersion = async (version: number) => {
     setShowVersionDropdown(false);
     setIsLoading(true);
     try {
-      // Set this version as current
       const response = await fetch("/api/b2b/mobile-builder/config/versions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -493,7 +199,7 @@ export default function MobileBuilderPage() {
 
       const data = await response.json();
       setBlocks(data.config.blocks || []);
-      setAppIdentity(data.config.app_identity || DEFAULT_APP_IDENTITY);
+      setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
@@ -504,6 +210,24 @@ export default function MobileBuilderPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Switch to a different version (with confirmation if dirty)
+  const handleSwitchVersion = (version: number) => {
+    if (isDirty) {
+      setConfirmDialog({
+        title: "Unsaved Changes",
+        message: "You have unsaved changes. Switch version anyway? Your changes will be lost.",
+        variant: "warning",
+        confirmText: "Switch Anyway",
+        onConfirm: () => {
+          setConfirmDialog(null);
+          performSwitchVersion(version);
+        },
+      });
+      return;
+    }
+    performSwitchVersion(version);
   };
 
   // Update app identity
@@ -583,8 +307,8 @@ export default function MobileBuilderPage() {
     }
   };
 
-  // Publish
-  const handlePublish = async () => {
+  // Actually perform publish
+  const performPublish = async () => {
     setIsPublishing(true);
     setError(null);
     try {
@@ -598,7 +322,8 @@ export default function MobileBuilderPage() {
       }
 
       const data = await response.json();
-      setInfo(`Published version ${data.config.version}`);
+      await loadVersions();
+      setInfo(`Version ${data.config.version} is now live`);
     } catch (err) {
       console.error("Error publishing:", err);
       setError(err instanceof Error ? err.message : "Failed to publish");
@@ -607,7 +332,65 @@ export default function MobileBuilderPage() {
     }
   };
 
+  // Publish (with confirmation)
+  const handlePublish = () => {
+    setConfirmDialog({
+      title: "Publish Version",
+      message: `Publish version ${currentVersion}? This will make it live for all mobile app users.`,
+      variant: "success",
+      confirmText: "Publish",
+      onConfirm: () => {
+        setConfirmDialog(null);
+        performPublish();
+      },
+    });
+  };
+
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
+  const currentVersionInfo = versions.find((v) => v.version === currentVersion);
+  const isLiveVersion = currentVersionInfo?.is_current_published ?? false;
+
+  // Hot Fix: save + publish in one step (for editing the live version)
+  const handleHotfix = async () => {
+    setIsSaving(true);
+    setError(null);
+    setInfo(null);
+    try {
+      // Step 1: Save
+      const saveRes = await fetch("/api/b2b/mobile-builder/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocks, app_identity: appIdentity }),
+      });
+      if (!saveRes.ok) {
+        const data = await saveRes.json();
+        throw new Error(data.error || "Failed to save");
+      }
+      const saveData = await saveRes.json();
+      setCurrentVersion(saveData.config.version);
+      setIsDirty(false);
+
+      // Step 2: Publish
+      setIsSaving(false);
+      setIsPublishing(true);
+      const pubRes = await fetch("/api/b2b/mobile-builder/config/publish", {
+        method: "POST",
+      });
+      if (!pubRes.ok) {
+        const data = await pubRes.json();
+        throw new Error(data.error || "Failed to publish");
+      }
+      const pubData = await pubRes.json();
+      await loadVersions();
+      setInfo(`Hot fix applied to version ${pubData.config.version}! Changes are live.`);
+    } catch (err) {
+      console.error("Error applying hotfix:", err);
+      setError(err instanceof Error ? err.message : "Failed to apply hotfix");
+    } finally {
+      setIsSaving(false);
+      setIsPublishing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -711,33 +494,74 @@ export default function MobileBuilderPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleSave}
-            disabled={isSaving || !isDirty}
-            className="gap-2"
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Save Draft
-          </Button>
+        <div className="flex items-center gap-3">
+          {/* Status indicators */}
+          {isDirty && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              Unsaved changes
+            </span>
+          )}
+          {!isDirty && isLiveVersion && (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Live
+            </span>
+          )}
 
-          <Button
-            onClick={handlePublish}
-            disabled={isPublishing || isDirty}
-            className="gap-2 bg-slate-600 hover:bg-slate-700"
-          >
-            {isPublishing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
-            Publish
-          </Button>
+          {isLiveVersion ? (
+            /* Live version: Hot Fix button (save + publish) */
+            <Button
+              onClick={handleHotfix}
+              disabled={isSaving || isPublishing || !isDirty}
+              className="gap-2 bg-gradient-to-tr from-[#ff5722] to-[rgba(255,87,34,0.7)] text-white shadow-[0_0_10px_1px_rgba(255,87,34,0.4)] hover:from-[#f4511e] hover:to-[rgba(244,81,30,0.7)] disabled:opacity-50"
+              title="Update published version directly"
+            >
+              {isSaving || isPublishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Hot Fix
+            </Button>
+          ) : (
+            /* Draft version: Save Draft + Publish as separate actions */
+            <>
+              <Button
+                variant="outline"
+                onClick={handleSave}
+                disabled={isSaving || !isDirty}
+                className="gap-2"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save Draft
+              </Button>
+
+              <div className="relative group">
+                <Button
+                  onClick={handlePublish}
+                  disabled={isPublishing || isDirty}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50"
+                >
+                  {isPublishing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  Publish
+                </Button>
+                {isDirty && (
+                  <div className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 shadow-lg transition group-hover:opacity-100">
+                    Save your draft first
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -748,8 +572,22 @@ export default function MobileBuilderPage() {
         </div>
       )}
       {info && (
-        <div className="border-l-4 border-slate-500 bg-slate-50 px-6 py-3 text-sm text-slate-600">
+        <div
+          className={cn(
+            "border-l-4 px-6 py-3 text-sm",
+            info.includes("live")
+              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+              : "border-slate-500 bg-slate-50 text-slate-600"
+          )}
+        >
           {info}
+        </div>
+      )}
+      {isLiveVersion && !isDirty && !info && !error && (
+        <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-sm text-[#1976d2]">
+          <strong>Viewing published version {currentVersion}.</strong> Make changes and click{" "}
+          <strong>Hot Fix</strong> to update directly, or create a <strong>New Version</strong> from
+          the version menu.
         </div>
       )}
 
@@ -759,7 +597,7 @@ export default function MobileBuilderPage() {
         <aside
           className={cn(
             "flex flex-col border-r bg-white transition-all duration-300",
-            sidebarCollapsed ? "w-0 overflow-hidden" : "w-64"
+            sidebarCollapsed ? "w-0 overflow-hidden" : "w-72"
           )}
         >
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -835,13 +673,13 @@ export default function MobileBuilderPage() {
         {/* Right side - Preview + Settings */}
         <section className="flex flex-1 overflow-hidden">
           {/* Phone Preview */}
-          <div className="flex flex-1 items-start justify-center bg-gray-100 px-8 pt-6 pb-8 overflow-y-auto">
+          <div className="flex flex-1 items-start justify-center bg-gray-100 px-4 pt-6 pb-8 overflow-y-auto">
             <MobilePreview blocks={blocks} appIdentity={appIdentity} />
           </div>
 
           {/* Settings Panel */}
           {selectedBlock && (
-            <aside className="w-80 border-l bg-white overflow-y-auto">
+            <aside className="w-96 border-l bg-white overflow-y-auto">
               <MobileBlockSettings
                 block={selectedBlock}
                 onUpdate={(updates) => handleUpdateBlock(selectedBlock.id, updates)}
@@ -851,6 +689,17 @@ export default function MobileBuilderPage() {
           )}
         </section>
       </main>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmDialog !== null}
+        title={confirmDialog?.title ?? ""}
+        message={confirmDialog?.message ?? ""}
+        variant={confirmDialog?.variant ?? "warning"}
+        confirmText={confirmDialog?.confirmText ?? "Confirm"}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

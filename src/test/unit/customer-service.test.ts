@@ -17,11 +17,13 @@ import {
 // Mock connection - must be before imports
 vi.mock("@/lib/db/connection", async () => {
   const { CustomerModel } = await import("@/lib/db/models/customer");
+  const { CustomerTagModel } = await import("@/lib/db/models/customer-tag");
   const mongoose = await import("mongoose");
   return {
     connectToDatabase: vi.fn(() => Promise.resolve()),
     connectWithModels: vi.fn(() => Promise.resolve({
       Customer: CustomerModel,
+      CustomerTag: CustomerTagModel,
     })),
     getPooledConnection: vi.fn(() => Promise.resolve(mongoose.default.connection)),
   };
@@ -34,6 +36,7 @@ import {
   findCustomerById,
 } from "@/lib/services/customer.service";
 import { CustomerModel, ICustomer } from "@/lib/db/models/customer";
+import { CustomerTagModel } from "@/lib/db/models/customer-tag";
 
 // ============================================
 // TEST SETUP
@@ -1237,6 +1240,303 @@ describe("unit: Customer Service", () => {
 
       // Assert
       expect(result).toBeNull();
+    });
+  });
+
+  // ============================================
+  // Tag Upsert in Customer Import Flow
+  // ============================================
+
+  describe("Tag upsert in findOrCreateCustomer", () => {
+    const TAG_SCONTO_45 = {
+      prefix: "categoria-di-sconto",
+      code: "sconto-45",
+      full_tag: "categoria-di-sconto:sconto-45",
+      description: "Sconto base 45%",
+      is_active: true,
+    };
+
+    const TAG_SCONTO_50 = {
+      prefix: "categoria-di-sconto",
+      code: "sconto-50",
+      full_tag: "categoria-di-sconto:sconto-50",
+      description: "Sconto base 50%",
+      is_active: true,
+    };
+
+    const TAG_IDRAULICO = {
+      prefix: "categoria-clienti",
+      code: "idraulico",
+      full_tag: "categoria-clienti:idraulico",
+      description: "Idraulico",
+      is_active: true,
+    };
+
+    beforeEach(async () => {
+      // Seed tag definitions
+      await CustomerTagModel.create([TAG_SCONTO_45, TAG_SCONTO_50, TAG_IDRAULICO]);
+    });
+
+    it("should apply tags when creating a new customer", async () => {
+      const result = await findOrCreateCustomer(TEST_TENANT, {
+        customer: {
+          email: "tagged-new@example.com",
+          customer_type: "business",
+          company_name: "Tagged New Co",
+          tags: ["categoria-di-sconto:sconto-45", "categoria-clienti:idraulico"],
+          addresses: [{
+            recipient_name: "HQ",
+            street_address: "Via Tag 1",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+          }],
+        },
+      });
+
+      expect(result.isNew).toBe(true);
+      expect(result.customer.tags).toHaveLength(2);
+      expect(result.customer.tags.map((t: { full_tag: string }) => t.full_tag)).toContain("categoria-di-sconto:sconto-45");
+      expect(result.customer.tags.map((t: { full_tag: string }) => t.full_tag)).toContain("categoria-clienti:idraulico");
+    });
+
+    it("should apply tags when finding existing customer by customer_id", async () => {
+      // Create customer without tags
+      await CustomerModel.create({
+        customer_id: "tag-existing-1",
+        tenant_id: TEST_TENANT,
+        customer_type: "business",
+        email: "tag-existing@example.com",
+        addresses: [],
+      });
+
+      const result = await findOrCreateCustomer(TEST_TENANT, {
+        customer_id: "tag-existing-1",
+        customer: {
+          tags: ["categoria-di-sconto:sconto-50"],
+        },
+      });
+
+      expect(result.isNew).toBe(false);
+      expect(result.customer.tags).toHaveLength(1);
+      expect(result.customer.tags[0].full_tag).toBe("categoria-di-sconto:sconto-50");
+    });
+
+    it("should apply tags when finding existing customer by external_code", async () => {
+      await CustomerModel.create({
+        customer_id: "tag-ext-1",
+        tenant_id: TEST_TENANT,
+        customer_type: "business",
+        email: "tag-ext@example.com",
+        external_code: "ERP-TAG-001",
+        addresses: [],
+      });
+
+      const result = await findOrCreateCustomer(TEST_TENANT, {
+        customer_code: "ERP-TAG-001",
+        customer: {
+          tags: ["categoria-clienti:idraulico"],
+        },
+      });
+
+      expect(result.isNew).toBe(false);
+      expect(result.customer.tags).toHaveLength(1);
+      expect(result.customer.tags[0].full_tag).toBe("categoria-clienti:idraulico");
+    });
+
+    it("should skip unknown tags silently", async () => {
+      const result = await findOrCreateCustomer(TEST_TENANT, {
+        customer: {
+          email: "skip-unknown@example.com",
+          customer_type: "business",
+          tags: ["categoria-di-sconto:sconto-45", "nonexistent:tag"],
+          addresses: [{
+            recipient_name: "Test",
+            street_address: "Via Test",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+          }],
+        },
+      });
+
+      expect(result.customer.tags).toHaveLength(1);
+      expect(result.customer.tags[0].full_tag).toBe("categoria-di-sconto:sconto-45");
+    });
+
+    it("should handle empty tags array gracefully", async () => {
+      const result = await findOrCreateCustomer(TEST_TENANT, {
+        customer: {
+          email: "no-tags@example.com",
+          customer_type: "business",
+          tags: [],
+          addresses: [{
+            recipient_name: "Test",
+            street_address: "Via Test",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+          }],
+        },
+      });
+
+      expect(result.isNew).toBe(true);
+      expect(result.customer.tags || []).toHaveLength(0);
+    });
+
+    it("should apply address-level tag overrides on new customer", async () => {
+      const result = await findOrCreateCustomer(TEST_TENANT, {
+        customer: {
+          email: "addr-tags@example.com",
+          customer_type: "business",
+          tags: ["categoria-di-sconto:sconto-45"],
+          addresses: [
+            {
+              recipient_name: "HQ",
+              street_address: "Via HQ 1",
+              city: "Milano",
+              province: "MI",
+              postal_code: "20100",
+            },
+            {
+              recipient_name: "Branch",
+              street_address: "Via Branch 2",
+              city: "Roma",
+              province: "RM",
+              postal_code: "00100",
+              tag_overrides: ["categoria-di-sconto:sconto-50"],
+            },
+          ],
+        },
+      });
+
+      expect(result.isNew).toBe(true);
+      // Customer should have sconto-45
+      expect(result.customer.tags).toHaveLength(1);
+      expect(result.customer.tags[0].full_tag).toBe("categoria-di-sconto:sconto-45");
+
+      // Second address should have sconto-50 override
+      const branchAddr = result.customer.addresses.find(
+        (a: { recipient_name: string }) => a.recipient_name === "Branch",
+      );
+      expect(branchAddr).toBeDefined();
+      expect(branchAddr!.tag_overrides).toHaveLength(1);
+      expect(branchAddr!.tag_overrides[0].full_tag).toBe("categoria-di-sconto:sconto-50");
+    });
+
+    it("should replace existing tag with same prefix on re-import", async () => {
+      // Create customer with sconto-45
+      const first = await findOrCreateCustomer(TEST_TENANT, {
+        customer: {
+          external_code: "ERP-REIMPORT-1",
+          email: "reimport@example.com",
+          customer_type: "business",
+          tags: ["categoria-di-sconto:sconto-45"],
+          addresses: [{
+            recipient_name: "Test",
+            street_address: "Via Test",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+          }],
+        },
+      });
+
+      expect(first.customer.tags[0].full_tag).toBe("categoria-di-sconto:sconto-45");
+
+      // Re-import same customer with sconto-50
+      const second = await findOrCreateCustomer(TEST_TENANT, {
+        customer: {
+          external_code: "ERP-REIMPORT-1",
+          tags: ["categoria-di-sconto:sconto-50"],
+        },
+      });
+
+      expect(second.isNew).toBe(false);
+      // Should have replaced sconto-45 with sconto-50 (same prefix)
+      const scontoTags = second.customer.tags.filter(
+        (t: { prefix: string }) => t.prefix === "categoria-di-sconto",
+      );
+      expect(scontoTags).toHaveLength(1);
+      expect(scontoTags[0].full_tag).toBe("categoria-di-sconto:sconto-50");
+    });
+  });
+
+  // ============================================
+  // Tag overrides in findOrCreateAddress
+  // ============================================
+
+  describe("Tag overrides in findOrCreateAddress", () => {
+    const TAG_SCONTO_50 = {
+      prefix: "categoria-di-sconto",
+      code: "sconto-50",
+      full_tag: "categoria-di-sconto:sconto-50",
+      description: "Sconto base 50%",
+      is_active: true,
+    };
+
+    beforeEach(async () => {
+      await CustomerTagModel.create([TAG_SCONTO_50]);
+    });
+
+    it("should apply tag overrides when creating a new address with tenant_id", async () => {
+      const customer = await CustomerModel.create({
+        customer_id: "addr-tag-customer",
+        tenant_id: TEST_TENANT,
+        customer_type: "business",
+        email: "addr-tag@example.com",
+        addresses: [],
+      });
+
+      await findOrCreateAddress(
+        customer as ICustomer,
+        {
+          address: {
+            recipient_name: "New Warehouse",
+            street_address: "Via Magazzino 1",
+            city: "Torino",
+            province: "TO",
+            postal_code: "10100",
+            tag_overrides: ["categoria-di-sconto:sconto-50"],
+          },
+        },
+        TEST_TENANT,
+      );
+
+      // Verify in database
+      const updated = await CustomerModel.findOne({ customer_id: "addr-tag-customer" });
+      const addr = updated?.addresses[0];
+      expect(addr).toBeDefined();
+      expect(addr?.tag_overrides).toHaveLength(1);
+      expect(addr?.tag_overrides[0].full_tag).toBe("categoria-di-sconto:sconto-50");
+    });
+
+    it("should not apply tag overrides when tenant_id is not provided", async () => {
+      const customer = await CustomerModel.create({
+        customer_id: "no-tenant-addr",
+        tenant_id: TEST_TENANT,
+        customer_type: "business",
+        email: "no-tenant@example.com",
+        addresses: [],
+      });
+
+      const result = await findOrCreateAddress(
+        customer as ICustomer,
+        {
+          address: {
+            recipient_name: "No Tenant Addr",
+            street_address: "Via No Tenant",
+            city: "Milano",
+            province: "MI",
+            postal_code: "20100",
+            tag_overrides: ["categoria-di-sconto:sconto-50"],
+          },
+        },
+        // No tenant_id — backward compatible
+      );
+
+      // Address created but overrides not applied (no tenant context)
+      expect(result.tag_overrides).toHaveLength(0);
     });
   });
 });

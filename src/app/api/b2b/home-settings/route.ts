@@ -33,7 +33,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { branding, defaultCardVariant, cardStyle, cdn_credentials, smtp_settings, company_info, footerHtml, footerHtmlDraft, headerConfig, headerConfigDraft, meta_tags, lastModifiedBy } = body;
+    const { branding, defaultCardVariant, cardStyle, cdn_credentials, smtp_settings, email_transport, graph_settings, company_info, footerHtml, footerHtmlDraft, headerConfig, headerConfigDraft, meta_tags, lastModifiedBy } = body;
 
     const settings = await upsertHomeSettings({
       branding,
@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
       cardStyle,
       cdn_credentials,
       smtp_settings,
+      email_transport,
+      graph_settings,
       company_info,
       footerHtml,
       footerHtmlDraft,

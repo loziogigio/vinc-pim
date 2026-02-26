@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   Users,
@@ -12,6 +12,7 @@ import {
   TrendingUp,
   UserPlus,
 } from "lucide-react";
+import { CreateCustomerModal } from "@/components/documents/CreateCustomerModal";
 import type { Customer } from "@/lib/types/customer";
 
 interface CustomerStats {
@@ -25,10 +26,12 @@ interface CustomerStats {
 
 export default function CustomersOverviewPage() {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Extract tenant from URL (e.g., /dfl-eventi-it/b2b/store/customers -> dfl-eventi-it)
   const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b/);
   const tenantPrefix = tenantMatch ? `/${tenantMatch[1]}` : "";
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [stats, setStats] = useState<CustomerStats>({
     total: 0,
     business: 0,
@@ -116,13 +119,13 @@ export default function CustomersOverviewPage() {
             Manage your customer profiles and addresses
           </p>
         </div>
-        <Link
-          href={`${tenantPrefix}/b2b/store/customers/list?new=1`}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#00796b]"
         >
           <UserPlus className="h-4 w-4" />
-          Add Customer
-        </Link>
+          New Customer
+        </button>
       </div>
 
       {/* Stats Grid */}
@@ -227,6 +230,17 @@ export default function CustomersOverviewPage() {
           )}
         </div>
       </div>
+
+      {/* Create Customer Modal */}
+      {showCreateModal && (
+        <CreateCustomerModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(customer) => {
+            setShowCreateModal(false);
+            router.push(`${tenantPrefix}/b2b/store/customers/${customer.customer_id}`);
+          }}
+        />
+      )}
     </div>
   );
 }

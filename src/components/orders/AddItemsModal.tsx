@@ -30,10 +30,12 @@ type Promotion = {
   start_date?: string;
   end_date?: string;
   min_quantity?: number;
+  tag_filter?: string[];
 };
 
 type PackagingOption = {
   code: string;
+  pkg_id?: string;
   label?: Record<string, string>;
   qty: number;
   is_default?: boolean;
@@ -45,6 +47,7 @@ type PackagingOption = {
     list_unit?: number;
     retail_unit?: number;
     sale_unit?: number;
+    tag_filter?: string[];
   };
   promotions?: Promotion[];
 };
@@ -105,9 +108,9 @@ type ExpandedRow = {
 
 // Key for selectedItems map: entityCode:packagingCode:promoIdentifier
 // promoIdentifier should be promo_code if available, or a fallback like "promo-{index}"
-const getItemKey = (entityCode: string, packagingCode?: string, promoIdentifier?: string): string => {
+const getItemKey = (entityCode: string, pkgId?: string, promoIdentifier?: string): string => {
   let key = entityCode;
-  if (packagingCode) key += `:${packagingCode}`;
+  if (pkgId) key += `:${pkgId}`;
   if (promoIdentifier) key += `:${promoIdentifier}`;
   return key;
 };
@@ -132,6 +135,8 @@ interface AddItemsModalProps {
   /** Items already in cart - allows updating quantities */
   existingCartItems?: CartItemInfo[];
   onItemsAdded?: () => void;
+  /** Customer effective tags (customer defaults + address overrides) for tag-based pricing */
+  effectiveTags?: string[];
 }
 
 export function AddItemsModal({
@@ -141,6 +146,7 @@ export function AddItemsModal({
   excludeEntityCodes = [],
   existingCartItems = [],
   onItemsAdded,
+  effectiveTags = [],
 }: AddItemsModalProps) {
   const pathname = usePathname();
   const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b/);
@@ -192,7 +198,7 @@ export function AddItemsModal({
       setAllExpanded(false);
     } else {
       // Expand all products with multiple packaging rows
-      const productsWithMultipleRows = products
+      const productsWithMultipleRows = resolvedProducts
         .filter((p) => expandPackagingRows(p).length > 1)
         .map((p) => p.entity_code);
       setExpandedProducts(new Set(productsWithMultipleRows));
@@ -228,6 +234,33 @@ export function AddItemsModal({
     const key = `${entityCode}:${packagingCode || ''}:${promoCode || ''}`;
     return cartItemsMap.get(key);
   };
+
+  // Filter packaging options and promotions by customer effective tags
+  const resolvedProducts = useMemo(() => {
+    if (!effectiveTags.length) return products;
+    const tagSet = new Set(effectiveTags);
+
+    return products.map((product) => {
+      if (!product.packaging_options?.length) return product;
+
+      const resolvedOptions: PackagingOption[] = [];
+      for (const pkg of product.packaging_options) {
+        const tagFilter = pkg.pricing?.tag_filter;
+        if (tagFilter?.length) {
+          const matches = tagFilter.some((tag) => tagSet.has(tag));
+          if (!matches) continue; // Skip non-matching tagged option
+        }
+        // Filter promotions by tags
+        const filteredPromos = pkg.promotions?.filter(
+          (promo) =>
+            !promo.tag_filter?.length ||
+            promo.tag_filter.some((t) => tagSet.has(t))
+        );
+        resolvedOptions.push({ ...pkg, promotions: filteredPromos });
+      }
+      return { ...product, packaging_options: resolvedOptions };
+    });
+  }, [products, effectiveTags]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -542,7 +575,7 @@ export function AddItemsModal({
   // Add or remove item with specific packaging and optional promo
   // promoIdentifier should be passed from the render (promo_code if available, or fallback like "promo-{index}")
   const toggleItem = (product: Product, pkg?: PackagingOption, promo?: Promotion, promoIdentifier?: string) => {
-    const key = getItemKey(product.entity_code, pkg?.code, promoIdentifier);
+    const key = getItemKey(product.entity_code, pkg?.pkg_id || pkg?.code, promoIdentifier);
     // Use min_order_quantity if set, otherwise use pack size as minimum (can't order partial boxes)
     const minQty = pkg?.min_order_quantity || pkg?.qty || 1;
     setSelectedItems((prev) => {
@@ -974,7 +1007,7 @@ export function AddItemsModal({
             {/* Right: Toggle All + Page size + Pagination */}
             <div className="flex items-center gap-3">
               {/* Toggle All Button */}
-              {products.some((p) => expandPackagingRows(p).length > 1) && (
+              {resolvedProducts.some((p) => expandPackagingRows(p).length > 1) && (
                 <button
                   onClick={toggleAllExpanded}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded border border-border hover:bg-muted transition"
@@ -1063,7 +1096,7 @@ export function AddItemsModal({
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {products.map((product) => {
+              {resolvedProducts.map((product) => {
                 const brandName = getBrandName(product);
                 const hasPackaging = product.packaging_options && product.packaging_options.length > 0;
 
@@ -1132,7 +1165,7 @@ export function AddItemsModal({
                       // Always include rowIndex in promo identifier to guarantee uniqueness
                       // (handles cases with duplicate promo_codes or missing promo_codes)
                       const promoIdentifier = promo ? `${promo.promo_code || 'promo'}-r${rowIndex}` : undefined;
-                      const key = getItemKey(product.entity_code, pkg?.code, promoIdentifier);
+                      const key = getItemKey(product.entity_code, pkg?.pkg_id || pkg?.code, promoIdentifier);
 
                       // Check if this specific packaging+promo is in cart
                       // Regular rows match cart items without promo_code

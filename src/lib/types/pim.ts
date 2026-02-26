@@ -82,8 +82,22 @@ export type ProductMeta = {
   value: string;
 };
 
+/**
+ * Physical packaging information for a product.
+ * Source of truth for default/smallest designation — synced to packaging_options flags.
+ */
+export type PackagingInfo = {
+  packaging_id: string;              // Unique identifier for this packaging record
+  code: string;                      // Short packaging code (e.g., "MV", "CF", "PZ")
+  description: string;               // Human-readable description
+  qty: number;                       // Quantity (supports decimals, e.g., 0.75)
+  uom: string;                       // Unit of measure (e.g., "pz", "kg")
+  is_default?: boolean;              // This packaging is the default selling unit
+  is_smallest?: boolean;             // This packaging is the minimum sellable quantity
+};
+
 export type PackagingOption = {
-  id?: string;                    // Optional unique ID
+  pkg_id?: string;                // Unique packaging identifier (incremental: "1", "2", "3"...)
   code: string;                   // Packaging code (e.g., "PZ", "BOX", "CF", "PALLET")
   label: MultilingualText;        // Multilingual label
   qty: number;                    // Quantity per packaging unit
@@ -134,6 +148,10 @@ export type Promotion = {
   promo_price?: number;           // Final price when this promotion applies
   discount_chain?: DiscountStep[];  // Array of discount steps with type, value, source, and order
   text_discount?: string;         // Computed: cumulative discount chain (e.g., "-50% -20%")
+  /** Customer tag filter — empty/undefined = applies to all; otherwise requires matching customer tag */
+  tag_filter?: string[];          // e.g., ["categoria-di-sconto:sconto-45"]
+  /** Target packaging options — empty/undefined = all sellable; otherwise specific pkg_ids */
+  target_pkg_ids?: string[];
 };
 
 // ============================================
@@ -181,6 +199,8 @@ export type PackagingPricing = {
   sale_discount_pct?: number;     // Percentage discount from list to get sale (e.g., 10 for -10%)
   sale_discount_amt?: number;     // Fixed amount discount from list to get sale (e.g., 5 for -€5)
   text_discount?: string;         // Computed: base discount chain (e.g., "-50%" or "-50% -10%")
+  /** Customer tag filter — empty/undefined = applies to all; otherwise requires matching customer tag */
+  tag_filter?: string[];          // e.g., ["categoria-di-sconto:sconto-45"]
 };
 
 // ============================================
@@ -366,6 +386,9 @@ export type PIMProductData = {
   analytics: ProductAnalytics;
   manual_edit: ManualEdit;
 
+  // Sales Channels
+  channels?: string[];
+
   // Product Data
   product: ProductData;
 
@@ -389,6 +412,7 @@ export type PIMProductListItem = {
   status: ProductStatus;
   critical_issues: string[];
   analytics: ProductAnalytics;
+  channels?: string[];
   // Variant/Parent relationships
   parent_sku?: string;
   parent_entity_code?: string;

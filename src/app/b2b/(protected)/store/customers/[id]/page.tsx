@@ -6,6 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import type { Customer, Address } from "@/lib/types/customer";
 import type { Order } from "@/lib/types/order";
+import { CustomerTagsCard } from "@/components/orders/CustomerTagsCard";
+import { AddressTagOverrides } from "@/components/orders/AddressTagOverrides";
+import { AddAddressModal } from "@/components/orders/AddAddressModal";
 import {
   ArrowLeft,
   Building2,
@@ -87,6 +90,9 @@ export default function CustomerDetailPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [requiresDelivery, setRequiresDelivery] = useState(true);
 
@@ -119,6 +125,22 @@ export default function CustomerDetailPage({
       setError("Failed to load customer");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function deleteAddress(addressId: string) {
+    setDeletingAddressId(addressId);
+    try {
+      const res = await fetch(`/api/b2b/customers/${id}/addresses/${addressId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchCustomer();
+      }
+    } catch (err) {
+      console.error("Error deleting address:", err);
+    } finally {
+      setDeletingAddressId(null);
     }
   }
 
@@ -738,6 +760,9 @@ export default function CustomerDetailPage({
         </div>
       </div>
 
+      {/* Customer Tags */}
+      <CustomerTagsCard customerId={id} />
+
       {/* Addresses */}
       <div className="rounded-lg bg-card shadow-sm">
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -745,7 +770,10 @@ export default function CustomerDetailPage({
             <MapPin className="h-4 w-4" />
             Addresses ({customer.addresses?.length || 0})
           </h2>
-          <button className="flex items-center gap-1 text-sm text-primary hover:underline">
+          <button
+            onClick={() => setShowAddAddress(true)}
+            className="flex items-center gap-1 text-sm text-primary hover:underline"
+          >
             <Plus className="h-4 w-4" />
             Add Address
           </button>
@@ -804,13 +832,27 @@ export default function CustomerDetailPage({
                           Code: {address.external_code}
                         </p>
                       )}
+                      {/* Address Tag Overrides */}
+                      <AddressTagOverrides
+                        customerId={id}
+                        addressId={address.address_id}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition">
+                    <button
+                      onClick={() => setEditingAddress(address)}
+                      className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition"
+                      title="Modifica indirizzo"
+                    >
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 transition">
+                    <button
+                      onClick={() => deleteAddress(address.address_id)}
+                      disabled={deletingAddressId === address.address_id}
+                      className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                      title="Elimina indirizzo"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -1170,6 +1212,24 @@ export default function CustomerDetailPage({
           </div>
         )}
       </div>
+
+      {/* Add/Edit Address Modal */}
+      {(showAddAddress || editingAddress) && customer && (
+        <AddAddressModal
+          customerId={customer.customer_id}
+          customerName={customer.company_name || [customer.first_name, customer.last_name].filter(Boolean).join(" ")}
+          address={editingAddress || undefined}
+          onClose={() => {
+            setShowAddAddress(false);
+            setEditingAddress(null);
+          }}
+          onCreated={() => {
+            setShowAddAddress(false);
+            setEditingAddress(null);
+            fetchCustomer();
+          }}
+        />
+      )}
     </div>
   );
 }

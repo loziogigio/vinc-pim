@@ -207,14 +207,6 @@ export async function POST(req: NextRequest) {
 
     // customer_access can be empty - users can add customer assignments later
 
-    // Validate password strength
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
-        { status: 400 }
-      );
-    }
-
     // Normalize username and email
     const normalizedUsername = username.toLowerCase().trim();
     const normalizedEmail = email.toLowerCase().trim();

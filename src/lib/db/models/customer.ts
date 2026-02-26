@@ -1,10 +1,14 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { CustomerTagRefSchema } from "./customer-tag";
+import type { ICustomerTagRef } from "./customer-tag";
 
 /**
  * Customer Model
  *
  * B2B customer profiles with embedded addresses and Italian e-invoicing legal info.
  * Supports guest (one-time) and registered customers.
+ * Includes structured tags for segmentation (discount classes, categories, etc.)
+ * with per-address override support.
  *
  * Collection: customers (lowercase, pluralized per CLAUDE.md)
  */
@@ -48,6 +52,9 @@ export interface IAddress {
   phone?: string;
   delivery_notes?: string;
 
+  /** Override customer-level tags for this address (replaces tags with same prefix) */
+  tag_overrides: ICustomerTagRef[];
+
   // Timestamps
   created_at: Date;
   updated_at: Date;
@@ -66,6 +73,9 @@ export interface ICustomer extends Document {
   customer_type: "business" | "private" | "reseller";
   is_guest: boolean;
 
+  // Sales channel
+  channel: string;
+
   // Contact
   email: string;
   phone?: string;
@@ -75,6 +85,9 @@ export interface ICustomer extends Document {
 
   // Legal info
   legal_info?: ILegalInfo;
+
+  // Tags (default — apply unless overridden by delivery address)
+  tags: ICustomerTagRef[];
 
   // Addresses
   addresses: IAddress[];
@@ -128,6 +141,9 @@ const AddressSchema = new Schema<IAddress>(
     phone: { type: String },
     delivery_notes: { type: String },
 
+    // Tag overrides (replace customer-level tags with same prefix for this address)
+    tag_overrides: { type: [CustomerTagRefSchema], default: [] },
+
     // Timestamps
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
@@ -156,6 +172,9 @@ const CustomerSchema = new Schema<ICustomer>(
     },
     is_guest: { type: Boolean, default: false },
 
+    // Sales channel
+    channel: { type: String, default: "default", index: true },
+
     // Contact
     email: { type: String, required: true },
     phone: { type: String },
@@ -165,6 +184,9 @@ const CustomerSchema = new Schema<ICustomer>(
 
     // Legal info
     legal_info: { type: LegalInfoSchema },
+
+    // Tags (default — apply unless overridden by delivery address)
+    tags: { type: [CustomerTagRefSchema], default: [] },
 
     // Addresses
     addresses: { type: [AddressSchema], default: [] },
@@ -214,6 +236,12 @@ CustomerSchema.index(
   }
 );
 
+// Tag lookup (find customers by tag)
+CustomerSchema.index({ "tags.full_tag": 1 });
+
+// Address tag override lookup
+CustomerSchema.index({ "addresses.tag_overrides.full_tag": 1 });
+
 // Address external code lookup
 CustomerSchema.index(
   { "addresses.external_code": 1 },
@@ -229,6 +257,7 @@ CustomerSchema.index(
 // ============================================
 
 export { CustomerSchema };
+export type { ICustomerTagRef } from "./customer-tag";
 
 export const CustomerModel =
   mongoose.models.Customer ||

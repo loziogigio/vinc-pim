@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdn-upload.service";
+import { uploadToCdn } from "vinc-cdn";
+import { getCdnConfig, isCdnConfigured } from "@/lib/services/cdn-config";
 
 /**
  * POST /api/b2b/editor/upload-image
@@ -52,11 +53,17 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Get CDN config
+    const config = await getCdnConfig();
+    if (!config) {
+      return NextResponse.json({ error: "CDN configuration not found" }, { status: 500 });
+    }
+
     // Upload to CDN
-    const result = await uploadToCdn({
+    const result = await uploadToCdn(config, {
       buffer,
-      content_type: file.type,
-      file_name: file.name,
+      contentType: file.type,
+      fileName: file.name,
     });
 
     return NextResponse.json({

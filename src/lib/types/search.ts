@@ -63,6 +63,7 @@ export interface SearchFilters {
   // Flat filters
   tag_groups?: string | string[];
   tag_categories?: string | string[];
+  channels?: string | string[];
   promo_codes?: string | string[];
   stock_status?: string | string[];
   has_active_promo?: boolean;
@@ -143,6 +144,7 @@ export interface SolrProduct {
 
   // Pricing & inventory
   price?: number;
+  vat_rate?: number;
   quantity?: number;
   sold?: number;
   unit?: string;

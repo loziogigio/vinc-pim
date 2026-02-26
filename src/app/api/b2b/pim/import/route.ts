@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { uploadToCdn, isCdnConfigured } from "@/lib/services/cdn-upload.service";
+import { uploadToCdn } from "vinc-cdn";
+import { getCdnConfig, isCdnConfigured } from "@/lib/services/cdn-config";
 
 /**
  * POST /api/b2b/pim/import
@@ -69,11 +70,19 @@ export async function POST(req: NextRequest) {
     console.log(`📤 Uploading ${file.name} to CDN...`);
     let fileUrl: string;
 
+    const config = await getCdnConfig();
+    if (!config) {
+      return NextResponse.json(
+        { error: "CDN configuration not found" },
+        { status: 500 }
+      );
+    }
+
     try {
-      const uploadResult = await uploadToCdn({
+      const uploadResult = await uploadToCdn(config, {
         buffer,
-        content_type: file.type || "application/octet-stream",
-        file_name: `pim-imports/${file.name}`,
+        contentType: file.type || "application/octet-stream",
+        fileName: `pim-imports/${file.name}`,
       });
       fileUrl = uploadResult.url;
       console.log(`✅ File uploaded to CDN: ${fileUrl}`);

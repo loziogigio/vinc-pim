@@ -57,6 +57,9 @@ interface Tenant {
   require_login?: boolean;
   home_settings_customer_id?: string;
   builder_url?: string;
+  vetrina?: {
+    is_listed: boolean;
+  };
 }
 
 export default function TenantDetailPage() {
@@ -92,6 +95,7 @@ export default function TenantDetailPage() {
   const [requireLogin, setRequireLogin] = useState(false);
   const [homeSettingsCustomerId, setHomeSettingsCustomerId] = useState("");
   const [builderUrl, setBuilderUrl] = useState("");
+  const [vetrinaListed, setVetrinaListed] = useState(false);
   const [multiTenantLoading, setMultiTenantLoading] = useState(false);
 
   // Modal states
@@ -164,6 +168,7 @@ export default function TenantDetailPage() {
         require_login: requireLogin,
         home_settings_customer_id: homeSettingsCustomerId,
         builder_url: builderUrl,
+        vetrina: { is_listed: vetrinaListed },
       };
 
       // Only include api config if at least one field is filled
@@ -240,6 +245,7 @@ export default function TenantDetailPage() {
       if (data.tenant.require_login) setRequireLogin(data.tenant.require_login);
       if (data.tenant.home_settings_customer_id) setHomeSettingsCustomerId(data.tenant.home_settings_customer_id);
       if (data.tenant.builder_url) setBuilderUrl(data.tenant.builder_url);
+      if (data.tenant.vetrina?.is_listed) setVetrinaListed(data.tenant.vetrina.is_listed);
     } catch {
       setError("Network error");
     } finally {
@@ -598,6 +604,26 @@ export default function TenantDetailPage() {
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                     requireLogin ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Vetrina Listing Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-white">Vetrina Listing</label>
+                <p className="text-xs text-slate-400">Show this tenant in the public storefront directory</p>
+              </div>
+              <button
+                onClick={() => setVetrinaListed(!vetrinaListed)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  vetrinaListed ? "bg-blue-600" : "bg-slate-600"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    vetrinaListed ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
               </button>

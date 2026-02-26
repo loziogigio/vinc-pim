@@ -151,6 +151,7 @@ export async function GET(
           last_name: customerDoc.last_name,
           company_name: customerDoc.company_name,
           legal_info: customerDoc.legal_info,
+          tags: customerDoc.tags,
         };
 
         // Find shipping address
@@ -234,8 +235,6 @@ export async function PATCH(
 
     // Allowed fields to update
     const allowedFields = [
-      "shipping_address_id",
-      "billing_address_id",
       "requested_delivery_date",
       "delivery_slot",
       "delivery_route",

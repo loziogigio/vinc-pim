@@ -16,9 +16,9 @@ import {
   X,
   Eye,
   MapPin,
-  ShoppingCart,
-  Euro,
+  Plus,
 } from "lucide-react";
+import { CreateCustomerModal } from "@/components/documents/CreateCustomerModal";
 
 type FilterState = {
   search: string;
@@ -55,6 +55,8 @@ export default function CustomersListPage() {
     total: 0,
     pages: 0,
   });
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
     search: searchParams?.get("search") || "",
@@ -163,6 +165,13 @@ export default function CustomersListPage() {
             Manage your customer profiles ({pagination.total} total)
           </p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#00796b]"
+        >
+          <Plus className="h-4 w-4" />
+          New Customer
+        </button>
       </div>
 
       {/* Filters */}
@@ -411,6 +420,16 @@ export default function CustomersListPage() {
           </>
         )}
       </div>
+      {/* Create Customer Modal */}
+      {showCreateModal && (
+        <CreateCustomerModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(customer) => {
+            setShowCreateModal(false);
+            router.push(`${basePath}/${customer.customer_id}`);
+          }}
+        />
+      )}
     </div>
   );
 }

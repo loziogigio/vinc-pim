@@ -11,12 +11,16 @@ import type { MultiLangString } from "./pim";
 // App Identity (Header)
 // ============================================================================
 
+/** Whether the mobile app requires login */
+export type AppAccessMode = "public" | "private";
+
 export interface MobileAppIdentity {
   app_name: string;
   logo_url: string;
   logo_width: number;   // px
   logo_height?: number; // px, optional (maintain aspect ratio)
   primary_color: string; // hex color for buttons (e.g., "#ec4899")
+  access_mode: AppAccessMode; // "public" = no login, "private" = login required
 }
 
 export const DEFAULT_APP_IDENTITY: MobileAppIdentity = {
@@ -24,6 +28,7 @@ export const DEFAULT_APP_IDENTITY: MobileAppIdentity = {
   logo_url: "",
   logo_width: 64,
   primary_color: "#ec4899", // pink-500 default
+  access_mode: "public",
 };
 
 // ============================================================================
@@ -35,6 +40,10 @@ export const MOBILE_BLOCK_TYPES = [
   "mobile_product_slider",
   "mobile_media_gallery",
   "mobile_product_gallery",
+  "mobile_category_slider",
+  "mobile_category_gallery",
+  "mobile_entity_slider",
+  "mobile_entity_gallery",
 ] as const;
 
 export type MobileBlockType = (typeof MOBILE_BLOCK_TYPES)[number];
@@ -64,7 +73,7 @@ export interface MediaItem {
   title?: string;
 }
 
-export type ProductSource = "manual" | "collection" | "category" | "tag" | "search";
+export type ProductSource = "manual" | "collection" | "category" | "tag" | "search" | "trending" | "liked";
 
 /** Cached product data for preview */
 export interface CachedProduct {
@@ -165,6 +174,125 @@ export interface MobileProductGalleryBlock {
 }
 
 // ============================================================================
+// Category Blocks
+// ============================================================================
+
+/** Cached category data for preview */
+export interface CachedCategory {
+  category_id: string;
+  name: string;
+  slug: string;
+  hero_image_url?: string;
+  product_count: number;
+}
+
+export interface MobileCategorySliderBlock {
+  id: string;
+  type: "mobile_category_slider";
+  visibility: BlockVisibility;
+  settings: {
+    title?: string;
+    show_title: boolean;
+    items_visible: number;
+    show_product_count: boolean;
+  };
+  selected_category_ids?: string[];
+  _cached_categories?: CachedCategory[];
+}
+
+export interface MobileCategoryGalleryBlock {
+  id: string;
+  type: "mobile_category_gallery";
+  visibility: BlockVisibility;
+  settings: {
+    title?: string;
+    show_title: boolean;
+    columns: ColumnCount;
+    gap: GapSize;
+    show_product_count: boolean;
+  };
+  selected_category_ids?: string[];
+  _cached_categories?: CachedCategory[];
+}
+
+// ============================================================================
+// Entity Blocks (Brand / Collection / Product Type)
+// ============================================================================
+
+/** Which entity type to load for entity slider/gallery blocks */
+export const ENTITY_SOURCES = ["brand", "collection", "product_type"] as const;
+export type EntitySource = (typeof ENTITY_SOURCES)[number];
+
+/** Human-readable labels for entity source dropdown */
+export const ENTITY_SOURCE_LABELS: Record<EntitySource, string> = {
+  brand: "Brands",
+  collection: "Collections",
+  product_type: "Product Types",
+};
+
+/** API endpoints to fetch entities by source */
+export const ENTITY_SOURCE_API: Record<EntitySource, string> = {
+  brand: "/api/b2b/pim/brands",
+  collection: "/api/b2b/pim/collections",
+  product_type: "/api/b2b/pim/product-types",
+};
+
+/**
+ * Maps entity source to the search filter parameter name.
+ * The mobile app builds search URLs like: `shop?filters-{param}={value}`
+ */
+export const ENTITY_SEARCH_FILTER: Record<EntitySource, string> = {
+  brand: "brand_id",
+  collection: "collection_slugs",
+  product_type: "product_type_code",
+};
+
+/** Generic cached entity data for preview — normalized shape across all entity types */
+export interface CachedEntity {
+  /** Entity ID (brand_id / collection_id / product_type_id) */
+  id: string;
+  /** Display name (resolved to string) */
+  name: string;
+  /** URL-friendly slug */
+  slug: string;
+  /** Image URL (logo_url for brands, hero_image.url for collections, undefined for product types) */
+  image_url?: string;
+  /** Number of products in this entity */
+  product_count: number;
+  /** Value used by the mobile app in the search filter URL */
+  filter_value: string;
+}
+
+export interface MobileEntitySliderBlock {
+  id: string;
+  type: "mobile_entity_slider";
+  visibility: BlockVisibility;
+  settings: {
+    title?: string;
+    show_title: boolean;
+    items_visible: number;
+    show_product_count: boolean;
+    entity_source: EntitySource;
+  };
+  _cached_entities?: CachedEntity[];
+}
+
+export interface MobileEntityGalleryBlock {
+  id: string;
+  type: "mobile_entity_gallery";
+  visibility: BlockVisibility;
+  settings: {
+    title?: string;
+    show_title: boolean;
+    columns: ColumnCount;
+    gap: GapSize;
+    show_product_count: boolean;
+    entity_source: EntitySource;
+  };
+  _cached_entities?: CachedEntity[];
+}
+
+// ============================================================================
 // Union Type for All Blocks
 // ============================================================================
 
@@ -172,7 +300,11 @@ export type MobileBlock =
   | MobileMediaSliderBlock
   | MobileProductSliderBlock
   | MobileMediaGalleryBlock
-  | MobileProductGalleryBlock;
+  | MobileProductGalleryBlock
+  | MobileCategorySliderBlock
+  | MobileCategoryGalleryBlock
+  | MobileEntitySliderBlock
+  | MobileEntityGalleryBlock;
 
 // ============================================================================
 // Mobile Home Configuration
@@ -234,6 +366,30 @@ export const MOBILE_BLOCK_LIBRARY: MobileBlockMeta[] = [
     name: "Product Gallery",
     description: "Grid layout for product cards",
     icon: "Grid3X3",
+  },
+  {
+    type: "mobile_category_slider",
+    name: "Category Slider",
+    description: "Horizontal category navigation",
+    icon: "LayoutList",
+  },
+  {
+    type: "mobile_category_gallery",
+    name: "Category Gallery",
+    description: "Grid layout for categories",
+    icon: "FolderOpen",
+  },
+  {
+    type: "mobile_entity_slider",
+    name: "Entity Slider",
+    description: "Auto-load brands, collections, or product types",
+    icon: "Layers",
+  },
+  {
+    type: "mobile_entity_gallery",
+    name: "Entity Gallery",
+    description: "Grid of brands, collections, or product types",
+    icon: "LayoutDashboard",
   },
 ];
 
@@ -309,6 +465,68 @@ export function createDefaultProductGalleryBlock(id: string): MobileProductGalle
   };
 }
 
+export function createDefaultCategorySliderBlock(id: string): MobileCategorySliderBlock {
+  return {
+    id,
+    type: "mobile_category_slider",
+    visibility: "all",
+    settings: {
+      show_title: true,
+      title: "Categories",
+      items_visible: 2,
+      show_product_count: true,
+    },
+    selected_category_ids: [],
+  };
+}
+
+export function createDefaultCategoryGalleryBlock(id: string): MobileCategoryGalleryBlock {
+  return {
+    id,
+    type: "mobile_category_gallery",
+    visibility: "all",
+    settings: {
+      show_title: true,
+      title: "Categories",
+      columns: 2,
+      gap: "sm",
+      show_product_count: true,
+    },
+    selected_category_ids: [],
+  };
+}
+
+export function createDefaultEntitySliderBlock(id: string): MobileEntitySliderBlock {
+  return {
+    id,
+    type: "mobile_entity_slider",
+    visibility: "all",
+    settings: {
+      show_title: true,
+      title: "Brands",
+      items_visible: 2,
+      show_product_count: true,
+      entity_source: "brand",
+    },
+  };
+}
+
+export function createDefaultEntityGalleryBlock(id: string): MobileEntityGalleryBlock {
+  return {
+    id,
+    type: "mobile_entity_gallery",
+    visibility: "all",
+    settings: {
+      show_title: true,
+      title: "Brands",
+      columns: 2,
+      gap: "sm",
+      show_product_count: true,
+      entity_source: "brand",
+    },
+  };
+}
+
 export function createDefaultBlock(type: MobileBlockType, id: string): MobileBlock {
   switch (type) {
     case "mobile_media_slider":
@@ -319,6 +537,14 @@ export function createDefaultBlock(type: MobileBlockType, id: string): MobileBlo
       return createDefaultMediaGalleryBlock(id);
     case "mobile_product_gallery":
       return createDefaultProductGalleryBlock(id);
+    case "mobile_category_slider":
+      return createDefaultCategorySliderBlock(id);
+    case "mobile_category_gallery":
+      return createDefaultCategoryGalleryBlock(id);
+    case "mobile_entity_slider":
+      return createDefaultEntitySliderBlock(id);
+    case "mobile_entity_gallery":
+      return createDefaultEntityGalleryBlock(id);
     default:
       throw new Error(`Unknown block type: ${type}`);
   }

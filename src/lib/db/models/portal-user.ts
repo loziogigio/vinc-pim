@@ -91,6 +91,7 @@ const PortalUserSchema = new Schema<IPortalUserDocument>(
     channel: {
       type: String,
       default: DEFAULT_CHANNEL,
+      index: true,
     },
 
     // Status

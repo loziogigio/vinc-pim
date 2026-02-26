@@ -46,6 +46,7 @@ import { FCMTokenSchema } from "./models/fcm-token";
 import { NotificationSchema } from "./models/notification";
 import { CampaignSchema } from "./models/campaign";
 import { UserTagSchema } from "./models/user-tag";
+import { CustomerTagSchema } from "./models/customer-tag";
 import { ThreadSchema } from "./models/thread";
 import { B2CStorefrontSchema } from "./models/b2c-storefront";
 import { ShippingConfigSchema } from "./models/shipping-config";
@@ -53,6 +54,12 @@ import { DepartureSchema } from "./models/departure";
 import { BookingSchema } from "./models/booking";
 import { ProductLikeSchema, LikeStatsSchema } from "./models/product-like";
 import { ProductReminderSchema } from "./models/product-reminder";
+import { DocumentSchema } from "./models/document";
+import { DocumentTemplateSchema } from "./models/document-template";
+import { DocumentSettingsSchema } from "./models/document-settings";
+import { PaymentTransactionSchema } from "./models/payment-transaction";
+import { TenantPaymentConfigSchema } from "./models/tenant-payment-config";
+import { RecurringContractSchema } from "./models/recurring-contract";
 import { SalesChannelSchema } from "./models/sales-channel";
 
 // Model name to schema mapping
@@ -94,6 +101,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Notification: NotificationSchema,
   Campaign: CampaignSchema,
   UserTag: UserTagSchema,
+  CustomerTag: CustomerTagSchema,
   Thread: ThreadSchema,
   B2CStorefront: B2CStorefrontSchema,
   ShippingConfig: ShippingConfigSchema,
@@ -102,6 +110,12 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   ProductLike: ProductLikeSchema,
   LikeStats: LikeStatsSchema,
   ProductReminder: ProductReminderSchema,
+  Document: DocumentSchema,
+  DocumentTemplate: DocumentTemplateSchema,
+  DocumentSettings: DocumentSettingsSchema,
+  PaymentTransaction: PaymentTransactionSchema,
+  TenantPaymentConfig: TenantPaymentConfigSchema,
+  RecurringContract: RecurringContractSchema,
   SalesChannel: SalesChannelSchema,
 };
 
@@ -185,6 +199,7 @@ export async function getTenantModels(dbName: string) {
     Notification: connection.models.Notification,
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
+    CustomerTag: connection.models.CustomerTag,
     Thread: connection.models.Thread,
     B2CStorefront: connection.models.B2CStorefront,
     ShippingConfig: connection.models.ShippingConfig,
@@ -193,6 +208,12 @@ export async function getTenantModels(dbName: string) {
     ProductLike: connection.models.ProductLike,
     LikeStats: connection.models.LikeStats,
     ProductReminder: connection.models.ProductReminder,
+    Document: connection.models.Document,
+    DocumentTemplate: connection.models.DocumentTemplate,
+    DocumentSettings: connection.models.DocumentSettings,
+    PaymentTransaction: connection.models.PaymentTransaction,
+    TenantPaymentConfig: connection.models.TenantPaymentConfig,
+    RecurringContract: connection.models.RecurringContract,
     SalesChannel: connection.models.SalesChannel,
   };
 }
@@ -247,6 +268,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Notification: connection.models.Notification,
     Campaign: connection.models.Campaign,
     UserTag: connection.models.UserTag,
+    CustomerTag: connection.models.CustomerTag,
     Thread: connection.models.Thread,
     B2CStorefront: connection.models.B2CStorefront,
     ShippingConfig: connection.models.ShippingConfig,
@@ -255,6 +277,9 @@ export function getModelRegistry(connection: mongoose.Connection) {
     ProductLike: connection.models.ProductLike,
     LikeStats: connection.models.LikeStats,
     ProductReminder: connection.models.ProductReminder,
+    PaymentTransaction: connection.models.PaymentTransaction,
+    TenantPaymentConfig: connection.models.TenantPaymentConfig,
+    RecurringContract: connection.models.RecurringContract,
     SalesChannel: connection.models.SalesChannel,
   };
 }

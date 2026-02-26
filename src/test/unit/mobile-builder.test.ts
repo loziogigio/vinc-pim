@@ -14,6 +14,10 @@ import {
   createDefaultProductSliderBlock,
   createDefaultMediaGalleryBlock,
   createDefaultProductGalleryBlock,
+  createDefaultCategorySliderBlock,
+  createDefaultCategoryGalleryBlock,
+  createDefaultEntitySliderBlock,
+  createDefaultEntityGalleryBlock,
   type MobileBlockType,
   type MobileMediaSliderBlock,
   type MobileProductSliderBlock,
@@ -32,12 +36,16 @@ import {
 // ============================================
 
 describe("unit: Mobile Builder - MOBILE_BLOCK_TYPES", () => {
-  it("should have all 4 block types defined", () => {
-    expect(MOBILE_BLOCK_TYPES).toHaveLength(4);
+  it("should have all 8 block types defined", () => {
+    expect(MOBILE_BLOCK_TYPES).toHaveLength(8);
     expect(MOBILE_BLOCK_TYPES).toContain("mobile_media_slider");
     expect(MOBILE_BLOCK_TYPES).toContain("mobile_product_slider");
     expect(MOBILE_BLOCK_TYPES).toContain("mobile_media_gallery");
     expect(MOBILE_BLOCK_TYPES).toContain("mobile_product_gallery");
+    expect(MOBILE_BLOCK_TYPES).toContain("mobile_category_slider");
+    expect(MOBILE_BLOCK_TYPES).toContain("mobile_category_gallery");
+    expect(MOBILE_BLOCK_TYPES).toContain("mobile_entity_slider");
+    expect(MOBILE_BLOCK_TYPES).toContain("mobile_entity_gallery");
   });
 
   it("should not contain mobile_logo (moved to app identity)", () => {
@@ -83,7 +91,7 @@ describe("unit: Mobile Builder - DEFAULT_APP_IDENTITY", () => {
 
 describe("unit: Mobile Builder - MOBILE_BLOCK_LIBRARY", () => {
   it("should have metadata for all block types", () => {
-    expect(MOBILE_BLOCK_LIBRARY).toHaveLength(4);
+    expect(MOBILE_BLOCK_LIBRARY).toHaveLength(8);
 
     MOBILE_BLOCK_TYPES.forEach((type) => {
       const meta = MOBILE_BLOCK_LIBRARY.find((b) => b.type === type);

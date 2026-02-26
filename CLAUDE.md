@@ -346,75 +346,37 @@ useEffect(() => {
 
 ### Decimal Input Fields
 
-For numeric inputs that need to support decimal values (prices, quantities, etc.), use the **dual-state pattern** with both a string input value and a numeric value. This allows users to:
+For numeric inputs that need to support decimal values (prices, quantities, etc.), use the shared utility from `src/lib/utils/decimal-input.ts`:
 
-- Clear the field completely and type a new value
-- Type partial decimals like "25." before completing with "25.50"
-- Use comma as decimal separator (Italian keyboard friendly)
+- `normalizeDecimalInput(value)` — comma→dot, validates format, returns null if invalid
+- `parseDecimalValue(value)` — string to number (undefined if empty/NaN)
+- `toDecimalInputValue(value)` — number to display string
 
 **Pattern:**
 
 ```typescript
-// State includes both numeric value and string input
-interface EditingState {
-  quantity: number;
-  quantityInput: string;  // String for input display
-  unitPrice: number;
-  unitPriceInput: string; // String for input display
+import { normalizeDecimalInput, parseDecimalValue, toDecimalInputValue } from "@/lib/utils/decimal-input";
+
+// String state for input display, numeric state for calculations
+const [priceInput, setPriceInput] = useState("");
+
+function handlePriceChange(rawValue: string) {
+  const normalized = normalizeDecimalInput(rawValue);
+  if (normalized === null) return; // invalid input rejected
+  setPriceInput(normalized);
+  setPrice(parseDecimalValue(normalized));
 }
 
-// Initialize with string representation
-function startEditing(item: Item) {
-  setEditing({
-    quantity: item.quantity,
-    quantityInput: String(item.quantity),
-    unitPrice: item.unit_price,
-    unitPriceInput: String(item.unit_price),
-  });
-}
-
-// Update from +/- buttons (updates both values)
-function updateQuantity(quantity: number) {
-  if (!editing) return;
-  const newQty = Math.max(0, quantity);
-  setEditing({ ...editing, quantity: newQty, quantityInput: String(newQty) });
-}
-
-// Update from text input (allows typing decimals)
-function updateQuantityInput(value: string) {
-  if (!editing) return;
-  // Replace comma with dot for decimal (Italian keyboard support)
-  const normalizedValue = value.replace(",", ".");
-  // Allow empty, partial decimals like "1." or just numbers
-  if (normalizedValue === "" || /^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
-    const parsed = parseFloat(normalizedValue);
-    setEditing({
-      ...editing,
-      quantityInput: normalizedValue,
-      quantity: isNaN(parsed) ? 0 : parsed,
-    });
-  }
-}
+// Input element — ALWAYS use type="text" + inputMode="decimal"
+<Input type="text" inputMode="decimal" value={priceInput} onChange={e => handlePriceChange(e.target.value)} />
 ```
 
-**Input field:**
+**Key rules:**
 
-```tsx
-<input
-  type="text"
-  inputMode="decimal"
-  value={editing.quantityInput}
-  onChange={(e) => updateQuantityInput(e.target.value)}
-/>
-```
-
-**Key points:**
-
-- Use `type="text"` with `inputMode="decimal"` (not `type="number"`)
+- Use `type="text"` with `inputMode="decimal"` (NOT `type="number"`)
+- Always use `normalizeDecimalInput()` from the shared utility — never inline regex
+- Comma→dot normalization is built-in (Italian/European keyboard support)
 - Store string value for display, numeric value for calculations
-- Regex `/^[0-9]*\.?[0-9]*$/` allows empty, partial, and complete decimals
-- Replace comma with dot for Italian/European keyboard compatibility
-- Parse to number on every change, default to 0 if invalid
 
 ### Database Queries
 
