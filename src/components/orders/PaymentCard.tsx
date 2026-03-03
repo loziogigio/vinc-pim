@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   CreditCard,
   Plus,
@@ -15,11 +17,40 @@ import {
   Trash2,
   Pencil,
   Check,
+  XCircle,
+  ArrowRight,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "sonner";
 import type { Order, PaymentRecord } from "@/lib/types/order";
 import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/lib/constants/order";
+import {
+  TRANSACTION_STATUS_LABELS,
+  PAYMENT_PROVIDER_LABELS,
+  type TransactionStatus,
+  type PaymentProvider,
+} from "@/lib/constants/payment";
+
+// Gateway transaction from paymenttransactions collection
+interface GatewayTransaction {
+  transaction_id: string;
+  payment_number?: string;
+  provider: PaymentProvider;
+  gross_amount: number;
+  currency: string;
+  status: TransactionStatus;
+  method?: string;
+  created_at: string;
+}
+
+// Payment method labels in Italian
+const PAYMENT_METHOD_IT: Record<string, string> = {
+  bank_transfer: "Bonifico Bancario",
+  credit_card: "Carta di Credito",
+  cash: "Contanti",
+  check: "Assegno",
+  other: "Altro",
+};
 
 interface PaymentCardProps {
   order: Order;
@@ -37,6 +68,10 @@ interface EditingPayment {
 }
 
 export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
+  const pathname = usePathname();
+  const tenantPrefix =
+    pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+
   const [showPayments, setShowPayments] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,8 +88,32 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     reference: "",
     notes: "",
     confirmed: false,
-    recorded_at: "", // Will be set when form opens
+    recorded_at: "",
   });
+
+  // Gateway transactions state
+  const [gatewayTransactions, setGatewayTransactions] = useState<GatewayTransaction[]>([]);
+  const [showGateway, setShowGateway] = useState(false);
+
+  // Fetch gateway transactions linked to this order
+  const fetchGatewayTransactions = useCallback(async () => {
+    if (!order.order_id) return;
+    try {
+      const res = await fetch(
+        `/api/b2b/payments/transactions?order_id=${encodeURIComponent(order.order_id)}&limit=50`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setGatewayTransactions(data.transactions || []);
+      }
+    } catch {
+      // Silently fail — gateway section just stays empty
+    }
+  }, [order.order_id]);
+
+  useEffect(() => {
+    fetchGatewayTransactions();
+  }, [fetchGatewayTransactions]);
 
   const payment = order.payment;
 
@@ -112,7 +171,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
   const handleAddPayment = async () => {
     const amount = parseFloat(newPayment.amount);
     if (!amount || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error("Inserisci un importo valido");
       return;
     }
 
@@ -132,17 +191,17 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       });
 
       if (res.ok) {
-        toast.success("Payment recorded successfully");
+        toast.success("Pagamento registrato");
         setShowAddPayment(false);
         setNewPayment({ amount: "", method: "bank_transfer", reference: "", notes: "", confirmed: false, recorded_at: "" });
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to record payment");
+        toast.error(error.error || "Errore nella registrazione del pagamento");
       }
     } catch (err) {
       console.error("Error recording payment:", err);
-      toast.error("Failed to record payment");
+      toast.error("Errore nella registrazione del pagamento");
     } finally {
       setIsLoading(false);
     }
@@ -158,15 +217,15 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       );
 
       if (res.ok) {
-        toast.success("Payment deleted");
+        toast.success("Pagamento eliminato");
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete payment");
+        toast.error(error.error || "Errore nell'eliminazione del pagamento");
       }
     } catch (err) {
       console.error("Error deleting payment:", err);
-      toast.error("Failed to delete payment");
+      toast.error("Errore nell'eliminazione del pagamento");
     } finally {
       setDeletingPaymentId(null);
     }
@@ -191,7 +250,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
     const amount = parseFloat(editingPayment.amount);
     if (!amount || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error("Inserisci un importo valido");
       return;
     }
 
@@ -212,16 +271,16 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       });
 
       if (res.ok) {
-        toast.success("Payment updated");
+        toast.success("Pagamento aggiornato");
         setEditingPayment(null);
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to update payment");
+        toast.error(error.error || "Errore nell'aggiornamento del pagamento");
       }
     } catch (err) {
       console.error("Error updating payment:", err);
-      toast.error("Failed to update payment");
+      toast.error("Errore nell'aggiornamento del pagamento");
     } finally {
       setIsLoading(false);
     }
@@ -241,15 +300,15 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       });
 
       if (res.ok) {
-        toast.success(p.confirmed ? "Payment marked as unconfirmed" : "Payment confirmed");
+        toast.success(p.confirmed ? "Pagamento non confermato" : "Pagamento confermato");
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to update payment");
+        toast.error(error.error || "Errore nell'aggiornamento del pagamento");
       }
     } catch (err) {
       console.error("Error updating payment:", err);
-      toast.error("Failed to update payment");
+      toast.error("Errore nell'aggiornamento del pagamento");
     } finally {
       setIsLoading(false);
     }
@@ -261,7 +320,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-500" />
-            <h2 className="font-semibold text-foreground">Payment</h2>
+            <h2 className="font-semibold text-foreground">Pagamento</h2>
           </div>
           <span
             className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
@@ -275,26 +334,26 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         {/* Payment Summary */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Amount Due</span>
+            <span className="text-muted-foreground">Importo Dovuto</span>
             <span className="font-medium">{formatCurrency(amountDue)}</span>
           </div>
           {pendingAmount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Pending Amount</span>
+              <span className="text-muted-foreground">In Sospeso</span>
               <span className="font-medium text-amber-600">
                 {formatCurrency(pendingAmount)}
               </span>
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Amount Paid</span>
+            <span className="text-muted-foreground">Importo Pagato</span>
             <span className="font-medium text-emerald-600">
               {formatCurrency(confirmedAmount)}
             </span>
           </div>
           {remainingAfterConfirmed > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Remaining</span>
+              <span className="text-muted-foreground">Rimanente</span>
               <span className="font-semibold text-amber-600">
                 {formatCurrency(remainingAfterConfirmed)}
               </span>
@@ -317,9 +376,39 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
             />
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            {progressPct.toFixed(0)}% paid
+            {progressPct.toFixed(0)}% pagato
           </p>
         </div>
+
+        {/* Gateway Transactions */}
+        {gatewayTransactions.length > 0 && (
+          <div>
+            <button
+              onClick={() => setShowGateway(!showGateway)}
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              {showGateway ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+              {gatewayTransactions.length} transazion{gatewayTransactions.length !== 1 ? "i" : "e"} gateway
+            </button>
+
+            {showGateway && (
+              <div className="mt-2 space-y-1.5">
+                {gatewayTransactions.map((tx) => (
+                  <GatewayTransactionRow
+                    key={tx.transaction_id}
+                    tx={tx}
+                    tenantPrefix={tenantPrefix}
+                    formatCurrency={formatCurrency}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Payment History Toggle */}
         {payments.length > 0 && (
@@ -333,7 +422,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               ) : (
                 <ChevronDown className="h-3 w-3" />
               )}
-              View {payments.length} payment{payments.length !== 1 ? "s" : ""}
+              {payments.length} pagament{payments.length !== 1 ? "i" : "o"} registrat{payments.length !== 1 ? "i" : "o"}
             </button>
 
             {showPayments && (
@@ -350,7 +439,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                       {editingPayment?.payment_id === p.payment_id ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium">Edit Payment</span>
+                            <span className="font-medium">Modifica Pagamento</span>
                             <button
                               onClick={() => setEditingPayment(null)}
                               className="p-1 hover:bg-muted rounded"
@@ -361,13 +450,12 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-xs text-muted-foreground">Amount</label>
+                              <label className="text-xs text-muted-foreground">Importo</label>
                               <input
                                 type="text"
                                 inputMode="decimal"
                                 value={editingPayment.amount}
                                 onChange={(e) => {
-                                  // Normalize Italian format: remove dots (thousand sep), replace comma with dot (decimal)
                                   let value = e.target.value;
                                   if (value.includes(".") && value.includes(",")) {
                                     value = value.replace(/\./g, "").replace(",", ".");
@@ -380,7 +468,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-muted-foreground">Method</label>
+                              <label className="text-xs text-muted-foreground">Metodo</label>
                               <select
                                 value={editingPayment.method}
                                 onChange={(e) =>
@@ -388,17 +476,17 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 }
                                 className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20 bg-background"
                               >
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="credit_card">Credit Card</option>
-                                <option value="cash">Cash</option>
-                                <option value="check">Check</option>
-                                <option value="other">Other</option>
+                                <option value="bank_transfer">Bonifico Bancario</option>
+                                <option value="credit_card">Carta di Credito</option>
+                                <option value="cash">Contanti</option>
+                                <option value="check">Assegno</option>
+                                <option value="other">Altro</option>
                               </select>
                             </div>
                           </div>
 
                           <div>
-                            <label className="text-xs text-muted-foreground">Date & Time</label>
+                            <label className="text-xs text-muted-foreground">Data e Ora</label>
                             <input
                               type="datetime-local"
                               value={editingPayment.recorded_at}
@@ -410,27 +498,27 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                           </div>
 
                           <div>
-                            <label className="text-xs text-muted-foreground">Reference</label>
+                            <label className="text-xs text-muted-foreground">Riferimento</label>
                             <input
                               type="text"
                               value={editingPayment.reference}
                               onChange={(e) =>
                                 setEditingPayment({ ...editingPayment, reference: e.target.value })
                               }
-                              placeholder="Transaction ID..."
+                              placeholder="ID transazione..."
                               className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20"
                             />
                           </div>
 
                           <div>
-                            <label className="text-xs text-muted-foreground">Notes</label>
+                            <label className="text-xs text-muted-foreground">Note</label>
                             <input
                               type="text"
                               value={editingPayment.notes}
                               onChange={(e) =>
                                 setEditingPayment({ ...editingPayment, notes: e.target.value })
                               }
-                              placeholder="Notes..."
+                              placeholder="Note..."
                               className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20"
                             />
                           </div>
@@ -446,7 +534,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               className="h-3 w-3 rounded border-border"
                             />
                             <label htmlFor={`edit-confirmed-${p.payment_id}`} className="text-xs text-muted-foreground">
-                              Payment confirmed
+                              Pagamento confermato
                             </label>
                           </div>
 
@@ -460,7 +548,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                             ) : (
                               <Check className="h-3 w-3" />
                             )}
-                            Save Changes
+                            Salva Modifiche
                           </button>
                         </div>
                       ) : (
@@ -468,26 +556,26 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                         <>
                           <div className="flex justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium capitalize">
-                                {p.method.replace(/_/g, " ")}
+                              <span className="font-medium">
+                                {PAYMENT_METHOD_IT[p.method] || p.method.replace(/_/g, " ")}
                               </span>
                               {p.confirmed ? (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200"
                                   onClick={() => handleToggleConfirmed(p)}
-                                  title="Click to mark as unconfirmed"
+                                  title="Clicca per segnare come non confermato"
                                 >
                                   <CheckCircle className="h-2.5 w-2.5" />
-                                  Confirmed
+                                  Confermato
                                 </span>
                               ) : (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200"
                                   onClick={() => handleToggleConfirmed(p)}
-                                  title="Click to confirm payment"
+                                  title="Clicca per confermare il pagamento"
                                 >
                                   <Clock className="h-2.5 w-2.5" />
-                                  Pending
+                                  In Sospeso
                                 </span>
                               )}
                             </div>
@@ -500,7 +588,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                   <button
                                     onClick={() => startEditPayment(p)}
                                     className="p-1 rounded hover:bg-blue-100 text-blue-500"
-                                    title="Edit payment"
+                                    title="Modifica pagamento"
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>
@@ -514,7 +602,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                     }
                                     disabled={deletingPaymentId === p.payment_id}
                                     className="p-1 rounded hover:bg-red-100 text-red-500 disabled:opacity-50"
-                                    title="Delete payment"
+                                    title="Elimina pagamento"
                                   >
                                     {deletingPaymentId === p.payment_id ? (
                                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -537,7 +625,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 minute: "2-digit",
                               })}
                             </span>
-                            {p.reference && <span>Ref: {p.reference}</span>}
+                            {p.reference && <span>Rif: {p.reference}</span>}
                           </div>
                           {p.notes && (
                             <div className="mt-1 text-muted-foreground italic">
@@ -557,7 +645,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         {showAddPayment ? (
           <div className="pt-3 border-t border-border space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Record Payment</h3>
+              <h3 className="text-sm font-medium">Registra Pagamento</h3>
               <button
                 onClick={() => setShowAddPayment(false)}
                 className="p-1 hover:bg-muted rounded"
@@ -568,20 +656,17 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
             <div className="space-y-2">
               <div>
-                <label className="text-xs text-muted-foreground">Amount</label>
+                <label className="text-xs text-muted-foreground">Importo</label>
                 <input
                   type="text"
                   inputMode="decimal"
                   placeholder={remainingAfterConfirmed.toFixed(2)}
                   value={newPayment.amount}
                   onChange={(e) => {
-                    // Normalize Italian format: remove dots (thousand sep), replace comma with dot (decimal)
                     let value = e.target.value;
-                    // If contains both dot and comma, assume Italian format (1.234,56)
                     if (value.includes(".") && value.includes(",")) {
                       value = value.replace(/\./g, "").replace(",", ".");
                     } else if (value.includes(",")) {
-                      // Just comma - treat as decimal separator
                       value = value.replace(",", ".");
                     }
                     setNewPayment({ ...newPayment, amount: value });
@@ -591,7 +676,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground">Method</label>
+                <label className="text-xs text-muted-foreground">Metodo</label>
                 <select
                   value={newPayment.method}
                   onChange={(e) =>
@@ -599,21 +684,21 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   }
                   className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
                 >
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="credit_card">Credit Card</option>
-                  <option value="cash">Cash</option>
-                  <option value="check">Check</option>
-                  <option value="other">Other</option>
+                  <option value="bank_transfer">Bonifico Bancario</option>
+                  <option value="credit_card">Carta di Credito</option>
+                  <option value="cash">Contanti</option>
+                  <option value="check">Assegno</option>
+                  <option value="other">Altro</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-xs text-muted-foreground">
-                  Reference (optional)
+                  Riferimento (opzionale)
                 </label>
                 <input
                   type="text"
-                  placeholder="Transaction ID, check number..."
+                  placeholder="ID transazione, numero assegno..."
                   value={newPayment.reference}
                   onChange={(e) =>
                     setNewPayment({ ...newPayment, reference: e.target.value })
@@ -623,7 +708,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground">Date & Time</label>
+                <label className="text-xs text-muted-foreground">Data e Ora</label>
                 <input
                   type="datetime-local"
                   value={newPayment.recorded_at}
@@ -645,7 +730,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   className="h-4 w-4 rounded border-border"
                 />
                 <label htmlFor="new-payment-confirmed" className="text-sm text-muted-foreground">
-                  Payment confirmed
+                  Pagamento confermato
                 </label>
               </div>
 
@@ -659,7 +744,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                Record Payment
+                Registra Pagamento
               </button>
             </div>
           </div>
@@ -667,7 +752,6 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
           remainingAfterConfirmed > 0 && (
             <button
               onClick={() => {
-                // Set default date to now when opening form
                 setNewPayment(prev => ({
                   ...prev,
                   recorded_at: formatDateForInput(new Date()),
@@ -677,7 +761,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
             >
               <Plus className="h-4 w-4" />
-              Record Payment
+              Registra Pagamento
             </button>
           )
         )}
@@ -686,10 +770,10 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       {/* Delete Payment Confirmation */}
       <ConfirmDialog
         open={deleteConfirmDialog.open}
-        title="Delete Payment"
-        message={`Are you sure you want to delete this payment of ${formatCurrency(deleteConfirmDialog.amount)}? This will update the payment totals.`}
-        confirmText="Delete"
-        cancelText="Cancel"
+        title="Elimina Pagamento"
+        message={`Sei sicuro di voler eliminare questo pagamento di ${formatCurrency(deleteConfirmDialog.amount)}? I totali verranno aggiornati.`}
+        confirmText="Elimina"
+        cancelText="Annulla"
         variant="danger"
         onConfirm={() => {
           setDeleteConfirmDialog({ open: false, paymentId: "", amount: 0 });
@@ -700,5 +784,82 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         }
       />
     </div>
+  );
+}
+
+// ============================================
+// GATEWAY TRANSACTION ROW
+// ============================================
+
+const GATEWAY_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  completed: { bg: "bg-emerald-100", text: "text-emerald-700" },
+  captured: { bg: "bg-emerald-100", text: "text-emerald-700" },
+  processing: { bg: "bg-blue-100", text: "text-blue-700" },
+  pending: { bg: "bg-amber-100", text: "text-amber-700" },
+  authorized: { bg: "bg-sky-100", text: "text-sky-700" },
+  failed: { bg: "bg-red-100", text: "text-red-700" },
+  cancelled: { bg: "bg-gray-100", text: "text-gray-600" },
+  refunded: { bg: "bg-gray-100", text: "text-gray-600" },
+  partial_refund: { bg: "bg-orange-100", text: "text-orange-700" },
+};
+
+function GatewayTransactionRow({
+  tx,
+  tenantPrefix,
+  formatCurrency,
+}: {
+  tx: GatewayTransaction;
+  tenantPrefix: string;
+  formatCurrency: (amount: number) => string;
+}) {
+  const statusColor = GATEWAY_STATUS_COLORS[tx.status] || GATEWAY_STATUS_COLORS.pending;
+  const isFailed = tx.status === "failed" || tx.status === "cancelled";
+
+  return (
+    <Link
+      href={`${tenantPrefix}/b2b/payments/transactions/${tx.transaction_id}`}
+      className="block p-2 rounded bg-muted/50 text-xs hover:bg-muted/80 transition-colors group"
+    >
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">
+            {PAYMENT_PROVIDER_LABELS[tx.provider] || tx.provider}
+          </span>
+          <span
+            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${statusColor.bg} ${statusColor.text}`}
+          >
+            {isFailed ? (
+              <XCircle className="h-2.5 w-2.5" />
+            ) : tx.status === "completed" || tx.status === "captured" ? (
+              <CheckCircle className="h-2.5 w-2.5" />
+            ) : (
+              <Clock className="h-2.5 w-2.5" />
+            )}
+            {TRANSACTION_STATUS_LABELS[tx.status] || tx.status}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`font-semibold ${isFailed ? "text-red-500 line-through" : "text-emerald-600"}`}>
+            {formatCurrency(tx.gross_amount)}
+          </span>
+          <ArrowRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+      <div className="flex justify-between text-muted-foreground">
+        <span>
+          {tx.payment_number || `...${tx.transaction_id.slice(-8)}`}
+        </span>
+        <span>
+          <Calendar className="inline h-3 w-3 mr-1" />
+          {new Date(tx.created_at).toLocaleDateString("it-IT", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
+    </Link>
   );
 }

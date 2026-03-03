@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       transaction_id: result.transaction_id,
+      payment_number: result.payment_number,
       provider_payment_id: result.provider_payment_id,
       redirect_url: result.redirect_url,
       client_secret: result.client_secret,

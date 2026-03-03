@@ -337,7 +337,7 @@ export default function CustomerDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Customers", href: `${tenantPrefix}/b2b/store/customers` },
+            { label: "Customers", href: "/b2b/store/customers" },
             { label: "Error" },
           ]}
         />
@@ -366,7 +366,7 @@ export default function CustomerDetailPage({
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Customers", href: `${tenantPrefix}/b2b/store/customers` },
+          { label: "Customers", href: "/b2b/store/customers" },
           { label: displayName },
         ]}
       />

@@ -249,6 +249,17 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Webhook endpoints are truly public — providers (PayPal, Stripe, etc.)
+  // send requests without our auth headers. Verification is done by the
+  // route handler via the provider's own signature verification API.
+  const isWebhookRoute = actualPath.startsWith("/api/public/payments/webhooks");
+  if (isWebhookRoute) {
+    const response = NextResponse.next();
+    applyHeaders(response, securityHeaders);
+    applyHeaders(response, corsHeaders);
+    return response;
+  }
+
   // For public API routes, search routes, and ELIA routes
   const isPublicApiRoute = actualPath.startsWith("/api/public");
   const isSearchRoute = actualPath.startsWith("/api/search");

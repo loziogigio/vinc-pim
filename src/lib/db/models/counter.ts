@@ -192,6 +192,38 @@ export async function setSequenceValue(
 }
 
 // ============================================
+// PAYMENT COUNTERS
+// ============================================
+
+/**
+ * Get the next sequential payment number for a given year.
+ * Uses atomic increment to ensure uniqueness even with concurrent requests.
+ * Format: PA/{number}/{year} — resets to 1 each year.
+ *
+ * @param tenantDb - The tenant database name (e.g., "vinc-hidros-it")
+ * @param year - The year for the payment number sequence (e.g., 2026)
+ * @returns The next payment number in the sequence
+ */
+export async function getNextPaymentNumber(tenantDb: string, year: number): Promise<number> {
+  const Counter = await getCounterModel(tenantDb);
+  const result = await Counter.findOneAndUpdate(
+    { _id: `payment_number_${year}` },
+    { $inc: { value: 1 } },
+    {
+      upsert: true,
+      returnDocument: "after",
+      new: true,
+    }
+  );
+
+  if (!result) {
+    throw new Error(`Failed to generate payment number for year ${year}`);
+  }
+
+  return result.value;
+}
+
+// ============================================
 // DOCUMENT COUNTERS
 // ============================================
 

@@ -36,6 +36,7 @@ import type {
   AdjustmentReason,
 } from "@/lib/constants/order";
 import { getModelRegistry } from "@/lib/db/model-registry";
+import { getNextOrderNumber } from "@/lib/db/models/counter";
 
 // ============================================
 // TYPES
@@ -171,6 +172,12 @@ export async function submitOrder(
 
   // Recalculate totals before submitting
   recalculateOrderTotals(order);
+
+  // Assign order_number using atomic counter (unique per year)
+  if (!order.order_number) {
+    const dbName = tenantDb.name;
+    order.order_number = await getNextOrderNumber(dbName, order.year);
+  }
 
   order.status = "pending";
   order.submitted_at = new Date();
@@ -833,6 +840,15 @@ export async function recordPayment(
   const paymentAllowedStatuses = ["confirmed", "shipped", "delivered"];
   if (!paymentAllowedStatuses.includes(order.status)) {
     return { success: false, error: "Can only record payments for confirmed, shipped, or delivered orders" };
+  }
+
+  // Validate payment method against shipping method restrictions
+  const allowed = order.allowed_payment_methods;
+  if (allowed && allowed.length > 0 && !allowed.includes(payment.method)) {
+    return {
+      success: false,
+      error: `Payment method "${payment.method}" is not allowed for shipping method "${order.shipping_method}". Allowed: ${allowed.join(", ")}`,
+    };
   }
 
   // Initialize payment data if not present

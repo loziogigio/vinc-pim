@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { Search, ChevronLeft, ChevronRight, Loader2, Receipt } from "lucide-react";
+import Link from "next/link";
+import { Search, ChevronLeft, ChevronRight, Loader2, Receipt, ExternalLink } from "lucide-react";
 import { TransactionStatusBadge, ProviderBadge } from "@/components/payments";
 import {
   TRANSACTION_STATUSES,
@@ -20,6 +21,7 @@ import type {
 
 interface TransactionItem {
   transaction_id: string;
+  payment_number?: string;
   order_id?: string;
   provider: PaymentProvider;
   payment_type: PaymentType;
@@ -136,7 +138,7 @@ export default function TransactionsListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">ID</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">N.</th>
                 <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Ordine</th>
                 <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Provider</th>
                 <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Tipo</th>
@@ -154,11 +156,22 @@ export default function TransactionsListPage() {
                     (window.location.href = `${tenantPrefix}/b2b/payments/transactions/${tx.transaction_id}`)
                   }
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-[#5e5873]">
-                    ...{tx.transaction_id.slice(-12)}
+                  <td className="px-4 py-3 font-medium text-[#5e5873]">
+                    {tx.payment_number || `...${tx.transaction_id.slice(-8)}`}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {tx.order_id || "—"}
+                    {tx.order_id ? (
+                      <Link
+                        href={`${tenantPrefix}/b2b/store/orders/${tx.order_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[#009688] hover:underline"
+                      >
+                        {tx.order_id}
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <ProviderBadge provider={tx.provider} />

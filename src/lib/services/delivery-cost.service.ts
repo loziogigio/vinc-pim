@@ -100,6 +100,7 @@ export function getAvailableShippingOptions(
         is_free: computed_cost === 0,
         estimated_days_min: m.estimated_days_min,
         estimated_days_max: m.estimated_days_max,
+        allowed_payment_methods: m.allowed_payment_methods,
       };
     });
 }

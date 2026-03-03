@@ -8,6 +8,7 @@
 import mongoose from "mongoose";
 import { nanoid } from "nanoid";
 import { getModelRegistry } from "@/lib/db/model-registry";
+import { getNextPaymentNumber } from "@/lib/db/models/counter";
 import { calculateCommission, getTenantCommissionRate } from "./commission.service";
 import { getProvider } from "./providers/provider-registry";
 import type {
@@ -76,11 +77,17 @@ export async function processPayment(
 
   // 5. Create transaction record
   const transactionId = `txn_${nanoid(16)}`;
+  const year = new Date().getFullYear();
+  const dbName = tenantDb.name; // e.g. "vinc-hidros-it"
+  const seq = await getNextPaymentNumber(dbName, year);
+  const paymentNumber = `PA/${seq}/${year}`;
+
   const registry = getModelRegistry(tenantDb);
   const PaymentTransaction = registry.PaymentTransaction;
 
   const transaction = await PaymentTransaction.create({
     transaction_id: transactionId,
+    payment_number: paymentNumber,
     tenant_id: tenantId,
     order_id: params.order_id,
     provider: providerName,
@@ -99,9 +106,17 @@ export async function processPayment(
     events: [createEvent("payment.initiated", "pending")],
   });
 
-  // 6. Call provider
+  // 6. Call provider (enrich params with payment_number for reference tracking)
+  const enrichedParams = {
+    ...params,
+    metadata: {
+      ...params.metadata,
+      payment_number: paymentNumber,
+    },
+  };
+
   try {
-    const result = await provider.createPayment(tenantConfig, params);
+    const result = await provider.createPayment(tenantConfig, enrichedParams);
 
     // 7. Update transaction with provider response
     transaction.provider_payment_id = result.provider_payment_id || "";
@@ -123,6 +138,7 @@ export async function processPayment(
     return {
       ...result,
       transaction_id: transactionId,
+      payment_number: paymentNumber,
     };
   } catch (error) {
     // Provider call failed
@@ -134,6 +150,7 @@ export async function processPayment(
     return {
       success: false,
       transaction_id: transactionId,
+      payment_number: paymentNumber,
       error: transaction.failure_reason,
     };
   }
@@ -240,9 +257,11 @@ export async function refundTransaction(
     return { success: false, error: "Provider not configured" };
   }
 
+  // Use capture ID for refund if available (PayPal refunds require capture ID, not order ID)
+  const refundProviderId = transaction.provider_capture_id || transaction.provider_payment_id;
   const result = await provider.refundPayment(
     tenantConfig,
-    transaction.provider_payment_id,
+    refundProviderId,
     amount
   );
 
@@ -257,6 +276,107 @@ export async function refundTransaction(
   }
 
   return result;
+}
+
+// ============================================
+// CAPTURE PAYMENT
+// ============================================
+
+/**
+ * Capture a previously created payment (e.g. after PayPal redirect back).
+ * Updates transaction status from "processing" → "completed" or "failed".
+ */
+export async function capturePayment(
+  tenantDb: mongoose.Connection,
+  transactionId: string
+): Promise<PaymentResult> {
+  const registry = getModelRegistry(tenantDb);
+  const PaymentTransaction = registry.PaymentTransaction;
+
+  const transaction = await PaymentTransaction.findOne({
+    transaction_id: transactionId,
+  });
+  if (!transaction) {
+    return { success: false, error: "Transaction not found" };
+  }
+
+  // Already captured
+  if (transaction.status === "completed") {
+    return {
+      success: true,
+      transaction_id: transaction.transaction_id,
+      provider_payment_id: transaction.provider_payment_id,
+      status: "completed",
+    };
+  }
+
+  // Only capture transactions in "processing" state
+  if (transaction.status !== "processing") {
+    return {
+      success: false,
+      transaction_id: transaction.transaction_id,
+      error: `Cannot capture transaction in "${transaction.status}" state`,
+    };
+  }
+
+  const provider = getProvider(transaction.provider);
+  if (!provider) {
+    return { success: false, error: `Unknown provider: ${transaction.provider}` };
+  }
+
+  const tenantConfig = await getProviderConfig(
+    tenantDb,
+    transaction.tenant_id,
+    transaction.provider
+  );
+  if (!tenantConfig) {
+    return { success: false, error: "Provider not configured" };
+  }
+
+  try {
+    const result = await provider.capturePayment(
+      tenantConfig,
+      transaction.provider_payment_id
+    );
+
+    if (result.success) {
+      transaction.status = "completed";
+      transaction.completed_at = new Date();
+      // Store provider capture/transaction ID (e.g., PayPal capture ID)
+      if (result.provider_capture_id) {
+        transaction.provider_capture_id = result.provider_capture_id;
+      }
+      transaction.events.push(
+        createEvent("payment.captured", "completed")
+      );
+    } else {
+      transaction.status = "failed";
+      transaction.failure_reason = result.error;
+      transaction.events.push(
+        createEvent("payment.capture_failed", "failed", {
+          error: result.error,
+        })
+      );
+    }
+
+    await transaction.save();
+
+    return {
+      ...result,
+      transaction_id: transaction.transaction_id,
+    };
+  } catch (error) {
+    transaction.status = "failed";
+    transaction.failure_reason = error instanceof Error ? error.message : "Unknown error";
+    transaction.events.push(createEvent("payment.capture_error", "failed"));
+    await transaction.save();
+
+    return {
+      success: false,
+      transaction_id: transaction.transaction_id,
+      error: transaction.failure_reason,
+    };
+  }
 }
 
 // ============================================
@@ -285,7 +405,7 @@ async function findByIdempotencyKey(
   return PaymentTransaction.findOne({ idempotency_key: key }).lean();
 }
 
-async function getProviderConfig(
+export async function getProviderConfig(
   tenantDb: mongoose.Connection,
   tenantId: string,
   providerName: string

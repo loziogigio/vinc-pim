@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import {
   fetchShippingConfig,
   saveShippingConfig,
 } from "@/lib/services/delivery-cost.service";
+import { PAYMENT_METHODS } from "@/lib/constants/payment";
 import type { IShippingZone } from "@/lib/types/shipping";
 
 /**
@@ -13,12 +14,10 @@ import type { IShippingZone } from "@/lib/types/shipping";
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const config = await fetchShippingConfig(tenantDb);
 
     return NextResponse.json({
@@ -46,10 +45,8 @@ export async function GET(req: NextRequest) {
  */
 export async function PUT(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const body = await req.json();
     const { zones } = body as { zones: IShippingZone[] };
@@ -91,10 +88,28 @@ export async function PUT(req: NextRequest) {
             { status: 400 }
           );
         }
+        // Validate allowed_payment_methods if provided
+        if (method.allowed_payment_methods !== undefined) {
+          if (!Array.isArray(method.allowed_payment_methods)) {
+            return NextResponse.json(
+              { error: `Method "${method.name}": allowed_payment_methods must be an array` },
+              { status: 400 }
+            );
+          }
+          const invalid = method.allowed_payment_methods.filter(
+            (pm: string) => !(PAYMENT_METHODS as readonly string[]).includes(pm)
+          );
+          if (invalid.length > 0) {
+            return NextResponse.json(
+              { error: `Method "${method.name}": invalid payment methods: ${invalid.join(", ")}` },
+              { status: 400 }
+            );
+          }
+        }
       }
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const saved = await saveShippingConfig(tenantDb, { zones });
 
     return NextResponse.json({ success: true, data: saved });

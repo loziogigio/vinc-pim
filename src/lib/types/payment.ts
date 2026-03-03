@@ -108,6 +108,7 @@ export interface ITenantPaymentConfig {
     axerve?: IAxerveConfig;
     satispay?: ISatispayConfig;
     scalapay?: IScalapayConfig;
+    bank_transfer_provider?: IBankTransferProviderConfig;
   };
 
   default_provider?: string;
@@ -118,8 +119,12 @@ export interface ITenantPaymentConfig {
 }
 
 export interface IStripeConfig {
-  account_id: string;
-  account_status: "pending" | "active" | "restricted";
+  publishable_key: string;
+  secret_key: string;
+  webhook_secret?: string;
+  account_id?: string;
+  account_status?: "pending" | "active" | "restricted";
+  environment: "test" | "production";
   charges_enabled: boolean;
   payouts_enabled: boolean;
   onboarded_at?: Date;
@@ -135,7 +140,11 @@ export interface IMangopayConfig {
 }
 
 export interface IPayPalConfig {
-  merchant_id: string;
+  client_id: string;
+  client_secret: string;
+  merchant_id?: string;
+  webhook_id?: string;
+  environment: "sandbox" | "production";
   enabled: boolean;
 }
 
@@ -165,6 +174,15 @@ export interface ISatispayConfig {
 export interface IScalapayConfig {
   api_key: string;
   environment: "sandbox" | "production";
+  enabled: boolean;
+}
+
+export interface IBankTransferProviderConfig {
+  beneficiary_name: string;
+  iban: string;
+  bic_swift?: string;
+  bank_name?: string;
+  notes?: string;
   enabled: boolean;
 }
 
@@ -226,7 +244,9 @@ export interface IPlatformCommission {
 export interface PaymentResult {
   success: boolean;
   transaction_id?: string;
+  payment_number?: string;
   provider_payment_id?: string;
+  provider_capture_id?: string; // PayPal capture ID / Stripe charge ID (the "Transaction ID" in provider dashboard)
   status?: string;
   redirect_url?: string;
   client_secret?: string;

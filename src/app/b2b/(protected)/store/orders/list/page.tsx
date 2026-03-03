@@ -293,7 +293,7 @@ export default function OrdersListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Orders", href: `${tenantPrefix}/b2b/store/orders` },
+          { label: "Orders", href: "/b2b/store/orders" },
           { label: "All Orders" },
         ]}
       />
@@ -516,11 +516,11 @@ export default function OrdersListPage() {
           </select>
         </div>
 
-        {/* Row 2: Cart #, Public Code, ERP Code, Active Cart, Date Range */}
+        {/* Row 2: N. Carrello, Public Code, ERP Code, Active Cart, Date Range */}
         <div className="mt-3 grid gap-3 md:grid-cols-6">
           {/* Cart Number */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">Cart #</label>
+            <label className="block text-xs text-muted-foreground mb-1">N. Carrello</label>
             <input
               type="text"
               placeholder="e.g. 12"
@@ -616,7 +616,7 @@ export default function OrdersListPage() {
             )}
             {filters.cart_number && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-mono">
-                <span>Cart #{filters.cart_number}</span>
+                <span>CA/{filters.cart_number}</span>
                 <button onClick={() => updateFilters({ cart_number: "" })} className="hover:bg-amber-200 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
@@ -759,13 +759,13 @@ export default function OrdersListPage() {
                             {/* Order Number (prominent) - shown for confirmed/shipped orders */}
                             {order.order_number && (
                               <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold text-sm">
-                                #{order.order_number}
+                                OR/{order.order_number}/{order.year}
                               </span>
                             )}
                             {/* Cart Number - always shown if available (every order was a cart) */}
                             {order.cart_number && (
                               <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium text-sm">
-                                Cart #{order.cart_number}
+                                CA/{order.cart_number}/{order.year}
                               </span>
                             )}
                           </div>

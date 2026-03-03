@@ -13,6 +13,7 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
 import { TransactionStatusBadge, ProviderBadge } from "@/components/payments";
 import {
@@ -36,10 +37,12 @@ interface PaymentEvent {
 
 interface TransactionDetail {
   transaction_id: string;
+  payment_number?: string;
   tenant_id: string;
   order_id?: string;
   provider: PaymentProvider;
   provider_payment_id: string;
+  provider_capture_id?: string;
   payment_type: PaymentType;
   gross_amount: number;
   currency: string;
@@ -193,7 +196,7 @@ export default function TransactionDetailPage() {
             <ArrowLeft className="w-4 h-4" /> Transazioni
           </Link>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            Transazione
+            {transaction.payment_number || "Transazione"}
           </h1>
           <p className="text-sm font-mono text-muted-foreground mt-0.5">
             {transaction.transaction_id}
@@ -268,14 +271,29 @@ export default function TransactionDetailPage() {
               {PAYMENT_TYPE_LABELS[transaction.payment_type]}
             </DetailRow>
             <DetailRow label="Order ID">
-              {transaction.order_id || "—"}
+              {transaction.order_id ? (
+                <Link
+                  href={`${tenantPrefix}/b2b/store/orders/${transaction.order_id}`}
+                  className="inline-flex items-center gap-1 text-[#009688] hover:underline"
+                >
+                  {transaction.order_id}
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              ) : (
+                "—"
+              )}
             </DetailRow>
             <DetailRow label="Cliente">
               {transaction.customer_email || transaction.customer_id || "—"}
             </DetailRow>
-            <DetailRow label="Provider Payment ID">
+            <DetailRow label="Provider Order ID">
               <span className="font-mono text-xs">
-                {transaction.provider_payment_id}
+                {transaction.provider_payment_id || "—"}
+              </span>
+            </DetailRow>
+            <DetailRow label="Codice Transazione Provider">
+              <span className="font-mono text-xs">
+                {transaction.provider_capture_id || "—"}
               </span>
             </DetailRow>
             <DetailRow label="Idempotency Key">

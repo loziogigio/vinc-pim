@@ -18,6 +18,7 @@ export const PAYMENT_PROVIDERS = [
   "axerve",
   "satispay",
   "scalapay",
+  "bank_transfer_provider",
   "manual",
 ] as const;
 
@@ -31,6 +32,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   axerve: "Axerve (Fabrick)",
   satispay: "Satispay",
   scalapay: "Scalapay",
+  bank_transfer_provider: "Bonifico Bancario",
   manual: "Manuale",
 };
 
@@ -99,6 +101,7 @@ export const PAYMENT_METHODS = [
   "apple_pay",
   "google_pay",
   "sepa_direct_debit",
+  "cash_on_delivery",
 ] as const;
 
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -114,6 +117,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   apple_pay: "Apple Pay",
   google_pay: "Google Pay",
   sepa_direct_debit: "Addebito Diretto SEPA",
+  cash_on_delivery: "Contrassegno",
 };
 
 // ============================================
@@ -224,6 +228,12 @@ export const PROVIDER_CAPABILITIES: Record<PaymentProvider, ProviderCapabilities
   scalapay: {
     supportsMoto: false,
     supportsOnClick: true,
+    supportsRecurring: false,
+    supportsAutomaticSplit: false,
+  },
+  bank_transfer_provider: {
+    supportsMoto: false,
+    supportsOnClick: false,
     supportsRecurring: false,
     supportsAutomaticSplit: false,
   },

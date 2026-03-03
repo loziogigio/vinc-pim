@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { getPooledConnection } from "@/lib/db/connection";
 import { getModelRegistry } from "@/lib/db/model-registry";
-import { PAYMENT_PROVIDERS, PAYMENT_DEFAULTS } from "@/lib/constants/payment";
+import { PAYMENT_PROVIDERS, PAYMENT_METHODS, PAYMENT_DEFAULTS } from "@/lib/constants/payment";
 
 // ============================================
 // GET — Retrieve config
@@ -80,6 +80,25 @@ export async function PUT(req: NextRequest) {
         { error: `Invalid provider: ${default_provider}. Allowed: ${ALLOWED_PROVIDERS.join(", ")}` },
         { status: 400 }
       );
+    }
+
+    // Validate enabled_methods if provided
+    if (enabled_methods !== undefined) {
+      if (!Array.isArray(enabled_methods)) {
+        return NextResponse.json(
+          { error: "enabled_methods must be an array" },
+          { status: 400 }
+        );
+      }
+      const invalid = enabled_methods.filter(
+        (m: string) => !(PAYMENT_METHODS as readonly string[]).includes(m)
+      );
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid payment methods: ${invalid.join(", ")}` },
+          { status: 400 }
+        );
+      }
     }
 
     const dbName = `vinc-${auth.tenantId}`;

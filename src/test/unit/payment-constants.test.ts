@@ -40,8 +40,8 @@ import type {
 // ============================================
 
 describe("unit: Payment Constants - Providers", () => {
-  it("should have exactly 8 providers", () => {
-    expect(PAYMENT_PROVIDERS).toHaveLength(8);
+  it("should have exactly 9 providers", () => {
+    expect(PAYMENT_PROVIDERS).toHaveLength(9);
   });
 
   it("should include all expected providers", () => {
@@ -53,6 +53,7 @@ describe("unit: Payment Constants - Providers", () => {
       "axerve",
       "satispay",
       "scalapay",
+      "bank_transfer_provider",
       "manual",
     ];
     expected.forEach((p) => {
@@ -71,6 +72,7 @@ describe("unit: Payment Constants - Providers", () => {
     expect(PAYMENT_PROVIDER_LABELS.stripe).toBe("Stripe");
     expect(PAYMENT_PROVIDER_LABELS.nexi).toBe("Nexi XPay");
     expect(PAYMENT_PROVIDER_LABELS.axerve).toBe("Axerve (Fabrick)");
+    expect(PAYMENT_PROVIDER_LABELS.bank_transfer_provider).toBe("Bonifico Bancario");
     expect(PAYMENT_PROVIDER_LABELS.manual).toBe("Manuale");
   });
 
@@ -171,8 +173,8 @@ describe("unit: Payment Constants - Transaction Statuses", () => {
 // ============================================
 
 describe("unit: Payment Constants - Payment Methods", () => {
-  it("should have exactly 10 methods", () => {
-    expect(PAYMENT_METHODS).toHaveLength(10);
+  it("should have exactly 11 methods", () => {
+    expect(PAYMENT_METHODS).toHaveLength(11);
   });
 
   it("should include key payment methods", () => {

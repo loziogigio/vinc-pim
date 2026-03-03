@@ -50,6 +50,10 @@ const ShippingMethodSchema = new Schema<IShippingMethod>(
     estimated_days_min: { type: Number, min: 0 },
     estimated_days_max: { type: Number, min: 0 },
     enabled: { type: Boolean, default: true },
+    allowed_payment_methods: {
+      type: [{ type: String }],
+      default: undefined,
+    },
   },
   { _id: false }
 );

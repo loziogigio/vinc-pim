@@ -118,12 +118,13 @@ export interface IPaymentProvider {
 
   /**
    * Verify webhook signature from provider.
+   * May be async (e.g. PayPal calls their API to verify).
    */
   verifyWebhookSignature(
     payload: string,
     signature: string,
     secret: string
-  ): boolean;
+  ): boolean | Promise<boolean>;
 
   /**
    * Parse raw webhook payload into normalized event.

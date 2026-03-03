@@ -313,12 +313,12 @@ export async function GET(req: NextRequest) {
         }
       }
       // Build human-readable display reference
-      // Draft → #CAR/2026/25, non-draft → #ORD/2026/3 (or fallback to cart_number)
-      const prefix = order.status === "draft" ? "CAR" : "ORD";
+      // Draft → CA/{seq}/{year}, non-draft → OR/{seq}/{year}
+      const prefix = order.status === "draft" ? "CA" : "OR";
       const num = order.status !== "draft" && order.order_number
         ? order.order_number
         : order.cart_number;
-      const display_ref = `#${prefix}/${order.year}/${num}`;
+      const display_ref = `${prefix}/${num}/${order.year}`;
 
       return {
         ...order,
@@ -381,51 +381,70 @@ export async function POST(req: NextRequest) {
 
     const body: CreateOrderRequest = await req.json();
 
-    // Validate that we have some customer identifier
-    if (!body.customer_id && !body.customer_code && !body.customer) {
+    // Determine if this is a B2C guest order (buyer provided, no customer lookup)
+    const isB2CGuest = !!body.buyer && !body.customer_id && !body.customer_code && !body.customer;
+
+    // For non-guest orders, require a customer identifier
+    if (!isB2CGuest && !body.customer_id && !body.customer_code && !body.customer) {
       return NextResponse.json(
-        { error: "customer_id, customer_code, or customer object is required" },
+        { error: "customer_id, customer_code, customer object, or buyer snapshot is required" },
         { status: 400 }
       );
     }
 
-    // Find or create customer
-    let customer;
-    try {
-      const result = await findOrCreateCustomer(tenant_id, {
-        customer_id: body.customer_id,
-        customer_code: body.customer_code,
-        customer: body.customer,
-      });
-      customer = result.customer;
-    } catch (error) {
-      console.error("Error finding/creating customer:", error);
-      return NextResponse.json(
-        { error: "Failed to find or create customer" },
-        { status: 400 }
-      );
-    }
-
-    // Portal user access check
-    if (auth.customerAccess && !hasCustomerAccess(auth.customerAccess, customer.customer_id)) {
-      return NextResponse.json({ error: "Access denied to this customer" }, { status: 403 });
-    }
-
-    // Find or create shipping address (if provided)
-    let shipping_address_id = body.shipping_address_id;
-    if (!shipping_address_id && body.shipping_address) {
-      try {
-        const address = await findOrCreateAddress(customer, {
-          address: body.shipping_address,
-        }, tenant_id);
-        shipping_address_id = address.address_id;
-      } catch (error) {
-        console.error("Error finding/creating address:", error);
-        // Non-fatal - continue without address
+    // B2C guest: validate buyer has required fields
+    if (isB2CGuest) {
+      const b = body.buyer!;
+      if (!b.email || !b.first_name || !b.last_name) {
+        return NextResponse.json(
+          { error: "buyer.email, buyer.first_name, and buyer.last_name are required" },
+          { status: 400 }
+        );
       }
-    } else if (!shipping_address_id && customer.default_shipping_address_id) {
-      // Use customer's default address if no address specified
-      shipping_address_id = customer.default_shipping_address_id;
+    }
+
+    // Resolve customer (only for non-guest orders)
+    let customer: any = null;
+    let shipping_address_id: string | undefined;
+
+    if (!isB2CGuest) {
+      // Find or create customer
+      try {
+        const result = await findOrCreateCustomer(tenant_id, {
+          customer_id: body.customer_id,
+          customer_code: body.customer_code,
+          customer: body.customer,
+        });
+        customer = result.customer;
+      } catch (error) {
+        console.error("Error finding/creating customer:", error);
+        return NextResponse.json(
+          { error: "Failed to find or create customer" },
+          { status: 400 }
+        );
+      }
+
+      // Portal user access check
+      if (auth.customerAccess && !hasCustomerAccess(auth.customerAccess, customer.customer_id)) {
+        return NextResponse.json({ error: "Access denied to this customer" }, { status: 403 });
+      }
+
+      // Find or create shipping address (if provided)
+      shipping_address_id = body.shipping_address_id;
+      if (!shipping_address_id && body.shipping_address) {
+        try {
+          const address = await findOrCreateAddress(customer, {
+            address: body.shipping_address,
+          }, tenant_id);
+          shipping_address_id = address.address_id;
+        } catch (error) {
+          console.error("Error finding/creating address:", error);
+          // Non-fatal - continue without address
+        }
+      } else if (!shipping_address_id && customer.default_shipping_address_id) {
+        // Use customer's default address if no address specified
+        shipping_address_id = customer.default_shipping_address_id;
+      }
     }
 
     // Generate IDs
@@ -435,21 +454,33 @@ export async function POST(req: NextRequest) {
     const year = new Date().getFullYear();
     const cart_number = await getNextCartNumber(auth.tenantDb!, year);
 
+    // Determine defaults based on order type
+    const orderType = body.order_type || (isB2CGuest ? "b2c" : "b2b");
+    const channel = isB2CGuest ? "b2c-storefront" : "b2b-portal";
+    const priceListType = body.price_list_type || (orderType === "b2c" ? "retail" : "wholesale");
+
     // Create order with defaults
     const order = await OrderModel.create({
       order_id,
-      cart_number, // Sequential cart number per year
+      cart_number,
       year,
       status: "draft",
 
       // Tenant
       tenant_id,
 
-      // Customer (from found/created customer)
-      customer_id: customer.customer_id,
-      customer_code: customer.external_code,
+      // Customer (null for guest, populated for registered)
+      customer_id: customer?.customer_id || null,
+      customer_code: customer?.external_code || null,
       shipping_address_id: shipping_address_id || null,
-      billing_address_id: body.billing_address_id || customer.default_billing_address_id,
+      billing_address_id: body.billing_address_id || customer?.default_billing_address_id || null,
+
+      // B2C buyer snapshot (embedded on order for all B2C orders)
+      buyer: body.buyer || null,
+      invoice_requested: body.invoice_requested ?? false,
+      invoice_data: body.invoice_data || null,
+      shipping_snapshot: body.shipping_snapshot || null,
+      billing_snapshot: body.billing_snapshot || null,
 
       // Delivery
       requested_delivery_date: body.requested_delivery_date
@@ -462,18 +493,18 @@ export async function POST(req: NextRequest) {
 
       // Pricing Context
       price_list_id: body.price_list_id || "default",
-      price_list_type: body.price_list_type || "wholesale",
-      order_type: body.order_type || "b2b",
+      price_list_type: priceListType,
+      order_type: orderType,
       currency: body.currency || "EUR",
-      pricelist_type: body.pricelist_type, // External pricelist type (e.g., "VEND")
-      pricelist_code: body.pricelist_code, // External pricelist code (e.g., "02")
+      pricelist_type: body.pricelist_type,
+      pricelist_code: body.pricelist_code,
 
-      // Totals (all 0 initially)
+      // Totals (all 0 initially, shipping_cost from request if provided)
       subtotal_gross: 0,
       subtotal_net: 0,
       total_discount: 0,
       total_vat: 0,
-      shipping_cost: 0,
+      shipping_cost: body.shipping_cost || 0,
       order_total: 0,
 
       // B2B Fields
@@ -485,7 +516,7 @@ export async function POST(req: NextRequest) {
       session_id,
       flow_id,
       source: "web",
-      channel: "b2b-portal",
+      channel,
 
       // Items (empty)
       items: [],
@@ -495,12 +526,14 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         order,
-        customer: {
-          customer_id: customer.customer_id,
-          external_code: customer.external_code,
-          company_name: customer.company_name,
-          email: customer.email,
-        },
+        customer: customer
+          ? {
+              customer_id: customer.customer_id,
+              external_code: customer.external_code,
+              company_name: customer.company_name,
+              email: customer.email,
+            }
+          : null,
       },
       { status: 201 }
     );

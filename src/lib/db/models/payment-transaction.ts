@@ -27,10 +27,12 @@ export interface IPaymentEvent {
 
 export interface IPaymentTransaction extends Document {
   transaction_id: string;
+  payment_number: string; // Human-readable: P/{seq}/{year}
   tenant_id: string;
   order_id?: string;
   provider: string;
-  provider_payment_id: string;
+  provider_payment_id: string; // Provider order ID (e.g., PayPal order ID)
+  provider_capture_id?: string; // Provider capture/transaction ID (e.g., PayPal capture ID visible in dashboard)
   payment_type: string;
 
   // Amounts
@@ -91,6 +93,7 @@ export const PaymentTransactionSchema = new Schema<IPaymentTransaction>(
       unique: true,
       index: true,
     },
+    payment_number: { type: String, default: "" },
     tenant_id: { type: String, required: true, index: true },
     order_id: { type: String, index: true },
     provider: {
@@ -98,7 +101,8 @@ export const PaymentTransactionSchema = new Schema<IPaymentTransaction>(
       enum: PAYMENT_PROVIDERS,
       required: true,
     },
-    provider_payment_id: { type: String, required: true },
+    provider_payment_id: { type: String, default: "" },
+    provider_capture_id: { type: String, default: "" },
     payment_type: {
       type: String,
       enum: PAYMENT_TYPES,

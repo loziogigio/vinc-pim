@@ -1,10 +1,12 @@
 /**
  * Nexi XPay Webhook Handler
  *
- * POST /api/public/payments/webhooks/nexi
+ * POST /api/public/payments/webhooks/nexi?tenant={tenantId}
  *
  * Public endpoint — no auth required.
- * Nexi sends server-to-server notifications with MAC verification.
+ * Verification: MAC header checked against tenant's api_key from MongoDB.
+ *
+ * The ?tenant= parameter is REQUIRED — webhooks without it are rejected.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -12,11 +14,18 @@ import { processWebhook } from "@/lib/payments/webhook.service";
 
 export async function POST(req: NextRequest) {
   try {
+    const tenantId = req.nextUrl.searchParams.get("tenant");
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Missing tenant parameter" },
+        { status: 400 }
+      );
+    }
+
     const payload = await req.text();
     const signature = req.headers.get("x-nexi-mac") || "";
-    const secret = process.env.NEXI_WEBHOOK_SECRET || "";
 
-    const result = await processWebhook("nexi", payload, signature, secret);
+    const result = await processWebhook("nexi", payload, signature, tenantId);
 
     if (!result.success) {
       return NextResponse.json(

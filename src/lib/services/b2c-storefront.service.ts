@@ -260,8 +260,19 @@ export async function getStorefrontByDomain(
 ): Promise<IB2CStorefront | null> {
   const { B2CStorefront } = await connectWithModels(tenantDb);
   const normalizedDomain = domain.trim().toLowerCase();
-  return B2CStorefront.findOne({
+
+  // Try exact match first (hostname like "shop.example.com")
+  const exact = await B2CStorefront.findOne({
     domains: normalizedDomain,
     status: "active",
-  }).lean() as Promise<IB2CStorefront | null>;
+  }).lean() as IB2CStorefront | null;
+  if (exact) return exact;
+
+  // Domains may be stored as full URLs (e.g. "https://shop.example.com").
+  // Build regex to match entries that contain this hostname.
+  const escaped = normalizedDomain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return B2CStorefront.findOne({
+    domains: { $regex: new RegExp(`^https?://${escaped}(:\\d+)?/?$`, "i") },
+    status: "active",
+  }).lean() as IB2CStorefront | null;
 }

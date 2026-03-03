@@ -220,7 +220,7 @@ export default function PortalUsersListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Portal Users", href: `${tenantPrefix}/b2b/store/portal-users` },
+          { label: "Portal Users", href: "/b2b/store/portal-users" },
           { label: "All Portal Users" },
         ]}
       />

@@ -6,6 +6,15 @@
  */
 
 import type { DiscountStep } from "./pim";
+import type {
+  IBuyerSnapshot,
+  IInvoiceData,
+  IAddressSnapshot,
+} from "@/lib/db/models/order";
+
+// Re-export B2C types for consumer convenience
+export type { IBuyerSnapshot, IInvoiceData, IAddressSnapshot };
+export type { BuyerType } from "@/lib/db/models/order";
 
 // Re-export from constants for backwards compatibility
 export type {
@@ -282,12 +291,19 @@ export interface Order {
   // Tenant (multi-tenant support)
   tenant_id: string; // e.g., "hidros-it"
 
-  // Customer
-  customer_id: string;
+  // Customer (optional for B2C guest orders)
+  customer_id?: string;
   customer_code?: string; // Customer ERP code (external code for lookup)
   shipping_address_id?: string; // Internal address ID
   shipping_address_code?: string; // Address ERP code (external code for lookup)
   billing_address_id?: string;
+
+  // B2C buyer snapshot (populated for all B2C orders; null for B2B)
+  buyer?: IBuyerSnapshot;
+  invoice_requested?: boolean;
+  invoice_data?: IInvoiceData;
+  shipping_snapshot?: IAddressSnapshot;
+  billing_snapshot?: IAddressSnapshot;
 
   // Delivery
   requested_delivery_date?: Date;
@@ -415,14 +431,23 @@ export interface AddressInput {
 
 export interface CreateOrderRequest {
   // Customer lookup options (priority order):
+  // For B2B: at least one is required
+  // For B2C guest: all optional (use buyer instead)
   customer_id?: string; // 1st: Internal ID
   customer_code?: string; // 2nd: External code (ERP)
   customer?: CustomerInput; // 3rd: Lookup or create with this data
 
-  // Address lookup options:
+  // Address lookup options (B2B):
   shipping_address_id?: string; // 1st: Internal ID
   shipping_address?: AddressInput; // 2nd: Lookup or create
   billing_address_id?: string;
+
+  // B2C buyer data (alternative to customer lookup):
+  buyer?: IBuyerSnapshot;
+  invoice_requested?: boolean;
+  invoice_data?: IInvoiceData;
+  shipping_snapshot?: IAddressSnapshot;
+  billing_snapshot?: IAddressSnapshot;
 
   // Order fields
   order_type?: OrderType;
@@ -436,6 +461,7 @@ export interface CreateOrderRequest {
   delivery_route?: string;
   shipping_method?: string;
   requires_delivery?: boolean; // false for service orders
+  shipping_cost?: number;
   po_reference?: string;
   cost_center?: string;
   notes?: string;

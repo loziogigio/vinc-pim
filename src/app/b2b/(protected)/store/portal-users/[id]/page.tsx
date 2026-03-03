@@ -436,7 +436,7 @@ export default function PortalUserDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Portal Users", href: `${tenantPrefix}/b2b/store/portal-users` },
+            { label: "Portal Users", href: "/b2b/store/portal-users" },
             { label: "Error" },
           ]}
         />
@@ -461,7 +461,7 @@ export default function PortalUserDetailPage({
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Portal Users", href: `${tenantPrefix}/b2b/store/portal-users` },
+          { label: "Portal Users", href: "/b2b/store/portal-users" },
           { label: portalUser.username },
         ]}
       />

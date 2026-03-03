@@ -10,6 +10,7 @@ import {
   Smartphone,
   Terminal,
   HandCoins,
+  Banknote,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -30,6 +31,7 @@ const PROVIDER_ICONS: Record<PaymentProvider, React.ElementType> = {
   axerve: Terminal,
   satispay: Smartphone,
   scalapay: Smartphone,
+  bank_transfer_provider: Banknote,
   manual: HandCoins,
 };
 
@@ -162,12 +164,18 @@ export default function GatewaysPage() {
                 </div>
 
                 {/* Action */}
-                <Link
-                  href={`${tenantPrefix}/b2b/payments/settings`}
-                  className="text-sm text-[#009688] hover:underline"
-                >
-                  Configura →
-                </Link>
+                {provider !== "manual" ? (
+                  <Link
+                    href={`${tenantPrefix}/b2b/payments/gateways/${provider}`}
+                    className="text-sm text-[#009688] hover:underline"
+                  >
+                    Configura →
+                  </Link>
+                ) : (
+                  <span className="text-sm text-gray-400">
+                    Nessuna configurazione
+                  </span>
+                )}
               </div>
             );
           })}

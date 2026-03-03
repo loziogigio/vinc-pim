@@ -1,10 +1,12 @@
 /**
  * Stripe Webhook Handler
  *
- * POST /api/public/payments/webhooks/stripe
+ * POST /api/public/payments/webhooks/stripe?tenant={tenantId}
  *
  * Public endpoint — no auth required.
- * Signature verified via Stripe-Signature header + STRIPE_WEBHOOK_SECRET.
+ * Verification: Stripe SDK HMAC-SHA256 using tenant's webhook_secret from MongoDB.
+ *
+ * The ?tenant= parameter is REQUIRED — webhooks without it are rejected.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -12,9 +14,16 @@ import { processWebhook } from "@/lib/payments/webhook.service";
 
 export async function POST(req: NextRequest) {
   try {
+    const tenantId = req.nextUrl.searchParams.get("tenant");
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Missing tenant parameter" },
+        { status: 400 }
+      );
+    }
+
     const payload = await req.text();
     const signature = req.headers.get("stripe-signature") || "";
-    const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
     if (!signature) {
       return NextResponse.json(
@@ -23,7 +32,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await processWebhook("stripe", payload, signature, secret);
+    const result = await processWebhook("stripe", payload, signature, tenantId);
 
     if (!result.success) {
       return NextResponse.json(

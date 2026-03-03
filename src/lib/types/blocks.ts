@@ -385,15 +385,20 @@ export type BlockRegistry = {
 // Zone types for product detail page placement
 export type ProductDetailZone = "zone1" | "zone2" | "zone3" | "zone4";
 
+// Block layout: full-width (edge-to-edge) or container (max-width centered)
+export type BlockLayout = "full-width" | "container";
+
 export interface PageBlock<TConfig extends BlockConfig = BlockConfig> {
   id: string;
   type: string;
   order: number;
   config: TConfig;
   metadata?: Record<string, unknown>;
-  // NEW: Zone placement for product detail pages
+  // Block layout: full-width (edge-to-edge) or container (max-width centered)
+  layout?: BlockLayout;
+  // Zone placement for product detail pages
   zone?: ProductDetailZone;
-  // NEW: Tab label for zone3 (new tab placement)
+  // Tab label for zone3 (new tab placement)
   tabLabel?: string;
   tabIcon?: string;
 }

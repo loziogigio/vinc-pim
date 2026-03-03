@@ -54,7 +54,9 @@ export async function GET(req: NextRequest) {
     if (search) {
       query.$or = [
         { transaction_id: { $regex: search, $options: "i" } },
+        { payment_number: { $regex: search, $options: "i" } },
         { provider_payment_id: { $regex: search, $options: "i" } },
+        { provider_capture_id: { $regex: search, $options: "i" } },
         { customer_email: { $regex: search, $options: "i" } },
         { order_id: { $regex: search, $options: "i" } },
       ];

@@ -9,6 +9,9 @@
  * API Base: https://api-m.paypal.com/v2/ (production)
  *           https://api-m.sandbox.paypal.com/v2/ (sandbox)
  * Auth: OAuth2 client_credentials → Bearer token
+ *
+ * Credentials are read from the per-tenant PayPal config stored in MongoDB
+ * (ITenantPaymentConfig.providers.paypal), NOT from environment variables.
  */
 
 import type { IPaymentProvider, ProviderTenantConfig } from "../provider-interface";
@@ -24,23 +27,24 @@ import type {
 } from "@/lib/types/payment";
 
 // ============================================
-// PAYPAL API CLIENT
+// TENANT CONFIG INTERFACE
 // ============================================
 
 interface PayPalConfig {
-  merchant_id: string;
+  client_id: string;
+  client_secret: string;
+  merchant_id?: string;
+  webhook_id?: string;
+  environment: "sandbox" | "production";
   enabled: boolean;
 }
 
-interface PayPalPlatformConfig {
-  client_id: string;
-  client_secret: string;
-  environment: "sandbox" | "production";
-  webhook_id?: string;
-}
+// ============================================
+// PAYPAL API CLIENT
+// ============================================
 
-// Token cache (platform-level, not per-merchant)
-let cachedToken: { token: string; expires_at: number } | null = null;
+// Per-tenant token cache keyed by client_id
+const tokenCache = new Map<string, { token: string; expires_at: number }>();
 
 function getBaseUrl(environment: "sandbox" | "production"): string {
   return environment === "production"
@@ -49,11 +53,12 @@ function getBaseUrl(environment: "sandbox" | "production"): string {
 }
 
 /**
- * Get OAuth2 access token (cached until expiry).
+ * Get OAuth2 access token (cached per client_id until expiry).
  */
-async function getAccessToken(config: PayPalPlatformConfig): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expires_at - 60_000) {
-    return cachedToken.token;
+async function getAccessToken(config: PayPalConfig): Promise<string> {
+  const cached = tokenCache.get(config.client_id);
+  if (cached && Date.now() < cached.expires_at - 60_000) {
+    return cached.token;
   }
 
   const baseUrl = getBaseUrl(config.environment);
@@ -73,10 +78,10 @@ async function getAccessToken(config: PayPalPlatformConfig): Promise<string> {
   }
 
   const data = (await response.json()) as { access_token: string; expires_in: number };
-  cachedToken = {
+  tokenCache.set(config.client_id, {
     token: data.access_token,
     expires_at: Date.now() + data.expires_in * 1000,
-  };
+  });
 
   return data.access_token;
 }
@@ -85,7 +90,7 @@ async function getAccessToken(config: PayPalPlatformConfig): Promise<string> {
  * Make an authenticated PayPal API request.
  */
 async function paypalRequest(
-  config: PayPalPlatformConfig,
+  config: PayPalConfig,
   method: string,
   path: string,
   body?: Record<string, unknown>
@@ -117,16 +122,14 @@ async function paypalRequest(
 }
 
 /**
- * Get platform config from environment variables.
- * PayPal uses platform credentials (not per-merchant) for the Orders API.
+ * Cast ProviderTenantConfig to PayPalConfig with validation.
  */
-function getPlatformConfig(): PayPalPlatformConfig {
-  return {
-    client_id: process.env.PAYPAL_CLIENT_ID || "",
-    client_secret: process.env.PAYPAL_CLIENT_SECRET || "",
-    environment: (process.env.PAYPAL_ENVIRONMENT as "sandbox" | "production") || "sandbox",
-    webhook_id: process.env.PAYPAL_WEBHOOK_ID,
-  };
+function asPayPalConfig(tenantConfig: ProviderTenantConfig): PayPalConfig {
+  const config = tenantConfig as PayPalConfig;
+  if (!config.client_id || !config.client_secret) {
+    throw new Error("PayPal client_id and client_secret are required");
+  }
+  return config;
 }
 
 // ============================================
@@ -149,29 +152,30 @@ export const paypalProvider: IPaymentProvider = {
     tenantConfig: ProviderTenantConfig,
     params: CreatePaymentParams
   ): Promise<PaymentResult> {
-    const config = tenantConfig as PayPalConfig;
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     if (!config.enabled) {
       return { success: false, error: "PayPal not enabled for this merchant" };
     }
 
     try {
-      const result = await paypalRequest(platform, "POST", "/v2/checkout/orders", {
+      const purchaseUnit: Record<string, unknown> = {
+        reference_id: params.metadata?.payment_number || params.order_id,
+        amount: {
+          currency_code: params.currency || "EUR",
+          value: params.amount.toFixed(2),
+        },
+        description: params.metadata?.description || `Order ${params.order_id}`,
+      };
+
+      // Add payee only if merchant_id is configured
+      if (config.merchant_id) {
+        purchaseUnit.payee = { merchant_id: config.merchant_id };
+      }
+
+      const result = await paypalRequest(config, "POST", "/v2/checkout/orders", {
         intent: "CAPTURE",
-        purchase_units: [
-          {
-            reference_id: params.order_id,
-            amount: {
-              currency_code: params.currency || "EUR",
-              value: params.amount.toFixed(2),
-            },
-            description: params.metadata?.description || `Order ${params.order_id}`,
-            payee: {
-              merchant_id: config.merchant_id,
-            },
-          },
-        ],
+        purchase_units: [purchaseUnit],
         application_context: {
           return_url: params.return_url || params.metadata?.return_url,
           cancel_url: params.return_url || params.metadata?.cancel_url,
@@ -203,24 +207,38 @@ export const paypalProvider: IPaymentProvider = {
   // Capture (after customer approves)
   // ============================================
   async capturePayment(
-    _tenantConfig: ProviderTenantConfig,
+    tenantConfig: ProviderTenantConfig,
     providerPaymentId: string,
     _amount?: number
   ): Promise<PaymentResult> {
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     try {
       const result = await paypalRequest(
-        platform,
+        config,
         "POST",
         `/v2/checkout/orders/${providerPaymentId}/capture`,
         {}
       );
 
-      const order = result as { id?: string; status?: string };
+      const order = result as {
+        id?: string;
+        status?: string;
+        purchase_units?: Array<{
+          payments?: {
+            captures?: Array<{ id?: string; status?: string }>;
+          };
+        }>;
+      };
+
+      // Extract capture ID — this is PayPal's "Transaction ID" visible in the dashboard
+      const captureId =
+        order.purchase_units?.[0]?.payments?.captures?.[0]?.id || undefined;
+
       return {
         success: order.status === "COMPLETED",
         provider_payment_id: order.id || providerPaymentId,
+        provider_capture_id: captureId,
         status: order.status || "unknown",
       };
     } catch (error) {
@@ -232,15 +250,14 @@ export const paypalProvider: IPaymentProvider = {
   // Refund
   // ============================================
   async refundPayment(
-    _tenantConfig: ProviderTenantConfig,
+    tenantConfig: ProviderTenantConfig,
     providerPaymentId: string,
     amount?: number
   ): Promise<RefundResult> {
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     try {
-      // PayPal refunds are against capture IDs, not order IDs.
-      // In a full implementation, we'd store the capture_id from the capture response.
+      // providerPaymentId here should be the capture ID (provider_capture_id)
       const body: Record<string, unknown> = {};
       if (amount) {
         body.amount = {
@@ -250,7 +267,7 @@ export const paypalProvider: IPaymentProvider = {
       }
 
       const result = await paypalRequest(
-        platform,
+        config,
         "POST",
         `/v2/payments/captures/${providerPaymentId}/refund`,
         body
@@ -271,14 +288,14 @@ export const paypalProvider: IPaymentProvider = {
   // Get Status
   // ============================================
   async getPaymentStatus(
-    _tenantConfig: ProviderTenantConfig,
+    tenantConfig: ProviderTenantConfig,
     providerPaymentId: string
   ): Promise<PaymentResult> {
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     try {
       const result = await paypalRequest(
-        platform,
+        config,
         "GET",
         `/v2/checkout/orders/${providerPaymentId}`
       );
@@ -301,8 +318,7 @@ export const paypalProvider: IPaymentProvider = {
     tenantConfig: ProviderTenantConfig,
     params: ContractParams
   ): Promise<ContractResult> {
-    const config = tenantConfig as PayPalConfig;
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     if (!config.enabled) {
       throw new Error("PayPal not enabled for this merchant");
@@ -310,7 +326,7 @@ export const paypalProvider: IPaymentProvider = {
 
     try {
       // Create a billing plan first
-      const plan = await paypalRequest(platform, "POST", "/v1/billing/plans", {
+      const plan = await paypalRequest(config, "POST", "/v1/billing/plans", {
         product_id: params.customer_id, // Should be a PayPal product_id in production
         name: `Recurring Plan - ${params.contract_type}`,
         billing_cycles: [
@@ -352,16 +368,16 @@ export const paypalProvider: IPaymentProvider = {
   // Recurring — Charge (create subscription from plan)
   // ============================================
   async chargeRecurring(
-    _tenantConfig: ProviderTenantConfig,
+    tenantConfig: ProviderTenantConfig,
     providerContractId: string,
     params: RecurringChargeParams
   ): Promise<PaymentResult> {
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     try {
       // For PayPal, recurring charges happen automatically via subscriptions.
       // This creates a subscription that PayPal bills automatically.
-      const result = await paypalRequest(platform, "POST", "/v1/billing/subscriptions", {
+      const result = await paypalRequest(config, "POST", "/v1/billing/subscriptions", {
         plan_id: providerContractId,
         custom_id: params.order_id,
         application_context: {
@@ -393,13 +409,13 @@ export const paypalProvider: IPaymentProvider = {
   // Cancel Contract (cancel subscription)
   // ============================================
   async cancelContract(
-    _tenantConfig: ProviderTenantConfig,
+    tenantConfig: ProviderTenantConfig,
     providerContractId: string
   ): Promise<void> {
-    const platform = getPlatformConfig();
+    const config = asPayPalConfig(tenantConfig);
 
     await paypalRequest(
-      platform,
+      config,
       "POST",
       `/v1/billing/subscriptions/${providerContractId}/cancel`,
       { reason: "Cancelled by merchant" }
@@ -409,15 +425,96 @@ export const paypalProvider: IPaymentProvider = {
   // ============================================
   // Webhooks
   // ============================================
-  verifyWebhookSignature(
+
+  /**
+   * Verify webhook via PayPal's official verify-webhook-signature API.
+   *
+   * @param payload  Raw webhook body
+   * @param signature  JSON string with PayPal transmission headers + tenant config:
+   *   { auth_algo, cert_url, transmission_id, transmission_sig, transmission_time,
+   *     client_id, client_secret, environment }
+   * @param webhookId  Tenant's webhook_id from MongoDB config
+   */
+  async verifyWebhookSignature(
     payload: string,
     signature: string,
-    _secret: string
-  ): boolean {
-    // PayPal webhook verification requires calling their API to verify
-    // In production, use POST /v1/notifications/verify-webhook-signature
-    // For now, basic check that signature header exists
-    return !!signature && !!payload;
+    webhookId: string
+  ): Promise<boolean> {
+    if (!webhookId) {
+      console.warn("[PayPal] No webhook_id configured — cannot verify");
+      return false;
+    }
+
+    let headers: Record<string, string>;
+    try {
+      headers = JSON.parse(signature);
+    } catch {
+      console.warn("[PayPal] Invalid signature format — expected JSON headers");
+      return false;
+    }
+
+    const { auth_algo, cert_url, transmission_id, transmission_sig, transmission_time } = headers;
+    if (!transmission_id || !transmission_sig) {
+      console.warn("[PayPal] Missing required transmission headers");
+      return false;
+    }
+
+    // Build a temporary config to get an access token for the verify call
+    const config: PayPalConfig = {
+      client_id: headers.client_id || "",
+      client_secret: headers.client_secret || "",
+      environment: (headers.environment as "sandbox" | "production") || "sandbox",
+      enabled: true,
+    };
+
+    if (!config.client_id || !config.client_secret) {
+      console.warn("[PayPal] Missing client credentials — cannot verify webhook");
+      return false;
+    }
+
+    try {
+      const token = await getAccessToken(config);
+      const baseUrl = getBaseUrl(config.environment);
+
+      const verifyBody = {
+        auth_algo: auth_algo || "SHA256withRSA",
+        cert_url,
+        transmission_id,
+        transmission_sig,
+        transmission_time,
+        webhook_id: webhookId,
+        webhook_event: JSON.parse(payload),
+      };
+
+      const response = await fetch(
+        `${baseUrl}/v1/notifications/verify-webhook-signature`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(verifyBody),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`[PayPal] Verify API error ${response.status}: ${await response.text()}`);
+        return false;
+      }
+
+      const result = (await response.json()) as { verification_status: string };
+      const verified = result.verification_status === "SUCCESS";
+
+      if (!verified) {
+        console.warn(`[PayPal] Webhook verification failed: ${result.verification_status}`);
+      }
+
+      return verified;
+    } catch (error) {
+      console.error("[PayPal] Webhook verification error:", error);
+      return false;
+    }
   },
 
   parseWebhookEvent(payload: string): WebhookEvent {

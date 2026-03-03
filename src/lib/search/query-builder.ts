@@ -28,6 +28,13 @@ const MULTILINGUAL_FILTER_FIELDS: Record<string, true> = {
   product_type_slug: true,
 };
 
+/** Multilingual filter fields that require exact phrase matching (quoted) */
+const PHRASE_MATCH_FILTER_FIELDS: Record<string, true> = {
+  slug: true,
+  category_slug: true,
+  product_type_slug: true,
+};
+
 // ============================================
 // SEARCH QUERY BUILDER
 // ============================================
@@ -186,8 +193,8 @@ const SEARCH_FIELDS_CONFIG = [
   { field: 'name_sort_{lang}', weight: 0, wildcardWeight: 10000, noExact: true, noContains: true },
   // Name tokenized text - HIGH PRIORITY (but lower than codes)
   { field: 'name_text_{lang}', weight: 5000, wildcardWeight: 2000, containsWeight: 800 },
-  // Synonym terms for enhanced search (500 = less than name_text_ 5000, but high priority)
-  { field: 'synonym_terms_text_{lang}', weight: 4500, wildcardWeight: 1800, containsWeight: 600 }, // Synonym dictionary terms
+  // Synonym terms for enhanced search (less than name_text_ but high priority)
+  { field: 'synonym_terms_text_{lang}', weight: 4500, wildcardWeight: 1800, containsWeight: 600 },
   // Brand/Model (medium weight)
   { field: 'brand_label', weight: 200, wildcardWeight: 80 },
   { field: 'product_model', weight: 150, wildcardWeight: 50 },
@@ -423,6 +430,12 @@ function buildFilterQueries(
     const solrField = MULTILINGUAL_FILTER_FIELDS[key]
       ? `${key}_text_${lang}`
       : getFilterField(key);
+
+    // Slug-like fields need exact phrase matching (quoted) on tokenized text fields
+    if (PHRASE_MATCH_FILTER_FIELDS[key] && typeof value === 'string') {
+      fq.push(`${solrField}:"${escapeQueryChars(value)}"`);
+      continue;
+    }
     const filterClause = buildFilterClause(solrField, value);
 
     if (filterClause) {

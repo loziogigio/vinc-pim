@@ -444,7 +444,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Orders", href: `${tenantPrefix}/b2b/store/orders` },
+          { label: "Orders", href: "/b2b/store/orders" },
           { label: `Order ${order.order_id}` },
         ]}
       />
@@ -465,7 +465,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               </h1>
               {order.order_number && (
                 <p className="text-sm text-muted-foreground">
-                  Order #{order.order_number}/{order.year}
+                  OR/{order.order_number}/{order.year}
                 </p>
               )}
             </div>

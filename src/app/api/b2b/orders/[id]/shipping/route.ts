@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import {
   fetchShippingConfig,
@@ -23,14 +23,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { id: order_id } = await params;
-    const tenantId = session.tenantId;
-    const tenantDb = `vinc-${tenantId}`;
+    const { tenantId, tenantDb } = auth;
 
     const body = await req.json();
     const { method_id } = body as { method_id: string };
@@ -116,6 +113,7 @@ export async function POST(
     // Apply shipping: update cost and recompute order_total from existing subtotals
     order.shipping_method = method.name;
     order.shipping_cost = computedCost;
+    order.allowed_payment_methods = method.allowed_payment_methods;
     order.order_total = Math.round((order.subtotal_net + order.total_vat + computedCost) * 100) / 100;
 
     await order.save();
@@ -126,6 +124,7 @@ export async function POST(
         shipping_method: order.shipping_method,
         shipping_cost: order.shipping_cost,
         order_total: order.order_total,
+        allowed_payment_methods: order.allowed_payment_methods,
       },
     });
   } catch (error) {

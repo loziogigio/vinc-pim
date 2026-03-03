@@ -116,6 +116,50 @@ packages/vinc-payments-client/
 
 ---
 
+### 2. Reminder Data Source + Shared Product Search Preview
+**Status:** 📋 Planned
+**Plan File:** `~/.claude/plans/temporal-purring-sonnet.md`
+
+Add "reminder" as 4th data source to Product Carousel blocks and extract duplicated search preview into a shared component.
+
+- **Part A:** Add `"reminder"` option to home builder, mobile builder, and type definitions
+- **Part B:** Extract `ProductSearchPreview` shared component, reuse in both builders
+
+**Files:** 1 new, 3 modified
+
+---
+
+### 3. Coupon Discount + Promotion System
+**Status:** 📋 Planned
+**Plan File:** `~/.claude/plans/zany-hugging-hearth.md`
+
+Code-based coupons and auto-apply promotion engine with gift item support.
+
+**Coupon Types (code-based):**
+
+| Type | Effect |
+|------|--------|
+| Percentage | % off order subtotal |
+| Fixed Amount | EUR X off subtotal |
+| Free Shipping | Shipping cost = 0 |
+| Buy X Get Y | Buy product A, get product B free |
+| Free Gift | Add specific product as gift line |
+
+**Promotion Types (auto-apply):**
+
+| Type | Effect |
+|------|--------|
+| Buy X Get Y | Auto-add gift when trigger qty met |
+| Gift with Purchase | Auto-add gift when trigger product in cart |
+| Tiered Discount | Progressive % off by quantity thresholds |
+| Bundle Discount | % off when all bundle products present |
+
+**Integration:** Reuses existing `ICartDiscount` for monetary discounts and `is_gift_line` for free items. No changes to `recalculateOrderTotals()`.
+
+**Files:** 14 new, 4 modified
+
+---
+
 ## Related Packages
 
 ### vinc-cdn
@@ -131,7 +175,8 @@ Shared CDN utilities for file uploads (IBM Cloud Object Storage / S3-compatible)
 | Resource | Path |
 |----------|------|
 | Payment Plan | `~/.claude/plans/enchanted-toasting-sketch.md` |
-| Integration Points | See "Integration with Existing Systems" section in payment plan |
+| Reminder + Search Preview Plan | `~/.claude/plans/temporal-purring-sonnet.md` |
+| Coupon + Promotion Plan | `~/.claude/plans/zany-hugging-hearth.md` |
 | CDN Config | `src/lib/services/cdn-config.ts` |
 | Order Service | `src/lib/services/order.service.ts` |
 | Queue System | `src/lib/queue/queues.ts` |

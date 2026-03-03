@@ -255,6 +255,44 @@ export interface IDeliveryData {
   delivery_notes?: string;
 }
 
+// ============================================
+// B2C GUEST / INVOICE TYPES
+// ============================================
+
+export const BUYER_TYPES = ["private", "business"] as const;
+export type BuyerType = (typeof BUYER_TYPES)[number];
+
+/** Embedded buyer snapshot — always populated, replaces customer_id for guests */
+export interface IBuyerSnapshot {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  customer_type: BuyerType;
+  company_name?: string;
+  is_guest: boolean;
+}
+
+/** Italian e-invoicing data snapshot at order time */
+export interface IInvoiceData {
+  fiscal_code?: string;
+  vat_number?: string;
+  pec_email?: string;
+  sdi_code?: string;
+}
+
+/** Immutable address snapshot embedded on order */
+export interface IAddressSnapshot {
+  recipient_name: string;
+  street_address: string;
+  street_address_2?: string;
+  city: string;
+  province: string;
+  postal_code: string;
+  country: string;
+  phone?: string;
+}
+
 export interface IOrder extends Document {
   // Identity
   order_id: string;
@@ -270,18 +308,26 @@ export interface IOrder extends Document {
   // Sales channel
   channel: string;
 
-  // Customer
-  customer_id: string;
+  // Customer (optional for B2C guest orders)
+  customer_id?: string;
   customer_code?: string;
   shipping_address_id?: string;
   shipping_address_code?: string; // External address code for cart lookup
   billing_address_id?: string;
+
+  // B2C buyer snapshot (populated for all B2C orders; null for B2B)
+  buyer?: IBuyerSnapshot;
+  invoice_requested?: boolean;
+  invoice_data?: IInvoiceData;
+  shipping_snapshot?: IAddressSnapshot;
+  billing_snapshot?: IAddressSnapshot;
 
   // Delivery
   requested_delivery_date?: Date;
   delivery_slot?: string;
   delivery_route?: string;
   shipping_method?: string;
+  allowed_payment_methods?: string[];
   requires_delivery?: boolean;
 
   // Pricing Context
@@ -687,18 +733,77 @@ const OrderSchema = new Schema<IOrder>(
     // Sales channel
     channel: { type: String, default: "default", index: true },
 
-    // Customer
-    customer_id: { type: String, required: true, index: true },
+    // Customer (optional for B2C guest orders)
+    customer_id: { type: String, index: true },
     customer_code: { type: String },
     shipping_address_id: { type: String },
     shipping_address_code: { type: String }, // External address code for cart lookup
     billing_address_id: { type: String },
+
+    // B2C buyer snapshot
+    buyer: {
+      type: new Schema(
+        {
+          email: { type: String, required: true },
+          first_name: { type: String, required: true },
+          last_name: { type: String, required: true },
+          phone: { type: String },
+          customer_type: { type: String, required: true, enum: BUYER_TYPES },
+          company_name: { type: String },
+          is_guest: { type: Boolean, required: true },
+        },
+        { _id: false }
+      ),
+    },
+    invoice_requested: { type: Boolean },
+    invoice_data: {
+      type: new Schema(
+        {
+          fiscal_code: { type: String },
+          vat_number: { type: String },
+          pec_email: { type: String },
+          sdi_code: { type: String },
+        },
+        { _id: false }
+      ),
+    },
+    shipping_snapshot: {
+      type: new Schema(
+        {
+          recipient_name: { type: String, required: true },
+          street_address: { type: String, required: true },
+          street_address_2: { type: String },
+          city: { type: String, required: true },
+          province: { type: String, required: true },
+          postal_code: { type: String, required: true },
+          country: { type: String, required: true },
+          phone: { type: String },
+        },
+        { _id: false }
+      ),
+    },
+    billing_snapshot: {
+      type: new Schema(
+        {
+          recipient_name: { type: String, required: true },
+          street_address: { type: String, required: true },
+          street_address_2: { type: String },
+          city: { type: String, required: true },
+          province: { type: String, required: true },
+          postal_code: { type: String, required: true },
+          country: { type: String, required: true },
+          phone: { type: String },
+        },
+        { _id: false }
+      ),
+    },
 
     // Delivery
     requested_delivery_date: { type: Date },
     delivery_slot: { type: String },
     delivery_route: { type: String },
     shipping_method: { type: String },
+    allowed_payment_methods: { type: [{ type: String }], default: undefined },
     requires_delivery: { type: Boolean, default: true },
 
     // Pricing Context
@@ -854,6 +959,12 @@ OrderSchema.index({ "quotation.valid_until": 1 }); // For expiration checks
 
 // Find duplications
 OrderSchema.index({ duplicated_from: 1 });
+
+// B2C guest order linking (find orders by buyer email for account registration)
+OrderSchema.index(
+  { "buyer.email": 1 },
+  { partialFilterExpression: { "buyer.email": { $exists: true } } }
+);
 
 // Lifecycle date indexes
 OrderSchema.index({ submitted_at: -1 });

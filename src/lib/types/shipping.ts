@@ -40,6 +40,12 @@ export interface IShippingMethod {
   estimated_days_max?: number;
   /** Whether this method is currently offered to customers */
   enabled: boolean;
+  /**
+   * Payment methods allowed when this shipping method is selected.
+   * Uses PaymentMethod values from @/lib/constants/payment.
+   * When undefined or empty, ALL tenant-enabled payment methods are allowed.
+   */
+  allowed_payment_methods?: string[];
 }
 
 export interface IShippingZone {
@@ -74,4 +80,10 @@ export interface ShippingMethodOption {
   is_free: boolean;
   estimated_days_min?: number;
   estimated_days_max?: number;
+  /**
+   * Payment methods allowed for this shipping option.
+   * Resolved as intersection of shipping method config and tenant enabled_methods.
+   * When undefined or empty, all tenant-enabled payment methods are allowed.
+   */
+  allowed_payment_methods?: string[];
 }

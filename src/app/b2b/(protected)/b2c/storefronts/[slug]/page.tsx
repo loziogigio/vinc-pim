@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, useCallback, use, type ChangeEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,7 +12,10 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  Upload,
+  Loader2,
 } from "lucide-react";
+import { useImageUpload } from "@/hooks/useImageUpload";
 
 // ============================================================
 // Domain helpers
@@ -254,6 +257,12 @@ export default function StorefrontDetailPage({
   // Footer
   const [footer, setFooter] = useState<IB2CStorefrontFooter>({});
 
+  // Logo & Favicon uploads
+  const logoUploader = useImageUpload();
+  const faviconUploader = useImageUpload();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetch(`/api/b2b/b2c/storefronts/${slug}`)
       .then((res) => res.json())
@@ -321,6 +330,41 @@ export default function StorefrontDetailPage({
   ) {
     setBranding((prev) => ({ ...prev, [key]: value }));
   }
+
+  // Logo & Favicon upload handlers
+  const handleLogoUpload = useCallback(
+    async (file: File) => {
+      logoUploader.resetError();
+      const url = await logoUploader.uploadImage(file);
+      if (url) {
+        setBranding((prev) => ({ ...prev, logo_url: url }));
+      }
+    },
+    [logoUploader]
+  );
+
+  const handleFaviconUpload = useCallback(
+    async (file: File) => {
+      faviconUploader.resetError();
+      const url = await faviconUploader.uploadImage(file);
+      if (url) {
+        setBranding((prev) => ({ ...prev, favicon_url: url }));
+      }
+    },
+    [faviconUploader]
+  );
+
+  const handleLogoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) await handleLogoUpload(file);
+    if (event.target) event.target.value = "";
+  };
+
+  const handleFaviconFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) await handleFaviconUpload(file);
+    if (event.target) event.target.value = "";
+  };
 
   // Header helpers
   function updateHeader<K extends keyof IB2CStorefrontHeader>(
@@ -534,62 +578,133 @@ export default function StorefrontDetailPage({
               />
             </Field>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field
-                label="Logo URL"
-                helper="SVG or PNG with transparent background."
-              >
-                <input
-                  type="text"
-                  value={branding.logo_url || ""}
-                  onChange={(e) => updateBranding("logo_url", e.target.value)}
-                  placeholder="https://example.com/logo.svg"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field
-                label="Favicon URL"
-                helper="Square image (32x32 or 64x64) for browser tabs."
-              >
-                <input
-                  type="text"
-                  value={branding.favicon_url || ""}
-                  onChange={(e) => updateBranding("favicon_url", e.target.value)}
-                  placeholder="https://example.com/favicon.ico"
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-
-            {/* Logo/Favicon previews */}
-            <div className="flex items-center gap-6">
-              {branding.logo_url && (
-                <div className="space-y-1">
-                  <p className="text-xs text-[#b9b9c3]">Logo preview</p>
-                  <div className="flex h-12 w-24 items-center justify-center rounded border border-[#ebe9f1] bg-gray-50 p-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={branding.logo_url}
-                      alt="Logo"
-                      className="max-h-full max-w-full object-contain"
-                    />
+            {/* Logo & Favicon upload + URL */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Logo */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className={labelClass}>Logo</label>
+                    <p className={helperClass}>Upload a square SVG/PNG. Max 20MB.</p>
+                  </div>
+                  {branding.logo_url && (
+                    <button
+                      type="button"
+                      className="text-xs text-[#b9b9c3] hover:text-red-500"
+                      onClick={() => updateBranding("logo_url", "")}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#ebe9f1] bg-gray-50">
+                    {branding.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={branding.logo_url} alt="Logo" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-xs font-semibold uppercase text-[#b9b9c3]">Logo</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploader.uploadState.isUploading}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+                    >
+                      {logoUploader.uploadState.isUploading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      {logoUploader.uploadState.isUploading ? "Uploading…" : "Upload logo"}
+                    </button>
+                    {logoUploader.uploadState.error && (
+                      <p className="text-xs text-red-500">{logoUploader.uploadState.error}</p>
+                    )}
                   </div>
                 </div>
-              )}
-              {branding.favicon_url && (
-                <div className="space-y-1">
-                  <p className="text-xs text-[#b9b9c3]">Favicon preview</p>
-                  <div className="flex h-8 w-8 items-center justify-center rounded border border-[#ebe9f1] bg-gray-50 p-0.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={branding.favicon_url}
-                      alt="Favicon"
-                      className="max-h-full max-w-full object-contain"
-                    />
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoFileChange}
+                />
+                <Field label="Logo URL" helper="SVG or PNG, ideally with transparent background.">
+                  <input
+                    type="text"
+                    value={branding.logo_url || ""}
+                    onChange={(e) => updateBranding("logo_url", e.target.value)}
+                    placeholder="https://example.com/logo.svg"
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+
+              {/* Favicon */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className={labelClass}>Favicon</label>
+                    <p className={helperClass}>Suggested 32×32 PNG/ICO.</p>
+                  </div>
+                  {branding.favicon_url && (
+                    <button
+                      type="button"
+                      className="text-xs text-[#b9b9c3] hover:text-red-500"
+                      onClick={() => updateBranding("favicon_url", "")}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-[#ebe9f1] bg-gray-50">
+                    {branding.favicon_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={branding.favicon_url} alt="Favicon" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-[10px] font-semibold uppercase text-[#b9b9c3]">ICO</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => faviconInputRef.current?.click()}
+                      disabled={faviconUploader.uploadState.isUploading}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+                    >
+                      {faviconUploader.uploadState.isUploading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      {faviconUploader.uploadState.isUploading ? "Uploading…" : "Upload favicon"}
+                    </button>
+                    {faviconUploader.uploadState.error && (
+                      <p className="text-xs text-red-500">{faviconUploader.uploadState.error}</p>
+                    )}
                   </div>
                 </div>
-              )}
+                <input
+                  ref={faviconInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFaviconFileChange}
+                />
+                <Field label="Favicon URL" helper="Square image (32×32 or 64×64) for browser tabs.">
+                  <input
+                    type="text"
+                    value={branding.favicon_url || ""}
+                    onChange={(e) => updateBranding("favicon_url", e.target.value)}
+                    placeholder="https://example.com/favicon.ico"
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">

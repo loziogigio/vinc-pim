@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import {
   fetchShippingConfig,
   findZoneForCountry,
   getAvailableShippingOptions,
 } from "@/lib/services/delivery-cost.service";
+import { PAYMENT_METHODS } from "@/lib/constants/payment";
 import type { IOrder } from "@/lib/db/models/order";
 import type { ICustomer } from "@/lib/db/models/customer";
+import type { ShippingMethodOption } from "@/lib/types/shipping";
 
 /**
  * GET /api/b2b/orders/[id]/shipping-options
@@ -19,18 +21,15 @@ import type { ICustomer } from "@/lib/db/models/customer";
  *   { zone_name: string | null, options: ShippingMethodOption[] }
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { id: order_id } = await params;
-    const tenantId = session.tenantId;
-    const tenantDb = `vinc-${tenantId}`;
+    const { tenantId, tenantDb } = auth;
 
     const { Order: OrderModel, Customer: CustomerModel } =
       await connectWithModels(tenantDb);
@@ -83,12 +82,34 @@ export async function GET(
       order.subtotal_net ?? 0
     );
 
+    // Resolve effective payment methods per option:
+    // intersection of shipping method's allowed_payment_methods and tenant's enabled_methods
+    const { TenantPaymentConfig } = await connectWithModels(tenantDb);
+    const paymentConfig = await TenantPaymentConfig.findOne({
+      tenant_id: tenantId,
+    }).lean();
+    const tenantEnabledMethods: string[] =
+      paymentConfig?.enabled_methods?.length
+        ? paymentConfig.enabled_methods
+        : [...PAYMENT_METHODS];
+
+    const resolved: ShippingMethodOption[] = options.map((opt) => {
+      const methodRestrictions = opt.allowed_payment_methods;
+      // If shipping method has restrictions, intersect with tenant enabled methods
+      // Otherwise, all tenant enabled methods are allowed
+      const effective =
+        methodRestrictions && methodRestrictions.length > 0
+          ? tenantEnabledMethods.filter((m) => methodRestrictions.includes(m))
+          : tenantEnabledMethods;
+      return { ...opt, allowed_payment_methods: effective };
+    });
+
     return NextResponse.json({
       success: true,
       data: {
         zone_name: zone?.name ?? null,
         country: shippingAddress.country,
-        options,
+        options: resolved,
       },
     });
   } catch (error) {

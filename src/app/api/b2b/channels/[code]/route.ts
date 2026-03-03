@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 
 // ============================================
@@ -19,13 +19,11 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { code } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { SalesChannel } = await connectWithModels(tenantDb);
 
     const channel = await SalesChannel.findOne({ code }).lean();
@@ -57,13 +55,11 @@ export async function PATCH(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { code } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const body: UpdateChannelPayload = await req.json();
     const { SalesChannel } = await connectWithModels(tenantDb);
 
@@ -121,13 +117,11 @@ export async function DELETE(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
     const { code } = await params;
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { SalesChannel } = await connectWithModels(tenantDb);
 
     const channel = await SalesChannel.findOne({ code });

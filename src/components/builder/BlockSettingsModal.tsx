@@ -17,11 +17,24 @@ import { ProductGallerySettings } from "./ProductGallerySettings";
 import { ProductDataTableSettings } from "./ProductDataTableSettings";
 import { ZoneSelector } from "./ZoneSelector";
 import { RichTextEditor } from "./RichTextEditor";
-import type { ProductDetailZone } from "@/lib/types/blocks";
+import type { BlockLayout, ProductDetailZone } from "@/lib/types/blocks";
+import { Maximize, AlignCenter } from "lucide-react";
 
 type DraftConfig = Record<string, unknown>;
 
 const BLOCKS_WITH_CUSTOM_TITLE = new Set(["media-image", "carousel-hero"]);
+
+/** Recommended image dimensions per block type and layout */
+const DIMENSION_HINTS: Record<string, { fullWidth: string; container: string }> = {
+  "hero-full-width": { fullWidth: "1920 × 600 px", container: "1200 × 600 px" },
+  "hero-split": { fullWidth: "800 × 600 px", container: "800 × 600 px" },
+  "carousel-hero": { fullWidth: "1920 × 600 px", container: "1200 × 600 px" },
+  "hero-with-widgets": { fullWidth: "1920 × 600 px", container: "1200 × 600 px" },
+  "media-image": { fullWidth: "1920 × auto", container: "1200 × auto" },
+  "carousel-promo": { fullWidth: "1920 × 500 px", container: "1200 × 500 px" },
+  "carousel-brand": { fullWidth: "300 × 200 px", container: "300 × 200 px" },
+  "carousel-flyer": { fullWidth: "800 × 1100 px", container: "800 × 1100 px" },
+};
 
 const cloneConfig = (config: PageBlock["config"]): DraftConfig =>
   JSON.parse(JSON.stringify(config)) as DraftConfig;
@@ -44,8 +57,13 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
   );
   const skipStandardTitleField = selectedBlock ? BLOCKS_WITH_CUSTOM_TITLE.has(selectedBlock.type) : false;
 
-  // Check if we're in home-builder (slug is "home")
-  const isHomePage = pageDetails.slug === "home";
+  // Check if we're editing a product detail page (only those need zone placement)
+  const isProductDetailPage =
+    pageDetails.slug === "product-detail" ||
+    pageDetails.slug.startsWith("product-detail-") ||
+    pageDetails.slug.startsWith("sku-") ||
+    pageDetails.slug.startsWith("parentSku-") ||
+    pageDetails.slug.startsWith("standard-");
 
   const [draft, setDraft] = useState<DraftConfig | null>(() =>
     selectedBlock ? cloneConfig(selectedBlock.config) : null
@@ -58,6 +76,9 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
   const backgroundFileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Layout state (full-width vs container)
+  const [layout, setLayout] = useState<BlockLayout>(selectedBlock?.layout || "full-width");
+
   // Zone placement state
   const [zone, setZone] = useState<ProductDetailZone>(selectedBlock?.zone || "zone3");
   const [tabLabel, setTabLabel] = useState<string>(selectedBlock?.tabLabel || "");
@@ -67,11 +88,13 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
       const cloned = cloneConfig(selectedBlock.config);
       setDraft(cloned);
       setAdvancedDraft(JSON.stringify(cloned, null, 2));
+      setLayout(selectedBlock.layout || "full-width");
       setZone(selectedBlock.zone || "zone3");
       setTabLabel(selectedBlock.tabLabel || "");
     } else {
       setDraft(null);
       setAdvancedDraft("");
+      setLayout("full-width");
       setZone("zone3");
       setTabLabel("");
     }
@@ -108,19 +131,20 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
     // Update config
     updateBlockConfig(selectedBlock.id, draft as Partial<PageBlock["config"]>);
 
-    // Update zone and tabLabel directly (since updateBlockConfig doesn't handle these)
+    // Update layout, zone, and tabLabel directly (since updateBlockConfig doesn't handle these)
     usePageBuilderStore.setState((state) => ({
       blocks: state.blocks.map((block) =>
         block.id === selectedBlock.id
           ? {
               ...block,
+              layout,
               zone,
               tabLabel:
                 zone === "zone3" && tabLabel.trim().length > 0 ? tabLabel.trim() : undefined
             }
           : block
       ),
-      isDirty: true // Mark as dirty when zone changes
+      isDirty: true
     }));
 
     setHasLocalChanges(false);
@@ -245,8 +269,8 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-6">
-            {/* Zone Selector - Only show for product detail pages, not for home page */}
-            {!isHomePage && (
+            {/* Zone Selector - Only show for product detail pages */}
+            {isProductDetailPage && (
               <div className="pb-6 border-b border-slate-200">
                 <ZoneSelector
                   zone={zone}
@@ -259,6 +283,49 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
                 />
               </div>
             )}
+
+            {/* Layout: Full-width vs Container */}
+            <div className="pb-6 border-b border-slate-200">
+              <label className="text-sm font-medium text-slate-700">Layout</label>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setLayout("full-width"); setHasLocalChanges(true); }}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 px-4 py-3 text-sm transition ${
+                    layout === "full-width"
+                      ? "border-orange-500 bg-orange-50 text-orange-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <Maximize className="h-5 w-5" />
+                  <span className="font-medium">Full Width</span>
+                  <span className="text-[0.7rem] text-slate-500">Edge-to-edge</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLayout("container"); setHasLocalChanges(true); }}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 px-4 py-3 text-sm transition ${
+                    layout === "container"
+                      ? "border-orange-500 bg-orange-50 text-orange-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <AlignCenter className="h-5 w-5" />
+                  <span className="font-medium">Container</span>
+                  <span className="text-[0.7rem] text-slate-500">Max 1200px centered</span>
+                </button>
+              </div>
+              {DIMENSION_HINTS[selectedBlock.type] && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Recommended image size:{" "}
+                  <span className="font-medium text-slate-600">
+                    {layout === "full-width"
+                      ? DIMENSION_HINTS[selectedBlock.type].fullWidth
+                      : DIMENSION_HINTS[selectedBlock.type].container}
+                  </span>
+                </p>
+              )}
+            </div>
 
             {/* YouTube Block Custom UI */}
             {selectedBlock.type === "youtubeEmbed" ? (
@@ -525,50 +592,34 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
             {background ? (
               <div className="space-y-4">
-                <div
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center transition hover:border-orange-500"
-                  onClick={() => backgroundFileInputRef.current?.click()}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const file = event.dataTransfer.files?.[0];
-                    if (file) {
-                      const derivedAlt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ").trim();
-                      void handleUpload(file, (url) =>
-                        updateDraft((current) => {
-                          const existingBackground =
-                            current.background && typeof current.background === "object"
-                              ? (current.background as Record<string, unknown>)
-                              : {};
-                          return {
-                            ...current,
-                            background: {
-                              ...existingBackground,
-                              src: url,
-                              alt:
-                                typeof existingBackground.alt === "string" &&
-                                existingBackground.alt.trim().length > 0
-                                  ? existingBackground.alt
-                                  : derivedAlt
-                            }
-                          };
-                        })
-                      );
-                    }
-                  }}
-                >
-                  <ImageIcon className="mb-3 h-10 w-10 text-slate-400" />
-                  <p className="text-sm text-slate-600">
-                    {isUploading ? "Uploading…" : "Click to upload or drag and drop"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">PNG, JPG up to 20MB</p>
-                  <input
-                    ref={backgroundFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
+                {backgroundSrc ? (
+                  <div className="relative overflow-hidden rounded-xl border border-slate-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={backgroundSrc}
+                      alt={backgroundAlt || "Background preview"}
+                      className="h-48 w-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition hover:bg-black/30 hover:opacity-100">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => backgroundFileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? "Uploading…" : "Replace image"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center transition hover:border-orange-500"
+                    onClick={() => backgroundFileInputRef.current?.click()}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const file = event.dataTransfer.files?.[0];
                       if (file) {
                         const derivedAlt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ").trim();
                         void handleUpload(file, (url) =>
@@ -592,10 +643,48 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
                           })
                         );
                       }
-                      event.target.value = "";
                     }}
-                  />
-                </div>
+                  >
+                    <ImageIcon className="mb-3 h-10 w-10 text-slate-400" />
+                    <p className="text-sm text-slate-600">
+                      {isUploading ? "Uploading…" : "Click to upload or drag and drop"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">PNG, JPG up to 20MB</p>
+                  </div>
+                )}
+                <input
+                  ref={backgroundFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      const derivedAlt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ").trim();
+                      void handleUpload(file, (url) =>
+                        updateDraft((current) => {
+                          const existingBackground =
+                            current.background && typeof current.background === "object"
+                              ? (current.background as Record<string, unknown>)
+                              : {};
+                          return {
+                            ...current,
+                            background: {
+                              ...existingBackground,
+                              src: url,
+                              alt:
+                                typeof existingBackground.alt === "string" &&
+                                existingBackground.alt.trim().length > 0
+                                  ? existingBackground.alt
+                                  : derivedAlt
+                            }
+                          };
+                        })
+                      );
+                    }
+                    event.target.value = "";
+                  }}
+                />
                 <Input
                   value={backgroundSrc}
                   onChange={(event) =>

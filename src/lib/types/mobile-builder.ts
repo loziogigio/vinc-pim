@@ -73,7 +73,7 @@ export interface MediaItem {
   title?: string;
 }
 
-export type ProductSource = "manual" | "collection" | "category" | "tag" | "search" | "trending" | "liked";
+export type ProductSource = "manual" | "collection" | "category" | "tag" | "search" | "trending" | "liked" | "reminder";
 
 /** Cached product data for preview */
 export interface CachedProduct {

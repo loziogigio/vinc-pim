@@ -139,10 +139,20 @@ export async function POST(request: NextRequest) {
       response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, tenantDb);
     }
 
-    // Filter packaging/promotions by effective customer+address tags
-    const effectiveTags = await resolveEffectiveTagsForSearch(
-      tenantDb, body.customer_code, body.address_code
-    );
+    // Filter packaging/promotions by tags
+    // Priority: explicit tag_filter > customer+address resolved tags > strip all
+    const explicitTagFilter: string[] | undefined = body.tag_filter;
+    let effectiveTags: string[] | null;
+
+    if (Array.isArray(explicitTagFilter)) {
+      // Explicit tag_filter overrides customer resolution (B2C guest, storefront override)
+      effectiveTags = explicitTagFilter;
+    } else {
+      effectiveTags = await resolveEffectiveTagsForSearch(
+        tenantDb, body.customer_code, body.address_code
+      );
+    }
+
     if (effectiveTags === null) {
       response.results = stripPackagingFromResults(response.results);
     } else if (effectiveTags.length) {
@@ -375,12 +385,22 @@ export async function GET(request: NextRequest) {
       response.facet_results = await enrichFacetResults(response.facet_results, lang, tenantDb);
     }
 
-    // Filter packaging/promotions by effective customer+address tags
+    // Filter packaging/promotions by tags
+    // Priority: explicit tag_filter > customer+address resolved tags > strip all
     const customerCode = searchParams.get('customer_code') || undefined;
     const addressCode = searchParams.get('address_code') || undefined;
-    const effectiveTags = await resolveEffectiveTagsForSearch(
-      tenantDb, customerCode, addressCode
-    );
+    const tagFilterParam = searchParams.get('tag_filter');
+    let effectiveTags: string[] | null;
+
+    if (tagFilterParam) {
+      // Explicit tag_filter overrides customer resolution (B2C guest, storefront override)
+      effectiveTags = tagFilterParam.split(',').map(t => t.trim()).filter(Boolean);
+    } else {
+      effectiveTags = await resolveEffectiveTagsForSearch(
+        tenantDb, customerCode, addressCode
+      );
+    }
+
     if (effectiveTags === null) {
       response.results = stripPackagingFromResults(response.results);
     } else if (effectiveTags.length) {

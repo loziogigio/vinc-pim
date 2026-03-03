@@ -170,6 +170,7 @@ function B2CHomeBuilderContent() {
     useState<PublishFormValues>(defaultPublishForm);
   const [isHotfixing, setIsHotfixing] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [storefrontUrl, setStorefrontUrl] = useState<string | undefined>();
 
   // Derived state
   const currentVersionData = versions.find(
@@ -253,6 +254,26 @@ function B2CHomeBuilderContent() {
     loadTemplate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPageConfig, apiBase]);
+
+  // Fetch storefront domain for live preview iframe
+  useEffect(() => {
+    if (!storefrontSlug) return;
+    const fetchStorefrontDomain = async () => {
+      try {
+        const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}`);
+        if (!res.ok) return;
+        const { data } = await res.json();
+        const domains: string[] = data?.domains ?? [];
+        if (domains.length > 0) {
+          const domain = domains[0];
+          setStorefrontUrl(domain.startsWith("http") ? domain : `https://${domain}`);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch storefront domain for preview:", err);
+      }
+    };
+    fetchStorefrontDomain();
+  }, [storefrontSlug]);
 
   useEffect(() => {
     if (selectedBlockId) setIsSettingsOpen(true);
@@ -871,6 +892,7 @@ function B2CHomeBuilderContent() {
               device={device}
               blocks={blocks}
               pageType="home"
+              customerWebUrl={storefrontUrl}
               isDirty={isDirty}
             />
           </section>

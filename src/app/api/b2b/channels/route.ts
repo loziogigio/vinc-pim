@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { isValidChannelCode } from "@/lib/constants/channel";
 
@@ -44,12 +44,10 @@ async function seedDefaultChannels(SalesChannel: ReturnType<typeof Object>) {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { SalesChannel } = await connectWithModels(tenantDb);
 
     // Seed default b2b/b2c channels on first access
@@ -82,12 +80,10 @@ interface CreateChannelPayload {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session?.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const body: CreateChannelPayload = await req.json();
     const { SalesChannel } = await connectWithModels(tenantDb);
 
@@ -99,11 +95,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Channel name is required" }, { status: 400 });
     }
 
-    const code = body.code.trim().toUpperCase();
+    const code = body.code.trim().toLowerCase();
 
     if (!isValidChannelCode(code)) {
       return NextResponse.json(
-        { error: "Channel code must be alphanumeric (e.g. B2C, EBAY, SLOVAKIA)" },
+        { error: "Channel code must be kebab-case (e.g. b2c, ebay, czech-republic)" },
         { status: 400 }
       );
     }

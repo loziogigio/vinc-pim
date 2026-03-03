@@ -620,7 +620,7 @@ export const BLOCK_REGISTRY: BlockRegistry = {
       },
       heroCarousel: {
         id: "carousel-hero",
-        label: "Media Carousel",
+        label: "Hero Slider",
         icon: "🎠",
         defaultConfig: heroCarouselConfig
       },

@@ -1,10 +1,12 @@
 /**
  * Mangopay Webhook Handler
  *
- * POST /api/public/payments/webhooks/mangopay
+ * POST /api/public/payments/webhooks/mangopay?tenant={tenantId}
  *
  * Public endpoint — no auth required.
- * Mangopay sends event notifications; verification via API callback.
+ * Verification: signature checked against tenant's api_key from MongoDB.
+ *
+ * The ?tenant= parameter is REQUIRED — webhooks without it are rejected.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -12,11 +14,18 @@ import { processWebhook } from "@/lib/payments/webhook.service";
 
 export async function POST(req: NextRequest) {
   try {
-    const payload = await req.text();
-    const signature = req.headers.get("x-mangopay-signature") || "mangopay-event";
-    const secret = process.env.MANGOPAY_WEBHOOK_KEY || "";
+    const tenantId = req.nextUrl.searchParams.get("tenant");
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Missing tenant parameter" },
+        { status: 400 }
+      );
+    }
 
-    const result = await processWebhook("mangopay", payload, signature, secret);
+    const payload = await req.text();
+    const signature = req.headers.get("x-mangopay-signature") || "";
+
+    const result = await processWebhook("mangopay", payload, signature, tenantId);
 
     if (!result.success) {
       return NextResponse.json(

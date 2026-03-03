@@ -33,13 +33,24 @@ export async function DELETE(req: NextRequest) {
   if (!auth.success) return auth.response;
 
   const { tenantDb, tenantId, userId } = auth;
-  const body = await req.json();
 
-  if (!body.sku) {
+  // Support sku from query param (proxy-safe) or JSON body
+  const { searchParams } = new URL(req.url);
+  let sku = searchParams.get("sku");
+  if (!sku) {
+    try {
+      const body = await req.json();
+      sku = body.sku;
+    } catch {
+      // No body (proxies may strip DELETE bodies)
+    }
+  }
+
+  if (!sku) {
     return NextResponse.json({ error: "sku is required" }, { status: 400 });
   }
 
-  const cancelled = await cancelReminder(tenantDb, tenantId, userId!, body.sku);
+  const cancelled = await cancelReminder(tenantDb, tenantId, userId!, sku);
   if (!cancelled) {
     return NextResponse.json({ error: "No active reminder found" }, { status: 404 });
   }

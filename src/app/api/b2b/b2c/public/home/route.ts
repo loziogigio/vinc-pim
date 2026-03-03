@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { verifyAPIKey } from "@/lib/auth/api-key-auth";
 import { getStorefrontByDomain } from "@/lib/services/b2c-storefront.service";
 import { getPublishedB2CHomeTemplate } from "@/lib/db/b2c-home-templates";
 
@@ -22,7 +22,16 @@ import { getPublishedB2CHomeTemplate } from "@/lib/db/b2c-home-templates";
 export async function GET(req: NextRequest) {
   try {
     // 1. Authenticate tenant via API key
-    const authResult = await verifyAPIKeyFromRequest(req);
+    const keyId = req.headers.get("x-api-key-id");
+    const secret = req.headers.get("x-api-secret");
+    if (!keyId || !secret) {
+      return NextResponse.json(
+        { error: "Missing API key credentials" },
+        { status: 401 }
+      );
+    }
+
+    const authResult = await verifyAPIKey(keyId, secret);
     if (!authResult.valid || !authResult.tenantId) {
       return NextResponse.json(
         { error: authResult.error || "Invalid API key" },

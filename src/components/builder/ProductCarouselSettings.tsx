@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { ProductSearchPreview, type SearchPreviewProduct } from "@/components/shared/ProductSearchPreview";
+
+type DataSource = "search" | "liked" | "trending" | "reminder";
 
 interface ProductCarouselSettingsProps {
   blockId: string;
@@ -10,26 +13,16 @@ interface ProductCarouselSettingsProps {
   onSave: (config: any) => void;
 }
 
-const PREVIEW_ENDPOINT = '/api/customer-web/product-search';
-
 const clamp = (value: number, min: number, max: number) => {
   if (Number.isNaN(value)) return min;
   return Math.min(Math.max(value, min), max);
 };
 
-const PreviewPlaceholder = ({ message }: { message: string }) => (
-  <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-    {message}
-  </div>
-);
-
 export function ProductCarouselSettings({ config, onSave }: ProductCarouselSettingsProps) {
   const [title, setTitle] = useState<string>(config.title || "Featured Products");
   const [searchQuery, setSearchQuery] = useState<string>(config.searchQuery || "");
   const [limit, setLimit] = useState<number>(config.limit || 12);
-  const [dataSource, setDataSource] = useState<"search" | "liked" | "trending">(
-    config.dataSource || "search"
-  );
+  const [dataSource, setDataSource] = useState<DataSource>(config.dataSource || "search");
   const [breakpointMode, setBreakpointMode] = useState<"simplified" | "advanced">(
     config.breakpointMode || "simplified"
   );
@@ -58,9 +51,7 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
   const [showDots, setShowDots] = useState<boolean>(config.showDots ?? true);
   const [showArrows, setShowArrows] = useState<boolean>(config.showArrows ?? true);
 
-  const [previewProducts, setPreviewProducts] = useState<any[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [cachedProducts, setCachedProducts] = useState<SearchPreviewProduct[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Mark as initialized after first render
@@ -100,166 +91,8 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
       }
     }
 
-    console.log('[ProductCarouselSettings] Auto-save triggered, title:', payload.title);
     onSave(payload);
   }, [isInitialized, title, searchQuery, limit, dataSource, breakpointMode, autoplay, autoplaySpeed, loop, showDots, showArrows, itemsToShow, breakpointsJSON]);
-
-  const parsedSearchSummary = useMemo(() => {
-    if (dataSource !== "search") return null;
-    const trimmed = searchQuery.trim();
-    if (!/[?=&]/.test(trimmed)) {
-      return null;
-    }
-
-    try {
-      const queryString = trimmed.startsWith("shop?") ? trimmed.slice(5) : trimmed.replace(/^\?/, "");
-      const params = new URLSearchParams(queryString);
-
-      const keyword = params.get("text") || "";
-      const filters: Array<{ key: string; values: string[] }> = [];
-
-      params.forEach((value, key) => {
-        if (key === "text") return;
-        const normalizedKey = key.startsWith("filters-") ? key.replace(/^filters-/, "") : key;
-        const values = value.split(";").map((item) => item.trim()).filter(Boolean);
-        if (values.length) {
-          filters.push({ key: normalizedKey, values });
-        }
-      });
-
-      return {
-        keyword,
-        filters
-      };
-    } catch (error) {
-      console.warn("[ProductCarouselSettings] Unable to parse search summary", error);
-      return null;
-    }
-  }, [searchQuery, dataSource]);
-
-  useEffect(() => {
-    if (dataSource !== "search") {
-      setPreviewProducts([]);
-      setPreviewError(null);
-      setPreviewLoading(false);
-      return;
-    }
-
-    const trimmed = searchQuery.trim();
-    if (!trimmed) {
-      setPreviewProducts([]);
-      setPreviewError(null);
-      setPreviewLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        setPreviewLoading(true);
-        setPreviewError(null);
-        const params = new URLSearchParams();
-        const fetchLimit = Math.min(clamp(limit, 1, 50), 8);
-        params.set("limit", String(fetchLimit));
-
-        if (/[?=&]/.test(trimmed)) {
-          params.set("query", trimmed);
-          try {
-            const raw = trimmed.startsWith("shop?") ? trimmed.slice(5) : trimmed;
-            const parsed = new URLSearchParams(raw);
-            const extractedText = parsed.get("text");
-            if (extractedText) {
-              params.set("text", extractedText);
-            }
-          } catch (parseError) {
-            console.warn("[ProductCarouselSettings] Unable to parse search query", parseError);
-          }
-        } else {
-          params.set("text", trimmed);
-        }
-
-        const response = await fetch(`${PREVIEW_ENDPOINT}?${params.toString()}`, {
-          signal: controller.signal
-        });
-        const data = await response.json();
-        if (!response.ok || data?.error) {
-          const message =
-            typeof data?.error === "string"
-              ? data.error
-              : `Request failed with status ${response.status}`;
-          setPreviewProducts([]);
-          setPreviewError(message);
-          return;
-        }
-        setPreviewProducts(Array.isArray(data.items) ? data.items.slice(0, 8) : []);
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error('[ProductCarouselSettings] preview error', error);
-          const errorMessage = error instanceof Error ? error.message : 'Unable to load preview results';
-          setPreviewError(errorMessage);
-          setPreviewProducts([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setPreviewLoading(false);
-        }
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [searchQuery, limit, dataSource]);
-
-
-  const previewContent = useMemo(() => {
-    if (dataSource !== "search") {
-      return <PreviewPlaceholder message="Preview is unavailable for this data source." />;
-    }
-    if (!searchQuery.trim()) {
-      return <PreviewPlaceholder message="Type a keyword above to preview matching products." />;
-    }
-    if (previewLoading) {
-      return <PreviewPlaceholder message="Loading preview results..." />;
-    }
-    if (previewError) {
-      return <PreviewPlaceholder message={previewError} />;
-    }
-    if (!previewProducts.length) {
-      return <PreviewPlaceholder message="No products found for this search." />;
-    }
-
-    return (
-      <div className="max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white">
-        {previewProducts.map((product: any) => (
-          <div
-            key={product.id || product.sku}
-            className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0"
-          >
-            {product?.image?.thumbnail ? (
-              <img
-                src={product.image.thumbnail}
-                alt={product.name}
-                className="h-12 w-12 rounded object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-xs text-slate-500">
-                No image
-              </div>
-            )}
-            <div className="flex flex-1 flex-col">
-              <span className="text-sm font-medium text-slate-700">{product.name ?? product.sku}</span>
-              {product.sku ? (
-                <span className="text-xs text-slate-400">SKU: {product.sku}</span>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }, [previewProducts, previewLoading, previewError, searchQuery]);
 
   return (
     <div className="space-y-6">
@@ -277,74 +110,48 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
         <Label className="text-base font-semibold">Data source</Label>
         <select
           value={dataSource}
-          onChange={(event) => setDataSource(event.target.value as "search" | "liked" | "trending")}
+          onChange={(event) => setDataSource(event.target.value as DataSource)}
           className="mt-2 h-10 w-full rounded border border-slate-300 bg-white px-3 text-sm text-slate-700"
         >
           <option value="search">Keyword / advanced query</option>
           <option value="trending">Trending products</option>
           <option value="liked">Customer liked products</option>
+          <option value="reminder">Customer reminded products</option>
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          Use “Trending” or “Liked” for special carousels that load automatically. Keywords are ignored
-          for those sources.
+          Use &quot;Trending&quot;, &quot;Liked&quot;, or &quot;Reminder&quot; for special carousels
+          that load automatically. Keywords are ignored for those sources.
         </p>
       </div>
 
       {dataSource === 'search' ? (
+        <ProductSearchPreview
+          searchQuery={searchQuery}
+          limit={limit}
+          cachedProducts={cachedProducts}
+          onSearchChange={setSearchQuery}
+          onLimitChange={setLimit}
+          onProductsLoaded={setCachedProducts}
+        />
+      ) : (
+        <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+          Products are loaded automatically by the storefront.
+        </div>
+      )}
+
+      {dataSource !== 'search' ? (
         <div>
-          <Label className="text-base font-semibold">Search keyword</Label>
+          <Label className="text-base font-semibold">Maximum products</Label>
           <Input
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="e.g. caldaia, climatizzatore, rubinetto"
+            type="number"
+            min={1}
+            max={50}
+            value={limit}
+            onChange={(event) => setLimit(Number(event.target.value))}
             className="mt-2"
           />
-          <p className="mt-1 text-xs text-slate-500">
-            Products are fetched from the customer storefront search endpoint. Paste a keyword or an
-            advanced query (e.g. <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">shop?text=moon&amp;filters-brand_id=004 or search?text=moon&amp;filters-brand_id=004 </code> ).
-          </p>
-          {parsedSearchSummary ? (
-            <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              {parsedSearchSummary.keyword ? (
-                <div className="mb-1">
-                  <span className="font-semibold text-slate-700">Keyword:</span>{" "}
-                  <span>{parsedSearchSummary.keyword}</span>
-                </div>
-              ) : null}
-              {parsedSearchSummary.filters.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {parsedSearchSummary.filters.map(({ key, values }) => (
-                    <div key={key} className="flex items-center gap-1 rounded bg-white px-2 py-1">
-                      <span className="text-[11px] font-semibold uppercase text-slate-500">{key}</span>
-                      <span className="text-[11px] text-slate-600">
-                        {values.join(", ")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       ) : null}
-
-      <div>
-        <Label className="text-base font-semibold">Preview</Label>
-        <div className="mt-2">{previewContent}</div>
-      </div>
-
-      <div>
-        <Label className="text-base font-semibold">Maximum products</Label>
-        <Input
-          type="number"
-          min={1}
-          max={50}
-          value={limit}
-          onChange={(event) => setLimit(Number(event.target.value))}
-          className="mt-2"
-        />
-        <p className="mt-1 text-xs text-slate-500">The preview shows up to 8 results.</p>
-      </div>
 
       <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
         <Label className="text-sm font-semibold text-slate-700">Carousel options</Label>
@@ -464,7 +271,6 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
           />
         )}
       </div>
-
     </div>
   );
 }
