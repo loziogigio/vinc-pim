@@ -17,11 +17,12 @@ export async function POST(req: NextRequest) {
 
     const tenantDb = auth.tenantDb;
 
-    // Check for force param
+    // Check for force and template_id params
     const { searchParams } = new URL(req.url);
     const force = searchParams.get("force") === "true";
+    const templateId = searchParams.get("template_id") || undefined;
 
-    const result = await seedDefaultTemplates(tenantDb, force);
+    const result = await seedDefaultTemplates(tenantDb, force, templateId);
 
     return NextResponse.json({
       success: true,

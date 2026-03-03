@@ -155,7 +155,7 @@ export const STATUS_TRANSITIONS: Record<
   draft: {
     quotation: ["sales", "admin"], // Convert cart to quotation
     pending: ["customer", "sales", "admin", "api"], // Submit order directly
-    cancelled: ["customer", "sales", "admin"],
+    cancelled: ["customer", "sales", "admin", "system"],
   },
   quotation: {
     draft: ["sales", "admin"], // Revert to cart for major changes
@@ -163,8 +163,8 @@ export const STATUS_TRANSITIONS: Record<
     cancelled: ["customer", "sales", "admin"],
   },
   pending: {
-    confirmed: ["sales", "admin"], // Confirm order
-    cancelled: ["sales", "admin"],
+    confirmed: ["sales", "admin", "system"], // Confirm order (+ auto-confirm after gateway payment)
+    cancelled: ["sales", "admin", "system"], // + auto-cancel on payment failure
   },
   confirmed: {
     shipped: ["warehouse", "admin"], // Mark as shipped

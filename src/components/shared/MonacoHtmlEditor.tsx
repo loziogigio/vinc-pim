@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useCallback } from "react";
-import Editor, { OnMount, OnChange } from "@monaco-editor/react";
+import Editor, { OnMount, OnChange, loader } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+
+// Load Monaco from local public/ files instead of CDN (no external dependency)
+loader.config({ paths: { vs: "/monaco-editor/min/vs" } });
 
 interface MonacoHtmlEditorProps {
   value: string;

@@ -21,6 +21,7 @@ import type {
   ContractResult,
 } from "@/lib/types/payment";
 import type { IPaymentTransaction, IPaymentEvent } from "@/lib/db/models/payment-transaction";
+import { recordGatewayPayment, reverseGatewayPayment } from "@/lib/services/order-lifecycle.service";
 
 // ============================================
 // TYPES
@@ -273,6 +274,20 @@ export async function refundTransaction(
       })
     );
     await transaction.save();
+
+    // Update the order's payment data to reflect the refund
+    if (transaction.order_id) {
+      try {
+        await reverseGatewayPayment(
+          tenantDb,
+          transaction.order_id,
+          transaction.transaction_id,
+          amount // undefined = full refund, number = partial
+        );
+      } catch (err) {
+        console.error(`[Payment] Failed to reverse order payment for ${transaction.order_id}:`, err);
+      }
+    }
   }
 
   return result;
@@ -360,6 +375,24 @@ export async function capturePayment(
     }
 
     await transaction.save();
+
+    // Auto-update the order's payment data after successful capture
+    if (result.success && transaction.order_id) {
+      try {
+        await recordGatewayPayment(tenantDb, transaction.order_id, {
+          amount: transaction.gross_amount,
+          provider: transaction.provider,
+          provider_payment_id: transaction.provider_payment_id,
+          provider_capture_id: transaction.provider_capture_id,
+          payment_type: transaction.payment_type,
+          transaction_id: transaction.transaction_id,
+          payment_number: transaction.payment_number,
+        });
+      } catch (err) {
+        // Log but don't fail — transaction is already completed
+        console.error(`[Payment] Failed to update order ${transaction.order_id}:`, err);
+      }
+    }
 
     return {
       ...result,

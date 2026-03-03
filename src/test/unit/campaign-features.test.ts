@@ -204,9 +204,7 @@ describe("unit: Notification Trigger API", () => {
         "order_shipped",
         "order_delivered",
         "order_cancelled",
-        "price_drop_alert",
         "back_in_stock",
-        "abandoned_cart",
         "newsletter",
         "campaign_product",
         "campaign_generic",
@@ -222,7 +220,7 @@ describe("unit: Notification Trigger API", () => {
       /**
        * Verify minimum number of triggers for a complete system.
        */
-      expect(NOTIFICATION_TRIGGERS.length).toBeGreaterThanOrEqual(15);
+      expect(NOTIFICATION_TRIGGERS.length).toBeGreaterThanOrEqual(13);
     });
 
     it("should have labels for all triggers", () => {
@@ -276,9 +274,7 @@ describe("unit: Notification Trigger API", () => {
        * Verify marketing/promotional triggers exist.
        */
       const marketingTriggers: NotificationTrigger[] = [
-        "price_drop_alert",
         "back_in_stock",
-        "abandoned_cart",
         "newsletter",
       ];
 

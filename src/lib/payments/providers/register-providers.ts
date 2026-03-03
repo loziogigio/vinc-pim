@@ -11,6 +11,7 @@ import { nexiProvider } from "./nexi/client";
 import { axerveProvider } from "./axerve/client";
 import { paypalProvider } from "./paypal/client";
 import { mangopayProvider } from "./mangopay/client";
+import { manualProvider } from "./manual/client";
 
 let initialized = false;
 
@@ -26,6 +27,7 @@ export function initializeProviders(): void {
   registerProvider(axerveProvider);
   registerProvider(paypalProvider);
   registerProvider(mangopayProvider);
+  registerProvider(manualProvider);
 
   initialized = true;
 }

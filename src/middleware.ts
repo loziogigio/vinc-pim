@@ -69,6 +69,17 @@ function getCorsHeaders(request: NextRequest): Record<string, string> {
 }
 
 const securityHeaders: Record<string, string> = {
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' https: data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https:",
+    "media-src 'self' https: blob:",
+    "worker-src 'self' blob:",
+    "frame-src 'self' https:",
+  ].join("; "),
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -249,11 +260,12 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Webhook endpoints are truly public — providers (PayPal, Stripe, etc.)
-  // send requests without our auth headers. Verification is done by the
-  // route handler via the provider's own signature verification API.
+  // Truly public payment endpoints — no auth required:
+  // - Webhooks: providers (PayPal, Stripe, etc.) send requests without our auth headers
+  // - Complete: customer return page after PayPal redirect (security via PayPal token)
   const isWebhookRoute = actualPath.startsWith("/api/public/payments/webhooks");
-  if (isWebhookRoute) {
+  const isPaymentCompleteRoute = actualPath === "/api/public/payments/complete";
+  if (isWebhookRoute || isPaymentCompleteRoute) {
     const response = NextResponse.next();
     applyHeaders(response, securityHeaders);
     applyHeaders(response, corsHeaders);

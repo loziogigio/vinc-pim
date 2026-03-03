@@ -38,7 +38,8 @@
     "bulk-publish": "dotenv -e .env -o -- vite-node scripts/bulk-publish.ts",
     "migrate:product-type-ids": "dotenv -e .env -o -- vite-node scripts/migrate-product-type-ids.ts",
     "sso:seed-clients": "dotenv -e .env -o -- vite-node scripts/seed-oauth-clients.ts",
-    "test:real-import": "dotenv -e .env -o -- npx tsx scripts/test-real-import-api.ts"
+    "test:real-import": "dotenv -e .env -o -- npx tsx scripts/test-real-import-api.ts",
+    "postinstall": "cp -r node_modules/monaco-editor/min/vs public/monaco-editor/min/vs 2>/dev/null || true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
@@ -76,16 +77,17 @@
     "dompurify": "^3.2.7",
     "exceljs": "^4.4.0",
     "firebase-admin": "^13.6.0",
-    "motion": "^12.0.0",
     "iron-session": "^8.0.4",
     "jose": "^6.1.3",
     "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.4",
     "lucide-react": "^0.424.0",
+    "monaco-editor": "^0.55.1",
     "mongo-sanitize": "^1.1.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.1",
+    "motion": "^12.0.0",
     "nanoid": "^5.1.6",
     "next": "^16.1.6",
     "nodemailer": "^7.0.11",

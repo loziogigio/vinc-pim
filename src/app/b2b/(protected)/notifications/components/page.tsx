@@ -33,6 +33,40 @@ interface EmailComponent {
 
 type TabType = "header" | "footer";
 
+const DEFAULT_PRIMARY_COLOR = "#009f7f";
+
+/** Client-side template variable replacement (mirrors email-builder.ts logic) */
+function replaceTemplateVariables(
+  html: string,
+  data: Record<string, string>
+): string {
+  let result = html;
+
+  for (const [key, value] of Object.entries(data)) {
+    const regex = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+    result = result.replace(regex, value);
+  }
+
+  // Process conditionals from innermost outward (handles nesting)
+  const ifElseRe = /\{\{#if\s+(\w+)\}\}((?:(?!\{\{#if)[\s\S])*?)\{\{else\}\}((?:(?!\{\{#if)[\s\S])*?)\{\{\/if\}\}/g;
+  const ifOnlyRe = /\{\{#if\s+(\w+)\}\}((?:(?!\{\{#if)[\s\S])*?)\{\{\/if\}\}/g;
+
+  let prev = "";
+  while (prev !== result) {
+    prev = result;
+    result = result.replace(ifElseRe, (_, varName, ifContent, elseContent) => {
+      const hasValue = data[varName] && data[varName].trim() !== "";
+      return hasValue ? ifContent : elseContent;
+    });
+    result = result.replace(ifOnlyRe, (_, varName, content) => {
+      const hasValue = data[varName] && data[varName].trim() !== "";
+      return hasValue ? content : "";
+    });
+  }
+
+  return result;
+}
+
 export default function ComponentsPage() {
   const [components, setComponents] = useState<EmailComponent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +75,41 @@ export default function ComponentsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [templateVars, setTemplateVars] = useState<Record<string, string>>({});
+
+  // Fetch company info for preview variable replacement
+  useEffect(() => {
+    async function loadCompanyInfo() {
+      try {
+        const res = await fetch("/api/b2b/home-settings");
+        if (!res.ok) return;
+        const settings = await res.json();
+        const ci = settings.company_info || {};
+        const br = settings.branding || {};
+        setTemplateVars({
+          company_name: ci.legal_name || br.title || "Your Company",
+          logo: br.logo || "",
+          address: [ci.address_line1, ci.address_line2].filter(Boolean).join(", "),
+          phone: ci.phone || "",
+          email: ci.email || "",
+          primary_color: br.primaryColor || DEFAULT_PRIMARY_COLOR,
+          shop_name: br.title || "Shop",
+          shop_url: br.shopUrl || "",
+          current_year: new Date().getFullYear().toString(),
+          vat_number: ci.vat_number || "",
+        });
+      } catch {
+        // Fallback to defaults
+        setTemplateVars({
+          company_name: "Your Company",
+          logo: "",
+          primary_color: DEFAULT_PRIMARY_COLOR,
+          current_year: new Date().getFullYear().toString(),
+        });
+      }
+    }
+    loadCompanyInfo();
+  }, []);
 
   const loadComponents = useCallback(async () => {
     setIsLoading(true);
@@ -549,7 +618,7 @@ export default function ComponentsPage() {
                             <head>
                               <style>body { margin: 0; padding: 0; }</style>
                             </head>
-                            <body>${selectedComponent.html_content}</body>
+                            <body>${replaceTemplateVariables(selectedComponent.html_content, templateVars)}</body>
                             </html>
                           `}
                           title="Component preview"

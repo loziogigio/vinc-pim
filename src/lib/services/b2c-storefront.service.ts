@@ -204,7 +204,7 @@ export async function deleteStorefront(
  */
 export async function listStorefronts(
   tenantDb: string,
-  options: { page?: number; limit?: number; search?: string } = {}
+  options: { page?: number; limit?: number; search?: string; status?: string } = {}
 ): Promise<StorefrontListResult> {
   const { B2CStorefront } = await connectWithModels(tenantDb);
   const page = options.page || 1;
@@ -212,6 +212,9 @@ export async function listStorefronts(
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
+  if (options.status) {
+    query.status = options.status;
+  }
   if (options.search) {
     query.$or = [
       { name: { $regex: options.search, $options: "i" } },

@@ -66,6 +66,13 @@ vi.mock("@/lib/auth/api-key-auth", () => ({
       tenantDb: "vinc-test-tenant",
     })
   ),
+  verifyAPIKey: vi.fn(() =>
+    Promise.resolve({
+      valid: true,
+      tenantId: "test-tenant",
+      tenantDb: "vinc-test-tenant",
+    })
+  ),
 }));
 
 // ============================================

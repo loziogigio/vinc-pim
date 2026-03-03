@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse request body
     const body = await req.json();
-    const { username, password } = body;
+    const { username, password, channel } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -77,12 +77,19 @@ export async function POST(req: NextRequest) {
     // 6. Connect to tenant database and get models
     const { PortalUser: PortalUserModel, Customer: CustomerModel } = await connectWithModels(tenantDb);
 
-    // 7. Find portal user by username
-    const user = await PortalUserModel.findOne({
+    // 7. Find portal user by username (prefer channel-specific match)
+    const baseQuery: Record<string, unknown> = {
       tenant_id: tenantId,
       username: identifier,
       is_active: true,
-    });
+    };
+    let user = channel
+      ? await PortalUserModel.findOne({ ...baseQuery, channel })
+      : null;
+    // Fallback: try without channel filter (backward compat for apps that don't send channel)
+    if (!user) {
+      user = await PortalUserModel.findOne(baseQuery);
+    }
 
     if (!user) {
       await logLoginAttempt(identifier, ip, tenantId, false, "invalid_credentials");
@@ -189,6 +196,7 @@ export async function POST(req: NextRequest) {
       tenant_id: user.tenant_id,
       username: user.username,
       email: user.email,
+      channel: user.channel,
       customer_access: user.customer_access,
       is_active: user.is_active,
       last_login_at: user.last_login_at,

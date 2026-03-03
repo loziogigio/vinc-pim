@@ -149,30 +149,11 @@ export async function sendNotification(
       };
     }
 
-    // 3. Get SMTP config from tenant home settings
-    const { HomeSettings } = await connectWithModels(tenantDb);
-    const settings = await HomeSettings.findOne({}).lean();
-
-    // Build from address
-    const smtpSettings = (settings as { smtp_settings?: { from?: string; from_name?: string } })?.smtp_settings;
-    const from = smtpSettings?.from;
-    const fromName = smtpSettings?.from_name;
-
-    if (!from) {
-      console.warn(`[Notifications] No SMTP from address configured for tenant: ${tenantDb}`);
-      return {
-        success: false,
-        error: "SMTP not configured for tenant",
-      };
-    }
-
-    // 4. Send email
+    // 3. Send email (sendEmail resolves from/fromName from tenant config — SMTP or Graph)
     const result = await sendEmail({
       to,
       subject: rendered.subject,
       html: rendered.html,
-      from,
-      fromName,
       replyTo,
       immediate,
       tenantDb,

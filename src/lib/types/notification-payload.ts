@@ -202,9 +202,19 @@ export const TRIGGER_CATEGORY_MAP: Record<NotificationTrigger, NotificationCateg
   order_shipped: "order",
   order_delivered: "order",
   order_cancelled: "order",
-  // Price
-  price_drop_alert: "price",
-  abandoned_cart: "price",
+  // Payment
+  payment_received: "generic",
+  payment_failed: "generic",
+  payment_refunded: "generic",
+  // Subscription
+  subscription_created: "generic",
+  subscription_renewed: "generic",
+  subscription_cancelled: "generic",
+  subscription_payment_failed: "generic",
+  subscription_expiring: "generic",
+  // Campaign
+  campaign_product: "product",
+  campaign_generic: "generic",
 };
 
 /**

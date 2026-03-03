@@ -155,8 +155,8 @@ export const APPS: AppConfig[] = [
   },
   {
     id: "payments",
-    name: "Payments",
-    description: "Gestione pagamenti e gateway",
+    name: "Payments & Shipping",
+    description: "Gestione pagamenti, gateway e spedizioni",
     href: "/b2b/payments",
     icon: CreditCard,
     color: "bg-green-500",

@@ -27,6 +27,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
   const [editData, setEditData] = useState({
     carrier: order.delivery?.carrier || "",
     tracking_number: order.delivery?.tracking_number || "",
+    tracking_url: order.delivery?.tracking_url || "",
   });
 
   // Only show if delivery is required AND order is shipped/delivered
@@ -64,7 +65,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
     return null;
   };
 
-  const trackingUrl = getTrackingUrl(delivery?.carrier, delivery?.tracking_number);
+  const trackingUrl = delivery?.tracking_url || getTrackingUrl(delivery?.carrier, delivery?.tracking_number);
 
   // Handle save delivery info
   const handleSave = async () => {
@@ -76,6 +77,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
         body: JSON.stringify({
           carrier: editData.carrier || undefined,
           tracking_number: editData.tracking_number || undefined,
+          tracking_url: editData.tracking_url || undefined,
         }),
       });
 
@@ -162,6 +164,24 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
               />
             </div>
 
+            <div>
+              <label className="text-xs text-muted-foreground">
+                Tracking URL
+              </label>
+              <input
+                type="url"
+                placeholder="https://..."
+                value={editData.tracking_url}
+                onChange={(e) =>
+                  setEditData({ ...editData, tracking_url: e.target.value })
+                }
+                className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Lascia vuoto per usare il link automatico dal corriere
+              </p>
+            </div>
+
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -181,6 +201,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
                   setEditData({
                     carrier: delivery?.carrier || "",
                     tracking_number: delivery?.tracking_number || "",
+                    tracking_url: delivery?.tracking_url || "",
                   });
                 }}
                 className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted"
@@ -217,6 +238,21 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
                     </a>
                   )}
                 </div>
+              </div>
+            )}
+
+            {delivery?.tracking_url && (
+              <div>
+                <p className="text-xs text-muted-foreground">Tracking URL</p>
+                <a
+                  href={delivery.tracking_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-all flex items-center gap-1"
+                >
+                  {delivery.tracking_url}
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
               </div>
             )}
 

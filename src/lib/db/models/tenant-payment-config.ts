@@ -19,6 +19,7 @@ import {
 export interface IStripeConfig {
   publishable_key: string;
   secret_key: string;
+  webhook_url?: string;
   webhook_secret?: string;
   account_id?: string;
   account_status?: "pending" | "active" | "restricted";
@@ -41,6 +42,7 @@ export interface IPayPalConfig {
   client_id: string;
   client_secret: string;
   merchant_id?: string;
+  webhook_url?: string;
   webhook_id?: string;
   environment: "sandbox" | "production";
   enabled: boolean;
@@ -114,6 +116,7 @@ const StripeConfigSchema = new Schema<IStripeConfig>(
   {
     publishable_key: { type: String, required: true },
     secret_key: { type: String, required: true },
+    webhook_url: { type: String, trim: true },
     webhook_secret: { type: String, trim: true },
     account_id: { type: String, trim: true },
     account_status: {
@@ -157,6 +160,7 @@ const PayPalConfigSchema = new Schema<IPayPalConfig>(
     client_id: { type: String, required: true },
     client_secret: { type: String, required: true },
     merchant_id: { type: String, trim: true },
+    webhook_url: { type: String, trim: true },
     webhook_id: { type: String, trim: true },
     environment: {
       type: String,

@@ -98,6 +98,7 @@ export async function GET(req: NextRequest) {
     const publicCode = searchParams.get("public_code");
     const customerCode = searchParams.get("customer_code"); // ERP / external_code
     const isCurrent = searchParams.get("is_current"); // Active cart filter
+    const channel = searchParams.get("channel"); // Sales channel filter
     const shippingAddressId = searchParams.get("shipping_address_id"); // Address filter (internal ID)
     const addressCode = searchParams.get("address_code") || searchParams.get("shipping_address_code"); // Address filter (external_code)
 
@@ -172,6 +173,10 @@ export async function GET(req: NextRequest) {
       query.is_current = true;
     } else if (isCurrent === "false") {
       query.is_current = { $ne: true }; // false or undefined/null
+    }
+
+    if (channel) {
+      query.channel = channel;
     }
 
     if (shippingAddressId) {
@@ -456,7 +461,7 @@ export async function POST(req: NextRequest) {
 
     // Determine defaults based on order type
     const orderType = body.order_type || (isB2CGuest ? "b2c" : "b2b");
-    const channel = isB2CGuest ? "b2c-storefront" : "b2b-portal";
+    const channel = body.channel || (isB2CGuest ? "b2c" : "b2b");
     const priceListType = body.price_list_type || (orderType === "b2c" ? "retail" : "wholesale");
 
     // Create order with defaults
@@ -490,6 +495,20 @@ export async function POST(req: NextRequest) {
       delivery_route: body.delivery_route,
       shipping_method: body.shipping_method,
       requires_delivery: body.requires_delivery ?? true,
+
+      // Payment method (selected at checkout)
+      ...(body.payment_method
+        ? {
+            payment: {
+              payment_status: "awaiting",
+              payment_method: body.payment_method,
+              amount_due: 0,
+              amount_paid: 0,
+              amount_remaining: 0,
+              payments: [],
+            },
+          }
+        : {}),
 
       // Pricing Context
       price_list_id: body.price_list_id || "default",

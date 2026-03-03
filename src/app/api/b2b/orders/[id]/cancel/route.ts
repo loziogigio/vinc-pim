@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPooledConnection } from "@/lib/db/connection";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { cancelOrder } from "@/lib/services/order-lifecycle.service";
+import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import type { UserRole } from "@/lib/constants/order";
 
 interface RequestBody {
@@ -41,6 +42,11 @@ export async function POST(
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
+
+    void dispatchTrigger(dbName, "order_cancelled", {
+      type: "order",
+      order: result.order!,
+    });
 
     return NextResponse.json({
       success: true,

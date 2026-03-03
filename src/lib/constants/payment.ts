@@ -246,6 +246,24 @@ export const PROVIDER_CAPABILITIES: Record<PaymentProvider, ProviderCapabilities
 };
 
 // ============================================
+// DEFERRED PAYMENT METHODS
+// ============================================
+
+/**
+ * Payment methods where payment is collected after order confirmation
+ * (e.g. bank transfer, cash on delivery). Orders using these methods
+ * are auto-confirmed upon submission — no upfront payment required.
+ */
+export const DEFERRED_PAYMENT_METHODS: readonly PaymentMethod[] = [
+  "bank_transfer",
+  "cash_on_delivery",
+] as const;
+
+export function isDeferredPaymentMethod(method: string | undefined): boolean {
+  return !!method && (DEFERRED_PAYMENT_METHODS as readonly string[]).includes(method);
+}
+
+// ============================================
 // DEFAULT VALUES
 // ============================================
 

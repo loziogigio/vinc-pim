@@ -8,11 +8,12 @@ import {
   Phone,
   RefreshCw,
   Settings,
+  Truck,
 } from "lucide-react";
 
 export function PaymentsNavigation() {
   return (
-    <AppSidebar title="Payments" icon={CreditCard}>
+    <AppSidebar title="Payments & Shipping" icon={CreditCard}>
       <NavLink
         href="/b2b/payments"
         icon={LayoutDashboard}
@@ -38,6 +39,11 @@ export function PaymentsNavigation() {
         href="/b2b/payments/recurring"
         icon={RefreshCw}
         label="Ricorrenti"
+      />
+      <NavLink
+        href="/b2b/payments/shipping"
+        icon={Truck}
+        label="Spedizioni"
       />
       <NavLink
         href="/b2b/payments/settings"

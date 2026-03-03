@@ -136,6 +136,9 @@ importers:
       lucide-react:
         specifier: ^0.424.0
         version: 0.424.0(react@19.2.4)
+      monaco-editor:
+        specifier: ^0.55.1
+        version: 0.55.1
       mongo-sanitize:
         specifier: ^1.1.0
         version: 1.1.0

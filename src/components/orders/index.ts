@@ -8,6 +8,7 @@
  * - DeliveryCard: Shipping/delivery information
  * - NewOrderModal: Create new order with customer selection
  * - AddItemsModal: Add items to order with product search
+ * - OrderSnapshotCard: Customer/address/fiscal snapshot display
  */
 
 export { StatusActionsCard } from "./StatusActionsCard";
@@ -16,3 +17,4 @@ export { PaymentCard } from "./PaymentCard";
 export { DeliveryCard } from "./DeliveryCard";
 export { NewOrderModal } from "./NewOrderModal";
 export { AddItemsModal } from "./AddItemsModal";
+export { OrderSnapshotCard } from "./OrderSnapshotCard";

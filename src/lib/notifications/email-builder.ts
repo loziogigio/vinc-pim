@@ -14,7 +14,8 @@ export type { CompanyInfo } from "./company-info";
 
 /**
  * Replace template variables in HTML content.
- * Handles both simple variables {{var}} and conditionals {{#if var}}...{{else}}...{{/if}}
+ * Handles simple variables {{var}} and nested conditionals {{#if var}}...{{else}}...{{/if}}.
+ * Processes innermost blocks first, looping until all nesting is resolved.
  */
 export function replaceTemplateVariables(
   html: string,
@@ -28,23 +29,27 @@ export function replaceTemplateVariables(
     result = result.replace(regex, value);
   }
 
-  // Handle conditional blocks with else - {{#if variable}}...{{else}}...{{/if}}
-  result = result.replace(
-    /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
-    (_, varName, ifContent, elseContent) => {
+  // Process conditionals from innermost outward (handles nesting).
+  // Negative lookahead ensures we only match blocks with no nested {{#if}} inside.
+  const ifElseRe = /\{\{#if\s+(\w+)\}\}((?:(?!\{\{#if)[\s\S])*?)\{\{else\}\}((?:(?!\{\{#if)[\s\S])*?)\{\{\/if\}\}/g;
+  const ifOnlyRe = /\{\{#if\s+(\w+)\}\}((?:(?!\{\{#if)[\s\S])*?)\{\{\/if\}\}/g;
+
+  let prev = "";
+  while (prev !== result) {
+    prev = result;
+
+    // With else
+    result = result.replace(ifElseRe, (_, varName, ifContent, elseContent) => {
       const hasValue = data[varName] && data[varName].trim() !== "";
       return hasValue ? ifContent : elseContent;
-    }
-  );
+    });
 
-  // Handle conditional blocks without else - {{#if variable}}...{{/if}}
-  result = result.replace(
-    /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
-    (_, varName, content) => {
+    // Without else
+    result = result.replace(ifOnlyRe, (_, varName, content) => {
       const hasValue = data[varName] && data[varName].trim() !== "";
       return hasValue ? content : "";
-    }
-  );
+    });
+  }
 
   return result;
 }

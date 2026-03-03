@@ -28,6 +28,7 @@ import {
   canModifyOrder,
   isTerminalStatus,
 } from "@/lib/constants/order";
+import { isDeferredPaymentMethod } from "@/lib/constants/payment";
 import type {
   OrderStatus,
   QuotationStatus,
@@ -37,6 +38,8 @@ import type {
 } from "@/lib/constants/order";
 import { getModelRegistry } from "@/lib/db/model-registry";
 import { getNextOrderNumber } from "@/lib/db/models/counter";
+import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
+import { populateOrderSnapshots } from "@/lib/services/order-snapshot.service";
 
 // ============================================
 // TYPES
@@ -173,6 +176,9 @@ export async function submitOrder(
   // Recalculate totals before submitting
   recalculateOrderTotals(order);
 
+  // Snapshot customer/address/fiscal data onto the order
+  await populateOrderSnapshots(tenantDb, order);
+
   // Assign order_number using atomic counter (unique per year)
   if (!order.order_number) {
     const dbName = tenantDb.name;
@@ -182,6 +188,28 @@ export async function submitOrder(
   order.status = "pending";
   order.submitted_at = new Date();
   order.is_current = false; // No longer the current cart
+
+  // Auto-confirm for deferred payment methods (bank_transfer, cash_on_delivery)
+  const paymentMethod = order.payment?.payment_method;
+  if (isDeferredPaymentMethod(paymentMethod)) {
+    // Initialize payment data if not present
+    if (!order.payment) {
+      order.payment = {
+        payment_status: "awaiting",
+        payment_method: paymentMethod,
+        amount_due: order.order_total,
+        amount_paid: 0,
+        amount_remaining: order.order_total,
+        payments: [],
+      };
+    } else {
+      order.payment.amount_due = order.order_total;
+      order.payment.amount_remaining = order.order_total;
+    }
+
+    order.status = "confirmed";
+    order.confirmed_at = new Date();
+  }
 
   await order.save();
   return { success: true, order };
@@ -222,6 +250,10 @@ export async function confirmOrder(
       error: `Role ${userRole} cannot confirm orders`,
     };
   }
+
+  // Ensure snapshots are populated (may have been skipped if order
+  // went draft → quotation → confirmed, bypassing submitOrder)
+  await populateOrderSnapshots(tenantDb, order);
 
   // Generate order number if not set
   if (!order.order_number) {
@@ -1236,6 +1268,213 @@ export async function getOrder(
   const Order = registry.Order;
 
   return await Order.findOne({ order_id: orderId });
+}
+
+// ============================================
+// GATEWAY PAYMENT RECORDING
+// ============================================
+
+interface GatewayPaymentData {
+  amount: number;
+  provider: string;
+  provider_payment_id?: string;
+  provider_capture_id?: string;
+  payment_type?: string;
+  transaction_id?: string;
+  payment_number?: string;
+}
+
+/**
+ * Record a gateway payment on an order (called automatically after capture).
+ *
+ * Unlike recordPayment(), this function:
+ * - Accepts "pending" orders (B2C flow: customer pays before admin confirms)
+ * - Skips allowed_payment_methods validation (gateway already processed it)
+ * - Uses "system" as recorded_by
+ * - Includes idempotency check on transaction_id to prevent duplicates
+ */
+export async function recordGatewayPayment(
+  tenantDb: mongoose.Connection,
+  orderId: string,
+  gatewayData: GatewayPaymentData
+): Promise<TransitionResult> {
+  const registry = getModelRegistry(tenantDb);
+  const Order = registry.Order;
+
+  const order = await Order.findOne({ order_id: orderId });
+  if (!order) {
+    return { success: false, error: "Order not found" };
+  }
+
+  // Reject draft and cancelled orders
+  if (order.status === "draft" || order.status === "cancelled") {
+    return {
+      success: false,
+      error: `Cannot record gateway payment for ${order.status} order`,
+    };
+  }
+
+  // Initialize payment data if not present
+  if (!order.payment) {
+    order.payment = {
+      payment_status: "awaiting",
+      amount_due: order.order_total,
+      amount_paid: 0,
+      amount_remaining: order.order_total,
+      payments: [],
+    };
+  }
+
+  // Idempotency: skip if a payment with this transaction_id already exists
+  if (gatewayData.transaction_id) {
+    const existing = order.payment.payments.find(
+      (p: IPaymentRecord) => p.reference === gatewayData.transaction_id
+    );
+    if (existing) {
+      return { success: true, order }; // Already recorded, no duplicate
+    }
+  }
+
+  // Build notes string
+  const notesParts: string[] = [];
+  if (gatewayData.payment_number) notesParts.push(gatewayData.payment_number);
+  const notes = notesParts.length > 0 ? `Gateway: ${notesParts.join(" ")}` : "Gateway";
+
+  const paymentRecord: IPaymentRecord = {
+    payment_id: nanoid(8),
+    amount: gatewayData.amount,
+    method: gatewayData.provider,
+    reference: gatewayData.transaction_id,
+    recorded_at: new Date(),
+    recorded_by: "system",
+    notes,
+    confirmed: true,
+    provider: gatewayData.provider,
+    provider_data: {
+      provider_payment_id: gatewayData.provider_payment_id,
+      provider_contract_id: undefined,
+      payment_type: gatewayData.payment_type as "onclick" | "moto" | "recurrent" | undefined,
+    },
+  };
+
+  order.payment.payments.push(paymentRecord);
+
+  // Recalculate totals from ALL payment records
+  order.payment.amount_paid = order.payment.payments.reduce(
+    (sum: number, p: IPaymentRecord) => sum + p.amount,
+    0
+  );
+  order.payment.amount_remaining = Math.max(
+    0,
+    order.payment.amount_due - order.payment.amount_paid
+  );
+
+  // Update payment status
+  if (order.payment.amount_remaining <= 0) {
+    order.payment.payment_status = "paid";
+    order.payment.payment_date = new Date();
+  } else if (order.payment.amount_paid > 0) {
+    order.payment.payment_status = "partial";
+  }
+
+  await order.save();
+
+  // Dispatch payment_received notification
+  const dbName = tenantDb.name;
+  void dispatchTrigger(dbName, "payment_received", {
+    type: "payment",
+    order,
+    paymentAmount: gatewayData.amount,
+    paymentMethod: gatewayData.provider,
+  });
+
+  // Auto-confirm pending orders when fully paid via gateway
+  if (order.payment.payment_status === "paid" && order.status === "pending") {
+    try {
+      const confirmResult = await confirmOrder(tenantDb, orderId, "system", "system");
+      if (confirmResult.success) {
+        void dispatchTrigger(dbName, "order_confirmation", {
+          type: "order",
+          order: confirmResult.order!,
+        });
+        return { success: true, order: confirmResult.order };
+      }
+    } catch (err) {
+      console.error(`[Payment] Auto-confirm failed for order ${orderId}:`, err);
+      // Don't fail — payment is recorded, order just stays pending
+    }
+  }
+
+  return { success: true, order };
+}
+
+/**
+ * Reverse a gateway payment on an order (called automatically after refund).
+ *
+ * Finds the matching payment record by transaction_id (stored in `reference`),
+ * removes it (full refund) or reduces its amount (partial refund),
+ * and recalculates the order totals.
+ */
+export async function reverseGatewayPayment(
+  tenantDb: mongoose.Connection,
+  orderId: string,
+  transactionId: string,
+  refundAmount?: number
+): Promise<TransitionResult> {
+  const registry = getModelRegistry(tenantDb);
+  const Order = registry.Order;
+
+  const order = await Order.findOne({ order_id: orderId });
+  if (!order) {
+    return { success: false, error: "Order not found" };
+  }
+
+  if (!order.payment || !order.payment.payments) {
+    return { success: false, error: "No payments found" };
+  }
+
+  // Find payment record by gateway transaction_id (stored in `reference`)
+  const paymentIndex = order.payment.payments.findIndex(
+    (p: IPaymentRecord) => p.reference === transactionId
+  );
+
+  if (paymentIndex === -1) {
+    return { success: false, error: "Payment record not found for transaction" };
+  }
+
+  const paymentRecord = order.payment.payments[paymentIndex];
+
+  if (refundAmount && refundAmount < paymentRecord.amount) {
+    // Partial refund — reduce the payment amount
+    paymentRecord.amount -= refundAmount;
+    paymentRecord.notes = `${paymentRecord.notes || ""} (rimborso parziale: -${refundAmount})`.trim();
+  } else {
+    // Full refund — remove the payment record
+    order.payment.payments.splice(paymentIndex, 1);
+  }
+
+  // Recalculate totals from remaining payment records
+  order.payment.amount_paid = order.payment.payments.reduce(
+    (sum: number, p: IPaymentRecord) => sum + p.amount,
+    0
+  );
+  order.payment.amount_remaining = Math.max(
+    0,
+    order.payment.amount_due - order.payment.amount_paid
+  );
+
+  // Update payment status
+  if (order.payment.amount_paid <= 0) {
+    order.payment.payment_status = "awaiting";
+    order.payment.payment_date = undefined;
+  } else if (order.payment.amount_remaining <= 0) {
+    order.payment.payment_status = "paid";
+  } else {
+    order.payment.payment_status = "partial";
+  }
+
+  await order.save();
+  return { success: true, order };
 }
 
 // ============================================

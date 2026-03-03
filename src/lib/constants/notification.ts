@@ -139,9 +139,7 @@ export const NOTIFICATION_TRIGGERS = [
   "order_delivered",
   "order_cancelled",
   // Marketing templates (new)
-  "price_drop_alert",
   "back_in_stock",
-  "abandoned_cart",
   "newsletter",
   // Campaign types
   "campaign_product",
@@ -172,9 +170,7 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   order_shipped: "Order Shipped",
   order_delivered: "Order Delivered",
   order_cancelled: "Order Cancelled",
-  price_drop_alert: "Price Drop Alert",
   back_in_stock: "Back in Stock",
-  abandoned_cart: "Abandoned Cart",
   newsletter: "Newsletter",
   campaign_product: "Product Campaign",
   campaign_generic: "Generic Campaign",

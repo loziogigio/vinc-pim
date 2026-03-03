@@ -172,14 +172,14 @@ describe("unit: Seed Templates", () => {
 });
 
 describe("unit: Template Constants", () => {
-  it("should expect 13 default templates", () => {
+  it("should expect 11 default templates", () => {
     /**
-     * 13 default templates:
+     * 11 default templates:
      * - 5 Account (registration x2, welcome, forgot, reset)
      * - 4 Order (confirmed, shipped, delivered, cancelled)
-     * - 4 Marketing (price_drop, back_in_stock, abandoned_cart, newsletter)
+     * - 2 Marketing (back_in_stock, newsletter)
      */
-    expect(13).toBe(13);
+    expect(11).toBe(11);
   });
 
   it("should expect 2 campaign templates", () => {
@@ -191,10 +191,10 @@ describe("unit: Template Constants", () => {
     expect(2).toBe(2);
   });
 
-  it("should expect 15 total templates for new tenant", () => {
+  it("should expect 13 total templates for new tenant", () => {
     /**
-     * Total: 13 default + 2 campaign = 15
+     * Total: 11 default + 2 campaign = 13
      */
-    expect(13 + 2).toBe(15);
+    expect(11 + 2).toBe(13);
   });
 });

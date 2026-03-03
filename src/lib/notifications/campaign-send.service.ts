@@ -5,7 +5,6 @@
  * for better file organization (keep files under 500 lines).
  */
 
-import { connectWithModels } from "@/lib/db/connection";
 import {
   getTemplate,
   previewTemplateInline,
@@ -335,29 +334,13 @@ export async function sendCampaignNotification(
       };
     }
 
-    // 3. Get SMTP config for email
-    let smtpFrom: string | undefined;
-    let smtpFromName: string | undefined;
-
-    if (shouldSendEmail) {
-      const { HomeSettings } = await connectWithModels(tenantDb);
-      const settings = await HomeSettings.findOne({}).lean();
-      const smtpSettings = (settings as { smtp_settings?: { from?: string; from_name?: string } })?.smtp_settings;
-      smtpFrom = smtpSettings?.from;
-      smtpFromName = smtpSettings?.from_name;
-
-      if (!smtpFrom) {
-        console.warn(`[Campaign] No SMTP config, skipping email channel`);
-      }
-    }
-
-    // 4. Generate payload for mobile/in-app
+    // 3. Generate payload for mobile/in-app
     const payload = generateNotificationPayload(template as unknown as INotificationTemplate);
 
-    // 5. Render email template once (not per-recipient for now)
+    // 4. Render email template once (not per-recipient for now)
     let renderedEmail: { subject: string; html: string } | null = null;
 
-    if (shouldSendEmail && smtpFrom && templateChannels.email?.html_body) {
+    if (shouldSendEmail && templateChannels.email?.html_body) {
       renderedEmail = await previewTemplateInline(
         tenantDb,
         {
@@ -383,15 +366,13 @@ export async function sendCampaignNotification(
     const inAppResults = { created: 0, failed: 0 };
 
     for (const recipient of recipients) {
-      // Send email
-      if (shouldSendEmail && smtpFrom && renderedEmail) {
+      // Send email (sendEmail resolves from/fromName from tenant config — SMTP or Graph)
+      if (shouldSendEmail && renderedEmail) {
         try {
           const emailResult = await sendEmail({
             to: recipient.email,
             subject: renderedEmail.subject,
             html: renderedEmail.html,
-            from: smtpFrom,
-            fromName: smtpFromName,
             immediate: !queue,
             tenantDb,
           });

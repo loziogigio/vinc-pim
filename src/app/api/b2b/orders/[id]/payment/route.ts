@@ -17,6 +17,7 @@ import {
   deletePayment,
   editPayment,
 } from "@/lib/services/order-lifecycle.service";
+import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import type { PaymentStatus } from "@/lib/constants/order";
 
 interface RecordPaymentBody {
@@ -115,6 +116,13 @@ export async function POST(
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
+
+    void dispatchTrigger(dbName, "payment_received", {
+      type: "payment",
+      order: result.order!,
+      paymentAmount: body.amount,
+      paymentMethod: body.method,
+    });
 
     return NextResponse.json({
       success: true,

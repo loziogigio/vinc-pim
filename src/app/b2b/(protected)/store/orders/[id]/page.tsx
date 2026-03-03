@@ -40,9 +40,7 @@ import {
   X,
   Euro,
   Calendar,
-  User,
   FileText,
-  MapPin,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -55,7 +53,7 @@ import {
 } from "lucide-react";
 
 // Import lifecycle components
-import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal } from "@/components/orders";
+import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal, OrderSnapshotCard } from "@/components/orders";
 import { ThreadPanel } from "@/components/threads";
 import { ShippingMethodSelector } from "@/components/store/ShippingMethodSelector";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -484,6 +482,16 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Content - Items */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Customer & Address Snapshots */}
+          <OrderSnapshotCard
+            order={order}
+            customerProfileUrl={
+              order.customer_id
+                ? `${tenantPrefix}/b2b/store/customers/${order.customer_id}`
+                : undefined
+            }
+          />
+
           {/* Order Items */}
           <div className="rounded-lg bg-card shadow-sm border border-border">
             <div className="p-4 border-b border-border">
@@ -1066,6 +1074,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
             </div>
           )}
+
         </div>
 
         {/* Sidebar - Summary */}
@@ -1211,90 +1220,6 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             </div>
           </div>
 
-          {/* Customer Info */}
-          <div className="rounded-lg bg-card shadow-sm border border-border">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Customer</h2>
-              </div>
-              <Link
-                href={`${tenantPrefix}/b2b/store/customers/${order.customer_id}`}
-                className="text-xs text-primary hover:underline"
-              >
-                View Profile →
-              </Link>
-            </div>
-            <div className="p-4 space-y-3">
-              {/* Customer Identification Codes - Priority: Public Code > ERP Code > Internal ID */}
-              <div className="space-y-2 pb-3 border-b border-border">
-                {/* Public Customer Code (Primary - most important for administrative purposes) */}
-                {customer?.public_code && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Public Customer Code</p>
-                    <p className="text-sm font-semibold font-mono text-foreground">{customer.public_code}</p>
-                  </div>
-                )}
-                {/* Customer Code from ERP (Secondary) */}
-                {(customer?.external_code || order.customer_code) && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Customer Code (ERP)</p>
-                    <p className="text-sm font-medium font-mono text-muted-foreground">
-                      {customer?.external_code || order.customer_code}
-                    </p>
-                  </div>
-                )}
-                {/* Internal VINC ID (Tertiary) */}
-                <div>
-                  <p className="text-xs text-muted-foreground">Customer ID (Internal)</p>
-                  <Link
-                    href={`${tenantPrefix}/b2b/store/customers/${order.customer_id}`}
-                    className="text-xs font-mono text-primary hover:underline"
-                  >
-                    {order.customer_id}
-                  </Link>
-                </div>
-              </div>
-              {/* Customer Details */}
-              {customer && (
-                <>
-                  {customer.company_name && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Company</p>
-                      <p className="text-sm font-medium">{customer.company_name}</p>
-                    </div>
-                  )}
-                  {(customer.first_name || customer.last_name) && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Contact</p>
-                      <p className="text-sm font-medium">
-                        {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
-                      </p>
-                    </div>
-                  )}
-                  {customer.email && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="text-sm font-medium">{customer.email}</p>
-                    </div>
-                  )}
-                  {customer.phone && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="text-sm font-medium">{customer.phone}</p>
-                    </div>
-                  )}
-                </>
-              )}
-              {order.po_reference && (
-                <div>
-                  <p className="text-xs text-muted-foreground">PO Reference</p>
-                  <p className="text-sm font-medium">{order.po_reference}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Order Details */}
           <div className="rounded-lg bg-card shadow-sm border border-border">
             <div className="p-4 border-b border-border">
@@ -1355,65 +1280,16 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             </div>
           </div>
 
-          {/* Delivery Info */}
-          {(order.shipping_address_id || order.requested_delivery_date || order.shipping_method || shippingAddress) && (
+          {/* Delivery Options */}
+          {(order.requested_delivery_date || order.shipping_method || order.delivery_slot) && (
             <div className="rounded-lg bg-card shadow-sm border border-border">
               <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  <h2 className="font-semibold text-foreground">Delivery</h2>
+                  <Truck className="h-5 w-5 text-primary" />
+                  <h2 className="font-semibold text-foreground">Delivery Options</h2>
                 </div>
               </div>
               <div className="p-4 space-y-3">
-                {order.shipping_address_id && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Address ID</p>
-                    <Link
-                      href={`${tenantPrefix}/b2b/store/customers/${order.customer_id}?address=${order.shipping_address_id}`}
-                      className="text-sm font-medium font-mono text-primary hover:underline"
-                    >
-                      {order.shipping_address_id}
-                    </Link>
-                    {order.shipping_address_code && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Code: {order.shipping_address_code}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {/* Full Address Details */}
-                {shippingAddress && (
-                  <>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {shippingAddress.label || "Shipping Address"}
-                      </p>
-                      <div className="text-sm font-medium space-y-0.5">
-                        <p>{shippingAddress.recipient_name}</p>
-                        <p>{shippingAddress.street_address}</p>
-                        {shippingAddress.street_address_2 && (
-                          <p>{shippingAddress.street_address_2}</p>
-                        )}
-                        <p>
-                          {shippingAddress.postal_code} {shippingAddress.city} ({shippingAddress.province})
-                        </p>
-                        <p>{shippingAddress.country}</p>
-                      </div>
-                    </div>
-                    {shippingAddress.phone && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Phone</p>
-                        <p className="text-sm font-medium">{shippingAddress.phone}</p>
-                      </div>
-                    )}
-                    {shippingAddress.delivery_notes && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Notes</p>
-                        <p className="text-sm text-foreground">{shippingAddress.delivery_notes}</p>
-                      </div>
-                    )}
-                  </>
-                )}
                 {order.requested_delivery_date && (
                   <div>
                     <p className="text-xs text-muted-foreground">Requested Date</p>

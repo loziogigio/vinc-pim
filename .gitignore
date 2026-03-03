@@ -36,5 +36,8 @@ scripts/test-*.ts
 scripts/migrate-*.ts
 scripts/.test-api-keys.json
 
+# Monaco editor static files (copied from node_modules by postinstall)
+public/monaco-editor/
+
 # Traefik dynamic config (dev fallback)
 .traefik/

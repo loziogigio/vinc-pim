@@ -3,6 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { Truck, Loader2, AlertCircle } from "lucide-react";
 import type { ShippingMethodOption } from "@/lib/types/shipping";
+import {
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethod,
+} from "@/lib/constants/payment";
 
 interface ShippingMethodSelectorProps {
   orderId: string;
@@ -13,6 +17,7 @@ interface ShippingMethodSelectorProps {
     shipping_method: string;
     shipping_cost: number;
     order_total: number;
+    allowed_payment_methods?: string[];
   }) => void;
 }
 
@@ -158,6 +163,19 @@ export function ShippingMethodSelector({
                     </span>
                   )}
                 </div>
+                {/* Allowed payment methods */}
+                {opt.allowed_payment_methods && opt.allowed_payment_methods.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {opt.allowed_payment_methods.map((pm) => (
+                      <span
+                        key={pm}
+                        className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground"
+                      >
+                        {PAYMENT_METHOD_LABELS[pm as PaymentMethod] ?? pm}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex-shrink-0 text-right">

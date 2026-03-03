@@ -1,4 +1,4 @@
-# Portal Users API Reference
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                # Portal Users API Reference
 
 API reference for portal user authentication in mobile apps and external frontends.
 

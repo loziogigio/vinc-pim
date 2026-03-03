@@ -34,6 +34,7 @@ type FilterState = {
   public_code: string;
   erp_code: string;
   is_current: string; // "true" | "false" | "" (empty = all)
+  channel: string;
 };
 
 type OrderStats = {
@@ -99,9 +100,11 @@ export default function OrdersListPage() {
     public_code: searchParams?.get("public_code") || "",
     erp_code: searchParams?.get("erp_code") || "",
     is_current: searchParams?.get("is_current") || "",
+    channel: searchParams?.get("channel") || "",
   });
 
   const [customerName, setCustomerName] = useState<string | null>(null);
+  const [channels, setChannels] = useState<{ code: string; name: string }[]>([]);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [stats, setStats] = useState<OrderStats>({
     draft: 0,
@@ -142,6 +145,13 @@ export default function OrdersListPage() {
 
   const isAllSelected = orders.length > 0 && selectedOrders.size === orders.length;
   const isSomeSelected = selectedOrders.size > 0 && selectedOrders.size < orders.length;
+
+  useEffect(() => {
+    fetch("/api/b2b/channels")
+      .then((r) => r.json())
+      .then((d) => setChannels(d.channels || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -185,6 +195,7 @@ export default function OrdersListPage() {
       if (filters.public_code) params.set("public_code", filters.public_code);
       if (filters.erp_code) params.set("customer_code", filters.erp_code);
       if (filters.is_current) params.set("is_current", filters.is_current);
+      if (filters.channel) params.set("channel", filters.channel);
 
       const res = await fetch(`/api/b2b/orders?${params.toString()}`);
       if (res.ok) {
@@ -516,8 +527,8 @@ export default function OrdersListPage() {
           </select>
         </div>
 
-        {/* Row 2: N. Carrello, Public Code, ERP Code, Active Cart, Date Range */}
-        <div className="mt-3 grid gap-3 md:grid-cols-6">
+        {/* Row 2: N. Carrello, Public Code, ERP Code, Active Cart, Channel, Date Range */}
+        <div className="mt-3 grid gap-3 md:grid-cols-7">
           {/* Cart Number */}
           <div>
             <label className="block text-xs text-muted-foreground mb-1">N. Carrello</label>
@@ -564,6 +575,22 @@ export default function OrdersListPage() {
               <option value="false">Inactive</option>
             </select>
           </div>
+          {/* Channel */}
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">Channel</label>
+            <select
+              value={filters.channel}
+              onChange={(e) => updateFilters({ channel: e.target.value })}
+              className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+            >
+              <option value="">All</option>
+              {channels.map((ch) => (
+                <option key={ch.code} value={ch.code}>
+                  {ch.name}
+                </option>
+              ))}
+            </select>
+          </div>
           {/* Date From */}
           <div>
             <label className="block text-xs text-muted-foreground mb-1">From</label>
@@ -587,7 +614,7 @@ export default function OrdersListPage() {
         </div>
 
         {/* Active Filters */}
-        {(filters.status || filters.search || filters.year || filters.date_from || filters.date_to || filters.cart_number || filters.public_code || filters.erp_code || filters.is_current) && (
+        {(filters.status || filters.search || filters.year || filters.date_from || filters.date_to || filters.cart_number || filters.public_code || filters.erp_code || filters.is_current || filters.channel) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-muted-foreground">Filters:</span>
             {filters.status && (
@@ -602,6 +629,14 @@ export default function OrdersListPage() {
               <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
                 <span>{filters.is_current === "true" ? "Active Cart" : "Inactive"}</span>
                 <button onClick={() => updateFilters({ is_current: "" })} className="hover:bg-emerald-200 rounded-full">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {filters.channel && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs">
+                <span>{channels.find((c) => c.code === filters.channel)?.name || filters.channel}</span>
+                <button onClick={() => updateFilters({ channel: "" })} className="hover:bg-sky-200 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -655,7 +690,7 @@ export default function OrdersListPage() {
               </div>
             )}
             <button
-              onClick={() => updateFilters({ status: "", year: "", search: "", date_from: "", date_to: "", customer_id: "", cart_number: "", public_code: "", erp_code: "", is_current: "" })}
+              onClick={() => updateFilters({ status: "", year: "", search: "", date_from: "", date_to: "", customer_id: "", cart_number: "", public_code: "", erp_code: "", is_current: "", channel: "" })}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
               Clear all

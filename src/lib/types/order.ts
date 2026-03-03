@@ -310,6 +310,7 @@ export interface Order {
   delivery_slot?: string; // morning, afternoon
   delivery_route?: string;
   shipping_method?: string; // courier, pickup
+  allowed_payment_methods?: string[]; // Restricted by shipping method
   requires_delivery: boolean; // false for service orders
 
   // Pricing Context
@@ -338,6 +339,10 @@ export interface Order {
   created_at: Date;
   updated_at: Date;
   confirmed_at?: Date;
+
+  // Channel
+  channel: string; // Sales channel code (e.g., "default", "storefront-slug")
+  channel_ref?: string; // Additional reference (e.g., API key ID, "ios")
 
   // Tracking
   session_id: string;
@@ -460,6 +465,8 @@ export interface CreateOrderRequest {
   delivery_slot?: string;
   delivery_route?: string;
   shipping_method?: string;
+  payment_method?: string; // e.g. "bank_transfer", "cash_on_delivery", "paypal"
+  allowed_payment_methods?: string[];
   requires_delivery?: boolean; // false for service orders
   shipping_cost?: number;
   po_reference?: string;

@@ -259,7 +259,7 @@ export interface IDeliveryData {
 // B2C GUEST / INVOICE TYPES
 // ============================================
 
-export const BUYER_TYPES = ["private", "business"] as const;
+export const BUYER_TYPES = ["private", "business", "reseller"] as const;
 export type BuyerType = (typeof BUYER_TYPES)[number];
 
 /** Embedded buyer snapshot — always populated, replaces customer_id for guests */
@@ -275,6 +275,7 @@ export interface IBuyerSnapshot {
 
 /** Italian e-invoicing data snapshot at order time */
 export interface IInvoiceData {
+  company_name?: string;
   fiscal_code?: string;
   vat_number?: string;
   pec_email?: string;
@@ -759,6 +760,7 @@ const OrderSchema = new Schema<IOrder>(
     invoice_data: {
       type: new Schema(
         {
+          company_name: { type: String },
           fiscal_code: { type: String },
           vat_number: { type: String },
           pec_email: { type: String },

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CreditCard,
@@ -17,33 +16,27 @@ import {
   Trash2,
   Pencil,
   Check,
-  XCircle,
   ArrowRight,
+  XCircle,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "sonner";
 import type { Order, PaymentRecord } from "@/lib/types/order";
 import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/lib/constants/order";
 import {
-  TRANSACTION_STATUS_LABELS,
-  PAYMENT_PROVIDER_LABELS,
-  type TransactionStatus,
-  type PaymentProvider,
-} from "@/lib/constants/payment";
+  GatewayTransactionRow,
+  type GatewayTransaction,
+} from "./GatewayTransactionRow";
 
-// Gateway transaction from paymenttransactions collection
-interface GatewayTransaction {
-  transaction_id: string;
-  payment_number?: string;
-  provider: PaymentProvider;
-  gross_amount: number;
-  currency: string;
-  status: TransactionStatus;
-  method?: string;
-  created_at: string;
-}
+// Manual payment recording methods and labels
+const MANUAL_PAYMENT_METHODS = [
+  "bank_transfer",
+  "credit_card",
+  "cash",
+  "check",
+  "other",
+] as const;
 
-// Payment method labels in Italian
 const PAYMENT_METHOD_IT: Record<string, string> = {
   bank_transfer: "Bonifico Bancario",
   credit_card: "Carta di Credito",
@@ -51,6 +44,26 @@ const PAYMENT_METHOD_IT: Record<string, string> = {
   check: "Assegno",
   other: "Altro",
 };
+
+// Maps manual recording methods to canonical payment methods (from shipping restrictions)
+const MANUAL_TO_CANONICAL: Record<string, string[]> = {
+  bank_transfer: ["bank_transfer"],
+  credit_card: ["credit_card", "debit_card"],
+  cash: ["cash_on_delivery"],
+  check: [], // always allowed (no canonical equivalent)
+  other: [], // always allowed (catch-all)
+};
+
+function getAllowedManualMethods(restrictions?: string[]): string[] {
+  if (!restrictions || restrictions.length === 0) {
+    return [...MANUAL_PAYMENT_METHODS];
+  }
+  return MANUAL_PAYMENT_METHODS.filter((m) => {
+    const canonical = MANUAL_TO_CANONICAL[m];
+    if (canonical.length === 0) return true; // always shown
+    return canonical.some((c) => restrictions.includes(c));
+  });
+}
 
 interface PaymentCardProps {
   order: Order;
@@ -82,9 +95,10 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     paymentId: string;
     amount: number;
   }>({ open: false, paymentId: "", amount: 0 });
+  const allowedMethods = getAllowedManualMethods(order.allowed_payment_methods);
   const [newPayment, setNewPayment] = useState({
     amount: "",
-    method: "bank_transfer",
+    method: allowedMethods[0] || "bank_transfer",
     reference: "",
     notes: "",
     confirmed: false,
@@ -94,6 +108,17 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
   // Gateway transactions state
   const [gatewayTransactions, setGatewayTransactions] = useState<GatewayTransaction[]>([]);
   const [showGateway, setShowGateway] = useState(false);
+
+  // Payment link generation state
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [linkAmount, setLinkAmount] = useState("");
+
+  // B2C storefront destination state
+  const [storefronts, setStorefronts] = useState<
+    Array<{ slug: string; name: string; domains: string[]; branding?: { title?: string } }>
+  >([]);
+  const [selectedDestination, setSelectedDestination] = useState("generic");
 
   // Fetch gateway transactions linked to this order
   const fetchGatewayTransactions = useCallback(async () => {
@@ -115,10 +140,29 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     fetchGatewayTransactions();
   }, [fetchGatewayTransactions]);
 
+  // Fetch active B2C storefronts for destination selector
+  useEffect(() => {
+    async function fetchStorefronts() {
+      try {
+        const res = await fetch("/api/b2b/b2c/storefronts?status=active&limit=50");
+        if (res.ok) {
+          const data = await res.json();
+          const withDomains = (data.items || []).filter(
+            (sf: { domains?: string[] }) => sf.domains && sf.domains.length > 0
+          );
+          setStorefronts(withDomains);
+        }
+      } catch {
+        // Silently fail — dropdown just won't show B2C options
+      }
+    }
+    fetchStorefronts();
+  }, []);
+
   const payment = order.payment;
 
-  // Only show for confirmed/shipped/delivered orders
-  if (!["confirmed", "shipped", "delivered"].includes(order.status)) {
+  // Only show for pending/confirmed/shipped/delivered orders
+  if (!["pending", "confirmed", "shipped", "delivered"].includes(order.status)) {
     return null;
   }
 
@@ -135,8 +179,15 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     .filter((p) => p.confirmed)
     .reduce((sum, p) => sum + p.amount, 0);
 
-  // Remaining is based on confirmed payments only
-  const remainingAfterConfirmed = amountDue - confirmedAmount;
+  // Remaining is based on confirmed payments only.
+  // Account for fully refunded gateway transactions whose payment records
+  // haven't been removed from the order yet (stale data).
+  const staleRefundedAmount = gatewayTransactions
+    .filter((t) => t.status === "refunded")
+    .filter((t) => payments.some((p) => p.reference === t.transaction_id))
+    .reduce((sum, t) => sum + t.gross_amount, 0);
+  const effectiveConfirmed = Math.max(0, confirmedAmount - staleRefundedAmount);
+  const remainingAfterConfirmed = amountDue - effectiveConfirmed;
 
   // Status badge colors
   const statusColors: Record<string, { bg: string; text: string; icon: React.ElementType }> = {
@@ -158,8 +209,8 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       currency: order.currency || "EUR",
     }).format(amount);
 
-  // Payment progress percentage (based on confirmed payments)
-  const progressPct = amountDue > 0 ? Math.min((confirmedAmount / amountDue) * 100, 100) : 0;
+  // Payment progress percentage (accounts for refunds)
+  const progressPct = amountDue > 0 ? Math.min((effectiveConfirmed / amountDue) * 100, 100) : 0;
 
   // Format date for datetime-local input
   const formatDateForInput = (date: Date | string) => {
@@ -193,7 +244,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       if (res.ok) {
         toast.success("Pagamento registrato");
         setShowAddPayment(false);
-        setNewPayment({ amount: "", method: "bank_transfer", reference: "", notes: "", confirmed: false, recorded_at: "" });
+        setNewPayment({ amount: "", method: allowedMethods[0] || "bank_transfer", reference: "", notes: "", confirmed: false, recorded_at: "" });
         onPaymentChange?.();
       } else {
         const error = await res.json();
@@ -314,6 +365,85 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     }
   };
 
+  // Generate a PayPal payment link to share with the customer
+  const handleGeneratePaymentLink = async () => {
+    // Block only if there's nothing left to pay
+    if (remainingAfterConfirmed <= 0) {
+      toast.error("L'ordine è già stato pagato.");
+      return;
+    }
+
+    // Parse custom amount or default to remaining
+    const parsedAmount = linkAmount
+      ? parseFloat(linkAmount.replace(",", "."))
+      : remainingAfterConfirmed;
+
+    if (!parsedAmount || parsedAmount <= 0) {
+      toast.error("Inserisci un importo valido.");
+      return;
+    }
+    if (parsedAmount > remainingAfterConfirmed) {
+      toast.error(`L'importo non può superare il rimanente (${formatCurrency(remainingAfterConfirmed)}).`);
+      return;
+    }
+
+    setIsGeneratingLink(true);
+    setPaymentLink(null);
+    try {
+      const tenantId = tenantPrefix.replace(/^\//, "");
+      const payAmount = parsedAmount;
+
+      // Build return URL and metadata based on destination
+      let returnUrl: string;
+      let brandName: string | undefined;
+      const selectedStorefront =
+        selectedDestination !== "generic"
+          ? storefronts.find((sf) => sf.slug === selectedDestination)
+          : null;
+
+      if (selectedStorefront && selectedStorefront.domains[0]) {
+        // B2C storefront: PayPal returns directly to B2C payment-success page
+        // PayPal will append &token={paypal-order-id} — B2C uses token + tenant to capture via public API
+        const domain = selectedStorefront.domains[0].replace(/\/+$/, "");
+        returnUrl = `${domain}/pages/payment-success?paymentgateway=paypal&order_id=${encodeURIComponent(order.order_id)}&tenant=${encodeURIComponent(tenantId)}`;
+        brandName = selectedStorefront.branding?.title || selectedStorefront.name;
+      } else {
+        // Generic: PayPal returns to B2B /pay/complete
+        returnUrl = `${window.location.origin}/pay/complete?tenant=${encodeURIComponent(tenantId)}`;
+      }
+
+      const res = await fetch("/api/b2b/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: order.order_id,
+          amount: payAmount,
+          currency: "EUR",
+          provider: "paypal",
+          return_url: returnUrl,
+          metadata: {
+            payment_number: undefined, // will be set by server
+            description: `Ordine ${order.order_id}`,
+            brand_name: brandName,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.redirect_url) {
+        setPaymentLink(data.redirect_url);
+        toast.success("Link di pagamento generato");
+        fetchGatewayTransactions(); // refresh list
+      } else {
+        toast.error(data.error || "Errore nella generazione del link");
+      }
+    } catch {
+      toast.error("Errore di rete");
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
   return (
     <div className="rounded-lg bg-card shadow-sm border border-border">
       <div className="p-4 border-b border-border">
@@ -348,7 +478,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Importo Pagato</span>
             <span className="font-medium text-emerald-600">
-              {formatCurrency(confirmedAmount)}
+              {formatCurrency(effectiveConfirmed)}
             </span>
           </div>
           {remainingAfterConfirmed > 0 && (
@@ -476,11 +606,11 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 }
                                 className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20 bg-background"
                               >
-                                <option value="bank_transfer">Bonifico Bancario</option>
-                                <option value="credit_card">Carta di Credito</option>
-                                <option value="cash">Contanti</option>
-                                <option value="check">Assegno</option>
-                                <option value="other">Altro</option>
+                                {getAllowedManualMethods(order.allowed_payment_methods).map((m) => (
+                                  <option key={m} value={m}>
+                                    {PAYMENT_METHOD_IT[m]}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                           </div>
@@ -553,13 +683,22 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                         </div>
                       ) : (
                         /* Normal Payment Display */
-                        <>
+                        (() => {
+                          const isRefundedGateway = p.reference && gatewayTransactions.some(
+                            (t) => t.transaction_id === p.reference && (t.status === "refunded" || t.status === "partial_refund")
+                          );
+                          return <>
                           <div className="flex justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">
+                              <span className={`font-medium ${isRefundedGateway ? "line-through text-muted-foreground" : ""}`}>
                                 {PAYMENT_METHOD_IT[p.method] || p.method.replace(/_/g, " ")}
                               </span>
-                              {p.confirmed ? (
+                              {isRefundedGateway ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                                  <XCircle className="h-2.5 w-2.5" />
+                                  Rimborsato
+                                </span>
+                              ) : p.confirmed ? (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200"
                                   onClick={() => handleToggleConfirmed(p)}
@@ -580,7 +719,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-emerald-600">
+                              <span className={`font-semibold ${isRefundedGateway ? "line-through text-muted-foreground" : "text-emerald-600"}`}>
                                 {formatCurrency(p.amount)}
                               </span>
                               {p.payment_id && (
@@ -632,7 +771,8 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               {p.notes}
                             </div>
                           )}
-                        </>
+                        </>;
+                        })()
                       )}
                     </div>
                   ))}
@@ -684,11 +824,11 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   }
                   className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
                 >
-                  <option value="bank_transfer">Bonifico Bancario</option>
-                  <option value="credit_card">Carta di Credito</option>
-                  <option value="cash">Contanti</option>
-                  <option value="check">Assegno</option>
-                  <option value="other">Altro</option>
+                  {getAllowedManualMethods(order.allowed_payment_methods).map((m) => (
+                    <option key={m} value={m}>
+                      {PAYMENT_METHOD_IT[m]}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -750,20 +890,109 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
           </div>
         ) : (
           remainingAfterConfirmed > 0 && (
-            <button
-              onClick={() => {
-                setNewPayment(prev => ({
-                  ...prev,
-                  recorded_at: formatDateForInput(new Date()),
-                }));
-                setShowAddPayment(true);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
-            >
-              <Plus className="h-4 w-4" />
-              Registra Pagamento
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setNewPayment(prev => ({
+                    ...prev,
+                    recorded_at: formatDateForInput(new Date()),
+                  }));
+                  setShowAddPayment(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+              >
+                <Plus className="h-4 w-4" />
+                Registra Pagamento
+              </button>
+
+              {/* Payment destination selector */}
+              {storefronts.length > 0 && (
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Destinazione dopo il pagamento
+                  </label>
+                  <select
+                    value={selectedDestination}
+                    onChange={(e) => setSelectedDestination(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
+                  >
+                    <option value="generic">Pagina generica (VINC Commerce)</option>
+                    {storefronts.map((sf) => (
+                      <option key={sf.slug} value={sf.slug}>
+                        {sf.branding?.title || sf.name} ({sf.domains[0]?.replace(/^https?:\/\//, "")})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Payment link amount */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Importo link di pagamento
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={linkAmount}
+                  onChange={(e) => {
+                    let v = e.target.value;
+                    if (/^[0-9]*[.,]?[0-9]{0,2}$/.test(v)) {
+                      setLinkAmount(v);
+                    }
+                  }}
+                  placeholder={remainingAfterConfirmed.toFixed(2).replace(".", ",")}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
+                />
+              </div>
+
+              {/* Generate PayPal Payment Link */}
+              <button
+                onClick={handleGeneratePaymentLink}
+                disabled={isGeneratingLink}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#0070ba] text-white text-sm font-medium hover:bg-[#005c99] transition disabled:opacity-50"
+              >
+                {isGeneratingLink ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                Genera Link Pagamento PayPal
+              </button>
+            </div>
           )
+        )}
+
+        {/* Payment Link Display */}
+        {paymentLink && (
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 space-y-2">
+            <p className="text-xs font-medium text-blue-800">Link di pagamento generato:</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={paymentLink}
+                className="flex-1 text-xs font-mono bg-white border border-blue-200 rounded px-2 py-1.5 text-blue-900 truncate"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(paymentLink);
+                  toast.success("Link copiato!");
+                }}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 transition whitespace-nowrap"
+              >
+                Copia
+              </button>
+            </div>
+            <a
+              href={paymentLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+            >
+              Apri in PayPal <ArrowRight className="h-3 w-3" />
+            </a>
+          </div>
         )}
       </div>
 
@@ -787,79 +1016,3 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
   );
 }
 
-// ============================================
-// GATEWAY TRANSACTION ROW
-// ============================================
-
-const GATEWAY_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  completed: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  captured: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  processing: { bg: "bg-blue-100", text: "text-blue-700" },
-  pending: { bg: "bg-amber-100", text: "text-amber-700" },
-  authorized: { bg: "bg-sky-100", text: "text-sky-700" },
-  failed: { bg: "bg-red-100", text: "text-red-700" },
-  cancelled: { bg: "bg-gray-100", text: "text-gray-600" },
-  refunded: { bg: "bg-gray-100", text: "text-gray-600" },
-  partial_refund: { bg: "bg-orange-100", text: "text-orange-700" },
-};
-
-function GatewayTransactionRow({
-  tx,
-  tenantPrefix,
-  formatCurrency,
-}: {
-  tx: GatewayTransaction;
-  tenantPrefix: string;
-  formatCurrency: (amount: number) => string;
-}) {
-  const statusColor = GATEWAY_STATUS_COLORS[tx.status] || GATEWAY_STATUS_COLORS.pending;
-  const isFailed = tx.status === "failed" || tx.status === "cancelled";
-
-  return (
-    <Link
-      href={`${tenantPrefix}/b2b/payments/transactions/${tx.transaction_id}`}
-      className="block p-2 rounded bg-muted/50 text-xs hover:bg-muted/80 transition-colors group"
-    >
-      <div className="flex justify-between items-center mb-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">
-            {PAYMENT_PROVIDER_LABELS[tx.provider] || tx.provider}
-          </span>
-          <span
-            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${statusColor.bg} ${statusColor.text}`}
-          >
-            {isFailed ? (
-              <XCircle className="h-2.5 w-2.5" />
-            ) : tx.status === "completed" || tx.status === "captured" ? (
-              <CheckCircle className="h-2.5 w-2.5" />
-            ) : (
-              <Clock className="h-2.5 w-2.5" />
-            )}
-            {TRANSACTION_STATUS_LABELS[tx.status] || tx.status}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className={`font-semibold ${isFailed ? "text-red-500 line-through" : "text-emerald-600"}`}>
-            {formatCurrency(tx.gross_amount)}
-          </span>
-          <ArrowRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-      </div>
-      <div className="flex justify-between text-muted-foreground">
-        <span>
-          {tx.payment_number || `...${tx.transaction_id.slice(-8)}`}
-        </span>
-        <span>
-          <Calendar className="inline h-3 w-3 mr-1" />
-          {new Date(tx.created_at).toLocaleDateString("it-IT", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </span>
-      </div>
-    </Link>
-  );
-}

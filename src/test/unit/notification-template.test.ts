@@ -43,10 +43,10 @@ describe("unit: Notification Template Constants", () => {
   describe("NOTIFICATION_TRIGGERS", () => {
     it("should have exactly 24 triggers", () => {
       /**
-       * Verify that all 24 notification triggers are defined.
-       * 5 Account + 4 Order + 4 Marketing + 2 Campaign + 3 Payment + 5 Subscription + 1 Custom = 24
+       * Verify that all 22 notification triggers are defined.
+       * 5 Account + 4 Order + 2 Marketing + 2 Campaign + 3 Payment + 5 Subscription + 1 Custom = 22
        */
-      expect(NOTIFICATION_TRIGGERS).toHaveLength(24);
+      expect(NOTIFICATION_TRIGGERS).toHaveLength(22);
     });
 
     it("should include all account triggers", () => {
@@ -82,12 +82,10 @@ describe("unit: Notification Template Constants", () => {
 
     it("should include all marketing triggers", () => {
       /**
-       * Verify 4 marketing-related triggers exist.
+       * Verify 2 marketing-related triggers exist.
        */
       const marketingTriggers = [
-        "price_drop_alert",
         "back_in_stock",
-        "abandoned_cart",
         "newsletter",
       ];
       marketingTriggers.forEach((trigger) => {

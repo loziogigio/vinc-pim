@@ -10,31 +10,28 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { isValidChannelCode } from "@/lib/constants/channel";
 
-/** Default channels seeded on first access */
+/** Default channels seeded on first access (lowercase to match schema) */
 const DEFAULT_CHANNELS = [
-  { code: "DEFAULT", name: "DEFAULT", description: "Default channel", is_default: true, is_active: true },
-  { code: "B2B", name: "B2B", description: "Business-to-business", is_default: false, is_active: true },
-  { code: "B2C", name: "B2C", description: "Business-to-consumer", is_default: false, is_active: true },
+  { code: "default", name: "Default", description: "Default channel", is_default: true, is_active: true },
+  { code: "b2b", name: "B2B", description: "Business-to-business", is_default: false, is_active: true },
+  { code: "b2c", name: "B2C", description: "Business-to-consumer", is_default: false, is_active: true },
 ];
 
 /**
- * Seed default channels if none exist, and ensure one channel is marked as default.
+ * Seed default channels if none exist.
+ * Only inserts missing channels — never overwrites user customizations.
  */
 async function seedDefaultChannels(SalesChannel: ReturnType<typeof Object>) {
   const model = SalesChannel as any;
-  const count = await model.countDocuments();
-  if (count === 0) {
-    await model.insertMany(DEFAULT_CHANNELS);
-    return;
-  }
 
-  // Ensure all default channels exist and have correct flags
+  // Clean up uppercase duplicates from old seed logic (bypass Mongoose lowercase setter)
+  await model.collection.deleteMany({ code: { $in: ["DEFAULT", "B2B", "B2C"] } });
+
   for (const ch of DEFAULT_CHANNELS) {
-    await model.updateOne(
-      { code: ch.code },
-      { $set: { name: ch.name, description: ch.description, is_default: ch.is_default, is_active: true } },
-      { upsert: true }
-    );
+    const exists = await model.findOne({ code: ch.code });
+    if (!exists) {
+      await model.create(ch);
+    }
   }
 }
 

@@ -26,6 +26,7 @@ import {
 import { ShippingConfigSchema } from "@/lib/db/models/shipping-config";
 import { CustomerSchema } from "@/lib/db/models/customer";
 import { OrderSchema } from "@/lib/db/models/order";
+import { TenantPaymentConfigSchema } from "@/lib/db/models/tenant-payment-config";
 
 // ============================================
 // MODELS
@@ -42,6 +43,10 @@ const CustomerModel =
 const OrderModel =
   mongoose.models.Order ||
   mongoose.model("Order", OrderSchema);
+
+const TenantPaymentConfigModel =
+  mongoose.models.TenantPaymentConfig ||
+  mongoose.model("TenantPaymentConfig", TenantPaymentConfigSchema);
 
 // ============================================
 // MOCKS — must be before route imports
@@ -63,6 +68,7 @@ vi.mock("@/lib/db/connection", () => ({
       ShippingConfig: ShippingConfigModel,
       Customer: CustomerModel,
       Order: OrderModel,
+      TenantPaymentConfig: TenantPaymentConfigModel,
     })
   ),
 }));
@@ -173,7 +179,7 @@ async function createDraftOrder(
     shipping_address_id: "addr-it-01",
     status: "draft",
     order_type: "b2b",
-    channel: "b2b-portal",
+    channel: "b2b",
     session_id: "sess_test",
     flow_id: "flow_test",
     source: "web",
@@ -425,7 +431,7 @@ describe("integration: Order Shipping Options", () => {
         shipping_address_id: "addr-de",
         status: "draft",
         order_type: "b2b",
-        channel: "b2b-portal",
+        channel: "b2b",
         session_id: "sess_de",
         flow_id: "flow_de",
         source: "web",
@@ -460,7 +466,7 @@ describe("integration: Order Shipping Options", () => {
         customer_id: "cust-x",
         status: "draft",
         order_type: "b2b",
-        channel: "b2b-portal",
+        channel: "b2b",
         session_id: "sess_x",
         flow_id: "flow_x",
         source: "web",
@@ -609,7 +615,7 @@ describe("integration: Apply Shipping to Order", () => {
         shipping_address_id: "addr-it-01",
         status: "confirmed",
         order_type: "b2b",
-        channel: "b2b-portal",
+        channel: "b2b",
         session_id: "sess_x",
         flow_id: "flow_x",
         source: "web",

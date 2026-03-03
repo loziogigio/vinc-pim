@@ -27,8 +27,8 @@ beforeAll(() => {
 // ============================================
 
 describe("unit: Payment Provider Registry", () => {
-  it("should have all 5 implemented providers registered", () => {
-    const implemented = ["stripe", "nexi", "axerve", "paypal", "mangopay"];
+  it("should have all 6 implemented providers registered", () => {
+    const implemented = ["stripe", "nexi", "axerve", "paypal", "mangopay", "manual"];
     for (const name of implemented) {
       expect(hasProvider(name)).toBe(true);
     }
@@ -61,7 +61,6 @@ describe("unit: Payment Provider Registry", () => {
     // These are in PAYMENT_PROVIDERS but not yet implemented
     expect(hasProvider("satispay")).toBe(false);
     expect(hasProvider("scalapay")).toBe(false);
-    expect(hasProvider("manual")).toBe(false);
   });
 });
 

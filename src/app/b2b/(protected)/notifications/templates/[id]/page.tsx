@@ -57,6 +57,7 @@ export default function TemplateEditorPage() {
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [testEmail, setTestEmail] = useState("");
+  const [testOrderId, setTestOrderId] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [previewData, setPreviewData] = useState<{
     subject?: string;
@@ -236,12 +237,15 @@ export default function TemplateEditorPage() {
 
     setIsSendingTest(true);
     try {
+      const payload: Record<string, string> = { test_email: testEmail };
+      if (testOrderId.trim()) {
+        (payload as Record<string, unknown>).order_id = testOrderId.trim();
+      }
+
       const res = await fetch(`/api/b2b/notifications/templates/${templateId}/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          test_email: testEmail,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -348,12 +352,87 @@ export default function TemplateEditorPage() {
         </div>
       )}
 
-      <div className={cn("grid gap-6", showPreview ? "grid-cols-2" : "grid-cols-1")}>
-        {/* Editor */}
-        <div className="space-y-6">
-          {/* Template Info */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-4">Template Info</h2>
+      {/* Send Test + Preview (top section) */}
+      <div className="mb-6 space-y-4">
+        {/* Send Test */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Send Test Email</h2>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="test@example.com"
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              {template && ["order_confirmation", "order_shipped", "order_delivered", "order_cancelled", "payment_received"].includes(template.trigger) && (
+                <input
+                  type="text"
+                  value={testOrderId}
+                  onChange={(e) => setTestOrderId(e.target.value)}
+                  placeholder="Order ID (optional)"
+                  className="w-56 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              )}
+              <Button
+                onClick={handleSendTest}
+                disabled={!testEmail || !emailChannel?.enabled || isSendingTest}
+                className="gap-2"
+              >
+                {isSendingTest ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Send Test
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview (full width) */}
+        {showPreview && (
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">Email Preview</h2>
+              {isLoadingPreview && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+            </div>
+            <div className="p-4">
+              {emailChannel?.enabled && emailChannel.html_body ? (
+                <div className="space-y-3">
+                  {previewData?.subject && (
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                      <div className="text-xs text-slate-500 mb-1">Subject:</div>
+                      <div className="text-sm font-medium text-slate-900">{previewData.subject}</div>
+                    </div>
+                  )}
+                  <iframe
+                    srcDoc={previewData?.html || emailChannel.html_body}
+                    title="Email preview"
+                    className="w-full border border-slate-200 rounded-lg bg-white"
+                    style={{ height: "80vh" }}
+                    sandbox="allow-same-origin"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-slate-400">
+                  <div className="text-center">
+                    <Mail className="w-12 h-12 mx-auto mb-2" />
+                    <p>Enable email channel to see preview</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Editor */}
+      <div className="space-y-6">
+        {/* Template Info */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Template Info</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
@@ -705,72 +784,6 @@ export default function TemplateEditorPage() {
             </div>
           </div>
 
-          {/* Send Test */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-4">Send Test Email</h2>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="test@example.com"
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <Button
-                onClick={handleSendTest}
-                disabled={!testEmail || !emailChannel?.enabled || isSendingTest}
-                className="gap-2"
-              >
-                {isSendingTest ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                Send Test
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Preview */}
-        {showPreview && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden sticky top-6">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">Email Preview</h2>
-              {isLoadingPreview && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
-            </div>
-            <div className="p-4">
-              {emailChannel?.enabled && emailChannel.html_body ? (
-                <div className="space-y-3">
-                  {/* Subject Preview */}
-                  {previewData?.subject && (
-                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                      <div className="text-xs text-slate-500 mb-1">Subject:</div>
-                      <div className="text-sm font-medium text-slate-900">{previewData.subject}</div>
-                    </div>
-                  )}
-                  {/* HTML Preview */}
-                  <iframe
-                    srcDoc={previewData?.html || emailChannel.html_body}
-                    title="Email preview"
-                    className="w-full h-[550px] border border-slate-200 rounded-lg bg-white"
-                    sandbox="allow-same-origin"
-                  />
-                  <p className="text-xs text-slate-500 text-center">
-                    Variables are replaced with sample data
-                  </p>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-[400px] text-slate-400">
-                  <div className="text-center">
-                    <Mail className="w-12 h-12 mx-auto mb-2" />
-                    <p>Enable email channel to see preview</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
