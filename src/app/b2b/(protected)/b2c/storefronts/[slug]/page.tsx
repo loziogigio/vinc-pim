@@ -534,13 +534,27 @@ export default function StorefrontDetailPage({
             Slug: {storefront.slug}
           </p>
         </div>
-        <Link
-          href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${slug}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
-        >
-          <Pencil className="h-4 w-4" />
-          Open Builder
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`${tenantPrefix}/b2b/b2c/storefronts/${slug}/pages`}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#ebe9f1] bg-white px-4 py-2 text-sm font-medium text-[#5e5873] hover:bg-[#fafafc] transition-colors"
+          >
+            Pages
+          </Link>
+          <Link
+            href={`${tenantPrefix}/b2b/b2c/storefronts/${slug}/forms`}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#ebe9f1] bg-white px-4 py-2 text-sm font-medium text-[#5e5873] hover:bg-[#fafafc] transition-colors"
+          >
+            Form Submissions
+          </Link>
+          <Link
+            href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${slug}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
+          >
+            <Pencil className="h-4 w-4" />
+            Home Builder
+          </Link>
+        </div>
       </div>
 
       {/* Feedback */}

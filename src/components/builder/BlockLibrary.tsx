@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import {
   Code,
+  FileText,
   Layout,
   LayoutDashboard,
   Layers,
@@ -48,7 +49,8 @@ const COLOR_MAP: Record<string, { bg: string; text: string; icon: React.ElementT
   "content-custom-html": { bg: "bg-slate-100", text: "text-slate-600", icon: Code },
   "youtubeEmbed": { bg: "bg-red-100", text: "text-red-600", icon: Youtube },
   "media-image": { bg: "bg-teal-100", text: "text-teal-600", icon: Image },
-  "product-data-table": { bg: "bg-amber-100", text: "text-amber-600", icon: Table }
+  "product-data-table": { bg: "bg-amber-100", text: "text-amber-600", icon: Table },
+  "form-contact": { bg: "bg-violet-100", text: "text-violet-600", icon: FileText }
 };
 
 const buildLibraryEntries = (allowedBlockIds?: string[]): LibraryEntry[] => {

@@ -244,10 +244,14 @@ export async function deleteStorefront(
   // Delete home template versions
   await deleteB2CHomeTemplates(slug, tenantDb);
 
+  // Delete custom pages, page templates, and form submissions
+  const { deleteAllPagesForStorefront } = await import("@/lib/services/b2c-page.service");
+  await deleteAllPagesForStorefront(tenantDb, slug);
+
   // Delete storefront record
   await B2CStorefront.deleteOne({ slug });
 
-  console.log(`${logPrefix} Deleted storefront "${slug}" and its templates`);
+  console.log(`${logPrefix} Deleted storefront "${slug}" and all its data`);
 }
 
 /**

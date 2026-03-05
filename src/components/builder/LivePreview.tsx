@@ -10,6 +10,7 @@ type LivePreviewProps = {
   blocks: PageBlock[];
   productId?: string; // For product detail preview (e.g., "cr6001")
   pageType?: "home" | "product"; // Type of page being previewed
+  pageSlug?: string; // For custom B2C page preview (e.g., "chi-siamo")
   customerWebUrl?: string; // Customer web base URL (e.g., "http://localhost:3000")
   isDirty?: boolean;
 };
@@ -19,6 +20,7 @@ export const LivePreview = ({
   blocks,
   productId,
   pageType,
+  pageSlug,
   customerWebUrl,
   isDirty = true
 }: LivePreviewProps) => {
@@ -31,6 +33,7 @@ export const LivePreview = ({
     let url;
     if (pageType === "home") {
       url = `${customerWebUrl}?preview=true`;
+      if (pageSlug) url += `&page=${pageSlug}`;
     } else if (productId) {
       url = `${customerWebUrl}/products/${productId}?preview=true`;
     } else {
@@ -38,7 +41,7 @@ export const LivePreview = ({
     }
     console.log('[LivePreview] Preview URL computed:', url);
     return url;
-  }, [productId, pageType, customerWebUrl]);
+  }, [productId, pageType, pageSlug, customerWebUrl]);
 
   useEffect(() => {
     if (blocks.length === 0 || !iframeRef.current?.contentWindow) return;
@@ -53,6 +56,7 @@ export const LivePreview = ({
       type: 'PREVIEW_UPDATE',
       blocks: blocksWithPosition,
       productId,
+      pageSlug,
       timestamp: Date.now(),
       isDirty,
       showPositionIndicators: true,

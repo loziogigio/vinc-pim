@@ -4,6 +4,7 @@ import {
   CategoryBlockConfig,
   ContentBlockConfig,
   ProductDataTableBlockConfig,
+  FormBlockConfig,
   BlockRegistry
 } from "@/lib/types/blocks";
 
@@ -451,6 +452,20 @@ const productCarouselConfig = {
   className: "mb-12 xl:mb-14 pt-1"
 };
 
+const formContactDefault: FormBlockConfig = {
+  variant: "form",
+  title: "Contact Us",
+  description: "Fill out the form below and we'll get back to you.",
+  fields: [
+    { id: "name", type: "text", label: "Name", placeholder: "Your name", required: true },
+    { id: "email", type: "email", label: "Email", placeholder: "your@email.com", required: true },
+    { id: "message", type: "textarea", label: "Message", placeholder: "How can we help?", required: true },
+  ],
+  submit_button_text: "Send Message",
+  success_message: "Thank you! We'll get back to you soon.",
+  notification_email: "",
+};
+
 export const BLOCK_REGISTRY: BlockRegistry = {
   hero: {
     id: "hero",
@@ -656,6 +671,19 @@ export const BLOCK_REGISTRY: BlockRegistry = {
         label: "Product Gallery",
         icon: "🖼️",
         defaultConfig: productGalleryConfig
+      }
+    }
+  },
+  form: {
+    id: "form",
+    name: "Form Section",
+    category: "content",
+    variants: {
+      contactForm: {
+        id: "form-contact",
+        label: "Contact Form",
+        icon: "📋",
+        defaultConfig: formContactDefault
       }
     }
   }

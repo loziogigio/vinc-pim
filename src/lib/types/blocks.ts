@@ -317,6 +317,43 @@ export interface MediaCarouselBlockConfig {
 
 export type MediaBlockConfig = YouTubeEmbedConfig | MediaImageBlockConfig;
 
+// ============================================
+// FORM BLOCK TYPES
+// ============================================
+
+export type FormFieldType = "text" | "email" | "textarea" | "select" | "checkbox";
+
+export interface FormFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface FormFieldConfig {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  /** Options for "select" field type */
+  options?: FormFieldOption[];
+}
+
+export interface FormBlockConfig {
+  variant: "form";
+  /** Form title displayed above the form */
+  title?: string;
+  /** Description text below the title */
+  description?: string;
+  /** Form fields */
+  fields: FormFieldConfig[];
+  /** Submit button label */
+  submit_button_text?: string;
+  /** Message shown after successful submission */
+  success_message?: string;
+  /** Email address to receive submission notifications */
+  notification_email?: string;
+}
+
 export type BlockConfig =
   | HeroBlockConfig
   | ProductBlockConfig
@@ -325,7 +362,8 @@ export type BlockConfig =
   | MediaBlockConfig
   | HeroCarouselBlockConfig
   | MediaCarouselBlockConfig
-  | ProductDataTableBlockConfig;
+  | ProductDataTableBlockConfig
+  | FormBlockConfig;
 
 export interface BlockVariantDefinition<TConfig extends BlockConfig> {
   id: string;
@@ -379,6 +417,9 @@ export type BlockRegistry = {
     flyerCarousel: BlockVariantDefinition<MediaCarouselBlockConfig>;
     productCategories: BlockVariantDefinition<MediaCarouselBlockConfig>;
     productGallery: BlockVariantDefinition<MediaCarouselBlockConfig>;
+  }>;
+  form: BlockFamily<{
+    contactForm: BlockVariantDefinition<FormBlockConfig>;
   }>;
 };
 

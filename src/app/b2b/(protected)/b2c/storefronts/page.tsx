@@ -3,7 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, Pencil, Trash2, Store, X } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Store,
+  X,
+  Globe,
+  FileText,
+  Inbox,
+  Settings,
+  ExternalLink,
+} from "lucide-react";
 import { ChannelSelect } from "@/components/shared/ChannelSelect";
 
 interface StorefrontDomain {
@@ -323,7 +334,7 @@ export default function StorefrontsListPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#009688] border-t-transparent" />
@@ -334,109 +345,127 @@ export default function StorefrontsListPage() {
           <p className="mt-2 text-sm text-[#b9b9c3]">No storefronts found</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-[#ebe9f1] bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#ebe9f1] bg-gray-50">
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                  Slug
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                  Channel
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                  Domains
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-[#5e5873]">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {storefronts.map((sf) => (
-                <tr
-                  key={sf._id}
-                  className="border-b border-[#ebe9f1] last:border-0 hover:bg-gray-50"
-                >
-                  <td className="px-4 py-3 font-medium text-[#5e5873]">
-                    {sf.name}
-                  </td>
-                  <td className="px-4 py-3 text-[#b9b9c3]">{sf.slug}</td>
-                  <td className="px-4 py-3">
-                    {sf.channel ? (
-                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-                        {sf.channel}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-[#b9b9c3]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {sf.domains.map((d) => (
-                        <span
-                          key={d.domain}
-                          className={`rounded px-1.5 py-0.5 text-xs font-mono ${
-                            d.is_primary
-                              ? "bg-[#009688]/10 text-[#009688] font-medium"
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          {d.domain}
-                        </span>
-                      ))}
-                      {sf.domains.length === 0 && (
-                        <span className="text-xs text-[#b9b9c3]">No domains</span>
-                      )}
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {storefronts.map((sf) => (
+              <div
+                key={sf._id}
+                className="group relative rounded-xl border border-[#ebe9f1] bg-white transition-shadow hover:shadow-md"
+              >
+                {/* Card Header */}
+                <div className="flex items-start justify-between px-5 pt-5 pb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#009688]/10">
+                      <Store className="h-5 w-5 text-[#009688]" />
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-semibold text-[#5e5873]">
+                        {sf.name}
+                      </h3>
+                      <p className="truncate text-xs text-[#b9b9c3]">
+                        {sf.slug}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
                     <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         sf.status === "active"
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-600"
+                          : "bg-gray-100 text-gray-500"
                       }`}
                     >
                       {sf.status}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${sf.slug}`}
-                        className="inline-flex items-center gap-1 rounded-md bg-[#009688] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#00796b]"
-                      >
-                        Builder
-                      </Link>
-                      <Link
-                        href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}`}
-                        className="rounded-md p-1 text-[#b9b9c3] hover:text-[#5e5873] hover:bg-gray-100"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(sf.slug, sf.name)}
-                        className="rounded-md p-1 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                  </div>
+                </div>
+
+                {/* Domains & Channel */}
+                <div className="px-5 pb-3 space-y-2">
+                  {sf.channel && (
+                    <div className="flex items-center gap-1.5 text-xs text-[#6e6b7b]">
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                        {sf.channel}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  )}
+                  {sf.domains.length > 0 ? (
+                    <div className="flex items-center gap-1.5 text-xs text-[#b9b9c3]">
+                      <Globe className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-mono">
+                        {sf.domains.find((d) => d.is_primary)?.domain || sf.domains[0]?.domain}
+                      </span>
+                      {sf.domains.length > 1 && (
+                        <span className="shrink-0 text-[10px] text-[#b9b9c3]">
+                          +{sf.domains.length - 1}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-[#b9b9c3]">
+                      <Globe className="h-3.5 w-3.5" />
+                      <span>No domains</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-[#ebe9f1]" />
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-4 divide-x divide-[#ebe9f1]">
+                  <Link
+                    href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${sf.slug}`}
+                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    title="Home Builder"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Builder</span>
+                  </Link>
+                  <Link
+                    href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}/pages`}
+                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    title="Pages"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Pages</span>
+                  </Link>
+                  <Link
+                    href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}/forms`}
+                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    title="Form Submissions"
+                  >
+                    <Inbox className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Forms</span>
+                  </Link>
+                  <Link
+                    href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}`}
+                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Settings</span>
+                  </Link>
+                </div>
+
+                {/* Delete button (top-right, visible on hover) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(sf.slug, sf.name);
+                  }}
+                  className="absolute top-2 right-2 rounded-md p-1.5 text-transparent group-hover:text-[#b9b9c3] hover:!text-red-600 hover:bg-red-50 transition-colors"
+                  title="Delete storefront"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
 
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-[#ebe9f1] px-4 py-3">
+            <div className="mt-6 flex items-center justify-between">
               <p className="text-xs text-[#b9b9c3]">
                 {pagination.total} storefront{pagination.total !== 1 ? "s" : ""}
               </p>
@@ -457,7 +486,7 @@ export default function StorefrontsListPage() {
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ import { MediaCarouselSettings } from "./MediaCarouselSettings";
 import { ProductCarouselSettings } from "./ProductCarouselSettings";
 import { ProductGallerySettings } from "./ProductGallerySettings";
 import { ProductDataTableSettings } from "./ProductDataTableSettings";
+import { FormBlockSettings } from "./FormBlockSettings";
 import { ZoneSelector } from "./ZoneSelector";
 import { RichTextEditor } from "./RichTextEditor";
 import type { BlockLayout, ProductDetailZone } from "@/lib/types/blocks";
@@ -22,7 +23,7 @@ import { Maximize, AlignCenter } from "lucide-react";
 
 type DraftConfig = Record<string, unknown>;
 
-const BLOCKS_WITH_CUSTOM_TITLE = new Set(["media-image", "carousel-hero"]);
+const BLOCKS_WITH_CUSTOM_TITLE = new Set(["media-image", "carousel-hero", "form-contact"]);
 
 /** Recommended image dimensions per block type and layout */
 const DIMENSION_HINTS: Record<string, { fullWidth: string; container: string }> = {
@@ -353,6 +354,18 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
 
             {selectedBlock.type === "product-data-table" ? (
               <ProductDataTableSettings
+                config={draft as any}
+                onChange={(newConfig) => {
+                  setDraft(newConfig as unknown as DraftConfig);
+                  setHasLocalChanges(true);
+                  setAdvancedDraft(JSON.stringify(newConfig, null, 2));
+                }}
+              />
+            ) : null}
+
+            {/* Form Block Custom UI */}
+            {selectedBlock.type === "form-contact" ? (
+              <FormBlockSettings
                 config={draft as any}
                 onChange={(newConfig) => {
                   setDraft(newConfig as unknown as DraftConfig);

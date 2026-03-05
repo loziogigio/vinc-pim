@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Code,
   Columns,
+  FileText,
   Grid3x3,
   Images,
   LayoutDashboard,
@@ -27,7 +28,8 @@ const BLOCK_DESCRIPTIONS: Record<string, string> = {
   "content-features": "Highlight core value propositions",
   "content-testimonials": "Customer reviews and ratings",
   "content-custom-html": "Render custom HTML exactly as provided",
-  "product-data-table": "Structured specification table with text, images, and links"
+  "product-data-table": "Structured specification table with text, images, and links",
+  "form-contact": "Contact form with customizable fields"
 };
 
 const BLOCK_PREVIEW_STYLES: Record<string, string> = {
@@ -42,7 +44,8 @@ const BLOCK_PREVIEW_STYLES: Record<string, string> = {
   "content-features": "bg-blue-50",
   "content-testimonials": "bg-amber-50",
   "content-custom-html": "bg-white border border-dashed border-slate-300",
-  "product-data-table": "bg-white border border-emerald-100"
+  "product-data-table": "bg-white border border-emerald-100",
+  "form-contact": "bg-violet-50 border border-violet-200"
 };
 
 const BLOCK_ICON_MAP: Record<string, LucideIcon> = {
@@ -57,7 +60,8 @@ const BLOCK_ICON_MAP: Record<string, LucideIcon> = {
   "content-features": Sparkles,
   "content-testimonials": MessageSquareQuote,
   "content-custom-html": Code,
-  "product-data-table": Table
+  "product-data-table": Table,
+  "form-contact": FileText
 };
 
 export const getBlockDescription = (variantId: string): string =>
