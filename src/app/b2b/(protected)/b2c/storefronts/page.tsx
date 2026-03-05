@@ -4,12 +4,19 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus, Pencil, Trash2, Store, X } from "lucide-react";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
+
+interface StorefrontDomain {
+  domain: string;
+  is_primary?: boolean;
+}
 
 interface Storefront {
   _id: string;
   name: string;
   slug: string;
-  domains: string[];
+  channel?: string;
+  domains: StorefrontDomain[];
   status: "active" | "inactive";
   created_at: string;
 }
@@ -117,6 +124,7 @@ export default function StorefrontsListPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
+  const [newChannel, setNewChannel] = useState("default");
   const [newDomains, setNewDomains] = useState<DomainEntry[]>([]);
   const [slugTouched, setSlugTouched] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -150,6 +158,7 @@ export default function StorefrontsListPage() {
     setShowCreate(false);
     setNewName("");
     setNewSlug("");
+    setNewChannel("default");
     setNewDomains([]);
     setSlugTouched(false);
     setError("");
@@ -172,7 +181,7 @@ export default function StorefrontsListPage() {
       const res = await fetch("/api/b2b/b2c/storefronts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName, slug: newSlug, domains }),
+        body: JSON.stringify({ name: newName, slug: newSlug, channel: newChannel, domains }),
       });
 
       const data = await res.json();
@@ -279,6 +288,13 @@ export default function StorefrontsListPage() {
                 Lowercase, alphanumeric with dashes
               </p>
             </div>
+            <ChannelSelect
+              value={newChannel}
+              onChange={setNewChannel}
+              label="Channel"
+              required
+              className="!border-[#ebe9f1] !rounded-lg !focus:border-[#009688] !focus:ring-0"
+            />
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
                 Domains
@@ -329,6 +345,9 @@ export default function StorefrontsListPage() {
                   Slug
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                  Channel
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
                   Domains
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
@@ -350,13 +369,26 @@ export default function StorefrontsListPage() {
                   </td>
                   <td className="px-4 py-3 text-[#b9b9c3]">{sf.slug}</td>
                   <td className="px-4 py-3">
+                    {sf.channel ? (
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                        {sf.channel}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#b9b9c3]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {sf.domains.map((d) => (
                         <span
-                          key={d}
-                          className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono"
+                          key={d.domain}
+                          className={`rounded px-1.5 py-0.5 text-xs font-mono ${
+                            d.is_primary
+                              ? "bg-[#009688]/10 text-[#009688] font-medium"
+                              : "bg-gray-100"
+                          }`}
                         >
-                          {d}
+                          {d.domain}
                         </span>
                       ))}
                       {sf.domains.length === 0 && (

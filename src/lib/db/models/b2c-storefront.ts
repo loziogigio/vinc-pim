@@ -110,6 +110,17 @@ export interface IB2CStorefrontFooter {
 }
 
 // ============================================
+// DOMAIN INTERFACE
+// ============================================
+
+export interface IStorefrontDomain {
+  /** Hostname or full URL (e.g., "shop.example.com") */
+  domain: string;
+  /** Only one domain per storefront should be primary (the official/active one) */
+  is_primary: boolean;
+}
+
+// ============================================
 // SETTINGS & MAIN INTERFACE
 // ============================================
 
@@ -122,7 +133,10 @@ export interface IB2CStorefront {
   _id?: string;
   name: string;
   slug: string;
-  domains: string[];
+  /** Sales channel code (e.g., "b2c", "b2c-de") — links storefront to its channel */
+  channel: string;
+  /** Structured domains with primary flag */
+  domains: IStorefrontDomain[];
   status: StorefrontStatus;
   branding: IB2CStorefrontBranding;
   header: IB2CStorefrontHeader;
@@ -220,6 +234,14 @@ const B2CStorefrontSettingsSchema = new Schema(
   { _id: false }
 );
 
+const StorefrontDomainSchema = new Schema(
+  {
+    domain: { type: String, required: true, trim: true, lowercase: true },
+    is_primary: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const B2CStorefrontSchema = new Schema(
   {
     name: {
@@ -237,8 +259,14 @@ const B2CStorefrontSchema = new Schema(
         "Slug must be lowercase alphanumeric with dashes",
       ],
     },
+    channel: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
     domains: {
-      type: [String],
+      type: [StorefrontDomainSchema],
       default: [],
     },
     status: {
@@ -278,7 +306,8 @@ const B2CStorefrontSchema = new Schema(
 // ============================================
 
 B2CStorefrontSchema.index({ slug: 1 }, { unique: true });
-B2CStorefrontSchema.index({ domains: 1 });
+B2CStorefrontSchema.index({ channel: 1 }, { unique: true });
+B2CStorefrontSchema.index({ "domains.domain": 1 });
 B2CStorefrontSchema.index({ status: 1 });
 
 export { B2CStorefrontSchema };

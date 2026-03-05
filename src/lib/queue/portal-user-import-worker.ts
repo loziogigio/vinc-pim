@@ -15,24 +15,34 @@ import { Worker, Job } from "bullmq";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import { connectWithModels } from "../db/connection";
+import { DEFAULT_CHANNEL } from "../constants/channel";
 import type { ICustomerAccess } from "../types/portal-user";
 
 // ============================================
 // TYPES (exported for tests and reuse)
 // ============================================
 
+export interface ImportCustomerAccess {
+  customer_id?: string;
+  customer_external_code?: string;
+  address_access: "all" | string[];
+}
+
 export interface PortalUserImportItem {
   username: string;
   email: string;
   password?: string;
-  customer_access?: ICustomerAccess[];
+  customer_access?: ImportCustomerAccess[];
   is_active?: boolean;
+  channel?: string;
 }
 
 export interface PortalUserImportJobData {
   job_id: string;
   tenant_id: string;
   merge_mode: "replace" | "partial";
+  /** Default channel for all users in this batch (per-user channel takes priority) */
+  channel?: string;
   users: PortalUserImportItem[];
   batch_metadata?: {
     batch_id: string;
@@ -60,7 +70,7 @@ export async function processPortalUserImportData(
   data: PortalUserImportJobData,
   onProgress?: (percent: number) => void,
 ): Promise<{ processed: number; successful: number; failed: number }> {
-  const { job_id, tenant_id, merge_mode, users, batch_metadata } = data;
+  const { job_id, tenant_id, merge_mode, channel: jobChannel, users, batch_metadata } = data;
   const tenantDb = `vinc-${tenant_id}`;
 
   console.log(`\n🔄 Processing portal user import: ${job_id}`);
@@ -82,6 +92,29 @@ export async function processPortalUserImportData(
     { $set: { status: "processing", started_at: new Date() } },
   );
 
+  // Resolve customer_external_code → customer_id for all users
+  const externalCodes = new Set<string>();
+  for (const u of users) {
+    for (const ca of u.customer_access || []) {
+      if (ca.customer_external_code && !ca.customer_id) {
+        externalCodes.add(ca.customer_external_code);
+      }
+    }
+  }
+
+  const externalCodeMap = new Map<string, string>();
+  if (externalCodes.size > 0) {
+    const { Customer: CustomerModel } = await connectWithModels(tenantDb);
+    const customers = await CustomerModel.find(
+      { tenant_id, external_code: { $in: [...externalCodes] } },
+      { customer_id: 1, external_code: 1 },
+    ).lean();
+    for (const c of customers) {
+      externalCodeMap.set((c as any).external_code, (c as any).customer_id);
+    }
+    console.log(`   Resolved ${externalCodeMap.size}/${externalCodes.size} external codes to customer IDs`);
+  }
+
   let processed = 0;
   let successful = 0;
   let failed = 0;
@@ -89,7 +122,14 @@ export async function processPortalUserImportData(
 
   for (const userData of users) {
     try {
-      const { username, email, password, customer_access, is_active } = userData;
+      const { username, email, password, is_active } = userData;
+
+      // Resolve customer_access: convert external_code → customer_id
+      const customer_access: ICustomerAccess[] | undefined = userData.customer_access?.map(ca => {
+        const resolvedId = ca.customer_id || externalCodeMap.get(ca.customer_external_code || "");
+        if (!resolvedId) return null;
+        return { customer_id: resolvedId, address_access: ca.address_access };
+      }).filter((ca): ca is ICustomerAccess => ca !== null);
 
       // Validate username
       if (!username) {
@@ -147,6 +187,10 @@ export async function processPortalUserImportData(
           updateDoc.is_active = is_active;
         }
 
+        if (userData.channel !== undefined) {
+          updateDoc.channel = userData.channel;
+        }
+
         // In partial mode, only update fields that were explicitly provided
         if (merge_mode === "partial") {
           const partialUpdate: Record<string, any> = {};
@@ -156,6 +200,7 @@ export async function processPortalUserImportData(
           }
           if (userData.customer_access !== undefined) partialUpdate.customer_access = customer_access;
           if (userData.is_active !== undefined) partialUpdate.is_active = is_active;
+          if (userData.channel !== undefined) partialUpdate.channel = userData.channel;
 
           if (Object.keys(partialUpdate).length > 0) {
             await PortalUserModel.updateOne(
@@ -188,10 +233,12 @@ export async function processPortalUserImportData(
 
         const portal_user_id = `PU-${nanoid(8)}`;
         const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        const channel = userData.channel || jobChannel || DEFAULT_CHANNEL;
 
         await PortalUserModel.create({
           portal_user_id,
           tenant_id,
+          channel,
           username: normalizedUsername,
           email: normalizedEmail,
           password_hash,

@@ -3,17 +3,19 @@
  *
  * POST /api/auth/reset-password
  *
- * Resets password for a user by email (forgot password flow).
+ * Resets password for a portal user by email (forgot password flow).
  * - If no password provided: generates temp password and sends email
  * - If password provided: sets the password directly
  *
  * No authentication required (forgot password flow).
+ * Returns generic success even if user not found (prevent enumeration).
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import * as crypto from "crypto";
-import { getVincApiForTenant, VincApiError } from "@/lib/vinc-api";
+import bcrypt from "bcryptjs";
+import { connectWithModels } from "@/lib/db/connection";
 import { sendForgotPasswordNotification } from "@/lib/notifications/send.service";
+import { generateSecurePassword } from "@/lib/utils/password";
 
 interface ResetPasswordRequest {
   // User email
@@ -23,43 +25,15 @@ interface ResetPasswordRequest {
   // Tenant identification
   tenant_id: string;
 
+  // Portal user channel (optional)
+  channel?: string;
+
   // Optional: Set specific password (if not provided, generates temp)
   password?: string;
 
   // Optional: Customer info for email
   ragioneSociale?: string;
   contactName?: string;
-}
-
-/**
- * Generate a secure random password
- */
-function generateSecurePassword(length: number = 12): string {
-  const lowercase = "abcdefghijklmnopqrstuvwxyz";
-  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const digits = "0123456789";
-  const special = "!@#$%^&*";
-  const all = lowercase + uppercase + digits + special;
-
-  // Ensure at least one of each type
-  let password =
-    lowercase[crypto.randomInt(lowercase.length)] +
-    uppercase[crypto.randomInt(uppercase.length)] +
-    digits[crypto.randomInt(digits.length)] +
-    special[crypto.randomInt(special.length)];
-
-  // Fill the rest randomly
-  for (let i = password.length; i < length; i++) {
-    password += all[crypto.randomInt(all.length)];
-  }
-
-  // Shuffle the password
-  const shuffled = password
-    .split("")
-    .sort(() => crypto.randomInt(3) - 1)
-    .join("");
-
-  return shuffled;
 }
 
 export async function POST(req: NextRequest) {
@@ -78,12 +52,13 @@ export async function POST(req: NextRequest) {
     username,
     email,
     tenant_id,
+    channel,
     password,
     ragioneSociale,
     contactName,
   } = body;
 
-  const userEmail = username || email;
+  const userEmail = (username || email || "").toLowerCase().trim();
 
   // Validate required fields
   if (!userEmail) {
@@ -101,38 +76,57 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Get VINC API client for tenant
-    const vincApi = getVincApiForTenant(tenant_id);
+    const tenantDb = `vinc-${tenant_id}`;
+    const { PortalUser: PortalUserModel } = await connectWithModels(tenantDb);
 
-    // Determine the password to set
-    let passwordToSet = password;
-    let tempPassword: string | null = null;
-
-    // If no password provided, generate a temporary one (forgot password flow)
-    if (!password) {
-      tempPassword = generateSecurePassword(12);
-      passwordToSet = tempPassword;
+    // Find portal user by email — prefer channel-specific match
+    const baseQuery: Record<string, unknown> = {
+      tenant_id,
+      email: userEmail,
+      is_active: true,
+    };
+    let user = channel
+      ? await PortalUserModel.findOne({ ...baseQuery, channel })
+      : null;
+    if (!user) {
+      user = await PortalUserModel.findOne(baseQuery);
     }
 
-    // Call VINC API to set the password by email
-    await vincApi.auth.setPasswordByEmail(userEmail, passwordToSet!);
+    // User not found — return generic success (prevent enumeration)
+    if (!user) {
+      return NextResponse.json({
+        success: true,
+        message: password
+          ? "Password reimpostata con successo"
+          : "Email di recupero inviata",
+      });
+    }
 
-    // Send forgot password email with temp password using notification templates
-    const tenantDb = `vinc-${tenant_id}`;
+    // Determine the password to set
+    let tempPassword: string | null = null;
+    const passwordToSet = password || (tempPassword = generateSecurePassword(12));
+
+    // Hash and update
+    const newHash = await bcrypt.hash(passwordToSet, 10);
+    await PortalUserModel.updateOne(
+      { _id: user._id },
+      { $set: { password_hash: newHash } }
+    );
+
+    // Send forgot password email with temp password
     if (tempPassword) {
       try {
         const result = await sendForgotPasswordNotification(tenantDb, userEmail, {
           customer_name: contactName || ragioneSociale || "Cliente",
           temporary_password: tempPassword,
+          channel: channel || undefined,
         });
 
         if (!result.success) {
           console.warn("[reset-password] Email send warning:", result.error);
-          // Don't fail the request if email fails - password was already changed
         }
       } catch (emailError) {
         console.error("[reset-password] Email send failed:", emailError);
-        // Don't fail the request if email fails - password was already changed
       }
     }
 
@@ -144,19 +138,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[reset-password] Error:", error);
-
-    if (error instanceof VincApiError) {
-      if (error.status === 404) {
-        return NextResponse.json(
-          { success: false, message: "Utente non trovato" },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json(
-        { success: false, message: error.detail || "Operazione fallita" },
-        { status: 400 }
-      );
-    }
 
     return NextResponse.json(
       { success: false, message: "Si è verificato un errore" },

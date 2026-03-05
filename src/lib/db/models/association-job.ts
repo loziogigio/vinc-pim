@@ -16,7 +16,7 @@ export interface IAssociationJob extends Document {
   entity_name: string;
 
   action: "add" | "remove";
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
 
   // Progress tracking
   total_items: number;
@@ -67,7 +67,7 @@ const AssociationJobSchema = new Schema<IAssociationJob>(
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "completed", "failed"],
+      enum: ["pending", "processing", "completed", "failed", "cancelled"],
       default: "pending",
       index: true,
     },

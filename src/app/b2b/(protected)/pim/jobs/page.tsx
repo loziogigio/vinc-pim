@@ -26,7 +26,7 @@ type ImportJob = {
   _id: string;
   job_id: string;
   source_id: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   file_name: string;
   file_size?: number;
   file_url?: string;
@@ -59,7 +59,7 @@ type AssociationJob = {
   entity_id: string;
   entity_name: string;
   action: "add" | "remove";
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   total_items: number;
   processed_items: number;
   successful_items: number;
@@ -195,6 +195,8 @@ export default function JobsPage() {
         return <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />;
       case "pending":
         return <Clock className="h-5 w-5 text-amber-600" />;
+      case "cancelled":
+        return <StopCircle className="h-5 w-5 text-gray-500" />;
       default:
         return null;
     }
@@ -210,6 +212,8 @@ export default function JobsPage() {
         return "bg-blue-100 text-blue-700";
       case "pending":
         return "bg-amber-100 text-amber-700";
+      case "cancelled":
+        return "bg-gray-200 text-gray-600";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -320,6 +324,7 @@ export default function JobsPage() {
             <option value="processing">Processing</option>
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
         <div className="flex items-center justify-between">
@@ -582,8 +587,22 @@ export default function JobsPage() {
                           </a>
                         )}
 
-                        {/* Delete button - for completed/failed jobs */}
-                        {(job.status === "completed" || job.status === "failed") && (
+                        {/* Cancel button - for pending/processing jobs */}
+                        {(job.status === "pending" || job.status === "processing") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJobAction(job.job_id, "cancel");
+                            }}
+                            className="p-1.5 rounded border border-border hover:bg-amber-50 hover:border-amber-200 text-amber-600"
+                            title="Cancel job"
+                          >
+                            <StopCircle className="h-4 w-4" />
+                          </button>
+                        )}
+
+                        {/* Delete button - for completed/failed/cancelled jobs */}
+                        {(job.status === "completed" || job.status === "failed" || job.status === "cancelled") && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

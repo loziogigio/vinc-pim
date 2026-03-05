@@ -17,7 +17,7 @@ let redis: Redis | null = null;
  */
 export function getRedis(): Redis {
   if (!redis) {
-    redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT, lazyConnect: true });
+    redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
   }
   return redis;
 }

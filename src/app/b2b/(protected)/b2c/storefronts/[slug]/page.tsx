@@ -16,6 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
 
 // ============================================================
 // Domain helpers
@@ -24,12 +25,15 @@ import { useImageUpload } from "@/hooks/useImageUpload";
 interface DomainEntry {
   protocol: "https" | "http";
   host: string;
+  is_primary: boolean;
 }
 
-function parseDomain(raw: string): DomainEntry {
-  if (raw.startsWith("https://")) return { protocol: "https", host: raw.slice(8) };
-  if (raw.startsWith("http://")) return { protocol: "http", host: raw.slice(7) };
-  return { protocol: "https", host: raw };
+function parseDomainEntry(raw: string | { domain: string; is_primary?: boolean }, fallbackPrimary: boolean): DomainEntry {
+  const domain = typeof raw === "string" ? raw : raw.domain;
+  const is_primary = typeof raw === "string" ? fallbackPrimary : (raw.is_primary ?? fallbackPrimary);
+  if (domain.startsWith("https://")) return { protocol: "https", host: domain.slice(8), is_primary };
+  if (domain.startsWith("http://")) return { protocol: "http", host: domain.slice(7), is_primary };
+  return { protocol: "https", host: domain, is_primary };
 }
 
 function formatDomain(d: DomainEntry): string {
@@ -44,21 +48,42 @@ function DomainListInput({
   onChange: (domains: DomainEntry[]) => void;
 }) {
   function add() {
-    onChange([...domains, { protocol: "https", host: "" }]);
+    onChange([...domains, { protocol: "https", host: "", is_primary: domains.length === 0 }]);
   }
 
-  function update(index: number, field: keyof DomainEntry, value: string) {
+  function update(index: number, field: "protocol" | "host", value: string) {
     onChange(domains.map((d, i) => (i === index ? { ...d, [field]: value } : d)));
   }
 
+  function setPrimary(index: number) {
+    onChange(domains.map((d, i) => ({ ...d, is_primary: i === index })));
+  }
+
   function remove(index: number) {
-    onChange(domains.filter((_, i) => i !== index));
+    const next = domains.filter((_, i) => i !== index);
+    // If we removed the primary, make the first one primary
+    if (next.length > 0 && !next.some((d) => d.is_primary)) {
+      next[0].is_primary = true;
+    }
+    onChange(next);
   }
 
   return (
     <div className="space-y-2">
       {domains.map((d, i) => (
         <div key={i} className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setPrimary(i)}
+            title={d.is_primary ? "Primary domain" : "Set as primary"}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors ${
+              d.is_primary
+                ? "border-[#009688] bg-[#009688] text-white"
+                : "border-[#ebe9f1] bg-white text-[#b9b9c3] hover:border-[#009688] hover:text-[#009688]"
+            }`}
+          >
+            {d.is_primary ? "P" : i + 1}
+          </button>
           <select
             value={d.protocol}
             onChange={(e) => update(i, "protocol", e.target.value)}
@@ -83,14 +108,19 @@ function DomainListInput({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={add}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Add domain
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={add}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add domain
+        </button>
+        {domains.length > 1 && (
+          <span className="text-xs text-[#b9b9c3]">Click the circle to set the primary domain (used in email links)</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -111,7 +141,8 @@ interface Storefront {
   _id: string;
   name: string;
   slug: string;
-  domains: string[];
+  channel?: string;
+  domains: (string | { domain: string; is_primary?: boolean })[];
   status: "active" | "inactive";
   branding: IB2CStorefrontBranding;
   header: IB2CStorefrontHeader;
@@ -240,6 +271,7 @@ export default function StorefrontDetailPage({
 
   // General
   const [name, setName] = useState("");
+  const [channel, setChannel] = useState("");
   const [domains, setDomains] = useState<DomainEntry[]>([]);
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [defaultLanguage, setDefaultLanguage] = useState("");
@@ -271,7 +303,10 @@ export default function StorefrontDetailPage({
           const sf = data.data as Storefront;
           setStorefront(sf);
           setName(sf.name);
-          setDomains(sf.domains.map(parseDomain));
+          setChannel(sf.channel || "");
+          setDomains(
+            sf.domains.map((d, i) => parseDomainEntry(d, i === 0))
+          );
           setStatus(sf.status);
           setDefaultLanguage(sf.settings?.default_language || "");
           setBranding(sf.branding || {});
@@ -290,14 +325,18 @@ export default function StorefrontDetailPage({
 
     try {
       const formattedDomains = domains
-        .map(formatDomain)
-        .filter((d) => d.replace(/^https?:\/\//, "").trim() !== "");
+        .filter((d) => d.host.trim() !== "")
+        .map((d) => ({
+          domain: formatDomain(d),
+          is_primary: d.is_primary,
+        }));
 
       const res = await fetch(`/api/b2b/b2c/storefronts/${slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          channel: channel || undefined,
           domains: formattedDomains,
           status,
           branding,
@@ -528,6 +567,13 @@ export default function StorefrontDetailPage({
                 className={inputClass}
               />
             </Field>
+
+            <ChannelSelect
+              value={channel}
+              onChange={setChannel}
+              label="Channel"
+              required
+            />
 
             <div>
               <label className={labelClass}>Domains</label>

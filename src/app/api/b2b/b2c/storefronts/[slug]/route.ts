@@ -5,6 +5,7 @@ import {
   updateStorefront,
   deleteStorefront,
 } from "@/lib/services/b2c-storefront.service";
+import { getRedis } from "@/lib/cache/redis-client";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -45,6 +46,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const body = await req.json();
 
     const storefront = await updateStorefront(auth.tenantDb, slug, body);
+
+    // Invalidate B2C cache (branding changes affect site-config and home-config)
+    try {
+      await getRedis().publish(`vinc-b2c:cache-invalidate:${slug}`, 'home-config,site-config');
+    } catch (e) {
+      console.warn('[storefront-update] Failed to send cache invalidation:', (e as Error).message);
+    }
+
     return NextResponse.json({ success: true, data: storefront });
   } catch (error) {
     console.error("[PATCH /api/b2b/b2c/storefronts/[slug]]", error);

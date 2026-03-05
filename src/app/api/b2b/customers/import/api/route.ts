@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { customers, merge_mode = "replace", batch_id, batch_metadata } = body;
+    const { customers, merge_mode = "replace", channel, batch_id, batch_metadata } = body;
 
     // Validate customers array
     if (!customers || !Array.isArray(customers)) {
@@ -116,6 +116,7 @@ export async function POST(req: NextRequest) {
       job_id: jobId,
       tenant_id: tenantId,
       merge_mode,
+      ...(channel && { channel }),
       customers,
       batch_metadata,
     });

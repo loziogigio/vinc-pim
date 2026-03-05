@@ -4,8 +4,20 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
-import { importQueue } from "@/lib/queue/queues";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { connectWithModels } from "@/lib/db/connection";
+import { importQueue, customerImportQueue, portalUserImportQueue } from "@/lib/queue/queues";
+
+/**
+ * Try to find a BullMQ job across all import-related queues
+ */
+async function findBullMQJob(jobId: string) {
+  for (const queue of [importQueue, customerImportQueue, portalUserImportQueue]) {
+    const job = await queue.getJob(jobId);
+    if (job) return { job, queue };
+  }
+  return null;
+}
 
 /**
  * POST /api/b2b/pim/jobs/[jobId]
@@ -16,61 +28,108 @@ export async function POST(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || session.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
+    const { tenantDb } = auth;
     const { jobId } = await params;
     const { action } = await req.json();
 
-    // Get the job from the queue
-    const job = await importQueue.getJob(jobId);
-
-    if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
-    }
+    const { ImportJob, AssociationJob } = await connectWithModels(tenantDb);
 
     switch (action) {
-      case "retry":
-        // Retry a failed job
-        const state = await job.getState();
-        if (state === "failed") {
-          await job.retry();
-          return NextResponse.json({
-            success: true,
-            message: "Job queued for retry"
-          });
-        } else {
+      case "retry": {
+        const result = await findBullMQJob(jobId);
+        if (!result) {
+          return NextResponse.json({ error: "Job not found in queue" }, { status: 404 });
+        }
+        const state = await result.job.getState();
+        if (state !== "failed") {
           return NextResponse.json(
             { error: `Cannot retry job in state: ${state}` },
             { status: 400 }
           );
         }
+        await result.job.retry();
+        // Reset status in MongoDB
+        await ImportJob.updateOne(
+          { job_id: jobId },
+          { $set: { status: "pending" } }
+        );
+        await AssociationJob.updateOne(
+          { job_id: jobId },
+          { $set: { status: "pending" } }
+        );
+        return NextResponse.json({
+          success: true,
+          message: "Job queued for retry",
+        });
+      }
 
-      case "cancel":
-        // Cancel an active or waiting job
-        const currentState = await job.getState();
-        if (currentState === "active" || currentState === "waiting") {
-          await job.remove();
-          return NextResponse.json({
-            success: true,
-            message: "Job cancelled"
-          });
-        } else {
+      case "cancel": {
+        // Find the job in MongoDB first
+        let mongoJob: any =
+          (await ImportJob.findOne({ job_id: jobId })) ||
+          (await AssociationJob.findOne({ job_id: jobId }));
+
+        if (!mongoJob) {
+          return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        }
+
+        if (mongoJob.status !== "pending" && mongoJob.status !== "processing") {
           return NextResponse.json(
-            { error: `Cannot cancel job in state: ${currentState}` },
+            { error: `Cannot cancel job in status: ${mongoJob.status}` },
             { status: 400 }
           );
         }
 
-      case "delete":
-        // Delete a completed or failed job
-        await job.remove();
+        // Try to remove from BullMQ queue
+        const result = await findBullMQJob(jobId);
+        if (result) {
+          const state = await result.job.getState();
+          if (state === "waiting" || state === "delayed") {
+            await result.job.remove();
+          } else if (state === "active") {
+            // For active jobs, move to failed so the worker stops
+            await result.job.moveToFailed(
+              new Error("Job cancelled by user"),
+              result.job.token || "0"
+            );
+          }
+        }
+
+        // Update MongoDB status to cancelled
+        const now = new Date();
+        const updateFields = {
+          status: "cancelled",
+          completed_at: now,
+        };
+
+        await ImportJob.updateOne({ job_id: jobId }, { $set: updateFields });
+        await AssociationJob.updateOne({ job_id: jobId }, { $set: updateFields });
+
         return NextResponse.json({
           success: true,
-          message: "Job deleted"
+          message: "Job cancelled",
         });
+      }
+
+      case "delete": {
+        // Remove from BullMQ if present
+        const result = await findBullMQJob(jobId);
+        if (result) {
+          await result.job.remove();
+        }
+
+        // Delete from MongoDB
+        await ImportJob.deleteOne({ job_id: jobId });
+        await AssociationJob.deleteOne({ job_id: jobId });
+
+        return NextResponse.json({
+          success: true,
+          message: "Job deleted",
+        });
+      }
 
       default:
         return NextResponse.json(
@@ -96,37 +155,41 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || session.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
+    const { tenantDb } = auth;
     const { jobId } = await params;
-    const job = await importQueue.getJob(jobId);
+    const { ImportJob, AssociationJob } = await connectWithModels(tenantDb);
 
-    if (!job) {
+    // Check MongoDB for job details
+    const mongoJob =
+      (await ImportJob.findOne({ job_id: jobId }).lean()) ||
+      (await AssociationJob.findOne({ job_id: jobId }).lean());
+
+    // Also try BullMQ for queue state
+    const result = await findBullMQJob(jobId);
+
+    if (!mongoJob && !result) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    const state = await job.getState();
-    const progress = job.progress;
-    const failedReason = job.failedReason;
-    const stacktrace = job.stacktrace;
+    const queueState = result ? await result.job.getState() : null;
 
     return NextResponse.json({
       job: {
-        id: job.id,
-        name: job.name,
-        data: job.data,
-        state,
-        progress,
-        failedReason,
-        stacktrace,
-        attemptsMade: job.attemptsMade,
-        timestamp: job.timestamp,
-        processedOn: job.processedOn,
-        finishedOn: job.finishedOn,
-        returnvalue: job.returnvalue,
+        ...(mongoJob || {}),
+        id: result?.job.id || jobId,
+        name: result?.job.name,
+        state: queueState,
+        progress: result?.job.progress,
+        failedReason: result?.job.failedReason,
+        stacktrace: result?.job.stacktrace,
+        attemptsMade: result?.job.attemptsMade,
+        timestamp: result?.job.timestamp,
+        processedOn: result?.job.processedOn,
+        finishedOn: result?.job.finishedOn,
+        returnvalue: result?.job.returnvalue,
       },
     });
   } catch (error) {

@@ -219,7 +219,7 @@ export function getMultilingualField(field: string, lang: string): string {
  */
 export function getSortField(field: string, lang: string): string {
   const sortFieldMap: Record<string, string> = {
-    price: 'price',
+    price: 'price_sort',
     relevance: 'score',
     newest: 'item_creation_date',    // ERP insertion date (when item was created in ERP)
     created: 'created_at',           // PIM import date (when item was imported to PIM)

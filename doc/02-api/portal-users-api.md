@@ -99,6 +99,57 @@ Authenticate and receive a JWT token.
 
 ---
 
+## Forgot Password
+
+### `POST /api/b2b/auth/portal-reset-password`
+
+Generate a temporary password for a portal user. The caller is responsible for sending the notification email to the user.
+
+**Auth:** API key only (no portal user token required — user is locked out)
+
+**Request:**
+
+```json
+{
+  "email": "user@example.com",
+  "channel": "b2c"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | Yes | Email address of the portal user |
+| `channel` | string | No | Sales channel (defaults to `"default"`) |
+
+**Response (user found & active):**
+
+```json
+{
+  "success": true,
+  "temporary_password": "aB3$xYz9!kLm",
+  "portal_user_id": "PU-abc123",
+  "email": "user@example.com",
+  "channel": "b2c"
+}
+```
+
+**Response (user not found / inactive):**
+
+```json
+{
+  "success": true,
+  "message": "If the email exists, a password reset has been processed"
+}
+```
+
+**Notes:**
+- Returns a generic success when the user is not found or inactive (prevents email enumeration)
+- Channel matching: prefers exact channel match, falls back to any channel for the tenant
+- Rate limiting applies (same as login endpoint)
+- The caller receives `temporary_password` and is responsible for delivering it to the user (e.g., via email)
+
+---
+
 ## Available Endpoints
 
 Once authenticated, use the token to access these endpoints. Data is automatically filtered based on your `customer_access` permissions.

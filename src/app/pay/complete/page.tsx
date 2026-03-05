@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 type Status = "loading" | "success" | "error" | "missing_params";
 
 export default function PaymentCompletePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+        </div>
+      }
+    >
+      <PaymentCompleteContent />
+    </Suspense>
+  );
+}
+
+function PaymentCompleteContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState("");

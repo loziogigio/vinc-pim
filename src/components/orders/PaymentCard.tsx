@@ -404,7 +404,10 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       if (selectedStorefront && selectedStorefront.domains[0]) {
         // B2C storefront: PayPal returns directly to B2C payment-success page
         // PayPal will append &token={paypal-order-id} — B2C uses token + tenant to capture via public API
-        const domain = selectedStorefront.domains[0].replace(/\/+$/, "");
+        const rawDomain = typeof selectedStorefront.domains[0] === "string"
+          ? selectedStorefront.domains[0]
+          : selectedStorefront.domains[0].domain;
+        const domain = rawDomain?.replace(/\/+$/, "") || "";
         returnUrl = `${domain}/pages/payment-success?paymentgateway=paypal&order_id=${encodeURIComponent(order.order_id)}&tenant=${encodeURIComponent(tenantId)}`;
         brandName = selectedStorefront.branding?.title || selectedStorefront.name;
       } else {
@@ -919,7 +922,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                     <option value="generic">Pagina generica (VINC Commerce)</option>
                     {storefronts.map((sf) => (
                       <option key={sf.slug} value={sf.slug}>
-                        {sf.branding?.title || sf.name} ({sf.domains[0]?.replace(/^https?:\/\//, "")})
+                        {sf.branding?.title || sf.name} ({(typeof sf.domains[0] === "string" ? sf.domains[0] : sf.domains[0]?.domain)?.replace(/^https?:\/\//, "")})
                       </option>
                     ))}
                   </select>

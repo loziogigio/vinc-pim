@@ -10,6 +10,7 @@ import { getPooledConnection } from "@/lib/db/connection";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { submitOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
+import { isDeferredPaymentMethod } from "@/lib/constants/payment";
 
 export async function POST(
   req: NextRequest,
@@ -18,6 +19,8 @@ export async function POST(
   try {
     const { id: orderId } = await params;
     const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
+
     const dbName = `vinc-${auth.tenantId}`;
     const connection = await getPooledConnection(dbName);
 
@@ -31,11 +34,17 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    void dispatchTrigger(dbName, "order_confirmation", {
-      type: "order",
-      order: result.order!,
-      portalUserId: auth.userId || undefined,
-    });
+    // Only send order_confirmation at submit time for deferred payment methods
+    // (bank_transfer, cash_on_delivery). For online payments (PayPal, credit card, etc.),
+    // order_confirmation is sent after payment capture in recordGatewayPayment.
+    const paymentMethod = result.order?.payment?.payment_method;
+    if (isDeferredPaymentMethod(paymentMethod)) {
+      void dispatchTrigger(dbName, "order_confirmation", {
+        type: "order",
+        order: result.order!,
+        portalUserId: auth.userId || undefined,
+      });
+    }
 
     return NextResponse.json({
       success: true,

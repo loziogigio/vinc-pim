@@ -17,6 +17,8 @@ import { sendPush, isWebPushEnabled } from "@/lib/push";
 import { sendFCM, isFCMEnabled } from "@/lib/fcm";
 import type { SendFCMResult } from "@/lib/fcm/types";
 import { createInAppNotification } from "./in-app.service";
+import { getStorefrontPrimaryDomain } from "@/lib/services/b2c-storefront.service";
+import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import type { NotificationTrigger } from "@/lib/db/models/notification-template";
 import type { PushPreferences, SendPushResult } from "@/lib/push/types";
 import type { NotificationUserType, NotificationPayload } from "@/lib/db/models/notification";
@@ -309,6 +311,46 @@ export async function sendNotification(
 }
 
 /**
+ * Resolve the storefront base URL for email links.
+ *
+ * Priority:
+ * 1. Explicit login_url passed by caller
+ * 2. Storefront primary domain (from b2cstorefronts collection)
+ * 3. HomeSettings branding.shopUrl (legacy fallback)
+ */
+async function resolveLoginUrl(
+  tenantDb: string,
+  explicitUrl?: string,
+  channel?: string
+): Promise<{ loginUrl: string; shopName: string }> {
+  const { HomeSettings } = await connectWithModels(tenantDb);
+  const settings = await HomeSettings.findOne({}).lean();
+  const branding = (settings as { branding?: { title?: string; shopUrl?: string } })?.branding;
+  const shopName = branding?.title || "VINC B2B";
+
+  if (explicitUrl) return { loginUrl: explicitUrl, shopName };
+
+  // Try storefront primary domain
+  const storefrontDomain = await getStorefrontPrimaryDomain(
+    tenantDb,
+    channel || DEFAULT_CHANNEL
+  );
+  if (storefrontDomain) {
+    const base = storefrontDomain.endsWith("/") ? storefrontDomain.slice(0, -1) : storefrontDomain;
+    return { loginUrl: `${base}/login`, shopName };
+  }
+
+  // Legacy fallback
+  const fallback = branding?.shopUrl;
+  if (fallback) {
+    const base = fallback.endsWith("/") ? fallback.slice(0, -1) : fallback;
+    return { loginUrl: `${base}/login`, shopName };
+  }
+
+  return { loginUrl: "", shopName };
+}
+
+/**
  * Send forgot password email with temporary password.
  *
  * Convenience wrapper around sendNotification for forgot_password trigger.
@@ -320,15 +362,10 @@ export async function sendForgotPasswordNotification(
     customer_name?: string;
     temporary_password: string;
     login_url?: string;
+    channel?: string;
   }
 ): Promise<SendNotificationResult> {
-  // Get shop name from home settings for variables
-  const { HomeSettings } = await connectWithModels(tenantDb);
-  const settings = await HomeSettings.findOne({}).lean();
-  const branding = (settings as { branding?: { title?: string; shopUrl?: string } })?.branding;
-
-  const shopName = branding?.title || "VINC B2B";
-  const loginUrl = variables.login_url || branding?.shopUrl || "http://localhost:3000/login";
+  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
 
   return sendNotification({
     tenantDb,
@@ -357,14 +394,10 @@ export async function sendWelcomeNotification(
     username: string;
     password: string;
     login_url?: string;
+    channel?: string;
   }
 ): Promise<SendNotificationResult> {
-  const { HomeSettings } = await connectWithModels(tenantDb);
-  const settings = await HomeSettings.findOne({}).lean();
-  const branding = (settings as { branding?: { title?: string; shopUrl?: string } })?.branding;
-
-  const shopName = branding?.title || "VINC B2B";
-  const loginUrl = variables.login_url || branding?.shopUrl || "http://localhost:3000/login";
+  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
 
   return sendNotification({
     tenantDb,
@@ -375,6 +408,36 @@ export async function sendWelcomeNotification(
       company_name: variables.company_name,
       username: variables.username,
       password: variables.password,
+      login_url: loginUrl,
+      shop_name: shopName,
+    },
+  });
+}
+
+/**
+ * Send welcome email for self-registered users (no credentials).
+ *
+ * Convenience wrapper around sendNotification for welcome_self_registration trigger.
+ */
+export async function sendSelfRegistrationWelcome(
+  tenantDb: string,
+  to: string,
+  variables: {
+    customer_name: string;
+    company_name?: string;
+    login_url?: string;
+    channel?: string;
+  }
+): Promise<SendNotificationResult> {
+  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
+
+  return sendNotification({
+    tenantDb,
+    trigger: "welcome_self_registration",
+    to,
+    variables: {
+      customer_name: variables.customer_name,
+      company_name: variables.company_name || "",
       login_url: loginUrl,
       shop_name: shopName,
     },
@@ -395,16 +458,15 @@ export async function sendPasswordResetConfirmation(
     ip_address?: string;
     login_url?: string;
     support_email?: string;
+    channel?: string;
   }
 ): Promise<SendNotificationResult> {
+  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
+
   const { HomeSettings } = await connectWithModels(tenantDb);
   const settings = await HomeSettings.findOne({}).lean();
-  const branding = (settings as { branding?: { title?: string; shopUrl?: string } })?.branding;
   const companyInfo = (settings as { company_info?: { email?: string } })?.company_info;
-
-  const shopName = branding?.title || "VINC B2B";
-  const loginUrl = variables.login_url || branding?.shopUrl || "http://localhost:3000/login";
-  const supportEmail = variables.support_email || companyInfo?.email || "support@example.com";
+  const supportEmail = variables.support_email || companyInfo?.email || "";
 
   return sendNotification({
     tenantDb,

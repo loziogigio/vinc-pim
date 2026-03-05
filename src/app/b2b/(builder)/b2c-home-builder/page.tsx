@@ -263,10 +263,11 @@ function B2CHomeBuilderContent() {
         const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}`);
         if (!res.ok) return;
         const { data } = await res.json();
-        const domains: string[] = data?.domains ?? [];
+        const domains: { domain: string; is_primary?: boolean }[] = data?.domains ?? [];
         if (domains.length > 0) {
-          const domain = domains[0];
-          setStorefrontUrl(domain.startsWith("http") ? domain : `https://${domain}`);
+          const primary = domains.find((d) => d.is_primary) || domains[0];
+          const raw = primary.domain;
+          setStorefrontUrl(raw.startsWith("http") ? raw : `https://${raw}`);
         }
       } catch (err) {
         console.warn("Failed to fetch storefront domain for preview:", err);

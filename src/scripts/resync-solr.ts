@@ -36,7 +36,7 @@ async function main() {
   console.log(`✓ Connected to MongoDB: ${dbName}\n`);
 
   // Initialize Solr adapter (config from loadAdapterConfigs - single source of truth)
-  const adapterConfigs = loadAdapterConfigs();
+  const adapterConfigs = loadAdapterConfigs(tenantId);
   const solrConfig = adapterConfigs.solr;
 
   if (!solrConfig?.enabled) {

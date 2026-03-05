@@ -22,6 +22,7 @@ import {
   upsertCustomerTagsBatch,
   upsertAddressTagOverridesBatch,
 } from "../services/tag-pricing.service";
+import { DEFAULT_CHANNEL } from "../constants/channel";
 
 // ============================================
 // TYPES (exported for tests and reuse)
@@ -47,6 +48,8 @@ export interface CustomerImportAddress {
 export interface CustomerImportItem {
   external_code: string;
   customer_type?: "business" | "private" | "reseller";
+  channel?: string;
+  public_code?: string;
   email?: string;
   phone?: string;
   first_name?: string;
@@ -66,6 +69,8 @@ export interface CustomerImportJobData {
   job_id: string;
   tenant_id: string;
   merge_mode: "replace" | "partial";
+  /** Default channel for all customers in this batch (per-customer channel takes priority) */
+  channel?: string;
   customers: CustomerImportItem[];
   batch_metadata?: {
     batch_id: string;
@@ -151,7 +156,7 @@ export async function processCustomerImportData(
   data: CustomerImportJobData,
   onProgress?: (percent: number) => void,
 ): Promise<{ processed: number; successful: number; failed: number }> {
-  const { job_id, tenant_id, merge_mode, customers, batch_metadata } = data;
+  const { job_id, tenant_id, merge_mode, channel: jobChannel, customers, batch_metadata } = data;
   const tenantDb = `vinc-${tenant_id}`;
 
   console.log(`\n🔄 Processing customer import: ${job_id}`);
@@ -224,6 +229,7 @@ export async function processCustomerImportData(
           const fields = [
             "customer_type", "email", "phone",
             "first_name", "last_name", "company_name", "legal_info",
+            "channel", "public_code",
           ] as const;
 
           for (const field of fields) {
@@ -252,6 +258,7 @@ export async function processCustomerImportData(
           const fields = [
             "customer_type", "email", "phone",
             "first_name", "last_name", "company_name",
+            "channel", "public_code",
           ] as const;
 
           for (const field of fields) {
@@ -338,7 +345,8 @@ export async function processCustomerImportData(
       } else {
         // ========== CREATE NEW CUSTOMER ==========
         const customer_id = `cust_${nanoid(12)}`;
-        const public_code = await getNextCustomerPublicCode(tenantDb);
+        const public_code = customerData.public_code || await getNextCustomerPublicCode(tenantDb);
+        const channel = customerData.channel || jobChannel || DEFAULT_CHANNEL;
 
         const addresses = (customerData.addresses || []).map(buildAddress);
 
@@ -347,6 +355,7 @@ export async function processCustomerImportData(
           external_code,
           public_code,
           tenant_id,
+          channel,
           customer_type: customerData.customer_type || "business",
           is_guest: false,
           email: customerData.email || "",

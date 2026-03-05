@@ -12,6 +12,7 @@ import {
   InventorySyncResult,
   TransformOptions,
 } from './types';
+import { getEffectivePrice } from '@/lib/utils/packaging';
 
 /**
  * Solr multilingual document structure
@@ -43,6 +44,7 @@ interface SolrMultilingualDocument {
   sold?: number;
   unit?: string;
   price?: number;
+  price_sort?: number;
   stock_status?: string;
 
   // Physical Attributes
@@ -268,6 +270,26 @@ export class SolrAdapter extends MarketplaceAdapter {
     }
     // Default to string - preserve all string values as strings
     return { suffix: 's', value: String(value) };
+  }
+
+  /**
+   * Compute the lowest package price across all sellable packaging options.
+   * For each option: effective_unit_price × qty (= minimum purchasable amount).
+   * Returns the minimum, or undefined if no prices exist.
+   */
+  private computePriceSort(packagingOptions?: any[]): number | undefined {
+    if (!packagingOptions?.length) return undefined;
+
+    let min: number | undefined;
+    for (const pkg of packagingOptions) {
+      if (pkg.is_sellable === false) continue;
+      const qty = pkg.qty || 1;
+      const { price } = getEffectivePrice(pkg.pricing, qty, "package");
+      if (price !== undefined && (min === undefined || price < min)) {
+        min = price;
+      }
+    }
+    return min;
   }
 
   /**
@@ -591,6 +613,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       unit: product.unit,
       stock_status: product.stock_status,
       vat_rate: product.pricing?.vat_rate,
+      price_sort: this.computePriceSort(product.packaging_options),
 
       // Physical Attributes
       weight: product.weight,
@@ -1278,5 +1301,66 @@ export class SolrAdapter extends MarketplaceAdapter {
       }),
     });
     this.log('⚠️  Index cleared');
+  }
+
+  /**
+   * Delete documents matching a Solr query
+   */
+  async deleteByQuery(query: string): Promise<void> {
+    const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+    const response = await fetch(deleteUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delete: { query } }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Solr deleteByQuery failed: ${response.status} - ${error}`);
+    }
+
+    this.log(`Deleted by query: ${query}`);
+  }
+
+  /**
+   * Count documents matching a Solr query (for dry_run previews)
+   */
+  async countByQuery(query: string): Promise<number> {
+    const url = `${this.solrUrl}/${this.solrCore}/select?q=${encodeURIComponent(query)}&rows=0&wt=json`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Solr count query failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.response?.numFound ?? 0;
+  }
+
+  /**
+   * Fetch entity_codes from Solr index matching a query (paginated internally)
+   */
+  async fetchAllEntityCodes(query = "*:*"): Promise<string[]> {
+    const codes: string[] = [];
+    const PAGE_SIZE = 500;
+    let start = 0;
+
+    while (true) {
+      const url = `${this.solrUrl}/${this.solrCore}/select?q=${encodeURIComponent(query)}&fl=entity_code&rows=${PAGE_SIZE}&start=${start}&wt=json`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Solr fetchAllEntityCodes failed: ${response.status}`);
+      }
+      const data = await response.json();
+      const docs = data.response?.docs ?? [];
+      if (docs.length === 0) break;
+      for (const doc of docs) {
+        if (doc.entity_code) codes.push(doc.entity_code);
+      }
+      start += PAGE_SIZE;
+      if (start >= data.response.numFound) break;
+    }
+
+    return codes;
   }
 }

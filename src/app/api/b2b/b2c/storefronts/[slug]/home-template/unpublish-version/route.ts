@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { unpublishB2CHomeTemplateVersion } from "@/lib/db/b2c-home-templates";
+import { getRedis } from "@/lib/cache/redis-client";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -20,6 +21,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const config = await unpublishB2CHomeTemplateVersion(slug, version, auth.tenantDb);
+
+    // Invalidate B2C cache via Redis pub/sub
+    try {
+      await getRedis().publish(`vinc-b2c:cache-invalidate:${slug}`, 'home-config,site-config');
+    } catch (e) {
+      console.warn('[unpublish] Failed to send cache invalidation:', (e as Error).message);
+    }
+
     return NextResponse.json(config);
   } catch (error) {
     console.error("[POST .../unpublish-version]", error);

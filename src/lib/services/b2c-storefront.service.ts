@@ -15,6 +15,7 @@ import type {
   IB2CStorefrontBranding,
   IB2CStorefrontHeader,
   IB2CStorefrontFooter,
+  IStorefrontDomain,
 } from "@/lib/db/models/b2c-storefront";
 
 const logPrefix = "[b2c-storefront]";
@@ -26,7 +27,9 @@ const logPrefix = "[b2c-storefront]";
 export interface CreateStorefrontInput {
   name: string;
   slug: string;
-  domains?: string[];
+  /** Sales channel code — mandatory, links storefront to its channel */
+  channel: string;
+  domains?: (IStorefrontDomain | string)[];
   branding?: IB2CStorefrontBranding;
   header?: IB2CStorefrontHeader;
   footer?: IB2CStorefrontFooter;
@@ -38,7 +41,8 @@ export interface CreateStorefrontInput {
 
 export interface UpdateStorefrontInput {
   name?: string;
-  domains?: string[];
+  channel?: string;
+  domains?: (IStorefrontDomain | string)[];
   status?: "active" | "inactive";
   branding?: IB2CStorefrontBranding;
   header?: IB2CStorefrontHeader;
@@ -63,11 +67,31 @@ export interface StorefrontListResult {
 // HELPERS
 // ============================================
 
-function normalizedomains(domains?: string[]): string[] {
-  if (!domains) return [];
-  return domains
-    .map((d) => d.trim().toLowerCase())
-    .filter((d) => d.length > 0);
+function normalizeDomains(
+  domains?: (IStorefrontDomain | string)[]
+): IStorefrontDomain[] {
+  if (!domains || domains.length === 0) return [];
+  const normalized = domains
+    .map((d) => {
+      // Handle legacy plain-string format (e.g., "http://localhost:3000")
+      if (typeof d === "string") {
+        return { domain: d.trim().toLowerCase(), is_primary: false };
+      }
+      return {
+        domain: (d.domain || "").trim().toLowerCase(),
+        is_primary: !!d.is_primary,
+      };
+    })
+    .filter((d) => d.domain.length > 0);
+  // Ensure at most one primary — keep only the first is_primary: true
+  let foundPrimary = false;
+  for (const d of normalized) {
+    if (d.is_primary) {
+      if (foundPrimary) d.is_primary = false;
+      foundPrimary = true;
+    }
+  }
+  return normalized;
 }
 
 // ============================================
@@ -89,11 +113,21 @@ export async function createStorefront(
     throw new Error(`Storefront with slug "${input.slug}" already exists`);
   }
 
+  // Check channel uniqueness (one storefront per channel)
+  const channelCode = input.channel.trim().toLowerCase();
+  const channelConflict = await B2CStorefront.findOne({ channel: channelCode }).lean();
+  if (channelConflict) {
+    throw new Error(
+      `Channel "${channelCode}" is already assigned to storefront "${(channelConflict as any).name}"`
+    );
+  }
+
   // Check domain conflicts
-  const domains = normalizedomains(input.domains);
-  if (domains.length > 0) {
+  const domains = normalizeDomains(input.domains);
+  const domainValues = domains.map((d) => d.domain);
+  if (domainValues.length > 0) {
     const domainConflict = await B2CStorefront.findOne({
-      domains: { $in: domains },
+      "domains.domain": { $in: domainValues },
     }).lean();
     if (domainConflict) {
       throw new Error(
@@ -105,6 +139,7 @@ export async function createStorefront(
   const storefront = await B2CStorefront.create({
     name: input.name.trim(),
     slug: input.slug.trim().toLowerCase(),
+    channel: channelCode,
     domains,
     status: "active",
     branding: input.branding || {},
@@ -140,11 +175,12 @@ export async function updateStorefront(
 
   // Check domain conflicts if domains are being updated
   if (input.domains !== undefined) {
-    const domains = normalizedomains(input.domains);
-    if (domains.length > 0) {
+    const domains = normalizeDomains(input.domains);
+    const domainValues = domains.map((d) => d.domain);
+    if (domainValues.length > 0) {
       const domainConflict = await B2CStorefront.findOne({
         slug: { $ne: slug },
-        domains: { $in: domains },
+        "domains.domain": { $in: domainValues },
       }).lean();
       if (domainConflict) {
         throw new Error(
@@ -152,10 +188,25 @@ export async function updateStorefront(
         );
       }
     }
-    storefront.domains = domains;
+    storefront.domains = domains as any;
   }
 
   if (input.name !== undefined) storefront.name = input.name.trim();
+  if (input.channel !== undefined) {
+    const newChannel = input.channel.trim().toLowerCase();
+    if (newChannel && newChannel !== storefront.channel) {
+      const channelConflict = await B2CStorefront.findOne({
+        slug: { $ne: slug },
+        channel: newChannel,
+      }).lean();
+      if (channelConflict) {
+        throw new Error(
+          `Channel "${newChannel}" is already assigned to storefront "${(channelConflict as any).name}"`
+        );
+      }
+      storefront.channel = newChannel;
+    }
+  }
   if (input.status !== undefined) storefront.status = input.status;
   if (input.branding !== undefined) {
     storefront.branding = { ...storefront.branding, ...input.branding };
@@ -219,7 +270,7 @@ export async function listStorefronts(
     query.$or = [
       { name: { $regex: options.search, $options: "i" } },
       { slug: { $regex: options.search, $options: "i" } },
-      { domains: { $regex: options.search, $options: "i" } },
+      { "domains.domain": { $regex: options.search, $options: "i" } },
     ];
   }
 
@@ -228,12 +279,12 @@ export async function listStorefronts(
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limit)
-      .lean(),
+      .lean<IB2CStorefront[]>(),
     B2CStorefront.countDocuments(query),
   ]);
 
   return {
-    items: items as IB2CStorefront[],
+    items,
     pagination: {
       page,
       limit,
@@ -263,19 +314,51 @@ export async function getStorefrontByDomain(
 ): Promise<IB2CStorefront | null> {
   const { B2CStorefront } = await connectWithModels(tenantDb);
   const normalizedDomain = domain.trim().toLowerCase();
-
-  // Try exact match first (hostname like "shop.example.com")
-  const exact = await B2CStorefront.findOne({
-    domains: normalizedDomain,
-    status: "active",
-  }).lean() as IB2CStorefront | null;
-  if (exact) return exact;
-
-  // Domains may be stored as full URLs (e.g. "https://shop.example.com").
-  // Build regex to match entries that contain this hostname.
   const escaped = normalizedDomain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return B2CStorefront.findOne({
-    domains: { $regex: new RegExp(`^https?://${escaped}(:\\d+)?/?$`, "i") },
+  const urlRegex = new RegExp(`^https?://${escaped}(:\\d+)?/?$`, "i");
+
+  // Use raw collection query to bypass Mongoose subdocument casting.
+  // The DB may have legacy string domains alongside new object domains.
+  const result = await B2CStorefront.collection.findOne({
     status: "active",
-  }).lean() as IB2CStorefront | null;
+    $or: [
+      // Object format — exact hostname match
+      { "domains.domain": normalizedDomain },
+      // Object format — full URL stored in domain field
+      { "domains.domain": { $regex: urlRegex } },
+      // Legacy string format — domains is array of plain strings
+      { domains: normalizedDomain },
+      { domains: { $regex: urlRegex } },
+    ],
+  });
+
+  return result as IB2CStorefront | null;
+}
+
+/**
+ * Get the primary domain URL for a storefront linked to a given channel code.
+ * Returns null if no storefront or no domains are configured.
+ */
+export async function getStorefrontPrimaryDomain(
+  tenantDb: string,
+  channelCode: string
+): Promise<string | null> {
+  try {
+    const { B2CStorefront } = await connectWithModels(tenantDb);
+    const storefront = await B2CStorefront.findOne({
+      channel: channelCode,
+      status: "active",
+    }).lean() as IB2CStorefront | null;
+
+    if (!storefront?.domains?.length) return null;
+
+    const primary = storefront.domains.find((d) => d.is_primary);
+    const domain = primary?.domain || storefront.domains[0]?.domain;
+    if (!domain) return null;
+
+    return domain.startsWith("http") ? domain : `https://${domain}`;
+  } catch (error) {
+    console.warn(`${logPrefix} Failed to resolve primary domain for channel "${channelCode}":`, error);
+    return null;
+  }
 }

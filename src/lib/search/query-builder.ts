@@ -555,7 +555,7 @@ function buildSortClause(
   lang: string,
   text?: string
 ): string | undefined {
-  if (!sort) {
+  if (!sort || !sort.field) {
     // No explicit sort - use smart defaults
     if (!text || text.trim() === '') {
       // No text query (browsing/filtering) → sort by ERP insertion date (newest first)
@@ -566,7 +566,7 @@ function buildSortClause(
   }
 
   const solrField = getSortField(sort.field, lang);
-  return `${solrField} ${sort.order}`;
+  return `${solrField} ${sort.order || 'desc'}`;
 }
 
 // ============================================

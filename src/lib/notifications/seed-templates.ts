@@ -113,6 +113,35 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     `.trim()
   },
   {
+    template_id: "welcome_self_registration",
+    name: "Benvenuto - Registrazione Autonoma",
+    description: "Email di benvenuto per clienti che si registrano autonomamente. Senza credenziali (il cliente conosce già la password).",
+    trigger: "welcome_self_registration",
+    variables: ["customer_name", "company_name", "login_url", "shop_name"],
+    email_subject: "Benvenuto su {{shop_name}}!",
+    email_html: `
+<h2 style="color: #1e293b; margin: 0 0 16px 0;">Benvenuto su {{shop_name}}!</h2>
+<p style="color: #64748b; margin: 0 0 16px 0;">Gentile {{customer_name}},</p>
+<p style="color: #64748b; margin: 0 0 24px 0;">
+  Il tuo account{{#if company_name}} per <strong>{{company_name}}</strong>{{/if}} è stato creato con successo.
+</p>
+
+<p style="color: #64748b; margin: 0 0 24px 0;">
+  Puoi accedere al portale in qualsiasi momento con le credenziali che hai scelto durante la registrazione.
+</p>
+
+<p style="margin: 0 0 24px 0;">
+  <a href="{{login_url}}" style="display: inline-block; padding: 12px 24px; background-color: {{primary_color}}; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+    Accedi al Portale
+  </a>
+</p>
+
+<p style="color: #94a3b8; font-size: 12px; margin: 16px 0 0 0;">
+  Se non hai effettuato questa registrazione, puoi ignorare questa email.
+</p>
+    `.trim()
+  },
+  {
     template_id: "forgot_password",
     name: "Password Temporanea",
     description: "Invia una password temporanea al cliente che ha dimenticato le credenziali.",

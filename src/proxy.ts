@@ -78,7 +78,7 @@ const securityHeaders: Record<string, string> = {
     "connect-src 'self' https:",
     "media-src 'self' https: blob:",
     "worker-src 'self' blob:",
-    "frame-src 'self' https:",
+    `frame-src 'self' https: ${process.env.NODE_ENV === "development" ? "http://localhost:* http://127.0.0.1:*" : ""}`.trim(),
   ].join("; "),
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
@@ -141,7 +141,7 @@ const getTenantId = (request: NextRequest): { tenantId: string | null; rewritePa
   return { tenantId: null, rewritePath: null, isExplicit: false };
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Extract tenant and check for path rewrite

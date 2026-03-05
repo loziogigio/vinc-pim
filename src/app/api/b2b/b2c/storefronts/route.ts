@@ -39,11 +39,11 @@ export async function POST(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const body = await req.json();
-    const { name, slug, domains, settings } = body;
+    const { name, slug, channel, domains, settings } = body;
 
-    if (!name || !slug) {
+    if (!name || !slug || !channel) {
       return NextResponse.json(
-        { error: "Name and slug are required" },
+        { error: "Name, slug, and channel are required" },
         { status: 400 }
       );
     }
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     const storefront = await createStorefront(auth.tenantDb, {
       name,
       slug,
+      channel,
       domains,
       settings,
     });

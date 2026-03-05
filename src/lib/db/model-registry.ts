@@ -61,6 +61,7 @@ import { PaymentTransactionSchema } from "./models/payment-transaction";
 import { TenantPaymentConfigSchema } from "./models/tenant-payment-config";
 import { RecurringContractSchema } from "./models/recurring-contract";
 import { SalesChannelSchema } from "./models/sales-channel";
+import { BatchSyncLogSchema } from "./models/batch-sync-log";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -117,6 +118,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   TenantPaymentConfig: TenantPaymentConfigSchema,
   RecurringContract: RecurringContractSchema,
   SalesChannel: SalesChannelSchema,
+  BatchSyncLog: BatchSyncLogSchema,
 };
 
 /**
@@ -215,6 +217,7 @@ export async function getTenantModels(dbName: string) {
     TenantPaymentConfig: connection.models.TenantPaymentConfig,
     RecurringContract: connection.models.RecurringContract,
     SalesChannel: connection.models.SalesChannel,
+    BatchSyncLog: connection.models.BatchSyncLog,
   };
 }
 
@@ -281,6 +284,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     TenantPaymentConfig: connection.models.TenantPaymentConfig,
     RecurringContract: connection.models.RecurringContract,
     SalesChannel: connection.models.SalesChannel,
+    BatchSyncLog: connection.models.BatchSyncLog,
   };
 }
 

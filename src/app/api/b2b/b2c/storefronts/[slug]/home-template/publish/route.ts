@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { publishB2CHomeTemplate } from "@/lib/db/b2c-home-templates";
+import { getRedis } from "@/lib/cache/redis-client";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -17,6 +18,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const metadata = await req.json().catch(() => ({}));
 
     const config = await publishB2CHomeTemplate(slug, metadata, auth.tenantDb);
+
+    // Invalidate B2C cache via Redis pub/sub
+    try {
+      const channel = `vinc-b2c:cache-invalidate:${slug}`;
+      console.log('[publish] Sending cache invalidation to channel:', channel);
+      const receivers = await getRedis().publish(channel, 'home-config,site-config');
+      console.log('[publish] Cache invalidation sent, receivers:', receivers);
+    } catch (e) {
+      console.error('[publish] Failed to send cache invalidation:', e);
+    }
+
     return NextResponse.json(config);
   } catch (error) {
     console.error("[POST .../publish]", error);

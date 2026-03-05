@@ -30,9 +30,9 @@ export const LivePreview = ({
   const previewUrl = useMemo(() => {
     let url;
     if (pageType === "home") {
-      url = `${customerWebUrl}/it?preview=true`;
+      url = `${customerWebUrl}?preview=true`;
     } else if (productId) {
-      url = `${customerWebUrl}/it/products/${productId}?preview=true`;
+      url = `${customerWebUrl}/products/${productId}?preview=true`;
     } else {
       url = `/preview?slug=home&embed=true`;
     }
@@ -40,91 +40,27 @@ export const LivePreview = ({
     return url;
   }, [productId, pageType, customerWebUrl]);
 
-  const resolveOrigin = () => {
-    try {
-      if (typeof window !== "undefined" && iframeRef.current?.src) {
-        return new URL(iframeRef.current.src, window.location.origin).origin;
-      }
-      if (previewUrl.startsWith("http://") || previewUrl.startsWith("https://")) {
-        return new URL(previewUrl).origin;
-      }
-      if (typeof window !== "undefined") {
-        return new URL(previewUrl, window.location.origin).origin;
-      }
-      return new URL(previewUrl, customerWebUrl).origin;
-    } catch (error) {
-      console.warn("[LivePreview] Unable to resolve target origin from previewUrl:", previewUrl, error);
-      return customerWebUrl;
-    }
-  };
-
   useEffect(() => {
-    console.log('[LivePreview] useEffect triggered');
-    console.log('[LivePreview] Blocks count:', blocks.length);
-    console.log('[LivePreview] isDirty:', isDirty);
-    console.log('[LivePreview] productId:', productId);
-    console.log('[LivePreview] iframeRef exists:', !!iframeRef.current);
-    console.log('[LivePreview] contentWindow exists:', !!iframeRef.current?.contentWindow);
+    if (blocks.length === 0 || !iframeRef.current?.contentWindow) return;
 
-    if (blocks.length > 0) {
-      console.log('[LivePreview] First block type:', blocks[0].type);
-      console.log('[LivePreview] First block config keys:', Object.keys(blocks[0].config || {}));
-    }
+    const blocksWithPosition = blocks.map((block, index) => ({
+      ...block,
+      _builderPosition: index + 1,
+      _builderIndex: index,
+    }));
 
-    // Send blocks to iframe immediately via postMessage
-    if (iframeRef.current?.contentWindow) {
-      // Try to get the iframe's current location for debugging
-      try {
-        const iframeLocation = iframeRef.current.contentWindow.location.href;
-        console.log('[LivePreview] Iframe current location:', iframeLocation);
-      } catch (e) {
-        console.log('[LivePreview] Cannot access iframe location (cross-origin)');
-      }
+    const payload = {
+      type: 'PREVIEW_UPDATE',
+      blocks: blocksWithPosition,
+      productId,
+      timestamp: Date.now(),
+      isDirty,
+      showPositionIndicators: true,
+    } as const;
 
-      console.log('[LivePreview] ✅ Sending postMessage with', blocks.length, 'blocks');
-      const resolvedTarget = resolveOrigin();
-      console.log('[LivePreview] Target origin:', resolvedTarget);
-
-      // Add position information to each block for preview display
-      const blocksWithPosition = blocks.map((block, index) => ({
-        ...block,
-        _builderPosition: index + 1, // 1-based position matching the builder UI
-        _builderIndex: index,        // 0-based index
-      }));
-
-      const payload = {
-        type: 'PREVIEW_UPDATE',
-        blocks: blocksWithPosition,
-        productId: productId,
-        timestamp: Date.now(),
-        isDirty,
-        showPositionIndicators: true, // Flag to enable position badges in preview
-      } as const;
-
-      try {
-        iframeRef.current.contentWindow.postMessage(
-          payload,
-          resolvedTarget // Target origin
-        );
-        console.log('[LivePreview] ✅ postMessage sent successfully to', resolvedTarget);
-      } catch (error) {
-        console.error('[LivePreview] ❌ postMessage failed for origin', resolvedTarget, error);
-        if (typeof window !== "undefined" && resolvedTarget !== window.location.origin) {
-          try {
-            const fallbackOrigin = window.location.origin;
-            console.log('[LivePreview] ♻️ Retrying postMessage with fallback origin:', fallbackOrigin);
-            iframeRef.current.contentWindow.postMessage(payload, fallbackOrigin);
-            console.log('[LivePreview] ✅ postMessage sent successfully to fallback origin', fallbackOrigin);
-          } catch (fallbackError) {
-            console.error('[LivePreview] ❌ postMessage fallback failed:', fallbackError);
-          }
-        }
-      }
-    } else {
-      console.warn('[LivePreview] ❌ Cannot send postMessage - iframe not ready');
-      console.warn('[LivePreview] - iframeRef.current:', !!iframeRef.current);
-      console.warn('[LivePreview] - contentWindow:', !!iframeRef.current?.contentWindow);
-    }
+    // Use '*' — both builder and storefront are trusted; the storefront
+    // validates the message type on its side.
+    iframeRef.current.contentWindow.postMessage(payload, '*');
   }, [blocks, productId, previewUrl, customerWebUrl, isDirty]);
 
   // REMOVED: Auto-save to preview cache - not needed with postMessage

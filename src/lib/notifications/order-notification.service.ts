@@ -11,6 +11,7 @@
 import { connectWithModels } from "@/lib/db/connection";
 import { sendNotification } from "./send.service";
 import { getCompanyInfo, companyInfoToRecord } from "./company-info";
+import { getStorefrontPrimaryDomain } from "@/lib/services/b2c-storefront.service";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/payment";
 import type { PaymentMethod } from "@/lib/constants/payment";
 import type { CompanyInfo } from "./company-info";
@@ -178,6 +179,10 @@ async function buildOrderVariables(
     order_number: orderNumber,
   };
 
+  // Resolve frontend URL: channel storefront primary domain → fallback to shop_url
+  const frontendUrl = await getStorefrontPrimaryDomain(tenantDb, order.channel)
+    || companyInfo.shop_url;
+
   switch (trigger) {
     case "order_confirmation": {
       const paymentMethod = order.payment?.payment_method
@@ -197,7 +202,7 @@ async function buildOrderVariables(
         shipping_cost: order.shipping_cost ? formatCurrency(order.shipping_cost, order.currency) : "",
         payment_method: formatPaymentMethod(paymentMethod),
         payment_terms: order.payment?.payment_terms || "",
-        order_url: buildOrderUrl(companyInfo.shop_url, order.order_id),
+        order_url: buildOrderUrl(frontendUrl, order.order_id),
         // Invoice / business fields
         invoice_company_name: order.invoice_data?.company_name || order.buyer?.company_name || "",
         invoice_vat_number: order.invoice_data?.vat_number || "",
@@ -241,7 +246,7 @@ async function buildOrderVariables(
       return {
         ...base,
         delivery_date: formatDate(order.delivered_at || new Date()),
-        review_url: companyInfo.shop_url || "",
+        review_url: frontendUrl || "",
       };
 
     case "order_cancelled":
@@ -348,7 +353,7 @@ function formatAddress(snapshot: IAddressSnapshot | undefined): string {
 function buildOrderUrl(shopUrl: string, orderId: string): string {
   if (!shopUrl) return "";
   const base = shopUrl.endsWith("/") ? shopUrl.slice(0, -1) : shopUrl;
-  return `${base}/account/orders/${orderId}`;
+  return `${base}/public/orders/${orderId}`;
 }
 
 function buildRefundInfo(order: IOrder): string {

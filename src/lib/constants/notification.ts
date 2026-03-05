@@ -131,6 +131,7 @@ export const NOTIFICATION_TRIGGERS = [
   "registration_request_admin",
   "registration_request_customer",
   "welcome",
+  "welcome_self_registration",
   "forgot_password",
   "reset_password",
   // Order templates (new)
@@ -164,6 +165,7 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   registration_request_admin: "Registration Request (Admin)",
   registration_request_customer: "Registration Confirmation",
   welcome: "Welcome Email",
+  welcome_self_registration: "Welcome (Self-Registration)",
   forgot_password: "Forgot Password",
   reset_password: "Password Reset Confirmation",
   order_confirmation: "Order Confirmation",

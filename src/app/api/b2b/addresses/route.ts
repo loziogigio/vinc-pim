@@ -3,13 +3,13 @@
  *
  * POST /api/b2b/addresses
  *
- * Proxies address requests to the VINC API.
- * Transforms VINC API B2BAddress format to UI-friendly AddressB2B format.
+ * Returns customer addresses from the Customer model (MongoDB).
+ * Transforms to UI-friendly AddressB2B format.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getVincApiForTenant, VincApiError } from "@/lib/vinc-api";
-import type { B2BAddress } from "@/lib/vinc-api/types";
+import { connectWithModels } from "@/lib/db/connection";
+import type { IAddress } from "@/lib/db/models/customer";
 
 interface AddressB2B {
   id: string;
@@ -58,30 +58,29 @@ interface AddressesRequest {
 }
 
 /**
- * Transform VINC API B2BAddress to AddressB2B format
- * Maps fields from PostgreSQL model to the UI model
+ * Transform Customer IAddress to AddressB2B format (backward-compatible)
  */
-function transformVincAddress(addr: B2BAddress): AddressB2B {
+function transformAddress(addr: IAddress): AddressB2B {
   const title = addr.city
-    ? `${addr.street || addr.label || ""} - ${addr.city}`
-    : addr.street || addr.label || addr.erp_address_id;
+    ? `${addr.street_address || addr.label || ""} - ${addr.city}`
+    : addr.street_address || addr.label || addr.external_code || addr.address_id;
 
   return {
-    id: addr.erp_address_id,
+    id: addr.external_code || addr.address_id,
     title,
-    isLegalSeat: false, // VINC API doesn't have legal seat info
+    isLegalSeat: addr.address_type === "billing",
     isDefault: addr.is_default || false,
     address: {
-      street_address: addr.street || "",
+      street_address: addr.street_address || "",
       city: addr.city || "",
       state: addr.province || "",
-      zip: addr.zip || "",
+      zip: addr.postal_code || "",
       country: addr.country || "",
     },
     contact: {
       phone: addr.phone || undefined,
       mobile: undefined,
-      email: addr.email || undefined,
+      email: undefined,
     },
     agent: {
       code: undefined,
@@ -90,7 +89,7 @@ function transformVincAddress(addr: B2BAddress): AddressB2B {
       phone: undefined,
     },
     paymentTerms: {
-      code: addr.payment_terms_code || undefined,
+      code: undefined,
       label: undefined,
     },
     port: {
@@ -122,7 +121,6 @@ export async function POST(req: NextRequest) {
 
   const { customer_id, tenant_id } = body;
 
-  // Validate required fields
   if (!customer_id) {
     return NextResponse.json(
       { success: false, message: "Customer ID is required" },
@@ -138,18 +136,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Get VINC API client for tenant
-    const vincApi = getVincApiForTenant(tenant_id);
+    const tenantDb = `vinc-${tenant_id}`;
+    const { Customer: CustomerModel } = await connectWithModels(tenantDb);
 
-    // Call VINC API to get addresses
-    const addresses = await vincApi.b2b.getAddresses(customer_id);
+    const customer = await CustomerModel.findOne(
+      { customer_id },
+      { addresses: 1 }
+    ).lean();
 
-    // Transform to AddressB2B format and sort default address first
-    const transformedAddresses = addresses
-      .filter((addr) => addr.is_active)
-      .map(transformVincAddress)
-      .sort((a, b) => {
-        // Default address first
+    if (!customer) {
+      return NextResponse.json({
+        success: true,
+        addresses: [],
+      });
+    }
+
+    const transformedAddresses = ((customer as any).addresses || [])
+      .map(transformAddress)
+      .sort((a: AddressB2B, b: AddressB2B) => {
         if (a.isDefault && !b.isDefault) return -1;
         if (!a.isDefault && b.isDefault) return 1;
         return 0;
@@ -161,16 +165,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[b2b/addresses] Error:", error);
-
-    if (error instanceof VincApiError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: error.detail || "Failed to fetch addresses",
-        },
-        { status: error.status }
-      );
-    }
 
     return NextResponse.json(
       { success: false, message: "An error occurred" },

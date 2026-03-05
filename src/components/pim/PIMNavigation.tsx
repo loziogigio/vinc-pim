@@ -17,7 +17,8 @@ import {
   Tags as TagsIcon,
   Menu,
   Languages,
-  BookA
+  BookA,
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -36,6 +37,7 @@ const navItems = [
   { label: "AI Enhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, description: "Generate content" },
   { label: "Import", href: "/b2b/pim/import", icon: Upload, description: "CSV/API for products" },
   { label: "Jobs", href: "/b2b/pim/jobs", icon: FileText, description: "AI / Import / Sync tasks" },
+  { label: "Batch Sync", href: "/b2b/pim/batch-sync", icon: RefreshCw, description: "Solr cleanup & resync" },
   { label: "Sources", href: "/b2b/pim/sources", icon: Settings, description: "Data origins" }
 ];
 

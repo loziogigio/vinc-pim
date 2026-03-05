@@ -5,11 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Globe, Store, Plus, ExternalLink } from "lucide-react";
 
+interface StorefrontDomain {
+  domain: string;
+  is_primary?: boolean;
+}
+
 interface Storefront {
   _id: string;
   name: string;
   slug: string;
-  domains: string[];
+  domains: StorefrontDomain[];
   status: "active" | "inactive";
   created_at: string;
 }
@@ -103,11 +108,11 @@ export default function B2CDashboardPage() {
                 <div className="mt-3 flex flex-wrap gap-1">
                   {sf.domains.map((d) => (
                     <span
-                      key={d}
+                      key={d.domain}
                       className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs text-[#5e5873]"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      {d}
+                      {d.domain}
                     </span>
                   ))}
                 </div>

@@ -518,6 +518,7 @@ const BASE_FIELDS = [
 
   // Inventory & Pricing
   { name: "price", type: "pdouble", stored: true, indexed: true },
+  { name: "price_sort", type: "pdouble", stored: true, indexed: true, docValues: true },
   { name: "quantity", type: "pint", stored: true, indexed: true },
   { name: "sold", type: "pint", stored: true, indexed: true },
   { name: "unit", type: "string", stored: true, indexed: true },

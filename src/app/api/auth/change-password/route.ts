@@ -1,38 +1,52 @@
 /**
- * SSO Change Password API
+ * Change Password API
  *
  * POST /api/auth/change-password
  *
- * Changes the password for an authenticated user.
- * Validates current password by logging in via VINC API, then sets the new password.
- * Does NOT require vinc_access_token from client - handles authentication internally.
+ * Changes the password for an authenticated portal user.
+ * Authenticates via portal-user JWT (Bearer token).
+ * Validates current password via bcrypt, then sets the new password hash.
  * Sends a confirmation email after successful change.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { validateAccessToken } from "@/lib/sso/tokens";
-import { validateSession } from "@/lib/sso/session";
-import { getVincApiForTenant, VincApiError } from "@/lib/vinc-api";
-import { sendResetPasswordEmail } from "@/lib/email/b2b-emails";
+import bcrypt from "bcryptjs";
+import { verifyPortalUserToken } from "@/lib/auth/portal-user-token";
+import { connectWithModels } from "@/lib/db/connection";
+import { sendPasswordResetConfirmation } from "@/lib/notifications/send.service";
 
 interface ChangePasswordRequest {
-  // Password fields
-  currentPassword: string;
-  password: string;
-  newPassword?: string; // Alternative field name
+  currentPassword?: string;
+  password?: string;
+  newPassword?: string;
+  current_password?: string;
+  new_password?: string;
 }
 
 export async function POST(req: NextRequest) {
   // Get auth token from header
   const authHeader = req.headers.get("authorization");
-  let accessToken: string | undefined;
+  const accessToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : undefined;
 
-  if (authHeader?.startsWith("Bearer ")) {
-    accessToken = authHeader.slice(7);
+  if (!accessToken) {
+    return NextResponse.json(
+      { success: false, message: "Authentication required" },
+      { status: 401 }
+    );
+  }
+
+  // Validate portal-user token
+  const payload = await verifyPortalUserToken(accessToken);
+  if (!payload) {
+    return NextResponse.json(
+      { success: false, message: "Invalid or expired token" },
+      { status: 401 }
+    );
   }
 
   let body: ChangePasswordRequest;
-
   try {
     body = await req.json();
   } catch {
@@ -42,11 +56,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { currentPassword, password, newPassword } = body;
-  const newPass = password || newPassword;
+  const currentPass = body.currentPassword || body.current_password;
+  const newPass = body.password || body.newPassword || body.new_password;
 
-  // Validate required fields
-  if (!currentPassword) {
+  if (!currentPass) {
     return NextResponse.json(
       { success: false, message: "Current password is required" },
       { status: 400 }
@@ -60,88 +73,60 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!accessToken) {
+  if (newPass.length < 4) {
     return NextResponse.json(
-      { success: false, message: "Authentication required" },
-      { status: 401 }
+      { success: false, message: "La nuova password deve essere di almeno 4 caratteri" },
+      { status: 400 }
     );
   }
 
   try {
-    // Validate the SSO token
-    const payload = await validateAccessToken(accessToken);
+    const tenantDb = `vinc-${payload.tenantId}`;
+    const { PortalUser: PortalUserModel } = await connectWithModels(tenantDb);
 
-    if (!payload) {
+    const user = await PortalUserModel.findOne({
+      portal_user_id: payload.portalUserId,
+      tenant_id: payload.tenantId,
+      is_active: true,
+    });
+
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: "Invalid or expired token" },
+        { success: false, message: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Verify current password
+    const passwordValid = await bcrypt.compare(currentPass, user.password_hash);
+    if (!passwordValid) {
+      return NextResponse.json(
+        { success: false, message: "La password attuale non è corretta" },
         { status: 401 }
       );
     }
 
-    // Validate session is still active
-    const session = await validateSession(payload.session_id);
+    // Hash and set new password
+    const newHash = await bcrypt.hash(newPass, 10);
+    await PortalUserModel.updateOne(
+      { _id: user._id },
+      { $set: { password_hash: newHash } }
+    );
 
-    if (!session) {
-      return NextResponse.json(
-        { success: false, message: "Session expired or revoked" },
-        { status: 401 }
-      );
-    }
-
-    // Get VINC API client for tenant
-    const vincApi = getVincApiForTenant(payload.tenant_id);
-
-    // Step 1: Verify current password by logging in
-    try {
-      await vincApi.auth.login({
-        email: payload.email,
-        password: currentPassword,
-      });
-    } catch (error) {
-      if (error instanceof VincApiError && error.status === 401) {
-        return NextResponse.json(
-          { success: false, message: "La password attuale non è corretta" },
-          { status: 401 }
-        );
+    // Send confirmation email (non-blocking)
+    if (user.email) {
+      try {
+        await sendPasswordResetConfirmation(tenantDb, user.email, {
+          customer_name: user.email.split("@")[0],
+          reset_date: new Intl.DateTimeFormat("it-IT", {
+            day: "2-digit", month: "2-digit", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
+          }).format(new Date()),
+          channel: user.channel || undefined,
+        });
+      } catch (emailError) {
+        console.error("[change-password] Email send failed:", emailError);
       }
-      throw error;
-    }
-
-    // Step 2: Set new password using admin function
-    try {
-      await vincApi.auth.setPasswordByEmail(payload.email, newPass);
-    } catch (error) {
-      if (error instanceof VincApiError) {
-        if (error.status === 422) {
-          const message = error.detail?.includes("at least") || error.detail?.includes("min_length")
-            ? "La nuova password deve essere di almeno 4 caratteri"
-            : "Dati non validi. Controlla i campi inseriti";
-          return NextResponse.json(
-            { success: false, message },
-            { status: 400 }
-          );
-        }
-        throw error;
-      }
-      throw error;
-    }
-
-    // Send confirmation email
-    const tenantDb = `vinc-${payload.tenant_id}`;
-    try {
-      await sendResetPasswordEmail(
-        {
-          email: payload.email,
-          ragioneSociale: session.company_name,
-          contactName: payload.email?.split("@")[0],
-        },
-        payload.email,
-        undefined,
-        { tenantDb }
-      );
-    } catch (emailError) {
-      console.error("[change-password] Email send failed:", emailError);
-      // Don't fail the request if email fails
     }
 
     return NextResponse.json({
@@ -150,14 +135,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[change-password] Error:", error);
-
-    if (error instanceof VincApiError) {
-      return NextResponse.json(
-        { success: false, message: error.detail || "Cambio password fallito" },
-        { status: error.status === 401 ? 401 : 400 }
-      );
-    }
-
     return NextResponse.json(
       { success: false, message: "Si è verificato un errore" },
       { status: 500 }

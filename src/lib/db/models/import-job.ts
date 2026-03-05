@@ -11,7 +11,7 @@ export interface IImportJob extends Document {
   job_id: string; // BullMQ job ID
   job_type: "import" | "bulk_update" | "customer_import" | "portal_user_import"; // Type of job
 
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
 
   // File info
   file_name?: string;
@@ -63,7 +63,7 @@ const ImportJobSchema = new Schema<IImportJob>(
 
     status: {
       type: String,
-      enum: ["pending", "processing", "completed", "failed"],
+      enum: ["pending", "processing", "completed", "failed", "cancelled"],
       default: "pending",
       index: true,
     },
