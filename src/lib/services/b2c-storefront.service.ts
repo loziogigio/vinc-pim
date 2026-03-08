@@ -10,13 +10,16 @@ import {
   initB2CHomeTemplate,
   deleteB2CHomeTemplates,
 } from "@/lib/db/b2c-home-templates";
+import { regenerateB2CConfigDebounced } from "@/lib/services/traefik-config.service";
 import type {
   IB2CStorefront,
   IB2CStorefrontBranding,
   IB2CStorefrontHeader,
   IB2CStorefrontFooter,
+  IB2CStorefrontMetaTags,
   IStorefrontDomain,
 } from "@/lib/db/models/b2c-storefront";
+import type { HeaderConfig } from "@/lib/types/home-settings";
 
 const logPrefix = "[b2c-storefront]";
 
@@ -46,7 +49,11 @@ export interface UpdateStorefrontInput {
   status?: "active" | "inactive";
   branding?: IB2CStorefrontBranding;
   header?: IB2CStorefrontHeader;
+  header_config?: HeaderConfig;
+  header_config_draft?: HeaderConfig;
   footer?: IB2CStorefrontFooter;
+  footer_draft?: IB2CStorefrontFooter;
+  meta_tags?: IB2CStorefrontMetaTags;
   settings?: {
     default_language?: string;
     theme?: string;
@@ -155,6 +162,11 @@ export async function createStorefront(
     `${logPrefix} Created storefront "${input.name}" (slug: ${input.slug})`
   );
 
+  // Regenerate Traefik B2C config if storefront has primary domains
+  if (domains.some((d) => d.is_primary)) {
+    regenerateB2CConfigDebounced();
+  }
+
   return storefront.toObject();
 }
 
@@ -217,6 +229,18 @@ export async function updateStorefront(
   if (input.footer !== undefined) {
     storefront.footer = { ...storefront.footer, ...input.footer };
   }
+  if (input.header_config !== undefined) {
+    (storefront as any).header_config = input.header_config;
+  }
+  if (input.header_config_draft !== undefined) {
+    (storefront as any).header_config_draft = input.header_config_draft;
+  }
+  if (input.footer_draft !== undefined) {
+    (storefront as any).footer_draft = input.footer_draft;
+  }
+  if (input.meta_tags !== undefined) {
+    (storefront as any).meta_tags = { ...(storefront as any).meta_tags, ...input.meta_tags };
+  }
   if (input.settings !== undefined) {
     storefront.settings = { ...storefront.settings, ...input.settings };
   }
@@ -224,6 +248,12 @@ export async function updateStorefront(
   await storefront.save();
 
   console.log(`${logPrefix} Updated storefront "${slug}"`);
+
+  // Regenerate Traefik B2C config when domains or status change
+  if (input.domains !== undefined || input.status !== undefined) {
+    regenerateB2CConfigDebounced();
+  }
+
   return storefront.toObject();
 }
 
@@ -252,6 +282,9 @@ export async function deleteStorefront(
   await B2CStorefront.deleteOne({ slug });
 
   console.log(`${logPrefix} Deleted storefront "${slug}" and all its data`);
+
+  // Regenerate Traefik B2C config to remove deleted storefront's domains
+  regenerateB2CConfigDebounced();
 }
 
 /**

@@ -93,8 +93,10 @@ export function ChannelSelect({
           required={required}
           className={selectClass}
         >
-          {channels.length === 0 && (
+          {channels.length === 0 ? (
             <option value="">Nessun canale disponibile</option>
+          ) : (
+            !value && <option value="">-- Seleziona canale --</option>
           )}
           {channels.map((ch) => (
             <option key={ch.code} value={ch.code}>

@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     const { Tag: TagModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { name, slug, description, color, is_active, display_order } = body;
+    const { name, slug, description, color, image, mobile_image, is_active, display_order } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -116,6 +116,8 @@ export async function POST(req: NextRequest) {
       slug: finalSlug,
       description: description?.trim() || undefined,
       color: color?.trim() || undefined,
+      image: image || undefined,
+      mobile_image: mobile_image || undefined,
       is_active: is_active !== undefined ? Boolean(is_active) : true,
       display_order: display_order || 0,
       product_count: 0,

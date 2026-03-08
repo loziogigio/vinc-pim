@@ -72,8 +72,8 @@ export async function processPayment(
     return { success: false, error: `Provider ${providerName} not configured for tenant` };
   }
 
-  // 4. Calculate commission
-  const commissionRate = await getTenantCommissionRate(tenantDb, tenantId);
+  // 4. Calculate commission (per-provider rate if configured, otherwise generic)
+  const commissionRate = await getTenantCommissionRate(tenantDb, tenantId, providerName);
   const commission = calculateCommission(params.amount, commissionRate, params.currency);
 
   // 5. Create transaction record

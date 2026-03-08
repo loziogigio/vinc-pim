@@ -14,9 +14,12 @@ import {
   Filter,
   ExternalLink,
   RefreshCw,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
+import { FullScreenModal } from "@/components/shared/FullScreenModal";
+import { ImageUpload } from "@/components/shared/ImageUpload";
 
 type ProductTypeFeature = {
   feature_id: string;
@@ -31,6 +34,8 @@ type ProductType = {
   name: MultiLangString;
   slug: string;
   description?: MultiLangString;
+  image?: { url: string; alt_text?: string; cdn_key?: string };
+  mobile_image?: { url: string; alt_text?: string; cdn_key?: string };
   features?: ProductTypeFeature[];
   display_order: number;
   is_active: boolean;
@@ -46,6 +51,59 @@ export default function ProductTypesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
   const [syncing, setSyncing] = useState(false);
+
+  // Image modal state
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [editingImagePT, setEditingImagePT] = useState<ProductType | null>(null);
+  const [imageFormData, setImageFormData] = useState({
+    image_url: "",
+    image_alt: "",
+    mobile_image_url: "",
+    mobile_image_alt: "",
+  });
+
+  function openImageModal(pt: ProductType) {
+    setEditingImagePT(pt);
+    setImageFormData({
+      image_url: pt.image?.url || "",
+      image_alt: pt.image?.alt_text || "",
+      mobile_image_url: pt.mobile_image?.url || "",
+      mobile_image_alt: pt.mobile_image?.alt_text || "",
+    });
+    setShowImageModal(true);
+  }
+
+  async function handleSaveImages() {
+    if (!editingImagePT) return;
+    try {
+      const payload = {
+        image: imageFormData.image_url
+          ? { url: imageFormData.image_url, alt_text: imageFormData.image_alt || undefined }
+          : undefined,
+        mobile_image: imageFormData.mobile_image_url
+          ? { url: imageFormData.mobile_image_url, alt_text: imageFormData.mobile_image_alt || undefined }
+          : undefined,
+      };
+
+      const res = await fetch(`/api/b2b/pim/product-types/${editingImagePT.product_type_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        toast.success("Images updated successfully");
+        setShowImageModal(false);
+        fetchProductTypes();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to update images");
+      }
+    } catch (error) {
+      console.error("Error updating images:", error);
+      toast.error("Failed to update images");
+    }
+  }
 
   useEffect(() => {
     fetchProductTypes();
@@ -299,6 +357,14 @@ export default function ProductTypesPage() {
                     </Link>
                     <button
                       type="button"
+                      onClick={() => openImageModal(productType)}
+                      className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Images
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => router.push(`/b2b/pim/product-types/${productType.product_type_id}/edit`)}
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                     >
@@ -320,6 +386,71 @@ export default function ProductTypesPage() {
           )}
         </div>
       </div>
+
+      {/* Image Modal */}
+      <FullScreenModal
+        open={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        title={editingImagePT ? `Images — ${getLocalizedString(editingImagePT.name)}` : "Images"}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowImageModal(false)}
+              className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveImages}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm"
+            >
+              Save Images
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          {/* Desktop Image */}
+          <ImageUpload
+            label="Product Type Image"
+            value={imageFormData.image_url}
+            onChange={(url) => setImageFormData((prev) => ({ ...prev, image_url: url }))}
+          />
+          {imageFormData.image_url && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+              <input
+                type="text"
+                value={imageFormData.image_alt}
+                onChange={(e) => setImageFormData((prev) => ({ ...prev, image_alt: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="Descriptive alt text..."
+              />
+            </div>
+          )}
+
+          {/* Mobile Image */}
+          <ImageUpload
+            label="Mobile Product Type Image"
+            value={imageFormData.mobile_image_url}
+            onChange={(url) => setImageFormData((prev) => ({ ...prev, mobile_image_url: url }))}
+          />
+          {imageFormData.mobile_image_url && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+              <input
+                type="text"
+                value={imageFormData.mobile_image_alt}
+                onChange={(e) => setImageFormData((prev) => ({ ...prev, mobile_image_alt: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="Descriptive alt text..."
+              />
+            </div>
+          )}
+        </div>
+      </FullScreenModal>
     </>
   );
 }

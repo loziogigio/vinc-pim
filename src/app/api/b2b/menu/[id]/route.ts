@@ -83,6 +83,7 @@ export async function PATCH(
 
     // Allow updating these fields
     const allowedFields = [
+      "channel",
       "label",
       "url",
       "icon",

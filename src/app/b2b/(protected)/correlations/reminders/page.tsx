@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import Link from "next/link";
 import { BellRing, Bell, BellOff, Clock } from "lucide-react";
 import { REMINDER_STATUS_LABELS } from "@/lib/constants/reminder";
 
@@ -28,11 +29,11 @@ export default function RemindersDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("/api/b2b/reminders/user?limit=1");
+        const res = await fetch("/api/b2b/reminders/dashboard");
         if (res.ok) {
-          // We'll derive stats from summary once available
-          // For now, initialize with zeros
-          setStats({ active: 0, notified: 0, expired: 0, cancelled: 0 });
+          const json = await res.json();
+          setStats(json.data.stats);
+          setMostWanted(json.data.most_wanted);
         }
       } catch (error) {
         console.error("Reminders dashboard fetch error:", error);
@@ -155,7 +156,11 @@ export default function RemindersDashboard() {
               <tbody>
                 {mostWanted.map((p) => (
                   <tr key={p.sku} className="border-t border-[#ebe9f1]">
-                    <td className="py-2 font-medium text-[#5e5873]">{p.sku}</td>
+                    <td className="py-2 font-medium">
+                        <Link href={`/b2b/pim/products?sku=${encodeURIComponent(p.sku)}`} className="text-[#009688] hover:underline">
+                          {p.sku}
+                        </Link>
+                      </td>
                     <td className="py-2 text-right text-[#6e6b7b]">{p.active_count}</td>
                     <td className="py-2 text-right text-[#b9b9c3]">{p.total_count}</td>
                   </tr>

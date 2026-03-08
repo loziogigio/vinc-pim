@@ -57,6 +57,15 @@ export type Category = {
   icon?: string;
 };
 
+/**
+ * Per-channel category assignment.
+ * A product can belong to different category hierarchies per sales channel.
+ */
+export type ChannelCategory = {
+  channel_code: string;
+  category: Category;
+};
+
 export type Tag = {
   id: string;
   name: string;
@@ -388,6 +397,9 @@ export type PIMProductData = {
 
   // Sales Channels
   channels?: string[];
+
+  // Per-channel category assignments (product can have different categories per channel)
+  channel_categories?: ChannelCategory[];
 
   // Product Data
   product: ProductData;

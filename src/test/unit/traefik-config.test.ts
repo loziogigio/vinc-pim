@@ -98,4 +98,46 @@ describe("unit: Traefik Config - buildRouterConfig", () => {
       "Host(`localhost:3000`) || Host(`dev.local:8080`)"
     );
   });
+
+  // B2C-specific tests
+  it("should generate B2C router config with correct name and priority", () => {
+    const config = buildRouterConfig(
+      ["shop.example.com", "store.brand.it"],
+      "vinc-b2c-storefronts",
+      "vinc-b2c@file",
+      80
+    );
+
+    expect(config).toHaveProperty("http.routers.vinc-b2c-storefronts");
+    const router = (config as Record<string, Record<string, Record<string, Record<string, unknown>>>>)
+      .http.routers["vinc-b2c-storefronts"];
+
+    expect(router.rule).toBe(
+      "Host(`shop.example.com`) || Host(`store.brand.it`)"
+    );
+    expect(router.service).toBe("vinc-b2c@file");
+    expect(router.priority).toBe(80);
+    expect(router.tls).toEqual({ certResolver: "letsencrypt" });
+    expect(router.middlewares).toEqual(["chain-public@file"]);
+  });
+
+  it("should keep B2B and B2C configs independent", () => {
+    const b2bConfig = buildRouterConfig(
+      ["b2b.example.com"],
+      "vinc-b2b-tenants",
+      "vinc-b2b@file",
+      90
+    );
+    const b2cConfig = buildRouterConfig(
+      ["shop.example.com"],
+      "vinc-b2c-storefronts",
+      "vinc-b2c@file",
+      80
+    );
+
+    expect(b2bConfig).toHaveProperty("http.routers.vinc-b2b-tenants");
+    expect(b2bConfig).not.toHaveProperty("http.routers.vinc-b2c-storefronts");
+    expect(b2cConfig).toHaveProperty("http.routers.vinc-b2c-storefronts");
+    expect(b2cConfig).not.toHaveProperty("http.routers.vinc-b2b-tenants");
+  });
 });

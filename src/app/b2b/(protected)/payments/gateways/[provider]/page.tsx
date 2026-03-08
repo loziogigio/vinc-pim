@@ -20,6 +20,7 @@ import {
 import type { PaymentProvider } from "@/lib/constants/payment";
 import { PROVIDER_FIELDS } from "@/lib/constants/provider-fields";
 import type { ProviderFieldDef } from "@/lib/constants/provider-fields";
+import StripeConnectOnboarding from "@/components/payments/StripeConnectOnboarding";
 
 export default function ProviderConfigPage() {
   const { provider } = useParams<{ provider: string }>();
@@ -195,6 +196,9 @@ export default function ProviderConfigPage() {
         </div>
       )}
 
+      {/* Stripe Connect Onboarding */}
+      {provider === "stripe" && <StripeConnectOnboarding />}
+
       {/* Form */}
       <div className="bg-white rounded-lg border border-[#ebe9f1]">
         <div className="p-5 space-y-5">
@@ -235,7 +239,7 @@ function FieldRenderer({
   provider: string;
 }) {
   const inputClass =
-    "w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20";
+    `w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20${field.readOnly ? " bg-gray-50 text-gray-500 cursor-not-allowed" : ""}`;
 
   switch (field.type) {
     case "text":
@@ -248,8 +252,9 @@ function FieldRenderer({
           <input
             type="text"
             value={(value as string) ?? ""}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => !field.readOnly && onChange(e.target.value)}
             placeholder={field.placeholder}
+            disabled={field.readOnly}
             className={inputClass}
           />
         </div>
@@ -289,10 +294,11 @@ function FieldRenderer({
           </label>
           <button
             type="button"
-            onClick={() => onChange(!value)}
+            onClick={() => !field.readOnly && onChange(!value)}
+            disabled={field.readOnly}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
               value ? "bg-[#009688]" : "bg-gray-200"
-            }`}
+            }${field.readOnly ? " opacity-60 cursor-not-allowed" : ""}`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -311,7 +317,8 @@ function FieldRenderer({
           </label>
           <select
             value={(value as string) ?? ""}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => !field.readOnly && onChange(e.target.value)}
+            disabled={field.readOnly}
             className={inputClass}
           >
             <option value="">— Seleziona —</option>

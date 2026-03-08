@@ -15,6 +15,18 @@ export interface IProductType extends Document {
   slug: string;
   description?: MultiLangString;
 
+  // Images
+  image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+  mobile_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+
   // Technical Specifications (references to TechnicalSpecification model)
   technical_specifications: IProductTypeTechnicalSpecification[];
 
@@ -76,6 +88,16 @@ const ProductTypeSchema = new Schema<IProductType>(
     },
     description: {
       type: Schema.Types.Mixed, // Multilingual: { it: "...", en: "..." }
+    },
+    image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
+    },
+    mobile_image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
     },
     technical_specifications: {
       type: [ProductTypeTechnicalSpecificationSchema],

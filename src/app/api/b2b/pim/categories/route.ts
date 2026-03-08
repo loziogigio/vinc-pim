@@ -1,54 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
-import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
-
-/**
- * Authenticate request via session or API key
- * Returns tenant-specific models from connection pool
- */
-async function authenticateRequest(req: NextRequest): Promise<{
-  authenticated: boolean;
-  tenantId?: string;
-  tenantDb?: string;
-  models?: Awaited<ReturnType<typeof connectWithModels>>;
-  error?: string;
-  statusCode?: number;
-}> {
-  const authMethod = req.headers.get("x-auth-method");
-  let tenantId: string;
-  let tenantDb: string;
-
-  if (authMethod === "api-key") {
-    const apiKeyResult = await verifyAPIKeyFromRequest(req, "categories");
-    if (!apiKeyResult.authenticated) {
-      return {
-        authenticated: false,
-        error: apiKeyResult.error,
-        statusCode: apiKeyResult.statusCode,
-      };
-    }
-    tenantId = apiKeyResult.tenantId!;
-    tenantDb = apiKeyResult.tenantDb!;
-  } else {
-    const session = await getB2BSession();
-    if (!session || !session.isLoggedIn || !session.tenantId) {
-      return { authenticated: false, error: "Unauthorized", statusCode: 401 };
-    }
-    tenantId = session.tenantId;
-    tenantDb = `vinc-${session.tenantId}`;
-  }
-
-  const models = await connectWithModels(tenantDb);
-
-  return {
-    authenticated: true,
-    tenantId,
-    tenantDb,
-    models,
-  };
-}
+import { invalidateCategoryCache } from "@/lib/services/category.service";
 
 /**
  * GET /api/b2b/pim/categories
@@ -56,19 +10,16 @@ async function authenticateRequest(req: NextRequest): Promise<{
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await authenticateRequest(req);
-    if (!auth.authenticated || !auth.models) {
-      return NextResponse.json(
-        { error: auth.error },
-        { status: auth.statusCode || 401 }
-      );
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const { Category: CategoryModel, PIMProduct: PIMProductModel } = auth.models;
+    const { tenantDb } = auth;
+    const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const searchParams = req.nextUrl.searchParams;
     const parentId = searchParams.get("parent_id");
     const includeInactive = searchParams.get("include_inactive") === "true";
+    const channelFilter = searchParams.get("channel");
 
     // Build query - no wholesaler_id, database provides isolation
     const query: any = {};
@@ -89,6 +40,26 @@ export async function GET(req: NextRequest) {
       query.is_active = true;
     }
 
+    // Channel filter: find roots with matching channel, then include their descendants
+    if (channelFilter) {
+      const rootsWithChannel = await CategoryModel.find({
+        channel_code: channelFilter,
+        $or: [{ parent_id: null }, { parent_id: { $exists: false } }],
+      }).select("category_id").lean();
+
+      const rootIds = rootsWithChannel.map((r: any) => r.category_id);
+
+      if (rootIds.length === 0) {
+        return NextResponse.json({ categories: [] });
+      }
+
+      // Match root categories OR children whose path includes a matching root
+      query.$or = [
+        { category_id: { $in: rootIds } },
+        { path: { $in: rootIds } },
+      ];
+    }
+
     const categories = await CategoryModel.find(query)
       .sort({ display_order: 1, name: 1 })
       .lean();
@@ -100,12 +71,12 @@ export async function GET(req: NextRequest) {
         $match: {
           // No wholesaler_id - database provides isolation
           isCurrent: true,
-          "category.id": { $in: categoryIds },
+          "category.category_id": { $in: categoryIds },
         },
       },
       {
         $group: {
-          _id: "$category.id",
+          _id: "$category.category_id",
           count: { $sum: 1 },
         },
       },
@@ -134,22 +105,26 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = await authenticateRequest(req);
-    if (!auth.authenticated || !auth.models) {
-      return NextResponse.json(
-        { error: auth.error },
-        { status: auth.statusCode || 401 }
-      );
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const { Category: CategoryModel } = auth.models;
+    const { tenantDb } = auth;
+    const { Category: CategoryModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { name, slug, description, parent_id, hero_image, seo, display_order } = body;
+    const { name, slug, description, parent_id, hero_image, mobile_hero_image, seo, display_order, channel_code } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
         { error: "Name and slug are required" },
+        { status: 400 }
+      );
+    }
+
+    // Root categories must have a channel_code
+    if (!parent_id && !channel_code) {
+      return NextResponse.json(
+        { error: "Root categories must be assigned to a sales channel" },
         { status: 400 }
       );
     }
@@ -189,7 +164,6 @@ export async function POST(req: NextRequest) {
 
     const category = await CategoryModel.create({
       category_id: nanoid(12),
-      // No wholesaler_id - database provides isolation
       name,
       slug,
       description,
@@ -197,11 +171,17 @@ export async function POST(req: NextRequest) {
       level,
       path,
       hero_image,
+      mobile_hero_image,
       seo: seo || {},
       display_order: display_order || 0,
       is_active: true,
       product_count: 0,
+      // Only set channel_code on root categories
+      ...((!parent_id && channel_code) ? { channel_code } : {}),
     });
+
+    // Invalidate B2C category cache
+    invalidateCategoryCache(tenantDb).catch(() => {});
 
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {

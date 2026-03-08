@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Key, RefreshCw, Shield } from "lucide-react";
+import { Copy, Check, Key, RefreshCw, Shield, Globe } from "lucide-react";
 import Link from "next/link";
 
 interface Tenant {
@@ -158,6 +158,13 @@ export default function SuperAdminDashboardPage() {
               >
                 <Shield className="h-4 w-4" />
                 OAuth Clients
+              </Link>
+              <Link
+                href="/super-admin/domains"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+              >
+                <Globe className="h-4 w-4" />
+                Domains
               </Link>
             </nav>
           </div>

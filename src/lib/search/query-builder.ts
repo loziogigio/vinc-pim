@@ -28,10 +28,16 @@ const MULTILINGUAL_FILTER_FIELDS: Record<string, true> = {
   product_type_slug: true,
 };
 
+/** Filter fields that are multilingual but use _{lang} suffix (no _text_) */
+const MULTILINGUAL_RAW_FILTER_FIELDS: Record<string, true> = {
+  category_slug_path: true,
+};
+
 /** Multilingual filter fields that require exact phrase matching (quoted) */
 const PHRASE_MATCH_FILTER_FIELDS: Record<string, true> = {
   slug: true,
   category_slug: true,
+  category_slug_path: true,
   product_type_slug: true,
 };
 
@@ -64,7 +70,7 @@ export function buildSearchQuery(request: SearchRequest): SolrJsonQuery {
 
   // Build facets if requested
   const facet = request.facet_fields
-    ? buildFacetQuery(request.facet_fields)
+    ? buildFacetQuery(request.facet_fields, undefined, undefined, undefined, lang)
     : undefined;
 
   // Build grouping params
@@ -155,7 +161,8 @@ export function buildFacetOnlyQuery(request: FacetRequest): SolrJsonQuery {
     request.facet_fields,
     request.facet_limit,
     request.facet_mincount,
-    request.facet_sort
+    request.facet_sort,
+    lang
   );
 
   return {
@@ -412,6 +419,11 @@ function buildFilterQueries(
     fq.push('include_faceting:true');
   }
 
+  // Channel filter — scope results to a specific sales channel
+  if (request?.channel) {
+    fq.push(`channels:${request.channel}`);
+  }
+
   if (!filters) {
     return fq;
   }
@@ -429,11 +441,16 @@ function buildFilterQueries(
     const lang = request?.lang || 'it';
     const solrField = MULTILINGUAL_FILTER_FIELDS[key]
       ? `${key}_text_${lang}`
-      : getFilterField(key);
+      : MULTILINGUAL_RAW_FILTER_FIELDS[key]
+        ? `${key}_${lang}`
+        : getFilterField(key);
 
     // Slug-like fields need exact phrase matching (quoted) on tokenized text fields
+    // Don't escape hyphens/special chars — the text analyzer tokenizes on them,
+    // so the phrase query must contain the raw words for token matching
     if (PHRASE_MATCH_FILTER_FIELDS[key] && typeof value === 'string') {
-      fq.push(`${solrField}:"${escapeQueryChars(value)}"`);
+      const phraseValue = value.replace(/"/g, '\\"');
+      fq.push(`${solrField}:"${phraseValue}"`);
       continue;
     }
     const filterClause = buildFilterClause(solrField, value);
@@ -581,7 +598,8 @@ function buildFacetQuery(
   facetFields: string[],
   limit?: number,
   mincount?: number,
-  sort?: 'count' | 'index'
+  sort?: 'count' | 'index',
+  lang?: string
 ): SolrJsonFacet {
   const config = getSolrConfig();
   const facet: SolrJsonFacet = {};
@@ -595,7 +613,10 @@ function buildFacetQuery(
       facet[field] = buildRangeFacet(field, fieldConfig.ranges);
     } else {
       // Terms facet (works for flat, boolean, hierarchical, and dynamic fields)
-      const solrField = getFilterField(field);
+      // Resolve multilingual fields that use _{lang} suffix (no _text_)
+      const solrField = MULTILINGUAL_RAW_FILTER_FIELDS[field] && lang
+        ? `${field}_${lang}`
+        : getFilterField(field);
       const facetDef: SolrJsonFacetField = {
         type: 'terms',
         field: solrField,

@@ -136,6 +136,7 @@ export default function BatchSyncPage() {
   const [resyncEnabled, setResyncEnabled] = useState(true);
   const [resyncMinScore, setResyncMinScore] = useState(70);
   const [recalcScores, setRecalcScores] = useState(true);
+  const [rebuildEmbeddings, setRebuildEmbeddings] = useState(false);
 
   // UI state
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -170,6 +171,7 @@ export default function BatchSyncPage() {
       resync: resyncEnabled,
       resync_min_score: resyncMinScore,
       recalculate_scores: recalcScores,
+      rebuild_embeddings: rebuildEmbeddings,
       batch_size: 100,
       dry_run: dryRun,
     };
@@ -478,6 +480,15 @@ export default function BatchSyncPage() {
                     />
                     Recalculate scores before syncing
                   </label>
+                  <label className="flex items-center gap-2 text-sm text-[#5e5873] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rebuildEmbeddings}
+                      onChange={(e) => setRebuildEmbeddings(e.target.checked)}
+                      className="accent-[#009688]"
+                    />
+                    Rebuild embedded data (categories, brands)
+                  </label>
                 </div>
               )}
             </div>
@@ -560,6 +571,9 @@ export default function BatchSyncPage() {
                     {previewResult.resync.score_updates > 0 && (
                       <span> ({previewResult.resync.score_updates} scores changed)</span>
                     )}
+                    {(previewResult.resync as any).embedding_updates > 0 && (
+                      <span> ({(previewResult.resync as any).embedding_updates} embeddings to rebuild)</span>
+                    )}
                   </div>
                   {previewResult.resync.eligible_products &&
                     previewResult.resync.eligible_products.length > 0 && (
@@ -622,6 +636,9 @@ export default function BatchSyncPage() {
                   </div>
                   {executeResult.resync.score_updates > 0 && (
                     <div>{executeResult.resync.score_updates} scores updated in DB</div>
+                  )}
+                  {(executeResult.resync as any).embedding_updates > 0 && (
+                    <div>{(executeResult.resync as any).embedding_updates} embeddings rebuilt in DB</div>
                   )}
                   {executeResult.resync.errors.length > 0 && (
                     <div className="mt-2 text-red-700 text-xs">

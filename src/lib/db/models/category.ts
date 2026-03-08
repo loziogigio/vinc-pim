@@ -17,6 +17,13 @@ export interface ICategory extends Document {
     cdn_key?: string;
   };
 
+  // Mobile Hero Image
+  mobile_hero_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+
   // SEO Fields
   seo: {
     title?: string;
@@ -26,6 +33,9 @@ export interface ICategory extends Document {
 
   // Display Order
   display_order: number;
+
+  // Sales channel (only set on root categories, children inherit)
+  channel_code?: string;
 
   // Status
   is_active: boolean;
@@ -80,6 +90,11 @@ const CategorySchema = new Schema<ICategory>(
       alt_text: String,
       cdn_key: String,
     },
+    mobile_hero_image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
+    },
     seo: {
       title: String,
       description: String,
@@ -88,6 +103,10 @@ const CategorySchema = new Schema<ICategory>(
     display_order: {
       type: Number,
       default: 0,
+    },
+    channel_code: {
+      type: String,
+      default: null,
     },
     is_active: {
       type: Boolean,

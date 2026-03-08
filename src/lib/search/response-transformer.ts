@@ -405,6 +405,7 @@ export function transformDocument(
     image: data.image,
     icon: data.icon,
     breadcrumb: doc[`category_breadcrumb_${lang}`],
+    slug_path: doc[`category_slug_path_${lang}`],
     description: data.description,
     is_active: data.is_active,
     product_count: data.product_count,
@@ -795,7 +796,8 @@ export function transformFacetResponse(
 export async function enrichFacetResults(
   facetResults: FacetResults,
   lang?: string,
-  tenantDb?: string
+  tenantDb?: string,
+  channel?: string
 ): Promise<FacetResults> {
   if (!facetResults || Object.keys(facetResults).length === 0) {
     return facetResults;

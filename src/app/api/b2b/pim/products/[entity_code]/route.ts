@@ -315,6 +315,8 @@ export async function PATCH(
       "promo_code",                 // Active promotion codes (for faceting)
       "promo_type",                 // Business categories (for faceting)
       "has_active_promo",           // Has any active promotion (for filtering)
+      "channels",                   // Sales channels (e.g., ["default", "b2c"])
+      "channel_categories",         // Per-channel category assignments
     ];
 
     allowedFields.forEach((field) => {

@@ -15,6 +15,13 @@ export interface ICollection extends Document {
     cdn_key?: string;
   };
 
+  // Mobile Hero Image
+  mobile_hero_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+
   // SEO Fields
   seo: {
     title?: string;
@@ -66,6 +73,11 @@ const CollectionSchema = new Schema<ICollection>(
       trim: true,
     },
     hero_image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
+    },
+    mobile_hero_image: {
       url: String,
       alt_text: String,
       cdn_key: String,

@@ -1,22 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import { MenuLocation } from "@/lib/db/models/menu";
 import { MenuItem } from "./menu-builder";
 import { EntitySelector } from "./entity-selector";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { ProductSearchPreview, SearchPreviewProduct } from "@/components/shared/ProductSearchPreview";
 import { ImageUpload } from "./ImageUpload";
+import { FullScreenModal } from "@/components/shared/FullScreenModal";
 import { toast } from "sonner";
 
 interface MenuItemFormProps {
   location: MenuLocation;
+  channel: string;
+  channelName?: string;
   item: MenuItem | null; // null = create, otherwise edit
   parentItem?: MenuItem | null; // Pre-selected parent
   onClose: () => void;
 }
 
-export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFormProps) {
+export function MenuItemForm({ location, channel, channelName, item, parentItem, onClose }: MenuItemFormProps) {
   const [formData, setFormData] = useState({
     type: item?.type || "collection",
     reference_id: item?.reference_id || "",
@@ -38,13 +41,15 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
 
   const [loading, setLoading] = useState(false);
   const [availableParents, setAvailableParents] = useState<MenuItem[]>([]);
+  const [searchProducts, setSearchProducts] = useState<SearchPreviewProduct[]>([]);
+  const [searchLimit, setSearchLimit] = useState(10);
 
   // Fetch available parent items
   useEffect(() => {
     const fetchParents = async () => {
       try {
         const res = await fetch(
-          `/api/b2b/menu?location=${location}&include_inactive=true`
+          `/api/b2b/menu?location=${location}&channel=${channel}&include_inactive=true`
         );
         if (!res.ok) throw new Error("Failed to fetch menu items");
         const data = await res.json();
@@ -68,31 +73,34 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
     fetchParents();
   }, [location, item]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
 
     try {
       // Validate
-      if ((formData.type === "url" || formData.type === "search") && !formData.url) {
-        toast.error("URL is required for URL/Search type");
+      if ((formData.type === "url" || formData.type === "page") && !formData.url) {
+        toast.error("URL is required");
+        setLoading(false);
+        return;
+      }
+      if (formData.type === "search" && !formData.url) {
+        toast.error("Search query is required");
         setLoading(false);
         return;
       }
 
       if (
-        formData.type !== "url" &&
-        formData.type !== "search" &&
-        formData.type !== "divider" &&
+        !["url", "search", "divider", "page"].includes(formData.type) &&
         !formData.reference_id
       ) {
-        toast.error("Reference ID is required");
+        toast.error("Please select an item");
         setLoading(false);
         return;
       }
 
       const payload: any = {
         location,
+        channel,
         type: formData.type,
         reference_id: formData.reference_id || undefined,
         label: formData.label || undefined,
@@ -139,33 +147,59 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-border flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">
-                {item ? "Edit Menu Item" : "Create Menu Item"}
-              </h2>
-              {parentItem && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Parent: {parentItem.label || parentItem.reference_id}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 rounded hover:bg-muted transition text-muted-foreground hover:text-foreground"
-              title="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
+    <FullScreenModal
+      open
+      onClose={onClose}
+      title={item ? "Edit Menu Item" : "Create Menu Item"}
+      actions={
+        <>
+          <div className="flex items-center gap-3 text-sm mr-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary text-white font-medium">
+              {channelName || channel}
+            </span>
+            <span className="text-muted-foreground font-medium capitalize">
+              {location} menu
+            </span>
+            {parentItem && (
+              <span className="text-muted-foreground">
+                &rsaquo; {parentItem.label || parentItem.reference_id}
+              </span>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
+          >
+            {loading ? "Saving..." : item ? "Update" : "Create"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+            {/* Channel (read-only) */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Channel
+              </label>
+              <input
+                type="text"
+                value={channelName || channel}
+                readOnly
+                disabled
+                className="w-full rounded border border-border bg-muted px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
+              />
+            </div>
 
-          {/* Form Fields */}
-          <div className="px-6 py-4 space-y-4">
             {/* Type */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
@@ -192,31 +226,40 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
               </select>
             </div>
 
-            {/* Entity Selector (if not URL, search, or divider) */}
-            {formData.type !== "url" && formData.type !== "search" && formData.type !== "divider" && (
+            {/* Entity Selector (for entity-based types) */}
+            {["collection", "category", "brand", "tag", "product", "product_type"].includes(formData.type) && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Select {formData.type.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")} *
                 </label>
                 <EntitySelector
-                  entityType={formData.type as "collection" | "category" | "brand" | "tag" | "product_type" | "product" | "page"}
+                  entityType={formData.type as "collection" | "category" | "brand" | "tag" | "product_type" | "product"}
                   value={formData.reference_id}
-                  onChange={(value) =>
-                    setFormData({ ...formData, reference_id: value })
-                  }
+                  onChange={(value, entity) => {
+                    if (formData.type === "product_type" && entity?.slug) {
+                      setFormData({ ...formData, reference_id: value, url: `shop?filters-product_type_slug=${entity.slug}` });
+                    } else {
+                      setFormData({ ...formData, reference_id: value });
+                    }
+                  }}
                   placeholder={`Search for a ${formData.type.replace("_", " ")}...`}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Start typing to search for {formData.type.replace("_", " ")}s
                 </p>
+                {formData.type === "product_type" && formData.url && (
+                  <div className="mt-2 px-3 py-2 rounded border border-border bg-muted text-xs text-muted-foreground">
+                    <span className="font-medium">Generated URL:</span> {formData.url}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* URL (if type is URL) */}
-            {formData.type === "url" && (
+            {/* URL (if type is URL or Page) */}
+            {(formData.type === "url" || formData.type === "page") && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  URL *
+                  {formData.type === "page" ? "Page URL *" : "URL *"}
                 </label>
                 <input
                   type="text"
@@ -224,7 +267,7 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
                   onChange={(e) =>
                     setFormData({ ...formData, url: e.target.value })
                   }
-                  placeholder="/page or https://example.com"
+                  placeholder={formData.type === "page" ? "/my-page-slug" : "/page or https://example.com"}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   required
                 />
@@ -233,26 +276,17 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
 
             {/* Search Product Fields */}
             {formData.type === "search" && (
-              <div className="space-y-4 rounded border border-border bg-background p-4">
-                {/* URL */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Search URL *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.url}
-                    onChange={(e) =>
-                      setFormData({ ...formData, url: e.target.value })
-                    }
-                    placeholder="/search or https://example.com/search"
-                    className="w-full rounded border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Link to search page or search functionality
-                  </p>
-                </div>
+              <div className="space-y-4">
+                <ProductSearchPreview
+                  searchQuery={formData.url}
+                  limit={searchLimit}
+                  cachedProducts={searchProducts}
+                  onSearchChange={(query) =>
+                    setFormData({ ...formData, url: query })
+                  }
+                  onLimitChange={setSearchLimit}
+                  onProductsLoaded={setSearchProducts}
+                />
 
                 {/* Rich Text Description */}
                 <div>
@@ -267,25 +301,27 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
                     placeholder="Enter description or promotional text..."
                     minHeight="150px"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use the toolbar for formatting or click the &lt;/&gt; icon to edit HTML directly
-                  </p>
                 </div>
 
-                {/* Desktop Image */}
-                <ImageUpload
-                  value={formData.image_url}
-                  onChange={(url) => setFormData({ ...formData, image_url: url })}
-                  label="Desktop Image (Optional)"
-                />
-
-                {/* Mobile Image */}
-                <ImageUpload
-                  value={formData.mobile_image_url}
-                  onChange={(url) => setFormData({ ...formData, mobile_image_url: url })}
-                  label="Mobile Image (Optional)"
-                />
               </div>
+            )}
+
+            {/* Desktop Image */}
+            {formData.type !== "divider" && (
+              <ImageUpload
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                label="Desktop Image (Optional)"
+              />
+            )}
+
+            {/* Mobile Image */}
+            {formData.type !== "divider" && (
+              <ImageUpload
+                value={formData.mobile_image_url}
+                onChange={(url) => setFormData({ ...formData, mobile_image_url: url })}
+                label="Mobile Image (Optional)"
+              />
             )}
 
             {/* Label */}
@@ -454,28 +490,7 @@ export function MenuItemForm({ location, item, parentItem, onClose }: MenuItemFo
                 <span className="text-sm text-foreground">Open in new tab</span>
               </label>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded border border-border hover:bg-muted transition text-foreground"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
-            >
-              {loading ? "Saving..." : item ? "Update" : "Create"}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }

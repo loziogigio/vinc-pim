@@ -5,11 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Plus,
-  Pencil,
   Trash2,
   Loader2,
   FileText,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,11 @@ export default function PagesManagementPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Search filters
+  const [filterTitle, setFilterTitle] = useState("");
+  const [filterSlug, setFilterSlug] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"" | "active" | "inactive">("");
 
   // Add page dialog
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -124,6 +129,13 @@ export default function PagesManagementPage({
       .replace(/^-|-$/g, "");
   };
 
+  const filteredPages = pages.filter((pg) => {
+    if (filterTitle && !pg.title.toLowerCase().includes(filterTitle.toLowerCase())) return false;
+    if (filterSlug && !pg.slug.toLowerCase().includes(filterSlug.toLowerCase())) return false;
+    if (filterStatus && pg.status !== filterStatus) return false;
+    return true;
+  });
+
   function formatDate(dateStr: string | null | undefined) {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleString(undefined, {
@@ -133,11 +145,10 @@ export default function PagesManagementPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <Breadcrumbs
         items={[
-          { label: "B2C", href: "/b2b/b2c" },
-          { label: "Storefronts", href: "/b2b/b2c/storefronts" },
+          { label: "Dashboard", href: "/b2b/b2c" },
           { label: slug, href: `/b2b/b2c/storefronts/${slug}` },
           { label: "Pages" },
         ]}
@@ -147,7 +158,9 @@ export default function PagesManagementPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#5e5873]">Pages</h1>
-          <p className="text-sm text-[#b9b9c3]">Storefront: {slug}</p>
+          <p className="text-sm text-[#b9b9c3]">
+            Manage custom pages for {slug} ({pages.length} total)
+          </p>
         </div>
         <Button
           onClick={() => setShowAddDialog(true)}
@@ -170,6 +183,41 @@ export default function PagesManagementPage({
         </div>
       )}
 
+      {/* Filters */}
+      {!isLoading && pages.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+            <input
+              type="text"
+              value={filterTitle}
+              onChange={(e) => setFilterTitle(e.target.value)}
+              placeholder="Filter by title..."
+              className="h-9 w-48 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+            />
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+            <input
+              type="text"
+              value={filterSlug}
+              onChange={(e) => setFilterSlug(e.target.value)}
+              placeholder="Filter by slug..."
+              className="h-9 w-48 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+            />
+          </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as "" | "active" | "inactive")}
+            className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+          >
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      )}
+
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
@@ -187,15 +235,23 @@ export default function PagesManagementPage({
         </div>
       )}
 
+      {/* No results after filter */}
+      {!isLoading && pages.length > 0 && filteredPages.length === 0 && (
+        <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
+          <Search className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
+          <p className="text-sm text-[#b9b9c3]">No pages match your filters.</p>
+        </div>
+      )}
+
       {/* Pages Table */}
-      {!isLoading && pages.length > 0 && (
+      {!isLoading && filteredPages.length > 0 && (
         <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-[#fafafc]">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Title</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Slug</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Page Status</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Content</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Nav</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Last Saved</th>
@@ -203,70 +259,63 @@ export default function PagesManagementPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#ebe9f1]">
-              {pages.map((page) => (
-                <tr key={page._id} className="hover:bg-[#fafafc]">
+              {filteredPages.map((pg) => (
+                <tr key={pg._id} className="hover:bg-[#fafafc]">
                   <td className="px-4 py-3 font-medium text-[#5e5873]">
-                    {page.title}
+                    {pg.title}
                   </td>
                   <td className="px-4 py-3 text-[#b9b9c3] font-mono text-xs">
-                    /{page.slug}
+                    /{pg.slug}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        page.status === "active"
+                        pg.status === "active"
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-slate-100 text-slate-500"
                       }`}
                     >
-                      {page.status}
+                      {pg.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            page.template_status === "published"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {page.template_status || "draft"}
-                        </span>
-                        {page.has_unpublished_changes && (
-                          <span className="inline-flex items-center gap-0.5 text-xs text-amber-600" title="Draft has changes not yet published">
-                            <AlertCircle className="h-3 w-3" />
-                            unsaved
-                          </span>
-                        )}
-                      </div>
-                      {page.published_at && (
-                        <span className="text-[10px] text-[#b9b9c3]">
-                          Published: {formatDate(page.published_at)}
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          pg.template_status === "published"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {pg.template_status || "draft"}
+                      </span>
+                      {pg.has_unpublished_changes && (
+                        <span className="inline-flex items-center gap-0.5 text-xs text-amber-600" title="Unpublished changes">
+                          <AlertCircle className="h-3 w-3" />
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[#b9b9c3]">
-                    {page.show_in_nav ? "Yes" : "No"}
+                  <td className="px-4 py-3">
+                    <span className={`text-xs ${pg.show_in_nav ? "text-emerald-600" : "text-[#b9b9c3]"}`}>
+                      {pg.show_in_nav ? "Yes" : "No"}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#b9b9c3]">
-                    {formatDate(page.last_saved_at || page.updated_at)}
+                    {formatDate(pg.last_saved_at || pg.updated_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-3">
                       <Link
-                        href={`${tenantPrefix}/b2b/b2c-page-builder?storefront=${slug}&page=${page.slug}`}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[#ebe9f1] bg-white px-3 py-1.5 text-xs font-medium text-[#5e5873] hover:bg-[#fafafc] transition-colors"
+                        href={`${tenantPrefix}/b2b/b2c-page-builder?storefront=${slug}&page=${pg.slug}`}
+                        className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
                         Edit
                       </Link>
                       <button
                         type="button"
-                        onClick={() => handleDeletePage(page.slug)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                        onClick={() => handleDeletePage(pg.slug)}
+                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

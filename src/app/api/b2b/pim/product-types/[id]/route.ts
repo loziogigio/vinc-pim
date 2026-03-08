@@ -96,6 +96,12 @@ export async function GET(
       productType: {
         ...productType,
         product_count: productCount,
+        // Map technical_specifications → features for frontend compatibility
+        features: ((productType as any).technical_specifications || []).map((ts: any) => ({
+          feature_id: ts.technical_specification_id,
+          required: ts.required,
+          display_order: ts.display_order,
+        })),
       },
     });
   } catch (error) {
@@ -128,7 +134,7 @@ export async function PATCH(
     const { id } = await params;
 
     const body = await req.json();
-    const { code, name, slug, description, technical_specifications, display_order, is_active } = body;
+    const { code, name, slug, description, image, mobile_image, technical_specifications, display_order, is_active } = body;
 
     const productType = await ProductTypeModel.findOne({
       product_type_id: id,
@@ -177,6 +183,8 @@ export async function PATCH(
     if (name !== undefined) productType.name = name;
     if (slug !== undefined) productType.slug = slug;
     if (description !== undefined) productType.description = description;
+    if (image !== undefined) (productType as any).image = image || undefined;
+    if (mobile_image !== undefined) (productType as any).mobile_image = mobile_image || undefined;
     if (technical_specifications !== undefined) productType.technical_specifications = technical_specifications;
     if (display_order !== undefined) productType.display_order = display_order;
     if (is_active !== undefined) productType.is_active = is_active;

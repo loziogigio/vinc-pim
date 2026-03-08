@@ -160,6 +160,26 @@ Code-based coupons and auto-apply promotion engine with gift item support.
 
 ---
 
+### 4. B2C Traefik Dynamic Domain Routing
+**Status:** ✅ Complete
+**Plan File:** `~/.claude/plans/idempotent-swinging-zebra.md`
+
+Auto-generate Traefik dynamic YAML config for B2C storefront domains. HTTPS only, primary domains, active storefronts + active tenants.
+
+**Key Features:**
+
+- Separate `b2c-storefronts.yml` (not mixed with `b2b-tenants.yml`)
+- Cross-tenant scanning via `Promise.allSettled()` for resilience
+- 5-second debounce to coalesce rapid domain toggles
+- Atomic file writes (.tmp then rename) for Traefik safety
+- NFS shared filesystem for Docker Swarm cluster
+- Manual regenerate button in super-admin tenant UI
+- Auto-triggers on storefront create/update/delete, tenant suspend/activate
+
+**Files:** 6 modified
+
+---
+
 ## Related Packages
 
 ### vinc-cdn

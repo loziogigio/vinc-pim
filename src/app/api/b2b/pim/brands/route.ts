@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { label, slug, description, logo_url, website_url, is_active, display_order } = body;
+    const { label, slug, description, logo_url, mobile_logo_url, website_url, is_active, display_order } = body;
 
     // Validation
     if (!label || !label.trim()) {
@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
       slug: finalSlug,
       description: description?.trim() || undefined,
       logo_url: logo_url?.trim() || undefined,
+      mobile_logo_url: mobile_logo_url?.trim() || undefined,
       website_url: website_url?.trim() || undefined,
       is_active: is_active !== undefined ? is_active : true,
       display_order: display_order || 0,

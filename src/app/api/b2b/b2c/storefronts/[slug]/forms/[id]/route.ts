@@ -30,6 +30,35 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 }
 
 /**
+ * PATCH /api/b2b/b2c/storefronts/[slug]/forms/[id]
+ * Update submission (toggle seen)
+ */
+export async function PATCH(req: NextRequest, { params }: RouteParams) {
+  try {
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
+
+    const { id } = await params;
+    const body = await req.json();
+    const { FormSubmission } = await connectWithModels(auth.tenantDb);
+
+    const update: Record<string, unknown> = {};
+    if (typeof body.seen === "boolean") update.seen = body.seen;
+
+    const submission = await FormSubmission.findByIdAndUpdate(id, update, { new: true }).lean();
+    if (!submission) {
+      return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: submission });
+  } catch (error) {
+    console.error("[PATCH .../forms/[id]]", error);
+    const message = error instanceof Error ? error.message : "Failed to update submission";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
  * DELETE /api/b2b/b2c/storefronts/[slug]/forms/[id]
  * Delete a form submission
  */

@@ -80,6 +80,7 @@ export default function TenantDetailPage() {
   const [rateLimitLoading, setRateLimitLoading] = useState(false);
 
   // Multi-tenant config state
+  const [regenerating, setRegenerating] = useState(false);
   const [domains, setDomains] = useState<TenantDomain[]>([]);
   const [apiConfig, setApiConfig] = useState<TenantApiConfig>({
     pim_api_url: "",
@@ -155,6 +156,25 @@ export default function TenantDetailPage() {
       });
     }
     setDomains(updated);
+  };
+
+  // Regenerate Traefik config (B2B + B2C)
+  const handleRegenerateTraefik = async () => {
+    setRegenerating(true);
+    try {
+      const res = await fetch("/api/admin/traefik/regenerate", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Traefik config regenerated!\nB2B: ${data.b2b?.domains_count || 0} domain(s)\nB2C: ${data.b2c?.domains_count || 0} domain(s)`);
+      } else {
+        alert(`Error: ${data.error || "Failed to regenerate"}`);
+      }
+    } catch (error) {
+      console.error("Failed to regenerate Traefik config:", error);
+      alert("Failed to regenerate Traefik config");
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   // Save multi-tenant configuration
@@ -425,12 +445,22 @@ export default function TenantDetailPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-slate-300">Domains</label>
-                <button
-                  onClick={addDomain}
-                  className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                >
-                  + Add Domain
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleRegenerateTraefik}
+                    disabled={regenerating}
+                    className="px-3 py-1 text-sm bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded transition-colors"
+                    title="Regenerate Traefik dynamic config (B2B + B2C)"
+                  >
+                    {regenerating ? "Regenerating..." : "Regenerate Traefik"}
+                  </button>
+                  <button
+                    onClick={addDomain}
+                    className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                  >
+                    + Add Domain
+                  </button>
+                </div>
               </div>
               {domains.length === 0 ? (
                 <>

@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
     const searchRequest: SearchRequest = {
       text: body.text,
       lang: body.lang,
+      channel: body.channel, // Sales channel (e.g., "b2c", "b2b")
       start: body.start || 0,
       rows: Math.min(body.rows ?? config.defaultRows, config.maxRows),
       filters: body.filters || {},
@@ -124,19 +125,20 @@ export async function POST(request: NextRequest) {
       searchRequest.group_variants
     );
 
-    // Enrich results with fresh data from MongoDB
+    // Enrich results with fresh data from MongoDB (channel-aware category resolution)
+    const channel = searchRequest.channel;
     if (searchRequest.group_variants) {
       // For variant grouped: fetch parent from MongoDB + enrich all variants
-      response.results = await enrichVariantGroupedResults(tenantDb, response.results, searchRequest.lang);
+      response.results = await enrichVariantGroupedResults(tenantDb, response.results, searchRequest.lang, channel);
     } else {
       // Standard enrichment
-      response.results = await enrichSearchResults(tenantDb, response.results, searchRequest.lang);
+      response.results = await enrichSearchResults(tenantDb, response.results, searchRequest.lang, channel);
       response.results = await enrichProductsWithVariants(response.results, searchRequest.lang);
     }
 
     // Enrich facets with full entity data
     if (response.facet_results) {
-      response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, tenantDb);
+      response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, tenantDb, channel);
     }
 
     // Filter packaging/promotions by tags
@@ -331,6 +333,7 @@ export async function GET(request: NextRequest) {
     const searchRequest: SearchRequest = {
       text,
       lang,
+      channel: searchParams.get('channel') || undefined,
       start,
       rows: Math.min(rows, config.maxRows),
       filters,
@@ -370,19 +373,20 @@ export async function GET(request: NextRequest) {
       groupVariants
     );
 
-    // Enrich results with fresh data from MongoDB
+    // Enrich results with fresh data from MongoDB (channel-aware category resolution)
+    const getChannel = searchRequest.channel;
     if (groupVariants) {
       // For variant grouped: fetch parent from MongoDB + enrich all variants
-      response.results = await enrichVariantGroupedResults(tenantDb, response.results, lang);
+      response.results = await enrichVariantGroupedResults(tenantDb, response.results, lang, getChannel);
     } else {
       // Standard enrichment
-      response.results = await enrichSearchResults(tenantDb, response.results, lang);
+      response.results = await enrichSearchResults(tenantDb, response.results, lang, getChannel);
       response.results = await enrichProductsWithVariants(response.results, lang);
     }
 
     // Enrich facets with full entity data
     if (response.facet_results) {
-      response.facet_results = await enrichFacetResults(response.facet_results, lang, tenantDb);
+      response.facet_results = await enrichFacetResults(response.facet_results, lang, tenantDb, getChannel);
     }
 
     // Filter packaging/promotions by tags

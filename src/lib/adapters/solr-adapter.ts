@@ -401,6 +401,36 @@ export class SolrAdapter extends MarketplaceAdapter {
   }
 
   /**
+   * Build language-specific slug-based category paths for URL navigation
+   * Creates hierarchical slug paths like ["tavola-e-servizio", "tavola-e-servizio/bicchieri-e-bevande", ...]
+   */
+  private buildSlugCategoryPath(category: any, lang: string): string[] {
+    if (!category) return [];
+
+    const slugs: string[] = [];
+
+    if (category.hierarchy && Array.isArray(category.hierarchy)) {
+      for (const ancestor of category.hierarchy) {
+        const slug = ancestor.slug?.[lang] || ancestor.category_id;
+        slugs.push(slug);
+      }
+    }
+
+    // Add current category slug
+    const currentSlug = category.slug?.[lang] || category.category_id;
+    slugs.push(currentSlug);
+
+    // Build hierarchical paths: ["a", "a/b", "a/b/c"]
+    const paths: string[] = [];
+    let current = '';
+    for (const slug of slugs) {
+      current = current ? `${current}/${slug}` : slug;
+      paths.push(current);
+    }
+    return paths;
+  }
+
+  /**
    * Build brand hierarchy paths for faceting (brand families)
    */
   private buildBrandPaths(brand: any): {
@@ -587,6 +617,30 @@ export class SolrAdapter extends MarketplaceAdapter {
     const collectionPaths = this.buildCollectionPaths(product.collections || []);
     const tagFacetData = this.buildTagFacetData(product.tags || []);
 
+    // Merge category paths from channel_categories
+    let mergedCategoryAncestors = [...(categoryPaths.category_ancestors || [])];
+    let mergedCategoryPath = [...(categoryPaths.category_path || [])];
+    if (product.channel_categories?.length) {
+      for (const cc of product.channel_categories) {
+        const ccPaths = this.buildCategoryPaths(cc.category);
+        mergedCategoryAncestors.push(...(ccPaths.category_ancestors || []));
+        mergedCategoryPath.push(...(ccPaths.category_path || []));
+      }
+      mergedCategoryAncestors = [...new Set(mergedCategoryAncestors)];
+      mergedCategoryPath = [...new Set(mergedCategoryPath)];
+    }
+
+    // Derive channels from all sources
+    const resolvedChannels = new Set<string>(product.channels?.length ? product.channels : ["default"]);
+    if (product.category?.channel_code) {
+      resolvedChannels.add(product.category.channel_code);
+    }
+    if (product.channel_categories?.length) {
+      for (const cc of product.channel_categories) {
+        resolvedChannels.add(cc.channel_code);
+      }
+    }
+
     // Base document with language-independent fields
     const doc: SolrMultilingualDocument = {
       id: product.entity_code,
@@ -651,9 +705,9 @@ export class SolrAdapter extends MarketplaceAdapter {
           }))]
         : [],
 
-      // Category hierarchy for faceting (self-contained)
-      category_path: categoryPaths.category_path,
-      category_ancestors: categoryPaths.category_ancestors,
+      // Category hierarchy for faceting (self-contained, merged with channel_categories)
+      category_path: mergedCategoryPath,
+      category_ancestors: mergedCategoryAncestors,
       category_level: categoryPaths.category_level,
 
       // Brand hierarchy for faceting (brand families)
@@ -675,8 +729,8 @@ export class SolrAdapter extends MarketplaceAdapter {
       tag_groups: tagFacetData.tag_groups,
       tag_categories: tagFacetData.tag_categories,
 
-      // Sales channels (default to ["default"] if not set)
-      channels: product.channels?.length ? product.channels : ["default"],
+      // Sales channels (derived from explicit channels + category channels + channel_categories)
+      channels: [...resolvedChannels],
 
       // Synonym dictionaries for search enhancement
       synonym_keys: product.synonym_keys || [],
@@ -889,10 +943,29 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
 
       // Category breadcrumb path (self-contained, for faceting display)
-      // Example: ["Utensili", "Elettroutensili", "Ferramenta"]
+      // Merge paths from primary category and channel_categories
       const namedPath = this.buildNamedCategoryPath(product.category, l);
+      if (product.channel_categories?.length) {
+        for (const cc of product.channel_categories) {
+          const ccNamedPath = this.buildNamedCategoryPath(cc.category, l);
+          namedPath.push(...ccNamedPath);
+        }
+      }
       if (namedPath.length > 0) {
-        doc[`category_breadcrumb_${l}`] = namedPath;
+        doc[`category_breadcrumb_${l}`] = [...new Set(namedPath)];
+      }
+
+      // Category slug path (hierarchical slugs for URL navigation)
+      // Merge paths from primary category and channel_categories
+      const slugPath = this.buildSlugCategoryPath(product.category, l);
+      if (product.channel_categories?.length) {
+        for (const cc of product.channel_categories) {
+          const ccSlugPath = this.buildSlugCategoryPath(cc.category, l);
+          slugPath.push(...ccSlugPath);
+        }
+      }
+      if (slugPath.length > 0) {
+        doc[`category_slug_path_${l}`] = [...new Set(slugPath)];
       }
 
       // Collection names and slugs (always set to ensure removal works)
@@ -941,8 +1014,10 @@ export class SolrAdapter extends MarketplaceAdapter {
       if (product.product_type?.name?.[l]) {
         doc[`product_type_name_text_${l}`] = product.product_type.name[l];
       }
-      if (product.product_type?.slug?.[l]) {
-        doc[`product_type_slug_text_${l}`] = product.product_type.slug[l];
+      const ptSlug = product.product_type?.slug;
+      if (ptSlug) {
+        const slugVal = typeof ptSlug === 'string' ? ptSlug : ptSlug[l];
+        if (slugVal) doc[`product_type_slug_text_${l}`] = slugVal;
       }
 
       // Product type technical specifications (labels)

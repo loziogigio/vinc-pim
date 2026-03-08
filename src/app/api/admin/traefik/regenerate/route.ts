@@ -1,13 +1,13 @@
 /**
  * POST /api/admin/traefik/regenerate
  *
- * Manual regeneration of Traefik dynamic config files.
+ * Manual regeneration of Traefik dynamic config files (B2B + B2C).
  * Requires super-admin auth. Useful for recovery if auto-trigger fails.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminAuth, unauthorizedResponse } from "@/lib/auth/admin-auth";
-import { regenerateB2BConfig } from "@/lib/services/traefik-config.service";
+import { regenerateB2BConfig, regenerateB2CConfig } from "@/lib/services/traefik-config.service";
 
 export async function POST(req: NextRequest) {
   const auth = await verifyAdminAuth(req);
@@ -16,13 +16,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await regenerateB2BConfig();
+    const [b2bResult, b2cResult] = await Promise.all([
+      regenerateB2BConfig(),
+      regenerateB2CConfig(),
+    ]);
 
     return NextResponse.json({
       success: true,
       b2b: {
-        domains_count: result.domains_count,
-        file_path: result.file_path,
+        domains_count: b2bResult.domains_count,
+        file_path: b2bResult.file_path,
+      },
+      b2c: {
+        domains_count: b2cResult.domains_count,
+        file_path: b2cResult.file_path,
       },
     });
   } catch (error) {

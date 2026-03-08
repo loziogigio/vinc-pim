@@ -28,14 +28,14 @@ interface ProductCardPreviewProps {
 }
 
 const SAMPLE_PRODUCT = {
-  name: "Lavabo da Appoggio Ceramica Bianca 45cm",
-  sku: "LV-824300",
-  model: "MOD. CLASSIC",
-  brand: { name: "HidrosPoint" },
-  price: 29.1495,
-  salePrice: 24.999,
-  availability: "In arrivo",
-  eta: "29/11/2025",
+  name: "Premium Wireless Headphones Over-Ear",
+  sku: "WH-100X",
+  model: "STUDIO PRO",
+  brand: { name: "Brand" },
+  price: 129.99,
+  salePrice: 99.99,
+  availability: "Available",
+  eta: "In stock",
   image: FALLBACK_IMAGE
 };
 
@@ -111,7 +111,7 @@ export function ProductCardPreview({
         </div>
         <div className="absolute bottom-3 right-3">
           <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-600 shadow-sm">
-            Promo -15%
+            Sale -23%
           </span>
         </div>
       </div>
@@ -129,13 +129,12 @@ export function ProductCardPreview({
           <span className="line-through text-slate-400">{listPrice}</span>
         </div>
         <div className="text-[12px]">
-          <span className="font-medium text-slate-500">Stato:</span>{" "}
+          <span className="font-medium text-slate-500">Status:</span>{" "}
           <span className="font-semibold uppercase" style={etaColor}>
             {SAMPLE_PRODUCT.availability}
           </span>
         </div>
         <div className="text-[12px] text-slate-500">
-          Arrivo previsto{" "}
           <span className="font-semibold" style={etaColor}>
             {SAMPLE_PRODUCT.eta}
           </span>
@@ -178,13 +177,12 @@ export function ProductCardPreview({
         </div>
         <div className="flex items-center justify-between text-[12px] text-slate-500">
           <div>
-            <span className="font-medium text-slate-500">Stato:</span>{" "}
+            <span className="font-medium text-slate-500">Status:</span>{" "}
             <span className="font-semibold uppercase" style={etaColor}>
               {SAMPLE_PRODUCT.availability}
             </span>
           </div>
           <div>
-            <span className="font-medium text-slate-500">Arrivo:</span>{" "}
             <span className="font-semibold" style={etaColor}>
               {SAMPLE_PRODUCT.eta}
             </span>

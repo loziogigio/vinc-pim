@@ -71,7 +71,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, slug, description, hero_image, seo, display_order, is_active } = body;
+    const { name, slug, description, hero_image, mobile_hero_image, seo, display_order, is_active } = body;
 
     // Check if collection exists
     const collection = await CollectionModel.findOne({
@@ -109,6 +109,7 @@ export async function PATCH(
     if (slug !== undefined) updateData.slug = slug;
     if (description !== undefined) updateData.description = description;
     if (hero_image !== undefined) updateData.hero_image = hero_image;
+    if (mobile_hero_image !== undefined) updateData.mobile_hero_image = mobile_hero_image;
     if (seo !== undefined) updateData.seo = seo;
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;

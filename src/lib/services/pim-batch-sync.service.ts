@@ -10,6 +10,11 @@ import {
   calculateCompletenessScore,
   findCriticalIssues,
 } from "@/lib/pim/scorer";
+import {
+  loadEmbeddingContext,
+  rebuildProductEmbeddings,
+  type EmbeddingContext,
+} from "@/lib/services/category.service";
 import crypto from "crypto";
 
 // ============================================
@@ -46,6 +51,7 @@ export interface BatchSyncParams {
   resync: boolean;
   resync_min_score: number;
   recalculate_scores: boolean;
+  rebuild_embeddings: boolean;
   batch_size: number;
   dry_run: boolean;
 }
@@ -65,6 +71,7 @@ export interface ResyncResult {
   failed: number;
   batches_processed: number;
   score_updates: number;
+  embedding_updates: number;
   errors: string[];
   eligible_products?: {
     entity_code: string;
@@ -136,6 +143,7 @@ export async function executeBatchSync(
         resync: params.resync,
         resync_min_score: params.resync_min_score,
         recalculate_scores: params.recalculate_scores,
+        rebuild_embeddings: params.rebuild_embeddings,
         batch_size: params.batch_size,
       },
       started_by: params.startedBy,
@@ -402,6 +410,12 @@ async function performResync(
   PIMProduct: any,
   params: BatchSyncParams
 ): Promise<ResyncResult> {
+  // Pre-load embedding context if rebuild is requested
+  let embeddingCtx: EmbeddingContext | null = null;
+  if (params.rebuild_embeddings) {
+    embeddingCtx = await loadEmbeddingContext(params.tenantDb);
+  }
+
   const cursor = PIMProduct.find({
     isCurrent: true,
     status: "published",
@@ -414,6 +428,7 @@ async function performResync(
   let indexed = 0;
   let failed = 0;
   let scoreUpdateCount = 0;
+  let embeddingUpdateCount = 0;
   const errors: string[] = [];
   const eligiblePreview: ResyncResult["eligible_products"] = [];
 
@@ -423,9 +438,37 @@ async function performResync(
     score: number;
     issues: string[];
   }[] = [];
+  const embeddingUpdates: {
+    _id: any;
+    category?: any;
+    brand?: any;
+    channels?: string[];
+  }[] = [];
 
   for await (const product of cursor) {
     processed++;
+
+    // Rebuild embedded entities from source data
+    if (embeddingCtx) {
+      const oldCategory = product.category ? JSON.stringify(product.category) : null;
+      const oldBrand = product.brand ? JSON.stringify(product.brand) : null;
+      const oldChannels = JSON.stringify(product.channels || []);
+
+      rebuildProductEmbeddings(product, embeddingCtx);
+
+      const catChanged = oldCategory !== (product.category ? JSON.stringify(product.category) : null);
+      const brandChanged = oldBrand !== (product.brand ? JSON.stringify(product.brand) : null);
+      const channelsChanged = oldChannels !== JSON.stringify(product.channels || []);
+
+      if (catChanged || brandChanged || channelsChanged) {
+        const update: { _id: any; category?: any; brand?: any; channels?: string[] } = { _id: product._id };
+        if (catChanged) update.category = product.category;
+        if (brandChanged) update.brand = product.brand;
+        if (channelsChanged) update.channels = product.channels;
+        embeddingUpdates.push(update);
+      }
+    }
+
     let score = product.completeness_score ?? 0;
     let issues = product.critical_issues ?? [];
 
@@ -500,7 +543,30 @@ async function performResync(
     }
   }
 
+  // Persist rebuilt embeddings to MongoDB
+  if (embeddingUpdates.length > 0 && !params.dry_run) {
+    const BULK_WRITE_SIZE = 200;
+    for (let i = 0; i < embeddingUpdates.length; i += BULK_WRITE_SIZE) {
+      const chunk = embeddingUpdates.slice(i, i + BULK_WRITE_SIZE);
+      await PIMProduct.bulkWrite(
+        chunk.map((u) => {
+          const $set: any = {};
+          if (u.category) $set.category = u.category;
+          if (u.brand) $set.brand = u.brand;
+          if (u.channels) $set.channels = u.channels;
+          return {
+            updateOne: {
+              filter: { _id: u._id },
+              update: { $set },
+            },
+          };
+        })
+      );
+    }
+  }
+
   scoreUpdateCount = scoreUpdates.length;
+  embeddingUpdateCount = embeddingUpdates.length;
 
   if (params.dry_run) {
     return {
@@ -510,6 +576,7 @@ async function performResync(
       failed: 0,
       batches_processed: 0,
       score_updates: scoreUpdateCount,
+      embedding_updates: embeddingUpdateCount,
       errors: [],
       eligible_products: eligiblePreview,
     };
@@ -522,6 +589,7 @@ async function performResync(
     failed,
     batches_processed: Math.ceil(eligible / params.batch_size),
     score_updates: scoreUpdateCount,
+    embedding_updates: embeddingUpdateCount,
     errors: errors.slice(0, 20), // Limit error list
   };
 }

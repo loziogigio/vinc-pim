@@ -10,10 +10,20 @@ interface Entity {
   [key: string]: any;
 }
 
+/** Resolve a value that may be a multilingual object (e.g. {it: "X", en: "Y"}) to a plain string */
+function resolveMultilang(value: any): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    return value.it || value.en || Object.values(value)[0] || "";
+  }
+  return String(value);
+}
+
 interface EntitySelectorProps {
   entityType: "collection" | "category" | "brand" | "tag" | "product_type" | "product" | "page";
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, entity?: Entity) => void;
   placeholder?: string;
 }
 
@@ -98,15 +108,15 @@ export function EntitySelector({
             entityType === "category" ? "category_id" :
             entityType === "brand" ? "brand_id" :
             entityType === "tag" ? "tag_id" :
-            entityType === "product_type" ? "type_id" :
+            entityType === "product_type" ? "product_type_id" :
             entityType === "product" ? "product_id" :
             "id";
 
           setSelectedEntity({
-            id: item[idField],
-            name: item.name,
-            slug: item.slug,
             ...item,
+            id: item[idField],
+            name: resolveMultilang(item.name),
+            slug: resolveMultilang(item.slug),
           });
         }
       } catch (error) {
@@ -189,15 +199,15 @@ export function EntitySelector({
             entityType === "category" ? "category_id" :
             entityType === "brand" ? "brand_id" :
             entityType === "tag" ? "tag_id" :
-            entityType === "product_type" ? "type_id" :
+            entityType === "product_type" ? "product_type_id" :
             entityType === "product" ? "product_id" :
             "id";
 
           return {
-            id: item[idField],
-            name: item.name,
-            slug: item.slug,
             ...item,
+            id: item[idField],
+            name: resolveMultilang(item.name),
+            slug: resolveMultilang(item.slug),
           };
         });
 
@@ -275,7 +285,7 @@ export function EntitySelector({
                   key={entity.id}
                   type="button"
                   onClick={() => {
-                    onChange(entity.id);
+                    onChange(entity.id, entity);
                     setIsOpen(false);
                     setSearchQuery("");
                   }}

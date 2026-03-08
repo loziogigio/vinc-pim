@@ -10,7 +10,8 @@ type Category = {
   slug: string;
   parent_id?: string | null;
   level: number;
-  path: string | Record<string, string>;
+  path: string[] | Record<string, string>;
+  channel_code?: string;
   children?: Category[];
 };
 
@@ -60,6 +61,48 @@ function getMultilingualText(
   }
 }
 
+/**
+ * Build a human-readable breadcrumb array from a category's path.
+ * Uses the flat category list to resolve ancestor names.
+ */
+function buildBreadcrumb(
+  cat: Category | undefined,
+  flatCats: Category[],
+  langCode: string
+): string[] | null {
+  if (!cat) return null;
+  const catMap = new Map(flatCats.map(c => [c.category_id, c]));
+  const crumbs: string[] = [];
+  // path is an array of ancestor IDs (from root to parent)
+  if (Array.isArray(cat.path)) {
+    for (const ancestorId of cat.path) {
+      const ancestor = catMap.get(ancestorId);
+      if (ancestor) {
+        crumbs.push(getMultilingualText(ancestor.name, langCode, ancestorId));
+      }
+    }
+  }
+  crumbs.push(getMultilingualText(cat.name, langCode, cat.category_id));
+  return crumbs.length > 0 ? crumbs : null;
+}
+
+/**
+ * Resolve channel code for a category (stored on root, inherited by children).
+ */
+function resolveChannel(
+  cat: Category | undefined,
+  flatCats: Category[]
+): string | null {
+  if (!cat) return null;
+  if (cat.channel_code) return cat.channel_code;
+  if (Array.isArray(cat.path) && cat.path.length > 0) {
+    const rootId = cat.path[0];
+    const root = flatCats.find(c => c.category_id === rootId);
+    return root?.channel_code || null;
+  }
+  return null;
+}
+
 export function CategorySelector({ value, onChange, disabled }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,17 +114,6 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
   const { languages, fetchLanguages } = useLanguageStore();
   const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
   const defaultLanguageCode = defaultLanguage?.code || "it";
-
-  // Debug: Log value to understand its structure
-  if (value) {
-    console.log("CategorySelector received value:", {
-      id: value.id,
-      name: value.name,
-      nameType: typeof value.name,
-      slug: value.slug,
-      raw: value
-    });
-  }
 
   useEffect(() => {
     fetchLanguages();
@@ -154,34 +186,49 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
       {/* Selected Value Display */}
       {value ? (
         <div className="flex items-center justify-between p-3 rounded border border-border bg-background">
-          <div className="flex items-center gap-2">
-            <FolderTree className="h-4 w-4 text-primary" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                {/* Find the selected category to get its full path */}
-                {(() => {
-                  try {
-                    const selectedCat = flatCategories.find(c => c.category_id === value.id);
-                    if (selectedCat?.path) {
-                      const pathText = getMultilingualText(selectedCat.path, defaultLanguageCode, "");
-                      return String(pathText || "");
-                    }
-                    const nameText = getMultilingualText(value.name, defaultLanguageCode, "");
-                    return String(nameText || value.slug || "Category");
-                  } catch (error) {
-                    console.error("Error rendering category name:", error, value);
-                    return value.slug || "Category";
-                  }
-                })()}
-              </p>
-              <p className="text-xs text-muted-foreground">{String(value.slug || "")}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderTree className="h-4 w-4 text-primary flex-shrink-0" />
+            <div className="min-w-0">
+              {(() => {
+                const selectedCat = flatCategories.find(c => c.category_id === value.id);
+                const displayName = getMultilingualText(value.name, defaultLanguageCode, "");
+                // Build breadcrumb from ancestor IDs
+                const breadcrumb = buildBreadcrumb(selectedCat, flatCategories, defaultLanguageCode);
+                // Resolve channel from the flat category list
+                const channelCode = resolveChannel(selectedCat, flatCategories);
+                return (
+                  <>
+                    {breadcrumb ? (
+                      <p className="text-sm font-medium text-foreground flex items-center gap-1.5 flex-wrap">
+                        {breadcrumb.map((seg, i) => (
+                          <span key={i} className="flex items-center gap-1.5">
+                            {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                            <span className={i === breadcrumb.length - 1 ? "text-foreground" : "text-muted-foreground"}>{seg}</span>
+                          </span>
+                        ))}
+                        {channelCode && (
+                          <span className="inline-block ml-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase">{channelCode}</span>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="text-sm font-medium text-foreground">
+                        {displayName || getMultilingualText(value.slug, defaultLanguageCode, "Category")}
+                        {channelCode && (
+                          <span className="inline-block ml-2 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase">{channelCode}</span>
+                        )}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate">{getMultilingualText(value.slug, defaultLanguageCode, "")}</p>
+                  </>
+                );
+              })()}
             </div>
           </div>
           <button
             type="button"
             onClick={clearSelection}
             disabled={disabled}
-            className="p-1 rounded hover:bg-muted transition disabled:opacity-50"
+            className="p-1 rounded hover:bg-muted transition disabled:opacity-50 flex-shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -283,6 +330,10 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
                             )}
                           </div>
                           <span className="flex-1 text-sm font-medium text-foreground">{getMultilingualText(cat.name, defaultLanguageCode, "")}</span>
+                          {(() => {
+                            const ch = resolveChannel(cat, flatCategories);
+                            return ch ? <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase">{ch}</span> : null;
+                          })()}
                         </div>
                       </button>
                     );

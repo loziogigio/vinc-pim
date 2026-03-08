@@ -115,7 +115,9 @@ export function ProductSearchPreview({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [localQuery, setLocalQuery] = useState(searchQuery);
 
-  const tenantId = pathname.match(/^\/([^/]+)\/b2b/)?.[1] || "";
+  const tenantId = pathname.match(/^\/([^/]+)\/b2b/)?.[1]
+    || pathname.match(/^\/([^/]+)\//)?.[1]
+    || "";
 
   const onProductsLoadedRef = useRef(onProductsLoaded);
   useEffect(() => {
@@ -137,7 +139,7 @@ export function ProductSearchPreview({
 
   // Auto-search when query or limit changes
   useEffect(() => {
-    if (!localQuery.trim()) {
+    if (!localQuery.trim() || !tenantId) {
       onProductsLoadedRef.current([]);
       return;
     }

@@ -20,10 +20,11 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location") as MenuLocation | null;
+    const channel = searchParams.get("channel") || "default";
     const includeInactive = searchParams.get("include_inactive") === "true";
 
     // Build query - no wholesaler_id needed, database provides isolation
-    const query: any = {};
+    const query: any = { channel };
 
     if (location) {
       query.location = location;
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       location,
+      channel = "default",
       type,
       reference_id,
       label,
@@ -107,7 +109,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (type !== "url" && type !== "divider" && !reference_id) {
+    if (!["url", "search", "divider", "page"].includes(type) && !reference_id) {
       return NextResponse.json(
         { error: `reference_id is required for type '${type}'` },
         { status: 400 }
@@ -148,6 +150,7 @@ export async function POST(req: NextRequest) {
     // Create menu item - no wholesaler_id, database provides isolation
     const menuItem = await MenuItemModel.create({
       menu_item_id: nanoid(12),
+      channel,
       location,
       type,
       reference_id,

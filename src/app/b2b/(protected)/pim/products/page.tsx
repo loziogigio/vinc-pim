@@ -859,9 +859,6 @@ export default function ProductsListPage() {
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Batch ID
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Product
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
@@ -879,6 +876,9 @@ export default function ProductsListPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Last Updated
                     </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[80px]">
+                      Batch ID
+                    </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
                       Actions
                     </th>
@@ -894,24 +894,6 @@ export default function ProductsListPage() {
                           onChange={() => toggleSelectProduct(product._id)}
                           className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                         />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {product.has_conflict && (
-                            <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" title="Has conflicts - needs merge" />
-                          )}
-                          {product.source?.batch_id ? (
-                            <button
-                              onClick={() => updateFilters({ batch_id: product.source?.batch_id })}
-                              className="text-sm font-mono text-primary hover:underline text-left"
-                              title="Click to filter by this batch"
-                            >
-                              {product.source.batch_id}
-                            </button>
-                          ) : (
-                            <span className="text-sm text-muted-foreground italic">No batch</span>
-                          )}
-                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <Link
@@ -1025,6 +1007,24 @@ export default function ProductsListPage() {
                               minute: '2-digit'
                             })}
                           </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {product.has_conflict && (
+                            <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" title="Has conflicts - needs merge" />
+                          )}
+                          {product.source?.batch_id ? (
+                            <button
+                              onClick={() => updateFilters({ batch_id: product.source?.batch_id })}
+                              className="text-xs font-mono text-primary hover:underline text-left max-w-[80px] truncate block"
+                              title={product.source.batch_id}
+                            >
+                              {product.source.batch_id}
+                            </button>
+                          ) : (
+                            <span className="text-sm text-muted-foreground italic">No batch</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">

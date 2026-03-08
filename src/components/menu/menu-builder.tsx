@@ -33,6 +33,7 @@ export interface MenuItem {
   menu_item_id: string;
   // wholesaler_id removed - database per wholesaler provides isolation
   location: MenuLocation;
+  channel: string;
   type: string;
   reference_id?: string;
   label?: string;
@@ -56,10 +57,12 @@ export interface MenuItem {
 
 interface MenuBuilderProps {
   location: MenuLocation;
+  channel: string;
+  channelName?: string;
   onSave?: () => void;
 }
 
-export function MenuBuilder({ location, onSave }: MenuBuilderProps) {
+export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuilderProps) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -81,7 +84,7 @@ export function MenuBuilder({ location, onSave }: MenuBuilderProps) {
     try {
       setLoading(true);
       const res = await fetch(
-        `/api/b2b/menu?location=${location}&include_inactive=true`
+        `/api/b2b/menu?location=${location}&channel=${channel}&include_inactive=true`
       );
       if (!res.ok) throw new Error("Failed to fetch menu items");
       const data = await res.json();
@@ -96,7 +99,7 @@ export function MenuBuilder({ location, onSave }: MenuBuilderProps) {
 
   useEffect(() => {
     fetchMenuItems();
-  }, [location]);
+  }, [location, channel]);
 
   function toggleExpand(itemId: string) {
     setExpandedItems((prev) => {
@@ -395,6 +398,8 @@ export function MenuBuilder({ location, onSave }: MenuBuilderProps) {
       {showForm && (
         <MenuItemForm
           location={location}
+          channel={channel}
+          channelName={channelName}
           item={editingItem}
           parentItem={parentItem}
           onClose={handleFormClose}

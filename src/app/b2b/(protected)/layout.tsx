@@ -60,7 +60,7 @@ export default async function B2BProtectedLayout({
   return (
     <div className={cn(publicSans.className, "min-h-screen bg-[#f8f7fa] text-[#5e5873]")}>
       <Toaster position="top-right" richColors />
-      <DashboardHeader session={sessionData} notificationCount={3} />
+      <DashboardHeader session={sessionData} />
       <MainContent>
         {children}
       </MainContent>

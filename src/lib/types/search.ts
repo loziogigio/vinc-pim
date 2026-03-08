@@ -11,6 +11,7 @@ export interface SearchRequest {
   // Full-text search
   text?: string;
   lang: string; // Language code (it, de, en...)
+  channel?: string; // Sales channel code (e.g., "b2c", "b2b")
 
   // Pagination
   start?: number; // Offset (default: 0)

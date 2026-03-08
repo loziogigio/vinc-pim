@@ -16,6 +16,7 @@ export interface ProviderFieldDef {
   label: string;
   type: "text" | "secret" | "toggle" | "select" | "environment" | "textarea" | "webhook_url";
   required?: boolean;
+  readOnly?: boolean;
   options?: string[];
   optionLabels?: Record<string, string>;
   placeholder?: string;
@@ -45,21 +46,23 @@ export const PROVIDER_FIELDS: Partial<Record<PaymentProvider, ProviderFieldDef[]
   ],
 
   stripe: [
-    { key: "publishable_key", label: "Publishable Key", type: "text", required: true, placeholder: "es. pk_test_51..." },
-    { key: "secret_key", label: "Secret Key", type: "secret", required: true },
+    { key: "publishable_key", label: "Publishable Key", type: "text", placeholder: "es. pk_test_51..." },
+    { key: "secret_key", label: "Secret Key", type: "secret" },
     { key: "webhook_url", label: "Webhook URL", type: "webhook_url" },
     { key: "webhook_secret", label: "Webhook Secret", type: "secret", placeholder: "es. whsec_..." },
-    { key: "account_id", label: "Account ID (Connect)", type: "text", placeholder: "es. acct_1234567890" },
+    { key: "account_id", label: "Account ID (Connect)", type: "text", readOnly: true, placeholder: "Generato automaticamente" },
     {
       key: "account_status",
       label: "Stato Account",
       type: "select",
+      readOnly: true,
       options: ["pending", "active", "restricted"],
       optionLabels: { pending: "In Attesa", active: "Attivo", restricted: "Limitato" },
     },
+    { key: "details_submitted", label: "Dati Inviati", type: "toggle", readOnly: true },
     { key: "environment", label: "Ambiente", type: "environment", options: ["test", "production"], optionLabels: { test: "Test", production: "Production" } },
-    { key: "charges_enabled", label: "Pagamenti Abilitati", type: "toggle" },
-    { key: "payouts_enabled", label: "Payouts Abilitati", type: "toggle" },
+    { key: "charges_enabled", label: "Pagamenti Abilitati", type: "toggle", readOnly: true },
+    { key: "payouts_enabled", label: "Payouts Abilitati", type: "toggle", readOnly: true },
   ],
 
   axerve: [

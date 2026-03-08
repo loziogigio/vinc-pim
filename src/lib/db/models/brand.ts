@@ -7,6 +7,7 @@ export interface IBrand extends Document {
   slug: string;
   description?: string;
   logo_url?: string;
+  mobile_logo_url?: string;
   website_url?: string;
   is_active: boolean;
   product_count: number;
@@ -40,6 +41,10 @@ const BrandSchema = new Schema<IBrand>(
       trim: true,
     },
     logo_url: {
+      type: String,
+      trim: true,
+    },
+    mobile_logo_url: {
       type: String,
       trim: true,
     },

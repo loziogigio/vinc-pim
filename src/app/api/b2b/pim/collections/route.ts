@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const { Collection: CollectionModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { name, slug, locale, description, hero_image, seo, display_order } = body;
+    const { name, slug, locale, description, hero_image, mobile_hero_image, seo, display_order } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -119,6 +119,7 @@ export async function POST(req: NextRequest) {
       locale: locale || "it",
       description,
       hero_image,
+      mobile_hero_image,
       seo: seo || {},
       display_order: display_order || 0,
       is_active: true,

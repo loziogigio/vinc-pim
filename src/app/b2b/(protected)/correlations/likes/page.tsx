@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import Link from "next/link";
 import { Heart, Users, Package, TrendingUp } from "lucide-react";
 import { LIKE_TIME_PERIODS, LIKE_TIME_PERIOD_LABELS } from "@/lib/constants/like";
 import type { LikeTimePeriod } from "@/lib/constants/like";
@@ -139,7 +140,11 @@ export default function LikesDashboard() {
                 <tbody>
                   {popular.map((p) => (
                     <tr key={p.sku} className="border-t border-[#ebe9f1]">
-                      <td className="py-2 font-medium text-[#5e5873]">{p.sku}</td>
+                      <td className="py-2 font-medium">
+                        <Link href={`/b2b/pim/products?sku=${encodeURIComponent(p.sku)}`} className="text-[#009688] hover:underline">
+                          {p.sku}
+                        </Link>
+                      </td>
                       <td className="py-2 text-right text-[#6e6b7b]">{p.total_likes}</td>
                       <td className="py-2 text-right text-[#b9b9c3]">
                         {p.last_liked_at
@@ -177,7 +182,11 @@ export default function LikesDashboard() {
                 <tbody>
                   {trending.map((t) => (
                     <tr key={t.sku} className="border-t border-[#ebe9f1]">
-                      <td className="py-2 font-medium text-[#5e5873]">{t.sku}</td>
+                      <td className="py-2 font-medium">
+                        <Link href={`/b2b/pim/products?sku=${encodeURIComponent(t.sku)}`} className="text-[#009688] hover:underline">
+                          {t.sku}
+                        </Link>
+                      </td>
                       <td className="py-2 text-right text-[#6e6b7b]">{t.recent_likes}</td>
                       <td className="py-2 text-right text-[#b9b9c3]">{t.velocity_score}/d</td>
                     </tr>

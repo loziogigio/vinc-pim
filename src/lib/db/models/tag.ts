@@ -7,6 +7,16 @@ export interface ITag extends Document {
   slug: string;
   description?: string;
   color?: string;
+  image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+  mobile_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
   is_active: boolean;
   product_count: number;
   display_order: number;
@@ -41,6 +51,16 @@ const TagSchema = new Schema<ITag>(
     color: {
       type: String,
       trim: true,
+    },
+    image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
+    },
+    mobile_image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
     },
     is_active: {
       type: Boolean,

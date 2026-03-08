@@ -10,6 +10,14 @@
  */
 
 import { Schema } from "mongoose";
+import type {
+  HeaderConfig,
+  HeaderRow,
+  HeaderBlock,
+  HeaderWidget,
+  RowLayout,
+  BlockAlignment,
+} from "@/lib/types/home-settings";
 
 // ============================================
 // CONSTANTS
@@ -68,6 +76,10 @@ export interface IB2CStorefrontHeader {
   show_cart?: boolean;
   /** Show account/login in header */
   show_account?: boolean;
+  /** Show favorites/wishlist icon in header */
+  show_favorites?: boolean;
+  /** Show reminders icon in header */
+  show_reminders?: boolean;
 }
 
 // ============================================
@@ -110,6 +122,32 @@ export interface IB2CStorefrontFooter {
 }
 
 // ============================================
+// SEO META TAGS INTERFACE
+// ============================================
+
+export interface IB2CStorefrontMetaTags {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  author?: string;
+  robots?: string;
+  canonical_url?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  og_site_name?: string;
+  og_type?: string;
+  twitter_card?: string;
+  twitter_site?: string;
+  twitter_creator?: string;
+  twitter_image?: string;
+  theme_color?: string;
+  google_site_verification?: string;
+  bing_site_verification?: string;
+  structured_data?: string;
+}
+
+// ============================================
 // DOMAIN INTERFACE
 // ============================================
 
@@ -139,8 +177,18 @@ export interface IB2CStorefront {
   domains: IStorefrontDomain[];
   status: StorefrontStatus;
   branding: IB2CStorefrontBranding;
+  /** Legacy simple header (announcement bar, nav links, toggles) */
   header: IB2CStorefrontHeader;
+  /** Row/block/widget header builder config (published) */
+  header_config?: HeaderConfig;
+  /** Row/block/widget header builder config (draft) */
+  header_config_draft?: HeaderConfig;
+  /** Published footer */
   footer: IB2CStorefrontFooter;
+  /** Draft footer (same structure as footer, for preview before publishing) */
+  footer_draft?: IB2CStorefrontFooter;
+  /** SEO meta tags */
+  meta_tags?: IB2CStorefrontMetaTags;
   settings: IB2CStorefrontSettings;
   created_at: Date;
   updated_at: Date;
@@ -208,6 +256,8 @@ const B2CStorefrontHeaderSchema = new Schema(
     show_search: { type: Boolean, default: true },
     show_cart: { type: Boolean, default: true },
     show_account: { type: Boolean, default: true },
+    show_favorites: { type: Boolean, default: true },
+    show_reminders: { type: Boolean, default: true },
   },
   { _id: false }
 );
@@ -230,6 +280,74 @@ const B2CStorefrontSettingsSchema = new Schema(
   {
     default_language: { type: String },
     theme: { type: String },
+  },
+  { _id: false }
+);
+
+const B2CStorefrontMetaTagsSchema = new Schema(
+  {
+    title: { type: String },
+    description: { type: String },
+    keywords: { type: String },
+    author: { type: String },
+    robots: { type: String },
+    canonical_url: { type: String },
+    og_title: { type: String },
+    og_description: { type: String },
+    og_image: { type: String },
+    og_site_name: { type: String },
+    og_type: { type: String },
+    twitter_card: { type: String },
+    twitter_site: { type: String },
+    twitter_creator: { type: String },
+    twitter_image: { type: String },
+    theme_color: { type: String },
+    google_site_verification: { type: String },
+    bing_site_verification: { type: String },
+    structured_data: { type: String },
+  },
+  { _id: false }
+);
+
+const HeaderWidgetSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    type: { type: String, required: true },
+    config: { type: Schema.Types.Mixed, default: () => ({}) },
+  },
+  { _id: false }
+);
+
+const HeaderBlockSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    alignment: { type: String, enum: ["left", "center", "right"], default: "left" },
+    widgets: { type: [HeaderWidgetSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const HeaderRowSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    enabled: { type: Boolean, default: true },
+    fixed: { type: Boolean, default: false },
+    backgroundColor: { type: String },
+    textColor: { type: String },
+    height: { type: Number },
+    layout: {
+      type: String,
+      enum: ["full", "50-50", "33-33-33", "20-60-20", "25-50-25", "30-40-30"],
+      default: "full",
+    },
+    blocks: { type: [HeaderBlockSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const HeaderConfigSchema = new Schema(
+  {
+    rows: { type: [HeaderRowSchema], default: [] },
   },
   { _id: false }
 );
@@ -284,10 +402,28 @@ const B2CStorefrontSchema = new Schema(
         show_search: true,
         show_cart: true,
         show_account: true,
+        show_favorites: true,
+        show_reminders: true,
       }),
+    },
+    header_config: {
+      type: HeaderConfigSchema,
+      default: () => ({ rows: [] }),
+    },
+    header_config_draft: {
+      type: HeaderConfigSchema,
+      default: () => ({ rows: [] }),
     },
     footer: {
       type: B2CStorefrontFooterSchema,
+      default: () => ({}),
+    },
+    footer_draft: {
+      type: B2CStorefrontFooterSchema,
+      default: undefined,
+    },
+    meta_tags: {
+      type: B2CStorefrontMetaTagsSchema,
       default: () => ({}),
     },
     settings: {

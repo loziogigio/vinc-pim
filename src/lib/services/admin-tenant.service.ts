@@ -24,7 +24,7 @@ import {
   seedCampaignTemplates,
 } from "../notifications/seed-templates";
 import { initializeHomeSettings } from "../db/home-settings";
-import { regenerateB2BConfig } from "./traefik-config.service";
+import { regenerateB2BConfig, regenerateB2CConfigDebounced } from "./traefik-config.service";
 
 // ============================================
 // TYPES
@@ -540,6 +540,9 @@ export async function suspendTenant(tenantId: string): Promise<ITenantDocument> 
     console.error("[suspendTenant] Cache clear notification failed:", err);
   });
 
+  // Regenerate Traefik B2C config (suspended tenant's storefronts become unreachable)
+  regenerateB2CConfigDebounced();
+
   console.log(`Suspended tenant: ${tenantId}`);
   return tenant;
 }
@@ -562,6 +565,9 @@ export async function activateTenant(tenantId: string): Promise<ITenantDocument>
   notifyTenantCacheClear({ tenantId }).catch((err) => {
     console.error("[activateTenant] Cache clear notification failed:", err);
   });
+
+  // Regenerate Traefik B2C config (activated tenant's storefronts become reachable)
+  regenerateB2CConfigDebounced();
 
   console.log(`Activated tenant: ${tenantId}`);
   return tenant;
@@ -660,11 +666,14 @@ export async function updateTenant(
     console.error("[updateTenant] Cache clear notification failed:", err);
   });
 
-  // Regenerate Traefik config when domains change
+  // Regenerate Traefik config when domains or status change
   if (domainsChanged) {
     regenerateB2BConfig().catch((err) =>
       console.error("[traefik] Failed to regenerate B2B config:", err)
     );
+  }
+  if (domainsChanged || updates.status !== undefined) {
+    regenerateB2CConfigDebounced();
   }
 
   return tenant;

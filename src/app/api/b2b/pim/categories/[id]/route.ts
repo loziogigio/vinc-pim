@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
+import { invalidateCategoryCache } from "@/lib/services/category.service";
 
 /**
  * GET /api/b2b/pim/categories/[id]
@@ -11,18 +12,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
     const { id } = await params;
 
     const category = await CategoryModel.findOne({
       category_id: id,
-      // No wholesaler_id - database provides isolation
     }).lean();
 
     if (!category) {
@@ -34,12 +32,10 @@ export async function GET(
 
     const [productCount, childCount] = await Promise.all([
       PIMProductModel.countDocuments({
-        // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "category.id": id,
+        "category.category_id": id,
       }),
       CategoryModel.countDocuments({
-        // No wholesaler_id - database provides isolation
         parent_id: id,
       }),
     ]);
@@ -69,12 +65,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel } = await connectWithModels(tenantDb);
     const { id } = await params;
 
@@ -85,14 +79,15 @@ export async function PATCH(
       description,
       parent_id,
       hero_image,
+      mobile_hero_image,
       seo,
       display_order,
       is_active,
+      channel_code,
     } = body;
 
     const category = await CategoryModel.findOne({
       category_id: id,
-      // No wholesaler_id - database provides isolation
     });
 
     if (!category) {
@@ -125,9 +120,15 @@ export async function PATCH(
     if (slug !== undefined) updateData.slug = slug;
     if (description !== undefined) updateData.description = description;
     if (hero_image !== undefined) updateData.hero_image = hero_image;
+    if (mobile_hero_image !== undefined) updateData.mobile_hero_image = mobile_hero_image;
     if (seo !== undefined) updateData.seo = seo;
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;
+
+    // Only allow channel_code on root categories
+    if (channel_code !== undefined && !category.parent_id) {
+      updateData.channel_code = channel_code || null;
+    }
 
     if (parent_id !== undefined) {
       const newParentId = parent_id || null;
@@ -143,8 +144,7 @@ export async function PATCH(
 
         const parent = await CategoryModel.findOne({
           category_id: newParentId,
-          // No wholesaler_id - database provides isolation
-        }).lean();
+      }).lean();
 
         if (!parent) {
           return NextResponse.json(
@@ -174,6 +174,9 @@ export async function PATCH(
       { new: true }
     );
 
+    // Invalidate B2C category cache
+    invalidateCategoryCache(tenantDb).catch(() => {});
+
     return NextResponse.json({ category: updatedCategory });
   } catch (error) {
     console.error("Error updating category:", error);
@@ -193,23 +196,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
     const { id } = await params;
 
     const [productCount, childCount] = await Promise.all([
       PIMProductModel.countDocuments({
-        // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "category.id": id,
+        "category.category_id": id,
       }),
       CategoryModel.countDocuments({
-        // No wholesaler_id - database provides isolation
         parent_id: id,
       }),
     ]);
@@ -244,6 +243,9 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // Invalidate B2C category cache
+    invalidateCategoryCache(tenantDb).catch(() => {});
 
     return NextResponse.json({ message: "Category deleted successfully" });
   } catch (error) {

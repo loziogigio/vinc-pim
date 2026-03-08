@@ -17,12 +17,13 @@ import {
 // ============================================
 
 export interface IStripeConfig {
-  publishable_key: string;
-  secret_key: string;
+  publishable_key?: string;
+  secret_key?: string;
   webhook_url?: string;
   webhook_secret?: string;
   account_id?: string;
   account_status?: "pending" | "active" | "restricted";
+  details_submitted?: boolean;
   environment: "test" | "production";
   charges_enabled: boolean;
   payouts_enabled: boolean;
@@ -89,6 +90,7 @@ export interface IBankTransferProviderConfig {
 export interface ITenantPaymentConfig extends Document {
   tenant_id: string;
   commission_rate: number;
+  provider_commission_rates?: Map<string, number>;
 
   providers: {
     stripe?: IStripeConfig;
@@ -114,8 +116,8 @@ export interface ITenantPaymentConfig extends Document {
 
 const StripeConfigSchema = new Schema<IStripeConfig>(
   {
-    publishable_key: { type: String, required: true },
-    secret_key: { type: String, required: true },
+    publishable_key: { type: String, trim: true },
+    secret_key: { type: String, trim: true },
     webhook_url: { type: String, trim: true },
     webhook_secret: { type: String, trim: true },
     account_id: { type: String, trim: true },
@@ -123,6 +125,7 @@ const StripeConfigSchema = new Schema<IStripeConfig>(
       type: String,
       enum: ["pending", "active", "restricted"],
     },
+    details_submitted: { type: Boolean, default: false },
     environment: {
       type: String,
       enum: ["test", "production"],
@@ -253,6 +256,10 @@ export const TenantPaymentConfigSchema = new Schema<ITenantPaymentConfig>(
       type: Number,
       required: true,
       default: PAYMENT_DEFAULTS.COMMISSION_RATE,
+    },
+    provider_commission_rates: {
+      type: Map,
+      of: Number,
     },
 
     providers: {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 
 // GET /api/b2b/pim/categories/[category_id]/export - Export products
@@ -8,12 +8,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // Await params (Next.js 15+)
@@ -41,7 +39,7 @@ export async function GET(
     // Get all products for this category (no wholesaler_id - database provides isolation)
     const products = await PIMProductModel.find({
       isCurrent: true,
-      "category.id": id,
+      "category.category_id": id,
     })
       .select("entity_code sku name")
       .lean() as any[];

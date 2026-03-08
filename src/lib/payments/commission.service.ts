@@ -40,11 +40,13 @@ export function calculateCommission(
 
 /**
  * Get commission rate for a tenant.
- * Falls back to default rate if no config found.
+ * If providerName is given and a per-provider rate exists, use it.
+ * Otherwise falls back to the generic tenant rate, then the platform default.
  */
 export async function getTenantCommissionRate(
   tenantDb: mongoose.Connection,
-  tenantId: string
+  tenantId: string,
+  providerName?: string
 ): Promise<number> {
   const registry = getModelRegistry(tenantDb);
   const TenantPaymentConfig = registry.TenantPaymentConfig;
@@ -54,10 +56,20 @@ export async function getTenantCommissionRate(
   }
 
   const config = await TenantPaymentConfig.findOne({ tenant_id: tenantId })
-    .select("commission_rate")
+    .select("commission_rate provider_commission_rates")
     .lean();
 
-  return config?.commission_rate ?? PAYMENT_DEFAULTS.COMMISSION_RATE;
+  if (!config) return PAYMENT_DEFAULTS.COMMISSION_RATE;
+
+  // Check per-provider rate first
+  if (providerName && config.provider_commission_rates) {
+    const rates = config.provider_commission_rates as Record<string, number>;
+    if (typeof rates[providerName] === "number") {
+      return rates[providerName];
+    }
+  }
+
+  return config.commission_rate ?? PAYMENT_DEFAULTS.COMMISSION_RATE;
 }
 
 // ============================================

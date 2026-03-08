@@ -34,6 +34,7 @@ sample-*.json
 scripts/e2e-*.ts
 scripts/test-*.ts
 scripts/migrate-*.ts
+scripts/seed-*.ts
 scripts/.test-api-keys.json
 
 # Monaco editor static files (copied from node_modules by postinstall)

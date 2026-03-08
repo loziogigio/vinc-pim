@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       resync,
       resync_min_score: resyncMinScore,
       recalculate_scores: body.recalculate_scores ?? true,
+      rebuild_embeddings: body.rebuild_embeddings ?? false,
       batch_size: batchSize,
       dry_run: dryRun,
     });

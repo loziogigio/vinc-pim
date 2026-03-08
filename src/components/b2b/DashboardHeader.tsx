@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, User, Maximize2, Minimize2 } from "lucide-react";
+import { User, Maximize2, Minimize2 } from "lucide-react";
 import type { B2BSessionData } from "@/lib/types/b2b";
 import { getCurrentSection } from "@/config/apps.config";
 import { useLayoutStore } from "@/lib/stores/layoutStore";
@@ -9,10 +9,9 @@ import { AppLauncherDropdown } from "./AppLauncherDropdown";
 
 type DashboardHeaderProps = {
   session: B2BSessionData;
-  notificationCount?: number;
 };
 
-export function DashboardHeader({ session, notificationCount = 0 }: DashboardHeaderProps) {
+export function DashboardHeader({ session }: DashboardHeaderProps) {
   const pathname = usePathname() || "";
   const currentSection = getCurrentSection(pathname);
   const { fullWidth, toggleFullWidth } = useLayoutStore();
@@ -52,15 +51,6 @@ export function DashboardHeader({ session, notificationCount = 0 }: DashboardHea
 
             {/* Google-style App Launcher */}
             <AppLauncherDropdown tenantId={tenantId} />
-
-            <button type="button" className={iconButtonClass} aria-label="Notifications">
-              <Bell className="h-[1rem] w-[1rem]" />
-              {notificationCount > 0 ? (
-                <span className="absolute right-[6px] top-[6px] flex h-[16px] w-[16px] items-center justify-center rounded-full bg-[#ff5722] text-[0.625rem] font-semibold text-white shadow-sm">
-                  {notificationCount}
-                </span>
-              ) : null}
-            </button>
 
             <div className="flex items-center gap-2 rounded-[0.428rem] border border-[#ebe9f1] bg-[#fafafc] px-3 py-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#009688] text-white">

@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { Plus, Search, Edit, Trash2, ExternalLink, Tag as TagIcon } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { FullScreenModal } from "@/components/shared/FullScreenModal";
+import { ImageUpload } from "@/components/shared/ImageUpload";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
 type TagRecord = {
   tag_id: string;
@@ -11,6 +14,8 @@ type TagRecord = {
   slug: string;
   description?: string;
   color?: string;
+  image?: { url: string; alt_text?: string; cdn_key?: string };
+  mobile_image?: { url: string; alt_text?: string; cdn_key?: string };
   is_active: boolean;
   product_count: number;
   display_order: number;
@@ -34,6 +39,10 @@ export default function TagsPage() {
     slug: "",
     description: "",
     color: "",
+    image_url: "",
+    image_alt: "",
+    mobile_image_url: "",
+    mobile_image_alt: "",
     is_active: true,
     display_order: 0,
   });
@@ -74,6 +83,10 @@ export default function TagsPage() {
       slug: "",
       description: "",
       color: "",
+      image_url: "",
+      image_alt: "",
+      mobile_image_url: "",
+      mobile_image_alt: "",
       is_active: true,
       display_order: 0,
     });
@@ -88,24 +101,42 @@ export default function TagsPage() {
       slug: tag.slug,
       description: tag.description || "",
       color: tag.color || "",
+      image_url: tag.image?.url || "",
+      image_alt: tag.image?.alt_text || "",
+      mobile_image_url: tag.mobile_image?.url || "",
+      mobile_image_alt: tag.mobile_image?.alt_text || "",
       is_active: tag.is_active,
       display_order: tag.display_order,
     });
     setShowModal(true);
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function handleSubmit() {
     try {
       const url = editingTag
         ? `/api/b2b/pim/tags/${editingTag.tag_id}`
         : "/api/b2b/pim/tags";
       const method = editingTag ? "PATCH" : "POST";
 
+      const payload: any = {
+        name: formData.name,
+        slug: formData.slug,
+        description: formData.description,
+        color: formData.color,
+        is_active: formData.is_active,
+        display_order: formData.display_order,
+        image: formData.image_url
+          ? { url: formData.image_url, alt_text: formData.image_alt || undefined }
+          : undefined,
+        mobile_image: formData.mobile_image_url
+          ? { url: formData.mobile_image_url, alt_text: formData.mobile_image_alt || undefined }
+          : undefined,
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -313,136 +344,156 @@ export default function TagsPage() {
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-xl rounded-xl border border-border bg-card shadow-xl">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {editingTag ? "Edit Tag" : "Create Tag"}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Define standardized tags to reuse across your catalog.
-                  </p>
-                </div>
-              </div>
+      <FullScreenModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingTag ? "Edit Tag" : "Create Tag"}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!formData.name || !formData.slug}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
+            >
+              {editingTag ? "Update Tag" : "Create Tag"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Define standardized tags to reuse across your catalog.
+          </p>
 
-              <div className="space-y-4 px-6">
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,220px)]">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Name *
-                    </label>
-                    <input
-                      value={formData.name}
-                      onChange={(event) => {
-                        const name = event.target.value;
-                        setFormData((prev) => ({
-                          ...prev,
-                          name,
-                          slug: slugManuallyEdited ? prev.slug : generateSlug(name),
-                        }));
-                      }}
-                      required
-                      className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                      placeholder="Seasonal Promotion"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
-                    <input
-                      value={formData.slug}
-                      onChange={(event) => {
-                        setSlugManuallyEdited(true);
-                        setFormData((prev) => ({ ...prev, slug: event.target.value }));
-                      }}
-                      required
-                      className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                      placeholder="seasonal-promotion"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, description: event.target.value }))
-                    }
-                    rows={3}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
-                    placeholder="Used for highlighting seasonal or thematic assortments."
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Display Order
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.display_order}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          display_order: Number(event.target.value),
-                        }))
-                      }
-                      className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Color (hex or CSS value)
-                    </label>
-                    <input
-                      value={formData.color}
-                      onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, color: event.target.value }))
-                      }
-                      className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                      placeholder="#ff6f61"
-                    />
-                  </div>
-                </div>
-
-                <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, is_active: event.target.checked }))
-                    }
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                  />
-                  Active (visible in product pickers)
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded border border-border hover:bg-muted transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded bg-primary text-white hover:bg-primary/90 transition"
-                >
-                  {editingTag ? "Update Tag" : "Create Tag"}
-                </button>
-              </div>
-            </form>
+          {/* Name & Slug */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
+              <input
+                value={formData.name}
+                onChange={(event) => {
+                  const name = event.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    name,
+                    slug: slugManuallyEdited ? prev.slug : generateSlug(name),
+                  }));
+                }}
+                required
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="Seasonal Promotion"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+              <input
+                value={formData.slug}
+                onChange={(event) => {
+                  setSlugManuallyEdited(true);
+                  setFormData((prev) => ({ ...prev, slug: event.target.value }));
+                }}
+                required
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="seasonal-promotion"
+              />
+            </div>
           </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+            <RichTextEditor
+              content={formData.description}
+              onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+              placeholder="Used for highlighting seasonal or thematic assortments."
+              minHeight="120px"
+            />
+          </div>
+
+          {/* Desktop Image */}
+          <ImageUpload
+            label="Tag Image"
+            value={formData.image_url}
+            onChange={(url) => setFormData((prev) => ({ ...prev, image_url: url }))}
+          />
+          {formData.image_url && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+              <input
+                value={formData.image_alt}
+                onChange={(e) => setFormData((prev) => ({ ...prev, image_alt: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="Descriptive alt text..."
+              />
+            </div>
+          )}
+
+          {/* Mobile Image */}
+          <ImageUpload
+            label="Mobile Tag Image"
+            value={formData.mobile_image_url}
+            onChange={(url) => setFormData((prev) => ({ ...prev, mobile_image_url: url }))}
+          />
+          {formData.mobile_image_url && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+              <input
+                value={formData.mobile_image_alt}
+                onChange={(e) => setFormData((prev) => ({ ...prev, mobile_image_alt: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="Descriptive alt text..."
+              />
+            </div>
+          )}
+
+          {/* Display Order & Color */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+              <input
+                type="number"
+                value={formData.display_order}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, display_order: Number(event.target.value) }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Color (hex or CSS value)</label>
+              <input
+                value={formData.color}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, color: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                placeholder="#ff6f61"
+              />
+            </div>
+          </div>
+
+          {/* Active */}
+          <label className="inline-flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={formData.is_active}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, is_active: event.target.checked }))
+              }
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            />
+            Active (visible in product pickers)
+          </label>
         </div>
-      )}
+      </FullScreenModal>
     </div>
   );
 }

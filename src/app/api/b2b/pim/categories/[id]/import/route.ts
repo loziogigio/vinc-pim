@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
+import { buildCategoryEmbedding } from "@/lib/services/category.service";
 
 // POST /api/b2b/pim/categories/[category_id]/import - Import product associations
 export async function POST(
@@ -9,12 +10,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     // Await params (Next.js 15+)
@@ -133,7 +132,7 @@ export async function POST(
 
     // Process the job asynchronously (in background)
     // For now, we'll process immediately but in production this should use a queue
-    processAssociationJob(jobId, id, entityCodes, action, session.userId, category, tenantDb).catch(err => {
+    processAssociationJob(jobId, id, entityCodes, action, auth.userId || "", category, tenantDb).catch(err => {
       console.error("Error processing association job:", err);
     });
 
@@ -163,7 +162,7 @@ async function processAssociationJob(
 ) {
   try {
     const { connectWithModels } = await import("@/lib/db/connection");
-    const { PIMProduct: PIMProductModel, AssociationJob: AssociationJobModel, Category: CategoryModel } = await connectWithModels(tenantDb);
+    const { PIMProduct: PIMProductModel, AssociationJob: AssociationJobModel, Category: CategoryModel, Language: LanguageModel } = await connectWithModels(tenantDb);
 
     // Update job status to processing
     await AssociationJobModel.updateOne(
@@ -187,12 +186,11 @@ async function processAssociationJob(
 
       try {
         if (action === "add") {
-          // Associate products with category
-          const updateData: any = {
-            "category.id": category_id,
-            "category.name": category.name,
-            "category.slug": category.slug,
-          };
+          const categoryData = await buildCategoryEmbedding({
+            category,
+            CategoryModel,
+            LanguageModel,
+          });
 
           const result = await PIMProductModel.updateMany(
             {
@@ -200,7 +198,7 @@ async function processAssociationJob(
               // No wholesaler_id - database provides isolation
               isCurrent: true,
             },
-            { $set: updateData }
+            { $set: { category: categoryData } }
           );
 
           successful += result.modifiedCount;
@@ -211,7 +209,7 @@ async function processAssociationJob(
               entity_code: { $in: batch },
               // No wholesaler_id - database provides isolation
               isCurrent: true,
-              "category.id": category_id,
+              "category.category_id": category_id,
             },
             { $unset: { category: "" } }
           );
@@ -242,7 +240,7 @@ async function processAssociationJob(
     // Update category product count (no wholesaler_id - database provides isolation)
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "category.id": category_id,
+      "category.category_id": category_id,
     });
 
     await CategoryModel.updateOne(

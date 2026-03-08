@@ -204,6 +204,7 @@ interface ProductEnrichmentData {
   packaging_options?: PackagingData[];
   promotions?: any[];
   vat_rate?: number;
+  channel_categories?: any[];
 }
 
 /**
@@ -225,7 +226,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, promotions: 1, pricing: 1 })
+    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, promotions: 1, pricing: 1, channel_categories: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -242,6 +243,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
         packaging_options: product.packaging_options,
         promotions: product.promotions,
         vat_rate: product.pricing?.vat_rate,
+        channel_categories: product.channel_categories,
       });
     }
   }
@@ -598,7 +600,7 @@ function getLocalizedMedia(media: any[], lang: string): any[] {
  * @param results - Search results to enrich
  * @param lang - Language code for localized fields (default: 'it')
  */
-export async function enrichSearchResults(tenantDb: string, results: any[], lang: string = 'it'): Promise<any[]> {
+export async function enrichSearchResults(tenantDb: string, results: any[], lang: string = 'it', channel?: string): Promise<any[]> {
   if (!results?.length) {
     return results;
   }
@@ -646,12 +648,23 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
       // Determine has_active_promo (prefer Solr value, which is indexed)
       const hasActivePromo = result.has_active_promo ?? false;
 
+      // Channel-aware category resolution: use channel_categories if available
+      let resolvedCategory = enrichCategory(result.category, categoriesMap);
+      if (channel && productData?.channel_categories?.length) {
+        const channelCat = productData.channel_categories.find(
+          (cc: any) => cc.channel_code === channel
+        );
+        if (channelCat?.category) {
+          resolvedCategory = channelCat.category;
+        }
+      }
+
       let enrichedResult: SolrProduct = {
         ...result,
         // Ensure has_active_promo is always set
         has_active_promo: hasActivePromo,
         brand: enrichBrand(result.brand, brandsMap),
-        category: enrichCategory(result.category, categoriesMap),
+        category: resolvedCategory,
         collections: enrichCollections(result.collections, collectionsMap),
         product_type: enrichProductType(result.product_type, productTypesMap),
         tags: enrichTags(result.tags, tagsMap),
@@ -713,7 +726,7 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
  * @param results - Results with _needs_parent_enrichment flag and variants array
  * @param lang - Language code for localized fields
  */
-export async function enrichVariantGroupedResults(tenantDb: string, results: any[], lang: string = 'it'): Promise<any[]> {
+export async function enrichVariantGroupedResults(tenantDb: string, results: any[], lang: string = 'it', channel?: string): Promise<any[]> {
   if (!results?.length) {
     return results;
   }
@@ -747,6 +760,18 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
       loadTags(tenantDb),
       loadFullProductData(tenantDb, allEntityCodes),
     ]);
+
+    // Helper to resolve channel-specific category
+    const resolveChannelCategory = (product: any, productData: any) => {
+      const base = enrichCategory(productData?.category || product.category, categoriesMap);
+      if (channel && productData?.channel_categories?.length) {
+        const channelCat = productData.channel_categories.find(
+          (cc: any) => cc.channel_code === channel
+        );
+        if (channelCat?.category) return channelCat.category;
+      }
+      return base;
+    };
 
     // Helper to enrich a single product
     const enrichProduct = (product: any) => {
@@ -822,9 +847,9 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         // Attributes & Technical Specifications
         attributes: mongoAttributes || product.attributes,
         technical_specifications: mongoTechnicalSpecs || product.technical_specifications,
-        // Entity relations enriched
+        // Entity relations enriched (channel-aware category resolution)
         brand: enrichBrand(productData.brand || product.brand, brandsMap),
-        category: enrichCategory(productData.category || product.category, categoriesMap),
+        category: resolveChannelCategory(product, productData),
         collections: enrichCollections(productData.collections || product.collections, collectionsMap),
         product_type: enrichProductType(productData.product_type || product.product_type, productTypesMap),
         tags: enrichTags(productData.tags || product.tags, tagsMap),

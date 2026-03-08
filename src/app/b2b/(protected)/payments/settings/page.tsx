@@ -25,6 +25,7 @@ interface TenantConfig {
   default_provider?: string;
   enabled_methods: string[];
   commission_rate: number;
+  provider_commission_rates?: Record<string, number>;
 }
 
 export default function PaymentSettingsPage() {
@@ -233,13 +234,35 @@ export default function PaymentSettingsPage() {
             </div>
           </div>
         </div>
-        <div className="p-5">
+        <div className="p-5 space-y-3">
           <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#f8f8f8] border border-[#ebe9f1] rounded-lg">
             <span className="text-lg font-bold text-[#5e5873]">
               {((config?.commission_rate || 0) * 100).toFixed(1)}%
             </span>
-            <span className="text-sm text-muted-foreground">per transazione</span>
+            <span className="text-sm text-muted-foreground">predefinita per transazione</span>
           </div>
+
+          {/* Per-provider overrides */}
+          {config?.provider_commission_rates && Object.keys(config.provider_commission_rates).length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Commissioni per provider:</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(config.provider_commission_rates).map(([provider, rate]) => (
+                  <span
+                    key={provider}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg text-xs"
+                  >
+                    <span className="font-medium text-blue-700">
+                      {PAYMENT_PROVIDER_LABELS[provider as PaymentProvider] ?? provider}
+                    </span>
+                    <span className="text-blue-600">
+                      {(rate * 100).toFixed(1)}%
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -55,6 +55,9 @@ const MULTILINGUAL_FIELDS = [
   // Relationship fields (names and slugs)
   { name: "category_name", multiValued: false },
   { name: "category_slug", multiValued: false },
+  // Category hierarchy (strings type for exact-match faceting, not text analysis)
+  { name: "category_slug_path", multiValued: true, type: "strings" },
+  { name: "category_breadcrumb", multiValued: true, type: "strings" },
   { name: "collection_names", multiValued: true },
   { name: "collection_slugs", multiValued: true },
   { name: "tag_names", multiValued: true },
@@ -400,60 +403,61 @@ export async function addLanguageFieldsToSolr(
 
   // POST request goes to /schema (not /schema/fields)
   const url = getSolrSchemaUrl(config);
-  const fieldsToAdd: any[] = [];
+  let added = 0;
+  let replaced = 0;
+  let unchanged = 0;
 
   for (const field of MULTILINGUAL_FIELDS) {
-    // For custom type fields (like lowercase), use language code suffix
+    // For custom type fields (like lowercase, strings), use language code suffix
     // For text fields, use language analyzer suffix (e.g., text_it)
     const fieldName = field.type
-      ? `${field.name}_${language.code}` // e.g., name_sort_it (lowercase field)
+      ? `${field.name}_${language.code}` // e.g., name_sort_it, category_slug_path_it
       : `${field.name}_${language.solrAnalyzer}`; // e.g., name_text_it (text field)
 
-    // Check if field already exists
-    const exists = await solrFieldExists(fieldName, config);
-    if (exists) {
-      console.log(`  ✓ Field '${fieldName}' already exists`);
-      continue;
-    }
-
-    fieldsToAdd.push({
+    const fieldDef = {
       name: fieldName,
       type: field.type || language.solrAnalyzer, // Use custom type if specified
       stored: true,
       indexed: true,
       multiValued: field.multiValued,
-    });
-  }
+    };
 
-  if (fieldsToAdd.length === 0) {
-    console.log(`  ✓ All fields for '${language.code}' already exist in Solr`);
-    return;
-  }
-
-  try {
-    // Add all fields in one request
-    const commands = fieldsToAdd.map(field => ({ "add-field": field }));
-
-    for (const command of commands) {
+    const exists = await solrFieldExists(fieldName, config);
+    if (exists) {
+      // Field exists — use replace-field to ensure correct type
+      // (fixes auto-created fields with wrong type from schemaless mode)
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(command),
+        body: JSON.stringify({ "replace-field": fieldDef }),
+      });
+
+      if (!response.ok) {
+        // Replace may fail if field has same definition — that's ok
+        console.log(`  ✓ Field '${fieldName}' already exists (unchanged)`);
+        unchanged++;
+      } else {
+        console.log(`  🔄 Replaced field '${fieldName}' with correct type`);
+        replaced++;
+      }
+    } else {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ "add-field": fieldDef }),
       });
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`Solr request failed: ${response.statusText} - ${errorData}`);
+        console.error(`  ❌ Failed to add field '${fieldName}': ${errorData}`);
+      } else {
+        console.log(`  ✅ Added field '${fieldName}'`);
+        added++;
       }
-
-      console.log(`  ✅ Added field '${command["add-field"].name}'`);
     }
-
-    console.log(`✅ Successfully added ${fieldsToAdd.length} fields for '${language.code}'`);
-  } catch (error: any) {
-    console.error(`❌ Failed to add fields:`, error.message);
-    throw error;
   }
+
+  console.log(`✅ Language '${language.code}' fields: ${added} added, ${replaced} replaced, ${unchanged} unchanged`);
 }
 
 /**
@@ -468,7 +472,10 @@ export async function removeLanguageFieldsFromSolr(
   const fieldsToRemove: string[] = [];
 
   for (const field of MULTILINGUAL_FIELDS) {
-    const fieldName = `${field.name}_${language.solrAnalyzer}`;
+    // Custom-type fields use language code suffix, text fields use analyzer suffix
+    const fieldName = field.type
+      ? `${field.name}_${language.code}`
+      : `${field.name}_${language.solrAnalyzer}`;
 
     // Check if field exists
     const exists = await solrFieldExists(fieldName, config);

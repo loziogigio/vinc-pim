@@ -25,6 +25,8 @@ export interface IFormSubmission {
   data: Record<string, unknown>;
   /** Email extracted from submission (if any email field) */
   submitter_email?: string;
+  /** Whether the submission has been seen/opened by admin */
+  seen: boolean;
   created_at: Date;
 }
 
@@ -59,6 +61,10 @@ const FormSubmissionSchema = new Schema(
       type: String,
       trim: true,
       lowercase: true,
+    },
+    seen: {
+      type: Boolean,
+      default: false,
     },
   },
   {

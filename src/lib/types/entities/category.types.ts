@@ -56,6 +56,7 @@ export interface CategoryBase {
     original: string;
   };
   icon?: string;
+  channel_code?: string;      // Optional: Sales channel (set on root, inherited by children)
   is_active?: boolean;        // Optional: Include for self-contained
   product_count?: number;     // Optional: Include for self-contained
   display_order?: number;     // Optional: Include for self-contained

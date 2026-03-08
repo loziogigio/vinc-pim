@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
+import { invalidateCategoryCache } from "@/lib/services/category.service";
 
 /**
  * POST /api/b2b/pim/categories/reorder
@@ -8,12 +9,10 @@ import { connectWithModels } from "@/lib/db/connection";
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel } = await connectWithModels(tenantDb);
 
     const { updates } = await req.json();
@@ -42,6 +41,9 @@ export async function POST(req: NextRequest) {
     );
 
     await Promise.all(updatePromises);
+
+    // Invalidate B2C category cache
+    invalidateCategoryCache(tenantDb).catch(() => {});
 
     return NextResponse.json({ success: true });
   } catch (error) {

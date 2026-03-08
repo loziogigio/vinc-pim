@@ -64,6 +64,7 @@ export async function GET(req: NextRequest) {
     const priceMax = searchParams.get("price_max");
     const scoreMin = searchParams.get("score_min");
     const scoreMax = searchParams.get("score_max");
+    const excludeProductType = searchParams.get("exclude_product_type");
 
     // Build query
     const query: any = {
@@ -72,6 +73,18 @@ export async function GET(req: NextRequest) {
     };
 
     if (status) query.status = sanitizeMongoQuery(status);
+
+    // Exclude products already associated with a specific product type
+    if (excludeProductType) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { "product_type.product_type_id": { $ne: excludeProductType } },
+          { "product_type.product_type_id": { $exists: false } },
+          { product_type: { $exists: false } },
+        ],
+      });
+    }
     if (sourceId) query["source.source_id"] = sanitizeMongoQuery(sourceId);
     if (batchId) {
       // Support partial matching for batch ID (sanitized)

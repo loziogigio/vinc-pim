@@ -98,6 +98,7 @@ export interface IPaymentEvent {
 export interface ITenantPaymentConfig {
   tenant_id: string;
   commission_rate: number;
+  provider_commission_rates?: Record<string, number>;
 
   // Provider configurations
   providers: {
@@ -119,11 +120,12 @@ export interface ITenantPaymentConfig {
 }
 
 export interface IStripeConfig {
-  publishable_key: string;
-  secret_key: string;
+  publishable_key?: string;
+  secret_key?: string;
   webhook_secret?: string;
   account_id?: string;
   account_status?: "pending" | "active" | "restricted";
+  details_submitted?: boolean;
   environment: "test" | "production";
   charges_enabled: boolean;
   payouts_enabled: boolean;

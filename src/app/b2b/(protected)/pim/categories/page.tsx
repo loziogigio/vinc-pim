@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   FolderTree,
+  FolderRoot,
   Plus,
   Edit2,
   Trash2,
@@ -38,14 +39,22 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import CategoryModal, { CategoryRecord } from "./_components/category-modal";
 
+interface ChannelInfo {
+  code: string;
+  name: string;
+  color?: string;
+}
+
 type Category = CategoryRecord & {
   _id: string;
   created_at: string;
   updated_at: string;
+  channel_code?: string;
 };
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -53,6 +62,7 @@ export default function CategoriesPage() {
   const [parentCategory, setParentCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
+  const [channelFilter, setChannelFilter] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -62,13 +72,30 @@ export default function CategoriesPage() {
   );
 
   useEffect(() => {
-    fetchCategories();
+    fetchChannels();
   }, []);
+
+  async function fetchChannels() {
+    try {
+      const res = await fetch("/api/b2b/channels");
+      if (res.ok) {
+        const data = await res.json();
+        setChannels(data.channels ?? []);
+      }
+    } catch {
+      // Channels are optional for display
+    }
+  }
+
+  const channelMap = new Map(channels.map((ch) => [ch.code, ch]));
 
   async function fetchCategories() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/categories?include_inactive=true");
+      const url = channelFilter
+        ? `/api/b2b/pim/categories?include_inactive=true&channel=${channelFilter}`
+        : "/api/b2b/pim/categories?include_inactive=true";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setCategories(data.categories);
@@ -80,6 +107,11 @@ export default function CategoriesPage() {
       setIsLoading(false);
     }
   }
+
+  // Refetch when channel filter changes
+  useEffect(() => {
+    fetchCategories();
+  }, [channelFilter]);
 
   function toggleExpand(categoryId: string) {
     setExpandedCategories((prev) => {
@@ -297,6 +329,19 @@ export default function CategoriesPage() {
           >
             <ChevronsUp className="h-5 w-5" />
           </button>
+          {/* Channel filter */}
+          <select
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">All Channels</option>
+            {channels.map((ch) => (
+              <option key={ch.code} value={ch.code}>
+                {ch.name}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={() => setShowInactive(!showInactive)}
@@ -353,7 +398,8 @@ export default function CategoriesPage() {
                   setParentCategory,
                   setShowCreateModal,
                   setEditingCategory,
-                  handleDelete
+                  handleDelete,
+                  channelMap,
                 )}
               </div>
             </DndContext>
@@ -394,6 +440,7 @@ function SortableCategoryRow({
   onAddChild,
   onEdit,
   onDelete,
+  channelInfo,
 }: {
   category: Category;
   level: number;
@@ -403,6 +450,7 @@ function SortableCategoryRow({
   onAddChild: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  channelInfo?: ChannelInfo;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: category.category_id,
@@ -440,7 +488,7 @@ function SortableCategoryRow({
           )}
         </button>
 
-        {/* Hero Image Thumbnail */}
+        {/* Hero Image Thumbnail / Icon */}
         {category.hero_image?.url ? (
           <div className="w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
             <img
@@ -448,6 +496,10 @@ function SortableCategoryRow({
               alt={category.hero_image.alt_text || category.name}
               className="w-full h-full object-cover"
             />
+          </div>
+        ) : !category.parent_id ? (
+          <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <FolderRoot className="h-5 w-5 text-primary" />
           </div>
         ) : (
           <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
@@ -459,6 +511,19 @@ function SortableCategoryRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-foreground truncate">{category.name}</h3>
+            {!category.parent_id && channelInfo && (
+              <span
+                className="px-2 py-0.5 rounded text-xs font-medium text-white"
+                style={{ backgroundColor: channelInfo.color || "#6b7280" }}
+              >
+                {channelInfo.name}
+              </span>
+            )}
+            {!category.parent_id && !channelInfo && (
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
+                Root — no channel
+              </span>
+            )}
             {!category.is_active && (
               <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
                 Inactive
@@ -521,6 +586,7 @@ function buildCategoryTree(
   setShowCreateModal: (show: boolean) => void,
   setEditingCategory: (cat: Category) => void,
   handleDelete: (cat: Category) => void,
+  channelMap: Map<string, ChannelInfo>,
   parentId?: string,
   level = 0
 ): JSX.Element {
@@ -550,6 +616,7 @@ function buildCategoryTree(
                 }}
                 onEdit={() => setEditingCategory(category)}
                 onDelete={() => handleDelete(category)}
+                channelInfo={!category.parent_id && category.channel_code ? channelMap.get(category.channel_code) : undefined}
               />
 
               {/* Render children if expanded */}
@@ -563,6 +630,7 @@ function buildCategoryTree(
                     setShowCreateModal,
                     setEditingCategory,
                     handleDelete,
+                    channelMap,
                     category.category_id,
                     level + 1
                   )}

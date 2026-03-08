@@ -109,6 +109,12 @@ export async function GET(req: NextRequest) {
     const productTypesWithCounts = productTypes.map((pt) => ({
       ...pt,
       product_count: countMap.get(pt.product_type_id) || 0,
+      // Map technical_specifications → features for frontend compatibility
+      features: ((pt as any).technical_specifications || []).map((ts: any) => ({
+        feature_id: ts.technical_specification_id,
+        required: ts.required,
+        display_order: ts.display_order,
+      })),
     }));
 
     return NextResponse.json({ productTypes: productTypesWithCounts });
@@ -138,7 +144,7 @@ export async function POST(req: NextRequest) {
     const { ProductType: ProductTypeModel } = auth.models;
 
     const body = await req.json();
-    const { code, name, slug, description, technical_specifications, display_order } = body;
+    const { code, name, slug, description, image, mobile_image, technical_specifications, display_order } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -175,6 +181,8 @@ export async function POST(req: NextRequest) {
       name,
       slug,
       description,
+      image: image || undefined,
+      mobile_image: mobile_image || undefined,
       technical_specifications: technical_specifications || [],
       display_order: display_order || 0,
       is_active: true,

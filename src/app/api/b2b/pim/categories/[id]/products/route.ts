@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
+import { buildCategoryEmbedding } from "@/lib/services/category.service";
 
 // GET /api/b2b/pim/categories/[id]/products - Get products for a category
 export async function GET(
@@ -8,12 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
     const { id: categoryId } = await params;
 
@@ -33,7 +32,7 @@ export async function GET(
 
     const query: Record<string, unknown> = {
       isCurrent: true,
-      "category.id": categoryId,
+      "category.category_id": categoryId,
     };
 
     if (search) {
@@ -78,13 +77,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session?.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
-    const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+    const { tenantDb } = auth;
+    const { Category: CategoryModel, PIMProduct: PIMProductModel, Language: LanguageModel } = await connectWithModels(tenantDb);
     const { id: categoryId } = await params;
 
     const body = await req.json();
@@ -116,11 +113,11 @@ export async function POST(
     }
 
     if (action === "add") {
-      const categoryData = {
-        id: categoryId,
-        name: category.name,
-        slug: category.slug,
-      };
+      const categoryData = await buildCategoryEmbedding({
+        category,
+        CategoryModel,
+        LanguageModel,
+      });
 
       const result = await PIMProductModel.updateMany(
         {
@@ -132,7 +129,7 @@ export async function POST(
 
       const productCount = await PIMProductModel.countDocuments({
         isCurrent: true,
-        "category.id": categoryId,
+        "category.category_id": categoryId,
       });
 
       await CategoryModel.updateOne(
@@ -150,14 +147,14 @@ export async function POST(
       {
         entity_code: { $in: entity_codes },
         isCurrent: true,
-        "category.id": categoryId,
+        "category.category_id": categoryId,
       },
       { $unset: { category: "" } }
     );
 
     const productCount = await PIMProductModel.countDocuments({
       isCurrent: true,
-      "category.id": categoryId,
+      "category.category_id": categoryId,
     });
 
     await CategoryModel.updateOne(

@@ -15,6 +15,10 @@ import {
   Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguageStore } from "@/lib/stores/languageStore";
+import { FullScreenModal } from "@/components/shared/FullScreenModal";
+import { ImageUpload } from "@/components/shared/ImageUpload";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
 type Collection = {
   _id: string;
@@ -24,6 +28,11 @@ type Collection = {
   locale: string;
   description?: string;
   hero_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+  mobile_hero_image?: {
     url: string;
     alt_text?: string;
     cdn_key?: string;
@@ -47,9 +56,11 @@ export default function CollectionsPage() {
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
+  const { languages, fetchLanguages, getEnabledLanguages } = useLanguageStore();
 
   useEffect(() => {
     fetchCollections();
+    fetchLanguages();
   }, []);
 
   async function fetchCollections() {
@@ -317,6 +328,9 @@ function CollectionModal({
     hero_image_url: collection?.hero_image?.url || "",
     hero_image_alt: collection?.hero_image?.alt_text || "",
     hero_image_cdn_key: collection?.hero_image?.cdn_key || "",
+    mobile_hero_image_url: collection?.mobile_hero_image?.url || "",
+    mobile_hero_image_alt: collection?.mobile_hero_image?.alt_text || "",
+    mobile_hero_image_cdn_key: collection?.mobile_hero_image?.cdn_key || "",
     seo_title: collection?.seo?.title || "",
     seo_description: collection?.seo?.description || "",
     seo_keywords: collection?.seo?.keywords?.join(", ") || "",
@@ -325,7 +339,7 @@ function CollectionModal({
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  // Track if slug was manually edited (don't auto-update if so)
+  const { getEnabledLanguages } = useLanguageStore();
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!collection?.slug);
 
   function generateSlug(name: string) {
@@ -337,12 +351,11 @@ function CollectionModal({
       .replace(/-+/g, "-");
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     setIsSaving(true);
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         name: formData.name,
         slug: formData.slug,
         locale: formData.locale,
@@ -362,6 +375,16 @@ function CollectionModal({
           alt_text: formData.hero_image_alt,
           cdn_key: formData.hero_image_cdn_key,
         };
+      }
+
+      if (formData.mobile_hero_image_url) {
+        payload.mobile_hero_image = {
+          url: formData.mobile_hero_image_url,
+          alt_text: formData.mobile_hero_image_alt,
+          cdn_key: formData.mobile_hero_image_cdn_key,
+        };
+      } else {
+        payload.mobile_hero_image = null;
       }
 
       const url = collection
@@ -392,277 +415,210 @@ function CollectionModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-xl font-bold text-foreground">
-              {collection ? "Edit Collection" : "Create Collection"}
-            </h2>
+    <FullScreenModal
+      open
+      onClose={onClose}
+      title={collection ? "Edit Collection" : "Create Collection"}
+      actions={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSaving || !formData.name || !formData.slug}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
+          >
+            {isSaving ? "Saving..." : collection ? "Update" : "Create"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        {/* Locale */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Locale *</label>
+          <select
+            required
+            value={formData.locale}
+            onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
+            disabled={!!collection}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {getEnabledLanguages().map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName} ({lang.code.toUpperCase()})
+              </option>
+            ))}
+          </select>
+          {collection && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Locale cannot be changed after creation
+            </p>
+          )}
+        </div>
+
+        {/* Name & Slug */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => {
+                const name = e.target.value;
+                setFormData({
+                  ...formData,
+                  name,
+                  slug: slugManuallyEdited ? formData.slug : generateSlug(name),
+                });
+              }}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              placeholder="Summer Collection"
+            />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+            <input
+              type="text"
+              required
+              value={formData.slug}
+              onChange={(e) => {
+                setFormData({ ...formData, slug: e.target.value });
+                setSlugManuallyEdited(true);
+              }}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              placeholder="summer-collection"
+            />
+          </div>
+        </div>
 
-          {/* Body */}
-          <div className="px-6 py-4 space-y-4">
-            {/* Locale */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Locale *</label>
-              <select
-                required
-                value={formData.locale}
-                onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
-                disabled={!!collection}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="it">Italiano (IT)</option>
-                <option value="en">English (EN)</option>
-                <option value="de">Deutsch (DE)</option>
-                <option value="fr">Français (FR)</option>
-                <option value="es">Español (ES)</option>
-              </select>
-              {collection && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Locale cannot be changed after creation
-                </p>
-              )}
-            </div>
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+          <RichTextEditor
+            content={formData.description}
+            onChange={(html) => setFormData({ ...formData, description: html })}
+            placeholder="Collection description..."
+            minHeight="120px"
+          />
+        </div>
 
-            {/* Name & Slug */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setFormData({
-                      ...formData,
-                      name,
-                      // Auto-generate slug only if not manually edited
-                      slug: slugManuallyEdited ? formData.slug : generateSlug(name),
-                    });
-                  }}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Summer Collection"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.slug}
-                  onChange={(e) => {
-                    setFormData({ ...formData, slug: e.target.value });
-                    setSlugManuallyEdited(true);
-                  }}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="summer-collection"
-                />
-              </div>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
-                placeholder="Collection description..."
-              />
-            </div>
-
-            {/* Display Order */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Display Order
-              </label>
-              <input
-                type="number"
-                value={formData.display_order}
-                onChange={(e) =>
-                  setFormData({ ...formData, display_order: parseInt(e.target.value) })
-                }
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            {/* Hero Image */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">Hero Image</label>
-
-              {/* Image Upload */}
-              <div className="flex gap-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    // Validate file
-                    if (!file.type.startsWith("image/")) {
-                      toast.error("Please select an image file");
-                      return;
-                    }
-                    if (file.size > 5 * 1024 * 1024) {
-                      toast.error("Image must be less than 5MB");
-                      return;
-                    }
-
-                    // Upload to CDN
-                    try {
-                      const formData = new FormData();
-                      formData.append("image", file);
-
-                      const response = await fetch("/api/b2b/editor/upload-image", {
-                        method: "POST",
-                        body: formData,
-                      });
-
-                      if (!response.ok) {
-                        throw new Error("Upload failed");
-                      }
-
-                      const data = await response.json();
-                      setFormData((prev) => ({
-                        ...prev,
-                        hero_image_url: data.url,
-                        hero_image_cdn_key: data.cdn_key,
-                      }));
-                      toast.success("Image uploaded successfully");
-                    } catch (error) {
-                      console.error("Upload error:", error);
-                      toast.error("Failed to upload image");
-                    }
-                  }}
-                  className="flex-1 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-                />
-                <input
-                  type="url"
-                  value={formData.hero_image_url}
-                  onChange={(e) => setFormData({ ...formData, hero_image_url: e.target.value })}
-                  placeholder="Or paste image URL..."
-                  className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              {/* Image Preview */}
-              {formData.hero_image_url && (
-                <div className="relative w-full h-48 rounded overflow-hidden bg-muted border border-border">
-                  <img
-                    src={formData.hero_image_url}
-                    alt="Hero preview"
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        hero_image_url: "",
-                        hero_image_cdn_key: "",
-                        hero_image_alt: "",
-                      })
-                    }
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition"
-                    title="Remove image"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* Alt Text */}
-              <input
-                type="text"
-                value={formData.hero_image_alt}
-                onChange={(e) => setFormData({ ...formData, hero_image_alt: e.target.value })}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Alt text for image"
-              />
-            </div>
-
-            {/* SEO Fields */}
-            <div className="space-y-3 pt-3 border-t border-border">
-              <h4 className="font-semibold text-foreground">SEO Settings</h4>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">SEO Title</label>
-                <input
-                  type="text"
-                  value={formData.seo_title}
-                  onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="SEO optimized title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  SEO Description
-                </label>
-                <textarea
-                  value={formData.seo_description}
-                  onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
-                  rows={2}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
-                  placeholder="SEO meta description"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Keywords (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={formData.seo_keywords}
-                  onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="keyword1, keyword2, keyword3"
-                />
-              </div>
-            </div>
-
-            {/* Active Status */}
-            <div className="flex items-center gap-2">
+        {/* Display Order & Active */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+            <input
+              type="number"
+              value={formData.display_order}
+              onChange={(e) =>
+                setFormData({ ...formData, display_order: parseInt(e.target.value) })
+              }
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+          <div className="flex items-end pb-2">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
-                id="is_active"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
-              <label htmlFor="is_active" className="text-sm text-foreground">
-                Active (visible to customers)
-              </label>
-            </div>
+              Active (visible to customers)
+            </label>
+          </div>
+        </div>
+
+        {/* Hero Image */}
+        <ImageUpload
+          label="Hero Image"
+          value={formData.hero_image_url}
+          onChange={(url) =>
+            setFormData((prev) => ({ ...prev, hero_image_url: url, hero_image_cdn_key: "" }))
+          }
+        />
+
+        {/* Alt Text (only shown when image is set) */}
+        {formData.hero_image_url && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+            <input
+              type="text"
+              value={formData.hero_image_alt}
+              onChange={(e) => setFormData({ ...formData, hero_image_alt: e.target.value })}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              placeholder="Alt text for image"
+            />
+          </div>
+        )}
+
+        {/* Mobile Hero Image */}
+        <ImageUpload
+          label="Mobile Hero Image"
+          value={formData.mobile_hero_image_url}
+          onChange={(url) =>
+            setFormData((prev) => ({ ...prev, mobile_hero_image_url: url, mobile_hero_image_cdn_key: "" }))
+          }
+        />
+
+        {formData.mobile_hero_image_url && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+            <input
+              type="text"
+              value={formData.mobile_hero_image_alt}
+              onChange={(e) => setFormData({ ...formData, mobile_hero_image_alt: e.target.value })}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              placeholder="Alt text for mobile image"
+            />
+          </div>
+        )}
+
+        {/* SEO Fields */}
+        <div className="space-y-4 pt-4 border-t border-border">
+          <h4 className="font-semibold text-foreground">SEO Settings</h4>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">SEO Title</label>
+            <input
+              type="text"
+              value={formData.seo_title}
+              onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              placeholder="SEO optimized title"
+            />
           </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded border border-border hover:bg-muted transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
-            >
-              {isSaving ? "Saving..." : collection ? "Update" : "Create"}
-            </button>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">SEO Description</label>
+            <textarea
+              value={formData.seo_description}
+              onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+              rows={2}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
+              placeholder="SEO meta description"
+            />
           </div>
-        </form>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Keywords (comma-separated)</label>
+            <input
+              type="text"
+              value={formData.seo_keywords}
+              onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              placeholder="keyword1, keyword2, keyword3"
+            />
+          </div>
+        </div>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }

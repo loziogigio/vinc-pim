@@ -52,7 +52,7 @@ export async function PATCH(
     const { Brand: BrandModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { label, slug, description, logo_url, website_url, is_active, display_order } = body;
+    const { label, slug, description, logo_url, mobile_logo_url, website_url, is_active, display_order } = body;
 
     // Find existing brand (no wholesaler_id - database provides isolation)
     const existingBrand = await BrandModel.findOne({
@@ -83,6 +83,7 @@ export async function PATCH(
     if (slug !== undefined) existingBrand.slug = slug.trim().toLowerCase();
     if (description !== undefined) existingBrand.description = description?.trim() || undefined;
     if (logo_url !== undefined) existingBrand.logo_url = logo_url?.trim() || undefined;
+    if (mobile_logo_url !== undefined) existingBrand.mobile_logo_url = mobile_logo_url?.trim() || undefined;
     if (website_url !== undefined) existingBrand.website_url = website_url?.trim() || undefined;
     if (is_active !== undefined) existingBrand.is_active = is_active;
     if (display_order !== undefined) existingBrand.display_order = display_order;

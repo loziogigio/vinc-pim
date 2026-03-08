@@ -64,7 +64,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, slug, description, color, is_active, display_order } = body;
+    const { name, slug, description, color, image, mobile_image, is_active, display_order } = body;
 
     const tag = await TagModel.findOne({
       tag_id: id,
@@ -94,6 +94,8 @@ export async function PATCH(
     if (slug !== undefined) tag.slug = slug.trim();
     if (description !== undefined) tag.description = description?.trim() || undefined;
     if (color !== undefined) tag.color = color?.trim() || undefined;
+    if (image !== undefined) tag.image = image || undefined;
+    if (mobile_image !== undefined) tag.mobile_image = mobile_image || undefined;
     if (is_active !== undefined) tag.is_active = Boolean(is_active);
     if (display_order !== undefined) tag.display_order = display_order;
     tag.updated_at = new Date();

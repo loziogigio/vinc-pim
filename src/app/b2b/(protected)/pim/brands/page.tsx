@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, ExternalLink, Upload, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { FullScreenModal } from "@/components/shared/FullScreenModal";
+import { ImageUpload } from "@/components/shared/ImageUpload";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
 type Brand = {
   brand_id: string;
@@ -11,6 +14,7 @@ type Brand = {
   slug: string;
   description?: string;
   logo_url?: string;
+  mobile_logo_url?: string;
   website_url?: string;
   is_active: boolean;
   product_count: number;
@@ -40,12 +44,12 @@ export default function BrandsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [formData, setFormData] = useState({
     label: "",
     slug: "",
     description: "",
     logo_url: "",
+    mobile_logo_url: "",
     website_url: "",
     is_active: true,
     display_order: 0,
@@ -91,6 +95,7 @@ export default function BrandsPage() {
       slug: "",
       description: "",
       logo_url: "",
+      mobile_logo_url: "",
       website_url: "",
       is_active: true,
       display_order: 0,
@@ -106,6 +111,7 @@ export default function BrandsPage() {
       slug: brand.slug,
       description: brand.description || "",
       logo_url: brand.logo_url || "",
+      mobile_logo_url: brand.mobile_logo_url || "",
       website_url: brand.website_url || "",
       is_active: brand.is_active,
       display_order: brand.display_order,
@@ -113,39 +119,7 @@ export default function BrandsPage() {
     setShowModal(true);
   }
 
-  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingLogo(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/b2b/pim/brands/upload-logo", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        toast.error(error.error || "Failed to upload logo");
-        return;
-      }
-
-      const data = await res.json();
-      setFormData((prev) => ({ ...prev, logo_url: data.url }));
-      toast.success("Logo uploaded successfully");
-    } catch (error) {
-      console.error("Failed to upload logo:", error);
-      toast.error("Failed to upload logo");
-    } finally {
-      setUploadingLogo(false);
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
 
     try {
       const url = editingBrand
@@ -476,206 +450,134 @@ export default function BrandsPage() {
       )}
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-2xl font-bold text-foreground">
-                {editingBrand ? "Edit Brand" : "Create Brand"}
-              </h2>
+      <FullScreenModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingBrand ? "Edit Brand" : "Create Brand"}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!formData.label || !formData.slug}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
+            >
+              {editingBrand ? "Update Brand" : "Create Brand"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          {/* Name & Slug */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Brand Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.label}
+                onChange={(e) => {
+                  const newLabel = e.target.value;
+                  setFormData({
+                    ...formData,
+                    label: newLabel,
+                    slug: slugManuallyEdited ? formData.slug : generateSlug(newLabel),
+                  });
+                }}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary text-sm"
+                placeholder="e.g., Nike, Apple, Samsung"
+              />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+              <input
+                type="text"
+                required
+                value={formData.slug}
+                onChange={(e) => {
+                  setSlugManuallyEdited(true);
+                  setFormData({ ...formData, slug: e.target.value });
+                }}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary text-sm"
+                placeholder="e.g., nike, apple, samsung"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                URL-friendly identifier (lowercase, no spaces)
+              </p>
+            </div>
+          </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Brand Name *
-                </label>
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+            <RichTextEditor
+              content={formData.description}
+              onChange={(html) => setFormData({ ...formData, description: html })}
+              placeholder="Brief description of the brand..."
+              minHeight="120px"
+            />
+          </div>
+
+          {/* Brand Logo */}
+          <ImageUpload
+            label="Brand Logo"
+            value={formData.logo_url}
+            onChange={(url) => setFormData((prev) => ({ ...prev, logo_url: url }))}
+          />
+
+          {/* Mobile Brand Logo */}
+          <ImageUpload
+            label="Mobile Brand Logo"
+            value={formData.mobile_logo_url}
+            onChange={(url) => setFormData((prev) => ({ ...prev, mobile_logo_url: url }))}
+          />
+
+          {/* Website URL */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Website URL</label>
+            <input
+              type="url"
+              value={formData.website_url}
+              onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary text-sm"
+              placeholder="https://..."
+            />
+          </div>
+
+          {/* Display Order & Status */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+              <input
+                type="number"
+                value={formData.display_order}
+                onChange={(e) =>
+                  setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })
+                }
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary text-sm"
+              />
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                 <input
-                  type="text"
-                  required
-                  value={formData.label}
-                  onChange={(e) => {
-                    const newLabel = e.target.value;
-                    setFormData({
-                      ...formData,
-                      label: newLabel,
-                      slug: slugManuallyEdited ? formData.slug : generateSlug(newLabel),
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g., Nike, Apple, Samsung"
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  className="w-4 h-4"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Slug *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.slug}
-                  onChange={(e) => {
-                    setSlugManuallyEdited(true);
-                    setFormData({ ...formData, slug: e.target.value });
-                  }}
-                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g., nike, apple, samsung"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  URL-friendly identifier (lowercase, no spaces)
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Brief description of the brand..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Brand Logo
-                </label>
-
-                {/* Logo Preview */}
-                {formData.logo_url && (
-                  <div className="mb-3 relative inline-block">
-                    <img
-                      src={formData.logo_url}
-                      alt="Brand logo preview"
-                      className="w-32 h-32 object-contain border border-border rounded-lg p-2 bg-muted"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, logo_url: "" })}
-                      className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
-                      title="Remove logo"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Upload Button */}
-                <div className="space-y-2">
-                  <label className="inline-flex items-center gap-2 px-4 py-2 border border-input rounded-lg hover:bg-accent cursor-pointer">
-                    <Upload className="w-4 h-4" />
-                    <span className="text-sm">
-                      {uploadingLogo ? "Uploading..." : "Upload Logo"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleLogoUpload}
-                      disabled={uploadingLogo}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    JPG, PNG, WebP (max 5MB)
-                  </p>
-                </div>
-
-                {/* Or enter URL manually */}
-                <div className="mt-3">
-                  <label className="block text-xs text-muted-foreground mb-1">
-                    Or enter URL manually:
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.logo_url}
-                    onChange={(e) =>
-                      setFormData({ ...formData, logo_url: e.target.value })
-                    }
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Website URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.website_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, website_url: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Display Order
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.display_order}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        display_order: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Status
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_active}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          is_active: e.target.checked,
-                        })
-                      }
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm text-foreground">Active</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-input rounded-lg hover:bg-accent"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-                >
-                  {editingBrand ? "Update Brand" : "Create Brand"}
-                </button>
-              </div>
-            </form>
+                Active
+              </label>
+            </div>
           </div>
         </div>
-      )}
+      </FullScreenModal>
     </div>
   );
 }

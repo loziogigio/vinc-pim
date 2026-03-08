@@ -18,6 +18,9 @@ export interface IMenuItem extends Document {
   menu_item_id: string;
   // wholesaler_id removed - database per wholesaler provides isolation
 
+  // Sales channel (e.g., "default", "b2c", "b2b")
+  channel: string;
+
   // Menu location
   location: MenuLocation;
 
@@ -68,6 +71,14 @@ const MenuItemSchema = new Schema<IMenuItem>(
       index: true,
     },
     // wholesaler_id removed - database per wholesaler provides isolation
+    channel: {
+      type: String,
+      required: true,
+      default: "default",
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
     location: {
       type: String,
       enum: ["header", "footer", "mobile", "mega_menu"],
@@ -178,7 +189,7 @@ const MenuItemSchema = new Schema<IMenuItem>(
 );
 
 // Compound indexes - wholesaler_id removed, database provides isolation
-MenuItemSchema.index({ location: 1, parent_id: 1, position: 1 });
+MenuItemSchema.index({ channel: 1, location: 1, parent_id: 1, position: 1 });
 MenuItemSchema.index({ is_active: 1, start_date: 1, end_date: 1 });
 MenuItemSchema.index({ type: 1, reference_id: 1 });
 

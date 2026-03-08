@@ -17,6 +17,7 @@ import { FeaturesForm } from "@/components/pim/FeaturesForm";
 import { AttributesEditor } from "@/components/pim/AttributesEditor";
 import { TagSelector, TagReference } from "@/components/pim/TagSelector";
 import { SynonymDictionarySelector } from "@/components/pim/SynonymDictionarySelector";
+import { ChannelSection } from "@/components/pim/ChannelSection";
 import { MultilingualInput } from "@/components/pim/MultilingualInput";
 import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
 import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
@@ -53,6 +54,8 @@ import {
   Plus,
   Pencil,
   Copy,
+  X,
+  Layers,
 } from "lucide-react";
 
 type Product = {
@@ -276,6 +279,10 @@ export default function ProductDetailPage({
   const [rawMultilingualAttributes, setRawMultilingualAttributes] = useState<Record<string, any>>({});
   const [tagRefs, setTagRefs] = useState<TagReference[]>([]);
   const [synonymKeys, setSynonymKeys] = useState<string[]>([]);
+  const [channels, setChannels] = useState<string[]>(["default"]);
+  const [channelCategories, setChannelCategories] = useState<{ channel_code: string; category: any }[]>([]);
+  const [originalChannels, setOriginalChannels] = useState<string[]>(["default"]);
+  const [originalChannelCategories, setOriginalChannelCategories] = useState<{ channel_code: string; category: any }[]>([]);
 
   // Original values for comparison
   const [originalProductType, setOriginalProductType] = useState<any>(null);
@@ -325,6 +332,10 @@ export default function ProductDetailPage({
     // Check if synonym keys changed
     const synonymsChanged = JSON.stringify(synonymKeys) !== JSON.stringify(originalSynonymKeys);
 
+    // Check if channels or channel categories changed
+    const channelsChanged = JSON.stringify(channels) !== JSON.stringify(originalChannels);
+    const channelCategoriesChanged = JSON.stringify(channelCategories) !== JSON.stringify(originalChannelCategories);
+
     const hasAnyChanges =
       formChanged ||
       productTypeChanged ||
@@ -334,7 +345,9 @@ export default function ProductDetailPage({
       featuresChanged ||
       attributesChanged ||
       tagsChanged ||
-      synonymsChanged;
+      synonymsChanged ||
+      channelsChanged ||
+      channelCategoriesChanged;
 
     setHasChanges(hasAnyChanges);
   }, [
@@ -355,7 +368,11 @@ export default function ProductDetailPage({
     tagRefs,
     originalTagRefs,
     synonymKeys,
-    originalSynonymKeys
+    originalSynonymKeys,
+    channels,
+    originalChannels,
+    channelCategories,
+    originalChannelCategories,
   ]);
 
   async function fetchProduct() {
@@ -444,6 +461,14 @@ export default function ProductDetailPage({
         setCustomAttributes(loadedAttributes);
         setRawMultilingualAttributes(rawAttributes);
         setTagRefs(loadedTagRefs);
+
+        // Load channels & channel categories
+        const loadedChannels = data.product.channels?.length ? data.product.channels : ["default"];
+        const loadedChannelCategories = data.product.channel_categories || [];
+        setChannels(loadedChannels);
+        setChannelCategories(loadedChannelCategories);
+        setOriginalChannels(loadedChannels);
+        setOriginalChannelCategories(loadedChannelCategories);
 
         // Load synonym keys
         const loadedSynonymKeys = data.product.synonym_keys || [];
@@ -563,6 +588,14 @@ export default function ProductDetailPage({
       // Add synonym keys
       updates.synonym_keys = synonymKeys;
 
+      // Add channels & channel categories if changed
+      if (JSON.stringify(channels) !== JSON.stringify(originalChannels)) {
+        updates.channels = channels;
+      }
+      if (JSON.stringify(channelCategories) !== JSON.stringify(originalChannelCategories)) {
+        updates.channel_categories = channelCategories;
+      }
+
       console.log("💾 Saving product with updates:", {
         product_type: updates.product_type,
         featureValues_count: featureValues?.length,
@@ -616,6 +649,8 @@ export default function ProductDetailPage({
         setRawMultilingualAttributes(updates.attributes);
         setOriginalTagRefs(tagRefs);
         setOriginalSynonymKeys(synonymKeys);
+        setOriginalChannels(data.product.channels || channels);
+        setOriginalChannelCategories(data.product.channel_categories || channelCategories);
 
         setHasChanges(false);
 
@@ -2567,6 +2602,15 @@ export default function ProductDetailPage({
               />
             )}
           </div>
+
+          {/* Channels & Channel Categories */}
+          <ChannelSection
+            channels={channels}
+            setChannels={setChannels}
+            channelCategories={channelCategories}
+            setChannelCategories={setChannelCategories}
+            disabled={isOldVersion}
+          />
 
           {/* Collections */}
           <div className="rounded-lg bg-card p-6 shadow-sm">

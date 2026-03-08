@@ -18,7 +18,10 @@ export interface VetrinaTenantProfile {
   branding: {
     title: string;
     logo?: string;
+    favicon?: string;
     primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
     shopUrl?: string;
     websiteUrl?: string;
   };
@@ -28,6 +31,9 @@ export interface VetrinaTenantProfile {
     address_line2?: string;
     phone?: string;
     email?: string;
+    support_email?: string;
+    vat_number?: string;
+    business_hours?: string;
   };
   meta: {
     description?: string;
@@ -71,7 +77,10 @@ export async function listVetrinaTenants(): Promise<VetrinaTenantProfile[]> {
         branding: {
           title: settings?.branding?.title || tenant.name,
           logo: settings?.branding?.logo,
+          favicon: settings?.branding?.favicon,
           primaryColor: settings?.branding?.primaryColor,
+          secondaryColor: settings?.branding?.secondaryColor,
+          accentColor: settings?.branding?.accentColor,
           shopUrl: settings?.branding?.shopUrl,
           websiteUrl: settings?.branding?.websiteUrl,
         },
@@ -81,6 +90,9 @@ export async function listVetrinaTenants(): Promise<VetrinaTenantProfile[]> {
           address_line2: settings?.company_info?.address_line2,
           phone: settings?.company_info?.phone,
           email: settings?.company_info?.email,
+          support_email: settings?.company_info?.support_email,
+          vat_number: settings?.company_info?.vat_number,
+          business_hours: settings?.company_info?.business_hours,
         },
         meta: {
           description: settings?.meta_tags?.description,

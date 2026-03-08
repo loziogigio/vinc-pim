@@ -17,7 +17,6 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
 
   const tenantPrefix = tenantId ? `/${tenantId}` : "";
 
-  // Click-outside handler
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -40,9 +39,10 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
     }
   };
 
+  const apps = getLauncherApps();
+
   return (
     <div ref={dropdownRef} className="relative">
-      {/* 9-dot grid button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -53,46 +53,42 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
         <Grid3X3 className="h-5 w-5" />
       </button>
 
-      {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-[280px] rounded-2xl border border-[#ebe9f1] bg-white shadow-xl z-50">
-          <div className="p-4">
-            <div className="grid grid-cols-3 gap-2">
-              {getLauncherApps().map((app) => (
+        <div className="absolute right-0 top-full mt-2 w-[300px] rounded-2xl border border-[#dadce0] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+          <div className="max-h-[420px] overflow-y-auto overscroll-contain p-2">
+            <div className="grid grid-cols-3 gap-0">
+              {apps.map((app) => (
                 <Link
                   key={app.id}
                   href={`${tenantPrefix}${app.href}`}
                   onClick={() => setIsOpen(false)}
-                  className="group flex flex-col items-center gap-2 rounded-xl p-3 transition hover:bg-[#f8f8f8]"
+                  className="group flex flex-col items-center gap-1.5 rounded-lg p-3 transition-colors hover:bg-[#f1f3f4]"
                 >
                   <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-full ${app.color} text-white shadow-md transition group-hover:scale-105`}
+                    className={`flex h-11 w-11 items-center justify-center rounded-full ${app.color} text-white transition-transform group-hover:scale-110`}
                   >
-                    <app.icon className="h-6 w-6" />
+                    <app.icon className="h-5 w-5" />
                   </div>
-                  <span className="text-xs font-medium text-[#5e5873]">
+                  <span className="text-[11px] font-medium text-[#5f6368] text-center leading-tight line-clamp-2 min-h-[28px] flex items-center">
                     {app.name}
                   </span>
                 </Link>
               ))}
-
-              {/* Logout */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  handleLogout();
-                }}
-                className="group flex flex-col items-center gap-2 rounded-xl p-3 transition hover:bg-[#f8f8f8]"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition group-hover:scale-105">
-                  <LogOut className="h-6 w-6" />
-                </div>
-                <span className="text-xs font-medium text-[#5e5873]">
-                  Logout
-                </span>
-              </button>
             </div>
+          </div>
+
+          <div className="border-t border-[#dadce0]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                handleLogout();
+              }}
+              className="flex w-full items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4]"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
           </div>
         </div>
       )}

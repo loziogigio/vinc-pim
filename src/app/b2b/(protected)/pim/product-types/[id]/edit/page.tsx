@@ -32,6 +32,8 @@ type ProductType = {
   name: MultiLangString;
   slug: string;
   description?: MultiLangString;
+  image?: { url: string; alt_text?: string; cdn_key?: string };
+  mobile_image?: { url: string; alt_text?: string; cdn_key?: string };
   technical_specifications?: SelectedSpecification[];
   display_order: number;
   is_active: boolean;

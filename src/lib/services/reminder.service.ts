@@ -373,6 +373,59 @@ export async function expireOldReminders(
 }
 
 /**
+ * Get tenant-wide dashboard stats: counts by status + most wanted products.
+ */
+export async function getDashboardStats(
+  tenantDb: string,
+  tenantId: string
+): Promise<{
+  stats: { active: number; notified: number; expired: number; cancelled: number };
+  most_wanted: { sku: string; active_count: number; total_count: number }[];
+}> {
+  const { ProductReminder } = await connectWithModels(tenantDb);
+
+  const [statusCounts, mostWanted] = await Promise.all([
+    ProductReminder.aggregate([
+      { $match: { tenant_id: tenantId } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    ProductReminder.aggregate([
+      { $match: { tenant_id: tenantId } },
+      {
+        $group: {
+          _id: "$sku",
+          active_count: {
+            $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] },
+          },
+          total_count: { $sum: 1 },
+        },
+      },
+      { $sort: { active_count: -1 } },
+      { $limit: 10 },
+    ]),
+  ]);
+
+  const counts: Record<string, number> = {};
+  for (const r of statusCounts) {
+    counts[r._id] = r.count;
+  }
+
+  return {
+    stats: {
+      active: counts.active || 0,
+      notified: counts.notified || 0,
+      expired: counts.expired || 0,
+      cancelled: counts.cancelled || 0,
+    },
+    most_wanted: mostWanted.map((m) => ({
+      sku: m._id,
+      active_count: m.active_count,
+      total_count: m.total_count,
+    })),
+  };
+}
+
+/**
  * Hard delete all reminders for a user.
  */
 export async function deleteAllUserReminders(

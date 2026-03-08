@@ -93,7 +93,7 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
 const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: string }> = [
   {
     value: "b2b",
-    label: "Vertical (B2B)",
+    label: "Vertical",
     helper: "Optimised for grid layouts (3-4 columns)"
   },
   {
@@ -5143,13 +5143,13 @@ interface ProductCardPreviewPanelProps {
 
 function ProductCardPreviewPanel({ cardStyle, branding, previewVariant, onVariantChange }: ProductCardPreviewPanelProps) {
   const previewHeading = previewVariant === "horizontal"
-    ? "Horizontal product card"
-    : "Vertical product card";
+    ? "Horizontal card"
+    : "Vertical card";
 
   return (
     <SectionCard
       title={previewHeading}
-      description="Live preview."
+      description="Live preview"
     >
       <div className="flex gap-2 mb-4">
         {CARD_VARIANTS.map((variant) => (

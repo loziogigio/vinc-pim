@@ -466,6 +466,48 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     // Sales Channels
     channels: { type: [String], default: ["default"], index: true },
 
+    // Per-channel category assignments (product can have different categories per channel)
+    channel_categories: [
+      {
+        channel_code: { type: String, required: true },
+        category: {
+          category_id: { type: String },
+          name: MultilingualTextSchema,
+          slug: MultilingualTextSchema,
+          details: MultilingualTextSchema,
+          image: {
+            id: { type: String },
+            thumbnail: { type: String },
+            original: { type: String },
+          },
+          icon: { type: String },
+          parent_id: { type: String },
+          level: { type: Number },
+          path: [{ type: String }],
+          hierarchy: [
+            {
+              category_id: { type: String },
+              name: MultilingualTextSchema,
+              slug: MultilingualTextSchema,
+              level: { type: Number },
+              description: { type: String },
+              image: {
+                id: { type: String },
+                thumbnail: { type: String },
+                original: { type: String },
+              },
+              icon: { type: String },
+            },
+          ],
+          channel_code: { type: String },
+          description: { type: String },
+          is_active: { type: Boolean },
+          product_count: { type: Number },
+          display_order: { type: Number },
+        },
+      },
+    ],
+
     version: { type: Number, required: true, default: 1 },
     isCurrent: { type: Boolean, required: true, default: true },
     isCurrentPublished: { type: Boolean, required: true, default: false },
