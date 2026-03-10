@@ -13,7 +13,8 @@ export type StorefrontActiveSection =
   | "branding"
   | "header"
   | "footer"
-  | "seo";
+  | "seo"
+  | "sitemap";
 
 export interface SidebarItemConfig {
   key: StorefrontActiveSection;

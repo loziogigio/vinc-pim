@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { invalidateB2CCache } from "@/lib/cache/redis-client";
 
 /**
  * POST /api/b2b/menu/reorder
@@ -97,6 +98,9 @@ export async function POST(req: NextRequest) {
         );
       }
     }
+
+    // Invalidate B2C menu cache
+    invalidateB2CCache(tenantDb, "menu").catch(() => {});
 
     return NextResponse.json({
       success: true,

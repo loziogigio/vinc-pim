@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { invalidateB2CCache } from "@/lib/cache/redis-client";
 import { MenuLocation } from "@/lib/db/models/menu";
 import { nanoid } from "nanoid";
 
@@ -172,6 +173,9 @@ export async function POST(req: NextRequest) {
       open_in_new_tab,
       css_class,
     });
+
+    // Invalidate B2C menu cache
+    invalidateB2CCache(tenantDb, "menu").catch(() => {});
 
     return NextResponse.json({ menuItem }, { status: 201 });
   } catch (error) {

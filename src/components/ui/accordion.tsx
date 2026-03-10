@@ -26,8 +26,8 @@ export function AccordionItem({
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
   return (
-    <div className={cn("rounded-xl border border-slate-200 bg-white overflow-hidden", className)}>
-      <div className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+    <div className={cn("rounded-xl border border-slate-200 bg-white", className)}>
+      <div className={cn("flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors", !isOpen && "rounded-xl")}>
         <div
           className="flex items-center gap-3 flex-1 cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}
@@ -54,16 +54,11 @@ export function AccordionItem({
           </div>
         )}
       </div>
-      <div
-        className={cn(
-          "transition-all duration-200 ease-in-out overflow-hidden",
-          isOpen ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
+      {isOpen && (
         <div className="border-t border-slate-200 px-4 py-4">
           {children}
         </div>
-      </div>
+      )}
     </div>
   );
 }

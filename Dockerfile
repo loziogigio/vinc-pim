@@ -29,25 +29,21 @@ ENV NEXT_BUILD_PHASE=1
 # Skip Puppeteer's bundled Chrome download — system Chromium is used at runtime
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-# Accept build-time args and expose them as env for Next build
-ARG VINC_TENANT_ID
-ARG VINC_MONGO_URL
+# Accept build-time args needed by Next.js at compile time
+# NEXT_PUBLIC_* vars are inlined into client bundles, so they MUST be build args
+# Server-only secrets (MONGO_URL, API keys) are passed at runtime via docker-compose
 ARG SOLR_URL
 ARG SOLR_ENABLED
 ARG NEXT_PUBLIC_BASE_URL
 ARG NEXT_PUBLIC_CUSTOMER_WEB_URL
-ARG VINC_ANTHROPIC_API_KEY
 
-ENV VINC_TENANT_ID=$VINC_TENANT_ID
-ENV VINC_MONGO_URL=$VINC_MONGO_URL
 ENV SOLR_URL=$SOLR_URL
 ENV SOLR_ENABLED=$SOLR_ENABLED
 ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
 ENV NEXT_PUBLIC_CUSTOMER_WEB_URL=$NEXT_PUBLIC_CUSTOMER_WEB_URL
-ENV VINC_ANTHROPIC_API_KEY=$VINC_ANTHROPIC_API_KEY
 
 RUN --mount=type=cache,id=next-cache,target=/app/.next/cache \
-    echo "Building with VINC_TENANT_ID=${VINC_TENANT_ID}" && pnpm build
+    pnpm build
 
 # BullMQ Worker runtime (separate container for workers)
 FROM base AS worker
@@ -55,23 +51,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-
-# Re-declare args for worker environment
-ARG VINC_TENANT_ID
-ARG VINC_MONGO_URL
-ARG SOLR_URL
-ARG SOLR_ENABLED
-ARG REDIS_HOST
-ARG REDIS_PORT
-ARG NEXT_PUBLIC_APP_URL
-
-ENV VINC_TENANT_ID=$VINC_TENANT_ID
-ENV VINC_MONGO_URL=$VINC_MONGO_URL
-ENV SOLR_URL=$SOLR_URL
-ENV SOLR_ENABLED=$SOLR_ENABLED
-ENV REDIS_HOST=$REDIS_HOST
-ENV REDIS_PORT=$REDIS_PORT
-ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Copy node_modules and source files needed for workers
 COPY --from=deps /app/node_modules ./node_modules
@@ -83,10 +62,11 @@ COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/vite.config.ts ./vite.config.ts
 
 # Run as non-root user for security
-RUN addgroup -S worker && adduser -S worker -G worker
-RUN chown -R worker:worker /app
+RUN addgroup -S worker && adduser -S worker -G worker \
+    && chown -R worker:worker /app
 USER worker
 
+# All secrets (VINC_MONGO_URL, REDIS_HOST, etc.) injected at runtime via docker-compose
 CMD ["pnpm", "worker:all:prod"]
 
 # Production runtime using Next.js standalone output (DEFAULT)
@@ -111,42 +91,24 @@ RUN apk add --no-cache \
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-# Re-declare args and set runtime envs for SSR/server usage
-ARG VINC_TENANT_ID
-ARG VINC_MONGO_URL
-ARG SOLR_URL
-ARG SOLR_ENABLED
+# Carry forward NEXT_PUBLIC_* from build (inlined in client JS, but also needed for SSR)
 ARG NEXT_PUBLIC_BASE_URL
 ARG NEXT_PUBLIC_CUSTOMER_WEB_URL
-ARG VINC_ANTHROPIC_API_KEY
-
-ENV VINC_TENANT_ID=$VINC_TENANT_ID
-ENV VINC_MONGO_URL=$VINC_MONGO_URL
-ENV SOLR_URL=$SOLR_URL
-ENV SOLR_ENABLED=$SOLR_ENABLED
 ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
 ENV NEXT_PUBLIC_CUSTOMER_WEB_URL=$NEXT_PUBLIC_CUSTOMER_WEB_URL
-ENV VINC_ANTHROPIC_API_KEY=$VINC_ANTHROPIC_API_KEY
 
-# Run as non-root user for security
-RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
+# Create non-root user, cache dir, remove shell utilities in one layer
+RUN addgroup -S nextjs && adduser -S nextjs -G nextjs \
+    && mkdir -p /app/.next/cache \
+    && rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
 
-# Remove wget/curl/shell utilities to prevent RCE exploitation
-RUN rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+# Copy standalone server and static assets with correct ownership
+COPY --from=build --chown=nextjs:nextjs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nextjs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nextjs /app/public ./public
 
-# Create cache directory with correct permissions BEFORE switching user
-RUN mkdir -p /app/.next/cache && chown -R nextjs:nextjs /app/.next
-
-# Copy standalone server and static assets (as root, then fix ownership)
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
-
-# Fix ownership of all copied files
-RUN chown -R nextjs:nextjs /app
-
-# Switch to non-root user
 USER nextjs
 
+# All secrets (VINC_MONGO_URL, VINC_ANTHROPIC_API_KEY, etc.) injected at runtime via docker-compose
 EXPOSE 3000
 CMD ["node", "server.js"]

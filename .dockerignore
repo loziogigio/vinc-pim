@@ -1,17 +1,30 @@
 node_modules
 .next
 .git
+
 # All env files (secrets injected at runtime via docker-compose)
 .env*
+
+# Scripts and docs (not needed in image)
+scripts/
+doc/
+docs/
+src/test/
+
+# Logs and editor artifacts
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 .DS_Store
 *.pem
 coverage
 .vscode
 .idea
-*.log
-test-data
-docs
 tsconfig.tsbuildinfo
+test-data
+
+# Docker build files
+Dockerfile
+docker-compose*.yml
+build-docker.sh

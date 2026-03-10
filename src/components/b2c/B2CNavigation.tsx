@@ -10,6 +10,9 @@ import {
   LayoutTemplate,
   FileCode2,
   Globe,
+  MapPin,
+  FileText,
+  Inbox,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,6 +28,7 @@ const STOREFRONT_SECTIONS: {
   { key: "header", icon: LayoutTemplate, label: "Header" },
   { key: "footer", icon: FileCode2, label: "Footer" },
   { key: "seo", icon: Globe, label: "SEO & Meta Tags" },
+  { key: "sitemap", icon: MapPin, label: "Sitemap" },
 ];
 
 function StorefrontSectionLink({
@@ -58,11 +62,12 @@ export function B2CNavigation() {
   const pathname = usePathname() || "";
   const searchParams = useSearchParams();
 
-  // Detect if we're on a storefront detail page: /tenant/b2b/b2c/storefronts/[slug]
+  // Detect if we're on a storefront detail page: /tenant/b2b/b2c/storefronts/[slug] or sub-pages
   const storefrontMatch = pathname.match(
-    /\/b2b\/b2c\/storefronts\/([^/]+)$/
+    /\/b2b\/b2c\/storefronts\/([^/]+)/
   );
   const storefrontSlug = storefrontMatch?.[1] || null;
+  const subPage = pathname.match(/\/storefronts\/[^/]+\/(\w+)$/)?.[1] || null;
   const tenantPrefix =
     pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -89,9 +94,21 @@ export function B2CNavigation() {
               href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}?section=${item.key}`}
               icon={item.icon}
               label={item.label}
-              active={currentSection === item.key}
+              active={!subPage && currentSection === item.key}
             />
           ))}
+          <StorefrontSectionLink
+            href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}/pages`}
+            icon={FileText}
+            label="Pages"
+            active={subPage === "pages"}
+          />
+          <StorefrontSectionLink
+            href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}/forms`}
+            icon={Inbox}
+            label="Forms"
+            active={subPage === "forms"}
+          />
         </NavSection>
       )}
     </AppSidebar>

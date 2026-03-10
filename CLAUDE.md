@@ -155,6 +155,7 @@ Never hard-code magic values. See `docs/claude/constants-guide.md` for patterns.
 
 - Client-side pagination (always server-side)
 - Hard-coded magic values (use constants)
+- Hard-coded secrets, API keys, or credentials in source files — always use environment variables (e.g., `process.env.SEED_API_KEY_ID`). Scripts in `scripts/` must read credentials from `.env` or CLI env vars, never inline them.
 - `Co-Authored-By` in commits
 - Real tenant names in API documentation
 

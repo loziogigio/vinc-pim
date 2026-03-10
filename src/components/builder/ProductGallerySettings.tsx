@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { ProductSearchPreview, type SearchPreviewProduct } from "@/components/shared/ProductSearchPreview";
 
 interface ProductGallerySettingsProps {
   blockId: string;
@@ -10,18 +11,10 @@ interface ProductGallerySettingsProps {
   onSave: (config: any) => void;
 }
 
-const PREVIEW_ENDPOINT = '/api/customer-web/product-search';
-
 const clamp = (value: number, min: number, max: number) => {
   if (Number.isNaN(value)) return min;
   return Math.min(Math.max(value, min), max);
 };
-
-const PreviewPlaceholder = ({ message }: { message: string }) => (
-  <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-    {message}
-  </div>
-);
 
 export function ProductGallerySettings({ config, onSave }: ProductGallerySettingsProps) {
   // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
@@ -43,49 +36,7 @@ export function ProductGallerySettings({ config, onSave }: ProductGallerySetting
   const [showBadge, setShowBadge] = useState<boolean>(config.showBadge ?? true);
   const [showAddToCart, setShowAddToCart] = useState<boolean>(config.showAddToCart ?? false);
 
-  const [previewProducts, setPreviewProducts] = useState<any[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const text = searchQuery.trim();
-    if (!text) {
-      setPreviewProducts([]);
-      setPreviewError(null);
-      setPreviewLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        setPreviewLoading(true);
-        setPreviewError(null);
-        const response = await fetch(
-          `${PREVIEW_ENDPOINT}?text=${encodeURIComponent(text)}&limit=${Math.min(clamp(limit, 1, 50), 8)}`,
-          { signal: controller.signal }
-        );
-        if (!response.ok) throw new Error('Request failed');
-        const data = await response.json();
-        setPreviewProducts(Array.isArray(data.items) ? data.items.slice(0, 8) : []);
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error('[ProductGallerySettings] preview error', error);
-          setPreviewError('Unable to load preview results');
-          setPreviewProducts([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setPreviewLoading(false);
-        }
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [searchQuery, limit]);
+  const [cachedProducts, setCachedProducts] = useState<SearchPreviewProduct[]>([]);
 
   // Track if this is the initial mount to avoid triggering onSave on first render
   const isInitialMount = useRef(true);
@@ -116,51 +67,6 @@ export function ProductGallerySettings({ config, onSave }: ProductGallerySetting
     onSaveRef.current(payload);
   }, [title, searchQuery, limit, columns.desktop, columns.tablet, columns.mobile, gap, showPrice, showBadge, showAddToCart, config.className]);
 
-  const previewContent = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return <PreviewPlaceholder message="Type a keyword above to preview matching products." />;
-    }
-    if (previewLoading) {
-      return <PreviewPlaceholder message="Loading preview results..." />;
-    }
-    if (previewError) {
-      return <PreviewPlaceholder message={previewError} />;
-    }
-    if (!previewProducts.length) {
-      return <PreviewPlaceholder message="No products found for this search." />;
-    }
-
-    return (
-      <div className="max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white">
-        {previewProducts.map((product: any) => (
-          <div
-            key={product.id || product.sku}
-            className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0"
-          >
-            {product?.image?.thumbnail ? (
-              <img
-                src={product.image.thumbnail}
-                alt={product.name}
-                className="h-12 w-12 rounded object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-xs text-slate-500">
-                No image
-              </div>
-            )}
-            <div className="flex flex-1 flex-col">
-              <span className="text-sm font-medium text-slate-700">{product.name ?? product.sku}</span>
-              {product.sku ? (
-                <span className="text-xs text-slate-400">SKU: {product.sku}</span>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }, [previewProducts, previewLoading, previewError, searchQuery]);
-
   return (
     <div className="space-y-6">
       <div>
@@ -173,35 +79,14 @@ export function ProductGallerySettings({ config, onSave }: ProductGallerySetting
         />
       </div>
 
-      <div>
-        <Label className="text-base font-semibold">Search keyword</Label>
-        <Input
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="e.g. rubinetto, caldaia, climatizzatore"
-          className="mt-2"
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          The gallery will display products matching this query.
-        </p>
-      </div>
-
-      <div>
-        <Label className="text-base font-semibold">Preview</Label>
-        <div className="mt-2">{previewContent}</div>
-      </div>
-
-      <div>
-        <Label className="text-base font-semibold">Maximum products</Label>
-        <Input
-          type="number"
-          min={1}
-          max={50}
-          value={limit}
-          onChange={(event) => setLimit(Number(event.target.value))}
-          className="mt-2"
-        />
-      </div>
+      <ProductSearchPreview
+        searchQuery={searchQuery}
+        limit={limit}
+        cachedProducts={cachedProducts}
+        onSearchChange={setSearchQuery}
+        onLimitChange={setLimit}
+        onProductsLoaded={setCachedProducts}
+      />
 
       <div className="grid gap-3 md:grid-cols-3">
         <div>

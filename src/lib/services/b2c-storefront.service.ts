@@ -11,6 +11,7 @@ import {
   deleteB2CHomeTemplates,
 } from "@/lib/db/b2c-home-templates";
 import { regenerateB2CConfigDebounced } from "@/lib/services/traefik-config.service";
+import { regenerateSitemapDebounced } from "@/lib/services/b2c-sitemap.service";
 import type {
   IB2CStorefront,
   IB2CStorefrontBranding,
@@ -252,6 +253,16 @@ export async function updateStorefront(
   // Regenerate Traefik B2C config when domains or status change
   if (input.domains !== undefined || input.status !== undefined) {
     regenerateB2CConfigDebounced();
+  }
+
+  // Regenerate sitemap when domains, status, or channel change
+  if (
+    input.domains !== undefined ||
+    input.status !== undefined ||
+    input.channel !== undefined ||
+    input.settings?.default_language !== undefined
+  ) {
+    regenerateSitemapDebounced(tenantDb, slug);
   }
 
   return storefront.toObject();

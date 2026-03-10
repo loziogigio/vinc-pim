@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { invalidateB2CCache } from "@/lib/cache/redis-client";
 
 /**
  * GET /api/b2b/menu/[id]
@@ -182,6 +183,9 @@ export async function PATCH(
       { new: true }
     );
 
+    // Invalidate B2C menu cache
+    invalidateB2CCache(tenantDb, "menu").catch(() => {});
+
     return NextResponse.json({ menuItem: updatedMenuItem });
   } catch (error) {
     console.error("Error updating menu item:", error);
@@ -254,6 +258,9 @@ export async function DELETE(
       menu_item_id: id,
       // No wholesaler_id - database provides isolation
     });
+
+    // Invalidate B2C menu cache
+    invalidateB2CCache(tenantDb, "menu").catch(() => {});
 
     return NextResponse.json({ success: true });
   } catch (error) {

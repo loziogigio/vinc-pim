@@ -10,6 +10,8 @@ import {
   FileText,
   AlertCircle,
   Search,
+  Pencil,
+  Copy,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,15 @@ export default function PagesManagementPage({
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Rename dialog
+  const [renameTarget, setRenameTarget] = useState<PageItem | null>(null);
+  const [renameTitle, setRenameTitle] = useState("");
+  const [renameSlug, setRenameSlug] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+
+  // Duplicate
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
 
   const apiBase = `/api/b2b/b2c/storefronts/${slug}/pages`;
 
@@ -117,6 +128,57 @@ export default function PagesManagementPage({
       await fetchPages();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete page");
+    }
+  };
+
+  const handleRenamePage = async () => {
+    if (!renameTarget || !renameTitle.trim() || !renameSlug.trim()) return;
+    setIsRenaming(true);
+    setError(null);
+    try {
+      const body: Record<string, string> = { title: renameTitle.trim() };
+      if (renameSlug.trim() !== renameTarget.slug) {
+        body.slug = renameSlug.trim();
+      }
+      const res = await fetch(`${apiBase}/${renameTarget.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update page");
+      }
+      setRenameTarget(null);
+      setRenameTitle("");
+      setRenameSlug("");
+      setSuccess("Page updated");
+      await fetchPages();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update page");
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const handleDuplicatePage = async (pageSlug: string) => {
+    setIsDuplicating(pageSlug);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/${pageSlug}/duplicate`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to duplicate page");
+      }
+      const data = await res.json();
+      setSuccess(`Page duplicated as "${data.data?.slug || "copy"}"`);
+      await fetchPages();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to duplicate page");
+    } finally {
+      setIsDuplicating(null);
     }
   };
 
@@ -253,7 +315,7 @@ export default function PagesManagementPage({
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Slug</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Content</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Nav</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Show in Nav</th>
                 <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Last Saved</th>
                 <th className="px-4 py-3 text-right font-medium text-[#5e5873]">Actions</th>
               </tr>
@@ -305,7 +367,7 @@ export default function PagesManagementPage({
                     {formatDate(pg.last_saved_at || pg.updated_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`${tenantPrefix}/b2b/b2c-page-builder?storefront=${slug}&page=${pg.slug}`}
                         className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors"
@@ -314,8 +376,30 @@ export default function PagesManagementPage({
                       </Link>
                       <button
                         type="button"
+                        onClick={() => { setRenameTarget(pg); setRenameTitle(pg.title); setRenameSlug(pg.slug); }}
+                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10 transition-colors"
+                        title="Rename"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicatePage(pg.slug)}
+                        disabled={isDuplicating === pg.slug}
+                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10 transition-colors disabled:opacity-50"
+                        title="Duplicate"
+                      >
+                        {isDuplicating === pg.slug ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleDeletePage(pg.slug)}
                         className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -388,6 +472,75 @@ export default function PagesManagementPage({
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Create Page
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Rename Dialog */}
+      {renameTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-[#5e5873]">
+              Edit Page
+            </h2>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Page Title
+                </label>
+                <Input
+                  value={renameTitle}
+                  onChange={(e) => setRenameTitle(e.target.value)}
+                  placeholder="Page title"
+                  className="mt-1"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  URL Slug
+                </label>
+                <Input
+                  value={renameSlug}
+                  onChange={(e) => setRenameSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  placeholder="e.g., about-us"
+                  className="mt-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRenamePage();
+                  }}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  URL path: /{renameSlug || "..."}
+                  {renameSlug !== renameTarget.slug && (
+                    <span className="ml-2 text-amber-600">
+                      (changing slug will update template &amp; form references)
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => { setRenameTarget(null); setRenameTitle(""); setRenameSlug(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRenamePage}
+                disabled={
+                  isRenaming ||
+                  !renameTitle.trim() ||
+                  !renameSlug.trim() ||
+                  (renameTitle.trim() === renameTarget.title && renameSlug.trim() === renameTarget.slug)
+                }
+                className="bg-[#009688] text-white hover:bg-[#00796b]"
+              >
+                {isRenaming ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Save
               </Button>
             </div>
           </div>

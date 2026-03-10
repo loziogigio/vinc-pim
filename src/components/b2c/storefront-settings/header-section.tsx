@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
 import {
   Plus,
   Trash2,
@@ -33,6 +35,9 @@ import {
   Upload,
   X,
   Save,
+  AlertCircle,
+  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
@@ -163,6 +168,117 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
 };
 
 // ============================================
+// Menu Widget Config (fetches menu status for channel)
+// ============================================
+
+function MenuWidgetConfig({
+  channel,
+  config,
+  onConfigChange,
+}: {
+  channel?: string;
+  config: { label?: string };
+  onConfigChange: (updates: Record<string, unknown>) => void;
+}) {
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!channel) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    fetch(`/api/b2b/menu?location=header&channel=${encodeURIComponent(channel)}`)
+      .then((res) => res.ok ? res.json() : { menuItems: [] })
+      .then((data) => setMenuItems(data.menuItems || []))
+      .catch(() => setMenuItems([]))
+      .finally(() => setLoading(false));
+  }, [channel]);
+
+  const rootItems = menuItems.filter((item) => !item.parent_id);
+  const hasMenu = rootItems.length > 0;
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="text-xs font-medium text-slate-600">Label</label>
+        <input
+          type="text"
+          value={config.label || ""}
+          onChange={(e) => onConfigChange({ label: e.target.value })}
+          placeholder="Menu"
+          className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+        />
+      </div>
+
+      {/* Menu status for channel */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-medium text-slate-600">Linked Menu</span>
+          {channel && (
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+              {channel}
+            </span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center gap-2 py-2">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+            <span className="text-xs text-slate-500">Loading...</span>
+          </div>
+        ) : !channel ? (
+          <div className="flex items-center gap-2 py-2 text-amber-600">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span className="text-xs">No channel assigned to this storefront</span>
+          </div>
+        ) : hasMenu ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 py-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-xs text-slate-700">
+                {rootItems.length} root item{rootItems.length !== 1 ? "s" : ""} ({menuItems.length} total)
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {rootItems.slice(0, 8).map((item) => (
+                <span key={item.menu_item_id} className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600 border border-slate-200">
+                  {item.label || item.reference_id || item.type}
+                </span>
+              ))}
+              {rootItems.length > 8 && (
+                <span className="text-[11px] text-slate-400">+{rootItems.length - 8} more</span>
+              )}
+            </div>
+            <Link
+              href={`/b2b/pim/menu-settings?channel=${encodeURIComponent(channel)}`}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+            >
+              Edit menu <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 py-1 text-amber-600">
+              <AlertCircle className="h-3.5 w-3.5" />
+              <span className="text-xs">No menu configured for this channel</span>
+            </div>
+            <Link
+              href={`/b2b/pim/menu-settings?channel=${encodeURIComponent(channel)}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Create Menu
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // Widget Adder
 // ============================================
 
@@ -174,6 +290,8 @@ function WidgetAdder({
   usedTypes: Set<HeaderWidgetType>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
 
   const availableWidgets = (
     Object.entries(HEADER_WIDGET_LIBRARY) as [HeaderWidgetType, (typeof HEADER_WIDGET_LIBRARY)[HeaderWidgetType]][]
@@ -181,19 +299,31 @@ function WidgetAdder({
 
   if (availableWidgets.length === 0) return null;
 
+  function handleToggle() {
+    if (!isOpen && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: Math.max(8, rect.right - 256) });
+    }
+    setIsOpen(!isOpen);
+  }
+
   return (
-    <div className="relative">
+    <>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="flex items-center justify-center rounded-md border border-dashed border-slate-300 p-1 text-slate-400 transition-colors hover:border-[#009688] hover:text-[#009688]"
       >
         <Plus className="h-4 w-4" />
       </button>
-      {isOpen && (
+      {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-slate-200 bg-white shadow-xl">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed z-[9999] w-64 rounded-lg border border-slate-200 bg-white shadow-xl"
+            style={{ top: pos.top, left: pos.left }}
+          >
             <div className="border-b border-slate-100 px-3 py-2">
               <span className="text-xs font-medium text-slate-600">Add Widget</span>
             </div>
@@ -219,9 +349,10 @@ function WidgetAdder({
               })}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
@@ -234,11 +365,13 @@ function WidgetConfigPanel({
   selectedWidget,
   onUpdate,
   onClose,
+  channel,
 }: {
   headerConfig: HeaderConfig;
   selectedWidget: { rowId: string; blockId: string; widgetId: string };
   onUpdate: (config: HeaderConfig) => void;
   onClose: () => void;
+  channel?: string;
 }) {
   const radioLogoUploader = useImageUpload();
   const row = headerConfig.rows.find((r) => r.id === selectedWidget.rowId);
@@ -314,7 +447,7 @@ function WidgetConfigPanel({
 
         {/* Button widget config */}
         {widget.type === "button" && (() => {
-          const config = (widget.config || {}) as { label?: string; url?: string; target?: string; variant?: string };
+          const config = (widget.config || {}) as { label?: string; url?: string; target?: string; variant?: string; backgroundColor?: string; textColor?: string };
           return (
             <div className="space-y-3">
               <div>
@@ -326,6 +459,13 @@ function WidgetConfigPanel({
                 <input type="text" value={config.url || ""} onChange={(e) => updateWidgetConfig({ url: e.target.value })} placeholder="/path or https://..." className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none" />
               </div>
               <div>
+                <label className="text-xs font-medium text-slate-600">Open In</label>
+                <select value={config.target || "_self"} onChange={(e) => updateWidgetConfig({ target: e.target.value })} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none">
+                  <option value="_self">Same Tab</option>
+                  <option value="_blank">New Tab</option>
+                </select>
+              </div>
+              <div>
                 <label className="text-xs font-medium text-slate-600">Variant</label>
                 <select value={config.variant || "primary"} onChange={(e) => updateWidgetConfig({ variant: e.target.value })} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none">
                   <option value="primary">Primary</option>
@@ -333,6 +473,22 @@ function WidgetConfigPanel({
                   <option value="outline">Outline</option>
                   <option value="ghost">Ghost</option>
                 </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Background</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input type="color" value={config.backgroundColor || "#009688"} onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })} className="h-8 w-10 cursor-pointer rounded border border-slate-200" />
+                    <input type="text" value={config.backgroundColor || ""} onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })} placeholder="#009688" className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Text Color</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input type="color" value={config.textColor || "#ffffff"} onChange={(e) => updateWidgetConfig({ textColor: e.target.value })} className="h-8 w-10 cursor-pointer rounded border border-slate-200" />
+                    <input type="text" value={config.textColor || ""} onChange={(e) => updateWidgetConfig({ textColor: e.target.value })} placeholder="#ffffff" className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none" />
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -360,16 +516,14 @@ function WidgetConfigPanel({
           );
         })()}
 
-        {/* Category menu config */}
-        {widget.type === "category-menu" && (() => {
-          const config = (widget.config || {}) as { label?: string };
-          return (
-            <div>
-              <label className="text-xs font-medium text-slate-600">Label</label>
-              <input type="text" value={config.label || ""} onChange={(e) => updateWidgetConfig({ label: e.target.value })} placeholder="Categories" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none" />
-            </div>
-          );
-        })()}
+        {/* Menu config */}
+        {widget.type === "category-menu" && (
+          <MenuWidgetConfig
+            channel={channel}
+            config={(widget.config || {}) as { label?: string }}
+            onConfigChange={updateWidgetConfig}
+          />
+        )}
 
         {/* Radio widget config */}
         {widget.type === "radio-widget" && (() => {
@@ -429,6 +583,7 @@ export function HeaderSection({
   onPublish,
   saving,
   onSave,
+  channel,
 }: {
   headerConfig: HeaderConfig;
   headerConfigDraft: HeaderConfig;
@@ -436,6 +591,7 @@ export function HeaderSection({
   onPublish: () => Promise<void>;
   saving: boolean;
   onSave: () => void;
+  channel?: string;
 }) {
   const [selectedWidget, setSelectedWidget] = useState<{ rowId: string; blockId: string; widgetId: string } | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -727,7 +883,7 @@ export function HeaderSection({
                               {block.widgets.map((widget) => {
                                 const Icon = WIDGET_ICONS[widget.type];
                                 const meta = HEADER_WIDGET_LIBRARY[widget.type];
-                                const config = widget.config as Record<string, unknown>;
+                                const config = (widget.config || {}) as Record<string, unknown>;
 
                                 if (widget.type === "logo") {
                                   return (
@@ -752,6 +908,15 @@ export function HeaderSection({
                                 if (widget.type === "button") {
                                   const label = (config.label as string) || "Button";
                                   const variant = (config.variant as string) || "outline";
+                                  const customStyle: React.CSSProperties = {};
+                                  if (config.backgroundColor) {
+                                    customStyle.backgroundColor = config.backgroundColor as string;
+                                  }
+                                  if (config.textColor) {
+                                    customStyle.color = config.textColor as string;
+                                  } else if (row.backgroundColor && row.backgroundColor !== "#ffffff") {
+                                    customStyle.color = row.textColor || "#ffffff";
+                                  }
                                   return (
                                     <span
                                       key={widget.id}
@@ -762,7 +927,7 @@ export function HeaderSection({
                                         variant === "outline" && "border border-current/20 text-inherit",
                                         variant === "ghost" && "text-inherit opacity-90"
                                       )}
-                                      style={row.backgroundColor && row.backgroundColor !== "#ffffff" ? { color: row.textColor || "#ffffff" } : undefined}
+                                      style={customStyle}
                                     >
                                       {label}
                                     </span>
@@ -770,7 +935,7 @@ export function HeaderSection({
                                 }
 
                                 if (widget.type === "category-menu") {
-                                  const label = (config.label as string) || "Categories";
+                                  const label = (config.label as string) || "Menu";
                                   return (
                                     <span
                                       key={widget.id}
@@ -830,7 +995,7 @@ export function HeaderSection({
         {selectedWidget && (
           <div className="w-80 shrink-0">
             <div className="sticky top-4">
-              <WidgetConfigPanel headerConfig={headerConfigDraft} selectedWidget={selectedWidget} onUpdate={onDraftChange} onClose={() => setSelectedWidget(null)} />
+              <WidgetConfigPanel headerConfig={headerConfigDraft} selectedWidget={selectedWidget} onUpdate={onDraftChange} onClose={() => setSelectedWidget(null)} channel={channel} />
             </div>
           </div>
         )}

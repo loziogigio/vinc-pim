@@ -1,6 +1,6 @@
 import { CategoryEmbedded, CategoryHierarchyItem } from "@/lib/types/entities/category.types";
 import { connectWithModels } from "@/lib/db/connection";
-import { getRedis } from "@/lib/cache/redis-client";
+import { invalidateB2CCache } from "@/lib/cache/redis-client";
 
 /**
  * Get enabled language codes for the tenant
@@ -276,26 +276,5 @@ export function rebuildProductEmbeddings(
  * Publishes "category-landing" to each storefront's Redis invalidation channel.
  */
 export async function invalidateCategoryCache(tenantDb: string): Promise<void> {
-  try {
-    const { B2CStorefront } = await connectWithModels(tenantDb);
-    const storefronts = await B2CStorefront.find({ status: "active" })
-      .select("slug")
-      .lean() as Array<{ slug: string }>;
-
-    const redis = getRedis();
-    for (const sf of storefronts) {
-      await redis.publish(
-        `vinc-b2c:cache-invalidate:${sf.slug}`,
-        "category-landing"
-      );
-    }
-
-    if (storefronts.length) {
-      console.log(
-        `[category-cache] Invalidated category-landing for ${storefronts.length} storefront(s)`
-      );
-    }
-  } catch (err) {
-    console.warn("[category-cache] Failed to invalidate:", (err as Error).message);
-  }
+  await invalidateB2CCache(tenantDb, "category-landing");
 }

@@ -73,10 +73,20 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
     fetchParents();
   }, [location, item]);
 
+  // Types without an entity name — label is required
+  const labelRequired = ["url", "page", "search"].includes(formData.type);
+
   const handleSubmit = async () => {
     setLoading(true);
 
     try {
+      // Validate label for types that have no entity to derive a name from
+      if (labelRequired && !formData.label.trim()) {
+        toast.error("Label is required for this type");
+        setLoading(false);
+        return;
+      }
+
       // Validate
       if ((formData.type === "url" || formData.type === "page") && !formData.url) {
         toast.error("URL is required");
@@ -177,7 +187,7 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || (labelRequired && !formData.label.trim())}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
           >
             {loading ? "Saving..." : item ? "Update" : "Create"}
@@ -198,6 +208,28 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
                 disabled
                 className="w-full rounded border border-border bg-muted px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
               />
+            </div>
+
+            {/* Label */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {labelRequired ? "Label *" : "Custom Label (Optional)"}
+              </label>
+              <input
+                type="text"
+                value={formData.label}
+                onChange={(e) =>
+                  setFormData({ ...formData, label: e.target.value })
+                }
+                placeholder={labelRequired ? "Menu item label" : "Override default name"}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                required={labelRequired}
+              />
+              {!labelRequired && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Leave empty to use entity's name
+                </p>
+              )}
             </div>
 
             {/* Type */}
@@ -323,25 +355,6 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
                 label="Mobile Image (Optional)"
               />
             )}
-
-            {/* Label */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Custom Label (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.label}
-                onChange={(e) =>
-                  setFormData({ ...formData, label: e.target.value })
-                }
-                placeholder="Override default name"
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Leave empty to use entity's name
-              </p>
-            </div>
 
             {/* Icon/Image for menu item */}
             {formData.type !== "divider" && (

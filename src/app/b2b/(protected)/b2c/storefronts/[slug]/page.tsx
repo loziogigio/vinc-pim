@@ -10,6 +10,7 @@ import { BrandingSection } from "@/components/b2c/storefront-settings/branding-s
 import { HeaderSection, DEFAULT_B2C_HEADER_CONFIG } from "@/components/b2c/storefront-settings/header-section";
 import { FooterSection } from "@/components/b2c/storefront-settings/footer-section";
 import { SeoSection } from "@/components/b2c/storefront-settings/seo-section";
+import { SitemapSection } from "@/components/b2c/storefront-settings/sitemap-section";
 import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, HeaderConfig } from "@/components/b2c/storefront-settings/types";
 
 interface Storefront {
@@ -283,6 +284,7 @@ export default function StorefrontDetailPage({
             onPublish={handlePublishHeader}
             saving={saving}
             onSave={handleSave}
+            channel={channel}
           />
         )}
 
@@ -304,6 +306,10 @@ export default function StorefrontDetailPage({
             saving={saving}
             onSave={handleSave}
           />
+        )}
+
+        {activeSection === "sitemap" && (
+          <SitemapSection storefrontSlug={slug} />
         )}
       </div>
     </div>

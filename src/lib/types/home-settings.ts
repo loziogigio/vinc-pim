@@ -471,7 +471,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "logo": { label: "Logo", icon: "Image", description: "Company logo" },
   "search-bar": { label: "Search Bar", icon: "Search", description: "Product search" },
   "radio-widget": { label: "Radio Widget", icon: "Radio", description: "Radio player with links" },
-  "category-menu": { label: "Category Menu", icon: "Menu", description: "Categories dropdown" },
+  "category-menu": { label: "Menu", icon: "Menu", description: "Navigation menu" },
   "cart": { label: "Cart", icon: "ShoppingCart", description: "Shopping cart" },
   "company-info": { label: "Company Info", icon: "Building2", description: "Delivery address, balance" },
   "no-price": { label: "No Price", icon: "EyeOff", description: "Toggle price visibility" },

@@ -259,7 +259,10 @@ export async function saveHomeTemplateDraft(input: {
     type: block.type,
     order: index,
     config: block.config || {},
-    metadata: block.metadata || {}
+    metadata: block.metadata || {},
+    ...(block.layout && { layout: block.layout }),
+    ...(block.zone && { zone: block.zone }),
+    ...(block.tabLabel && { tabLabel: block.tabLabel }),
   }));
 
   // Find current version

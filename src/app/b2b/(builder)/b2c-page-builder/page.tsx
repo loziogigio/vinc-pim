@@ -36,7 +36,10 @@ export const dynamic = "force-dynamic";
 const PAGE_BLOCKS = [
   "hero-full-width",
   "hero-split",
+  "hero-with-widgets",
   "carousel-hero",
+  "carousel-products",
+  "carousel-gallery",
   "content-rich-text",
   "content-custom-html",
   "youtubeEmbed",

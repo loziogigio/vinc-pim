@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { invalidateB2CCache } from "@/lib/cache/redis-client";
 import { nanoid } from "nanoid";
 
 interface ExternalMenuItem {
@@ -207,6 +208,9 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < rootItems.length; i++) {
       await importItem(rootItems[i], null, 0, [], i);
     }
+
+    // Invalidate B2C menu cache
+    invalidateB2CCache(tenantDb, "menu").catch(() => {});
 
     return NextResponse.json({
       success: true,

@@ -3,6 +3,7 @@
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { MenuBuilder } from "@/components/menu/menu-builder";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 interface ChannelOption {
@@ -13,9 +14,12 @@ interface ChannelOption {
 }
 
 export default function MenuSettingsPage() {
+  const searchParams = useSearchParams();
+  const channelParam = searchParams.get("channel");
+
   const [activeLocation, setActiveLocation] = useState<"header" | "footer" | "mobile">("header");
   const [channels, setChannels] = useState<ChannelOption[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<string>("default");
+  const [selectedChannel, setSelectedChannel] = useState<string>(channelParam || "default");
   const [loadingChannels, setLoadingChannels] = useState(true);
 
   useEffect(() => {
@@ -26,9 +30,14 @@ export default function MenuSettingsPage() {
           const data = await res.json();
           const list: ChannelOption[] = data.channels ?? [];
           setChannels(list);
-          const def = list.find((ch) => ch.is_default);
-          if (def) setSelectedChannel(def.code);
-          else if (list.length > 0) setSelectedChannel(list[0].code);
+          // If channel param matches, use it; otherwise fall back to default
+          if (channelParam && list.some((ch) => ch.code === channelParam)) {
+            setSelectedChannel(channelParam);
+          } else {
+            const def = list.find((ch) => ch.is_default);
+            if (def) setSelectedChannel(def.code);
+            else if (list.length > 0) setSelectedChannel(list[0].code);
+          }
         }
       } catch {
         // channels will remain empty
@@ -37,7 +46,7 @@ export default function MenuSettingsPage() {
       }
     }
     fetchChannels();
-  }, []);
+  }, [channelParam]);
 
   return (
     <div className="space-y-6">

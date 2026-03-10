@@ -11,6 +11,7 @@ import {
   initB2CPageTemplate,
   deleteB2CPageTemplates,
 } from "@/lib/db/b2c-page-templates";
+import { regenerateSitemapDebounced } from "@/lib/services/b2c-sitemap.service";
 import type { IB2CPage } from "@/lib/db/models/b2c-page";
 
 // ============================================
@@ -26,6 +27,7 @@ export interface CreatePageInput {
 
 export interface UpdatePageInput {
   title?: string;
+  slug?: string;
   status?: "active" | "inactive";
   show_in_nav?: boolean;
   sort_order?: number;
@@ -74,6 +76,9 @@ export async function createPage(
   // Initialize empty page template
   await initB2CPageTemplate(storefrontSlug, input.slug, input.title, tenantDb);
 
+  // Trigger sitemap regeneration
+  regenerateSitemapDebounced(tenantDb, storefrontSlug);
+
   return page.toObject() as IB2CPage;
 }
 
@@ -83,10 +88,43 @@ export async function updatePage(
   pageSlug: string,
   input: UpdatePageInput
 ): Promise<IB2CPage> {
-  const { B2CPage } = await connectWithModels(tenantDb);
+  const { B2CPage, HomeTemplate, FormSubmission } = await connectWithModels(tenantDb);
+
+  const newSlug = input.slug;
+
+  // If slug is changing, validate and migrate related data
+  if (newSlug && newSlug !== pageSlug) {
+    if (!/^[a-z0-9-]+$/.test(newSlug)) {
+      throw new Error("Slug must be lowercase alphanumeric with dashes");
+    }
+    const existing = await B2CPage.findOne({
+      storefront_slug: storefrontSlug,
+      slug: newSlug,
+    }).lean();
+    if (existing) {
+      throw new Error(`Page "${newSlug}" already exists for this storefront`);
+    }
+
+    // Migrate template: create new, delete old
+    const oldTemplateId = `b2c-${storefrontSlug}-page-${pageSlug}`;
+    const newTemplateId = `b2c-${storefrontSlug}-page-${newSlug}`;
+    const oldTemplate = await HomeTemplate.findOne({ templateId: oldTemplateId }).lean() as any;
+    if (oldTemplate) {
+      const { _id, ...templateData } = oldTemplate;
+      await HomeTemplate.create({ ...templateData, templateId: newTemplateId });
+      await HomeTemplate.deleteOne({ _id: oldTemplate._id });
+    }
+
+    // Migrate form submissions
+    await FormSubmission.updateMany(
+      { storefront_slug: storefrontSlug, page_slug: pageSlug },
+      { $set: { page_slug: newSlug } }
+    );
+  }
 
   const updates: Record<string, unknown> = {};
   if (input.title !== undefined) updates.title = input.title;
+  if (newSlug && newSlug !== pageSlug) updates.slug = newSlug;
   if (input.status !== undefined) updates.status = input.status;
   if (input.show_in_nav !== undefined) updates.show_in_nav = input.show_in_nav;
   if (input.sort_order !== undefined) updates.sort_order = input.sort_order;
@@ -98,6 +136,12 @@ export async function updatePage(
   ).lean();
 
   if (!page) throw new Error(`Page "${pageSlug}" not found`);
+
+  // Trigger sitemap regeneration on slug or status changes
+  if (input.slug || input.status) {
+    regenerateSitemapDebounced(tenantDb, storefrontSlug);
+  }
+
   return page as unknown as IB2CPage;
 }
 
@@ -128,6 +172,9 @@ export async function deletePage(
     storefront_slug: storefrontSlug,
     slug: pageSlug,
   });
+
+  // Trigger sitemap regeneration
+  regenerateSitemapDebounced(tenantDb, storefrontSlug);
 }
 
 export interface PageWithTemplateInfo extends IB2CPage {
@@ -199,6 +246,69 @@ export async function listPages(
       totalPages: Math.ceil(total / limit),
     },
   };
+}
+
+export async function duplicatePage(
+  tenantDb: string,
+  storefrontSlug: string,
+  sourcePageSlug: string
+): Promise<IB2CPage> {
+  const { B2CPage, HomeTemplate } = await connectWithModels(tenantDb);
+
+  const sourcePage = await B2CPage.findOne({
+    storefront_slug: storefrontSlug,
+    slug: sourcePageSlug,
+  }).lean() as any;
+  if (!sourcePage) throw new Error(`Page "${sourcePageSlug}" not found`);
+
+  // Generate unique slug: {slug}-copy, {slug}-copy-2, etc.
+  let newSlug = `${sourcePageSlug}-copy`;
+  let counter = 1;
+  while (await B2CPage.findOne({ storefront_slug: storefrontSlug, slug: newSlug }).lean()) {
+    counter++;
+    newSlug = `${sourcePageSlug}-copy-${counter}`;
+  }
+
+  // Create new page record
+  const newPage = await B2CPage.create({
+    storefront_slug: storefrontSlug,
+    slug: newSlug,
+    title: `${sourcePage.title} (Copy)`,
+    status: sourcePage.status,
+    show_in_nav: false,
+    sort_order: sourcePage.sort_order,
+  });
+
+  // Copy template content
+  const sourceTemplateId = `b2c-${storefrontSlug}-page-${sourcePageSlug}`;
+  const newTemplateId = `b2c-${storefrontSlug}-page-${newSlug}`;
+  const sourceTemplate = await HomeTemplate.findOne({ templateId: sourceTemplateId }).lean() as any;
+
+  if (sourceTemplate) {
+    const now = new Date().toISOString();
+    await HomeTemplate.create({
+      templateId: newTemplateId,
+      name: `${sourcePage.title} (Copy)`,
+      version: 1,
+      blocks: sourceTemplate.blocks || [],
+      seo: sourceTemplate.seo || {},
+      status: "draft",
+      label: "Version 1",
+      createdAt: now,
+      lastSavedAt: now,
+      createdBy: "b2b-admin",
+      comment: `Duplicated from ${sourcePageSlug}`,
+      isCurrent: true,
+      isActive: true,
+    });
+  } else {
+    await initB2CPageTemplate(storefrontSlug, newSlug, `${sourcePage.title} (Copy)`, tenantDb);
+  }
+
+  // Trigger sitemap regeneration
+  regenerateSitemapDebounced(tenantDb, storefrontSlug);
+
+  return newPage.toObject() as IB2CPage;
 }
 
 export async function getPageBySlug(

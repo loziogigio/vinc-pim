@@ -14,6 +14,7 @@ tsconfig.tsbuildinfo
 # environment & logs
 .env
 .env.*
+.env.deploy
 *.log
 
 # editor artifacts

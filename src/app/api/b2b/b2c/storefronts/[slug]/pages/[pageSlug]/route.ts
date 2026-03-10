@@ -42,6 +42,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const page = await updatePage(auth.tenantDb, slug, pageSlug, {
       title: body.title,
+      slug: body.slug,
       status: body.status,
       show_in_nav: body.show_in_nav,
       sort_order: body.sort_order,

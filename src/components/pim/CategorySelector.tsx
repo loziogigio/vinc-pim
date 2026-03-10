@@ -16,7 +16,8 @@ type Category = {
 };
 
 type SelectedCategory = {
-  id: string;
+  id?: string;
+  category_id?: string;
   name: string | Record<string, string>;
   slug: string;
 };
@@ -154,6 +155,7 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
   function selectCategory(category: Category) {
     onChange({
       id: category.category_id,
+      category_id: category.category_id,
       name: category.name,
       slug: category.slug,
     });
@@ -190,7 +192,8 @@ export function CategorySelector({ value, onChange, disabled }: Props) {
             <FolderTree className="h-4 w-4 text-primary flex-shrink-0" />
             <div className="min-w-0">
               {(() => {
-                const selectedCat = flatCategories.find(c => c.category_id === value.id);
+                const valueId = value.id || value.category_id;
+                const selectedCat = flatCategories.find(c => c.category_id === valueId);
                 const displayName = getMultilingualText(value.name, defaultLanguageCode, "");
                 // Build breadcrumb from ancestor IDs
                 const breadcrumb = buildBreadcrumb(selectedCat, flatCategories, defaultLanguageCode);

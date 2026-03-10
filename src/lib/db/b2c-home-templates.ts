@@ -306,6 +306,9 @@ export async function saveB2CHomeTemplateDraft(
     order: index,
     config: block.config || {},
     metadata: block.metadata || {},
+    ...(block.layout && { layout: block.layout }),
+    ...(block.zone && { zone: block.zone }),
+    ...(block.tabLabel && { tabLabel: block.tabLabel }),
   }));
 
   let currentVersion = await getCurrentVersion(templateId, tenantDb, false);

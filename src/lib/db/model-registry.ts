@@ -64,6 +64,7 @@ import { SalesChannelSchema } from "./models/sales-channel";
 import { BatchSyncLogSchema } from "./models/batch-sync-log";
 import { B2CPageSchema } from "./models/b2c-page";
 import { FormSubmissionSchema } from "./models/form-submission";
+import { B2CSitemapSchema } from "./models/b2c-sitemap";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -123,6 +124,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   BatchSyncLog: BatchSyncLogSchema,
   B2CPage: B2CPageSchema,
   FormSubmission: FormSubmissionSchema,
+  B2CSitemap: B2CSitemapSchema,
 };
 
 /**
@@ -224,6 +226,7 @@ export async function getTenantModels(dbName: string) {
     BatchSyncLog: connection.models.BatchSyncLog,
     B2CPage: connection.models.B2CPage,
     FormSubmission: connection.models.FormSubmission,
+    B2CSitemap: connection.models.B2CSitemap,
   };
 }
 
@@ -293,6 +296,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     BatchSyncLog: connection.models.BatchSyncLog,
     B2CPage: connection.models.B2CPage,
     FormSubmission: connection.models.FormSubmission,
+    B2CSitemap: connection.models.B2CSitemap,
   };
 }
 
