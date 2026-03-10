@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const productTypeId = searchParams.get("product_type_id");
     const productTypeCode = searchParams.get("product_type_code");
+    const productTypeSlug = searchParams.get("product_type_slug");
     const limit = parseInt(searchParams.get("limit") || "100");
 
     // Build Solr query to get sample products
@@ -71,11 +72,13 @@ export async function GET(req: NextRequest) {
       "include_faceting:true",
       "technical_specifications_json:*",  // Only products with technical specs
     ];
-    // Filter by product_type_id or product_type_code (customer's ERP code)
+    // Filter by product_type_id, product_type_code, or product_type_slug
     if (productTypeId) {
       fq.push(`product_type_id:${productTypeId}`);
     } else if (productTypeCode) {
       fq.push(`product_type_code:${productTypeCode}`);
+    } else if (productTypeSlug) {
+      fq.push(`product_type_slug:${productTypeSlug}`);
     }
 
     // Query Solr for sample products that have technical specifications

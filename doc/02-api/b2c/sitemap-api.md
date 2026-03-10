@@ -210,20 +210,20 @@ Returns structured JSON data for the B2C frontend to build `sitemap.xml` and `ro
       "alternates": { "it": "/it" }
     },
     {
-      "path": "/it/portfolio/contatti",
+      "path": "/it/contatti",
       "type": "page",
       "lastmod": "2026-03-09T10:10:31.796Z",
       "changefreq": "weekly",
       "priority": 0.6,
-      "alternates": { "it": "/it/portfolio/contatti" }
+      "alternates": { "it": "/it/contatti" }
     },
     {
-      "path": "/it/products/250-pz-cannucce-in-pla-page0815sbpla",
+      "path": "/it/250-pz-cannucce-in-pla-page0815sbpla",
       "type": "product",
       "lastmod": "2026-03-08T13:24:37.445Z",
       "changefreq": "daily",
       "priority": 0.8,
-      "alternates": { "it": "/it/products/250-pz-cannucce-in-pla-page0815sbpla" }
+      "alternates": { "it": "/it/250-pz-cannucce-in-pla-page0815sbpla" }
     },
     {
       "path": "/it/prodotti/tavola-e-servizio/bicchieri-e-bevande",
@@ -262,8 +262,8 @@ Returns structured JSON data for the B2C frontend to build `sitemap.xml` and `ro
 | Type       | Source                                                   | URL Pattern                                              | Priority | Changefreq |
 | ---------- | -------------------------------------------------------- | -------------------------------------------------------- | -------- | ---------- |
 | `homepage` | Storefront                                               | `/{locale}/`                                             | 1.0      | daily      |
-| `page`     | `B2CPage` (status: active)                               | `/{locale}/portfolio/{pageSlug}`                         | 0.6      | weekly     |
-| `product`  | `PIMProduct` (status: published, channels includes channel) | `/{locale}/products/{slug or sku}`                       | 0.8      | daily      |
+| `page`     | `B2CPage` (status: active)                               | `/{locale}/{pageSlug}`                                   | 0.6      | weekly     |
+| `product`  | `PIMProduct` (status: published, channels includes channel) | `/{locale}/{slug or sku}`                                | 0.8      | daily      |
 | `category` | `Category` (active, in channel tree)                     | `/{locale}/{root-slug}/{parent-slug}/.../{category-slug}` | 0.7      | weekly     |
 
 **Products:** Uses the locale-specific slug from `product.slug[locale]`, falls back to `product.sku`.

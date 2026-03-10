@@ -113,12 +113,12 @@ async function collectSitemapUrls(
   for (const page of pages) {
     for (const locale of locales) {
       urls.push({
-        path: `/${locale}/portfolio/${page.slug}`,
+        path: `/${locale}/${page.slug}`,
         type: "page",
         lastmod: page.updated_at,
         changefreq: "weekly",
         priority: 0.6,
-        alternates: buildAlternates((l) => `/${l}/portfolio/${page.slug}`),
+        alternates: buildAlternates((l) => `/${l}/${page.slug}`),
       });
     }
   }
@@ -142,13 +142,13 @@ async function collectSitemapUrls(
       // Prefer locale-specific slug, fall back to SKU
       const productSlug = p.slug?.[locale] || p.sku;
       urls.push({
-        path: `/${locale}/products/${productSlug}`,
+        path: `/${locale}/${productSlug}`,
         type: "product",
         lastmod: p.updated_at,
         changefreq: "daily",
         priority: 0.8,
         alternates: buildAlternates(
-          (l) => `/${l}/products/${p.slug?.[l] || p.sku}`
+          (l) => `/${l}/${p.slug?.[l] || p.sku}`
         ),
       });
     }

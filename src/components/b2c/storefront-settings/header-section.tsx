@@ -38,6 +38,12 @@ import {
   AlertCircle,
   ExternalLink,
   CheckCircle2,
+  Share2,
+  Facebook,
+  Instagram,
+  Twitter,
+  Linkedin,
+  Youtube,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
@@ -163,9 +169,20 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "reminders": History,
   "app-launcher": LayoutGrid,
   "button": Square,
+  "social-links": Share2,
   "spacer": Space,
   "divider": Minus,
 };
+
+const SOCIAL_PLATFORMS = [
+  { value: "facebook", label: "Facebook", icon: Facebook },
+  { value: "instagram", label: "Instagram", icon: Instagram },
+  { value: "twitter", label: "X / Twitter", icon: Twitter },
+  { value: "linkedin", label: "LinkedIn", icon: Linkedin },
+  { value: "youtube", label: "YouTube", icon: Youtube },
+  { value: "tiktok", label: "TikTok", icon: Share2 },
+  { value: "pinterest", label: "Pinterest", icon: Share2 },
+];
 
 // ============================================
 // Menu Widget Config (fetches menu status for channel)
@@ -567,6 +584,37 @@ function WidgetConfigPanel({
             </div>
           );
         })()}
+
+        {/* Social links config */}
+        {widget.type === "social-links" && (() => {
+          const config = (widget.config || {}) as { links?: Array<{ platform: string; url: string }>; color?: string };
+          const links = config.links || [];
+          return (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600">Icon Color</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input type="color" value={config.color || "#ffffff"} onChange={(e) => updateWidgetConfig({ color: e.target.value })} className="h-8 w-10 cursor-pointer rounded border border-slate-200" />
+                  <input type="text" value={config.color || ""} onChange={(e) => updateWidgetConfig({ color: e.target.value })} placeholder="#ffffff" className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-600">Social Links</label>
+                <button type="button" onClick={() => updateWidgetConfig({ links: [...links, { platform: "facebook", url: "" }] })} className="flex items-center gap-1 text-xs text-[#009688]"><Plus className="h-3 w-3" /> Add</button>
+              </div>
+              {links.map((link, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <select value={link.platform} onChange={(e) => updateWidgetConfig({ links: links.map((l, i) => i === idx ? { ...l, platform: e.target.value } : l) })} className="w-28 shrink-0 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none">
+                    {SOCIAL_PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                  <input type="text" value={link.url} onChange={(e) => updateWidgetConfig({ links: links.map((l, i) => i === idx ? { ...l, url: e.target.value } : l) })} placeholder="https://..." className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none" />
+                  <button type="button" onClick={() => updateWidgetConfig({ links: links.filter((_, i) => i !== idx) })} className="p-0.5 text-slate-400 hover:text-red-500"><Trash2 className="h-3 w-3" /></button>
+                </div>
+              ))}
+              {links.length === 0 && <p className="text-xs text-slate-400">No social links added yet.</p>}
+            </div>
+          );
+        })()}
       </div>
     </SectionCard>
   );
@@ -958,6 +1006,22 @@ export function HeaderSection({
                                       ) : (
                                         <Radio className="h-6 w-6 text-slate-600" />
                                       )}
+                                    </span>
+                                  );
+                                }
+
+                                if (widget.type === "social-links") {
+                                  const socialConfig = config as { links?: Array<{ platform: string; url: string }>; color?: string };
+                                  const links = socialConfig.links || [];
+                                  const iconColor = socialConfig.color || undefined;
+                                  if (!links.length) return <span key={widget.id} className="rounded-md p-2 text-slate-400" title="Social Links"><Share2 className="h-5 w-5" /></span>;
+                                  return (
+                                    <span key={widget.id} className="flex items-center gap-1">
+                                      {links.map((link, idx) => {
+                                        const platform = SOCIAL_PLATFORMS.find((p) => p.value === link.platform);
+                                        const SocialIcon = platform?.icon || Share2;
+                                        return <SocialIcon key={idx} className="h-4 w-4" style={{ color: iconColor }} />;
+                                      })}
                                     </span>
                                   );
                                 }

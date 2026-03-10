@@ -329,6 +329,7 @@ export type HeaderWidgetType =
   | "reminders"
   | "app-launcher"
   | "button"
+  | "social-links"
   | "spacer"
   | "divider";
 
@@ -412,6 +413,11 @@ export interface RemindersWidgetConfig {
   showBadge?: boolean;
 }
 
+export interface SocialLinksWidgetConfig {
+  links: Array<{ platform: string; url: string }>;
+  iconSize?: number;
+}
+
 /** Union type for all widget configurations */
 export type WidgetConfig =
   | LogoWidgetConfig
@@ -425,6 +431,7 @@ export type WidgetConfig =
   | DividerWidgetConfig
   | NotificationsWidgetConfig
   | RemindersWidgetConfig
+  | SocialLinksWidgetConfig
   | Record<string, unknown>;
 
 /** A single widget in the header */
@@ -482,6 +489,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "reminders": { label: "Reminders", icon: "History", description: "User reminders and saved items" },
   "app-launcher": { label: "App Launcher", icon: "LayoutGrid", description: "App launcher dropdown" },
   "button": { label: "Button", icon: "Square", description: "Custom button/link", allowMultiple: true },
+  "social-links": { label: "Social Links", icon: "Share2", description: "Social media icons", allowMultiple: true },
   "spacer": { label: "Spacer", icon: "Space", description: "Flexible space", allowMultiple: true },
   "divider": { label: "Divider", icon: "Minus", description: "Vertical divider", allowMultiple: true },
 };
