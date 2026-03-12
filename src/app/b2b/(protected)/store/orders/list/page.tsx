@@ -21,6 +21,7 @@ import {
   Plus,
 } from "lucide-react";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type FilterState = {
   search: string;
@@ -73,6 +74,7 @@ function formatTimeAgo(date: Date | string): string {
 }
 
 export default function OrdersListPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -287,11 +289,11 @@ export default function OrdersListPage() {
     <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <div className="text-center text-[#5e5873]">
         <ShoppingCart className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
-        <p className="text-[1.05rem] font-semibold">No orders found</p>
+        <p className="text-[1.05rem] font-semibold">{t("pages.store.ordersList.noOrdersFound")}</p>
         <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
           {filters.search || filters.status
-            ? "Try adjusting your filters"
-            : "Orders will appear here once created"}
+            ? t("pages.store.ordersList.tryAdjustingFilters")
+            : t("pages.store.ordersList.ordersWillAppear")}
         </p>
       </div>
     </div>
@@ -304,8 +306,8 @@ export default function OrdersListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Orders", href: "/b2b/store/orders" },
-          { label: "All Orders" },
+          { label: t("pages.store.orders.title"), href: "/b2b/store/orders" },
+          { label: t("pages.store.ordersList.allOrders") },
         ]}
       />
 
@@ -320,7 +322,7 @@ export default function OrdersListPage() {
           <ShoppingCart className="h-4 w-4 text-amber-600" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.draft}</div>
-            <div className="text-[10px] text-muted-foreground">Carts</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.carts")}</div>
           </div>
         </button>
         <button
@@ -332,7 +334,7 @@ export default function OrdersListPage() {
           <FileText className="h-4 w-4 text-indigo-600" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.quotation}</div>
-            <div className="text-[10px] text-muted-foreground">Quotes</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.quotes")}</div>
           </div>
         </button>
         <button
@@ -344,7 +346,7 @@ export default function OrdersListPage() {
           <Clock className="h-4 w-4 text-blue-600" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.pending}</div>
-            <div className="text-[10px] text-muted-foreground">Pending</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.pending")}</div>
           </div>
         </button>
         <button
@@ -356,7 +358,7 @@ export default function OrdersListPage() {
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.confirmed}</div>
-            <div className="text-[10px] text-muted-foreground">Confirmed</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.confirmed")}</div>
           </div>
         </button>
         <button
@@ -368,7 +370,7 @@ export default function OrdersListPage() {
           <Truck className="h-4 w-4 text-purple-600" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.shipped}</div>
-            <div className="text-[10px] text-muted-foreground">Shipped</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.shipped")}</div>
           </div>
         </button>
         <button
@@ -380,7 +382,7 @@ export default function OrdersListPage() {
           <Package className="h-4 w-4 text-teal-600" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.delivered}</div>
-            <div className="text-[10px] text-muted-foreground">Delivered</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.delivered")}</div>
           </div>
         </button>
         <button
@@ -392,7 +394,7 @@ export default function OrdersListPage() {
           <XCircle className="h-4 w-4 text-red-500" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.cancelled}</div>
-            <div className="text-[10px] text-muted-foreground">Cancelled</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.cancelled")}</div>
           </div>
         </button>
         <button
@@ -406,7 +408,7 @@ export default function OrdersListPage() {
           </div>
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.total}</div>
-            <div className="text-[10px] text-muted-foreground">Total</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.total")}</div>
           </div>
         </button>
         <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card">
@@ -417,7 +419,7 @@ export default function OrdersListPage() {
             <div className="text-sm font-bold text-foreground">
               {new Intl.NumberFormat("it-IT", { notation: "compact", maximumFractionDigits: 1 }).format(stats.totalValue)}
             </div>
-            <div className="text-[10px] text-muted-foreground">Value</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.value")}</div>
           </div>
         </div>
       </div>
@@ -431,10 +433,10 @@ export default function OrdersListPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-blue-900">
-                Viewing orders for: <span className="font-bold">{customerName}</span>
+                {t("pages.store.ordersList.viewingOrdersFor")} <span className="font-bold">{customerName}</span>
               </p>
               <p className="text-xs text-blue-600">
-                {pagination.total} order{pagination.total !== 1 ? "s" : ""} found
+                {pagination.total} {pagination.total !== 1 ? t("pages.store.ordersList.ordersFound") : t("pages.store.ordersList.orderFound")}
               </p>
             </div>
           </div>
@@ -443,7 +445,7 @@ export default function OrdersListPage() {
               href={`${tenantPrefix}/b2b/store/customers/${filters.customer_id}`}
               className="text-sm text-blue-600 hover:text-blue-800 underline"
             >
-              View Customer
+              {t("pages.store.ordersList.viewCustomer")}
             </Link>
             <button
               onClick={() => updateFilters({ customer_id: "" })}
@@ -457,14 +459,14 @@ export default function OrdersListPage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">
-          {filters.customer_id && customerName ? `Orders: ${customerName}` : "Orders"}
+          {filters.customer_id && customerName ? `${t("pages.store.ordersList.title")}: ${customerName}` : t("pages.store.ordersList.title")}
         </h1>
         <button
           onClick={() => setShowNewOrderModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition"
         >
           <Plus className="h-4 w-4" />
-          New Order
+          {t("pages.store.orders.newOrder")}
         </button>
       </div>
 
@@ -477,7 +479,7 @@ export default function OrdersListPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search order ID, PO..."
+              placeholder={t("pages.store.ordersList.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="w-full rounded border border-border bg-background px-9 py-2 text-sm focus:border-primary focus:outline-none"
@@ -490,14 +492,14 @@ export default function OrdersListPage() {
             onChange={(e) => updateFilters({ status: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Status</option>
-            <option value="draft">Draft (Cart)</option>
-            <option value="quotation">Quotation</option>
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">{t("pages.store.ordersList.allStatus")}</option>
+            <option value="draft">{t("pages.store.ordersList.draftCart")}</option>
+            <option value="quotation">{t("pages.store.ordersList.quotation")}</option>
+            <option value="pending">{t("pages.store.ordersList.pending")}</option>
+            <option value="confirmed">{t("pages.store.ordersList.confirmed")}</option>
+            <option value="shipped">{t("pages.store.ordersList.shipped")}</option>
+            <option value="delivered">{t("pages.store.ordersList.delivered")}</option>
+            <option value="cancelled">{t("pages.store.ordersList.cancelled")}</option>
           </select>
 
           {/* Year Filter */}
@@ -506,7 +508,7 @@ export default function OrdersListPage() {
             onChange={(e) => updateFilters({ year: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Years</option>
+            <option value="">{t("pages.store.ordersList.allYears")}</option>
             {years.map((year) => (
               <option key={year} value={year}>
                 {year}
@@ -520,10 +522,10 @@ export default function OrdersListPage() {
             onChange={(e) => updateFilters({ sort: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="recent">Most Recent</option>
-            <option value="oldest">Oldest First</option>
-            <option value="total_high">Highest Value</option>
-            <option value="total_low">Lowest Value</option>
+            <option value="recent">{t("pages.store.ordersList.mostRecent")}</option>
+            <option value="oldest">{t("pages.store.ordersList.oldestFirst")}</option>
+            <option value="total_high">{t("pages.store.ordersList.highestValue")}</option>
+            <option value="total_low">{t("pages.store.ordersList.lowestValue")}</option>
           </select>
         </div>
 
@@ -531,7 +533,7 @@ export default function OrdersListPage() {
         <div className="mt-3 grid gap-3 md:grid-cols-7">
           {/* Cart Number */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">N. Carrello</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.cartNumber")}</label>
             <input
               type="text"
               placeholder="e.g. 12"
@@ -542,7 +544,7 @@ export default function OrdersListPage() {
           </div>
           {/* Public Code */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">Customer Code</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.customerCode")}</label>
             <input
               type="text"
               placeholder="e.g. C-00001"
@@ -553,7 +555,7 @@ export default function OrdersListPage() {
           </div>
           {/* ERP Code */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">ERP Code</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.erpCode")}</label>
             <input
               type="text"
               placeholder="e.g. CLI-001"
@@ -564,26 +566,26 @@ export default function OrdersListPage() {
           </div>
           {/* Active Cart Filter */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">Active Cart</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.activeCart")}</label>
             <select
               value={filters.is_current}
               onChange={(e) => updateFilters({ is_current: e.target.value })}
               className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="">All</option>
-              <option value="true">Active Only</option>
-              <option value="false">Inactive</option>
+              <option value="">{t("common.all")}</option>
+              <option value="true">{t("pages.store.ordersList.activeOnly")}</option>
+              <option value="false">{t("pages.store.ordersList.inactive")}</option>
             </select>
           </div>
           {/* Channel */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">Channel</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.channel")}</label>
             <select
               value={filters.channel}
               onChange={(e) => updateFilters({ channel: e.target.value })}
               className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="">All</option>
+              <option value="">{t("common.all")}</option>
               {channels.map((ch) => (
                 <option key={ch.code} value={ch.code}>
                   {ch.name}
@@ -593,7 +595,7 @@ export default function OrdersListPage() {
           </div>
           {/* Date From */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">From</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.from")}</label>
             <input
               type="date"
               value={filters.date_from}
@@ -603,7 +605,7 @@ export default function OrdersListPage() {
           </div>
           {/* Date To */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">To</label>
+            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.to")}</label>
             <input
               type="date"
               value={filters.date_to}
@@ -616,7 +618,7 @@ export default function OrdersListPage() {
         {/* Active Filters */}
         {(filters.status || filters.search || filters.year || filters.date_from || filters.date_to || filters.cart_number || filters.public_code || filters.erp_code || filters.is_current || filters.channel) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">Filters:</span>
+            <span className="text-xs text-muted-foreground">{t("pages.store.ordersList.filters")}:</span>
             {filters.status && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
                 <span>{filters.status}</span>
@@ -627,7 +629,7 @@ export default function OrdersListPage() {
             )}
             {filters.is_current && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
-                <span>{filters.is_current === "true" ? "Active Cart" : "Inactive"}</span>
+                <span>{filters.is_current === "true" ? t("pages.store.ordersList.activeCart") : t("pages.store.ordersList.inactive")}</span>
                 <button onClick={() => updateFilters({ is_current: "" })} className="hover:bg-emerald-200 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
@@ -693,7 +695,7 @@ export default function OrdersListPage() {
               onClick={() => updateFilters({ status: "", year: "", search: "", date_from: "", date_to: "", customer_id: "", cart_number: "", public_code: "", erp_code: "", is_current: "", channel: "" })}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              Clear all
+              {t("pages.store.ordersList.clearAll")}
             </button>
           </div>
         )}
@@ -705,14 +707,13 @@ export default function OrdersListPage() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium text-foreground">
-                <span className="font-bold">{selectedOrders.size}</span> order
-                {selectedOrders.size !== 1 ? "s" : ""} selected
+                <span className="font-bold">{selectedOrders.size}</span> {t("pages.store.ordersList.selected")}
               </div>
               <button
                 onClick={clearSelection}
                 className="text-sm text-muted-foreground hover:text-foreground underline"
               >
-                Clear selection
+                {t("pages.store.ordersList.clearSelection")}
               </button>
             </div>
           </div>
@@ -750,28 +751,28 @@ export default function OrdersListPage() {
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Order ID
+                      {t("pages.store.ordersList.orderId")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Customer
+                      {t("pages.store.ordersList.customer")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Items
+                      {t("pages.store.ordersList.items")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                      Total
+                      {t("pages.store.ordersList.total")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Status
+                      {t("pages.store.ordersList.status")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Created
+                      {t("pages.store.ordersList.created")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Updated
+                      {t("pages.store.ordersList.updated")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -895,7 +896,7 @@ export default function OrdersListPage() {
                               className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
                             >
                               <Eye className="h-3 w-3" />
-                              View
+                              {t("common.view")}
                             </Link>
                           </div>
                         </td>
@@ -910,9 +911,9 @@ export default function OrdersListPage() {
             {pagination.pages > 1 && (
               <div className="border-t border-border px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                  {pagination.total} orders
+                  {t("common.showing")} {(pagination.page - 1) * pagination.limit + 1} {t("common.to")}{" "}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} {t("common.of")}{" "}
+                  {pagination.total}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -923,7 +924,7 @@ export default function OrdersListPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <div className="text-sm font-medium text-foreground">
-                    Page {pagination.page} of {pagination.pages}
+                    {t("common.page")} {pagination.page} {t("common.of")} {pagination.pages}
                   </div>
                   <button
                     onClick={() => goToPage(pagination.page + 1)}

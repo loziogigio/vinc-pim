@@ -12,6 +12,7 @@ import {
   TAG_PREFIX_DESCRIPTIONS,
   type TagPrefix,
 } from "@/lib/constants/customer-tag";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CustomerTag {
   tag_id: string;
@@ -26,6 +27,7 @@ interface CustomerTag {
 }
 
 export default function CustomerTagsPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -111,7 +113,7 @@ export default function CustomerTagsPage() {
         items={[
           { label: "Store", href: "/b2b/store" },
           { label: "Customers", href: "/b2b/store/customers" },
-          { label: "Customer Tags" },
+          { label: t("pages.store.customerTags.title") },
         ]}
       />
 
@@ -120,10 +122,10 @@ export default function CustomerTagsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Tag className="h-6 w-6 text-emerald-600" />
-            Customer Tags
+            {t("pages.store.customerTags.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage tags for customer segmentation, pricing, and promotions
+            {t("pages.store.customerTags.subtitle")}
           </p>
         </div>
         <button
@@ -131,24 +133,24 @@ export default function CustomerTagsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
         >
           <Plus className="h-4 w-4" />
-          Create Tag
+          {t("pages.store.customerTags.createTag")}
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg bg-card shadow-sm p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Tags</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("pages.store.customerTags.totalTags")}</p>
           <p className="text-2xl font-bold text-foreground mt-1">{tags.length}</p>
         </div>
         <div className="rounded-lg bg-card shadow-sm p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Prefixes</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("pages.store.customerTags.prefixes")}</p>
           <p className="text-2xl font-bold text-foreground mt-1">
             {new Set(tags.map((t) => t.prefix)).size}
           </p>
         </div>
         <div className="rounded-lg bg-card shadow-sm p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Assignments</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("pages.store.customerTags.totalAssignments")}</p>
           <p className="text-2xl font-bold text-foreground mt-1">
             {tags.reduce((sum, t) => sum + t.customer_count, 0)}
           </p>
@@ -160,7 +162,7 @@ export default function CustomerTagsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search tags by name, code, prefix, or description..."
+          placeholder={t("pages.store.customerTags.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-9 pr-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -169,19 +171,19 @@ export default function CustomerTagsPage() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="text-center py-12 text-muted-foreground">Loading tags...</div>
+        <div className="text-center py-12 text-muted-foreground">{t("pages.store.customerTags.loadingTags")}</div>
       )}
 
       {/* Empty */}
       {!isLoading && tags.length === 0 && (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
           <Tag className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="text-muted-foreground">No tags defined yet</p>
+          <p className="text-muted-foreground">{t("pages.store.customerTags.noTagsDefined")}</p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="mt-3 text-sm text-emerald-600 hover:underline"
           >
-            Create your first tag
+            {t("pages.store.customerTags.createFirstTag")}
           </button>
         </div>
       )}
@@ -189,7 +191,7 @@ export default function CustomerTagsPage() {
       {/* No search results */}
       {!isLoading && tags.length > 0 && filteredTags.length === 0 && (
         <div className="text-center py-8 text-muted-foreground text-sm">
-          No tags match &quot;{search}&quot;
+          {t("pages.store.customerTags.noTagsMatch")} &quot;{search}&quot;
         </div>
       )}
 
@@ -207,8 +209,8 @@ export default function CustomerTagsPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">{prefixDesc}</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Prefix: <code className="px-1 py-0.5 bg-muted rounded font-mono">{prefix}</code>
-                {" "}&middot; {groupTags.length} tag{groupTags.length !== 1 ? "s" : ""}
+                {t("pages.store.customerTags.prefix")}: <code className="px-1 py-0.5 bg-muted rounded font-mono">{prefix}</code>
+                {" "}&middot; {groupTags.length}
               </p>
             </div>
             <div className="divide-y divide-border">
@@ -246,7 +248,7 @@ export default function CustomerTagsPage() {
                       onClick={(e) => handleDeleteTag(e, tag)}
                       disabled={deletingTagId === tag.tag_id}
                       className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                      title="Delete tag"
+                      title={t("common.delete")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

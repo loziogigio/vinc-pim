@@ -21,6 +21,7 @@ import {
   Calendar,
   Timer,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Product = {
   _id: string;
@@ -68,6 +69,7 @@ export default function ImportJobDetailPage() {
   const params = useParams();
   const router = useRouter();
   const jobId = params?.jobId as string;
+  const { t } = useTranslation();
 
   const [job, setJob] = useState<ImportJob | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -214,8 +216,8 @@ export default function ImportJobDetailPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Import Jobs", href: "/b2b/pim/jobs" },
+          { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+          { label: t("pages.pim.jobs.title"), href: "/b2b/pim/jobs" },
           { label: `Job ${jobId.slice(0, 8)}...` },
         ]}
       />
@@ -230,7 +232,7 @@ export default function ImportJobDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Import Job Details</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.jobs.importJobDetails")}</h1>
             <p className="text-sm text-muted-foreground">Job ID: {job.job_id}</p>
           </div>
         </div>
@@ -248,7 +250,7 @@ export default function ImportJobDetailPage() {
 
       {/* Job Summary */}
       <div className="rounded-lg bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Summary</h2>
+        <h2 className="text-lg font-semibold mb-4">{t("pages.pim.jobs.summary")}</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">

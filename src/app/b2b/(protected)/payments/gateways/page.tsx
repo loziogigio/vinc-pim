@@ -22,6 +22,7 @@ import {
   PROVIDER_CAPABILITIES,
 } from "@/lib/constants/payment";
 import type { PaymentProvider } from "@/lib/constants/payment";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const PROVIDER_ICONS: Record<PaymentProvider, React.ElementType> = {
   stripe: CreditCard,
@@ -43,6 +44,7 @@ interface TenantConfig {
 }
 
 export default function GatewaysPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -81,16 +83,16 @@ export default function GatewaysPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#5e5873]">Gateway di Pagamento</h1>
+          <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.payments.gateways.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Provider configurati e le loro capacità
+            {t("pages.payments.gateways.subtitle")}
           </p>
         </div>
         <Link
           href={`${tenantPrefix}/b2b/payments/settings`}
           className="px-4 py-2 bg-[#009688] text-white rounded-lg text-sm hover:bg-[#00796b] transition-colors"
         >
-          Impostazioni
+          {t("pages.payments.gateways.settings")}
         </Link>
       </div>
 
@@ -133,12 +135,12 @@ export default function GatewaysPage() {
                     {configured ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                         <CheckCircle2 className="w-3 h-3" />
-                        Attivo
+                        {t("pages.payments.gateways.active")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
                         <XCircle className="w-3 h-3" />
-                        Non configurato
+                        {t("pages.payments.gateways.notConfigured")}
                       </span>
                     )}
                   </div>
@@ -153,13 +155,13 @@ export default function GatewaysPage() {
                     <span className="px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-600">MOTO</span>
                   )}
                   {caps.supportsRecurring && (
-                    <span className="px-2 py-0.5 rounded text-xs bg-cyan-50 text-cyan-600">Ricorrente</span>
+                    <span className="px-2 py-0.5 rounded text-xs bg-cyan-50 text-cyan-600">{t("pages.payments.gateways.recurring")}</span>
                   )}
                   {caps.supportsAutomaticSplit && (
                     <span className="px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-600">Split</span>
                   )}
                   {!caps.supportsOnClick && !caps.supportsMoto && !caps.supportsRecurring && (
-                    <span className="px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-400">Nessuna</span>
+                    <span className="px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-400">{t("pages.payments.gateways.none")}</span>
                   )}
                 </div>
 
@@ -169,11 +171,11 @@ export default function GatewaysPage() {
                     href={`${tenantPrefix}/b2b/payments/gateways/${provider}`}
                     className="text-sm text-[#009688] hover:underline"
                   >
-                    Configura →
+                    {t("pages.payments.gateways.configure")} →
                   </Link>
                 ) : (
                   <span className="text-sm text-gray-400">
-                    Nessuna configurazione
+                    {t("pages.payments.gateways.noConfig")}
                   </span>
                 )}
               </div>

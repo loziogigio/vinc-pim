@@ -21,6 +21,7 @@ import { cn } from "@/components/ui/utils";
 import { MonacoHtmlEditor } from "@/components/shared/MonacoHtmlEditor";
 import { TRIGGER_LABELS, NOTIFICATION_TRIGGERS, NOTIFICATION_CHANNELS } from "@/lib/constants/notification";
 import type { INotificationTemplate, NotificationTrigger, NotificationChannel } from "@/lib/constants/notification";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface EmailComponent {
   component_id: string;
@@ -45,6 +46,7 @@ const CHANNEL_TABS: ChannelTabConfig[] = [
 ];
 
 export default function TemplateEditorPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const templateId = params.id as string;
@@ -115,11 +117,11 @@ export default function TemplateEditorPage() {
       setTemplate(data);
     } catch (error) {
       console.error("Error loading template:", error);
-      setToast({ type: "error", message: "Failed to load template" });
+      setToast({ type: "error", message: t("pages.notifications.templateEditor.loadError") });
     } finally {
       setIsLoading(false);
     }
-  }, [templateId, router]);
+  }, [templateId, router, t]);
 
   const loadComponents = useCallback(async () => {
     try {
@@ -224,9 +226,9 @@ export default function TemplateEditorPage() {
       }
 
       setIsDirty(false);
-      setToast({ type: "success", message: "Template saved successfully" });
+      setToast({ type: "success", message: t("pages.notifications.templateEditor.templateSaved") });
     } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Failed to save" });
+      setToast({ type: "error", message: error instanceof Error ? error.message : t("pages.notifications.templateEditor.saveError") });
     } finally {
       setIsSaving(false);
     }
@@ -253,10 +255,10 @@ export default function TemplateEditorPage() {
         throw new Error(data.error || "Failed to send test");
       }
 
-      setToast({ type: "success", message: `Test email sent to ${testEmail}` });
+      setToast({ type: "success", message: t("pages.notifications.templateEditor.testEmailSent").replace("{email}", testEmail) });
       setTestEmail("");
     } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Failed to send test" });
+      setToast({ type: "error", message: error instanceof Error ? error.message : t("pages.notifications.templateEditor.testEmailError") });
     } finally {
       setIsSendingTest(false);
     }
@@ -286,7 +288,7 @@ export default function TemplateEditorPage() {
   if (!template) {
     return (
       <div className="p-6">
-        <p className="text-slate-500">Template not found</p>
+        <p className="text-slate-500">{t("pages.notifications.templateEditor.templateNotFound")}</p>
       </div>
     );
   }
@@ -304,7 +306,7 @@ export default function TemplateEditorPage() {
             onClick={() => router.push("/b2b/notifications/templates")}
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Back
+            {t("pages.notifications.templateEditor.back")}
           </Button>
           <div>
             <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
@@ -320,7 +322,7 @@ export default function TemplateEditorPage() {
             className="gap-2"
           >
             <Eye className="w-4 h-4" />
-            {showPreview ? "Hide Preview" : "Preview"}
+            {showPreview ? t("pages.notifications.templateEditor.hidePreview") : t("common.preview")}
           </Button>
           <Button
             onClick={handleSave}
@@ -332,7 +334,7 @@ export default function TemplateEditorPage() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            Save
+            {t("pages.notifications.templateEditor.save")}
           </Button>
         </div>
       </div>
@@ -356,14 +358,14 @@ export default function TemplateEditorPage() {
       <div className="mb-6 space-y-4">
         {/* Send Test */}
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Send Test Email</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">{t("pages.notifications.templateEditor.sendTestEmail")}</h2>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <input
                 type="email"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="test@example.com"
+                placeholder={t("pages.notifications.templateEditor.testEmailPlaceholder")}
                 className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               {template && ["order_confirmation", "order_shipped", "order_delivered", "order_cancelled", "payment_received"].includes(template.trigger) && (
@@ -371,7 +373,7 @@ export default function TemplateEditorPage() {
                   type="text"
                   value={testOrderId}
                   onChange={(e) => setTestOrderId(e.target.value)}
-                  placeholder="Order ID (optional)"
+                  placeholder={t("pages.notifications.templateEditor.orderIdPlaceholder")}
                   className="w-56 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               )}
@@ -385,7 +387,7 @@ export default function TemplateEditorPage() {
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                Send Test
+                {t("pages.notifications.templateEditor.sendTest")}
               </Button>
             </div>
           </div>
@@ -395,7 +397,7 @@ export default function TemplateEditorPage() {
         {showPreview && (
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">Email Preview</h2>
+              <h2 className="text-sm font-semibold text-slate-700">{t("pages.notifications.templateEditor.emailPreview")}</h2>
               {isLoadingPreview && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
             </div>
             <div className="p-4">
@@ -403,7 +405,7 @@ export default function TemplateEditorPage() {
                 <div className="space-y-3">
                   {previewData?.subject && (
                     <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                      <div className="text-xs text-slate-500 mb-1">Subject:</div>
+                      <div className="text-xs text-slate-500 mb-1">{t("pages.notifications.templateEditor.subjectLabel")}:</div>
                       <div className="text-sm font-medium text-slate-900">{previewData.subject}</div>
                     </div>
                   )}
@@ -419,7 +421,7 @@ export default function TemplateEditorPage() {
                 <div className="flex items-center justify-center h-[200px] text-slate-400">
                   <div className="text-center">
                     <Mail className="w-12 h-12 mx-auto mb-2" />
-                    <p>Enable email channel to see preview</p>
+                    <p>{t("pages.notifications.templateEditor.enableEmailPreview")}</p>
                   </div>
                 </div>
               )}
@@ -432,10 +434,10 @@ export default function TemplateEditorPage() {
       <div className="space-y-6">
         {/* Template Info */}
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Template Info</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">{t("pages.notifications.templateEditor.templateInfo")}</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.nameLabel")}</label>
                 <input
                   type="text"
                   value={template.name}
@@ -444,7 +446,7 @@ export default function TemplateEditorPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.descriptionLabel")}</label>
                 <textarea
                   value={template.description || ""}
                   onChange={(e) => updateTemplate("description", e.target.value)}
@@ -453,7 +455,7 @@ export default function TemplateEditorPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Trigger</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.triggerLabel")}</label>
                 <select
                   value={template.trigger}
                   onChange={(e) => updateTemplate("trigger", e.target.value as NotificationTrigger)}
@@ -475,7 +477,7 @@ export default function TemplateEditorPage() {
                   className="w-4 h-4 text-primary rounded"
                 />
                 <label htmlFor="is_active" className="text-sm text-slate-700">
-                  Template is active
+                  {t("pages.notifications.templateEditor.templateActive")}
                 </label>
               </div>
             </div>
@@ -484,7 +486,7 @@ export default function TemplateEditorPage() {
           {/* Variables */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-700">Variables</h2>
+              <h2 className="text-sm font-semibold text-slate-700">{t("pages.notifications.templateEditor.variables")}</h2>
               <Variable className="w-4 h-4 text-slate-400" />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -500,7 +502,7 @@ export default function TemplateEditorPage() {
                 </button>
               ))}
               {template.variables.length === 0 && (
-                <p className="text-sm text-slate-400">No variables defined</p>
+                <p className="text-sm text-slate-400">{t("pages.notifications.templateEditor.noVariables")}</p>
               )}
             </div>
           </div>
@@ -545,7 +547,7 @@ export default function TemplateEditorPage() {
                       className="w-4 h-4 text-primary rounded"
                     />
                     <label htmlFor="email_enabled" className="text-sm text-slate-700">
-                      Enable email channel
+                      {t("pages.notifications.templateEditor.enableEmailChannel")}
                     </label>
                   </div>
 
@@ -553,20 +555,20 @@ export default function TemplateEditorPage() {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Subject
+                          {t("pages.notifications.templateEditor.subjectLabel")}
                         </label>
                         <input
                           type="text"
                           value={emailChannel.subject || ""}
                           onChange={(e) => updateChannel("email", "subject", e.target.value)}
-                          placeholder="Email subject with {{variables}}"
+                          placeholder={t("pages.notifications.templateEditor.emailSubjectPlaceholder")}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
 
                       {/* Header Selection */}
                       <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                        <h3 className="text-sm font-medium text-slate-700">Email Header</h3>
+                        <h3 className="text-sm font-medium text-slate-700">{t("pages.notifications.templateEditor.emailHeader")}</h3>
                         <div className="flex items-center gap-4">
                           <label className="flex items-center gap-2">
                             <input
@@ -575,7 +577,7 @@ export default function TemplateEditorPage() {
                               onChange={(e) => updateTemplate("use_default_header", e.target.checked)}
                               className="w-4 h-4 text-primary rounded"
                             />
-                            <span className="text-sm text-slate-600">Use default header</span>
+                            <span className="text-sm text-slate-600">{t("pages.notifications.templateEditor.useDefaultHeader")}</span>
                           </label>
                         </div>
                         {template.use_default_header === false && (
@@ -584,7 +586,7 @@ export default function TemplateEditorPage() {
                             onChange={(e) => updateTemplate("header_id", e.target.value || undefined)}
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                           >
-                            <option value="">No header</option>
+                            <option value="">{t("pages.notifications.templateEditor.noHeader")}</option>
                             {headers.map((h) => (
                               <option key={h.component_id} value={h.component_id}>
                                 {h.name} {h.is_default ? "(Default)" : ""}
@@ -596,7 +598,7 @@ export default function TemplateEditorPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          HTML Body (Content)
+                          {t("pages.notifications.templateEditor.htmlBodyContent")}
                         </label>
                         <MonacoHtmlEditor
                           value={emailChannel.html_body || ""}
@@ -604,13 +606,13 @@ export default function TemplateEditorPage() {
                           height="350px"
                         />
                         <p className="mt-2 text-xs text-slate-500">
-                          This is the main content between header and footer. Use {"{{variable}}"} for dynamic values.
+                          {t("pages.notifications.templateEditor.htmlBodyHint")}
                         </p>
                       </div>
 
                       {/* Footer Selection */}
                       <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                        <h3 className="text-sm font-medium text-slate-700">Email Footer</h3>
+                        <h3 className="text-sm font-medium text-slate-700">{t("pages.notifications.templateEditor.emailFooter")}</h3>
                         <div className="flex items-center gap-4">
                           <label className="flex items-center gap-2">
                             <input
@@ -619,7 +621,7 @@ export default function TemplateEditorPage() {
                               onChange={(e) => updateTemplate("use_default_footer", e.target.checked)}
                               className="w-4 h-4 text-primary rounded"
                             />
-                            <span className="text-sm text-slate-600">Use default footer</span>
+                            <span className="text-sm text-slate-600">{t("pages.notifications.templateEditor.useDefaultFooter")}</span>
                           </label>
                         </div>
                         {template.use_default_footer === false && (
@@ -628,7 +630,7 @@ export default function TemplateEditorPage() {
                             onChange={(e) => updateTemplate("footer_id", e.target.value || undefined)}
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                           >
-                            <option value="">No footer</option>
+                            <option value="">{t("pages.notifications.templateEditor.noFooter")}</option>
                             {footers.map((f) => (
                               <option key={f.component_id} value={f.component_id}>
                                 {f.name} {f.is_default ? "(Default)" : ""}
@@ -639,13 +641,13 @@ export default function TemplateEditorPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Plain Text (optional)
+                          {t("pages.notifications.templateEditor.plainText")}
                         </label>
                         <textarea
                           value={emailChannel.text_body || ""}
                           onChange={(e) => updateChannel("email", "text_body", e.target.value)}
                           rows={4}
-                          placeholder="Plain text version for email clients that don't support HTML"
+                          placeholder={t("pages.notifications.templateEditor.plainTextPlaceholder")}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
@@ -666,14 +668,14 @@ export default function TemplateEditorPage() {
                       className="w-4 h-4 text-primary rounded"
                     />
                     <label htmlFor="web_push_enabled" className="text-sm text-slate-700">
-                      Enable web push notifications
+                      {t("pages.notifications.templateEditor.enableWebPush")}
                     </label>
                   </div>
 
                   {template.channels?.web_push?.enabled && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.webPushTitle")}</label>
                         <input
                           type="text"
                           value={template.channels.web_push.title || ""}
@@ -682,7 +684,7 @@ export default function TemplateEditorPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Body</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.webPushBody")}</label>
                         <textarea
                           value={template.channels.web_push.body || ""}
                           onChange={(e) => updateChannel("web_push", "body", e.target.value)}
@@ -691,7 +693,7 @@ export default function TemplateEditorPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Action URL</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.webPushActionUrl")}</label>
                         <input
                           type="url"
                           value={template.channels.web_push.action_url || ""}
@@ -717,14 +719,14 @@ export default function TemplateEditorPage() {
                       className="w-4 h-4 text-primary rounded"
                     />
                     <label htmlFor="mobile_push_enabled" className="text-sm text-slate-700">
-                      Enable mobile push notifications
+                      {t("pages.notifications.templateEditor.enableMobilePush")}
                     </label>
                   </div>
 
                   {template.channels?.mobile_push?.enabled && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.mobilePushTitle")}</label>
                         <input
                           type="text"
                           value={template.channels.mobile_push.title || ""}
@@ -733,7 +735,7 @@ export default function TemplateEditorPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Body</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.templateEditor.mobilePushBody")}</label>
                         <textarea
                           value={template.channels.mobile_push.body || ""}
                           onChange={(e) => updateChannel("mobile_push", "body", e.target.value)}
@@ -758,14 +760,14 @@ export default function TemplateEditorPage() {
                       className="w-4 h-4 text-primary rounded"
                     />
                     <label htmlFor="sms_enabled" className="text-sm text-slate-700">
-                      Enable SMS notifications
+                      {t("pages.notifications.templateEditor.enableSms")}
                     </label>
                   </div>
 
                   {template.channels?.sms?.enabled && (
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Message (max 160 chars)
+                        {t("pages.notifications.templateEditor.smsMessage")}
                       </label>
                       <textarea
                         value={template.channels.sms.body || ""}
@@ -775,7 +777,7 @@ export default function TemplateEditorPage() {
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                       <p className="mt-1 text-xs text-slate-500">
-                        {(template.channels.sms.body || "").length}/160 characters
+                        {t("pages.notifications.templateEditor.smsCharacters").replace("{count}", String((template.channels.sms.body || "").length))}
                       </p>
                     </div>
                   )}

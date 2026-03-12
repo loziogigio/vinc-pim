@@ -15,6 +15,7 @@ import {
   Building2,
   ExternalLink,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_LABELS,
@@ -61,6 +62,7 @@ const TYPE_COLORS: Record<DocumentType, { bg: string; text: string; border: stri
 };
 
 export default function DocumentSettingsPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix = pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -173,10 +175,10 @@ export default function DocumentSettingsPage() {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        alert(data.error || "Errore nel salvataggio");
+        alert(data.error || t("pages.documents.settings.saveError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.settings.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -185,7 +187,7 @@ export default function DocumentSettingsPage() {
   const handleSetCounter = async (type: DocumentType) => {
     const value = parseInt(editCounterValues[type] || "0");
     if (isNaN(value) || value < 0) {
-      alert("Il valore deve essere un numero positivo");
+      alert(t("pages.documents.settings.counterPositiveError"));
       return;
     }
     setSavingCounterType(type);
@@ -202,10 +204,10 @@ export default function DocumentSettingsPage() {
       if (data.success) {
         fetchCounters();
       } else {
-        alert(data.error || "Errore");
+        alert(data.error || t("common.error"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.settings.networkError"));
     } finally {
       setSavingCounterType("");
     }
@@ -237,11 +239,10 @@ export default function DocumentSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            Impostazioni Documenti
+            {t("pages.documents.settings.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configura numerazione, valori predefiniti e contatori per i tuoi
-            documenti.
+            {t("pages.documents.settings.subtitle")}
           </p>
         </div>
         <button
@@ -262,7 +263,7 @@ export default function DocumentSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {saveSuccess ? "Salvato!" : "Salva Impostazioni"}
+          {saveSuccess ? t("pages.documents.settings.saved") : t("pages.documents.settings.saveSettings")}
         </button>
       </div>
 
@@ -271,14 +272,14 @@ export default function DocumentSettingsPage() {
         <Building2 className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="text-sm text-amber-800">
-            Le informazioni aziendali che appaiono nei documenti (ragione sociale, P.IVA, indirizzo, logo, ecc.) sono configurate nelle{" "}
-            <strong>Impostazioni del Negozio</strong>.
+            {t("pages.documents.settings.companyInfoNote")}{" "}
+            <strong>{t("pages.documents.settings.storeSettings")}</strong>.
           </p>
           <Link
             href={`${tenantPrefix}/b2b/home-settings`}
             className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors"
           >
-            Vai alle Impostazioni Azienda
+            {t("pages.documents.settings.goToCompanySettings")}
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -292,17 +293,9 @@ export default function DocumentSettingsPage() {
               <Hash className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Numerazione Progressiva</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.settings.numbering")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Formato per ogni tipo di documento. Usa{" "}
-                <code className="px-1 py-0.5 bg-[#f8f8f8] rounded text-[10px] font-mono">
-                  {"{YEAR}"}
-                </code>{" "}
-                per l&apos;anno e{" "}
-                <code className="px-1 py-0.5 bg-[#f8f8f8] rounded text-[10px] font-mono">
-                  {"{NUMBER}"}
-                </code>{" "}
-                per il progressivo.
+                {t("pages.documents.settings.numberingDesc")}
               </p>
             </div>
           </div>
@@ -334,7 +327,7 @@ export default function DocumentSettingsPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-medium text-[#5e5873]/70 mb-1">
-                      Formato
+                      {t("pages.documents.settings.format")}
                     </label>
                     <input
                       type="text"
@@ -353,7 +346,7 @@ export default function DocumentSettingsPage() {
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="block text-[11px] font-medium text-[#5e5873]/70 mb-1">
-                        Cifre (padding)
+                        {t("pages.documents.settings.padding")}
                       </label>
                       <input
                         type="number"
@@ -385,7 +378,7 @@ export default function DocumentSettingsPage() {
                           className="rounded border-gray-300 text-[#009688] focus:ring-[#009688]"
                         />
                         <span className="text-xs text-[#5e5873]/70">
-                          Reset annuale
+                          {t("pages.documents.settings.yearlyReset")}
                         </span>
                       </label>
                     </div>

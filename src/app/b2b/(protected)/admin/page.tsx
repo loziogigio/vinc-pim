@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Stats {
   active_sessions: number;
@@ -27,6 +28,7 @@ const DEFAULT_STATS: Stats = {
 };
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,9 +54,9 @@ export default function AdminDashboard() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.dashboard.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Gestione sessioni e sicurezza
+          {t("pages.admin.dashboard.subtitle")}
         </p>
       </div>
 
@@ -67,25 +69,25 @@ export default function AdminDashboard() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard
-              label="Sessioni Attive"
+              label={t("pages.admin.dashboard.activeSessions")}
               value={stats.active_sessions}
               icon={Monitor}
               color="bg-blue-500"
             />
             <StatCard
-              label="Utenti Unici"
+              label={t("pages.admin.dashboard.uniqueUsers")}
               value={stats.unique_users}
               icon={Users}
               color="bg-emerald-500"
             />
             <StatCard
-              label="Login Falliti (24h)"
+              label={t("pages.admin.dashboard.failedLogins24h")}
               value={stats.failed_logins_24h}
               icon={AlertTriangle}
               color="bg-amber-500"
             />
             <StatCard
-              label="IP Bloccati"
+              label={t("pages.admin.dashboard.blockedIPs")}
               value={stats.blocked_ips}
               icon={Ban}
               color="bg-rose-500"
@@ -96,26 +98,26 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <QuickActionCard
               href="/b2b/admin/sessions"
-              title="Sessioni"
-              description="Gestisci sessioni attive"
+              title={t("pages.admin.dashboard.sessions")}
+              description={t("pages.admin.dashboard.manageSessions")}
               icon={Monitor}
             />
             <QuickActionCard
               href="/b2b/admin/login-attempts"
-              title="Login Attempts"
-              description="Cronologia accessi"
+              title={t("pages.admin.dashboard.loginAttempts")}
+              description={t("pages.admin.dashboard.accessHistory")}
               icon={History}
             />
             <QuickActionCard
               href="/b2b/admin/security"
-              title="Sicurezza"
-              description="Configura limiti e policy"
+              title={t("pages.admin.dashboard.security")}
+              description={t("pages.admin.dashboard.configureLimits")}
               icon={ShieldCheck}
             />
             <QuickActionCard
               href="/b2b/admin/blocked-ips"
-              title="IP Bloccati"
-              description="Gestisci blacklist"
+              title={t("pages.admin.dashboard.blockedIPs")}
+              description={t("pages.admin.dashboard.manageBlacklist")}
               icon={Ban}
             />
           </div>

@@ -15,6 +15,7 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Brand = {
   brand_id: string;
@@ -45,6 +46,7 @@ export default function BrandDetailPage() {
   const router = useRouter();
   const params = useParams();
   const brandId = params?.id as string;
+  const { t } = useTranslation();
 
   // State
   const [brand, setBrand] = useState<Brand | null>(null);
@@ -396,7 +398,7 @@ export default function BrandDetailPage() {
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Brands
+            {t("pages.pim.brands.backToBrands")}
           </Link>
 
           <div className="flex items-start gap-4">
@@ -450,7 +452,7 @@ export default function BrandDetailPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 text-sm"
                   >
                     <Minus className="w-4 h-4" />
-                    Remove Selected
+                    {t("pages.pim.common.removeSelected")}
                   </button>
                 </>
               )}
@@ -503,7 +505,7 @@ export default function BrandDetailPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm"
               >
                 <Plus className="w-4 h-4" />
-                Add Products
+                {t("pages.pim.common.addProducts")}
               </button>
             </div>
           </div>
@@ -651,7 +653,7 @@ export default function BrandDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-semibold text-foreground">Add Products to Brand</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("pages.pim.brands.addProductsToBrand")}</h2>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="text-muted-foreground hover:text-foreground"
@@ -730,7 +732,7 @@ export default function BrandDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg shadow-xl w-full max-w-lg">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-semibold text-foreground">Import Products</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("pages.pim.common.importProducts")}</h2>
               <button
                 onClick={() => {
                   setShowImportModal(false);

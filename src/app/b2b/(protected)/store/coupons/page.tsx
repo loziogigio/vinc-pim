@@ -25,8 +25,10 @@ import {
 } from "@/lib/constants/coupon";
 import type { ICoupon } from "@/lib/db/models/coupon";
 import type { CouponStatus } from "@/lib/constants/coupon";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function CouponsListPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b/);
   const tenantPrefix = tenantMatch ? `/${tenantMatch[1]}` : "";
@@ -83,7 +85,7 @@ export default function CouponsListPage() {
   };
 
   const deleteCoupon = async (couponId: string) => {
-    if (!confirm("Sei sicuro di voler eliminare questo coupon?")) return;
+    if (!confirm(t("pages.store.coupons.deleteConfirm"))) return;
     try {
       const res = await fetch(`/api/b2b/coupons/${couponId}`, {
         method: "DELETE",
@@ -92,7 +94,7 @@ export default function CouponsListPage() {
       if (data.success) {
         fetchCoupons();
       } else {
-        alert(data.error || "Errore eliminazione");
+        alert(data.error || t("pages.store.coupons.deleteError"));
       }
     } catch (error) {
       console.error("Error deleting coupon:", error);
@@ -119,22 +121,22 @@ export default function CouponsListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Store", href: "/b2b/store/orders" },
-          { label: "Coupons" },
+          { label: "Store", href: "/b2b/store" },
+          { label: t("pages.store.coupons.title") },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#5e5873]">Coupons</h1>
+          <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.store.coupons.title")}</h1>
           <p className="text-sm text-[#b9b9c3] mt-1">
-            {total} coupon{total !== 1 ? "s" : ""} totali
+            {total} {t("pages.store.coupons.totalSuffix")}
           </p>
         </div>
         <Link href={`${tenantPrefix}/b2b/store/coupons/new`}>
           <Button className="bg-[#009688] hover:bg-[#00796b] text-white">
             <Plus className="h-4 w-4 mr-2" />
-            Nuovo Coupon
+            {t("pages.store.coupons.newCoupon")}
           </Button>
         </Link>
       </div>
@@ -144,7 +146,7 @@ export default function CouponsListPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#b9b9c3]" />
           <Input
-            placeholder="Cerca per codice, descrizione..."
+            placeholder={t("pages.store.coupons.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -161,7 +163,7 @@ export default function CouponsListPage() {
           }}
           className="rounded-md border border-[#ebe9f1] px-3 py-2 text-sm text-[#6e6b7b] bg-white"
         >
-          <option value="">Tutti gli stati</option>
+          <option value="">{t("pages.store.coupons.allStatuses")}</option>
           {Object.entries(COUPON_STATUS_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
@@ -174,37 +176,37 @@ export default function CouponsListPage() {
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-[#b9b9c3]">
-            Caricamento...
+            {t("pages.store.coupons.loading")}
           </div>
         ) : coupons.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-[#b9b9c3]">
             <Ticket className="h-12 w-12 mb-3 opacity-40" />
-            <p>Nessun coupon trovato</p>
+            <p>{t("pages.store.coupons.noCouponsFound")}</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#ebe9f1] bg-[#fafafc]">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                  Codice
+                  {t("pages.store.coupons.code")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                  Sconto
+                  {t("pages.store.coupons.discount")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                  Stato
+                  {t("pages.store.coupons.status")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                  Validita
+                  {t("pages.store.coupons.validity")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                  Utilizzo
+                  {t("pages.store.coupons.usage")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                  Opzioni
+                  {t("pages.store.coupons.options")}
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-[#5e5873] uppercase">
-                  Azioni
+                  {t("pages.store.coupons.actions")}
                 </th>
               </tr>
             </thead>
@@ -273,12 +275,12 @@ export default function CouponsListPage() {
                       )}
                       {coupon.include_shipping && (
                         <span className="inline-flex rounded bg-purple-50 px-1.5 py-0.5 text-xs text-purple-700">
-                          + spedizione
+                          {t("pages.store.coupons.shipping")}
                         </span>
                       )}
                       {!coupon.is_cumulative && (
                         <span className="inline-flex rounded bg-orange-50 px-1.5 py-0.5 text-xs text-orange-700">
-                          esclusivo
+                          {t("pages.store.coupons.exclusive")}
                         </span>
                       )}
                     </div>
@@ -290,8 +292,8 @@ export default function CouponsListPage() {
                         className="p-1.5 rounded hover:bg-[#fafafc] transition"
                         title={
                           coupon.status === "active"
-                            ? "Disattiva"
-                            : "Attiva"
+                            ? t("pages.store.coupons.deactivate")
+                            : t("pages.store.coupons.activate")
                         }
                       >
                         {coupon.status === "active" ? (
@@ -303,7 +305,7 @@ export default function CouponsListPage() {
                       <button
                         onClick={() => deleteCoupon(coupon.coupon_id)}
                         className="p-1.5 rounded hover:bg-red-50 transition"
-                        title="Elimina"
+                        title={t("common.delete")}
                       >
                         <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
                       </button>
@@ -319,7 +321,7 @@ export default function CouponsListPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[#ebe9f1]">
             <span className="text-sm text-[#b9b9c3]">
-              Pagina {page} di {totalPages}
+              {t("common.page")} {page} {t("common.of")} {totalPages}
             </span>
             <div className="flex gap-2">
               <Button
@@ -328,7 +330,7 @@ export default function CouponsListPage() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Precedente
+                {t("pages.store.coupons.previous")}
               </Button>
               <Button
                 variant="outline"
@@ -336,7 +338,7 @@ export default function CouponsListPage() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Successivo
+                {t("pages.store.coupons.next")}
               </Button>
             </div>
           </div>

@@ -21,28 +21,30 @@ import {
   RefreshCw
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const navItems = [
-  { label: "Overview", href: "/b2b/pim", icon: Box, description: "Catalog quality snapshot" },
-  { label: "Products", href: "/b2b/pim/products", icon: Package, description: "Master list (CRUD)" },
-  { label: "Categories", href: "/b2b/pim/categories", icon: FolderTree, description: "Hierarchical structure" },
-  { label: "Collections", href: "/b2b/pim/collections", icon: Layers, description: "Flexible grouping" },
-  { label: "Synonyms", href: "/b2b/pim/synonym-dictionaries", icon: BookA, description: "Search synonyms" },
-  { label: "Brands", href: "/b2b/pim/brands", icon: Tag, description: "Product brands" },
-  { label: "Tags", href: "/b2b/pim/tags", icon: TagsIcon, description: "Reusable labels" },
-  { label: "Menu Settings", href: "/b2b/pim/menu-settings", icon: Menu, description: "Navigation builder" },
-  { label: "Languages", href: "/b2b/pim/languages", icon: Languages, description: "Multilingual support" },
-  { label: "Product Types", href: "/b2b/pim/product-types", icon: Cpu, description: "Product classification" },
-  { label: "Technical Specs", href: "/b2b/pim/technical-specifications", icon: Sliders, description: "Technical data templates" },
-  { label: "AI Enhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, description: "Generate content" },
-  { label: "Import", href: "/b2b/pim/import", icon: Upload, description: "CSV/API for products" },
-  { label: "Jobs", href: "/b2b/pim/jobs", icon: FileText, description: "AI / Import / Sync tasks" },
-  { label: "Batch Sync", href: "/b2b/pim/batch-sync", icon: RefreshCw, description: "Solr cleanup & resync" },
-  { label: "Sources", href: "/b2b/pim/sources", icon: Settings, description: "Data origins" }
+  { labelKey: "nav.pim.overview", href: "/b2b/pim", icon: Box, descKey: "nav.pim.overviewDesc" },
+  { labelKey: "nav.pim.products", href: "/b2b/pim/products", icon: Package, descKey: "nav.pim.productsDesc" },
+  { labelKey: "nav.pim.categories", href: "/b2b/pim/categories", icon: FolderTree, descKey: "nav.pim.categoriesDesc" },
+  { labelKey: "nav.pim.collections", href: "/b2b/pim/collections", icon: Layers, descKey: "nav.pim.collectionsDesc" },
+  { labelKey: "nav.pim.synonyms", href: "/b2b/pim/synonym-dictionaries", icon: BookA, descKey: "nav.pim.synonymsDesc" },
+  { labelKey: "nav.pim.brands", href: "/b2b/pim/brands", icon: Tag, descKey: "nav.pim.brandsDesc" },
+  { labelKey: "nav.pim.tags", href: "/b2b/pim/tags", icon: TagsIcon, descKey: "nav.pim.tagsDesc" },
+  { labelKey: "nav.pim.menuSettings", href: "/b2b/pim/menu-settings", icon: Menu, descKey: "nav.pim.menuSettingsDesc" },
+  { labelKey: "nav.pim.languages", href: "/b2b/pim/languages", icon: Languages, descKey: "nav.pim.languagesDesc" },
+  { labelKey: "nav.pim.productTypes", href: "/b2b/pim/product-types", icon: Cpu, descKey: "nav.pim.productTypesDesc" },
+  { labelKey: "nav.pim.technicalSpecs", href: "/b2b/pim/technical-specifications", icon: Sliders, descKey: "nav.pim.technicalSpecsDesc" },
+  { labelKey: "nav.pim.aiEnhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, descKey: "nav.pim.aiEnhancementDesc" },
+  { labelKey: "nav.pim.import", href: "/b2b/pim/import", icon: Upload, descKey: "nav.pim.importDesc" },
+  { labelKey: "nav.pim.jobs", href: "/b2b/pim/jobs", icon: FileText, descKey: "nav.pim.jobsDesc" },
+  { labelKey: "nav.pim.batchSync", href: "/b2b/pim/batch-sync", icon: RefreshCw, descKey: "nav.pim.batchSyncDesc" },
+  { labelKey: "nav.pim.sources", href: "/b2b/pim/sources", icon: Settings, descKey: "nav.pim.sourcesDesc" }
 ];
 
 export function PIMNavigation() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/pim/products" -> "/dfl-eventi-it")
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -50,7 +52,7 @@ export function PIMNavigation() {
     <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
       <div className="mb-2 pb-3 border-b border-[#ebe9f1]">
         <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
-          PIM System
+          {t("nav.pim.title")}
         </h2>
       </div>
       {navItems.map((item) => {
@@ -72,7 +74,7 @@ export function PIMNavigation() {
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}

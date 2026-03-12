@@ -10,6 +10,7 @@ import {
   Bell,
   Key,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface SecurityConfig {
   tenant_id: string;
@@ -27,6 +28,7 @@ interface SecurityConfig {
 }
 
 export default function SecurityPage() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<SecurityConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -67,14 +69,14 @@ export default function SecurityPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage({ type: "success", text: "Configurazione salvata" });
+        setMessage({ type: "success", text: t("pages.admin.security.configSaved") });
         setConfig(data.config);
       } else {
-        setMessage({ type: "error", text: data.error || "Errore nel salvataggio" });
+        setMessage({ type: "error", text: data.error || t("pages.admin.security.saveError") });
       }
     } catch (error) {
       console.error("Error saving security config:", error);
-      setMessage({ type: "error", text: "Errore nel salvataggio" });
+      setMessage({ type: "error", text: t("pages.admin.security.saveError") });
     } finally {
       setIsSaving(false);
     }
@@ -102,7 +104,7 @@ export default function SecurityPage() {
       <div className="p-6">
         <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
           <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">Impossibile caricare la configurazione</p>
+          <p className="text-slate-500">{t("pages.admin.security.unableToLoad")}</p>
         </div>
       </div>
     );
@@ -112,9 +114,9 @@ export default function SecurityPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Sicurezza</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.security.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Configura i limiti di sessione e le policy di sicurezza
+            {t("pages.admin.security.subtitle")}
           </p>
         </div>
         <button
@@ -127,7 +129,7 @@ export default function SecurityPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          Salva
+          {t("common.save")}
         </button>
       </div>
 
@@ -152,15 +154,15 @@ export default function SecurityPage() {
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Limiti Sessione</h2>
-              <p className="text-sm text-slate-500">Gestisci durata e numero di sessioni</p>
+              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.sessionLimits")}</h2>
+              <p className="text-sm text-slate-500">{t("pages.admin.security.sessionLimitsDesc")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Max sessioni per utente
+                {t("pages.admin.security.maxSessionsPerUser")}
               </label>
               <input
                 type="number"
@@ -173,13 +175,13 @@ export default function SecurityPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               <p className="text-xs text-slate-500 mt-1">
-                Numero massimo di dispositivi/browser attivi contemporaneamente
+                {t("pages.admin.security.maxSessionsPerUserDesc")}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Timeout sessione (ore)
+                {t("pages.admin.security.sessionTimeoutHours")}
               </label>
               <input
                 type="number"
@@ -192,7 +194,7 @@ export default function SecurityPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               <p className="text-xs text-slate-500 mt-1">
-                Durata massima della sessione prima del logout automatico
+                {t("pages.admin.security.sessionTimeoutDesc")}
               </p>
             </div>
           </div>
@@ -205,15 +207,15 @@ export default function SecurityPage() {
               <Lock className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Protezione Login</h2>
-              <p className="text-sm text-slate-500">Limiti tentativi e blocco account</p>
+              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.loginProtection")}</h2>
+              <p className="text-sm text-slate-500">{t("pages.admin.security.loginProtectionDesc")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Max tentativi login
+                {t("pages.admin.security.maxLoginAttempts")}
               </label>
               <input
                 type="number"
@@ -226,13 +228,13 @@ export default function SecurityPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               <p className="text-xs text-slate-500 mt-1">
-                Tentativi falliti prima del blocco temporaneo
+                {t("pages.admin.security.maxLoginAttemptsDesc")}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Durata blocco (minuti)
+                {t("pages.admin.security.lockoutMinutes")}
               </label>
               <input
                 type="number"
@@ -245,7 +247,7 @@ export default function SecurityPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               <p className="text-xs text-slate-500 mt-1">
-                Tempo di blocco dopo tentativi falliti
+                {t("pages.admin.security.lockoutMinutesDesc")}
               </p>
             </div>
           </div>
@@ -261,10 +263,10 @@ export default function SecurityPage() {
             />
             <div>
               <span className="text-sm font-medium text-slate-700">
-                Ritardo progressivo
+                {t("pages.admin.security.progressiveDelay")}
               </span>
               <p className="text-xs text-slate-500">
-                Aumenta il tempo di attesa tra tentativi falliti
+                {t("pages.admin.security.progressiveDelayDesc")}
               </p>
             </div>
           </label>
@@ -277,8 +279,8 @@ export default function SecurityPage() {
               <Key className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Policy Password</h2>
-              <p className="text-sm text-slate-500">Requisiti e scadenza password</p>
+              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.passwordPolicy")}</h2>
+              <p className="text-sm text-slate-500">{t("pages.admin.security.passwordPolicyDesc")}</p>
             </div>
           </div>
 
@@ -294,24 +296,24 @@ export default function SecurityPage() {
               />
               <div>
                 <span className="text-sm font-medium text-slate-700">
-                  Richiedi password forte
+                  {t("pages.admin.security.requireStrongPassword")}
                 </span>
                 <p className="text-xs text-slate-500">
-                  Minimo 8 caratteri, maiuscole, minuscole, numeri e simboli
+                  {t("pages.admin.security.requireStrongPasswordDesc")}
                 </p>
               </div>
             </label>
 
             <div className="max-w-xs">
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Scadenza password (giorni)
+                {t("pages.admin.security.passwordExpiryDays")}
               </label>
               <input
                 type="number"
                 min={0}
                 max={365}
                 value={config.password_expiry_days || ""}
-                placeholder="Mai"
+                placeholder={t("pages.admin.security.passwordExpiryPlaceholder")}
                 onChange={(e) => {
                   const val = e.target.value ? parseInt(e.target.value) : undefined;
                   updateConfig("password_expiry_days", val);
@@ -319,7 +321,7 @@ export default function SecurityPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               <p className="text-xs text-slate-500 mt-1">
-                0 o vuoto = nessuna scadenza
+                {t("pages.admin.security.passwordExpiryDesc")}
               </p>
             </div>
           </div>
@@ -332,8 +334,8 @@ export default function SecurityPage() {
               <Bell className="w-5 h-5 text-rose-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Notifiche</h2>
-              <p className="text-sm text-slate-500">Avvisi di sicurezza</p>
+              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.notifications")}</h2>
+              <p className="text-sm text-slate-500">{t("pages.admin.security.notificationsDesc")}</p>
             </div>
           </div>
 
@@ -349,10 +351,10 @@ export default function SecurityPage() {
               />
               <div>
                 <span className="text-sm font-medium text-slate-700">
-                  Nuovo dispositivo
+                  {t("pages.admin.security.newDevice")}
                 </span>
                 <p className="text-xs text-slate-500">
-                  Notifica quando si accede da un dispositivo non riconosciuto
+                  {t("pages.admin.security.newDeviceDesc")}
                 </p>
               </div>
             </label>
@@ -368,10 +370,10 @@ export default function SecurityPage() {
               />
               <div>
                 <span className="text-sm font-medium text-slate-700">
-                  Login sospetto
+                  {t("pages.admin.security.suspiciousLogin")}
                 </span>
                 <p className="text-xs text-slate-500">
-                  Notifica per accessi da posizioni o IP insoliti
+                  {t("pages.admin.security.suspiciousLoginDesc")}
                 </p>
               </div>
             </label>
@@ -387,10 +389,10 @@ export default function SecurityPage() {
               />
               <div>
                 <span className="text-sm font-medium text-slate-700">
-                  Cambio password
+                  {t("pages.admin.security.passwordChange")}
                 </span>
                 <p className="text-xs text-slate-500">
-                  Conferma quando la password viene modificata
+                  {t("pages.admin.security.passwordChangeDesc")}
                 </p>
               </div>
             </label>
@@ -398,7 +400,7 @@ export default function SecurityPage() {
 
           <div className="max-w-md">
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email per avvisi admin
+              {t("pages.admin.security.alertEmail")}
             </label>
             <input
               type="email"
@@ -408,7 +410,7 @@ export default function SecurityPage() {
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Email per ricevere avvisi di sicurezza (opzionale)
+              {t("pages.admin.security.alertEmailDesc")}
             </p>
           </div>
         </div>

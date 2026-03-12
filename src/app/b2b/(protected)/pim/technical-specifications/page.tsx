@@ -11,6 +11,7 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type TechnicalSpecification = {
   _id: string;
@@ -28,6 +29,7 @@ type TechnicalSpecification = {
 };
 
 export default function TechnicalSpecificationsPage() {
+  const { t } = useTranslation();
   const [technicalSpecifications, setTechnicalSpecifications] = useState<TechnicalSpecification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -117,17 +119,17 @@ export default function TechnicalSpecificationsPage() {
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Technical Specifications" },
+            { label: t("pages.pim.breadcrumbPim"), href: "/b2b/pim" },
+            { label: t("pages.pim.technicalSpecs.title") },
           ]}
         />
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Technical Specifications</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.technicalSpecs.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {technicalSpecifications.length} total specifications
+              {technicalSpecifications.length} {t("pages.pim.technicalSpecs.totalSpecifications")}
             </p>
           </div>
           <button
@@ -136,7 +138,7 @@ export default function TechnicalSpecificationsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
           >
             <Plus className="h-5 w-5" />
-            New Specification
+            {t("pages.pim.technicalSpecs.newSpecification")}
           </button>
         </div>
 
@@ -146,7 +148,7 @@ export default function TechnicalSpecificationsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search specifications by label or key..."
+              placeholder={t("pages.pim.technicalSpecs.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -160,10 +162,10 @@ export default function TechnicalSpecificationsPage() {
                 ? "border-border bg-background"
                 : "border-primary bg-primary/10 text-primary"
             }`}
-            title="Filter"
+            title={t("common.filter")}
           >
             <Filter className="h-5 w-5" />
-            {!showInactive && "Active only"}
+            {!showInactive && t("pages.pim.activeOnly")}
           </button>
         </div>
 
@@ -173,12 +175,12 @@ export default function TechnicalSpecificationsPage() {
             <div className="p-12 text-center">
               <Sliders className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? "No specifications found" : "No specifications yet"}
+                {searchQuery ? t("pages.pim.technicalSpecs.noFound") : t("pages.pim.technicalSpecs.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
-                  ? "Try adjusting your search query"
-                  : "Create reusable technical specifications for your product types"}
+                  ? t("pages.pim.tryAdjustingSearch")
+                  : t("pages.pim.technicalSpecs.createFirst")}
               </p>
               {!searchQuery && (
                 <button
@@ -187,7 +189,7 @@ export default function TechnicalSpecificationsPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                 >
                   <Plus className="h-5 w-5" />
-                  New Specification
+                  {t("pages.pim.technicalSpecs.newSpecification")}
                 </button>
               )}
             </div>
@@ -197,25 +199,25 @@ export default function TechnicalSpecificationsPage() {
                 <thead className="bg-muted/50 border-b border-border">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Label
+                      {t("pages.pim.technicalSpecs.label")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Key
+                      {t("pages.pim.technicalSpecs.key")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Type
+                      {t("common.type")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Unit
+                      {t("pages.pim.technicalSpecs.unit")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Options
+                      {t("pages.pim.technicalSpecs.options")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Status
+                      {t("common.status")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -265,11 +267,11 @@ export default function TechnicalSpecificationsPage() {
                       <td className="px-4 py-3 text-center">
                         {spec.is_active ? (
                           <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
-                            Active
+                            {t("common.active")}
                           </span>
                         ) : (
                           <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                            Inactive
+                            {t("common.inactive")}
                           </span>
                         )}
                       </td>
@@ -331,6 +333,7 @@ function TechnicalSpecificationModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     key: specification?.key || "",
     label: specification?.label || "",
@@ -406,7 +409,7 @@ function TechnicalSpecificationModal({
           {/* Header */}
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-xl font-bold text-foreground">
-              {specification ? "Edit Technical Specification" : "Create Technical Specification"}
+              {specification ? t("pages.pim.technicalSpecs.editSpecification") : t("pages.pim.technicalSpecs.createSpecification")}
             </h2>
           </div>
 
@@ -416,7 +419,7 @@ function TechnicalSpecificationModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Label *
+                  {t("pages.pim.technicalSpecs.label")} *
                 </label>
                 <input
                   type="text"
@@ -436,7 +439,7 @@ function TechnicalSpecificationModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Key * <span className="text-muted-foreground text-xs">(unique identifier)</span>
+                  {t("pages.pim.technicalSpecs.key")} * <span className="text-muted-foreground text-xs">({t("pages.pim.technicalSpecs.uniqueIdentifier")})</span>
                 </label>
                 <input
                   type="text"
@@ -452,7 +455,7 @@ function TechnicalSpecificationModal({
             {/* Type & Unit */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Type *</label>
+                <label className="block text-sm font-medium text-foreground mb-1">{t("common.type")} *</label>
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as "text" | "number" | "select" | "multiselect" | "boolean" })}
@@ -467,7 +470,7 @@ function TechnicalSpecificationModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Unit <span className="text-muted-foreground text-xs">(optional)</span>
+                  {t("pages.pim.technicalSpecs.unit")} <span className="text-muted-foreground text-xs">({t("common.optional")})</span>
                 </label>
                 <input
                   type="text"
@@ -483,7 +486,7 @@ function TechnicalSpecificationModal({
             {(formData.type === "select" || formData.type === "multiselect") && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Options * <span className="text-muted-foreground text-xs">(comma-separated)</span>
+                  {t("pages.pim.technicalSpecs.options")} * <span className="text-muted-foreground text-xs">({t("pages.pim.technicalSpecs.commaSeparated")})</span>
                 </label>
                 <input
                   type="text"
@@ -499,7 +502,7 @@ function TechnicalSpecificationModal({
             {/* Display Order */}
             <div className="w-48">
               <label className="block text-sm font-medium text-foreground mb-1">
-                Display Order
+                {t("pages.pim.technicalSpecs.displayOrder")}
               </label>
               <input
                 type="number"
@@ -522,7 +525,7 @@ function TechnicalSpecificationModal({
                   className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <label htmlFor="default_required" className="text-sm text-foreground">
-                  Required by default (when added to product types)
+                  {t("pages.pim.technicalSpecs.requiredByDefault")}
                 </label>
               </div>
               <div className="flex items-center gap-2">
@@ -534,7 +537,7 @@ function TechnicalSpecificationModal({
                   className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <label htmlFor="is_active" className="text-sm text-foreground">
-                  Active (available for selection)
+                  {t("pages.pim.technicalSpecs.activeForSelection")}
                 </label>
               </div>
             </div>
@@ -547,14 +550,14 @@ function TechnicalSpecificationModal({
               onClick={onClose}
               className="px-4 py-2 rounded border border-border hover:bg-muted transition"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isSaving}
               className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
             >
-              {isSaving ? "Saving..." : specification ? "Update" : "Create"}
+              {isSaving ? t("pages.pim.saving") : specification ? t("common.update") : t("common.create")}
             </button>
           </div>
         </form>

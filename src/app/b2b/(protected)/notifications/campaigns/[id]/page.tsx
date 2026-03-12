@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Copy, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { CampaignResults } from "@/components/notifications/CampaignResults";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CampaignStatus, TemplateType, NotificationChannel, RecipientType } from "@/lib/constants/notification";
 
 interface Campaign {
@@ -25,6 +26,7 @@ interface Campaign {
 }
 
 export default function CampaignDetailPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
@@ -44,9 +46,9 @@ export default function CampaignDetailPage() {
       const res = await fetch(`/api/b2b/notifications/campaigns/${campaignId}`);
       if (!res.ok) {
         if (res.status === 404) {
-          setError("Campagna non trovata");
+          setError(t("pages.notifications.campaigns.notFound"));
         } else {
-          setError("Errore nel caricamento della campagna");
+          setError(t("pages.notifications.campaigns.loadError"));
         }
         return;
       }
@@ -55,11 +57,11 @@ export default function CampaignDetailPage() {
       setCampaign(data.campaign);
     } catch (err) {
       console.error("Error loading campaign:", err);
-      setError("Errore nel caricamento della campagna");
+      setError(t("pages.notifications.campaigns.loadError"));
     } finally {
       setIsLoading(false);
     }
-  }, [campaignId]);
+  }, [campaignId, t]);
 
   useEffect(() => {
     loadCampaign();
@@ -84,7 +86,7 @@ export default function CampaignDetailPage() {
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-slate-500">Caricamento...</span>
+          <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.loading")}</span>
         </div>
       </div>
     );
@@ -95,8 +97,8 @@ export default function CampaignDetailPage() {
       <div className="p-6">
         <div className="mb-4">
           <Breadcrumbs items={[
-            { label: "Notifiche", href: "/b2b/notifications" },
-            { label: "Campagne", href: "/b2b/notifications/campaigns" },
+            { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+            { label: t("pages.notifications.campaigns.breadcrumb"), href: "/b2b/notifications/campaigns" },
             { label: campaignId },
           ]} />
         </div>
@@ -104,10 +106,10 @@ export default function CampaignDetailPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">{error || "Campagna non trovata"}</p>
+            <p className="text-slate-500">{error || t("pages.notifications.campaigns.notFound")}</p>
             <Button variant="outline" onClick={handleBack} className="mt-4 gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Torna alle campagne
+              {t("pages.notifications.campaigns.backToCampaigns")}
             </Button>
           </div>
         </div>
@@ -120,8 +122,8 @@ export default function CampaignDetailPage() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche", href: "/b2b/notifications" },
-          { label: "Campagne", href: "/b2b/notifications/campaigns" },
+          { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+          { label: t("pages.notifications.campaigns.breadcrumb"), href: "/b2b/notifications/campaigns" },
           { label: campaign.name },
         ]} />
       </div>
@@ -135,7 +137,7 @@ export default function CampaignDetailPage() {
           </div>
           <Button variant="outline" onClick={handleBack} className="gap-2">
             <ArrowLeft className="w-4 h-4" />
-            Torna alle campagne
+            {t("pages.notifications.campaigns.backToCampaigns")}
           </Button>
         </div>
 
@@ -144,7 +146,7 @@ export default function CampaignDetailPage() {
           <button
             onClick={() => copyToClipboard(campaign.campaign_id, "id")}
             className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
-            title="Copia ID"
+            title={t("pages.notifications.campaigns.copyId")}
           >
             {copiedId === "id" ? (
               <Check className="w-3 h-3 text-emerald-500" />
@@ -157,7 +159,7 @@ export default function CampaignDetailPage() {
             <button
               onClick={() => copyToClipboard(campaign.slug, "slug")}
               className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-xs font-mono text-primary transition"
-              title="Copia Slug"
+              title={t("pages.notifications.campaigns.copySlug")}
             >
               {copiedId === "slug" ? (
                 <Check className="w-3 h-3 text-emerald-500" />
@@ -178,10 +180,10 @@ export default function CampaignDetailPage() {
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500">
-              Questa campagna non ha ancora risultati
+              {t("pages.notifications.campaigns.noResults")}
             </p>
             <p className="text-sm text-slate-400 mt-1">
-              Stato attuale: {campaign.status}
+              {t("pages.notifications.campaigns.currentStatus").replace("{status}", campaign.status)}
             </p>
           </div>
         )}

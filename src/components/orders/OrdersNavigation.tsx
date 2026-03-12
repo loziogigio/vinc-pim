@@ -21,30 +21,31 @@ import {
   Ticket,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 // Base paths without tenant prefix
 const orderPaths = [
-  { label: "Overview", path: "/b2b/store/orders", icon: BarChart3 },
-  { label: "All Orders", path: "/b2b/store/orders/list", icon: ListOrdered },
-  { label: "Active Carts", path: "/b2b/store/orders/carts", icon: ShoppingCart },
-  { label: "Pending", path: "/b2b/store/orders/pending", icon: Clock },
-  { label: "Confirmed", path: "/b2b/store/orders/confirmed", icon: CheckCircle },
-  { label: "Shipped", path: "/b2b/store/orders/shipped", icon: Truck },
-  { label: "Cancelled", path: "/b2b/store/orders/cancelled", icon: XCircle },
-  { label: "Coupons", path: "/b2b/store/coupons", icon: Ticket },
+  { labelKey: "nav.orders.overview", path: "/b2b/store/orders", icon: BarChart3 },
+  { labelKey: "nav.orders.allOrders", path: "/b2b/store/orders/list", icon: ListOrdered },
+  { labelKey: "nav.orders.activeCarts", path: "/b2b/store/orders/carts", icon: ShoppingCart },
+  { labelKey: "nav.orders.pending", path: "/b2b/store/orders/pending", icon: Clock },
+  { labelKey: "nav.orders.confirmed", path: "/b2b/store/orders/confirmed", icon: CheckCircle },
+  { labelKey: "nav.orders.shipped", path: "/b2b/store/orders/shipped", icon: Truck },
+  { labelKey: "nav.orders.cancelled", path: "/b2b/store/orders/cancelled", icon: XCircle },
+  { labelKey: "nav.orders.coupons", path: "/b2b/store/coupons", icon: Ticket },
 ];
 
 const customerPaths = [
-  { label: "Overview", path: "/b2b/store/customers", icon: BarChart3 },
-  { label: "All Customers", path: "/b2b/store/customers/list", icon: ListFilter },
-  { label: "Business", path: "/b2b/store/customers/business", icon: Building2 },
-  { label: "Private", path: "/b2b/store/customers/private", icon: User },
-  { label: "Reseller", path: "/b2b/store/customers/reseller", icon: Store },
-  { label: "Customer Tags", path: "/b2b/store/customers/tags", icon: Tags },
+  { labelKey: "nav.customers.overview", path: "/b2b/store/customers", icon: BarChart3 },
+  { labelKey: "nav.customers.allCustomers", path: "/b2b/store/customers/list", icon: ListFilter },
+  { labelKey: "nav.customers.business", path: "/b2b/store/customers/business", icon: Building2 },
+  { labelKey: "nav.customers.private", path: "/b2b/store/customers/private", icon: User },
+  { labelKey: "nav.customers.reseller", path: "/b2b/store/customers/reseller", icon: Store },
+  { labelKey: "nav.customers.customerTags", path: "/b2b/store/customers/tags", icon: Tags },
 ];
 
 const portalUserPaths = [
-  { label: "All Portal Users", path: "/b2b/store/portal-users", icon: UserCog },
+  { labelKey: "nav.portalUsers.allPortalUsers", path: "/b2b/store/portal-users", icon: UserCog },
 ];
 
 interface OrdersNavigationProps {
@@ -53,6 +54,7 @@ interface OrdersNavigationProps {
 
 export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   // Build URL with tenant prefix
   const buildHref = (path: string) => {
@@ -89,7 +91,7 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
       <div className="mb-2 pb-3 border-b border-[#ebe9f1]">
         <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
           <ShoppingCart className="h-4 w-4" />
-          Orders
+          {t("nav.orders.title")}
         </h2>
       </div>
       {orderPaths.map((item) => {
@@ -108,7 +110,7 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}
@@ -117,7 +119,7 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
       <div className="mt-4 pt-3 border-t border-[#ebe9f1] mb-2 pb-3 border-b">
         <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
           <Users className="h-4 w-4" />
-          Customers
+          {t("nav.customers.title")}
         </h2>
       </div>
       {customerPaths.map((item) => {
@@ -136,7 +138,7 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}
@@ -145,7 +147,7 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
       <div className="mt-4 pt-3 border-t border-[#ebe9f1] mb-2 pb-3 border-b">
         <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
           <KeyRound className="h-4 w-4" />
-          Portal Users
+          {t("nav.portalUsers.title")}
         </h2>
       </div>
       {portalUserPaths.map((item) => {
@@ -164,7 +166,7 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}

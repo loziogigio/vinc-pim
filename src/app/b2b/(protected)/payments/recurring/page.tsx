@@ -16,16 +16,10 @@ import {
   CONTRACT_TYPE_LABELS,
 } from "@/lib/constants/payment";
 import type { PaymentProvider, ContractType } from "@/lib/constants/payment";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const CONTRACT_STATUSES = ["active", "paused", "cancelled", "expired"] as const;
 type ContractStatus = (typeof CONTRACT_STATUSES)[number];
-
-const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
-  active: "Attivo",
-  paused: "In Pausa",
-  cancelled: "Cancellato",
-  expired: "Scaduto",
-};
 
 const CONTRACT_STATUS_COLORS: Record<ContractStatus, string> = {
   active: "bg-green-100 text-green-700",
@@ -52,6 +46,15 @@ const formatCurrency = (amount: number, currency: string = "EUR") =>
   new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 
 export default function RecurringContractsPage() {
+  const { t } = useTranslation();
+
+  const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+    active: t("pages.payments.recurring.statusActive"),
+    paused: t("pages.payments.recurring.statusPaused"),
+    cancelled: t("pages.payments.recurring.statusCancelled"),
+    expired: t("pages.payments.recurring.statusExpired"),
+  };
+
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -94,7 +97,7 @@ export default function RecurringContractsPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-[#5e5873]">Contratti Ricorrenti</h1>
+      <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.payments.recurring.title")}</h1>
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -102,7 +105,7 @@ export default function RecurringContractsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Cerca per ID, cliente..."
+            placeholder={t("pages.payments.recurring.searchPlaceholder")}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
@@ -113,7 +116,7 @@ export default function RecurringContractsPage() {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
         >
-          <option value="">Tutti gli stati</option>
+          <option value="">{t("pages.payments.recurring.allStatuses")}</option>
           {CONTRACT_STATUSES.map((s) => (
             <option key={s} value={s}>{CONTRACT_STATUS_LABELS[s]}</option>
           ))}
@@ -123,7 +126,7 @@ export default function RecurringContractsPage() {
           onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
         >
-          <option value="">Tutti i provider</option>
+          <option value="">{t("pages.payments.recurring.allProviders")}</option>
           {PAYMENT_PROVIDERS.map((p) => (
             <option key={p} value={p}>{PAYMENT_PROVIDER_LABELS[p]}</option>
           ))}
@@ -139,21 +142,21 @@ export default function RecurringContractsPage() {
         ) : contracts.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             <RefreshCw className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-            <p>Nessun contratto trovato</p>
+            <p>{t("pages.payments.recurring.noContracts")}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">ID</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Cliente</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Provider</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Tipo</th>
-                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">Stato</th>
-                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">Addebiti</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">Totale</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">Prossimo</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">Creato</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.id")}</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.customer")}</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.provider")}</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.type")}</th>
+                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.status")}</th>
+                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.charges")}</th>
+                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.total")}</th>
+                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.nextCharge")}</th>
+                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.recurring.created")}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +215,7 @@ export default function RecurringContractsPage() {
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[#ebe9f1]">
             <span className="text-sm text-muted-foreground">
-              Pagina {pagination.page} di {pagination.totalPages} ({pagination.total} contratti)
+              {t("pages.payments.recurring.pageOf", { page: pagination.page, pages: pagination.totalPages, total: pagination.total })}
             </span>
             <div className="flex items-center gap-2">
               <button

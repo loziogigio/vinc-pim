@@ -59,6 +59,7 @@ import { ThreadPanel } from "@/components/threads";
 import { ShippingMethodSelector } from "@/components/store/ShippingMethodSelector";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { normalizeDecimalInput, parseDecimalValue } from "@/lib/utils/decimal-input";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface PaginationMeta {
   page: number;
@@ -74,6 +75,7 @@ interface OrderDetailPageProps {
 }
 
 export default function OrderDetailPage({ params }: OrderDetailPageProps) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const router = useRouter();
   const pathname = usePathname();
@@ -168,14 +170,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         setCustomer(data.customer || null);
         setShippingAddress(data.shippingAddress || null);
       } else if (res.status === 404) {
-        toast.error("Order not found");
+        toast.error(t("pages.store.orderDetail.orderNotFound"));
         router.push(`${tenantPrefix}/b2b/store/orders`);
       } else {
-        toast.error("Failed to load order");
+        toast.error(t("pages.store.orderDetail.failedToLoad"));
       }
     } catch (error) {
       console.error("Error fetching order:", error);
-      toast.error("Failed to load order");
+      toast.error(t("pages.store.orderDetail.failedToLoad"));
     } finally {
       setIsLoading(false);
       setIsLoadingItems(false);
@@ -412,9 +414,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
           <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-          <p className="text-lg font-medium">Order not found</p>
+          <p className="text-lg font-medium">{t("pages.store.orderDetail.orderNotFound")}</p>
           <Link href={`${tenantPrefix}/b2b/store/orders`} className="text-primary hover:underline mt-2 block">
-            Back to orders
+            {t("pages.store.orderDetail.backToOrders")}
           </Link>
         </div>
       </div>
@@ -436,8 +438,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Orders", href: "/b2b/store/orders" },
-          { label: `Order ${order.order_id}` },
+          { label: t("pages.store.orders.title"), href: "/b2b/store/orders" },
+          { label: order.order_id },
         ]}
       />
 
@@ -493,7 +495,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 <div className="flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" />
                   <h2 className="font-semibold text-foreground">
-                    Items ({totalItemsCount})
+                    {t("pages.store.orderDetail.orderItems")} ({totalItemsCount})
                   </h2>
                   {isLoadingItems && (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -507,7 +509,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Delete ({selectedForDelete.size})
+                      {t("common.delete")} ({selectedForDelete.size})
                     </button>
                   )}
                   {order.status === "draft" && (
@@ -516,7 +518,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                     >
                       <Plus className="h-4 w-4" />
-                      Add Items
+                      {t("pages.store.orderDetail.addItems")}
                     </button>
                   )}
                   <div className="flex items-center gap-2">
@@ -539,7 +541,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search by SKU, entity code, or name..."
+                  placeholder={t("pages.store.orderDetail.searchItems")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -557,7 +559,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               {/* Results count */}
               {debouncedSearch && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Found {totalItems} of {totalItemsCount} items
+                  {t("common.showing")} {totalItems} {t("common.of")} {totalItemsCount} {t("common.items")}
                 </p>
               )}
             </div>
@@ -575,8 +577,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     />
                     <span className="text-sm text-muted-foreground">
                       {selectedForDelete.size > 0
-                        ? `${selectedForDelete.size} selected`
-                        : "Select all"}
+                        ? `${selectedForDelete.size} ${t("pages.store.ordersList.selected")}`
+                        : t("common.select")}
                     </span>
                   </div>
                 )}
@@ -628,7 +630,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
                           {/* Quantity Controls */}
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-xs text-muted-foreground">Quantity</span>
+                            <span className="text-xs text-muted-foreground">{t("pages.store.orderDetail.quantity")}</span>
                             <div className="flex items-center border border-border rounded-md overflow-hidden bg-background">
                               <button
                                 onClick={() => {
@@ -663,7 +665,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
                           {/* Price Input */}
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-xs text-muted-foreground">Unit Price</span>
+                            <span className="text-xs text-muted-foreground">{t("pages.store.orderDetail.unitPrice")}</span>
                             <div className="flex items-center border border-border rounded-md overflow-hidden bg-background">
                               <span className="px-2 py-2 text-sm text-muted-foreground bg-muted border-r border-border">€</span>
                               <input
@@ -677,14 +679,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             </div>
                             {editingLine.listPrice > editingLine.unitPrice && (
                               <span className="text-xs text-muted-foreground line-through">
-                                List: €{editingLine.listPrice.toFixed(2)}
+                                {t("pages.store.orderDetail.listPrice")}: €{editingLine.listPrice.toFixed(2)}
                               </span>
                             )}
                           </div>
 
                           {/* Line Total */}
                           <div className="flex flex-col items-end gap-1 min-w-[100px]">
-                            <span className="text-xs text-muted-foreground">Line Total</span>
+                            <span className="text-xs text-muted-foreground">{t("pages.store.orderDetail.lineTotal")}</span>
                             <span className="font-bold text-foreground">
                               {new Intl.NumberFormat("it-IT", {
                                 style: "currency",
@@ -717,7 +719,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               ) : (
                                 <Save className="h-4 w-4" />
                               )}
-                              Save
+                              {t("common.save")}
                             </button>
                           </div>
                         </div>
@@ -941,7 +943,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       <div className="flex flex-col items-end gap-2">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">
-                            Qty: {item.quantity}
+                            {t("pages.store.orderDetail.quantity")}: {item.quantity}
                           </span>
                         </div>
 
@@ -970,7 +972,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             disabled={isSaving}
                           >
                             <Trash2 className="h-3 w-3" />
-                            Remove
+                            {t("common.remove")}
                           </button>
                         )}
                       </div>
@@ -983,7 +985,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             ) : (
               <div className="p-8 text-center text-muted-foreground">
                 <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>{debouncedSearch ? "No items match your search" : "No items in this order"}</p>
+                <p>{debouncedSearch ? t("pages.store.orderDetail.noItemsFound") : t("pages.store.orderDetail.noItemsInOrder")}</p>
               </div>
             )}
 
@@ -991,7 +993,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             {totalPages > 1 && (
               <div className="p-4 border-t border-border flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1}-{Math.min(startIndex + items.length, totalItems)} of {totalItems} items
+                  {t("common.showing")} {startIndex + 1}-{Math.min(startIndex + items.length, totalItems)} {t("common.of")} {totalItems} {t("common.items")}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1052,17 +1054,17 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             <div className="rounded-lg bg-card shadow-sm border border-border p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Notes</h2>
+                <h2 className="font-semibold text-foreground">{t("pages.store.orderDetail.notes")}</h2>
               </div>
               {order.notes && (
                 <div className="mb-3">
-                  <p className="text-sm text-muted-foreground mb-1">Customer Notes</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t("pages.store.orderDetail.customerNotes")}</p>
                   <p className="text-sm text-foreground">{order.notes}</p>
                 </div>
               )}
               {order.internal_notes && (
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Internal Notes</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t("pages.store.orderDetail.internalNotes")}</p>
                   <p className="text-sm text-foreground">{order.internal_notes}</p>
                 </div>
               )}
@@ -1115,7 +1117,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
             >
               <MessageSquare className="h-4 w-4" />
-              {showThread ? "Hide Discussion" : "Show Discussion"}
+              {showThread ? t("pages.store.orderDetail.thread") : t("pages.store.orderDetail.openThread")}
             </button>
           </div>
 
@@ -1153,12 +1155,12 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <Euro className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Order Summary</h2>
+                <h2 className="font-semibold text-foreground">{t("pages.store.orderDetail.orderSummary")}</h2>
               </div>
             </div>
             <div className="p-4 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal (Gross)</span>
+                <span className="text-muted-foreground">{t("pages.store.orderDetail.subtotal")} (Gross)</span>
                 <span className="font-medium">
                   {new Intl.NumberFormat("it-IT", {
                     style: "currency",
@@ -1174,7 +1176,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   <>
                     {otherDiscount > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Discount</span>
+                        <span className="text-muted-foreground">{t("pages.store.orderDetail.discount")}</span>
                         <span className="font-medium text-emerald-600">
                           -{new Intl.NumberFormat("it-IT", {
                             style: "currency",
@@ -1211,7 +1213,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal (Net)</span>
+                <span className="text-muted-foreground">{t("pages.store.orderDetail.subtotal")} (Net)</span>
                 <span className="font-medium">
                   {new Intl.NumberFormat("it-IT", {
                     style: "currency",
@@ -1230,7 +1232,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               </div>
               {order.shipping_cost > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="text-muted-foreground">{t("pages.store.orderDetail.shippingCost")}</span>
                   <span className="font-medium">
                     {new Intl.NumberFormat("it-IT", {
                       style: "currency",
@@ -1241,7 +1243,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between">
-                  <span className="font-semibold text-foreground">Total</span>
+                  <span className="font-semibold text-foreground">{t("pages.store.orderDetail.orderTotal")}</span>
                   <span className="font-bold text-lg text-foreground">
                     {new Intl.NumberFormat("it-IT", {
                       style: "currency",
@@ -1258,7 +1260,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Details</h2>
+                <h2 className="font-semibold text-foreground">{t("common.details")}</h2>
               </div>
             </div>
             <div className="p-4 space-y-3">
@@ -1271,7 +1273,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 </div>
               )}
               <div>
-                <p className="text-xs text-muted-foreground">Created</p>
+                <p className="text-xs text-muted-foreground">{t("common.createdAt")}</p>
                 <p className="text-sm font-medium">
                   {new Date(order.created_at).toLocaleString("it-IT", {
                     year: "numeric",
@@ -1284,7 +1286,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               </div>
               {order.confirmed_at && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Confirmed</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.ordersList.confirmed")}</p>
                   <p className="text-sm font-medium">
                     {new Date(order.confirmed_at).toLocaleString("it-IT", {
                       year: "numeric",
@@ -1297,16 +1299,16 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 </div>
               )}
               <div>
-                <p className="text-xs text-muted-foreground">Order Type</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.orderDetail.orderType")}</p>
                 <p className="text-sm font-medium uppercase">{order.order_type}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Price List</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.orderDetail.priceList")}</p>
                 <p className="text-sm font-medium">{order.price_list_id}</p>
               </div>
               {order.source && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Source</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderDetail.source")}</p>
                   <p className="text-sm font-medium capitalize">{order.source}</p>
                 </div>
               )}
@@ -1319,13 +1321,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-primary" />
-                  <h2 className="font-semibold text-foreground">Delivery Options</h2>
+                  <h2 className="font-semibold text-foreground">{t("pages.store.orderDetail.deliveryOptions")}</h2>
                 </div>
               </div>
               <div className="p-4 space-y-3">
                 {order.requested_delivery_date && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Requested Date</p>
+                    <p className="text-xs text-muted-foreground">{t("pages.store.orderDetail.requestedDate")}</p>
                     <p className="text-sm font-medium">
                       {new Date(order.requested_delivery_date).toLocaleDateString("it-IT", {
                         year: "numeric",
@@ -1337,13 +1339,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 )}
                 {order.shipping_method && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Shipping Method</p>
+                    <p className="text-xs text-muted-foreground">{t("pages.store.orderDetail.shippingMethod")}</p>
                     <p className="text-sm font-medium capitalize">{order.shipping_method}</p>
                   </div>
                 )}
                 {order.delivery_slot && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Delivery Slot</p>
+                    <p className="text-xs text-muted-foreground">{t("pages.store.orderDetail.deliverySlot")}</p>
                     <p className="text-sm font-medium capitalize">{order.delivery_slot}</p>
                   </div>
                 )}
@@ -1374,14 +1376,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteConfirmDialog.open}
-        title="Remove Item"
+        title={t("common.remove")}
         message={
           deleteConfirmDialog.type === "single"
-            ? "Are you sure you want to remove this item from the order?"
-            : `Are you sure you want to remove ${selectedForDelete.size} item${selectedForDelete.size > 1 ? "s" : ""} from the order?`
+            ? t("pages.store.orderDetail.confirmDeleteLine")
+            : t("pages.store.orderDetail.confirmDeleteLines")
         }
-        confirmText="Remove"
-        cancelText="Cancel"
+        confirmText={t("common.remove")}
+        cancelText={t("common.cancel")}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}

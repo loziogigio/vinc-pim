@@ -19,7 +19,10 @@ interface CustomerTag {
   company_name?: string;
 }
 
+import { useTranslation } from "@/lib/i18n/useTranslation";
+
 export default function NewCouponPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b/);
@@ -143,19 +146,19 @@ export default function NewCouponPage() {
     try {
       const discountValue = parseDecimalValue(discountValueInput);
       if (!discountValue || discountValue <= 0) {
-        setError("Inserisci un valore sconto valido");
+        setError(t("pages.store.couponNew.errorInvalidDiscount"));
         setIsSaving(false);
         return;
       }
 
       if (!code.trim()) {
-        setError("Il codice coupon e' obbligatorio");
+        setError(t("pages.store.couponNew.errorCodeRequired"));
         setIsSaving(false);
         return;
       }
 
       if (!channel) {
-        setError("Seleziona un canale");
+        setError(t("pages.store.couponNew.errorChannelRequired"));
         setIsSaving(false);
         return;
       }
@@ -197,7 +200,7 @@ export default function NewCouponPage() {
 
       const data = await res.json();
       if (!data.success) {
-        setError(data.error || "Errore nella creazione");
+        setError(data.error || t("pages.store.couponNew.errorCreation"));
         return;
       }
 
@@ -205,7 +208,7 @@ export default function NewCouponPage() {
         `${tenantPrefix}/b2b/store/coupons/${data.coupon.coupon_id}`
       );
     } catch (err) {
-      setError("Errore di rete");
+      setError(t("pages.store.couponNew.errorNetwork"));
       console.error(err);
     } finally {
       setIsSaving(false);
@@ -216,21 +219,21 @@ export default function NewCouponPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Store", href: "/b2b/store/orders" },
-          { label: "Coupons", href: "/b2b/store/coupons" },
-          { label: "Nuovo" },
+          { label: "Store", href: "/b2b/store" },
+          { label: t("pages.store.coupons.title"), href: "/b2b/store/coupons" },
+          { label: t("pages.store.couponNew.new") },
         ]}
       />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#5e5873]">Nuovo Coupon</h1>
+        <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.store.couponNew.title")}</h1>
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => router.back()}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Indietro
+            {t("pages.store.couponNew.back")}
           </Button>
           <Button
             className="bg-[#009688] hover:bg-[#00796b] text-white"
@@ -238,7 +241,7 @@ export default function NewCouponPage() {
             disabled={isSaving}
           >
             <Save className="h-4 w-4 mr-2" />
-            {isSaving ? "Salvataggio..." : "Crea Coupon"}
+            {isSaving ? t("pages.store.couponNew.saving") : t("pages.store.couponNew.createCoupon")}
           </Button>
         </div>
       </div>
@@ -254,27 +257,27 @@ export default function NewCouponPage() {
         <div className="space-y-6">
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-              Informazioni base
+              {t("pages.store.couponNew.basicInfo")}
             </h2>
             <div className="space-y-4">
               <div>
-                <Label>Codice coupon *</Label>
+                <Label>{t("pages.store.couponNew.couponCode")}</Label>
                 <Input
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="ES: SUMMER2026"
+                  placeholder={t("pages.store.couponNew.couponCodePlaceholder")}
                   className="font-mono"
                   maxLength={30}
                 />
               </div>
               <div>
-                <Label>Canale *</Label>
+                <Label>{t("pages.store.couponNew.channelRequired")}</Label>
                 <select
                   value={channel}
                   onChange={(e) => setChannel(e.target.value)}
                   className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
                 >
-                  <option value="">Seleziona canale...</option>
+                  <option value="">{t("pages.store.couponNew.selectChannel")}</option>
                   {channels.map((ch) => (
                     <option key={ch.code} value={ch.code}>
                       {ch.name} ({ch.code})
@@ -283,19 +286,19 @@ export default function NewCouponPage() {
                 </select>
               </div>
               <div>
-                <Label>Etichetta (visibile al cliente)</Label>
+                <Label>{t("pages.store.couponNew.label")}</Label>
                 <Input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  placeholder="Es: Sconto Estate 2026"
+                  placeholder={t("pages.store.couponNew.labelPlaceholder")}
                 />
               </div>
               <div>
-                <Label>Descrizione (interna)</Label>
+                <Label>{t("pages.store.couponNew.descriptionInternal")}</Label>
                 <RichTextEditor
                   content={description}
                   onChange={setDescription}
-                  placeholder="Descrizione coupon..."
+                  placeholder={t("pages.store.couponNew.descriptionPlaceholder")}
                   minHeight="150px"
                 />
               </div>
@@ -304,11 +307,11 @@ export default function NewCouponPage() {
 
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-              Sconto
+              {t("pages.store.couponNew.discountSection")}
             </h2>
             <div className="space-y-4">
               <div>
-                <Label>Tipo sconto *</Label>
+                <Label>{t("pages.store.couponNew.discountType")}</Label>
                 <select
                   value={discountType}
                   onChange={(e) =>
@@ -316,13 +319,13 @@ export default function NewCouponPage() {
                   }
                   className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
                 >
-                  <option value="percentage">Percentuale (%)</option>
-                  <option value="fixed">Valore fisso (EUR)</option>
+                  <option value="percentage">{t("pages.store.couponNew.percentage")}</option>
+                  <option value="fixed">{t("pages.store.couponNew.fixedValue")}</option>
                 </select>
               </div>
               <div>
                 <Label>
-                  Valore sconto *{" "}
+                  {t("pages.store.couponNew.discountValue")}{" "}
                   {discountType === "percentage" ? "(%)" : "(EUR)"}
                 </Label>
                 <Input
@@ -336,7 +339,7 @@ export default function NewCouponPage() {
                 />
               </div>
               <div>
-                <Label>Sconto massimo applicabile (EUR)</Label>
+                <Label>{t("pages.store.couponNew.maxDiscountAmount")}</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -347,7 +350,7 @@ export default function NewCouponPage() {
                       setMaxDiscountAmountInput
                     )
                   }
-                  placeholder="Lascia vuoto per nessun limite"
+                  placeholder={t("pages.store.couponNew.noLimitPlaceholder")}
                 />
               </div>
               <div className="flex items-center gap-3">
@@ -359,7 +362,7 @@ export default function NewCouponPage() {
                   className="rounded border-[#ebe9f1]"
                 />
                 <Label htmlFor="includeShipping" className="cursor-pointer">
-                  Applica anche al costo di spedizione
+                  {t("pages.store.couponNew.applyToShipping")}
                 </Label>
               </div>
               <div className="flex items-center gap-3">
@@ -371,7 +374,7 @@ export default function NewCouponPage() {
                   className="rounded border-[#ebe9f1]"
                 />
                 <Label htmlFor="isCumulative" className="cursor-pointer">
-                  Cumulabile con altri sconti
+                  {t("pages.store.couponNew.cumulativeWithOthers")}
                 </Label>
               </div>
             </div>
@@ -382,12 +385,12 @@ export default function NewCouponPage() {
         <div className="space-y-6">
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-              Validita
+              {t("pages.store.couponNew.validitySection")}
             </h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Data inizio</Label>
+                  <Label>{t("pages.store.couponNew.startDate")}</Label>
                   <Input
                     type="date"
                     value={startDate}
@@ -395,7 +398,7 @@ export default function NewCouponPage() {
                   />
                 </div>
                 <div>
-                  <Label>Data fine</Label>
+                  <Label>{t("pages.store.couponNew.endDate")}</Label>
                   <Input
                     type="date"
                     value={endDate}
@@ -405,23 +408,23 @@ export default function NewCouponPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Utilizzi massimi (totale)</Label>
+                  <Label>{t("pages.store.couponNew.maxUsesTotal")}</Label>
                   <Input
                     type="number"
                     min={1}
                     value={maxUses}
                     onChange={(e) => setMaxUses(e.target.value)}
-                    placeholder="Illimitato"
+                    placeholder={t("pages.store.couponNew.unlimitedPlaceholder")}
                   />
                 </div>
                 <div>
-                  <Label>Utilizzi massimi per cliente</Label>
+                  <Label>{t("pages.store.couponNew.maxUsesPerCustomer")}</Label>
                   <Input
                     type="number"
                     min={1}
                     value={maxUsesPerCustomer}
                     onChange={(e) => setMaxUsesPerCustomer(e.target.value)}
-                    placeholder="Illimitato"
+                    placeholder={t("pages.store.couponNew.unlimitedPlaceholder")}
                   />
                 </div>
               </div>
@@ -430,11 +433,11 @@ export default function NewCouponPage() {
 
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-              Soglie ordine
+              {t("pages.store.couponNew.orderThresholds")}
             </h2>
             <div className="space-y-4">
               <div>
-                <Label>Importo minimo ordine (EUR)</Label>
+                <Label>{t("pages.store.couponNew.minOrderAmount")}</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -445,11 +448,11 @@ export default function NewCouponPage() {
                       setMinOrderAmountInput
                     )
                   }
-                  placeholder="Nessun minimo"
+                  placeholder={t("pages.store.couponNew.noMinimumPlaceholder")}
                 />
               </div>
               <div>
-                <Label>Importo massimo ordine (EUR)</Label>
+                <Label>{t("pages.store.couponNew.maxOrderAmount")}</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -460,7 +463,7 @@ export default function NewCouponPage() {
                       setMaxOrderAmountInput
                     )
                   }
-                  placeholder="Nessun massimo"
+                  placeholder={t("pages.store.couponNew.noMaximumPlaceholder")}
                 />
               </div>
             </div>
@@ -469,11 +472,10 @@ export default function NewCouponPage() {
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Clienti autorizzati
+              {t("pages.store.couponNew.authorizedCustomers")}
             </h2>
             <p className="text-xs text-[#b9b9c3] mb-3">
-              Lascia vuoto per tutti i clienti. Cerca per email o ragione
-              sociale.
+              {t("pages.store.couponNew.authorizedCustomersHint")}
             </p>
             <div className="relative">
               <div className="flex items-center gap-2">
@@ -490,7 +492,7 @@ export default function NewCouponPage() {
                       addCustomerByEmail(customerSearch);
                     }
                   }}
-                  placeholder="Cerca o digita email + Invio..."
+                  placeholder={t("pages.store.couponNew.searchOrTypeEmail")}
                   className="flex-1"
                 />
               </div>
@@ -515,7 +517,7 @@ export default function NewCouponPage() {
               )}
               {isSearching && (
                 <div className="absolute z-10 mt-1 w-full rounded-md border border-[#ebe9f1] bg-white shadow-lg p-3 text-sm text-[#b9b9c3]">
-                  Ricerca...
+                  {t("pages.store.couponNew.searching")}
                 </div>
               )}
             </div>
@@ -547,12 +549,12 @@ export default function NewCouponPage() {
 
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-              Note interne
+              {t("pages.store.couponNew.internalNotes")}
             </h2>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Note interne non visibili al cliente..."
+              placeholder={t("pages.store.couponNew.internalNotesPlaceholder")}
               className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm resize-none"
               rows={3}
             />

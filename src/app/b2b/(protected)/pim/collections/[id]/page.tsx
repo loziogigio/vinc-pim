@@ -9,6 +9,7 @@ import {
   ProductAssociationSection,
   ProductAssociationConfig,
 } from "@/components/pim/ProductAssociationSection";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Collection = {
   collection_id: string;
@@ -25,6 +26,7 @@ export default function CollectionDetailPage() {
   const router = useRouter();
   const params = useParams();
   const collectionId = params?.id as string;
+  const { t } = useTranslation();
 
   // State
   const [collection, setCollection] = useState<Collection | null>(null);
@@ -153,7 +155,7 @@ export default function CollectionDetailPage() {
               : "bg-primary hover:bg-primary/90 text-white"
           }`}
         >
-          {collection.is_active ? "Deactivate" : "Activate"}
+          {collection.is_active ? t("pages.pim.common.deactivate") : t("pages.pim.common.activate")}
         </button>
       </div>
 

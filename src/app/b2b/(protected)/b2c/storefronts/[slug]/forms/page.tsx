@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 
 interface FormSubmission {
@@ -32,6 +33,7 @@ export default function FormSubmissionsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const { t } = useTranslation();
 
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +66,7 @@ export default function FormSubmissionsPage({
       setTotal(json.data?.pagination?.total || 0);
       setPage(p);
     } catch (err) {
-      setError("Failed to load form submissions");
+      setError(t("pages.b2c.formSubmissions.failedToLoad"));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -77,13 +79,13 @@ export default function FormSubmissionsPage({
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this submission?")) return;
+    if (!confirm(t("pages.b2c.formSubmissions.deleteConfirm"))) return;
     try {
       const res = await fetch(`${apiBase}/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       await fetchSubmissions(page);
     } catch (err) {
-      setError("Failed to delete submission");
+      setError(t("pages.b2c.formSubmissions.failedToDelete"));
     }
   };
 
@@ -102,7 +104,7 @@ export default function FormSubmissionsPage({
         setSelectedSubmission({ ...sub, seen: !sub.seen });
       }
     } catch (err) {
-      setError("Failed to update submission");
+      setError(t("pages.b2c.formSubmissions.failedToUpdate"));
     }
   };
 
@@ -154,7 +156,7 @@ export default function FormSubmissionsPage({
         items={[
           { label: "Dashboard", href: "/b2b/b2c" },
           { label: slug, href: `/b2b/b2c/storefronts/${slug}` },
-          { label: "Form Submissions" },
+          { label: t("pages.b2c.formSubmissions.title") },
         ]}
       />
 
@@ -162,10 +164,10 @@ export default function FormSubmissionsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#5e5873]">
-            Form Submissions
+            {t("pages.b2c.formSubmissions.title")}
           </h1>
           <p className="text-sm text-[#b9b9c3]">
-            Manage form submissions for {slug} ({total} total)
+            {t("pages.b2c.formSubmissions.subtitle").replace("{slug}", slug).replace("{count}", String(total))}
           </p>
         </div>
       </div>
@@ -186,7 +188,7 @@ export default function FormSubmissionsPage({
               type="text"
               value={filterPage}
               onChange={(e) => setFilterPage(e.target.value)}
-              placeholder="Filter by page..."
+              placeholder={t("pages.b2c.formSubmissions.filterByPage")}
               className="h-9 w-44 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
             />
           </div>
@@ -196,7 +198,7 @@ export default function FormSubmissionsPage({
               type="text"
               value={filterEmail}
               onChange={(e) => setFilterEmail(e.target.value)}
-              placeholder="Filter by email..."
+              placeholder={t("pages.b2c.formSubmissions.filterByEmail")}
               className="h-9 w-44 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
             />
           </div>
@@ -207,23 +209,23 @@ export default function FormSubmissionsPage({
             }
             className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
           >
-            <option value="">All</option>
-            <option value="unseen">Unseen</option>
-            <option value="seen">Seen</option>
+            <option value="">{t("common.all")}</option>
+            <option value="unseen">{t("pages.b2c.formSubmissions.unseen")}</option>
+            <option value="seen">{t("pages.b2c.formSubmissions.seen")}</option>
           </select>
           <input
             type="date"
             value={filterDateFrom}
             onChange={(e) => setFilterDateFrom(e.target.value)}
             className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
-            title="From date"
+            title={t("pages.b2c.formSubmissions.fromDate")}
           />
           <input
             type="date"
             value={filterDateTo}
             onChange={(e) => setFilterDateTo(e.target.value)}
             className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
-            title="To date"
+            title={t("pages.b2c.formSubmissions.toDate")}
           />
         </div>
       )}
@@ -239,7 +241,7 @@ export default function FormSubmissionsPage({
       {!isLoading && submissions.length === 0 && (
         <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
           <Inbox className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-          <p className="text-sm text-[#b9b9c3]">No form submissions yet.</p>
+          <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.formSubmissions.noSubmissions")}</p>
         </div>
       )}
 
@@ -250,7 +252,7 @@ export default function FormSubmissionsPage({
           <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
             <Search className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
             <p className="text-sm text-[#b9b9c3]">
-              No submissions match your filters.
+              {t("pages.b2c.formSubmissions.noFilterResults")}
             </p>
           </div>
         )}
@@ -264,16 +266,16 @@ export default function FormSubmissionsPage({
                 <tr>
                   <th className="w-10 px-4 py-3" />
                   <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                    Page
+                    {t("pages.b2c.formSubmissions.colPage")}
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                    Email
+                    {t("common.email")}
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
-                    Submitted
+                    {t("pages.b2c.formSubmissions.colSubmitted")}
                   </th>
                   <th className="px-4 py-3 text-right font-medium text-[#5e5873]">
-                    Actions
+                    {t("common.actions")}
                   </th>
                 </tr>
               </thead>
@@ -287,7 +289,7 @@ export default function FormSubmissionsPage({
                       {!sub.seen ? (
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full bg-[#009688]"
-                          title="Unseen"
+                          title={t("pages.b2c.formSubmissions.unseen")}
                         />
                       ) : null}
                     </td>
@@ -310,13 +312,13 @@ export default function FormSubmissionsPage({
                           className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors"
                         >
                           <Eye className="h-3.5 w-3.5" />
-                          View
+                          {t("common.view")}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleToggleSeen(sub)}
                           className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#5e5873] hover:bg-slate-100 transition-colors"
-                          title={sub.seen ? "Mark as unseen" : "Mark as seen"}
+                          title={sub.seen ? t("pages.b2c.formSubmissions.markAsUnseen") : t("pages.b2c.formSubmissions.markAsSeen")}
                         >
                           {sub.seen ? (
                             <EyeOff className="h-3.5 w-3.5" />
@@ -343,7 +345,7 @@ export default function FormSubmissionsPage({
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
               <p className="text-sm text-[#b9b9c3]">
-                Page {page} of {totalPages}
+                {t("pages.b2c.formSubmissions.pageOf").replace("{page}", String(page)).replace("{totalPages}", String(totalPages))}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -375,7 +377,7 @@ export default function FormSubmissionsPage({
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-[#5e5873]">
-                  Submission Detail
+                  {t("pages.b2c.formSubmissions.submissionDetail")}
                 </h2>
                 <p className="text-sm text-[#b9b9c3]">
                   /{selectedSubmission.page_slug} —{" "}
@@ -409,7 +411,7 @@ export default function FormSubmissionsPage({
               </table>
               {selectedSubmission.submitter_email && (
                 <p className="mt-4 text-sm text-[#b9b9c3]">
-                  Submitter email: {selectedSubmission.submitter_email}
+                  {t("pages.b2c.formSubmissions.submitterEmail")}: {selectedSubmission.submitter_email}
                 </p>
               )}
             </div>
@@ -418,7 +420,7 @@ export default function FormSubmissionsPage({
                 variant="ghost"
                 onClick={() => setSelectedSubmission(null)}
               >
-                Close
+                {t("common.close")}
               </Button>
             </div>
           </div>

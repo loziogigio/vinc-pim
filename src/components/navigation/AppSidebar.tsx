@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export interface AppSidebarProps {
   title: string;
@@ -14,6 +15,8 @@ export interface AppSidebarProps {
  * Provides consistent styling across all apps
  */
 export function AppSidebar({ title, icon: Icon, children }: AppSidebarProps) {
+  const { t } = useTranslation();
+
   return (
     <aside className="w-64 border-r border-[#ebe9f1] bg-white flex-shrink-0 sticky top-[64px] h-[calc(100vh-64px)] overflow-y-auto flex flex-col">
       {/* Header */}
@@ -35,7 +38,7 @@ export function AppSidebar({ title, icon: Icon, children }: AppSidebarProps) {
           rel="noopener noreferrer"
           className="text-xs text-muted-foreground hover:text-primary transition-colors"
         >
-          Provided by vendereincloud.it
+          {t("common.providedBy")}
         </a>
         <p className="text-[10px] text-muted-foreground/60">
           v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}

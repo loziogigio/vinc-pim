@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type SourceCollection = {
   key: string;
@@ -37,6 +38,7 @@ type Field = {
 };
 
 export default function AttributesSchemaMappingPage() {
+  const { t } = useTranslation();
   const collections: SourceCollection[] = [
     { key: "products_erp", name: "products_erp", status: "active", records: 52347 },
     { key: "products_supplier", name: "products_supplier", status: "active", records: 48291 },
@@ -99,24 +101,24 @@ export default function AttributesSchemaMappingPage() {
         items={[
           { label: "Dashboard", href: "/b2b/dashboard" },
           { label: "PIM", href: "/b2b/pim" },
-          { label: "Attributes — Schema & Mapping" }
+          { label: t("pages.pim.attributes.title") }
         ]}
       />
 
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Attributes — Schema & Mapping</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.attributes.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Map external source fields to your standard product schema
+            {t("pages.pim.attributes.subtitle")}
           </p>
         </div>
         <div className="hidden gap-2 md:flex">
           <Button variant="outline" size="sm">
-            <FileDown className="mr-2 h-4 w-4" /> Export Template
+            <FileDown className="mr-2 h-4 w-4" /> {t("pages.pim.attributes.exportTemplate")}
           </Button>
           <Button size="sm">
-            <Upload className="mr-2 h-4 w-4" /> Import Excel
+            <Upload className="mr-2 h-4 w-4" /> {t("pages.pim.attributes.importExcel")}
           </Button>
         </div>
       </div>
@@ -128,7 +130,7 @@ export default function AttributesSchemaMappingPage() {
             <Package className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Total Products</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.totalProducts")}</div>
             <div className="text-2xl font-semibold leading-tight">52,347</div>
             <div className="text-xs font-medium text-emerald-600">↑ 12.5%</div>
           </div>
@@ -139,7 +141,7 @@ export default function AttributesSchemaMappingPage() {
             <CheckCircle2 className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Mapped Fields</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.mappedFields")}</div>
             <div className="text-2xl font-semibold leading-tight">24</div>
             <div className="text-xs font-medium text-emerald-600">↑ 8.2%</div>
           </div>
@@ -150,7 +152,7 @@ export default function AttributesSchemaMappingPage() {
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Unmapped</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.unmapped")}</div>
             <div className="text-2xl font-semibold leading-tight">6</div>
             <div className="text-xs font-medium text-amber-600">↓ 3.1%</div>
           </div>
@@ -161,9 +163,9 @@ export default function AttributesSchemaMappingPage() {
             <Database className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Collections</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.collections")}</div>
             <div className="text-2xl font-semibold leading-tight">3</div>
-            <div className="text-xs font-medium text-emerald-600">Active</div>
+            <div className="text-xs font-medium text-emerald-600">{t("common.active")}</div>
           </div>
         </div>
       </div>
@@ -173,7 +175,7 @@ export default function AttributesSchemaMappingPage() {
         {/* Left panel: Source */}
         <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="text-sm font-semibold">Select Source Collection</span>
+            <span className="text-sm font-semibold">{t("pages.pim.attributes.selectSourceCollection")}</span>
           </div>
 
           <div className="border-b p-4">
@@ -188,18 +190,18 @@ export default function AttributesSchemaMappingPage() {
                 >
                   <div className="text-sm font-semibold text-foreground">{c.name}</div>
                   <div className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 bg-emerald-100">
-                    Active
+                    {t("common.active")}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{c.records.toLocaleString()} records</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{c.records.toLocaleString()} {t("pages.pim.attributes.records")}</div>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="text-sm font-semibold">Source Fields ({selectedCollection.name})</span>
+            <span className="text-sm font-semibold">{t("pages.pim.attributes.sourceFields")} ({selectedCollection.name})</span>
             <span className="inline-flex items-center rounded bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
-              {sourceFields.length} fields
+              {sourceFields.length} {t("pages.pim.attributes.fields")}
             </span>
           </div>
 
@@ -209,7 +211,7 @@ export default function AttributesSchemaMappingPage() {
               <input
                 value={sourceQuery}
                 onChange={(e) => setSourceQuery(e.target.value)}
-                placeholder="Search fields..."
+                placeholder={t("pages.pim.attributes.searchFields")}
                 className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
               />
             </div>
@@ -225,12 +227,12 @@ export default function AttributesSchemaMappingPage() {
                   </span>
                 </div>
                 {f.example ? (
-                  <div className="text-xs text-muted-foreground">Example: {f.example}</div>
+                  <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.example")} {f.example}</div>
                 ) : null}
 
                 {f.sampleKV ? (
                   <div className="mt-2 rounded border bg-muted/30 p-3">
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sample Data</div>
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("pages.pim.attributes.sampleData")}</div>
                     {f.sampleKV.map((row, idx) => (
                       <div key={idx} className="grid grid-cols-[90px_1fr_70px] items-center gap-3 border-b py-1.5 last:border-b-0">
                         <div className="font-mono text-xs font-medium text-foreground">{row.key}</div>
@@ -243,7 +245,7 @@ export default function AttributesSchemaMappingPage() {
 
                 <div className="mt-2 flex flex-wrap gap-1">
                   {f.mapped ? (
-                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">✓ Mapped</span>
+                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">✓ {t("pages.pim.attributes.mapped")}</span>
                   ) : null}
                 </div>
               </div>
@@ -254,9 +256,9 @@ export default function AttributesSchemaMappingPage() {
         {/* Right panel: Target */}
         <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="text-sm font-semibold">Target Schema</span>
+            <span className="text-sm font-semibold">{t("pages.pim.attributes.targetSchema")}</span>
             <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-              Standard
+              {t("pages.pim.attributes.standard")}
             </span>
           </div>
 
@@ -266,7 +268,7 @@ export default function AttributesSchemaMappingPage() {
               <input
                 value={targetQuery}
                 onChange={(e) => setTargetQuery(e.target.value)}
-                placeholder="Search fields..."
+                placeholder={t("pages.pim.attributes.searchFields")}
                 className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
               />
             </div>
@@ -286,10 +288,10 @@ export default function AttributesSchemaMappingPage() {
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {f.required ? (
-                    <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">Required</span>
+                    <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">{t("common.required")}</span>
                   ) : null}
                   {f.mapped ? (
-                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">✓ Mapped</span>
+                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">✓ {t("pages.pim.attributes.mapped")}</span>
                   ) : null}
                 </div>
               </div>
@@ -302,11 +304,11 @@ export default function AttributesSchemaMappingPage() {
       <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
-            <div className="text-sm font-semibold">Active Mapping Rules</div>
-            <div className="text-xs text-muted-foreground">6 rules configured</div>
+            <div className="text-sm font-semibold">{t("pages.pim.attributes.activeMappingRules")}</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.rulesConfigured").replace("{count}", "6")}</div>
           </div>
           <Button size="sm">
-            + Add Rule
+            {t("pages.pim.attributes.addRule")}
           </Button>
         </div>
 
@@ -384,7 +386,7 @@ export default function AttributesSchemaMappingPage() {
 }))`}
             </pre>
             <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-              ⚡ Excel Import Compatible
+              ⚡ {t("pages.pim.attributes.excelImportCompatible")}
             </div>
           </div>
 
@@ -439,15 +441,15 @@ return Object.values(grouped).map((item: any) => ({
       <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
-            <div className="text-sm font-semibold">Import from Excel</div>
-            <div className="text-xs text-muted-foreground">Upload Excel file with key-value mappings</div>
+            <div className="text-sm font-semibold">{t("pages.pim.attributes.importFromExcel")}</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.importFromExcelDesc")}</div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm">
-              <FileDown className="mr-2 h-4 w-4" /> Export Template
+              <FileDown className="mr-2 h-4 w-4" /> {t("pages.pim.attributes.exportTemplate")}
             </Button>
             <Button size="sm">
-              <Upload className="mr-2 h-4 w-4" /> Import Excel
+              <Upload className="mr-2 h-4 w-4" /> {t("pages.pim.attributes.importExcel")}
             </Button>
           </div>
         </div>
@@ -456,18 +458,18 @@ return Object.values(grouped).map((item: any) => ({
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10">
               <FileSpreadsheet className="h-8 w-8 text-primary" />
             </div>
-            <div className="text-sm font-medium">Drag and drop your Excel file here</div>
-            <div className="text-xs text-muted-foreground">Supported: .xlsx, .xls</div>
+            <div className="text-sm font-medium">{t("pages.pim.attributes.dragAndDrop")}</div>
+            <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.supportedFormats")}</div>
           </div>
 
           <div className="rounded-md border bg-primary/5 p-4">
-            <div className="mb-2 text-sm font-semibold">Expected Excel Structure</div>
+            <div className="mb-2 text-sm font-semibold">{t("pages.pim.attributes.expectedStructure")}</div>
             <div className="text-xs text-muted-foreground">
               Column A: <code className="rounded bg-background px-1 py-0.5">key</code> (property_name) <br />
               Column B: <code className="rounded bg-background px-1 py-0.5">value</code> (property_value) <br />
               Column C: <code className="rounded bg-background px-1 py-0.5">unit</code> (measurement_unit) <br />
               Column D: <code className="rounded bg-background px-1 py-0.5">domain</code> (category) <br />
-              <div className="mt-2 font-semibold text-foreground">Example:</div>
+              <div className="mt-2 font-semibold text-foreground">{t("pages.pim.attributes.example")}</div>
               length | 10 | Meter | dimensions
             </div>
           </div>

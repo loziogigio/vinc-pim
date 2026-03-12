@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Search, ChevronLeft, ChevronRight, Filter, Paintbrush } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import type { B2BProduct } from "@/lib/types/b2b";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type CatalogData = {
   products: B2BProduct[];
@@ -22,6 +23,7 @@ type CatalogData = {
 };
 
 export default function B2BCatalogPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<CatalogData | null>(null);
@@ -81,32 +83,32 @@ export default function B2BCatalogPage() {
   );
 
   if (isLoading && !data) {
-    return renderEmptyState("Loading product catalog…", "Pulling the latest assortment from your ERP.");
+    return renderEmptyState(t("pages.catalog.loading"), t("pages.catalog.loadingSub"));
   }
 
   if (!data) {
-    return renderEmptyState("No products available", "Try adjusting your filters or syncing new inventory.");
+    return renderEmptyState(t("pages.catalog.noProducts"), t("pages.catalog.noProductsSub"));
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Breadcrumbs items={[{ label: "Product Catalog" }]} />
+        <Breadcrumbs items={[{ label: t("pages.catalog.title") }]} />
         <BackButton />
       </div>
 
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-[1rem] font-semibold text-[#5e5873]">Product Catalog</h1>
-            <p className="text-[0.8rem] text-[#b9b9c3]">Manage and enhance your product catalog</p>
+            <h1 className="text-[1rem] font-semibold text-[#5e5873]">{t("pages.catalog.title")}</h1>
+            <p className="text-[0.8rem] text-[#b9b9c3]">{t("pages.catalog.subtitle")}</p>
           </div>
           <Button
             onClick={() => router.push("/b2b/product-builder")}
             className="h-9 rounded-[0.428rem] bg-[#009688] px-4 text-[0.8rem] shadow-[0_0_10px_1px_rgba(0,150,136,0.3)] transition hover:bg-[#00796b]"
           >
             <Paintbrush className="mr-1.5 h-4 w-4" />
-            Product Page Builder
+            {t("pages.catalog.productPageBuilder")}
           </Button>
         </div>
 
@@ -115,7 +117,7 @@ export default function B2BCatalogPage() {
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
             <Input
               type="text"
-              placeholder="Search by SKU, title, or category…"
+              placeholder={t("pages.catalog.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -124,14 +126,14 @@ export default function B2BCatalogPage() {
           </div>
           <Button onClick={handleSearch} className="h-9 rounded-[0.428rem] px-4 text-[0.8rem]">
             <Search className="mr-1.5 h-4 w-4" />
-            Search
+            {t("pages.catalog.search")}
           </Button>
           <Button
             variant="outline"
             className="h-9 rounded-[0.428rem] border-[#ebe9f1] px-4 text-[0.8rem] text-[#5e5873]"
           >
             <Filter className="mr-1.5 h-4 w-4" />
-            Filters
+            {t("pages.catalog.filters")}
           </Button>
         </div>
       </div>
@@ -139,9 +141,10 @@ export default function B2BCatalogPage() {
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
         <div className="mb-3 flex items-center justify-between text-[0.8rem] text-[#6e6b7b]">
           <p>
-            Showing {((data.pagination.page - 1) * data.pagination.limit) + 1} to{" "}
-            {Math.min(data.pagination.page * data.pagination.limit, data.pagination.total)} of{" "}
-            {data.pagination.total} products
+            {t("pages.catalog.showing")
+              .replace("{from}", String(((data.pagination.page - 1) * data.pagination.limit) + 1))
+              .replace("{to}", String(Math.min(data.pagination.page * data.pagination.limit, data.pagination.total)))
+              .replace("{total}", String(data.pagination.total))}
           </p>
         </div>
 
@@ -157,7 +160,7 @@ export default function B2BCatalogPage() {
               className="h-8 rounded-[0.358rem] border-[#ebe9f1] px-3 text-[0.75rem]"
             >
               <ChevronLeft className="mr-1 h-3 w-3" />
-              Previous
+              {t("pages.catalog.previous")}
             </Button>
 
             <div className="flex items-center gap-1">
@@ -190,7 +193,7 @@ export default function B2BCatalogPage() {
               disabled={currentPage === data.pagination.totalPages || isLoading}
               className="h-8 rounded-[0.358rem] border-[#ebe9f1] px-3 text-[0.75rem]"
             >
-              Next
+              {t("pages.catalog.next")}
               <ChevronRight className="ml-1 h-3 w-3" />
             </Button>
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { PIMOverviewCards } from "@/components/pim/PIMOverviewCards";
 import { PriorityProductList } from "@/components/pim/PriorityProductList";
@@ -18,6 +19,7 @@ type DashboardStats = {
 };
 
 export default function PIMDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,16 +52,16 @@ export default function PIMDashboard() {
   );
 
   if (isLoading) {
-    return renderEmptyState("Loading PIM dashboard…", "Gathering product insights and quality scores.");
+    return renderEmptyState(t("pages.pim.overview.loading"), t("pages.pim.overview.loadingSub"));
   }
 
   if (!stats) {
-    return renderEmptyState("Unable to load dashboard", "Please refresh the page to try again.");
+    return renderEmptyState(t("pages.pim.overview.error"), t("pages.pim.overview.errorSub"));
   }
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: "Product Information Management" }]} />
+      <Breadcrumbs items={[{ label: t("pages.pim.breadcrumb") }]} />
 
       <PIMOverviewCards stats={stats} />
 

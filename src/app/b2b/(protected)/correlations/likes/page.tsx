@@ -7,8 +7,10 @@ import { Heart, Users, Package, TrendingUp } from "lucide-react";
 import { LIKE_TIME_PERIODS, LIKE_TIME_PERIOD_LABELS } from "@/lib/constants/like";
 import type { LikeTimePeriod } from "@/lib/constants/like";
 import type { LikeAnalyticsResponse, PopularProductResponse, TrendingProductResponse } from "@/lib/types/like";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function LikesDashboard() {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<LikeTimePeriod>("30d");
   const [analytics, setAnalytics] = useState<LikeAnalyticsResponse | null>(null);
   const [popular, setPopular] = useState<PopularProductResponse[]>([]);
@@ -57,15 +59,15 @@ export default function LikesDashboard() {
   );
 
   if (isLoading) {
-    return renderEmptyState("Caricamento...", "Raccolta dati sui likes.");
+    return renderEmptyState(t("pages.correlations.likes.loading"), t("pages.correlations.likes.loadingSub"));
   }
 
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Correlazioni & Analytics", href: "/b2b/correlations" },
-          { label: "Likes" },
+          { label: t("pages.correlations.dashboard.title"), href: "/b2b/correlations" },
+          { label: t("pages.correlations.likes.breadcrumb") },
         ]}
       />
 
@@ -92,28 +94,28 @@ export default function LikesDashboard() {
           icon={Heart}
           iconColor="#ea5455"
           iconBg="rgba(234,84,85,0.12)"
-          label="Likes Totali"
+          label={t("pages.correlations.likes.totalLikes")}
           value={analytics?.total_likes || 0}
         />
         <StatsCard
           icon={Users}
           iconColor="#7367f0"
           iconBg="rgba(115,103,240,0.12)"
-          label="Utenti Unici"
+          label={t("pages.correlations.likes.uniqueUsers")}
           value={analytics?.unique_users || 0}
         />
         <StatsCard
           icon={Package}
           iconColor="#28c76f"
           iconBg="rgba(40,199,111,0.12)"
-          label="Prodotti Unici"
+          label={t("pages.correlations.likes.uniqueProducts")}
           value={analytics?.unique_products || 0}
         />
         <StatsCard
           icon={TrendingUp}
           iconColor="#ff9f43"
           iconBg="rgba(255,159,67,0.12)"
-          label={`Likes (${LIKE_TIME_PERIOD_LABELS[period]})`}
+          label={t("pages.correlations.likes.likesInPeriod").replace("{period}", LIKE_TIME_PERIOD_LABELS[period])}
           value={analytics?.likes_in_period || 0}
         />
       </div>
@@ -123,18 +125,18 @@ export default function LikesDashboard() {
         {/* Popular Products */}
         <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
           <div className="border-b border-[#ebe9f1] p-4">
-            <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">Prodotti Popolari</h3>
+            <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">{t("pages.correlations.likes.popularProducts")}</h3>
           </div>
           <div className="p-4">
             {popular.length === 0 ? (
-              <p className="text-[0.85rem] text-[#b9b9c3] text-center py-6">Nessun dato disponibile</p>
+              <p className="text-[0.85rem] text-[#b9b9c3] text-center py-6">{t("pages.correlations.likes.noData")}</p>
             ) : (
               <table className="w-full text-[0.85rem]">
                 <thead>
                   <tr className="text-left text-[0.75rem] uppercase tracking-wide text-[#b9b9c3]">
-                    <th className="pb-2">SKU</th>
-                    <th className="pb-2 text-right">Likes</th>
-                    <th className="pb-2 text-right">Ultimo Like</th>
+                    <th className="pb-2">{t("pages.correlations.likes.sku")}</th>
+                    <th className="pb-2 text-right">{t("pages.correlations.likes.likes")}</th>
+                    <th className="pb-2 text-right">{t("pages.correlations.likes.lastLike")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,30 +167,30 @@ export default function LikesDashboard() {
         {/* Trending Products */}
         <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
           <div className="border-b border-[#ebe9f1] p-4">
-            <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">Trending</h3>
+            <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">{t("pages.correlations.likes.trending")}</h3>
           </div>
           <div className="p-4">
             {trending.length === 0 ? (
-              <p className="text-[0.85rem] text-[#b9b9c3] text-center py-6">Nessun dato disponibile</p>
+              <p className="text-[0.85rem] text-[#b9b9c3] text-center py-6">{t("pages.correlations.likes.noData")}</p>
             ) : (
               <table className="w-full text-[0.85rem]">
                 <thead>
                   <tr className="text-left text-[0.75rem] uppercase tracking-wide text-[#b9b9c3]">
-                    <th className="pb-2">SKU</th>
-                    <th className="pb-2 text-right">Likes Recenti</th>
-                    <th className="pb-2 text-right">Velocit&agrave;</th>
+                    <th className="pb-2">{t("pages.correlations.likes.sku")}</th>
+                    <th className="pb-2 text-right">{t("pages.correlations.likes.recentLikes")}</th>
+                    <th className="pb-2 text-right">{t("pages.correlations.likes.velocity")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {trending.map((t) => (
-                    <tr key={t.sku} className="border-t border-[#ebe9f1]">
+                  {trending.map((tr) => (
+                    <tr key={tr.sku} className="border-t border-[#ebe9f1]">
                       <td className="py-2 font-medium">
-                        <Link href={`/b2b/pim/products?sku=${encodeURIComponent(t.sku)}`} className="text-[#009688] hover:underline">
-                          {t.sku}
+                        <Link href={`/b2b/pim/products?sku=${encodeURIComponent(tr.sku)}`} className="text-[#009688] hover:underline">
+                          {tr.sku}
                         </Link>
                       </td>
-                      <td className="py-2 text-right text-[#6e6b7b]">{t.recent_likes}</td>
-                      <td className="py-2 text-right text-[#b9b9c3]">{t.velocity_score}/d</td>
+                      <td className="py-2 text-right text-[#6e6b7b]">{tr.recent_likes}</td>
+                      <td className="py-2 text-right text-[#b9b9c3]">{tr.velocity_score}/d</td>
                     </tr>
                   ))}
                 </tbody>

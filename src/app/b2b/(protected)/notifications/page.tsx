@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Mail, Bell, Smartphone, MessageSquare, TrendingUp, AlertCircle, Send, Loader2 } from "lucide-react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Stats {
   sent_today: number;
@@ -58,6 +59,7 @@ const DEFAULT_STATS: Stats = {
 };
 
 export default function NotificationsDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
   const [isLoading, setIsLoading] = useState(true);
   const [templateCount, setTemplateCount] = useState(0);
@@ -96,14 +98,14 @@ export default function NotificationsDashboard() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche" },
+          { label: t("pages.notifications.dashboard.breadcrumb") },
         ]} />
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Notifications Dashboard</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.dashboard.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Multi-channel notification management and analytics
+          {t("pages.notifications.dashboard.subtitle")}
         </p>
       </div>
 
@@ -116,25 +118,25 @@ export default function NotificationsDashboard() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard
-              label="Sent Today"
+              label={t("pages.notifications.dashboard.sentToday")}
               value={stats.sent_today}
               icon={Mail}
               color="bg-blue-500"
             />
             <StatCard
-              label="Open Rate"
+              label={t("pages.notifications.dashboard.openRate")}
               value={`${stats.open_rate}%`}
               icon={TrendingUp}
               color="bg-emerald-500"
             />
             <StatCard
-              label="Click Rate"
+              label={t("pages.notifications.dashboard.clickRate")}
               value={`${stats.click_rate}%`}
               icon={TrendingUp}
               color="bg-violet-500"
             />
             <StatCard
-              label="Failed Today"
+              label={t("pages.notifications.dashboard.failedToday")}
               value={stats.failed_today}
               icon={AlertCircle}
               color="bg-rose-500"
@@ -144,29 +146,29 @@ export default function NotificationsDashboard() {
           {/* Period Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500 mb-1">This Week</p>
+              <p className="text-sm text-slate-500 mb-1">{t("pages.notifications.dashboard.thisWeek")}</p>
               <p className="text-2xl font-bold text-slate-900">{stats.sent_this_week}</p>
-              <p className="text-xs text-slate-400">emails sent</p>
+              <p className="text-xs text-slate-400">{t("pages.notifications.dashboard.emailsSent")}</p>
             </div>
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500 mb-1">This Month</p>
+              <p className="text-sm text-slate-500 mb-1">{t("pages.notifications.dashboard.thisMonth")}</p>
               <p className="text-2xl font-bold text-slate-900">{stats.sent_this_month}</p>
-              <p className="text-xs text-slate-400">emails sent</p>
+              <p className="text-xs text-slate-400">{t("pages.notifications.dashboard.emailsSent")}</p>
             </div>
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500 mb-1">Delivery Status</p>
+              <p className="text-sm text-slate-500 mb-1">{t("pages.notifications.dashboard.deliveryStatus")}</p>
               <div className="flex items-center gap-4 mt-2">
                 <div>
                   <span className="text-lg font-bold text-emerald-600">{stats.by_status.sent}</span>
-                  <span className="text-xs text-slate-400 ml-1">sent</span>
+                  <span className="text-xs text-slate-400 ml-1">{t("pages.notifications.dashboard.sent")}</span>
                 </div>
                 <div>
                   <span className="text-lg font-bold text-rose-600">{stats.by_status.failed}</span>
-                  <span className="text-xs text-slate-400 ml-1">failed</span>
+                  <span className="text-xs text-slate-400 ml-1">{t("pages.notifications.dashboard.failed")}</span>
                 </div>
                 <div>
                   <span className="text-lg font-bold text-amber-600">{stats.by_status.queued}</span>
-                  <span className="text-xs text-slate-400 ml-1">queued</span>
+                  <span className="text-xs text-slate-400 ml-1">{t("pages.notifications.dashboard.queued")}</span>
                 </div>
               </div>
             </div>
@@ -174,40 +176,43 @@ export default function NotificationsDashboard() {
 
           {/* Channel Stats */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">By Channel (Last 30 days)</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">{t("pages.notifications.dashboard.byChannel")}</h2>
             <div className="space-y-4">
               <ChannelRow
                 icon={Mail}
-                label="Email"
+                label={t("pages.notifications.dashboard.emailChannel")}
                 count={stats.by_channel.email.sent}
                 rate={stats.by_channel.email.open_rate}
-                rateLabel="open rate"
+                rateLabel={t("pages.notifications.dashboard.openRateLabel")}
                 color="text-blue-500"
               />
               <ChannelRow
                 icon={Bell}
-                label="Web Push"
+                label={t("pages.notifications.dashboard.webPushChannel")}
                 count={stats.by_channel.web_push.sent}
                 rate={stats.by_channel.web_push.click_rate}
-                rateLabel="click rate"
+                rateLabel={t("pages.notifications.dashboard.clickRateLabel")}
                 color="text-amber-500"
                 disabled
+                disabledLabel={t("pages.notifications.dashboard.comingSoon")}
               />
               <ChannelRow
                 icon={Smartphone}
-                label="Mobile Push"
+                label={t("pages.notifications.dashboard.mobilePushChannel")}
                 count={stats.by_channel.mobile_push.sent}
                 rate={stats.by_channel.mobile_push.click_rate}
-                rateLabel="click rate"
+                rateLabel={t("pages.notifications.dashboard.clickRateLabel")}
                 color="text-violet-500"
                 disabled
+                disabledLabel={t("pages.notifications.dashboard.comingSoon")}
               />
               <ChannelRow
                 icon={MessageSquare}
-                label="SMS"
+                label={t("pages.notifications.dashboard.smsChannel")}
                 count={stats.by_channel.sms.sent}
                 color="text-emerald-500"
                 disabled
+                disabledLabel={t("pages.notifications.dashboard.comingSoon")}
               />
             </div>
           </div>
@@ -216,26 +221,26 @@ export default function NotificationsDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <QuickActionCard
               href="/b2b/notifications/campaigns"
-              title="Send Campaign"
-              description="Send notifications now"
+              title={t("pages.notifications.dashboard.sendCampaign")}
+              description={t("pages.notifications.dashboard.sendNow")}
               icon={Send}
             />
             <QuickActionCard
               href="/b2b/notifications/templates"
-              title="Templates"
-              description={`${templateCount} templates configured`}
+              title={t("pages.notifications.dashboard.templates")}
+              description={t("pages.notifications.dashboard.templatesConfigured").replace("{count}", String(templateCount))}
               icon={Mail}
             />
             <QuickActionCard
               href="/b2b/notifications/logs"
-              title="Logs"
-              description="View notification history"
+              title={t("pages.notifications.dashboard.logs")}
+              description={t("pages.notifications.dashboard.viewHistory")}
               icon={TrendingUp}
             />
             <QuickActionCard
               href="/b2b/notifications/settings"
-              title="Settings"
-              description="Configure channels"
+              title={t("pages.notifications.dashboard.settings")}
+              description={t("pages.notifications.dashboard.configureChannels")}
               icon={Bell}
             />
           </div>
@@ -279,6 +284,7 @@ function ChannelRow({
   rateLabel,
   color,
   disabled,
+  disabledLabel,
 }: {
   icon: React.ElementType;
   label: string;
@@ -287,7 +293,9 @@ function ChannelRow({
   rateLabel?: string;
   color: string;
   disabled?: boolean;
+  disabledLabel?: string;
 }) {
+  const { t } = useTranslation();
   const maxCount = 1000; // For progress bar scaling
   const progressWidth = count > 0 ? Math.min((count / maxCount) * 100, 100) : 0;
 
@@ -302,16 +310,16 @@ function ChannelRow({
         />
       </div>
       <span className="w-20 text-right text-sm text-slate-600">
-        {count} sent
+        {t("pages.notifications.dashboard.sentCount").replace("{count}", String(count))}
       </span>
-      {rate !== undefined && (
+      {rate !== undefined && rateLabel && (
         <span className="w-24 text-right text-sm text-slate-500">
           {rate}% {rateLabel}
         </span>
       )}
-      {disabled && (
+      {disabled && disabledLabel && (
         <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-          Coming soon
+          {disabledLabel}
         </span>
       )}
     </div>

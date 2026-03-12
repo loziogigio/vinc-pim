@@ -2,28 +2,31 @@
 
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { OrdersStatusList } from "@/components/orders/OrdersStatusList";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function ShippedOrdersPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Orders", href: "/b2b/store/orders" },
-          { label: "Shipped" },
+          { label: t("pages.store.orders.title"), href: "/b2b/store/orders" },
+          { label: t("pages.store.ordersShipped.title") },
         ]}
       />
 
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Shipped Orders</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.store.ordersShipped.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Orders in transit
+          {t("pages.store.ordersShipped.subtitle")}
         </p>
       </div>
 
       <OrdersStatusList
         status="shipped"
-        statusLabel="Shipped"
-        emptyMessage="Shipped orders will appear here"
+        statusLabel={t("pages.store.ordersShipped.statusLabel")}
+        emptyMessage={t("pages.store.ordersShipped.emptyMessage")}
       />
     </div>
   );

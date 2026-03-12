@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   ArrowLeft,
   Save,
@@ -59,6 +60,7 @@ export default function TemplateEditorPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantPrefix =
@@ -162,10 +164,10 @@ export default function TemplateEditorPage({
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
       } else {
-        alert(data.error || "Errore nel salvataggio");
+        alert(data.error || t("pages.documents.templateEditor.saveError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.templateEditor.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -182,7 +184,7 @@ export default function TemplateEditorPage({
   if (!template) {
     return (
       <div className="p-6 text-center text-muted-foreground">
-        Template non trovato.
+        {t("pages.documents.templateEditor.templateNotFound")}
       </div>
     );
   }
@@ -210,7 +212,7 @@ export default function TemplateEditorPage({
               {isSystem && (
                 <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
                   <Lock className="w-3 h-3" />
-                  Sistema
+                  {t("pages.documents.templateEditor.system")}
                 </span>
               )}
               {template.is_default && (
@@ -219,7 +221,7 @@ export default function TemplateEditorPage({
             </div>
             {isSystem && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Template di sistema — duplica per personalizzare il codice HTML/CSS
+                {t("pages.documents.templateEditor.systemTemplateNote")}
               </p>
             )}
           </div>
@@ -230,7 +232,7 @@ export default function TemplateEditorPage({
             className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm font-medium"
           >
             <Eye className="w-4 h-4" />
-            {showPreview ? "Editor" : "Anteprima"}
+            {showPreview ? t("pages.documents.templateEditor.editor") : t("pages.documents.templateEditor.previewToggle")}
           </button>
           <button
             onClick={handleSave}
@@ -248,7 +250,7 @@ export default function TemplateEditorPage({
             ) : (
               <Save className="w-4 h-4" />
             )}
-            {saveSuccess ? "Salvato!" : "Salva"}
+            {saveSuccess ? t("pages.documents.templateEditor.saved") : t("common.save")}
           </button>
         </div>
       </div>
@@ -258,7 +260,7 @@ export default function TemplateEditorPage({
         <div className="grid grid-cols-6 gap-4">
           <div>
             <label className="block text-xs font-medium text-[#5e5873] mb-1">
-              Nome
+              {t("pages.documents.templateEditor.nameLabel")}
             </label>
             <input
               type="text"
@@ -269,14 +271,14 @@ export default function TemplateEditorPage({
           </div>
           <div>
             <label className="block text-xs font-medium text-[#5e5873] mb-1">
-              Tipo Documento
+              {t("pages.documents.templateEditor.documentType")}
             </label>
             <select
               value={editDocType}
               onChange={(e) => setEditDocType(e.target.value)}
               className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
             >
-              <option value="all">Tutti i tipi</option>
+              <option value="all">{t("pages.documents.templateEditor.allTypes")}</option>
               {DOCUMENT_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {DOCUMENT_TYPE_LABELS[t]}
@@ -286,7 +288,7 @@ export default function TemplateEditorPage({
           </div>
           <div>
             <label className="block text-xs font-medium text-[#5e5873] mb-1">
-              Formato
+              {t("pages.documents.templateEditor.pageFormat")}
             </label>
             <select
               value={editPageSize}
@@ -302,7 +304,7 @@ export default function TemplateEditorPage({
           </div>
           <div>
             <label className="block text-xs font-medium text-[#5e5873] mb-1">
-              Orientamento
+              {t("pages.documents.templateEditor.orientation")}
             </label>
             <select
               value={editOrientation}
@@ -311,20 +313,20 @@ export default function TemplateEditorPage({
             >
               {PAGE_ORIENTATIONS.map((o) => (
                 <option key={o} value={o}>
-                  {o === "portrait" ? "Verticale" : "Orizzontale"}
+                  {o === "portrait" ? t("pages.documents.templateEditor.portrait") : t("pages.documents.templateEditor.landscape")}
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-[#5e5873] mb-1">
-              Descrizione
+              {t("pages.documents.templateEditor.descriptionLabel")}
             </label>
             <input
               type="text"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              placeholder="Opzionale..."
+              placeholder={t("pages.documents.templateEditor.descriptionPlaceholder")}
               className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
             />
           </div>
@@ -337,7 +339,7 @@ export default function TemplateEditorPage({
                 className="rounded border-[#ebe9f1]"
               />
               <Star className="w-4 h-4 text-amber-500" />
-              Predefinito
+              {t("pages.documents.templateEditor.defaultTemplate")}
             </label>
           </div>
         </div>
@@ -345,18 +347,18 @@ export default function TemplateEditorPage({
         {/* Margins */}
         <div className="mt-3 flex items-center gap-4">
           <span className="text-xs font-medium text-[#5e5873]">
-            Margini (mm):
+            {t("pages.documents.templateEditor.margins")}
           </span>
           {(["top", "right", "bottom", "left"] as const).map((side) => (
             <div key={side} className="flex items-center gap-1">
               <label className="text-xs text-muted-foreground">
                 {side === "top"
-                  ? "Su"
+                  ? t("pages.documents.templateEditor.marginTop")
                   : side === "right"
-                    ? "Dx"
+                    ? t("pages.documents.templateEditor.marginRight")
                     : side === "bottom"
-                      ? "Gi\u00f9"
-                      : "Sx"}
+                      ? t("pages.documents.templateEditor.marginBottom")
+                      : t("pages.documents.templateEditor.marginLeft")}
               </label>
               <input
                 type="number"
@@ -388,7 +390,7 @@ export default function TemplateEditorPage({
         >
           <span className="inline-flex items-center gap-1.5">
             <FileText className="w-4 h-4" />
-            HTML / CSS
+            {t("pages.documents.templateEditor.htmlCss")}
           </span>
         </button>
         <button
@@ -401,7 +403,7 @@ export default function TemplateEditorPage({
         >
           <span className="inline-flex items-center gap-1.5">
             <Type className="w-4 h-4" />
-            Header e Footer
+            {t("pages.documents.templateEditor.headerAndFooter")}
           </span>
         </button>
       </div>
@@ -411,7 +413,7 @@ export default function TemplateEditorPage({
         showPreview ? (
           <div className="bg-white rounded-lg border border-[#ebe9f1] overflow-hidden">
             <div className="p-2 bg-[#f8f8f8] border-b border-[#ebe9f1] text-xs text-muted-foreground">
-              Anteprima documento con dati di esempio
+              {t("pages.documents.templateEditor.previewWithSampleData")}
             </div>
             <div className="p-4">
               <iframe
@@ -426,14 +428,13 @@ export default function TemplateEditorPage({
           <>
             {isSystem && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-                <strong>Template di sistema:</strong> il codice HTML/CSS non \u00e8 modificabile.
-                Duplica questo template dalla lista per creare una copia personalizzabile.
+                {t("pages.documents.templateEditor.systemHtmlNote")}
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-lg border border-[#ebe9f1]">
                 <div className="p-2 bg-[#f8f8f8] border-b border-[#ebe9f1] text-xs font-medium text-[#5e5873]">
-                  HTML Template
+                  {t("pages.documents.templateEditor.htmlTemplate")}
                 </div>
                 <textarea
                   value={editHtml}
@@ -446,7 +447,7 @@ export default function TemplateEditorPage({
               </div>
               <div className="bg-white rounded-lg border border-[#ebe9f1]">
                 <div className="p-2 bg-[#f8f8f8] border-b border-[#ebe9f1] text-xs font-medium text-[#5e5873]">
-                  CSS Styles
+                  {t("pages.documents.templateEditor.cssStyles")}
                 </div>
                 <textarea
                   value={editCss}
@@ -476,7 +477,7 @@ export default function TemplateEditorPage({
             <Hash className="w-3.5 h-3.5 text-teal-600" />
           </div>
           <h3 className="font-semibold text-[#5e5873] text-sm">
-            Segnaposto Disponibili
+            {t("pages.documents.templateEditor.availablePlaceholders")}
           </h3>
         </div>
         <div className="grid grid-cols-4 gap-x-6 gap-y-1 text-xs text-muted-foreground">
@@ -484,107 +485,107 @@ export default function TemplateEditorPage({
             <span className="font-mono text-[#5e5873]">
               {"{{company.legal_name}}"}
             </span>{" "}
-            — Ragione Sociale
+            — {t("pages.documents.templateEditor.placeholderCompanyName")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{company.vat_number}}"}
             </span>{" "}
-            — P.IVA Emittente
+            — {t("pages.documents.templateEditor.placeholderCompanyVat")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{company.address_line1}}"}
             </span>{" "}
-            — Indirizzo
+            — {t("pages.documents.templateEditor.placeholderCompanyAddress")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{company.logo_url}}"}
             </span>{" "}
-            — URL Logo
+            — {t("pages.documents.templateEditor.placeholderCompanyLogo")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{customer.company_name}}"}
             </span>{" "}
-            — Cliente
+            — {t("pages.documents.templateEditor.placeholderCustomerName")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{customer.vat_number}}"}
             </span>{" "}
-            — P.IVA Cliente
+            — {t("pages.documents.templateEditor.placeholderCustomerVat")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{customer.billing_address.city}}"}
             </span>{" "}
-            — Citt\u00e0
+            — {t("pages.documents.templateEditor.placeholderCustomerCity")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{customer.pec_email}}"}
             </span>{" "}
-            — PEC Cliente
+            — {t("pages.documents.templateEditor.placeholderCustomerPec")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{document.document_number}}"}
             </span>{" "}
-            — Numero Doc.
+            — {t("pages.documents.templateEditor.placeholderDocNumber")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{document.date}}"}
             </span>{" "}
-            — Data
+            — {t("pages.documents.templateEditor.placeholderDocDate")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{document.type_label}}"}
             </span>{" "}
-            — Tipo
+            — {t("pages.documents.templateEditor.placeholderDocType")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{document.due_date}}"}
             </span>{" "}
-            — Scadenza
+            — {t("pages.documents.templateEditor.placeholderDocDueDate")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">{"{{items}}"}</span> —
-            Righe (tabella HTML)
+            <span className="font-mono text-[#5e5873]">{"{{items}}"}</span> —{" "}
+            {t("pages.documents.templateEditor.placeholderItems")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{totals.total}}"}
             </span>{" "}
-            — Totale
+            — {t("pages.documents.templateEditor.placeholderTotal")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{totals.subtotal_net}}"}
             </span>{" "}
-            — Imponibile
+            — {t("pages.documents.templateEditor.placeholderSubtotal")}
           </div>
           <div>
             <span className="font-mono text-[#5e5873]">
               {"{{vat_breakdown}}"}
             </span>{" "}
-            — Riepilogo IVA
+            — {t("pages.documents.templateEditor.placeholderVatBreakdown")}
           </div>
           <div className="col-span-2 mt-1 pt-1 border-t border-[#ebe9f1]">
             <span className="font-mono text-[#009688]">
               {"{{header}}"}
             </span>{" "}
-            — Header auto-generato (da config)
+            — {t("pages.documents.templateEditor.placeholderHeader")}
           </div>
           <div className="col-span-2 mt-1 pt-1 border-t border-[#ebe9f1]">
             <span className="font-mono text-[#009688]">
               {"{{footer}}"}
             </span>{" "}
-            — Footer auto-generato (da config)
+            — {t("pages.documents.templateEditor.placeholderFooter")}
           </div>
         </div>
       </div>
@@ -607,6 +608,7 @@ function HeaderFooterConfig({
   onHeaderChange: (config: TemplateHeaderConfig) => void;
   onFooterChange: (config: TemplateFooterConfig) => void;
 }) {
+  const { t } = useTranslation();
   const logoPositionIcons: Record<string, React.ReactNode> = {
     left: <AlignLeft className="w-4 h-4" />,
     center: <AlignCenter className="w-4 h-4" />,
@@ -620,14 +622,14 @@ function HeaderFooterConfig({
         <div className="p-3 bg-[#f8f8f8] border-b border-[#ebe9f1] flex items-center gap-2">
           <Type className="w-4 h-4 text-[#5e5873]" />
           <span className="text-sm font-medium text-[#5e5873]">
-            Configurazione Header
+            {t("pages.documents.templateEditor.headerConfig")}
           </span>
         </div>
         <div className="p-4 space-y-4">
           {/* Header Style */}
           <div>
             <label className="block text-xs font-medium text-[#5e5873] mb-2">
-              Stile Header
+              {t("pages.documents.templateEditor.headerStyle")}
             </label>
             <div className="grid grid-cols-2 gap-2">
               {HEADER_STYLES.map((style) => (
@@ -652,7 +654,7 @@ function HeaderFooterConfig({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Image className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-[#5e5873]">Mostra Logo</span>
+              <span className="text-sm text-[#5e5873]">{t("pages.documents.templateEditor.showLogo")}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -674,7 +676,7 @@ function HeaderFooterConfig({
           {headerConfig.show_logo && (
             <div>
               <label className="block text-xs font-medium text-[#5e5873] mb-2">
-                Posizione Logo
+                {t("pages.documents.templateEditor.logoPosition")}
               </label>
               <div className="flex gap-2">
                 {LOGO_POSITIONS.map((pos) => (
@@ -704,7 +706,7 @@ function HeaderFooterConfig({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-[#5e5873]">Info Azienda</span>
+              <span className="text-sm text-[#5e5873]">{t("pages.documents.templateEditor.companyInfo")}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -724,7 +726,7 @@ function HeaderFooterConfig({
 
           {/* Header Preview */}
           <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Anteprima</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">{t("pages.documents.templateEditor.previewToggle")}</p>
             <HeaderPreview config={headerConfig} />
           </div>
         </div>
@@ -735,14 +737,14 @@ function HeaderFooterConfig({
         <div className="p-3 bg-[#f8f8f8] border-b border-[#ebe9f1] flex items-center gap-2">
           <AlignLeft className="w-4 h-4 text-[#5e5873]" />
           <span className="text-sm font-medium text-[#5e5873]">
-            Configurazione Footer
+            {t("pages.documents.templateEditor.footerConfig")}
           </span>
         </div>
         <div className="p-4 space-y-4">
           {/* Enable Footer */}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-[#5e5873]">
-              Footer Attivo
+              {t("pages.documents.templateEditor.footerActive")}
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -764,7 +766,7 @@ function HeaderFooterConfig({
             <>
               {/* Show Notes */}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#5e5873]">Mostra Note</span>
+                <span className="text-sm text-[#5e5873]">{t("pages.documents.templateEditor.showNotes")}</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -784,7 +786,7 @@ function HeaderFooterConfig({
               {/* Show Page Numbers */}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#5e5873]">
-                  Numeri di Pagina
+                  {t("pages.documents.templateEditor.pageNumbers")}
                 </span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -805,7 +807,7 @@ function HeaderFooterConfig({
               {/* Custom Text */}
               <div>
                 <label className="block text-xs font-medium text-[#5e5873] mb-1">
-                  Testo Personalizzato
+                  {t("pages.documents.templateEditor.customText")}
                 </label>
                 <textarea
                   value={footerConfig.custom_text || ""}
@@ -815,7 +817,7 @@ function HeaderFooterConfig({
                       custom_text: e.target.value || undefined,
                     })
                   }
-                  placeholder="Es. Documento informatico ai sensi..."
+                  placeholder={t("pages.documents.templateEditor.customTextPlaceholder")}
                   className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm resize-none"
                   rows={3}
                 />
@@ -825,7 +827,7 @@ function HeaderFooterConfig({
 
           {/* Footer Preview */}
           <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Anteprima</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">{t("pages.documents.templateEditor.previewToggle")}</p>
             <FooterPreview config={footerConfig} />
           </div>
         </div>
@@ -885,10 +887,11 @@ function HeaderPreview({ config }: { config: TemplateHeaderConfig }) {
 }
 
 function FooterPreview({ config }: { config: TemplateFooterConfig }) {
+  const { t } = useTranslation();
   if (!config.enabled) {
     return (
       <div className="text-[10px] text-gray-400 italic text-center">
-        Footer disabilitato
+        {t("pages.documents.templateEditor.footerDisabled")}
       </div>
     );
   }

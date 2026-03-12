@@ -9,6 +9,7 @@ import {
   ProductAssociationSection,
   ProductAssociationConfig,
 } from "@/components/pim/ProductAssociationSection";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type SynonymDictionary = {
   dictionary_id: string;
@@ -27,6 +28,7 @@ export default function SynonymDictionaryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const { t } = useTranslation();
 
   const [dictionary, setDictionary] = useState<SynonymDictionary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,7 +193,7 @@ export default function SynonymDictionaryDetailPage() {
               : "bg-primary hover:bg-primary/90 text-white"
           }`}
         >
-          {dictionary.is_active ? "Deactivate" : "Activate"}
+          {dictionary.is_active ? t("pages.pim.common.deactivate") : t("pages.pim.common.activate")}
         </button>
       </div>
 
@@ -199,7 +201,7 @@ export default function SynonymDictionaryDetailPage() {
       <div className="rounded-lg border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Terms</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.synonyms.terms")}</h2>
             <p className="text-sm text-muted-foreground">
               Synonyms and related search terms ({terms.length} terms)
             </p>
@@ -211,7 +213,7 @@ export default function SynonymDictionaryDetailPage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
             </button>
           )}
         </div>

@@ -20,6 +20,7 @@ import {
   normalizeDecimalInput,
   parseDecimalValue,
 } from "@/lib/utils/decimal-input";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const MOTO_PROVIDERS = PAYMENT_PROVIDERS.filter(
   (p) => PROVIDER_CAPABILITIES[p].supportsMoto
@@ -32,6 +33,7 @@ interface MotoResult {
 }
 
 export default function MotoTerminalPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -114,7 +116,7 @@ export default function MotoTerminalPage() {
       if (data.success) {
         setResult({
           success: true,
-          message: "Pagamento MOTO eseguito con successo",
+          message: t("pages.payments.moto.paymentSuccess"),
           transactionId: data.transaction_id,
         });
         // Clear card data on success
@@ -125,11 +127,11 @@ export default function MotoTerminalPage() {
       } else {
         setResult({
           success: false,
-          message: data.error || "Pagamento fallito",
+          message: data.error || t("pages.payments.moto.paymentFailed"),
         });
       }
     } catch {
-      setResult({ success: false, message: "Errore di rete" });
+      setResult({ success: false, message: t("pages.payments.moto.networkError") });
     } finally {
       setIsSubmitting(false);
     }
@@ -151,9 +153,9 @@ export default function MotoTerminalPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#5e5873]">Terminale MOTO</h1>
+        <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.payments.moto.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Pagamento Mail Order / Telephone Order — inserimento dati carta lato operatore
+          {t("pages.payments.moto.subtitle")}
         </p>
       </div>
 
@@ -161,23 +163,23 @@ export default function MotoTerminalPage() {
         <div className="bg-white rounded-lg border border-[#ebe9f1] p-8 text-center">
           <Phone className="w-10 h-10 mx-auto mb-2 text-slate-300" />
           <p className="text-muted-foreground">
-            Nessun provider supporta pagamenti MOTO.
+            {t("pages.payments.moto.noProviderSupport")}
           </p>
         </div>
       ) : configuredProviders.length === 0 ? (
         <div className="bg-white rounded-lg border border-[#ebe9f1] p-8 text-center">
           <Phone className="w-10 h-10 mx-auto mb-2 text-slate-300" />
           <p className="text-muted-foreground mb-2">
-            Nessun provider MOTO configurato.
+            {t("pages.payments.moto.noProviderConfigured")}
           </p>
           <p className="text-sm text-muted-foreground">
-            Provider compatibili: {MOTO_PROVIDERS.map((p) => PAYMENT_PROVIDER_LABELS[p]).join(", ")}
+            {t("pages.payments.moto.compatibleProviders", { providers: MOTO_PROVIDERS.map((p) => PAYMENT_PROVIDER_LABELS[p]).join(", ") })}
           </p>
           <Link
             href={`${tenantPrefix}/b2b/payments/settings`}
             className="inline-block mt-3 text-sm text-[#009688] hover:underline"
           >
-            Vai alle impostazioni
+            {t("pages.payments.moto.goToSettings")}
           </Link>
         </div>
       ) : (
@@ -202,7 +204,7 @@ export default function MotoTerminalPage() {
                   href={`${tenantPrefix}/b2b/payments/transactions/${result.transactionId}`}
                   className="ml-auto text-sm font-medium underline"
                 >
-                  Dettaglio
+                  {t("pages.payments.moto.viewDetail")}
                 </Link>
               )}
             </div>
@@ -216,12 +218,12 @@ export default function MotoTerminalPage() {
             <div className="p-5 border-b border-[#ebe9f1] space-y-4">
               <h2 className="font-medium text-[#5e5873] flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-[#009688]" />
-                Dati Pagamento
+                {t("pages.payments.moto.paymentData")}
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                    ID Ordine (opzionale)
+                    {t("pages.payments.moto.orderIdOptional")}
                   </label>
                   <input
                     type="text"
@@ -233,7 +235,7 @@ export default function MotoTerminalPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                    Importo (EUR) *
+                    {t("pages.payments.moto.amountEur")}
                   </label>
                   <input
                     type="text"
@@ -248,7 +250,7 @@ export default function MotoTerminalPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                  Provider *
+                  {t("pages.payments.moto.providerLabel")}
                 </label>
                 <select
                   value={provider}
@@ -256,7 +258,7 @@ export default function MotoTerminalPage() {
                   required
                   className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                 >
-                  <option value="">Seleziona provider</option>
+                  <option value="">{t("pages.payments.moto.selectProvider")}</option>
                   {configuredProviders.map((p) => (
                     <option key={p} value={p}>
                       {PAYMENT_PROVIDER_LABELS[p]}
@@ -270,11 +272,11 @@ export default function MotoTerminalPage() {
             <div className="p-5 space-y-4">
               <h2 className="font-medium text-[#5e5873] flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-[#009688]" />
-                Dati Carta
+                {t("pages.payments.moto.cardData")}
               </h2>
               <div>
                 <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                  Numero Carta *
+                  {t("pages.payments.moto.cardNumber")}
                 </label>
                 <input
                   type="text"
@@ -289,7 +291,7 @@ export default function MotoTerminalPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                    Mese *
+                    {t("pages.payments.moto.month")}
                   </label>
                   <select
                     value={expiryMonth}
@@ -309,7 +311,7 @@ export default function MotoTerminalPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                    Anno *
+                    {t("pages.payments.moto.year")}
                   </label>
                   <select
                     value={expiryYear}
@@ -361,10 +363,10 @@ export default function MotoTerminalPage() {
                   <Phone className="w-4 h-4" />
                 )}
                 {isSubmitting
-                  ? "Elaborazione..."
+                  ? t("pages.payments.moto.processing")
                   : amount > 0
-                  ? `Addebita €${amount.toFixed(2)}`
-                  : "Inserisci importo"}
+                  ? t("pages.payments.moto.chargeAmount", { amount: amount.toFixed(2) })
+                  : t("pages.payments.moto.enterAmount")}
               </button>
             </div>
           </form>

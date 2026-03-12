@@ -16,6 +16,7 @@ import {
   Plus,
 } from "lucide-react";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface OrderStats {
   draft: number;
@@ -35,6 +36,7 @@ interface OrderStats {
 }
 
 export default function OrdersOverviewPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
 
   // Extract tenant from URL (e.g., /dfl-eventi-it/b2b/store/orders -> dfl-eventi-it)
@@ -86,10 +88,10 @@ export default function OrdersOverviewPage() {
   }
 
   const statusCards = [
-    { label: "Active Carts", value: stats?.draft || 0, icon: ShoppingCart, color: "bg-amber-500", href: `${tenantPrefix}/b2b/store/orders/carts` },
-    { label: "Pending", value: stats?.pending || 0, icon: Clock, color: "bg-blue-500", href: `${tenantPrefix}/b2b/store/orders/pending` },
-    { label: "Confirmed", value: stats?.confirmed || 0, icon: CheckCircle, color: "bg-emerald-500", href: `${tenantPrefix}/b2b/store/orders/confirmed` },
-    { label: "Shipped", value: stats?.shipped || 0, icon: Truck, color: "bg-purple-500", href: `${tenantPrefix}/b2b/store/orders/shipped` },
+    { label: t("pages.store.orders.activeCarts"), value: stats?.draft || 0, icon: ShoppingCart, color: "bg-amber-500", href: `${tenantPrefix}/b2b/store/orders/carts` },
+    { label: t("pages.store.ordersList.pending"), value: stats?.pending || 0, icon: Clock, color: "bg-blue-500", href: `${tenantPrefix}/b2b/store/orders/pending` },
+    { label: t("pages.store.ordersList.confirmed"), value: stats?.confirmed || 0, icon: CheckCircle, color: "bg-emerald-500", href: `${tenantPrefix}/b2b/store/orders/confirmed` },
+    { label: t("pages.store.ordersList.shipped"), value: stats?.shipped || 0, icon: Truck, color: "bg-purple-500", href: `${tenantPrefix}/b2b/store/orders/shipped` },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -105,13 +107,13 @@ export default function OrdersOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: "Orders" }]} />
+      <Breadcrumbs items={[{ label: t("pages.store.orders.title") }]} />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Orders Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.store.orders.dashboard")}</h1>
           <p className="text-sm text-muted-foreground">
-            Overview of your orders and carts
+            {t("pages.store.orders.subtitle")}
           </p>
         </div>
         <button
@@ -119,7 +121,7 @@ export default function OrdersOverviewPage() {
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition"
         >
           <Plus className="h-4 w-4" />
-          New Order
+          {t("pages.store.orders.newOrder")}
         </button>
       </div>
 
@@ -163,7 +165,7 @@ export default function OrdersOverviewPage() {
                   <Package className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-sm text-muted-foreground">{t("pages.store.orders.totalOrders")}</p>
                   <p className="text-xl font-bold text-foreground">{stats?.total || 0}</p>
                 </div>
               </div>
@@ -174,7 +176,7 @@ export default function OrdersOverviewPage() {
                   <Euro className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Value</p>
+                  <p className="text-sm text-muted-foreground">{t("pages.store.orders.totalValue")}</p>
                   <p className="text-xl font-bold text-foreground">
                     {new Intl.NumberFormat("it-IT", {
                       style: "currency",
@@ -190,7 +192,7 @@ export default function OrdersOverviewPage() {
                   <XCircle className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Cancelled</p>
+                  <p className="text-sm text-muted-foreground">{t("pages.store.orders.cancelled")}</p>
                   <p className="text-xl font-bold text-foreground">{stats?.cancelled || 0}</p>
                 </div>
               </div>
@@ -202,13 +204,13 @@ export default function OrdersOverviewPage() {
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Recent Orders</h2>
+                <h2 className="font-semibold text-foreground">{t("pages.store.orders.recentOrders")}</h2>
               </div>
               <Link
                 href={`${tenantPrefix}/b2b/store/orders/list`}
                 className="text-sm text-primary hover:underline"
               >
-                View all
+                {t("pages.store.orders.viewAll")}
               </Link>
             </div>
             {stats?.recentOrders && stats.recentOrders.length > 0 ? (
@@ -261,8 +263,8 @@ export default function OrdersOverviewPage() {
             ) : (
               <div className="p-8 text-center text-muted-foreground">
                 <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No orders yet</p>
-                <p className="text-sm mt-1">Orders will appear here once created</p>
+                <p>{t("pages.store.orders.noOrdersYet")}</p>
+                <p className="text-sm mt-1">{t("pages.store.orders.ordersWillAppear")}</p>
               </div>
             )}
           </div>

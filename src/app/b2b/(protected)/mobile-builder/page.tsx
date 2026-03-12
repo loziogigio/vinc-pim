@@ -45,6 +45,7 @@ import { MobilePreview } from "@/components/mobile-builder/MobilePreview";
 import { MobileBlockSettings } from "@/components/mobile-builder/MobileBlockSettings";
 import { AppIdentitySettings } from "@/components/mobile-builder/AppIdentitySettings";
 import { SortableBlockItem } from "@/components/mobile-builder/SortableBlockItem";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -59,6 +60,7 @@ interface VersionInfo {
 }
 
 export default function MobileBuilderPage() {
+  const { t } = useTranslation();
   const [blocks, setBlocks] = useState<MobileBlock[]>([]);
   const [appIdentity, setAppIdentity] = useState<MobileAppIdentity>(DEFAULT_APP_IDENTITY);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -121,7 +123,7 @@ export default function MobileBuilderPage() {
         : "/api/b2b/mobile-builder/config";
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error("Failed to load config");
+        throw new Error(t("pages.mobileBuilder.failedToLoad"));
       }
       const data = await response.json();
       if (data.config) {
@@ -131,7 +133,7 @@ export default function MobileBuilderPage() {
       }
     } catch (err) {
       console.error("Error loading mobile config:", err);
-      setError("Failed to load configuration");
+      setError(t("pages.mobileBuilder.failedToLoad"));
     }
   }, []);
 
@@ -148,7 +150,7 @@ export default function MobileBuilderPage() {
   // Create new version
   const handleCreateNewVersion = async () => {
     if (isDirty) {
-      setError("Please save your changes before creating a new version");
+      setError(t("pages.mobileBuilder.saveBeforeNewVersion"));
       return;
     }
 
@@ -163,7 +165,7 @@ export default function MobileBuilderPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create version");
+        throw new Error(data.error || t("pages.mobileBuilder.failedToCreateVersion"));
       }
 
       const data = await response.json();
@@ -172,10 +174,10 @@ export default function MobileBuilderPage() {
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
-      setInfo(`New version ${data.config.version} created`);
+      setInfo(t("pages.mobileBuilder.newVersionCreated").replace("{version}", String(data.config.version)));
     } catch (err) {
       console.error("Error creating version:", err);
-      setError(err instanceof Error ? err.message : "Failed to create version");
+      setError(err instanceof Error ? err.message : t("pages.mobileBuilder.failedToCreateVersion"));
     } finally {
       setIsCreatingVersion(false);
     }
@@ -194,7 +196,7 @@ export default function MobileBuilderPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to switch version");
+        throw new Error(data.error || t("pages.mobileBuilder.failedToSwitch"));
       }
 
       const data = await response.json();
@@ -203,10 +205,10 @@ export default function MobileBuilderPage() {
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
-      setInfo(`Switched to version ${version}`);
+      setInfo(t("pages.mobileBuilder.switchedToVersion").replace("{version}", String(version)));
     } catch (err) {
       console.error("Error switching version:", err);
-      setError(err instanceof Error ? err.message : "Failed to switch version");
+      setError(err instanceof Error ? err.message : t("pages.mobileBuilder.failedToSwitch"));
     } finally {
       setIsLoading(false);
     }
@@ -216,10 +218,10 @@ export default function MobileBuilderPage() {
   const handleSwitchVersion = (version: number) => {
     if (isDirty) {
       setConfirmDialog({
-        title: "Unsaved Changes",
-        message: "You have unsaved changes. Switch version anyway? Your changes will be lost.",
+        title: t("pages.mobileBuilder.unsavedSwitchTitle"),
+        message: t("pages.mobileBuilder.unsavedSwitchMessage"),
         variant: "warning",
-        confirmText: "Switch Anyway",
+        confirmText: t("pages.mobileBuilder.switchAnyway"),
         onConfirm: () => {
           setConfirmDialog(null);
           performSwitchVersion(version);
@@ -291,17 +293,17 @@ export default function MobileBuilderPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to save");
+        throw new Error(data.error || t("pages.mobileBuilder.failedToSave"));
       }
 
       const data = await response.json();
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
-      setInfo(`Draft saved (version ${data.config.version})`);
+      setInfo(t("pages.mobileBuilder.draftSaved").replace("{version}", String(data.config.version)));
     } catch (err) {
       console.error("Error saving:", err);
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : t("pages.mobileBuilder.failedToSave"));
     } finally {
       setIsSaving(false);
     }
@@ -318,15 +320,15 @@ export default function MobileBuilderPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to publish");
+        throw new Error(data.error || t("pages.mobileBuilder.failedToPublish"));
       }
 
       const data = await response.json();
       await loadVersions();
-      setInfo(`Version ${data.config.version} is now live`);
+      setInfo(t("pages.mobileBuilder.versionIsLive").replace("{version}", String(data.config.version)));
     } catch (err) {
       console.error("Error publishing:", err);
-      setError(err instanceof Error ? err.message : "Failed to publish");
+      setError(err instanceof Error ? err.message : t("pages.mobileBuilder.failedToPublish"));
     } finally {
       setIsPublishing(false);
     }
@@ -335,10 +337,10 @@ export default function MobileBuilderPage() {
   // Publish (with confirmation)
   const handlePublish = () => {
     setConfirmDialog({
-      title: "Publish Version",
-      message: `Publish version ${currentVersion}? This will make it live for all mobile app users.`,
+      title: t("pages.mobileBuilder.publishVersionTitle"),
+      message: t("pages.mobileBuilder.publishVersionMessage").replace("{version}", String(currentVersion)),
       variant: "success",
-      confirmText: "Publish",
+      confirmText: t("pages.mobileBuilder.publish"),
       onConfirm: () => {
         setConfirmDialog(null);
         performPublish();
@@ -364,7 +366,7 @@ export default function MobileBuilderPage() {
       });
       if (!saveRes.ok) {
         const data = await saveRes.json();
-        throw new Error(data.error || "Failed to save");
+        throw new Error(data.error || t("pages.mobileBuilder.failedToSave"));
       }
       const saveData = await saveRes.json();
       setCurrentVersion(saveData.config.version);
@@ -378,14 +380,14 @@ export default function MobileBuilderPage() {
       });
       if (!pubRes.ok) {
         const data = await pubRes.json();
-        throw new Error(data.error || "Failed to publish");
+        throw new Error(data.error || t("pages.mobileBuilder.failedToPublish"));
       }
       const pubData = await pubRes.json();
       await loadVersions();
-      setInfo(`Hot fix applied to version ${pubData.config.version}! Changes are live.`);
+      setInfo(t("pages.mobileBuilder.hotFixApplied").replace("{version}", String(pubData.config.version)));
     } catch (err) {
       console.error("Error applying hotfix:", err);
-      setError(err instanceof Error ? err.message : "Failed to apply hotfix");
+      setError(err instanceof Error ? err.message : t("pages.mobileBuilder.failedToHotfix"));
     } finally {
       setIsSaving(false);
       setIsPublishing(false);
@@ -418,7 +420,7 @@ export default function MobileBuilderPage() {
           </button>
           <div className="flex items-center gap-3">
             <Smartphone className="h-5 w-5 text-slate-600" />
-            <span className="text-lg font-semibold text-gray-800">Mobile Home Builder</span>
+            <span className="text-lg font-semibold text-gray-800">{t("pages.mobileBuilder.title")}</span>
 
             {/* Version Selector Dropdown */}
             <div className="relative" ref={versionDropdownRef}>
@@ -435,11 +437,11 @@ export default function MobileBuilderPage() {
               {showVersionDropdown && (
                 <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-md border bg-white py-1 shadow-lg">
                   <div className="border-b px-3 py-2 text-xs font-semibold text-gray-500">
-                    Versions
+                    {t("pages.mobileBuilder.versions")}
                   </div>
                   <div className="max-h-48 overflow-y-auto">
                     {versions.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-gray-400">No versions yet</div>
+                      <div className="px-3 py-2 text-xs text-gray-400">{t("pages.mobileBuilder.noVersions")}</div>
                     ) : (
                       versions.map((v) => (
                         <button
@@ -455,17 +457,17 @@ export default function MobileBuilderPage() {
                           <div className="flex items-center gap-1">
                             {v.is_current && (
                               <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-600">
-                                current
+                                {t("pages.mobileBuilder.current")}
                               </span>
                             )}
                             {v.is_current_published && (
                               <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] text-green-600">
-                                live
+                                {t("pages.mobileBuilder.live").toLowerCase()}
                               </span>
                             )}
                             {v.status === "draft" && !v.is_current_published && (
                               <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
-                                draft
+                                {t("pages.mobileBuilder.draft")}
                               </span>
                             )}
                           </div>
@@ -485,7 +487,7 @@ export default function MobileBuilderPage() {
                       ) : (
                         <Copy className="h-3 w-3" />
                       )}
-                      Create New Version
+                      {t("pages.mobileBuilder.createNewVersion")}
                     </button>
                   </div>
                 </div>
@@ -499,13 +501,13 @@ export default function MobileBuilderPage() {
           {isDirty && (
             <span className="flex items-center gap-1.5 text-xs text-amber-600">
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              Unsaved changes
+              {t("pages.mobileBuilder.unsavedChanges")}
             </span>
           )}
           {!isDirty && isLiveVersion && (
             <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Live
+              {t("pages.mobileBuilder.live")}
             </span>
           )}
 
@@ -522,7 +524,7 @@ export default function MobileBuilderPage() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Hot Fix
+              {t("pages.mobileBuilder.hotFix")}
             </Button>
           ) : (
             /* Draft version: Save Draft + Publish as separate actions */
@@ -538,7 +540,7 @@ export default function MobileBuilderPage() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Save Draft
+                {t("pages.mobileBuilder.saveDraft")}
               </Button>
 
               <div className="relative group">
@@ -552,11 +554,11 @@ export default function MobileBuilderPage() {
                   ) : (
                     <Upload className="h-4 w-4" />
                   )}
-                  Publish
+                  {t("pages.mobileBuilder.publish")}
                 </Button>
                 {isDirty && (
                   <div className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 shadow-lg transition group-hover:opacity-100">
-                    Save your draft first
+                    {t("pages.mobileBuilder.saveFirst")}
                   </div>
                 )}
               </div>
@@ -585,9 +587,8 @@ export default function MobileBuilderPage() {
       )}
       {isLiveVersion && !isDirty && !info && !error && (
         <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-sm text-[#1976d2]">
-          <strong>Viewing published version {currentVersion}.</strong> Make changes and click{" "}
-          <strong>Hot Fix</strong> to update directly, or create a <strong>New Version</strong> from
-          the version menu.
+          <strong>{t("pages.mobileBuilder.viewingPublished").replace("{version}", String(currentVersion))}</strong>{" "}
+          {t("pages.mobileBuilder.viewingPublishedHint")}
         </div>
       )}
 
@@ -609,7 +610,7 @@ export default function MobileBuilderPage() {
 
             {/* Block Library */}
             <div>
-              <h2 className="mb-3 text-sm font-semibold text-gray-700">Block Library</h2>
+              <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("pages.mobileBuilder.blockLibrary")}</h2>
               <div className="space-y-2">
                 {MOBILE_BLOCK_LIBRARY.map((blockMeta) => (
                   <button
@@ -635,15 +636,15 @@ export default function MobileBuilderPage() {
         {/* Center - Canvas (Block list) */}
         <section className="flex w-80 flex-col border-r bg-gray-50">
           <div className="border-b bg-white p-4">
-            <h2 className="text-sm font-semibold text-gray-700">Canvas</h2>
-            <p className="text-xs text-gray-500">Drag to reorder blocks</p>
+            <h2 className="text-sm font-semibold text-gray-700">{t("pages.mobileBuilder.canvas")}</h2>
+            <p className="text-xs text-gray-500">{t("pages.mobileBuilder.dragToReorder")}</p>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {blocks.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
                 <Eye className="mb-2 h-8 w-8 text-gray-400" />
-                <p className="text-sm text-gray-500">No blocks added yet</p>
-                <p className="text-xs text-gray-400">Click a block in the library to add it</p>
+                <p className="text-sm text-gray-500">{t("pages.mobileBuilder.noBlocks")}</p>
+                <p className="text-xs text-gray-400">{t("pages.mobileBuilder.noBlocksHint")}</p>
               </div>
             ) : (
               <DndContext
@@ -696,7 +697,7 @@ export default function MobileBuilderPage() {
         title={confirmDialog?.title ?? ""}
         message={confirmDialog?.message ?? ""}
         variant={confirmDialog?.variant ?? "warning"}
-        confirmText={confirmDialog?.confirmText ?? "Confirm"}
+        confirmText={confirmDialog?.confirmText ?? t("common.confirm")}
         onConfirm={() => confirmDialog?.onConfirm()}
         onCancel={() => setConfirmDialog(null)}
       />

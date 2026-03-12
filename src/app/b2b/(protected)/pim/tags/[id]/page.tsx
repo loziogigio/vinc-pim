@@ -14,6 +14,7 @@ import {
   Tag as TagIcon,
   X,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type TagRecord = {
   tag_id: string;
@@ -43,6 +44,7 @@ export default function TagDetailPage() {
   const router = useRouter();
   const params = useParams();
   const tagId = params?.id as string;
+  const { t } = useTranslation();
 
   const [tag, setTag] = useState<TagRecord | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -266,7 +268,7 @@ export default function TagDetailPage() {
               className="mt-1 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Tags
+              {t("pages.pim.tags.backToTags")}
             </Link>
           </div>
           <div className="flex flex-1 items-start gap-4 md:ml-12">
@@ -329,7 +331,7 @@ export default function TagDetailPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition"
               >
                 <Plus className="h-4 w-4" />
-                Add Products
+                {t("pages.pim.common.addProducts")}
               </button>
               <button
                 onClick={handleBulkDisassociate}
@@ -337,7 +339,7 @@ export default function TagDetailPage() {
                 className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Minus className="h-4 w-4" />
-                Remove Selected
+                {t("pages.pim.common.removeSelected")}
               </button>
             </div>
           </div>
@@ -346,7 +348,7 @@ export default function TagDetailPage() {
         <div className="rounded-lg border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Associated Products</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.common.associatedProducts")}</h2>
               <p className="text-sm text-muted-foreground">
                 Showing {products.length} of {totalProducts} products
               </p>

@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { TRIGGER_LABELS } from "@/lib/constants/notification";
 import type { INotificationTemplate, NotificationTrigger } from "@/lib/constants/notification";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TemplatesResponse {
   templates: INotificationTemplate[];
@@ -19,6 +20,7 @@ interface TemplatesResponse {
 }
 
 export default function TemplatesPage() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<INotificationTemplate[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -55,11 +57,11 @@ export default function TemplatesPage() {
       setPagination(data.pagination);
     } catch (error) {
       console.error("Error loading templates:", error);
-      setToast({ type: "error", message: "Failed to load templates" });
+      setToast({ type: "error", message: t("pages.notifications.templates.loadError") });
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.page, pagination.limit, search]);
+  }, [pagination.page, pagination.limit, search, t]);
 
   useEffect(() => {
     loadTemplates();
@@ -81,12 +83,12 @@ export default function TemplatesPage() {
       const data = await res.json();
       setToast({
         type: "success",
-        message: `Created ${data.created} templates (${data.skipped} already existed)`,
+        message: t("pages.notifications.templates.seedSuccess").replace("{created}", String(data.created)).replace("{skipped}", String(data.skipped)),
       });
       loadTemplates();
     } catch (error) {
       console.error("Error seeding templates:", error);
-      setToast({ type: "error", message: "Failed to seed templates" });
+      setToast({ type: "error", message: t("pages.notifications.templates.seedError") });
     } finally {
       setIsSeeding(false);
     }
@@ -102,7 +104,7 @@ export default function TemplatesPage() {
       loadTemplates();
     } catch (error) {
       console.error("Error toggling template:", error);
-      setToast({ type: "error", message: "Failed to toggle template" });
+      setToast({ type: "error", message: t("pages.notifications.templates.toggleError") });
     }
   };
 
@@ -111,16 +113,16 @@ export default function TemplatesPage() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche", href: "/b2b/notifications" },
-          { label: "Templates" },
+          { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+          { label: t("pages.notifications.templates.breadcrumb") },
         ]} />
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Notification Templates</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.templates.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage email templates for automated notifications
+            {t("pages.notifications.templates.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -136,11 +138,11 @@ export default function TemplatesPage() {
             ) : (
               <RefreshCcw className="w-4 h-4" />
             )}
-            Ripristina Predefiniti
+            {t("pages.notifications.templates.seedDefaults")}
           </Button>
           <Button size="sm" className="gap-2">
             <Plus className="w-4 h-4" />
-            New Template
+            {t("pages.notifications.templates.newTemplate")}
           </Button>
         </div>
       </div>
@@ -167,7 +169,7 @@ export default function TemplatesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search templates..."
+            placeholder={t("pages.notifications.templates.searchPlaceholder")}
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -182,9 +184,9 @@ export default function TemplatesPage() {
         ) : templates.length === 0 ? (
           <div className="text-center py-12">
             <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">No templates found</p>
+            <p className="text-slate-500">{t("pages.notifications.templates.noTemplates")}</p>
             <p className="text-sm text-slate-400 mt-1">
-              Click "Seed Defaults" to create the standard templates
+              {t("pages.notifications.templates.noTemplatesSub")}
             </p>
           </div>
         ) : (
@@ -192,19 +194,19 @@ export default function TemplatesPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Name
+                  {t("pages.notifications.templates.name")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Trigger
+                  {t("pages.notifications.templates.trigger")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Channels
+                  {t("pages.notifications.templates.channels")}
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Status
+                  {t("pages.notifications.templates.status")}
                 </th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Actions
+                  {t("pages.notifications.templates.actions")}
                 </th>
               </tr>
             </thead>
@@ -228,7 +230,7 @@ export default function TemplatesPage() {
                       <button
                         onClick={() => copyTrigger(template.trigger)}
                         className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
-                        title="Copy trigger ID for API calls"
+                        title={t("pages.notifications.templates.copyTrigger")}
                       >
                         {copiedTrigger === template.trigger ? (
                           <Check className="w-3 h-3 text-emerald-500" />
@@ -260,11 +262,11 @@ export default function TemplatesPage() {
                     >
                       {template.is_active ? (
                         <>
-                          <Check className="w-3 h-3" /> Active
+                          <Check className="w-3 h-3" /> {t("pages.notifications.templates.active")}
                         </>
                       ) : (
                         <>
-                          <X className="w-3 h-3" /> Inactive
+                          <X className="w-3 h-3" /> {t("pages.notifications.templates.inactive")}
                         </>
                       )}
                     </button>
@@ -275,12 +277,11 @@ export default function TemplatesPage() {
                       size="sm"
                       className="gap-1"
                       onClick={() => {
-                        // TODO: Navigate to template editor
                         window.location.href = `/b2b/notifications/templates/${template.template_id}`;
                       }}
                     >
                       <Pencil className="w-3.5 h-3.5" />
-                      Edit
+                      {t("pages.notifications.templates.edit")}
                     </Button>
                   </td>
                 </tr>
@@ -294,9 +295,10 @@ export default function TemplatesPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-slate-500">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} templates
+            {t("pages.notifications.templates.showing")
+              .replace("{from}", String((pagination.page - 1) * pagination.limit + 1))
+              .replace("{to}", String(Math.min(pagination.page * pagination.limit, pagination.total)))
+              .replace("{total}", String(pagination.total))}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -305,7 +307,7 @@ export default function TemplatesPage() {
               disabled={pagination.page <= 1}
               onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
             >
-              Previous
+              {t("pages.notifications.templates.previous")}
             </Button>
             <Button
               variant="outline"
@@ -313,7 +315,7 @@ export default function TemplatesPage() {
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
             >
-              Next
+              {t("pages.notifications.templates.next")}
             </Button>
           </div>
         </div>

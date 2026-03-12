@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { VersionComparison } from "@/components/pim/VersionComparison";
 import { getLocalizedString } from "@/lib/types/pim";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ProductVersion = {
   _id: string;
@@ -59,6 +60,7 @@ export default function ProductHistoryPage({
 }) {
   const { entity_code } = use(params);
   const router = useRouter();
+  const { t } = useTranslation();
   const [versions, setVersions] = useState<ProductVersion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVersions, setSelectedVersions] = useState<number[]>([]);
@@ -275,8 +277,8 @@ export default function ProductHistoryPage({
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Products", href: "/b2b/pim/products" },
+          { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+          { label: t("pages.pim.products.title"), href: "/b2b/pim/products" },
           {
             label: (() => {
               if (!currentProduct?.name) return entity_code;
@@ -286,7 +288,7 @@ export default function ProductHistoryPage({
             })(),
             href: `/b2b/pim/products/${entity_code}`,
           },
-          { label: "Version History" },
+          { label: t("pages.pim.history.title") },
         ]}
       />
 
@@ -300,7 +302,7 @@ export default function ProductHistoryPage({
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Version History</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.history.title")}</h1>
             <p className="text-sm text-muted-foreground">
               {getLocalizedString(currentProduct?.name)} • {filteredVersions.length} of {versions.length} version
               {versions.length !== 1 ? "s" : ""}
@@ -317,7 +319,7 @@ export default function ProductHistoryPage({
           }`}
         >
           <Filter className="h-4 w-4" />
-          Filters
+          {t("common.filters")}
           {hasActiveFilters && (
             <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
               {[
@@ -337,7 +339,7 @@ export default function ProductHistoryPage({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">Search</label>
+              <label className="block text-sm font-medium text-foreground mb-2">{t("common.search")}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
@@ -352,7 +354,7 @@ export default function ProductHistoryPage({
 
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Status</label>
+              <label className="block text-sm font-medium text-foreground mb-2">{t("common.status")}</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -367,7 +369,7 @@ export default function ProductHistoryPage({
 
             {/* Edit Type Filter */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Edit Type</label>
+              <label className="block text-sm font-medium text-foreground mb-2">{t("pages.pim.history.editType")}</label>
               <select
                 value={editTypeFilter}
                 onChange={(e) => setEditTypeFilter(e.target.value as any)}
@@ -382,7 +384,7 @@ export default function ProductHistoryPage({
 
           {/* Date Range Filter */}
           <div className="mt-4">
-            <label className="block text-sm font-medium text-foreground mb-2">Date Range</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("pages.pim.history.dateRange")}</label>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -393,7 +395,7 @@ export default function ProductHistoryPage({
                     : "bg-background border border-border hover:bg-muted"
                 }`}
               >
-                All Time
+                {t("pages.pim.history.allTime")}
               </button>
               <button
                 type="button"
@@ -404,7 +406,7 @@ export default function ProductHistoryPage({
                     : "bg-background border border-border hover:bg-muted"
                 }`}
               >
-                Last 7 Days
+                {t("pages.pim.history.last7Days")}
               </button>
               <button
                 type="button"
@@ -415,7 +417,7 @@ export default function ProductHistoryPage({
                     : "bg-background border border-border hover:bg-muted"
                 }`}
               >
-                Last 30 Days
+                {t("pages.pim.history.last30Days")}
               </button>
             </div>
           </div>
@@ -432,7 +434,7 @@ export default function ProductHistoryPage({
                 className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 <X className="h-4 w-4" />
-                Clear All Filters
+                {t("pages.pim.history.clearAllFilters")}
               </button>
             </div>
           )}
@@ -509,7 +511,7 @@ export default function ProductHistoryPage({
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <ArrowLeftRight className="h-4 w-4" />
-                Compare Versions
+                {t("pages.pim.history.compareVersions")}
               </button>
             </div>
           </div>
@@ -522,7 +524,7 @@ export default function ProductHistoryPage({
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <GitBranch className="h-5 w-5" />
-              Version Timeline
+              {t("pages.pim.history.versionTimeline")}
             </h2>
             <p className="text-xs text-gray-500">
               Select 2 versions to compare • Click rollback to restore old version
@@ -534,7 +536,7 @@ export default function ProductHistoryPage({
           {filteredVersions.length === 0 ? (
             <div className="p-12 text-center">
               <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No versions found</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{t("pages.pim.history.noVersionsFound")}</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Try adjusting your filters to see more results
               </p>
@@ -544,7 +546,7 @@ export default function ProductHistoryPage({
                   onClick={clearFilters}
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
                 >
-                  Clear All Filters
+                  {t("pages.pim.history.clearAllFilters")}
                 </button>
               )}
             </div>
@@ -659,7 +661,7 @@ export default function ProductHistoryPage({
                         className="inline-flex items-center gap-1 px-3 py-1 rounded border border-border hover:bg-muted text-sm"
                       >
                         <Eye className="h-3 w-3" />
-                        View
+                        {t("common.view")}
                       </Link>
                       {!version.isCurrent && (
                         <button
@@ -669,7 +671,7 @@ export default function ProductHistoryPage({
                           className="inline-flex items-center gap-1 px-3 py-1 rounded border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <RotateCcw className="h-3 w-3" />
-                          Rollback
+                          {t("pages.pim.history.rollback")}
                         </button>
                       )}
                     </div>

@@ -18,19 +18,20 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { StorefrontActiveSection } from "@/components/b2c/storefront-settings/types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const STOREFRONT_SECTIONS: {
   key: StorefrontActiveSection;
   icon: typeof Settings2;
-  label: string;
+  labelKey: string;
 }[] = [
-  { key: "general", icon: Settings2, label: "General" },
-  { key: "branding", icon: Palette, label: "Branding" },
-  { key: "header", icon: LayoutTemplate, label: "Header" },
-  { key: "footer", icon: FileCode2, label: "Footer" },
-  { key: "seo", icon: Globe, label: "SEO & Meta Tags" },
-  { key: "scripts", icon: Code2, label: "Custom Scripts" },
-  { key: "sitemap", icon: MapPin, label: "Sitemap" },
+  { key: "general", icon: Settings2, labelKey: "nav.b2c.general" },
+  { key: "branding", icon: Palette, labelKey: "nav.b2c.branding" },
+  { key: "header", icon: LayoutTemplate, labelKey: "nav.b2c.header" },
+  { key: "footer", icon: FileCode2, labelKey: "nav.b2c.footer" },
+  { key: "seo", icon: Globe, labelKey: "nav.b2c.seoMetaTags" },
+  { key: "scripts", icon: Code2, labelKey: "nav.b2c.customScripts" },
+  { key: "sitemap", icon: MapPin, labelKey: "nav.b2c.sitemap" },
 ];
 
 function StorefrontSectionLink({
@@ -63,6 +64,7 @@ function StorefrontSectionLink({
 export function B2CNavigation() {
   const pathname = usePathname() || "";
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
 
   // Detect if we're on a storefront detail page: /tenant/b2b/b2c/storefronts/[slug] or sub-pages
   const storefrontMatch = pathname.match(
@@ -76,17 +78,17 @@ export function B2CNavigation() {
   const currentSection = searchParams.get("section") || "general";
 
   return (
-    <AppSidebar title="B2C Storefront">
+    <AppSidebar title={t("nav.b2c.title")}>
       <NavLink
         href="/b2b/b2c"
         icon={LayoutDashboard}
-        label="Dashboard"
+        label={t("nav.b2c.dashboard")}
         exactMatch
       />
       <NavLink
         href="/b2b/b2c/settings"
         icon={Settings}
-        label="Settings"
+        label={t("nav.b2c.settings")}
       />
       {storefrontSlug && (
         <NavSection title={storefrontSlug} defaultOpen collapsible={false}>
@@ -95,20 +97,20 @@ export function B2CNavigation() {
               key={item.key}
               href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}?section=${item.key}`}
               icon={item.icon}
-              label={item.label}
+              label={t(item.labelKey)}
               active={!subPage && currentSection === item.key}
             />
           ))}
           <StorefrontSectionLink
             href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}/pages`}
             icon={FileText}
-            label="Pages"
+            label={t("nav.b2c.pages")}
             active={subPage === "pages"}
           />
           <StorefrontSectionLink
             href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}/forms`}
             icon={Inbox}
-            label="Forms"
+            label={t("nav.b2c.forms")}
             active={subPage === "forms"}
           />
         </NavSection>

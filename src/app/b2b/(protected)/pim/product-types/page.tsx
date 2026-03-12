@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
 import { FullScreenModal } from "@/components/shared/FullScreenModal";
 import { ImageUpload } from "@/components/shared/ImageUpload";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ProductTypeFeature = {
   feature_id: string;
@@ -46,6 +47,7 @@ type ProductType = {
 
 export default function ProductTypesPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,17 +206,17 @@ export default function ProductTypesPage() {
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Product Types" },
+            { label: t("pages.pim.breadcrumbPim"), href: "/b2b/pim" },
+            { label: t("pages.pim.productTypes.title") },
           ]}
         />
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Product Types</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.productTypes.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {productTypes.length} total product types
+              {productTypes.length} {t("pages.pim.productTypes.totalProductTypes")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -223,10 +225,10 @@ export default function ProductTypesPage() {
               onClick={handleSyncAll}
               disabled={syncing || productTypes.length === 0}
               className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Sync all ProductType data (code, name, slug) to associated products"
+              title={t("pages.pim.productTypes.syncAllTitle")}
             >
               <RefreshCw className={`h-5 w-5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing..." : "Sync All"}
+              {syncing ? t("pages.pim.productTypes.syncing") : t("pages.pim.productTypes.syncAll")}
             </button>
             <button
               type="button"
@@ -234,7 +236,7 @@ export default function ProductTypesPage() {
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
             >
               <Plus className="h-5 w-5" />
-              New Product Type
+              {t("pages.pim.productTypes.newProductType")}
             </button>
           </div>
         </div>
@@ -245,7 +247,7 @@ export default function ProductTypesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by name, slug, or code..."
+              placeholder={t("pages.pim.productTypes.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -259,10 +261,10 @@ export default function ProductTypesPage() {
                 ? "border-border bg-background"
                 : "border-primary bg-primary/10 text-primary"
             }`}
-            title="Filter"
+            title={t("common.filter")}
           >
             <Filter className="h-5 w-5" />
-            {!showInactive && "Active only"}
+            {!showInactive && t("pages.pim.activeOnly")}
           </button>
         </div>
 
@@ -270,7 +272,7 @@ export default function ProductTypesPage() {
         <div className="rounded-lg bg-card shadow-sm border border-border">
           <div className="border-b border-border px-6 py-4">
             <h2 className="text-lg font-semibold text-foreground">
-              Product Type Directory
+              {t("pages.pim.productTypes.directory")}
             </h2>
           </div>
 
@@ -278,12 +280,12 @@ export default function ProductTypesPage() {
             <div className="p-12 text-center">
               <Cpu className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? "No product types found" : "No product types yet"}
+                {searchQuery ? t("pages.pim.productTypes.noFound") : t("pages.pim.productTypes.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
-                  ? "Try adjusting your search query"
-                  : "Create your first product type with features"}
+                  ? t("pages.pim.tryAdjustingSearch")
+                  : t("pages.pim.productTypes.createFirst")}
               </p>
               {!searchQuery && (
                 <button
@@ -292,7 +294,7 @@ export default function ProductTypesPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                 >
                   <Plus className="h-5 w-5" />
-                  Create Product Type
+                  {t("pages.pim.productTypes.createProductType")}
                 </button>
               )}
             </div>
@@ -319,12 +321,12 @@ export default function ProductTypesPage() {
                         )}
                         {!productType.is_active && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            Inactive
+                            {t("common.inactive")}
                           </span>
                         )}
                         {productType.is_active && (
                           <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-medium">
-                            Active
+                            {t("common.active")}
                           </span>
                         )}
                       </div>
@@ -337,10 +339,10 @@ export default function ProductTypesPage() {
                       <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Package className="h-4 w-4" />
-                          {productType.product_count} products
+                          {productType.product_count} {t("pages.pim.productTypes.products")}
                         </span>
                         <span>
-                          {(productType.features || []).length} features
+                          {(productType.features || []).length} {t("pages.pim.productTypes.features")}
                         </span>
                       </div>
                     </div>
@@ -353,7 +355,7 @@ export default function ProductTypesPage() {
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      Open
+                      {t("pages.pim.open")}
                     </Link>
                     <button
                       type="button"
@@ -361,7 +363,7 @@ export default function ProductTypesPage() {
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                     >
                       <ImageIcon className="h-4 w-4" />
-                      Images
+                      {t("pages.pim.productTypes.images")}
                     </button>
                     <button
                       type="button"
@@ -369,7 +371,7 @@ export default function ProductTypesPage() {
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                     >
                       <Edit2 className="h-4 w-4" />
-                      Edit
+                      {t("common.edit")}
                     </button>
                     <button
                       type="button"
@@ -377,7 +379,7 @@ export default function ProductTypesPage() {
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Delete
+                      {t("common.delete")}
                     </button>
                   </div>
                 </div>
@@ -399,14 +401,14 @@ export default function ProductTypesPage() {
               onClick={() => setShowImageModal(false)}
               className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
               onClick={handleSaveImages}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm"
             >
-              Save Images
+              {t("pages.pim.productTypes.saveImages")}
             </button>
           </>
         }
@@ -414,13 +416,13 @@ export default function ProductTypesPage() {
         <div className="space-y-6">
           {/* Desktop Image */}
           <ImageUpload
-            label="Product Type Image"
+            label={t("pages.pim.productTypes.productTypeImage")}
             value={imageFormData.image_url}
             onChange={(url) => setImageFormData((prev) => ({ ...prev, image_url: url }))}
           />
           {imageFormData.image_url && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.productTypes.imageAltText")}</label>
               <input
                 type="text"
                 value={imageFormData.image_alt}
@@ -433,13 +435,13 @@ export default function ProductTypesPage() {
 
           {/* Mobile Image */}
           <ImageUpload
-            label="Mobile Product Type Image"
+            label={t("pages.pim.productTypes.mobileProductTypeImage")}
             value={imageFormData.mobile_image_url}
             onChange={(url) => setImageFormData((prev) => ({ ...prev, mobile_image_url: url }))}
           />
           {imageFormData.mobile_image_url && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.productTypes.mobileImageAltText")}</label>
               <input
                 type="text"
                 value={imageFormData.mobile_image_alt}

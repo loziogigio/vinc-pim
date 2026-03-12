@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ProductTypeFeature = {
   feature_id: string;
@@ -54,6 +55,7 @@ export default function ProductTypeDetailPage() {
   const router = useRouter();
   const params = useParams();
   const productTypeId = params?.id as string;
+  const { t } = useTranslation();
 
   const [productType, setProductType] = useState<ProductType | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -415,7 +417,7 @@ export default function ProductTypeDetailPage() {
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Product Types
+            {t("pages.pim.productTypes.backToProductTypes")}
           </Link>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -450,14 +452,14 @@ export default function ProductTypeDetailPage() {
                 title="Sync ProductType data (code, name, slug) to all associated products"
               >
                 <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Syncing..." : "Sync Products"}
+                {syncing ? t("pages.pim.productTypes.syncing") : t("pages.pim.productTypes.syncProducts")}
               </button>
               <button
                 onClick={() => setShowImportModal(true)}
                 className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition"
               >
                 <Upload className="h-4 w-4" />
-                Import Products
+                {t("pages.pim.common.importProducts")}
               </button>
               <div className="relative group">
                 <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition">
@@ -489,7 +491,7 @@ export default function ProductTypeDetailPage() {
                 href={`/b2b/pim/product-types/${productTypeId}/edit`}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
               >
-                Edit Product Type
+                {t("pages.pim.productTypes.editProductType")}
               </Link>
             </div>
           </div>
@@ -500,7 +502,7 @@ export default function ProductTypeDetailPage() {
         <div className="grid gap-6 md:grid-cols-3">
           <div className="md:col-span-2 space-y-6">
             <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Product Type Details</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.productTypes.productTypeDetails")}</h2>
               {productType.description && (
                 <p className="text-sm leading-6 text-muted-foreground">{getLocalizedString(productType.description)}</p>
               )}
@@ -566,7 +568,7 @@ export default function ProductTypeDetailPage() {
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition"
                   >
                     <Plus className="h-4 w-4" />
-                    Add Products
+                    {t("pages.pim.common.addProducts")}
                   </button>
                   <button
                     onClick={handleBulkDisassociate}
@@ -574,7 +576,7 @@ export default function ProductTypeDetailPage() {
                     className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Minus className="h-4 w-4" />
-                    Remove Selected
+                    {t("pages.pim.common.removeSelected")}
                   </button>
                 </div>
               </div>
@@ -583,7 +585,7 @@ export default function ProductTypeDetailPage() {
             <div className="rounded-lg border border-border bg-card shadow-sm">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Associated Products</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.common.associatedProducts")}</h2>
                   <p className="text-sm text-muted-foreground">
                     Showing {products.length} of {totalProducts} product(s)
                   </p>
@@ -686,7 +688,7 @@ export default function ProductTypeDetailPage() {
 
           <div className="space-y-6">
             <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-              <h2 className="mb-3 text-sm font-semibold text-foreground">Quick Actions</h2>
+              <h2 className="mb-3 text-sm font-semibold text-foreground">{t("pages.pim.common.quickActions")}</h2>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <button
                   onClick={() => router.push(`/b2b/pim/features`)}
@@ -698,7 +700,7 @@ export default function ProductTypeDetailPage() {
                   onClick={() => router.push(`/b2b/pim/product-types/${productTypeId}/edit`)}
                   className="w-full rounded-md border border-border px-4 py-2 text-left hover:bg-muted transition"
                 >
-                  Edit Product Type
+                  {t("pages.pim.productTypes.editProductType")}
                 </button>
               </div>
             </div>

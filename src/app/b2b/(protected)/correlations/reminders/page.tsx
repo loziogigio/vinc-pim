@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import Link from "next/link";
 import { BellRing, Bell, BellOff, Clock } from "lucide-react";
 import { REMINDER_STATUS_LABELS } from "@/lib/constants/reminder";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ReminderDashboardStats = {
   active: number;
@@ -20,6 +21,7 @@ type MostWantedProduct = {
 };
 
 export default function RemindersDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<ReminderDashboardStats | null>(null);
   const [mostWanted, setMostWanted] = useState<MostWantedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,11 +54,11 @@ export default function RemindersDashboard() {
       const res = await fetch("/api/b2b/reminders/expire", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setExpireResult(`${data.data.expired_count} reminders scaduti aggiornati`);
+        setExpireResult(t("pages.correlations.reminders.expiredCount").replace("{count}", String(data.data.expired_count)));
       }
     } catch (error) {
       console.error("Expire error:", error);
-      setExpireResult("Errore durante l'operazione");
+      setExpireResult(t("pages.correlations.reminders.expireError"));
     } finally {
       setIsExpiring(false);
     }
@@ -72,15 +74,15 @@ export default function RemindersDashboard() {
   );
 
   if (isLoading) {
-    return renderEmptyState("Caricamento...", "Raccolta dati sui reminders.");
+    return renderEmptyState(t("pages.correlations.reminders.loading"), t("pages.correlations.reminders.loadingSub"));
   }
 
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Correlazioni & Analytics", href: "/b2b/correlations" },
-          { label: "Reminders" },
+          { label: t("pages.correlations.dashboard.title"), href: "/b2b/correlations" },
+          { label: t("pages.correlations.reminders.breadcrumb") },
         ]}
       />
 
@@ -118,14 +120,14 @@ export default function RemindersDashboard() {
 
       {/* Actions */}
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-        <h3 className="text-[0.95rem] font-semibold text-[#5e5873] mb-4">Azioni</h3>
+        <h3 className="text-[0.95rem] font-semibold text-[#5e5873] mb-4">{t("pages.correlations.reminders.actions")}</h3>
         <div className="flex items-center gap-4">
           <button
             onClick={handleExpire}
             disabled={isExpiring}
             className="rounded-[0.358rem] bg-[#ff9f43] px-4 py-2 text-[0.85rem] font-medium text-white transition hover:bg-[#e08e38] disabled:opacity-50"
           >
-            {isExpiring ? "In corso..." : "Scadi Reminders Vecchi"}
+            {isExpiring ? t("pages.correlations.reminders.expiring") : t("pages.correlations.reminders.expireOld")}
           </button>
           {expireResult && (
             <span className="text-[0.85rem] text-[#6e6b7b]">{expireResult}</span>
@@ -136,21 +138,21 @@ export default function RemindersDashboard() {
       {/* Most Wanted Products */}
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
         <div className="border-b border-[#ebe9f1] p-4">
-          <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">Prodotti Pi&ugrave; Richiesti</h3>
-          <p className="text-[0.8rem] text-[#b9b9c3]">Prodotti con il maggior numero di reminders attivi</p>
+          <h3 className="text-[0.95rem] font-semibold text-[#5e5873]">{t("pages.correlations.reminders.mostWanted")}</h3>
+          <p className="text-[0.8rem] text-[#b9b9c3]">{t("pages.correlations.reminders.mostWantedDesc")}</p>
         </div>
         <div className="p-4">
           {mostWanted.length === 0 ? (
             <p className="text-[0.85rem] text-[#b9b9c3] text-center py-6">
-              Nessun dato disponibile. I dati appariranno quando gli utenti creeranno reminders.
+              {t("pages.correlations.reminders.noDataReminders")}
             </p>
           ) : (
             <table className="w-full text-[0.85rem]">
               <thead>
                 <tr className="text-left text-[0.75rem] uppercase tracking-wide text-[#b9b9c3]">
-                  <th className="pb-2">SKU</th>
-                  <th className="pb-2 text-right">Reminders Attivi</th>
-                  <th className="pb-2 text-right">Totale</th>
+                  <th className="pb-2">{t("pages.correlations.likes.sku")}</th>
+                  <th className="pb-2 text-right">{t("pages.correlations.reminders.activeReminders")}</th>
+                  <th className="pb-2 text-right">{t("pages.correlations.reminders.total")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,15 +175,15 @@ export default function RemindersDashboard() {
 
       {/* Info Box */}
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-        <h3 className="text-[1rem] font-semibold text-[#5e5873] mb-3">Come funziona</h3>
+        <h3 className="text-[1rem] font-semibold text-[#5e5873] mb-3">{t("pages.correlations.reminders.howItWorks")}</h3>
         <div className="space-y-2 text-[0.875rem] text-[#6e6b7b]">
           <p>
-            I <strong>Reminders</strong> permettono agli utenti di ricevere notifiche quando un prodotto esaurito torna disponibile.
+            {t("pages.correlations.reminders.howItWorksDesc")}
           </p>
           <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Gli utenti attivano un reminder dalla scheda prodotto</li>
-            <li>Quando il prodotto torna disponibile, ricevono una notifica</li>
-            <li>I reminders scadono automaticamente dopo il periodo impostato</li>
+            <li>{t("pages.correlations.reminders.howItWorks1")}</li>
+            <li>{t("pages.correlations.reminders.howItWorks2")}</li>
+            <li>{t("pages.correlations.reminders.howItWorks3")}</li>
           </ul>
         </div>
       </div>

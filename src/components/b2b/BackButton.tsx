@@ -3,14 +3,16 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type BackButtonProps = {
   label?: string;
   fallbackHref?: string;
 };
 
-export function BackButton({ label = "Back", fallbackHref = "/b2b/dashboard" }: BackButtonProps) {
+export function BackButton({ label, fallbackHref = "/b2b/dashboard" }: BackButtonProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleBack = () => {
     // Try to go back in history, fallback to dashboard
@@ -29,7 +31,7 @@ export function BackButton({ label = "Back", fallbackHref = "/b2b/dashboard" }: 
       className="gap-2"
     >
       <ArrowLeft className="h-4 w-4" />
-      {label}
+      {label || t("common.back")}
     </Button>
   );
 }

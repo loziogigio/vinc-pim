@@ -17,6 +17,7 @@ import {
 import { TransactionStatusBadge, ProviderBadge } from "@/components/payments";
 import type { TransactionStatus } from "@/lib/constants/payment";
 import type { PaymentProvider } from "@/lib/constants/payment";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Stats {
   total_transactions: number;
@@ -45,6 +46,7 @@ const formatCurrency = (amount: number, currency: string = "EUR") =>
   new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 
 export default function PaymentsDashboardPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -82,9 +84,9 @@ export default function PaymentsDashboardPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#5e5873]">Payments</h1>
+        <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.payments.dashboard.title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Dashboard pagamenti e transazioni
+          {t("pages.payments.dashboard.subtitle")}
         </p>
       </div>
 
@@ -97,25 +99,25 @@ export default function PaymentsDashboardPage() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              label="Transazioni Totali"
+              label={t("pages.payments.dashboard.totalTransactions")}
               value={String(stats.total_transactions)}
               icon={Receipt}
               color="bg-blue-50 text-blue-600"
             />
             <StatCard
-              label="Volume Completato"
+              label={t("pages.payments.dashboard.completedVolume")}
               value={formatCurrency(stats.total_volume)}
               icon={Banknote}
               color="bg-green-50 text-green-600"
             />
             <StatCard
-              label="Tasso Successo"
+              label={t("pages.payments.dashboard.successRate")}
               value={`${stats.successful_rate}%`}
               icon={TrendingUp}
               color="bg-emerald-50 text-emerald-600"
             />
             <StatCard
-              label="In Attesa"
+              label={t("pages.payments.dashboard.pending")}
               value={String(stats.pending_count)}
               icon={Clock}
               color="bg-amber-50 text-amber-600"
@@ -126,26 +128,26 @@ export default function PaymentsDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <QuickAction
               href={`${tenantPrefix}/b2b/payments/transactions`}
-              title="Transazioni"
-              description="Tutte le transazioni"
+              title={t("pages.payments.dashboard.transactions")}
+              description={t("pages.payments.dashboard.allTransactions")}
               icon={Receipt}
             />
             <QuickAction
               href={`${tenantPrefix}/b2b/payments/gateways`}
-              title="Gateway"
-              description="Stato provider"
+              title={t("pages.payments.dashboard.gateways")}
+              description={t("pages.payments.dashboard.providerStatus")}
               icon={CreditCard}
             />
             <QuickAction
               href={`${tenantPrefix}/b2b/payments/moto`}
-              title="Terminale MOTO"
-              description="Pagamento telefonico"
+              title={t("pages.payments.dashboard.motoTerminal")}
+              description={t("pages.payments.dashboard.phonePayment")}
               icon={Phone}
             />
             <QuickAction
               href={`${tenantPrefix}/b2b/payments/recurring`}
-              title="Ricorrenti"
-              description="Contratti attivi"
+              title={t("pages.payments.dashboard.recurring")}
+              description={t("pages.payments.dashboard.activeContracts")}
               icon={RefreshCw}
             />
           </div>
@@ -154,29 +156,29 @@ export default function PaymentsDashboardPage() {
           <div className="bg-white rounded-lg border border-[#ebe9f1]">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#ebe9f1]">
               <h2 className="font-medium text-[#5e5873]">
-                Transazioni Recenti
+                {t("pages.payments.dashboard.recentTransactions")}
               </h2>
               <Link
                 href={`${tenantPrefix}/b2b/payments/transactions`}
                 className="text-sm text-[#009688] hover:underline"
               >
-                Vedi tutte
+                {t("pages.payments.dashboard.viewAll")}
               </Link>
             </div>
             {recent.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <Receipt className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-                <p>Nessuna transazione trovata</p>
+                <p>{t("pages.payments.dashboard.noTransactions")}</p>
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-                    <th className="text-left px-4 py-2 font-medium text-[#5e5873]">ID</th>
-                    <th className="text-left px-4 py-2 font-medium text-[#5e5873]">Provider</th>
-                    <th className="text-right px-4 py-2 font-medium text-[#5e5873]">Importo</th>
-                    <th className="text-center px-4 py-2 font-medium text-[#5e5873]">Stato</th>
-                    <th className="text-right px-4 py-2 font-medium text-[#5e5873]">Data</th>
+                    <th className="text-left px-4 py-2 font-medium text-[#5e5873]">{t("pages.payments.dashboard.id")}</th>
+                    <th className="text-left px-4 py-2 font-medium text-[#5e5873]">{t("pages.payments.dashboard.provider")}</th>
+                    <th className="text-right px-4 py-2 font-medium text-[#5e5873]">{t("pages.payments.dashboard.amount")}</th>
+                    <th className="text-center px-4 py-2 font-medium text-[#5e5873]">{t("pages.payments.dashboard.status")}</th>
+                    <th className="text-right px-4 py-2 font-medium text-[#5e5873]">{t("pages.payments.dashboard.date")}</th>
                   </tr>
                 </thead>
                 <tbody>

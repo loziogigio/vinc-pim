@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Search, Edit, Trash2, ExternalLink, Tag as TagIcon } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { toast } from "sonner";
 import { FullScreenModal } from "@/components/shared/FullScreenModal";
 import { ImageUpload } from "@/components/shared/ImageUpload";
@@ -24,6 +25,7 @@ type TagRecord = {
 };
 
 export default function TagsPage() {
+  const { t } = useTranslation();
   const [tags, setTags] = useState<TagRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -198,9 +200,9 @@ export default function TagsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Tags</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.tags.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create reusable tags to organize and segment your catalog.
+            {t("pages.pim.tags.subtitle")}
           </p>
         </div>
         <button
@@ -209,7 +211,7 @@ export default function TagsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition"
         >
           <Plus className="h-4 w-4" />
-          New Tag
+          {t("pages.pim.tags.newTag")}
         </button>
       </div>
 
@@ -220,7 +222,7 @@ export default function TagsPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search tags by name or slug..."
+              placeholder={t("pages.pim.tags.searchPlaceholder")}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -258,16 +260,16 @@ export default function TagsPage() {
 
       <div className="rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold text-foreground">Tag Directory</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.tags.directory")}</h2>
         </div>
 
         {loading ? (
           <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-            Loading tags...
+            {t("pages.pim.tags.loading")}
           </div>
         ) : tags.length === 0 ? (
           <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-            No tags found. Create your first tag to get started.
+            {t("pages.pim.tags.noFound")}
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -347,7 +349,7 @@ export default function TagsPage() {
       <FullScreenModal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={editingTag ? "Edit Tag" : "Create Tag"}
+        title={editingTag ? t("pages.pim.tags.editTag") : t("pages.pim.tags.createTag")}
         actions={
           <>
             <button
@@ -363,7 +365,7 @@ export default function TagsPage() {
               disabled={!formData.name || !formData.slug}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
             >
-              {editingTag ? "Update Tag" : "Create Tag"}
+              {editingTag ? t("pages.pim.tags.updateTag") : t("pages.pim.tags.createTag")}
             </button>
           </>
         }

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { MonacoHtmlEditor } from "@/components/shared/MonacoHtmlEditor";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface EmailComponent {
   _id: string;
@@ -68,6 +69,7 @@ function replaceTemplateVariables(
 }
 
 export default function ComponentsPage() {
+  const { t } = useTranslation();
   const [components, setComponents] = useState<EmailComponent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("header");
@@ -133,7 +135,7 @@ export default function ComponentsPage() {
   const filteredComponents = components.filter((c) => c.type === activeTab);
 
   const handleSeedDefaults = async () => {
-    if (!confirm("This will create default header and footer components. Continue?")) {
+    if (!confirm(t("pages.notifications.components.seedConfirm"))) {
       return;
     }
 
@@ -147,13 +149,13 @@ export default function ComponentsPage() {
       const data = await res.json();
       if (data.success) {
         await loadComponents();
-        alert(`Created ${data.components?.length || 0} components`);
+        alert(t("pages.notifications.components.seedSuccess").replace("{count}", String(data.components?.length || 0)));
       } else {
-        alert(data.message || "Failed to seed components");
+        alert(data.message || t("pages.notifications.components.seedError"));
       }
     } catch (error) {
       console.error("Error seeding:", error);
-      alert("Failed to seed components");
+      alert(t("pages.notifications.components.seedError"));
     } finally {
       setIsSeeding(false);
     }
@@ -175,7 +177,7 @@ export default function ComponentsPage() {
   };
 
   const handleDelete = async (component: EmailComponent) => {
-    if (!confirm(`Delete "${component.name}"? This cannot be undone.`)) {
+    if (!confirm(t("pages.notifications.components.deleteConfirm").replace("{name}", component.name))) {
       return;
     }
 
@@ -190,11 +192,11 @@ export default function ComponentsPage() {
           setSelectedComponent(null);
         }
       } else {
-        alert(data.error || "Failed to delete");
+        alert(data.error || t("pages.notifications.components.deleteError"));
       }
     } catch (error) {
       console.error("Error deleting:", error);
-      alert("Failed to delete component");
+      alert(t("pages.notifications.components.deleteComponentError"));
     }
   };
 
@@ -230,11 +232,11 @@ export default function ComponentsPage() {
           setSelectedComponent(data.component);
         }
       } else {
-        alert(data.error || "Failed to save");
+        alert(data.error || t("pages.notifications.components.saveError"));
       }
     } catch (error) {
       console.error("Error saving:", error);
-      alert("Failed to save component");
+      alert(t("pages.notifications.components.saveComponentError"));
     } finally {
       setIsSaving(false);
     }
@@ -262,8 +264,8 @@ export default function ComponentsPage() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche", href: "/b2b/notifications" },
-          { label: "Componenti" },
+          { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+          { label: t("pages.notifications.components.title") },
         ]} />
       </div>
 
@@ -274,8 +276,8 @@ export default function ComponentsPage() {
             <Puzzle className="w-6 h-6 text-violet-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Email Components</h1>
-            <p className="text-sm text-slate-500">Manage reusable headers and footers</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.components.title")}</h1>
+            <p className="text-sm text-slate-500">{t("pages.notifications.components.subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -290,11 +292,11 @@ export default function ComponentsPage() {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Seed Defaults
+            {t("pages.notifications.components.seedDefaults")}
           </Button>
           <Button onClick={handleCreateNew} className="gap-2">
             <Plus className="w-4 h-4" />
-            New {activeTab === "header" ? "Header" : "Footer"}
+            {activeTab === "header" ? t("pages.notifications.components.newHeader") : t("pages.notifications.components.newFooter")}
           </Button>
         </div>
       </div>
@@ -313,7 +315,7 @@ export default function ComponentsPage() {
                   : "text-slate-600 hover:text-slate-900"
               )}
             >
-              Headers
+              {t("pages.notifications.components.headers")}
             </button>
             <button
               onClick={() => setActiveTab("footer")}
@@ -324,7 +326,7 @@ export default function ComponentsPage() {
                   : "text-slate-600 hover:text-slate-900"
               )}
             >
-              Footers
+              {t("pages.notifications.components.footers")}
             </button>
           </div>
 
@@ -338,10 +340,10 @@ export default function ComponentsPage() {
               <div className="text-center py-12 px-4">
                 <FileCode className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                 <p className="text-slate-500 mb-4">
-                  No {activeTab}s yet
+                  {t("pages.notifications.components.noComponents").replace("{type}", activeTab)}
                 </p>
                 <Button variant="outline" size="sm" onClick={handleSeedDefaults}>
-                  Seed Defaults
+                  {t("pages.notifications.components.seedDefaults")}
                 </Button>
               </div>
             ) : (
@@ -369,7 +371,7 @@ export default function ComponentsPage() {
                           {component.is_default && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
                               <Star className="w-3 h-3" />
-                              Default
+                              {t("pages.notifications.components.defaultBadge")}
                             </span>
                           )}
                         </div>
@@ -380,7 +382,7 @@ export default function ComponentsPage() {
                         )}
                       </div>
                       {!component.is_active && (
-                        <span className="text-xs text-slate-400">Inactive</span>
+                        <span className="text-xs text-slate-400">{t("common.inactive")}</span>
                       )}
                     </div>
                   </li>
@@ -400,8 +402,8 @@ export default function ComponentsPage() {
                   <h2 className="text-lg font-semibold text-slate-900">
                     {isEditing
                       ? selectedComponent._id
-                        ? "Edit Component"
-                        : "New Component"
+                        ? t("pages.notifications.components.editComponent")
+                        : t("pages.notifications.components.newComponent")
                       : selectedComponent.name}
                   </h2>
                   {!isEditing && selectedComponent.description && (
@@ -418,7 +420,7 @@ export default function ComponentsPage() {
                           onClick={() => handleSetDefault(selectedComponent)}
                         >
                           <Star className="w-4 h-4 mr-1" />
-                          Set as Default
+                          {t("pages.notifications.components.setAsDefault")}
                         </Button>
                       )}
                       <Button
@@ -427,7 +429,7 @@ export default function ComponentsPage() {
                         onClick={() => setIsEditing(true)}
                       >
                         <Pencil className="w-4 h-4 mr-1" />
-                        Edit
+                        {t("common.edit")}
                       </Button>
                       <Button
                         variant="outline"
@@ -450,7 +452,7 @@ export default function ComponentsPage() {
                           setIsEditing(false);
                         }}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                       <Button size="sm" onClick={handleSave} disabled={isSaving}>
                         {isSaving ? (
@@ -458,7 +460,7 @@ export default function ComponentsPage() {
                         ) : (
                           <Check className="w-4 h-4 mr-1" />
                         )}
-                        Save
+                        {t("common.save")}
                       </Button>
                     </>
                   )}
@@ -472,7 +474,7 @@ export default function ComponentsPage() {
                     {/* Name */}
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Name *
+                        {t("pages.notifications.components.nameLabel")}
                       </label>
                       <input
                         type="text"
@@ -481,14 +483,14 @@ export default function ComponentsPage() {
                           setSelectedComponent({ ...selectedComponent, name: e.target.value })
                         }
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        placeholder="e.g., Header Standard"
+                        placeholder={t("pages.notifications.components.namePlaceholder")}
                       />
                     </div>
 
                     {/* Description */}
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Description
+                        {t("pages.notifications.components.descriptionLabel")}
                       </label>
                       <input
                         type="text"
@@ -500,14 +502,14 @@ export default function ComponentsPage() {
                           })
                         }
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        placeholder="Brief description of this component"
+                        placeholder={t("pages.notifications.components.descriptionPlaceholder")}
                       />
                     </div>
 
                     {/* HTML Content */}
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                        HTML Content *
+                        {t("pages.notifications.components.htmlContentLabel")}
                       </label>
                       <MonacoHtmlEditor
                         value={selectedComponent.html_content}
@@ -520,14 +522,14 @@ export default function ComponentsPage() {
                         height="350px"
                       />
                       <p className="text-xs text-slate-500 mt-2">
-                        Use {"{{variable_name}}"} for dynamic content
+                        {t("pages.notifications.components.variableHint")}
                       </p>
                     </div>
 
                     {/* Variables */}
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Variables (comma-separated)
+                        {t("pages.notifications.components.variablesLabel")}
                       </label>
                       <input
                         type="text"
@@ -542,7 +544,7 @@ export default function ComponentsPage() {
                           })
                         }
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        placeholder="company_name, logo, primary_color"
+                        placeholder={t("pages.notifications.components.variablesPlaceholder")}
                       />
                     </div>
 
@@ -560,7 +562,7 @@ export default function ComponentsPage() {
                           }
                           className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                         />
-                        <span className="text-sm text-slate-700">Set as default</span>
+                        <span className="text-sm text-slate-700">{t("pages.notifications.components.setAsDefaultCheckbox")}</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <input
@@ -574,7 +576,7 @@ export default function ComponentsPage() {
                           }
                           className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                         />
-                        <span className="text-sm text-slate-700">Active</span>
+                        <span className="text-sm text-slate-700">{t("pages.notifications.components.activeCheckbox")}</span>
                       </label>
                     </div>
                   </div>
@@ -583,18 +585,18 @@ export default function ComponentsPage() {
                     {/* Info */}
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-slate-500">ID:</span>{" "}
+                        <span className="text-slate-500">{t("pages.notifications.components.id")}</span>{" "}
                         <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
                           {selectedComponent.component_id}
                         </code>
                       </div>
                       <div>
-                        <span className="text-slate-500">Type:</span>{" "}
+                        <span className="text-slate-500">{t("pages.notifications.components.type")}</span>{" "}
                         <span className="capitalize">{selectedComponent.type}</span>
                       </div>
                       {selectedComponent.variables && selectedComponent.variables.length > 0 && (
                         <div className="col-span-2">
-                          <span className="text-slate-500">Variables:</span>{" "}
+                          <span className="text-slate-500">{t("pages.notifications.components.variablesInfo")}</span>{" "}
                           {selectedComponent.variables.map((v) => (
                             <code
                               key={v}
@@ -609,7 +611,7 @@ export default function ComponentsPage() {
 
                     {/* Preview */}
                     <div>
-                      <h3 className="text-sm font-medium text-slate-700 mb-2">Preview</h3>
+                      <h3 className="text-sm font-medium text-slate-700 mb-2">{t("pages.notifications.components.preview")}</h3>
                       <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
                         <iframe
                           srcDoc={`
@@ -630,7 +632,7 @@ export default function ComponentsPage() {
 
                     {/* HTML Code */}
                     <div>
-                      <h3 className="text-sm font-medium text-slate-700 mb-2">HTML Code</h3>
+                      <h3 className="text-sm font-medium text-slate-700 mb-2">{t("pages.notifications.components.htmlCode")}</h3>
                       <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-xs max-h-[300px]">
                         <code>{selectedComponent.html_content}</code>
                       </pre>
@@ -643,10 +645,10 @@ export default function ComponentsPage() {
             <div className="bg-white rounded-xl border border-slate-200 flex items-center justify-center h-[600px]">
               <div className="text-center">
                 <FileCode className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-500">Select a component to view or edit</p>
+                <p className="text-slate-500">{t("pages.notifications.components.selectComponent")}</p>
                 <Button variant="outline" className="mt-4" onClick={handleCreateNew}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Create New
+                  {t("pages.notifications.components.createNew")}
                 </Button>
               </div>
             </div>

@@ -5,7 +5,9 @@ import { User, Maximize2, Minimize2 } from "lucide-react";
 import type { B2BSessionData } from "@/lib/types/b2b";
 import { getCurrentSection } from "@/config/apps.config";
 import { useLayoutStore } from "@/lib/stores/layoutStore";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { AppLauncherDropdown } from "./AppLauncherDropdown";
+import { UILanguageSwitcher } from "./UILanguageSwitcher";
 
 type DashboardHeaderProps = {
   session: B2BSessionData;
@@ -15,8 +17,14 @@ export function DashboardHeader({ session }: DashboardHeaderProps) {
   const pathname = usePathname() || "";
   const currentSection = getCurrentSection(pathname);
   const { fullWidth, toggleFullWidth } = useLayoutStore();
+  const { t } = useTranslation();
 
   const tenantId = session.tenantId;
+
+  // Translate the section name using app id if available
+  const sectionName = currentSection.id
+    ? t(`apps.${currentSection.id}.name`)
+    : currentSection.name;
 
   const iconButtonClass =
     "relative flex h-[38px] w-[38px] items-center justify-center rounded-[5px] border-0 bg-transparent text-[#6e6b7b] transition hover:bg-[#fafafc] hover:text-[#009688]";
@@ -31,23 +39,26 @@ export function DashboardHeader({ session }: DashboardHeaderProps) {
               <currentSection.icon className="h-5 w-5" />
             </div>
             <div className="leading-tight">
-              <p className="text-[1rem] font-semibold text-[#5e5873]">VINC {currentSection.name}</p>
+              <p className="text-[1rem] font-semibold text-[#5e5873]">VINC {sectionName}</p>
               <p className="text-[0.75rem] text-[#b9b9c3]">{session.companyName}</p>
             </div>
           </div>
 
-          {/* Right: App Launcher + Notifications + User */}
+          {/* Right: Language Switcher + App Launcher + User */}
           <div className="flex items-center gap-3">
             {/* Full-width toggle */}
             <button
               type="button"
               className={iconButtonClass}
-              aria-label={fullWidth ? "Switch to compact layout" : "Switch to full-width layout"}
-              title={fullWidth ? "Compact layout" : "Full-width layout"}
+              aria-label={fullWidth ? t("header.switchToCompact") : t("header.switchToFullWidth")}
+              title={fullWidth ? t("header.compactLayout") : t("header.fullWidthLayout")}
               onClick={toggleFullWidth}
             >
               {fullWidth ? <Minimize2 className="h-[1rem] w-[1rem]" /> : <Maximize2 className="h-[1rem] w-[1rem]" />}
             </button>
+
+            {/* UI Language Switcher */}
+            <UILanguageSwitcher />
 
             {/* Google-style App Launcher */}
             <AppLauncherDropdown tenantId={tenantId} />

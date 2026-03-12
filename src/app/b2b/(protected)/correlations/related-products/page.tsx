@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ProductData = {
   entity_code: string;
@@ -46,6 +47,7 @@ type Pagination = {
 };
 
 export default function RelatedProductsPage() {
+  const { t } = useTranslation();
   const [correlations, setCorrelations] = useState<Correlation[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -92,7 +94,7 @@ export default function RelatedProductsPage() {
   }, [fetchCorrelations]);
 
   const handleDelete = async (correlationId: string) => {
-    if (!confirm("Sei sicuro di voler eliminare questa correlazione?")) return;
+    if (!confirm(t("pages.correlations.relatedProducts.confirmDelete"))) return;
 
     setDeleteLoading(correlationId);
     try {
@@ -105,7 +107,7 @@ export default function RelatedProductsPage() {
       fetchCorrelations();
     } catch (error) {
       console.error("Error deleting correlation:", error);
-      alert("Errore durante l'eliminazione");
+      alert(t("pages.correlations.relatedProducts.deleteError"));
     } finally {
       setDeleteLoading(null);
     }
@@ -135,7 +137,7 @@ export default function RelatedProductsPage() {
       console.log(`Deleted ${data.result.deleted} correlations`);
     } catch (error) {
       console.error("Error bulk deleting correlations:", error);
-      alert("Errore durante l'eliminazione multipla");
+      alert(t("pages.correlations.relatedProducts.bulkDeleteError"));
     } finally {
       setBulkDeleteLoading(false);
     }
@@ -178,8 +180,8 @@ export default function RelatedProductsPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Correlazioni & Analytics", href: "/b2b/correlations" },
-          { label: "Articoli Correlati" },
+          { label: t("pages.correlations.relatedProducts.breadcrumbParent"), href: "/b2b/correlations" },
+          { label: t("pages.correlations.relatedProducts.breadcrumbTitle") },
         ]}
       />
 
@@ -191,7 +193,7 @@ export default function RelatedProductsPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b9b9c3]" />
               <input
                 type="text"
-                placeholder="Cerca per codice prodotto..."
+                placeholder={t("pages.correlations.relatedProducts.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-[0.358rem] border border-[#d8d6de] bg-white pl-10 pr-4 py-2.5 text-[0.875rem] text-[#6e6b7b] placeholder:text-[#b9b9c3] focus:border-[#009688] focus:outline-none focus:ring-1 focus:ring-[#009688]"
@@ -201,7 +203,7 @@ export default function RelatedProductsPage() {
               type="submit"
               className="rounded-[0.358rem] bg-[#009688] px-5 py-2.5 text-[0.875rem] font-medium text-white hover:bg-[#00897b] transition-colors"
             >
-              Cerca
+              {t("pages.correlations.relatedProducts.searchButton")}
             </button>
           </form>
 
@@ -212,7 +214,7 @@ export default function RelatedProductsPage() {
               className="flex items-center gap-2 rounded-[0.358rem] bg-[#ea5455] px-4 py-2.5 text-[0.875rem] font-medium text-white hover:bg-[#e73d3e] transition-colors"
             >
               <Trash2 className="h-4 w-4" />
-              Elimina ({selectedIds.size})
+              {t("pages.correlations.relatedProducts.deleteSelected").replace("{count}", String(selectedIds.size))}
             </button>
           )}
         </div>
@@ -221,13 +223,13 @@ export default function RelatedProductsPage() {
         {selectedIds.size > 0 && (
           <div className="mt-3 flex items-center gap-3 rounded-[0.358rem] bg-[#f3f2f7] px-4 py-2">
             <span className="text-[0.85rem] text-[#5e5873]">
-              {selectedIds.size} correlazion{selectedIds.size === 1 ? "e" : "i"} selezionat{selectedIds.size === 1 ? "a" : "e"}
+              {t("pages.correlations.relatedProducts.correlationsSelected").replace("{count}", String(selectedIds.size))}
             </span>
             <button
               onClick={() => setSelectedIds(new Set())}
               className="text-[0.85rem] text-[#009688] hover:text-[#00796b] font-medium"
             >
-              Deseleziona tutto
+              {t("pages.correlations.relatedProducts.deselectAll")}
             </button>
           </div>
         )}
@@ -239,16 +241,16 @@ export default function RelatedProductsPage() {
           <div className="flex h-64 items-center justify-center">
             <div className="text-center text-[#5e5873]">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#009688] border-r-transparent mb-3"></div>
-              <p className="text-[0.95rem]">Caricamento correlazioni...</p>
+              <p className="text-[0.95rem]">{t("pages.correlations.relatedProducts.loadingCorrelations")}</p>
             </div>
           </div>
         ) : correlations.length === 0 ? (
           <div className="flex h-64 items-center justify-center">
             <div className="text-center text-[#5e5873]">
               <Link2 className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
-              <p className="text-[1rem] font-medium">Nessuna correlazione trovata</p>
+              <p className="text-[1rem] font-medium">{t("pages.correlations.relatedProducts.noCorrelations")}</p>
               <p className="text-[0.85rem] text-[#b9b9c3] mt-1">
-                Importa le correlazioni dal sistema ERP oppure aggiungile manualmente.
+                {t("pages.correlations.relatedProducts.noCorrelationsDesc")}
               </p>
             </div>
           </div>
@@ -262,7 +264,7 @@ export default function RelatedProductsPage() {
                       <button
                         onClick={toggleSelectAll}
                         className="flex items-center justify-center text-[#6e6b7b] hover:text-[#009688] transition-colors"
-                        title={isAllSelected ? "Deseleziona tutto" : "Seleziona tutto"}
+                        title={isAllSelected ? t("pages.correlations.relatedProducts.deselectAllTitle") : t("pages.correlations.relatedProducts.selectAll")}
                       >
                         {isAllSelected ? (
                           <CheckSquare className="h-5 w-5 text-[#009688]" />
@@ -274,22 +276,22 @@ export default function RelatedProductsPage() {
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-[0.75rem] font-semibold uppercase tracking-wide text-[#5e5873]">
-                      Prodotto Origine
+                      {t("pages.correlations.relatedProducts.colSourceProduct")}
                     </th>
                     <th className="px-4 py-3 text-center w-16">
                       <Link2 className="h-4 w-4 mx-auto text-[#b9b9c3]" />
                     </th>
                     <th className="px-4 py-3 text-left text-[0.75rem] font-semibold uppercase tracking-wide text-[#5e5873]">
-                      Prodotto Correlato
+                      {t("pages.correlations.relatedProducts.colRelatedProduct")}
                     </th>
                     <th className="px-4 py-3 text-center text-[0.75rem] font-semibold uppercase tracking-wide text-[#5e5873]">
-                      Tipo
+                      {t("pages.correlations.relatedProducts.colType")}
                     </th>
                     <th className="px-4 py-3 text-center text-[0.75rem] font-semibold uppercase tracking-wide text-[#5e5873]">
-                      Data
+                      {t("pages.correlations.relatedProducts.colDate")}
                     </th>
                     <th className="px-4 py-3 text-center text-[0.75rem] font-semibold uppercase tracking-wide text-[#5e5873] w-20">
-                      Azioni
+                      {t("pages.correlations.relatedProducts.colActions")}
                     </th>
                   </tr>
                 </thead>
@@ -348,13 +350,13 @@ export default function RelatedProductsPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {correlation.is_bidirectional ? (
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[rgba(0,150,136,0.12)]" title="Bidirezionale">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[rgba(0,150,136,0.12)]" title={t("pages.correlations.relatedProducts.bidirectional")}>
                               <svg className="h-4 w-4 text-[#009688]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" />
                               </svg>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#f3f2f7]" title="Unidirezionale">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#f3f2f7]" title={t("pages.correlations.relatedProducts.unidirectional")}>
                               <svg className="h-4 w-4 text-[#b9b9c3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M5 12h14M12 5l7 7-7 7" />
                               </svg>
@@ -395,11 +397,11 @@ export default function RelatedProductsPage() {
                         <td className="px-4 py-3 text-center">
                           {correlation.is_bidirectional ? (
                             <span className="inline-flex items-center rounded-full bg-[rgba(40,199,111,0.12)] px-2.5 py-1 text-[0.7rem] font-medium text-[#28c76f]">
-                              Bidirezionale
+                              {t("pages.correlations.relatedProducts.bidirectional")}
                             </span>
                           ) : (
                             <span className="inline-flex items-center rounded-full bg-[#f3f2f7] px-2.5 py-1 text-[0.7rem] font-medium text-[#82868b]">
-                              Unidirezionale
+                              {t("pages.correlations.relatedProducts.unidirectional")}
                             </span>
                           )}
                         </td>
@@ -415,7 +417,7 @@ export default function RelatedProductsPage() {
                             onClick={() => handleDelete(correlation.correlation_id)}
                             disabled={deleteLoading === correlation.correlation_id}
                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#ea5455] hover:bg-[rgba(234,84,85,0.12)] disabled:opacity-50 transition-colors"
-                            title="Elimina correlazione"
+                            title={t("pages.correlations.relatedProducts.deleteCorrelation")}
                           >
                             {deleteLoading === correlation.correlation_id ? (
                               <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-[#ea5455] border-r-transparent"></div>
@@ -435,7 +437,7 @@ export default function RelatedProductsPage() {
             {pagination.totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-[#ebe9f1] px-4 py-3">
                 <p className="text-[0.8rem] text-[#6e6b7b]">
-                  Pagina {pagination.page} di {pagination.totalPages} ({pagination.total} risultati)
+                  {t("pages.correlations.relatedProducts.paginationPage").replace("{page}", String(pagination.page)).replace("{totalPages}", String(pagination.totalPages)).replace("{total}", String(pagination.total))}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -444,14 +446,14 @@ export default function RelatedProductsPage() {
                     className="flex items-center gap-1 rounded-[0.358rem] border border-[#d8d6de] px-3 py-1.5 text-[0.8rem] text-[#6e6b7b] hover:bg-[#fafafc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Precedente
+                    {t("pages.correlations.relatedProducts.paginationPrevious")}
                   </button>
                   <button
                     onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
                     disabled={pagination.page === pagination.totalPages}
                     className="flex items-center gap-1 rounded-[0.358rem] border border-[#d8d6de] px-3 py-1.5 text-[0.8rem] text-[#6e6b7b] hover:bg-[#fafafc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Successiva
+                    {t("pages.correlations.relatedProducts.paginationNext")}
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -471,7 +473,7 @@ export default function RelatedProductsPage() {
           <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#ebe9f1]">
               <h3 className="text-[1.1rem] font-semibold text-[#5e5873]">
-                Conferma Eliminazione
+                {t("pages.correlations.relatedProducts.confirmBulkDeleteTitle")}
               </h3>
               <button
                 onClick={() => setShowDeleteModal(false)}
@@ -487,12 +489,10 @@ export default function RelatedProductsPage() {
                 </div>
                 <div>
                   <p className="text-[0.95rem] text-[#5e5873]">
-                    Stai per eliminare{" "}
-                    <span className="font-semibold">{selectedIds.size}</span>{" "}
-                    correlazion{selectedIds.size === 1 ? "e" : "i"}.
+                    {t("pages.correlations.relatedProducts.confirmBulkDeleteMessage").replace("{count}", String(selectedIds.size))}
                   </p>
                   <p className="text-[0.85rem] text-[#b9b9c3] mt-1">
-                    Questa azione non può essere annullata.
+                    {t("pages.correlations.relatedProducts.cannotBeUndone")}
                   </p>
                 </div>
               </div>
@@ -502,7 +502,7 @@ export default function RelatedProductsPage() {
                 onClick={() => setShowDeleteModal(false)}
                 className="px-4 py-2 text-[0.875rem] font-medium text-[#6e6b7b] hover:text-[#5e5873] transition-colors"
               >
-                Annulla
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleBulkDelete}
@@ -512,12 +512,12 @@ export default function RelatedProductsPage() {
                 {bulkDeleteLoading ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent"></div>
-                    Eliminazione...
+                    {t("pages.correlations.relatedProducts.deleting")}
                   </>
                 ) : (
                   <>
                     <Trash2 className="h-4 w-4" />
-                    Elimina
+                    {t("common.delete")}
                   </>
                 )}
               </button>

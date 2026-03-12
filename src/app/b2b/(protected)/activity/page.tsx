@@ -5,12 +5,14 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { BackButton } from "@/components/b2b/BackButton";
 import { Clock, User, Package, Settings } from "lucide-react";
 import type { ActivityLog } from "@/lib/types/b2b";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ActivityData = {
   activities: Array<ActivityLog & { timeAgo: string; userName: string }>;
 };
 
 export default function B2BActivityPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<ActivityData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,25 +55,25 @@ export default function B2BActivityPage() {
   );
 
   if (isLoading) {
-    return renderEmptyState("Loading activities…", "Stitching together the latest events.");
+    return renderEmptyState(t("pages.activity.loadingActivities"), t("pages.activity.loadingSub"));
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Breadcrumbs items={[{ label: "Activity Log" }]} />
+        <Breadcrumbs items={[{ label: t("pages.activity.title") }]} />
         <BackButton />
       </div>
 
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
         <div className="mb-4 flex items-center gap-2">
           <Clock className="h-[1rem] w-[1rem] text-[#009688]" />
-          <h1 className="text-[0.95rem] font-semibold text-[#5e5873]">Recent Activity</h1>
+          <h1 className="text-[0.95rem] font-semibold text-[#5e5873]">{t("pages.activity.recentActivity")}</h1>
         </div>
 
         <div className="space-y-2">
           {!data || data.activities.length === 0
-            ? renderEmptyState("No activities recorded yet", "Actions will appear here as your team works.")
+            ? renderEmptyState(t("pages.activity.noActivities"), t("pages.activity.noActivitiesSub"))
             : data.activities.map((activity) => {
               const Icon = getActionIcon(activity.action);
               return (
@@ -89,7 +91,7 @@ export default function B2BActivityPage() {
                     </p>
                     <p className="text-[#6e6b7b]">{activity.description}</p>
                     {activity.details?.count ? (
-                      <p className="text-[0.75rem] text-[#b9b9c3]">{activity.details.count} items affected</p>
+                      <p className="text-[0.75rem] text-[#b9b9c3]">{t("pages.activity.itemsAffected").replace("{count}", String(activity.details.count))}</p>
                     ) : null}
                     <p className="text-[0.75rem] text-[#b9b9c3]">{activity.timeAgo}</p>
                   </div>

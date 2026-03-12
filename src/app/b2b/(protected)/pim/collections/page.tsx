@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   Layers,
@@ -50,6 +51,7 @@ type Collection = {
 };
 
 export default function CollectionsPage() {
+  const { t } = useTranslation();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -132,17 +134,17 @@ export default function CollectionsPage() {
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Collections" },
+            { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+            { label: t("pages.pim.collections.title") },
           ]}
         />
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Collections</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.collections.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {collections.length} total collections
+              {collections.length} {t("pages.pim.collections.totalCollections")}
             </p>
           </div>
           <button
@@ -151,7 +153,7 @@ export default function CollectionsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
           >
             <Plus className="h-5 w-5" />
-            New Collection
+            {t("pages.pim.collections.newCollection")}
           </button>
         </div>
 
@@ -161,7 +163,7 @@ export default function CollectionsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search collections by name or slug..."
+              placeholder={t("pages.pim.collections.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -188,12 +190,12 @@ export default function CollectionsPage() {
             <div className="p-12 text-center">
               <Layers className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? "No collections found" : "No collections yet"}
+                {searchQuery ? t("pages.pim.collections.noFound") : t("pages.pim.collections.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
-                  ? "Try adjusting your search query"
-                  : "Create your first collection to group products"}
+                  ? t("pages.pim.collections.adjustSearch")
+                  : t("pages.pim.collections.createFirst")}
               </p>
               {!searchQuery && (
                 <button
@@ -202,7 +204,7 @@ export default function CollectionsPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                 >
                   <Plus className="h-5 w-5" />
-                  Create Collection
+                  {t("pages.pim.collections.createCollection")}
                 </button>
               )}
             </div>
@@ -255,7 +257,7 @@ export default function CollectionsPage() {
                     {/* Product Count */}
                     <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                       <Package className="h-4 w-4" />
-                      <span>{collection.product_count} products</span>
+                      <span>{collection.product_count} {t("pages.pim.products.title").toLowerCase()}</span>
                     </div>
 
                     {/* Actions */}
@@ -320,6 +322,7 @@ function CollectionModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: collection?.name || "",
     slug: collection?.slug || "",
@@ -418,7 +421,7 @@ function CollectionModal({
     <FullScreenModal
       open
       onClose={onClose}
-      title={collection ? "Edit Collection" : "Create Collection"}
+      title={collection ? t("pages.pim.collections.editCollection") : t("pages.pim.collections.createCollection")}
       actions={
         <>
           <button
@@ -434,7 +437,7 @@ function CollectionModal({
             disabled={isSaving || !formData.name || !formData.slug}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
           >
-            {isSaving ? "Saving..." : collection ? "Update" : "Create"}
+            {isSaving ? t("pages.pim.common.saving") : collection ? t("common.update") : t("common.create")}
           </button>
         </>
       }

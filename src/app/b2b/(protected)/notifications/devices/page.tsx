@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface FCMDevice {
   _id: string;
@@ -57,6 +58,7 @@ interface DevicesResponse {
 }
 
 export default function DevicesPage() {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<FCMDevice[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -100,7 +102,7 @@ export default function DevicesPage() {
   }, [loadDevices]);
 
   const handleDelete = async (tokenId: string) => {
-    if (!confirm("Are you sure you want to remove this device?")) return;
+    if (!confirm(t("pages.notifications.devices.confirmRemove"))) return;
 
     setDeletingIds((prev) => new Set(prev).add(tokenId));
     try {
@@ -139,28 +141,28 @@ export default function DevicesPage() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche", href: "/b2b/notifications" },
-          { label: "Dispositivi" },
+          { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+          { label: t("pages.notifications.devices.title") },
         ]} />
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">FCM Devices</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.devices.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Manage registered mobile devices for push notifications
+          {t("pages.notifications.devices.subtitle")}
         </p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard
-          label="Total Devices"
+          label={t("pages.notifications.devices.totalDevices")}
           value={stats.total}
           icon={MonitorSmartphone}
           color="slate"
         />
         <StatCard
-          label="Active"
+          label={t("common.active")}
           value={stats.active}
           icon={CheckCircle}
           color="emerald"
@@ -187,7 +189,7 @@ export default function DevicesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by user ID, device model..."
+            placeholder={t("pages.notifications.devices.searchPlaceholder")}
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -196,7 +198,7 @@ export default function DevicesPage() {
           onChange={(e) => setPlatformFilter(e.target.value)}
           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
-          <option value="">All platforms</option>
+          <option value="">{t("pages.notifications.devices.allPlatforms")}</option>
           <option value="android">Android</option>
           <option value="ios">iOS</option>
         </select>
@@ -205,9 +207,9 @@ export default function DevicesPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="">{t("pages.notifications.devices.allStatuses")}</option>
+          <option value="active">{t("common.active")}</option>
+          <option value="inactive">{t("common.inactive")}</option>
         </select>
         <Button
           variant="outline"
@@ -216,7 +218,7 @@ export default function DevicesPage() {
           className="gap-2"
         >
           <RefreshCw className="w-4 h-4" />
-          Refresh
+          {t("common.refresh")}
         </Button>
       </div>
 
@@ -229,9 +231,9 @@ export default function DevicesPage() {
         ) : devices.length === 0 ? (
           <div className="text-center py-12">
             <Smartphone className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">No devices found</p>
+            <p className="text-slate-500">{t("pages.notifications.devices.noDevices")}</p>
             <p className="text-sm text-slate-400 mt-1">
-              Registered devices will appear here when users enable push notifications
+              {t("pages.notifications.devices.noDevicesSub")}
             </p>
           </div>
         ) : (
@@ -239,22 +241,22 @@ export default function DevicesPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Device
+                  {t("pages.notifications.devices.device")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  User
+                  {t("pages.notifications.devices.user")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Platform
+                  {t("pages.notifications.devices.platform")}
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Status
+                  {t("common.status")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Registered
+                  {t("pages.notifications.devices.registered")}
                 </th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Actions
+                  {t("common.actions")}
                 </th>
               </tr>
             </thead>
@@ -264,10 +266,10 @@ export default function DevicesPage() {
                   <td className="px-4 py-3">
                     <div>
                       <p className="text-sm font-medium text-slate-900">
-                        {device.device_model || "Unknown Device"}
+                        {device.device_model || t("pages.notifications.devices.unknownDevice")}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {device.device_id ? `ID: ${device.device_id.slice(0, 12)}...` : "No device ID"}
+                        {device.device_id ? `ID: ${device.device_id.slice(0, 12)}...` : t("pages.notifications.devices.noDeviceId")}
                       </p>
                       {device.app_version && (
                         <p className="text-xs text-slate-400">
@@ -296,7 +298,7 @@ export default function DevicesPage() {
                             </Link>
                           )}
                           <p className="text-xs text-slate-400">
-                            {device.user_type === "portal_user" ? "Portal User" : "B2B User"}
+                            {device.user_type === "portal_user" ? t("pages.notifications.devices.portalUser") : t("pages.notifications.devices.b2bUser")}
                           </p>
                         </div>
                       </div>
@@ -314,25 +316,25 @@ export default function DevicesPage() {
                             <ExternalLink className="w-3 h-3" />
                           </Link>
                           <p className="text-xs text-slate-400">
-                            {device.user_type === "portal_user" ? "Portal User" : "B2B User"}
+                            {device.user_type === "portal_user" ? t("pages.notifications.devices.portalUser") : t("pages.notifications.devices.b2bUser")}
                           </p>
                         </div>
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400 italic">Anonymous device</span>
+                      <span className="text-sm text-slate-400 italic">{t("pages.notifications.devices.anonymousDevice")}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <PlatformBadge platform={device.platform} />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <StatusBadge isActive={device.is_active} failureCount={device.failure_count} />
+                    <StatusBadge isActive={device.is_active} failureCount={device.failure_count} t={t} />
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {formatDate(device.created_at)}
                     {device.last_used_at && (
                       <p className="text-xs text-slate-400">
-                        Last used: {formatDate(device.last_used_at)}
+                        {t("pages.notifications.devices.lastUsed").replace("{date}", formatDate(device.last_used_at))}
                       </p>
                     )}
                   </td>
@@ -349,7 +351,7 @@ export default function DevicesPage() {
                       ) : (
                         <Trash2 className="w-3.5 h-3.5" />
                       )}
-                      Remove
+                      {t("pages.notifications.devices.remove")}
                     </Button>
                   </td>
                 </tr>
@@ -363,8 +365,10 @@ export default function DevicesPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-slate-500">
-            Showing {(page - 1) * limit + 1} to{" "}
-            {Math.min(page * limit, total)} of {total} devices
+            {t("pages.notifications.devices.showing")
+              .replace("{from}", String((page - 1) * limit + 1))
+              .replace("{to}", String(Math.min(page * limit, total)))
+              .replace("{total}", String(total))}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -373,7 +377,7 @@ export default function DevicesPage() {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Previous
+              {t("pages.notifications.devices.previous")}
             </Button>
             <Button
               variant="outline"
@@ -381,7 +385,7 @@ export default function DevicesPage() {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {t("pages.notifications.devices.next")}
             </Button>
           </div>
         </div>
@@ -441,13 +445,13 @@ function PlatformBadge({ platform }: { platform: "ios" | "android" }) {
   );
 }
 
-function StatusBadge({ isActive, failureCount }: { isActive: boolean; failureCount: number }) {
+function StatusBadge({ isActive, failureCount, t }: { isActive: boolean; failureCount: number; t: (key: string) => string }) {
   if (!isActive) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700">
         <XCircle className="w-3 h-3" />
-        Inactive
-        {failureCount > 0 && <span>({failureCount} failures)</span>}
+        {t("common.inactive")}
+        {failureCount > 0 && <span>({t("pages.notifications.devices.failures").replace("{count}", String(failureCount))})</span>}
       </span>
     );
   }
@@ -455,7 +459,7 @@ function StatusBadge({ isActive, failureCount }: { isActive: boolean; failureCou
   return (
     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
       <CheckCircle className="w-3 h-3" />
-      Active
+      {t("common.active")}
     </span>
   );
 }

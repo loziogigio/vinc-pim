@@ -2,28 +2,31 @@
 
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { OrdersStatusList } from "@/components/orders/OrdersStatusList";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function ActiveCartsPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Orders", href: "/b2b/store/orders" },
-          { label: "Active Carts" },
+          { label: t("pages.store.orders.title"), href: "/b2b/store/orders" },
+          { label: t("pages.store.ordersCarts.title") },
         ]}
       />
 
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Active Carts</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.store.ordersCarts.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Draft orders in progress
+          {t("pages.store.ordersCarts.subtitle")}
         </p>
       </div>
 
       <OrdersStatusList
         status="draft"
-        statusLabel="Active Cart"
-        emptyMessage="Active carts (draft orders) will appear here"
+        statusLabel={t("pages.store.ordersCarts.statusLabel")}
+        emptyMessage={t("pages.store.ordersCarts.emptyMessage")}
       />
     </div>
   );

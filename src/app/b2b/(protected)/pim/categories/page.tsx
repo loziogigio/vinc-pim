@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   FolderTree,
@@ -53,6 +54,7 @@ type Category = CategoryRecord & {
 };
 
 export default function CategoriesPage() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -275,15 +277,15 @@ export default function CategoriesPage() {
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Categories" },
+            { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+            { label: t("pages.pim.categories.title") },
           ]}
         />
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Categories</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.categories.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {categories.length} total • {rootCategories.length} root categories
             </p>
@@ -297,7 +299,7 @@ export default function CategoriesPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
           >
             <Plus className="h-5 w-5" />
-            New Category
+            {t("pages.pim.categories.newCategory")}
           </button>
         </div>
 
@@ -307,7 +309,7 @@ export default function CategoriesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search categories by name or slug..."
+              placeholder={t("pages.pim.categories.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -335,7 +337,7 @@ export default function CategoriesPage() {
             onChange={(e) => setChannelFilter(e.target.value)}
             className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="">All Channels</option>
+            <option value="">{t("pages.pim.categories.allChannels")}</option>
             {channels.map((ch) => (
               <option key={ch.code} value={ch.code}>
                 {ch.name}
@@ -363,12 +365,12 @@ export default function CategoriesPage() {
             <div className="p-12 text-center">
               <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? "No categories found" : "No categories yet"}
+                {searchQuery ? t("pages.pim.categories.noFound") : t("pages.pim.categories.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
-                  ? "Try adjusting your search query"
-                  : "Create your first category to organize products"}
+                  ? t("pages.pim.categories.adjustSearch")
+                  : t("pages.pim.categories.createFirst")}
               </p>
               {!searchQuery && (
                 <button
@@ -380,7 +382,7 @@ export default function CategoriesPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                 >
                   <Plus className="h-5 w-5" />
-                  Create Category
+                  {t("pages.pim.categories.createCategory")}
                 </button>
               )}
             </div>

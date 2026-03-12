@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Link2, Package, TrendingUp, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type CorrelationStats = {
   total_correlations: number;
@@ -20,6 +21,7 @@ type CorrelationStats = {
 };
 
 export default function CorrelationsDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<CorrelationStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
@@ -54,16 +56,22 @@ export default function CorrelationsDashboard() {
   );
 
   if (isLoading) {
-    return renderEmptyState("Loading dashboard…", "Gathering correlation statistics.");
+    return renderEmptyState(
+      t("pages.correlations.dashboard.loadingDashboard"),
+      t("pages.correlations.dashboard.loadingSub"),
+    );
   }
 
   if (!stats) {
-    return renderEmptyState("Unable to load dashboard", "Please refresh the page to try again.");
+    return renderEmptyState(
+      t("pages.correlations.dashboard.unableToLoad"),
+      t("pages.correlations.dashboard.refreshPage"),
+    );
   }
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: "Correlazioni & Analytics" }]} />
+      <Breadcrumbs items={[{ label: t("pages.correlations.dashboard.title") }]} />
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -75,7 +83,7 @@ export default function CorrelationsDashboard() {
             </div>
             <div>
               <p className="text-[0.75rem] font-medium uppercase tracking-wide text-[#b9b9c3]">
-                Total Correlations
+                {t("pages.correlations.dashboard.totalCorrelations")}
               </p>
               <p className="text-[1.5rem] font-bold text-[#5e5873]">
                 {stats.total_correlations.toLocaleString()}
@@ -92,7 +100,7 @@ export default function CorrelationsDashboard() {
             </div>
             <div>
               <p className="text-[0.75rem] font-medium uppercase tracking-wide text-[#b9b9c3]">
-                Products with Correlations
+                {t("pages.correlations.dashboard.productsWithCorrelations")}
               </p>
               <p className="text-[1.5rem] font-bold text-[#5e5873]">
                 {stats.products_with_correlations.toLocaleString()}
@@ -109,7 +117,7 @@ export default function CorrelationsDashboard() {
             </div>
             <div>
               <p className="text-[0.75rem] font-medium uppercase tracking-wide text-[#b9b9c3]">
-                Articoli Correlati
+                {t("pages.correlations.dashboard.relatedProducts")}
               </p>
               <p className="text-[1.5rem] font-bold text-[#5e5873]">
                 {(stats.by_type.related || 0).toLocaleString()}
@@ -126,7 +134,7 @@ export default function CorrelationsDashboard() {
             </div>
             <div>
               <p className="text-[0.75rem] font-medium uppercase tracking-wide text-[#b9b9c3]">
-                Last Import
+                {t("pages.correlations.dashboard.lastImport")}
               </p>
               <p className="text-[0.95rem] font-medium text-[#5e5873]">
                 {stats.last_import
@@ -135,7 +143,7 @@ export default function CorrelationsDashboard() {
                       month: "short",
                       year: "numeric",
                     })
-                  : "Nessun import"}
+                  : t("pages.correlations.dashboard.noImport")}
               </p>
             </div>
           </div>
@@ -155,10 +163,10 @@ export default function CorrelationsDashboard() {
             </div>
             <div>
               <h3 className="text-[1rem] font-semibold text-[#5e5873] group-hover:text-[#009688]">
-                Articoli Correlati
+                {t("pages.correlations.dashboard.viewCorrelations")}
               </h3>
               <p className="text-[0.85rem] text-[#b9b9c3]">
-                Visualizza e gestisci le correlazioni tra prodotti
+                {t("pages.correlations.dashboard.viewCorrelationsDesc")}
               </p>
             </div>
           </div>
@@ -175,10 +183,10 @@ export default function CorrelationsDashboard() {
             </div>
             <div>
               <h3 className="text-[1rem] font-semibold text-[#5e5873] group-hover:text-[#7367f0]">
-                Importa Correlazioni
+                {t("pages.correlations.dashboard.importCorrelations")}
               </h3>
               <p className="text-[0.85rem] text-[#b9b9c3]">
-                Importa correlazioni da CSV (CORRE00F)
+                {t("pages.correlations.dashboard.importCorrelationsDesc")}
               </p>
             </div>
           </div>
@@ -188,20 +196,19 @@ export default function CorrelationsDashboard() {
       {/* Info Box */}
       <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
         <h3 className="text-[1rem] font-semibold text-[#5e5873] mb-3">
-          Come funziona
+          {t("pages.correlations.dashboard.howItWorks")}
         </h3>
         <div className="space-y-2 text-[0.875rem] text-[#6e6b7b]">
           <p>
-            <strong>Articoli Correlati</strong> permette di definire relazioni tra prodotti per:
+            <strong>{t("pages.correlations.dashboard.howItWorksDesc")}</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Suggerimenti &quot;Potrebbero interessarti anche...&quot;</li>
-            <li>Cross-selling nel carrello</li>
-            <li>Prodotti complementari nelle schede prodotto</li>
+            <li>{t("pages.correlations.dashboard.suggestion1")}</li>
+            <li>{t("pages.correlations.dashboard.suggestion2")}</li>
+            <li>{t("pages.correlations.dashboard.suggestion3")}</li>
           </ul>
           <p className="mt-3">
-            Puoi importare le correlazioni dal sistema ERP (tabella CORRE00F) tramite CSV,
-            oppure aggiungerle manualmente dalla lista prodotti.
+            {t("pages.correlations.dashboard.importNote")}
           </p>
         </div>
       </div>

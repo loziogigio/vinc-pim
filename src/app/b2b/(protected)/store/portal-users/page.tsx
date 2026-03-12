@@ -21,6 +21,7 @@ import {
   UserX,
   KeyRound,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type PortalUserWithDetails = IPortalUser & {
   customer_count?: number;
@@ -35,6 +36,7 @@ interface PortalUserStats {
 }
 
 export default function PortalUsersListPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -147,10 +149,10 @@ export default function PortalUsersListPage() {
         fetchPortalUsers();
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to create user");
+        setError(data.error || t("pages.store.portalUsers.failedToCreate"));
       }
     } catch (err) {
-      setError("Failed to create user");
+      setError(t("pages.store.portalUsers.failedToCreate"));
     } finally {
       setIsSubmitting(false);
     }
@@ -188,20 +190,20 @@ export default function PortalUsersListPage() {
   }
 
   const getAccessSummary = (access: ICustomerAccess[]) => {
-    if (!access || access.length === 0) return "No access";
-    if (access.length === 1) return "1 customer";
-    return `${access.length} customers`;
+    if (!access || access.length === 0) return t("pages.store.portalUsers.noAccess");
+    if (access.length === 1) return t("pages.store.portalUsers.oneCustomer");
+    return t("pages.store.portalUsers.nCustomers").replace("{n}", String(access.length));
   };
 
   const renderEmptyState = () => (
     <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <div className="text-center text-[#5e5873]">
         <UserCog className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
-        <p className="text-[1.05rem] font-semibold">No portal users found</p>
+        <p className="text-[1.05rem] font-semibold">{t("pages.store.portalUsers.noPortalUsersFound")}</p>
         <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
           {searchFilter || statusFilter
-            ? "Try adjusting your filters"
-            : "Create your first portal user to get started"}
+            ? t("pages.store.portalUsers.tryAdjustingFilters")
+            : t("pages.store.portalUsers.createFirstUser")}
         </p>
         {!searchFilter && !statusFilter && (
           <button
@@ -209,7 +211,7 @@ export default function PortalUsersListPage() {
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
           >
             <Plus className="h-4 w-4" />
-            Create Portal User
+            {t("pages.store.portalUsers.createPortalUser")}
           </button>
         )}
       </div>
@@ -220,16 +222,16 @@ export default function PortalUsersListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Portal Users", href: "/b2b/store/portal-users" },
-          { label: "All Portal Users" },
+          { label: t("pages.store.portalUsers.title"), href: "/b2b/store/portal-users" },
+          { label: t("pages.store.portalUsers.title") },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Portal Users</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.store.portalUsers.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage portal user accounts with customer access ({pagination.total} total)
+            {t("pages.store.portalUsers.subtitle")} ({pagination.total} {t("pages.store.portalUsers.totalSuffix")})
           </p>
         </div>
         <button
@@ -237,7 +239,7 @@ export default function PortalUsersListPage() {
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
         >
           <Plus className="h-4 w-4" />
-          New Portal User
+          {t("pages.store.portalUsers.newPortalUser")}
         </button>
       </div>
 
@@ -250,7 +252,7 @@ export default function PortalUsersListPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total Users</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.portalUsers.totalUsers")}</p>
             </div>
           </div>
         </div>
@@ -261,7 +263,7 @@ export default function PortalUsersListPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.active}</p>
-              <p className="text-xs text-muted-foreground">Active</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.portalUsers.active")}</p>
             </div>
           </div>
         </div>
@@ -272,7 +274,7 @@ export default function PortalUsersListPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.inactive}</p>
-              <p className="text-xs text-muted-foreground">Inactive</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.portalUsers.inactive")}</p>
             </div>
           </div>
         </div>
@@ -283,7 +285,7 @@ export default function PortalUsersListPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.with_access}</p>
-              <p className="text-xs text-muted-foreground">With Access</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.portalUsers.withAccess")}</p>
             </div>
           </div>
         </div>
@@ -294,7 +296,7 @@ export default function PortalUsersListPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.never_logged_in}</p>
-              <p className="text-xs text-muted-foreground">Never Logged In</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.portalUsers.neverLoggedIn")}</p>
             </div>
           </div>
         </div>
@@ -308,7 +310,7 @@ export default function PortalUsersListPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by user ID, username, email..."
+              placeholder={t("pages.store.portalUsers.searchPlaceholder")}
               value={searchFilter}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="w-full rounded border border-border bg-background px-9 py-2 text-sm focus:border-primary focus:outline-none"
@@ -321,19 +323,19 @@ export default function PortalUsersListPage() {
             onChange={(e) => updateFilters({ is_active: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Status</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
+            <option value="">{t("pages.store.portalUsers.allStatus")}</option>
+            <option value="true">{t("pages.store.portalUsers.active")}</option>
+            <option value="false">{t("pages.store.portalUsers.inactive")}</option>
           </select>
         </div>
 
         {/* Active Filters */}
         {(searchFilter || statusFilter) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">{t("pages.store.portalUsers.activeFilters")}</span>
             {statusFilter && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>{statusFilter === "true" ? "Active" : "Inactive"}</span>
+                <span>{statusFilter === "true" ? t("pages.store.portalUsers.active") : t("pages.store.portalUsers.inactive")}</span>
                 <button
                   onClick={() => updateFilters({ is_active: "" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
@@ -344,7 +346,7 @@ export default function PortalUsersListPage() {
             )}
             {searchFilter && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>Search: &quot;{searchFilter}&quot;</span>
+                <span>{t("common.search")}: &quot;{searchFilter}&quot;</span>
                 <button
                   onClick={() => updateFilters({ search: "" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
@@ -357,7 +359,7 @@ export default function PortalUsersListPage() {
               onClick={() => updateFilters({ search: "", is_active: "" })}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
-              Clear all
+              {t("pages.store.portalUsers.clearAll")}
             </button>
           </div>
         )}
@@ -382,25 +384,25 @@ export default function PortalUsersListPage() {
                 <thead className="bg-muted/50 border-b border-border">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      User
+                      {t("pages.store.portalUsers.user")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Email
+                      {t("pages.store.portalUsers.email")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Status
+                      {t("pages.store.portalUsers.status")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Customer Access
+                      {t("pages.store.portalUsers.customerAccess")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Last Login
+                      {t("pages.store.portalUsers.lastLogin")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Created
+                      {t("pages.store.portalUsers.created")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -437,22 +439,22 @@ export default function PortalUsersListPage() {
                               ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                           } ${togglingUserId === user.portal_user_id ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
-                          title={user.is_active ? "Click to deactivate" : "Click to activate"}
+                          title={user.is_active ? t("pages.store.portalUsers.clickToDeactivate") : t("pages.store.portalUsers.clickToActivate")}
                         >
                           {togglingUserId === user.portal_user_id ? (
                             <>
                               <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full"></span>
-                              {user.is_active ? "Active" : "Inactive"}
+                              {user.is_active ? t("common.active") : t("common.inactive")}
                             </>
                           ) : user.is_active ? (
                             <>
                               <CheckCircle className="h-3 w-3" />
-                              Active
+                              {t("common.active")}
                             </>
                           ) : (
                             <>
                               <XCircle className="h-3 w-3" />
-                              Inactive
+                              {t("common.inactive")}
                             </>
                           )}
                         </button>
@@ -475,7 +477,7 @@ export default function PortalUsersListPage() {
                             })}
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Never</span>
+                          <span className="text-xs text-muted-foreground">{t("pages.store.portalUsers.never")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -506,9 +508,9 @@ export default function PortalUsersListPage() {
             {pagination.pages > 1 && (
               <div className="border-t border-border px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                  {pagination.total} portal users
+                  {t("common.showing")} {(pagination.page - 1) * pagination.limit + 1} {t("common.to")}{" "}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} {t("common.of")}{" "}
+                  {pagination.total}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -519,7 +521,7 @@ export default function PortalUsersListPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <div className="text-sm font-medium text-foreground">
-                    Page {pagination.page} of {pagination.pages}
+                    {t("common.page")} {pagination.page} {t("common.of")} {pagination.pages}
                   </div>
                   <button
                     onClick={() => goToPage(pagination.page + 1)}
@@ -540,7 +542,7 @@ export default function PortalUsersListPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Create Portal User</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.store.portalUsers.createTitle")}</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
@@ -557,43 +559,43 @@ export default function PortalUsersListPage() {
                 )}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Username <span className="text-red-500">*</span>
+                    {t("pages.store.portalUsers.username")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder="e.g., mario.rossi"
+                    placeholder={t("pages.store.portalUsers.usernamePlaceholder")}
                     required
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    The username will be used for login
+                    {t("pages.store.portalUsers.usernameHint")}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Email <span className="text-red-500">*</span>
+                    {t("pages.store.portalUsers.emailLabel")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder="e.g., mario.rossi@company.com"
+                    placeholder={t("pages.store.portalUsers.emailPlaceholder")}
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Password <span className="text-red-500">*</span>
+                    {t("pages.store.portalUsers.password")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder="Min. 8 characters"
+                    placeholder={t("pages.store.portalUsers.passwordPlaceholder")}
                     required
                     minLength={8}
                   />
@@ -601,7 +603,7 @@ export default function PortalUsersListPage() {
                 <ChannelSelect
                   value={formData.channel}
                   onChange={(code) => setFormData({ ...formData, channel: code })}
-                  label="Channel"
+                  label={t("pages.store.portalUsers.channelLabel")}
                 />
               </div>
               <div className="p-4 border-t border-border flex items-center justify-end gap-2">
@@ -610,14 +612,14 @@ export default function PortalUsersListPage() {
                   onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
                 >
-                  {isSubmitting ? "Creating..." : "Create User"}
+                  {isSubmitting ? t("pages.store.portalUsers.creating") : t("pages.store.portalUsers.createUser")}
                 </button>
               </div>
             </form>

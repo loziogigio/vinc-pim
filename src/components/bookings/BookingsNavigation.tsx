@@ -8,11 +8,12 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const navItems = [
-  { label: "Overview", path: "/b2b/bookings", icon: BarChart3 },
-  { label: "Partenze", path: "/b2b/bookings/departures", icon: Ship },
-  { label: "Prenotazioni", path: "/b2b/bookings/reservations", icon: CalendarCheck },
+  { labelKey: "nav.bookings.overview", path: "/b2b/bookings", icon: BarChart3 },
+  { labelKey: "nav.bookings.departures", path: "/b2b/bookings/departures", icon: Ship },
+  { labelKey: "nav.bookings.reservations", path: "/b2b/bookings/reservations", icon: CalendarCheck },
 ];
 
 interface BookingsNavigationProps {
@@ -21,6 +22,7 @@ interface BookingsNavigationProps {
 
 export function BookingsNavigation({ tenantId }: BookingsNavigationProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   const buildHref = (path: string) => {
     return tenantId ? `/${tenantId}${path}` : path;
@@ -42,7 +44,7 @@ export function BookingsNavigation({ tenantId }: BookingsNavigationProps) {
       <div className="mb-2 pb-3 border-b border-[#ebe9f1]">
         <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
           <CalendarCheck className="h-4 w-4" />
-          Prenotazioni
+          {t("nav.bookings.title")}
         </h2>
       </div>
       {navItems.map((item) => {
@@ -61,7 +63,7 @@ export function BookingsNavigation({ tenantId }: BookingsNavigationProps) {
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}

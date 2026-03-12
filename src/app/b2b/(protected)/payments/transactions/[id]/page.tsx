@@ -27,6 +27,7 @@ import type {
   PaymentType,
   PaymentMethod,
 } from "@/lib/constants/payment";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface PaymentEvent {
   event_type: string;
@@ -77,6 +78,7 @@ const formatDateTime = (iso: string) =>
   });
 
 export default function TransactionDetailPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -104,17 +106,17 @@ export default function TransactionDetailPage() {
     try {
       const res = await fetch(`/api/b2b/payments/transactions/${transactionId}`);
       if (!res.ok) {
-        setError(res.status === 404 ? "Transazione non trovata" : "Errore nel caricamento");
+        setError(res.status === 404 ? t("pages.payments.transactionDetail.notFound") : t("pages.payments.transactionDetail.loadError"));
         return;
       }
       const data = await res.json();
       setTransaction(data.transaction || null);
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.transactionDetail.networkError"));
     } finally {
       setIsLoading(false);
     }
-  }, [transactionId]);
+  }, [transactionId, t]);
 
   useEffect(() => {
     loadTransaction();
@@ -143,16 +145,16 @@ export default function TransactionDetailPage() {
       if (data.success) {
         setRefundResult({
           success: true,
-          message: `Rimborso eseguito: ${formatCurrency(data.amount || transaction.gross_amount, transaction.currency)}`,
+          message: t("pages.payments.transactionDetail.refundSuccess", { amount: formatCurrency(data.amount || transaction.gross_amount, transaction.currency) }),
         });
         setShowRefund(false);
         setRefundAmount("");
         loadTransaction();
       } else {
-        setRefundResult({ success: false, message: data.error || "Rimborso fallito" });
+        setRefundResult({ success: false, message: data.error || t("pages.payments.transactionDetail.refundFailed") });
       }
     } catch {
-      setRefundResult({ success: false, message: "Errore di rete" });
+      setRefundResult({ success: false, message: t("pages.payments.transactionDetail.networkError") });
     } finally {
       setIsRefunding(false);
     }
@@ -173,11 +175,11 @@ export default function TransactionDetailPage() {
           href={`${tenantPrefix}/b2b/payments/transactions`}
           className="inline-flex items-center gap-1.5 text-sm text-[#009688] hover:underline mb-4"
         >
-          <ArrowLeft className="w-4 h-4" /> Torna alle transazioni
+          <ArrowLeft className="w-4 h-4" /> {t("pages.payments.transactionDetail.backToTransactions")}
         </Link>
         <div className="p-12 text-center text-muted-foreground">
           <Receipt className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-          <p>{error || "Transazione non trovata"}</p>
+          <p>{error || t("pages.payments.transactionDetail.notFound")}</p>
         </div>
       </div>
     );
@@ -194,10 +196,10 @@ export default function TransactionDetailPage() {
             href={`${tenantPrefix}/b2b/payments/transactions`}
             className="inline-flex items-center gap-1.5 text-sm text-[#009688] hover:underline mb-2"
           >
-            <ArrowLeft className="w-4 h-4" /> Transazioni
+            <ArrowLeft className="w-4 h-4" /> {t("pages.payments.transactionDetail.transactions")}
           </Link>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            {transaction.payment_number || "Transazione"}
+            {transaction.payment_number || t("pages.payments.transactionDetail.transaction")}
           </h1>
           <p className="text-sm font-mono text-muted-foreground mt-0.5">
             {transaction.transaction_id}
@@ -227,26 +229,26 @@ export default function TransactionDetailPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
-          label="Importo Lordo"
+          label={t("pages.payments.transactionDetail.grossAmount")}
           value={formatCurrency(transaction.gross_amount, transaction.currency)}
           icon={Banknote}
           color="bg-blue-50 text-blue-600"
         />
         <SummaryCard
-          label="Commissione"
+          label={t("pages.payments.transactionDetail.commission")}
           value={formatCurrency(transaction.commission_amount, transaction.currency)}
           icon={Percent}
           color="bg-amber-50 text-amber-600"
           sub={`${(transaction.commission_rate * 100).toFixed(1)}%`}
         />
         <SummaryCard
-          label="Netto"
+          label={t("pages.payments.transactionDetail.net")}
           value={formatCurrency(transaction.net_amount, transaction.currency)}
           icon={Receipt}
           color="bg-green-50 text-green-600"
         />
         <SummaryCard
-          label="Metodo"
+          label={t("pages.payments.transactionDetail.method")}
           value={
             transaction.method
               ? PAYMENT_METHOD_LABELS[transaction.method]
@@ -262,16 +264,16 @@ export default function TransactionDetailPage() {
         {/* Details */}
         <div className="lg:col-span-2 bg-white rounded-lg border border-[#ebe9f1]">
           <div className="px-4 py-3 border-b border-[#ebe9f1]">
-            <h2 className="font-medium text-[#5e5873]">Dettagli</h2>
+            <h2 className="font-medium text-[#5e5873]">{t("pages.payments.transactionDetail.details")}</h2>
           </div>
           <div className="p-4 grid grid-cols-2 gap-4 text-sm">
-            <DetailRow label="Provider">
+            <DetailRow label={t("pages.payments.transactionDetail.provider")}>
               <ProviderBadge provider={transaction.provider} />
             </DetailRow>
-            <DetailRow label="Tipo">
+            <DetailRow label={t("pages.payments.transactionDetail.type")}>
               {PAYMENT_TYPE_LABELS[transaction.payment_type]}
             </DetailRow>
-            <DetailRow label="Order ID">
+            <DetailRow label={t("pages.payments.transactionDetail.orderId")}>
               {transaction.order_id ? (
                 <Link
                   href={`${tenantPrefix}/b2b/store/orders/${transaction.order_id}`}
@@ -284,38 +286,38 @@ export default function TransactionDetailPage() {
                 "—"
               )}
             </DetailRow>
-            <DetailRow label="Cliente">
+            <DetailRow label={t("pages.payments.transactionDetail.customer")}>
               {transaction.customer_email || transaction.customer_id || "—"}
             </DetailRow>
-            <DetailRow label="Provider Order ID">
+            <DetailRow label={t("pages.payments.transactionDetail.providerOrderId")}>
               <span className="font-mono text-xs">
                 {transaction.provider_payment_id || "—"}
               </span>
             </DetailRow>
-            <DetailRow label="Codice Transazione Provider">
+            <DetailRow label={t("pages.payments.transactionDetail.providerCaptureId")}>
               <span className="font-mono text-xs">
                 {transaction.provider_capture_id || "—"}
               </span>
             </DetailRow>
-            <DetailRow label="Idempotency Key">
+            <DetailRow label={t("pages.payments.transactionDetail.idempotencyKey")}>
               <span className="font-mono text-xs">
                 {transaction.idempotency_key || "—"}
               </span>
             </DetailRow>
-            <DetailRow label="Creato il">
+            <DetailRow label={t("pages.payments.transactionDetail.createdAt")}>
               {formatDateTime(transaction.created_at)}
             </DetailRow>
-            <DetailRow label="Aggiornato il">
+            <DetailRow label={t("pages.payments.transactionDetail.updatedAt")}>
               {formatDateTime(transaction.updated_at)}
             </DetailRow>
             {transaction.completed_at && (
-              <DetailRow label="Completato il">
+              <DetailRow label={t("pages.payments.transactionDetail.completedAt")}>
                 {formatDateTime(transaction.completed_at)}
               </DetailRow>
             )}
             {transaction.failure_reason && (
               <div className="col-span-2">
-                <DetailRow label="Errore">
+                <DetailRow label={t("pages.payments.transactionDetail.error")}>
                   <span className="text-red-600">
                     {transaction.failure_reason}
                     {transaction.failure_code && ` (${transaction.failure_code})`}
@@ -329,7 +331,7 @@ export default function TransactionDetailPage() {
         {/* Refund Action */}
         <div className="bg-white rounded-lg border border-[#ebe9f1]">
           <div className="px-4 py-3 border-b border-[#ebe9f1]">
-            <h2 className="font-medium text-[#5e5873]">Azioni</h2>
+            <h2 className="font-medium text-[#5e5873]">{t("pages.payments.transactionDetail.actions")}</h2>
           </div>
           <div className="p-4">
             {canRefund ? (
@@ -339,13 +341,13 @@ export default function TransactionDetailPage() {
                     onClick={() => setShowRefund(true)}
                     className="w-full px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
                   >
-                    Rimborsa Transazione
+                    {t("pages.payments.transactionDetail.refundTransaction")}
                   </button>
                 ) : (
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-[#5e5873] mb-1">
-                        Importo (vuoto = rimborso totale)
+                        {t("pages.payments.transactionDetail.refundAmountLabel")}
                       </label>
                       <input
                         type="text"
@@ -369,7 +371,7 @@ export default function TransactionDetailPage() {
                         {isRefunding ? (
                           <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                         ) : (
-                          "Conferma"
+                          t("common.confirm")
                         )}
                       </button>
                       <button
@@ -379,7 +381,7 @@ export default function TransactionDetailPage() {
                         }}
                         className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm hover:bg-[#f8f8f8] transition-colors"
                       >
-                        Annulla
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -387,7 +389,7 @@ export default function TransactionDetailPage() {
               </>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-2">
-                Nessuna azione disponibile per lo stato corrente.
+                {t("pages.payments.transactionDetail.noActionsAvailable")}
               </p>
             )}
           </div>
@@ -397,12 +399,12 @@ export default function TransactionDetailPage() {
       {/* Events Timeline */}
       <div className="bg-white rounded-lg border border-[#ebe9f1]">
         <div className="px-4 py-3 border-b border-[#ebe9f1]">
-          <h2 className="font-medium text-[#5e5873]">Cronologia Eventi</h2>
+          <h2 className="font-medium text-[#5e5873]">{t("pages.payments.transactionDetail.eventTimeline")}</h2>
         </div>
         {transaction.events.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-            <p className="text-sm">Nessun evento registrato</p>
+            <p className="text-sm">{t("pages.payments.transactionDetail.noEvents")}</p>
           </div>
         ) : (
           <div className="p-4">
@@ -424,7 +426,7 @@ export default function TransactionDetailPage() {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground">
-                        Stato: {event.status}
+                        {t("pages.payments.transactionDetail.eventStatus", { status: event.status })}
                       </span>
                       {event.provider_event_id && (
                         <span className="text-xs font-mono text-muted-foreground">

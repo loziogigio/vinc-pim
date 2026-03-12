@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Grid3X3, LogOut } from "lucide-react";
 import { getLauncherApps } from "@/config/apps.config";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type AppLauncherDropdownProps = {
   tenantId?: string;
@@ -14,6 +15,7 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const tenantPrefix = tenantId ? `/${tenantId}` : "";
 
@@ -47,8 +49,8 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-10 w-10 items-center justify-center rounded-full text-[#6e6b7b] transition hover:bg-[#f1f1f2]"
-        aria-label="Apps"
-        title="Apps"
+        aria-label={t("header.apps")}
+        title={t("header.apps")}
       >
         <Grid3X3 className="h-5 w-5" />
       </button>
@@ -70,7 +72,7 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
                     <app.icon className="h-5 w-5" />
                   </div>
                   <span className="text-[11px] font-medium text-[#5f6368] text-center leading-tight line-clamp-2 min-h-[28px] flex items-center">
-                    {app.name}
+                    {t(`apps.${app.id}.name`)}
                   </span>
                 </Link>
               ))}
@@ -87,7 +89,7 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
               className="flex w-full items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4]"
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              {t("common.logout")}
             </button>
           </div>
         </div>

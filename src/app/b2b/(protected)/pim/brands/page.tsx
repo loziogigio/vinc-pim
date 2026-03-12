@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Edit, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { toast } from "sonner";
 import { FullScreenModal } from "@/components/shared/FullScreenModal";
 import { ImageUpload } from "@/components/shared/ImageUpload";
@@ -24,6 +25,7 @@ type Brand = {
 };
 
 export default function BrandsPage() {
+  const { t } = useTranslation();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -194,9 +196,9 @@ export default function BrandsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Brands</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("pages.pim.brands.title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage product brands and manufacturers
+            {t("pages.pim.brands.subtitle")}
           </p>
         </div>
         <button
@@ -204,7 +206,7 @@ export default function BrandsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
         >
           <Plus className="w-4 h-4" />
-          New Brand
+          {t("pages.pim.brands.newBrand")}
         </button>
       </div>
 
@@ -215,7 +217,7 @@ export default function BrandsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search brands..."
+              placeholder={t("pages.pim.brands.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
@@ -228,9 +230,9 @@ export default function BrandsPage() {
           onChange={(e) => setFilterActive(e.target.value)}
           className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="all">All Status</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
+          <option value="all">{t("pages.pim.brands.allStatus")}</option>
+          <option value="true">{t("common.active")}</option>
+          <option value="false">{t("common.inactive")}</option>
         </select>
 
         <select
@@ -238,9 +240,9 @@ export default function BrandsPage() {
           onChange={(e) => setFilterLogo(e.target.value)}
           className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="all">All Images</option>
-          <option value="true">With Image</option>
-          <option value="false">Without Image</option>
+          <option value="all">{t("pages.pim.brands.allImages")}</option>
+          <option value="true">{t("pages.pim.brands.withImage")}</option>
+          <option value="false">{t("pages.pim.brands.withoutImage")}</option>
         </select>
 
         <select
@@ -267,16 +269,16 @@ export default function BrandsPage() {
       {/* Brands Table */}
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">
-          Loading brands...
+          {t("pages.pim.brands.loading")}
         </div>
       ) : brands.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">No brands found</p>
+          <p className="text-muted-foreground mb-4">{t("pages.pim.brands.noFound")}</p>
           <button
             onClick={openCreateModal}
             className="text-primary hover:underline"
           >
-            Create your first brand
+            {t("pages.pim.brands.createFirst")}
           </button>
         </div>
       ) : (
@@ -285,22 +287,22 @@ export default function BrandsPage() {
             <thead className="bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Brand
+                  {t("pages.pim.brands.colBrand")}
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Slug
+                  {t("pages.pim.brands.colSlug")}
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Products
+                  {t("pages.pim.products.title")}
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Status
+                  {t("common.status")}
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                  Created
+                  {t("common.createdAt")}
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
-                  Actions
+                  {t("common.actions")}
                 </th>
               </tr>
             </thead>
@@ -453,7 +455,7 @@ export default function BrandsPage() {
       <FullScreenModal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={editingBrand ? "Edit Brand" : "Create Brand"}
+        title={editingBrand ? t("pages.pim.brands.editBrand") : t("pages.pim.brands.createBrand")}
         actions={
           <>
             <button
@@ -469,7 +471,7 @@ export default function BrandsPage() {
               disabled={!formData.label || !formData.slug}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
             >
-              {editingBrand ? "Update Brand" : "Create Brand"}
+              {editingBrand ? t("pages.pim.brands.updateBrand") : t("pages.pim.brands.createBrand")}
             </button>
           </>
         }

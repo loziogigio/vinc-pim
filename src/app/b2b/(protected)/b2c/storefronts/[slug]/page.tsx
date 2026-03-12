@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Pencil, FileText, Inbox } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { GeneralSection, parseDomainEntry, formatDomain } from "@/components/b2c/storefront-settings/general-section";
 import { BrandingSection } from "@/components/b2c/storefront-settings/branding-section";
@@ -41,6 +42,7 @@ export default function StorefrontDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const { t } = useTranslation();
   const pathname = usePathname() || "";
   const searchParams = useSearchParams();
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -132,12 +134,12 @@ export default function StorefrontDetailPage({
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to update"); return; }
+      if (!res.ok) { setError(data.error || t("pages.b2c.storefrontDetail.failedToUpdate")); return; }
       setStorefront(data.data);
-      setSuccess("Storefront updated successfully");
+      setSuccess(t("pages.b2c.storefrontDetail.updatedSuccess"));
       setTimeout(() => setSuccess(""), 3000);
     } catch {
-      setError("Network error");
+      setError(t("pages.b2c.storefrontDetail.networkError"));
     } finally {
       setSaving(false);
     }
@@ -155,12 +157,12 @@ export default function StorefrontDetailPage({
         body: JSON.stringify({ header_config: headerConfigDraft, header_config_draft: headerConfigDraft }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to publish header"); return; }
+      if (!res.ok) { setError(data.error || t("pages.b2c.storefrontDetail.failedToPublishHeader")); return; }
       setStorefront(data.data);
-      setSuccess("Header published");
+      setSuccess(t("pages.b2c.storefrontDetail.headerPublished"));
       setTimeout(() => setSuccess(""), 3000);
     } catch {
-      setError("Network error");
+      setError(t("pages.b2c.storefrontDetail.networkError"));
     } finally {
       setSaving(false);
     }
@@ -180,12 +182,12 @@ export default function StorefrontDetailPage({
         body: JSON.stringify({ footer: published, footer_draft: footerDraft }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to publish footer"); return; }
+      if (!res.ok) { setError(data.error || t("pages.b2c.storefrontDetail.failedToPublishFooter")); return; }
       setStorefront(data.data);
-      setSuccess("Footer published");
+      setSuccess(t("pages.b2c.storefrontDetail.footerPublished"));
       setTimeout(() => setSuccess(""), 3000);
     } catch {
-      setError("Network error");
+      setError(t("pages.b2c.storefrontDetail.networkError"));
     } finally {
       setSaving(false);
     }
@@ -207,7 +209,7 @@ export default function StorefrontDetailPage({
   if (!storefront) {
     return (
       <div className="p-6">
-        <p className="text-slate-400">Storefront not found</p>
+        <p className="text-slate-400">{t("pages.b2c.storefrontDetail.storefrontNotFound")}</p>
       </div>
     );
   }
@@ -225,26 +227,26 @@ export default function StorefrontDetailPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">{storefront.name}</h1>
-          <p className="text-sm text-slate-400">Slug: {storefront.slug}</p>
+          <p className="text-sm text-slate-400">{t("pages.b2c.storefrontDetail.slug")}: {storefront.slug}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href={`${tenantPrefix}/b2b/b2c/storefronts/${slug}/pages`}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           >
-            <FileText className="h-4 w-4" /> Pages
+            <FileText className="h-4 w-4" /> {t("pages.b2c.storefrontDetail.pages")}
           </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2c/storefronts/${slug}/forms`}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           >
-            <Inbox className="h-4 w-4" /> Forms
+            <Inbox className="h-4 w-4" /> {t("pages.b2c.storefrontDetail.forms")}
           </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${slug}`}
             className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
           >
-            <Pencil className="h-4 w-4" /> Home Builder
+            <Pencil className="h-4 w-4" /> {t("pages.b2c.storefrontDetail.homeBuilder")}
           </Link>
         </div>
       </div>

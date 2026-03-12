@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Globe,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Session {
   session_id: string;
@@ -38,6 +39,7 @@ interface Pagination {
 }
 
 export default function SessionsPage() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -82,7 +84,7 @@ export default function SessionsPage() {
   };
 
   const handleRevoke = async (sessionId: string) => {
-    if (!confirm("Sei sicuro di voler terminare questa sessione?")) return;
+    if (!confirm(t("pages.admin.sessions.confirmRevoke"))) return;
 
     setRevoking(sessionId);
     try {
@@ -118,19 +120,19 @@ export default function SessionsPage() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Adesso";
-    if (diffMins < 60) return `${diffMins}m fa`;
-    if (diffHours < 24) return `${diffHours}h fa`;
-    if (diffDays === 1) return "Ieri";
-    return `${diffDays}g fa`;
+    if (diffMins < 1) return t("pages.admin.sessions.now");
+    if (diffMins < 60) return t("pages.admin.sessions.minutesAgo").replace("{n}", String(diffMins));
+    if (diffHours < 24) return t("pages.admin.sessions.hoursAgo").replace("{n}", String(diffHours));
+    if (diffDays === 1) return t("pages.admin.sessions.yesterday");
+    return t("pages.admin.sessions.daysAgo").replace("{n}", String(diffDays));
   };
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Sessioni Attive</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.sessions.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Gestisci le sessioni utente attive
+          {t("pages.admin.sessions.subtitle")}
         </p>
       </div>
 
@@ -140,7 +142,7 @@ export default function SessionsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Cerca per email..."
+            placeholder={t("pages.admin.sessions.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -155,7 +157,7 @@ export default function SessionsPage() {
       ) : sessions.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
           <Monitor className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">Nessuna sessione attiva</p>
+          <p className="text-slate-500">{t("pages.admin.sessions.noSessions")}</p>
         </div>
       ) : (
         <>
@@ -166,22 +168,22 @@ export default function SessionsPage() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Utente
+                      {t("pages.admin.sessions.user")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      App
+                      {t("pages.admin.sessions.app")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Dispositivo
+                      {t("pages.admin.sessions.device")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Posizione
+                      {t("pages.admin.sessions.location")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Ultima Attività
+                      {t("pages.admin.sessions.lastActivity")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Azioni
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -247,7 +249,7 @@ export default function SessionsPage() {
                           ) : (
                             <XCircle className="w-4 h-4" />
                           )}
-                          Termina
+                          {t("pages.admin.sessions.revoke")}
                         </button>
                       </td>
                     </tr>
@@ -261,9 +263,10 @@ export default function SessionsPage() {
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-slate-500">
-                Mostrando {(pagination.page - 1) * pagination.limit + 1}-
-                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                di {pagination.total}
+                {t("pages.admin.sessions.showingPagination")
+                  .replace("{from}", String((pagination.page - 1) * pagination.limit + 1))
+                  .replace("{to}", String(Math.min(pagination.page * pagination.limit, pagination.total)))
+                  .replace("{total}", String(pagination.total))}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -279,7 +282,9 @@ export default function SessionsPage() {
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="text-sm text-slate-600">
-                  Pagina {pagination.page} di {pagination.totalPages}
+                  {t("pages.admin.sessions.pageOf")
+                    .replace("{page}", String(pagination.page))
+                    .replace("{pages}", String(pagination.totalPages))}
                 </span>
                 <button
                   onClick={() =>

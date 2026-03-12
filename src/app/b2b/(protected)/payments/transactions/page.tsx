@@ -18,6 +18,7 @@ import type {
   PaymentProvider,
   PaymentType,
 } from "@/lib/constants/payment";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TransactionItem {
   transaction_id: string;
@@ -35,6 +36,7 @@ const formatCurrency = (amount: number, currency: string = "EUR") =>
   new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 
 export default function TransactionsListPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -77,7 +79,7 @@ export default function TransactionsListPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-[#5e5873]">Transazioni</h1>
+      <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.payments.transactions.title")}</h1>
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -85,7 +87,7 @@ export default function TransactionsListPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Cerca per ID, ordine, email..."
+            placeholder={t("pages.payments.transactions.searchPlaceholder")}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
@@ -96,7 +98,7 @@ export default function TransactionsListPage() {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
         >
-          <option value="">Tutti gli stati</option>
+          <option value="">{t("pages.payments.transactions.allStatuses")}</option>
           {TRANSACTION_STATUSES.map((s) => (
             <option key={s} value={s}>{TRANSACTION_STATUS_LABELS[s]}</option>
           ))}
@@ -106,7 +108,7 @@ export default function TransactionsListPage() {
           onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
         >
-          <option value="">Tutti i provider</option>
+          <option value="">{t("pages.payments.transactions.allProviders")}</option>
           {PAYMENT_PROVIDERS.map((p) => (
             <option key={p} value={p}>{PAYMENT_PROVIDER_LABELS[p]}</option>
           ))}
@@ -116,7 +118,7 @@ export default function TransactionsListPage() {
           onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
         >
-          <option value="">Tutti i tipi</option>
+          <option value="">{t("pages.payments.transactions.allTypes")}</option>
           {PAYMENT_TYPES.map((t) => (
             <option key={t} value={t}>{PAYMENT_TYPE_LABELS[t]}</option>
           ))}
@@ -132,19 +134,19 @@ export default function TransactionsListPage() {
         ) : transactions.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             <Receipt className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-            <p>Nessuna transazione trovata</p>
+            <p>{t("pages.payments.transactions.noTransactions")}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">N.</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Ordine</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Provider</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">Tipo</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">Importo</th>
-                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">Stato</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">Data</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.number")}</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.order")}</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.provider")}</th>
+                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.type")}</th>
+                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.amount")}</th>
+                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.status")}</th>
+                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.payments.transactions.date")}</th>
               </tr>
             </thead>
             <tbody>
@@ -198,7 +200,7 @@ export default function TransactionsListPage() {
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[#ebe9f1]">
             <span className="text-sm text-muted-foreground">
-              Pagina {pagination.page} di {pagination.totalPages} ({pagination.total} transazioni)
+              {t("pages.payments.transactions.pageOf", { page: pagination.page, pages: pagination.totalPages, total: pagination.total })}
             </span>
             <div className="flex items-center gap-2">
               <button

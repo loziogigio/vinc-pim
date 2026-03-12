@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { BulkUpdateModal, BulkUpdateData } from "@/components/pim/BulkUpdateModal";
 import { ProductImage, PIMProductListItem } from "@/lib/types/pim";
@@ -84,6 +85,7 @@ function getMultilingualText(
 }
 
 export default function ProductsListPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -336,11 +338,11 @@ export default function ProductsListPage() {
     <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <div className="text-center text-[#5e5873]">
         <Package className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
-        <p className="text-[1.05rem] font-semibold">No products found</p>
+        <p className="text-[1.05rem] font-semibold">{t("pages.pim.products.noProducts")}</p>
         <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
           {filters.search || filters.status
-            ? "Try adjusting your filters"
-            : "Import products to get started"}
+            ? t("pages.pim.products.adjustFilters")
+            : t("pages.pim.products.importToStart")}
         </p>
       </div>
     </div>
@@ -350,17 +352,17 @@ export default function ProductsListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Products" },
+          { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+          { label: t("pages.pim.products.title") },
         ]}
       />
 
       {/* Header with Create Button */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.products.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your product catalog ({pagination.total} total)
+            {t("pages.pim.products.subtitle")} ({pagination.total} total)
           </p>
         </div>
         <button
@@ -368,7 +370,7 @@ export default function ProductsListPage() {
           className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          Create Product
+          {t("pages.pim.products.createProduct")}
         </button>
       </div>
 
@@ -380,7 +382,7 @@ export default function ProductsListPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search products by title..."
+              placeholder={t("pages.pim.products.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="w-full rounded border border-border bg-background px-9 py-2 text-sm focus:border-primary focus:outline-none"
@@ -393,10 +395,10 @@ export default function ProductsListPage() {
             onChange={(e) => updateFilters({ status: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
+            <option value="">{t("pages.pim.products.allStatus")}</option>
+            <option value="draft">{t("common.draft")}</option>
+            <option value="published">{t("common.published")}</option>
+            <option value="archived">{t("common.archive")}</option>
           </select>
 
           {/* Conflict Filter */}
@@ -405,9 +407,9 @@ export default function ProductsListPage() {
             onChange={(e) => updateFilters({ has_conflict: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Items</option>
-            <option value="true">Needs Merge</option>
-            <option value="false">No Conflicts</option>
+            <option value="">{t("pages.pim.products.allItems")}</option>
+            <option value="true">{t("pages.pim.products.needsMerge")}</option>
+            <option value="false">{t("pages.pim.products.noConflicts")}</option>
           </select>
 
           {/* Sort */}
@@ -416,10 +418,10 @@ export default function ProductsListPage() {
             onChange={(e) => updateFilters({ sort: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="priority">Priority (High to Low)</option>
-            <option value="score">Score (Low to High)</option>
-            <option value="updated">Recently Updated</option>
-            <option value="name">Title (A-Z)</option>
+            <option value="priority">{t("pages.pim.products.sortPriority")}</option>
+            <option value="score">{t("pages.pim.products.sortScore")}</option>
+            <option value="updated">{t("pages.pim.products.sortUpdated")}</option>
+            <option value="name">{t("pages.pim.products.sortName")}</option>
           </select>
         </div>
 
@@ -452,7 +454,7 @@ export default function ProductsListPage() {
             className="flex items-center gap-2 text-sm text-primary hover:underline"
           >
             <Filter className="h-4 w-4" />
-            Advanced Filters
+            {t("pages.pim.products.advancedFilters")}
             {showAdvancedFilters ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -638,7 +640,7 @@ export default function ProductsListPage() {
           filters.has_conflict || filters.entity_code || filters.sku || filters.parent_sku || filters.brand || filters.category ||
           filters.price_min || filters.price_max || filters.score_min || filters.score_max) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">{t("pages.pim.products.activeFilters")}:</span>
             {filters.batch_id && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
                 <span className="font-mono">Batch: {filters.batch_id}</span>
@@ -786,7 +788,7 @@ export default function ProductsListPage() {
               })}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
-              Clear all
+              {t("pages.pim.products.clearAll")}
             </button>
           </div>
         )}
@@ -805,7 +807,7 @@ export default function ProductsListPage() {
                 onClick={clearSelection}
                 className="text-sm text-muted-foreground hover:text-foreground underline"
               >
-                Clear selection
+                {t("pages.pim.products.clearSelection")}
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -814,14 +816,14 @@ export default function ProductsListPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
               >
                 <Download className="h-4 w-4" />
-                Export Selected
+                {t("pages.pim.products.exportSelected")}
               </button>
               <button
                 onClick={() => setShowBulkUpdateModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 text-sm font-medium transition"
               >
                 <EditIcon className="h-4 w-4" />
-                Bulk Update
+                {t("pages.pim.products.bulkUpdate")}
               </button>
             </div>
           </div>
@@ -859,28 +861,28 @@ export default function ProductsListPage() {
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Product
+                      {t("pages.pim.products.colProduct")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Parent SKU
+                      {t("pages.pim.products.colParentSku")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Quality
+                      {t("pages.pim.products.colQuality")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Languages
+                      {t("pages.pim.products.colLanguages")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Status
+                      {t("common.status")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Last Updated
+                      {t("pages.pim.products.colLastUpdated")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[80px]">
-                      Batch ID
+                      {t("pages.pim.products.colBatchId")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>

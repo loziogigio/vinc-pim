@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   Layout,
   Plus,
@@ -50,6 +51,7 @@ interface TemplateItem {
 }
 
 export default function DocumentTemplatesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantPrefix =
@@ -91,7 +93,7 @@ export default function DocumentTemplatesPage() {
 
   const handleCreate = async () => {
     if (!newName.trim()) {
-      alert("Inserisci un nome per il template");
+      alert(t("pages.documents.templates.enterTemplateName"));
       return;
     }
     setIsCreating(true);
@@ -113,10 +115,10 @@ export default function DocumentTemplatesPage() {
           `${tenantPrefix}/b2b/documents/templates/${data.template.template_id}`,
         );
       } else {
-        alert(data.error || "Errore nella creazione");
+        alert(data.error || t("pages.documents.templates.creationError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.templates.networkError"));
     } finally {
       setIsCreating(false);
     }
@@ -132,10 +134,10 @@ export default function DocumentTemplatesPage() {
       if (data.success) {
         await fetchTemplates();
       } else {
-        alert(data.error || "Errore");
+        alert(data.error || t("pages.documents.templates.creationError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.templates.networkError"));
     } finally {
       setIsSeeding(false);
     }
@@ -154,17 +156,17 @@ export default function DocumentTemplatesPage() {
           `${tenantPrefix}/b2b/documents/templates/${data.template.template_id}`,
         );
       } else {
-        alert(data.error || "Errore");
+        alert(data.error || t("pages.documents.templates.creationError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.templates.networkError"));
     } finally {
       setDuplicatingId(null);
     }
   };
 
   const handleDelete = async (templateId: string) => {
-    if (!confirm("Eliminare questo template?")) return;
+    if (!confirm(t("pages.documents.templates.deleteConfirm"))) return;
     try {
       const res = await fetch(
         `/api/b2b/documents/templates/${templateId}`,
@@ -174,10 +176,10 @@ export default function DocumentTemplatesPage() {
       if (data.success) {
         setTemplates(templates.filter((t) => t.template_id !== templateId));
       } else {
-        alert(data.error || "Errore");
+        alert(data.error || t("pages.documents.templates.creationError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.templates.networkError"));
     }
   };
 
@@ -194,9 +196,9 @@ export default function DocumentTemplatesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#5e5873]">Template Documenti</h1>
+          <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.documents.templates.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestisci i template per fatture, preventivi e altri documenti
+            {t("pages.documents.templates.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -211,7 +213,7 @@ export default function DocumentTemplatesPage() {
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              Inizializza Template Standard
+              {t("pages.documents.templates.initializeStandard")}
             </button>
           )}
           <button
@@ -219,7 +221,7 @@ export default function DocumentTemplatesPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
-            Nuovo Template
+            {t("pages.documents.templates.newTemplate")}
           </button>
         </div>
       </div>
@@ -230,26 +232,26 @@ export default function DocumentTemplatesPage() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Nome
+                {t("pages.documents.templates.templateName")}
               </label>
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Es. Template Personalizzato"
+                placeholder={t("pages.documents.templates.templateNamePlaceholder")}
                 className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Tipo Documento
+                {t("pages.documents.templates.documentType")}
               </label>
               <select
                 value={newDocType}
                 onChange={(e) => setNewDocType(e.target.value)}
                 className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm"
               >
-                <option value="all">Tutti i tipi</option>
+                <option value="all">{t("pages.documents.templates.allTypes")}</option>
                 {DOCUMENT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {DOCUMENT_TYPE_LABELS[t]}
@@ -259,13 +261,13 @@ export default function DocumentTemplatesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Descrizione
+                {t("pages.documents.templates.templateDescription")}
               </label>
               <input
                 type="text"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Opzionale..."
+                placeholder={t("pages.documents.templates.templateDescriptionPlaceholder")}
                 className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm"
               />
             </div>
@@ -277,13 +279,13 @@ export default function DocumentTemplatesPage() {
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium disabled:opacity-50"
             >
               {isCreating && <Loader2 className="w-4 h-4 animate-spin" />}
-              Crea Template
+              {t("pages.documents.templates.createTemplate")}
             </button>
             <button
               onClick={() => setShowCreate(false)}
               className="px-4 py-2 border border-[#ebe9f1] rounded-lg text-sm hover:bg-[#f8f8f8]"
             >
-              Annulla
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -297,10 +299,10 @@ export default function DocumentTemplatesPage() {
               <Sparkles className="w-4 h-4 text-amber-600" />
             </div>
             <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
-              Template Standard
+              {t("pages.documents.templates.standardTemplates")}
             </h2>
             <span className="text-xs text-muted-foreground">
-              ({systemTemplates.length} template di sistema)
+              {t("pages.documents.templates.systemTemplatesCount").replace("{count}", String(systemTemplates.length))}
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -328,7 +330,7 @@ export default function DocumentTemplatesPage() {
             <FileText className="w-4 h-4 text-teal-600" />
           </div>
           <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
-            Template Personalizzati
+            {t("pages.documents.templates.customTemplates")}
           </h2>
           <span className="text-xs text-muted-foreground">
             ({customTemplates.length})
@@ -338,10 +340,10 @@ export default function DocumentTemplatesPage() {
           <div className="bg-white rounded-lg border border-dashed border-[#d5d5d5] p-8 text-center">
             <Layout className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground mb-1">
-              Nessun template personalizzato
+              {t("pages.documents.templates.noCustomTemplates")}
             </p>
             <p className="text-xs text-muted-foreground">
-              Crea un nuovo template o duplica uno standard per personalizzarlo
+              {t("pages.documents.templates.noCustomTemplatesDesc")}
             </p>
           </div>
         ) : (
@@ -368,10 +370,10 @@ export default function DocumentTemplatesPage() {
         <div className="bg-white rounded-lg border border-[#ebe9f1] p-12 text-center">
           <Layout className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-[#5e5873] mb-2">
-            Nessun template
+            {t("pages.documents.templates.noTemplates")}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Inizializza i template standard per iniziare, oppure crea un template personalizzato.
+            {t("pages.documents.templates.noTemplatesDesc")}
           </p>
           <button
             onClick={handleSeed}
@@ -383,7 +385,7 @@ export default function DocumentTemplatesPage() {
             ) : (
               <Sparkles className="w-4 h-4" />
             )}
-            Inizializza Template Standard
+            {t("pages.documents.templates.initializeStandard")}
           </button>
         </div>
       )}
@@ -409,6 +411,7 @@ function TemplateCard({
   onDelete: (id: string) => void;
   isDuplicating: boolean;
 }) {
+  const { t } = useTranslation();
   const headerStyle = tpl.header_config?.style as HeaderStyle | undefined;
   const footerEnabled = tpl.footer_config?.enabled !== false;
 
@@ -465,9 +468,9 @@ function TemplateCard({
           )}
           <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded">
             {footerEnabled ? (
-              <><Eye className="w-2.5 h-2.5" /> Footer</>
+              <><Eye className="w-2.5 h-2.5" /> {t("pages.documents.templates.footer")}</>
             ) : (
-              <><EyeOff className="w-2.5 h-2.5" /> No footer</>
+              <><EyeOff className="w-2.5 h-2.5" /> {t("pages.documents.templates.noFooter")}</>
             )}
           </span>
           <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded">
@@ -479,7 +482,7 @@ function TemplateCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {tpl.document_type === "all"
-              ? "Tutti i tipi"
+              ? t("pages.documents.templates.allTypes")
               : DOCUMENT_TYPE_LABELS[
                   tpl.document_type as keyof typeof DOCUMENT_TYPE_LABELS
                 ] || tpl.document_type}
@@ -500,7 +503,7 @@ function TemplateCard({
             }}
             disabled={isDuplicating}
             className="p-1 text-[#009688] hover:text-[#00796b] rounded hover:bg-teal-50 transition-colors"
-            title="Duplica template"
+            title={t("pages.documents.templates.duplicateTemplate")}
           >
             {isDuplicating ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -515,7 +518,7 @@ function TemplateCard({
                 onDelete(tpl.template_id);
               }}
               className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
-              title="Elimina template"
+              title={t("pages.documents.templates.deleteTemplate")}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

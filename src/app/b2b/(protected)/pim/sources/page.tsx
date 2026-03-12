@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Plus, Settings, Trash2, Edit, CheckCircle2, XCircle, Search, Filter } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ImportSource = {
   _id: string;
@@ -23,6 +24,7 @@ type ImportSource = {
 
 export default function SourcesPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -123,17 +125,17 @@ export default function SourcesPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Import Sources" },
+          { label: t("pages.pim.breadcrumbPim"), href: "/b2b/pim" },
+          { label: t("pages.pim.sources.title") },
         ]}
       />
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Import Sources</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.sources.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Configure sources for importing product data ({total} total)
+            {t("pages.pim.sources.subtitle")} ({total} {t("common.total").toLowerCase()})
           </p>
         </div>
         <button
@@ -141,7 +143,7 @@ export default function SourcesPage() {
           className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          Create Source
+          {t("pages.pim.sources.createSource")}
         </button>
       </div>
 
@@ -151,11 +153,11 @@ export default function SourcesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search sources by name or ID..."
+            placeholder={t("pages.pim.sources.searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // Reset to page 1 on search
+              setCurrentPage(1);
             }}
             className="w-full pl-10 pr-4 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
           />
@@ -164,11 +166,11 @@ export default function SourcesPage() {
           value={typeFilter}
           onChange={(e) => {
             setTypeFilter(e.target.value);
-            setCurrentPage(1); // Reset to page 1 on filter
+            setCurrentPage(1);
           }}
           className="px-4 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
         >
-          <option value="">All Types</option>
+          <option value="">{t("pages.pim.sources.allTypes")}</option>
           <option value="api">API</option>
           <option value="csv">CSV</option>
           <option value="excel">Excel</option>
@@ -182,16 +184,16 @@ export default function SourcesPage() {
         {sources.length === 0 ? (
           <div className="rounded-lg bg-card p-12 shadow-sm text-center">
             <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No import sources</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("pages.pim.sources.noSources")}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Create your first import source to start importing products
+              {t("pages.pim.sources.createFirst")}
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
-              Create Source
+              {t("pages.pim.sources.createSource")}
             </button>
           </div>
         ) : (
@@ -213,12 +215,12 @@ export default function SourcesPage() {
                     {source.is_active ? (
                       <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                         <CheckCircle2 className="h-3 w-3" />
-                        Active
+                        {t("common.active")}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                         <XCircle className="h-3 w-3" />
-                        Inactive
+                        {t("common.inactive")}
                       </span>
                     )}
                   </div>
@@ -227,25 +229,25 @@ export default function SourcesPage() {
                   </p>
                   <div className="grid grid-cols-4 gap-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Products:</span>
+                      <span className="text-muted-foreground">{t("pages.pim.sources.products")}:</span>
                       <span className="ml-2 font-medium">
                         {source.stats?.total_products || 0}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Imports:</span>
+                      <span className="text-muted-foreground">{t("pages.pim.sources.imports")}:</span>
                       <span className="ml-2 font-medium">
                         {source.stats?.total_imports || 0}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Threshold:</span>
+                      <span className="text-muted-foreground">{t("pages.pim.sources.threshold")}:</span>
                       <span className="ml-2 font-medium">
                         {source.min_score_threshold}%
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Auto-publish:</span>
+                      <span className="text-muted-foreground">{t("pages.pim.sources.autoPublish")}:</span>
                       <span className="ml-2 font-medium">
                         {source.auto_publish_enabled ? "On" : "Off"}
                       </span>
@@ -289,7 +291,7 @@ export default function SourcesPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            {t("common.page")} {currentPage} {t("common.of")} {totalPages}
           </p>
           <div className="flex gap-2">
             <button
@@ -297,14 +299,14 @@ export default function SourcesPage() {
               disabled={currentPage === 1}
               className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Previous
+              {t("common.previous")}
             </button>
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {t("common.next")}
             </button>
           </div>
         </div>
@@ -331,6 +333,7 @@ function CreateSourceModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     source_id: "",
     source_name: "",
@@ -372,11 +375,11 @@ function CreateSourceModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">Create Import Source</h2>
+          <h2 className="text-xl font-bold mb-4">{t("pages.pim.sources.createImportSource")}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Source ID */}
             <div>
-              <label className="block text-sm font-medium mb-1">Source ID *</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.sourceId")} *</label>
               <input
                 type="text"
                 required
@@ -397,7 +400,7 @@ function CreateSourceModal({
 
             {/* Source Name */}
             <div>
-              <label className="block text-sm font-medium mb-1">Source Name *</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.sourceName")} *</label>
               <input
                 type="text"
                 required
@@ -414,7 +417,7 @@ function CreateSourceModal({
 
             {/* Source Type */}
             <div>
-              <label className="block text-sm font-medium mb-1">Source Type *</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.sourceType")} *</label>
               <select
                 value={formData.source_type}
                 onChange={(e) =>
@@ -445,7 +448,7 @@ function CreateSourceModal({
                 className="rounded border-border"
               />
               <label htmlFor="auto_publish" className="text-sm font-medium">
-                Enable auto-publish
+                {t("pages.pim.sources.enableAutoPublish")}
               </label>
             </div>
 
@@ -453,7 +456,7 @@ function CreateSourceModal({
             {formData.auto_publish_enabled && (
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Quality Score Threshold
+                  {t("pages.pim.sources.qualityScoreThreshold")}
                 </label>
                 <input
                   type="number"
@@ -477,7 +480,7 @@ function CreateSourceModal({
             {/* Conflict Resolution */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                Conflict Resolution
+                {t("pages.pim.sources.conflictResolution")}
               </label>
               <select
                 value={formData.overwrite_level}
@@ -506,14 +509,14 @@ function CreateSourceModal({
                 disabled={isSaving}
                 className="flex-1 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                {isSaving ? "Creating..." : "Create Source"}
+                {isSaving ? t("pages.pim.sources.creating") : t("pages.pim.sources.createSource")}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 rounded border border-border hover:bg-muted"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </form>

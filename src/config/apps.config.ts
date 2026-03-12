@@ -268,6 +268,7 @@ export function getHeaderApps(): AppConfig[] {
  * Returns the app matching the current path, or Home as default
  */
 export function getCurrentSection(pathname: string): {
+  id: string;
   name: string;
   icon: LucideIcon;
   color: string;
@@ -276,6 +277,7 @@ export function getCurrentSection(pathname: string): {
 
   if (app) {
     return {
+      id: app.id,
       name: app.name,
       icon: app.icon,
       color: app.color,
@@ -284,6 +286,7 @@ export function getCurrentSection(pathname: string): {
 
   // Default to Dashboard/Home
   return {
+    id: "home",
     name: "Dashboard",
     icon: Home,
     color: "bg-[#009688]",

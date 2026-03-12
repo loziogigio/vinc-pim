@@ -12,6 +12,7 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface BlockedIP {
   _id: string;
@@ -32,23 +33,25 @@ interface Pagination {
   totalPages: number;
 }
 
-const REASON_LABELS: Record<string, string> = {
-  brute_force: "Brute Force",
-  suspicious_activity: "Attività sospetta",
-  manual_block: "Blocco manuale",
-  rate_limit_exceeded: "Rate limit superato",
-  geo_restriction: "Restrizione geografica",
-};
-
-const EXPIRY_OPTIONS = [
-  { value: 0, label: "Permanente" },
-  { value: 1, label: "1 ora" },
-  { value: 24, label: "24 ore" },
-  { value: 168, label: "7 giorni" },
-  { value: 720, label: "30 giorni" },
-];
-
 export default function BlockedIPsPage() {
+  const { t } = useTranslation();
+
+  const REASON_LABELS: Record<string, string> = {
+    brute_force: t("pages.admin.blockedIps.bruteForce"),
+    suspicious_activity: t("pages.admin.blockedIps.suspiciousActivity"),
+    manual_block: t("pages.admin.blockedIps.manualBlock"),
+    rate_limit_exceeded: t("pages.admin.blockedIps.rateLimitExceeded"),
+    geo_restriction: t("pages.admin.blockedIps.geoRestriction"),
+  };
+
+  const EXPIRY_OPTIONS = [
+    { value: 0, label: t("pages.admin.blockedIps.permanentOption") },
+    { value: 1, label: t("pages.admin.blockedIps.oneHour") },
+    { value: 24, label: t("pages.admin.blockedIps.twentyFourHours") },
+    { value: 168, label: t("pages.admin.blockedIps.sevenDays") },
+    { value: 720, label: t("pages.admin.blockedIps.thirtyDays") },
+  ];
+
   const [blockedIPs, setBlockedIPs] = useState<BlockedIP[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -120,18 +123,18 @@ export default function BlockedIPsPage() {
         setNewExpiryHours(0);
         await loadBlockedIPs();
       } else {
-        setFormError(data.error || "Errore nel blocco IP");
+        setFormError(data.error || t("pages.admin.blockedIps.blockError"));
       }
     } catch (error) {
       console.error("Error blocking IP:", error);
-      setFormError("Errore nel blocco IP");
+      setFormError(t("pages.admin.blockedIps.blockError"));
     } finally {
       setIsAdding(false);
     }
   };
 
   const handleUnblock = async (id: string) => {
-    if (!confirm("Sei sicuro di voler sbloccare questo IP?")) return;
+    if (!confirm(t("pages.admin.blockedIps.confirmUnblock"))) return;
 
     setUnblocking(id);
     try {
@@ -142,7 +145,7 @@ export default function BlockedIPsPage() {
         await loadBlockedIPs();
       } else {
         const data = await res.json();
-        alert(data.error || "Errore nello sblocco IP");
+        alert(data.error || t("pages.admin.blockedIps.unblockError"));
       }
     } catch (error) {
       console.error("Error unblocking IP:", error);
@@ -166,9 +169,9 @@ export default function BlockedIPsPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">IP Bloccati</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.blockedIps.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Gestisci la blacklist degli indirizzi IP
+            {t("pages.admin.blockedIps.subtitle")}
           </p>
         </div>
         <button
@@ -176,7 +179,7 @@ export default function BlockedIPsPage() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Blocca IP
+          {t("pages.admin.blockedIps.blockIP")}
         </button>
       </div>
 
@@ -187,7 +190,7 @@ export default function BlockedIPsPage() {
       ) : blockedIPs.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
           <Ban className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">Nessun IP bloccato</p>
+          <p className="text-slate-500">{t("pages.admin.blockedIps.noBlockedIPs")}</p>
         </div>
       ) : (
         <>
@@ -198,19 +201,19 @@ export default function BlockedIPsPage() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      IP Address
+                      {t("pages.admin.blockedIps.ipAddress")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Motivo
+                      {t("pages.admin.blockedIps.reason")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Bloccato
+                      {t("pages.admin.blockedIps.blocked")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Scadenza
+                      {t("pages.admin.blockedIps.expiry")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Azioni
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -225,7 +228,7 @@ export default function BlockedIPsPage() {
                           {ip.is_global && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                               <Globe className="w-3 h-3" />
-                              Globale
+                              {t("pages.admin.blockedIps.global")}
                             </span>
                           )}
                         </div>
@@ -241,7 +244,7 @@ export default function BlockedIPsPage() {
                         </span>
                         {ip.attempt_count && ip.attempt_count > 1 && (
                           <p className="text-xs text-slate-500 mt-1">
-                            {ip.attempt_count} tentativi
+                            {ip.attempt_count} {t("pages.admin.blockedIps.attempts")}
                           </p>
                         )}
                       </td>
@@ -252,7 +255,7 @@ export default function BlockedIPsPage() {
                           </p>
                           {ip.blocked_by && (
                             <p className="text-xs text-slate-500">
-                              da {ip.blocked_by}
+                              {t("pages.admin.blockedIps.by")} {ip.blocked_by}
                             </p>
                           )}
                         </div>
@@ -264,13 +267,13 @@ export default function BlockedIPsPage() {
                             {formatDate(ip.expires_at)}
                           </div>
                         ) : (
-                          <span className="text-sm text-slate-500">Permanente</span>
+                          <span className="text-sm text-slate-500">{t("pages.admin.blockedIps.permanent")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {ip.is_global ? (
                           <span className="text-xs text-slate-400">
-                            Non modificabile
+                            {t("pages.admin.blockedIps.notEditable")}
                           </span>
                         ) : (
                           <button
@@ -283,7 +286,7 @@ export default function BlockedIPsPage() {
                             ) : (
                               <Trash2 className="w-4 h-4" />
                             )}
-                            Sblocca
+                            {t("pages.admin.blockedIps.unblock")}
                           </button>
                         )}
                       </td>
@@ -298,9 +301,10 @@ export default function BlockedIPsPage() {
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-slate-500">
-                Mostrando {(pagination.page - 1) * pagination.limit + 1}-
-                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                di {pagination.total}
+                {t("pages.admin.blockedIps.showingPagination")
+                  .replace("{from}", String((pagination.page - 1) * pagination.limit + 1))
+                  .replace("{to}", String(Math.min(pagination.page * pagination.limit, pagination.total)))
+                  .replace("{total}", String(pagination.total))}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -316,7 +320,9 @@ export default function BlockedIPsPage() {
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="text-sm text-slate-600">
-                  Pagina {pagination.page} di {pagination.totalPages}
+                  {t("pages.admin.blockedIps.pageOf")
+                    .replace("{page}", String(pagination.page))
+                    .replace("{pages}", String(pagination.totalPages))}
                 </span>
                 <button
                   onClick={() =>
@@ -341,7 +347,7 @@ export default function BlockedIPsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-900">Blocca IP</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.blockedIps.modalTitle")}</h2>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -359,7 +365,7 @@ export default function BlockedIPsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Indirizzo IP *
+                  {t("pages.admin.blockedIps.ipAddressLabel")}
                 </label>
                 <input
                   type="text"
@@ -373,37 +379,37 @@ export default function BlockedIPsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Motivo
+                  {t("pages.admin.blockedIps.reasonLabel")}
                 </label>
                 <select
                   value={newReason}
                   onChange={(e) => setNewReason(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
-                  <option value="manual_block">Blocco manuale</option>
-                  <option value="brute_force">Brute Force</option>
-                  <option value="suspicious_activity">Attività sospetta</option>
-                  <option value="rate_limit_exceeded">Rate limit superato</option>
-                  <option value="geo_restriction">Restrizione geografica</option>
+                  <option value="manual_block">{t("pages.admin.blockedIps.manualBlock")}</option>
+                  <option value="brute_force">{t("pages.admin.blockedIps.bruteForce")}</option>
+                  <option value="suspicious_activity">{t("pages.admin.blockedIps.suspiciousActivity")}</option>
+                  <option value="rate_limit_exceeded">{t("pages.admin.blockedIps.rateLimitExceeded")}</option>
+                  <option value="geo_restriction">{t("pages.admin.blockedIps.geoRestriction")}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Descrizione
+                  {t("pages.admin.blockedIps.descriptionLabel")}
                 </label>
                 <input
                   type="text"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Motivo del blocco..."
+                  placeholder={t("pages.admin.blockedIps.descriptionPlaceholder")}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Durata blocco
+                  {t("pages.admin.blockedIps.blockDuration")}
                 </label>
                 <select
                   value={newExpiryHours}
@@ -424,7 +430,7 @@ export default function BlockedIPsPage() {
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                 >
-                  Annulla
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -436,7 +442,7 @@ export default function BlockedIPsPage() {
                   ) : (
                     <Ban className="w-4 h-4" />
                   )}
-                  Blocca
+                  {t("pages.admin.blockedIps.block")}
                 </button>
               </div>
             </form>

@@ -1,12 +1,17 @@
+"use client";
+
 import { CalendarCheck, Ship, Clock } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function BookingsOverviewPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#5e5873]">Prenotazioni</h1>
+        <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.bookings.overview.title")}</h1>
         <p className="text-[#b9b9c3] mt-1">
-          Gestione partenze, disponibilità e prenotazioni
+          {t("pages.bookings.overview.subtitle")}
         </p>
       </div>
 
@@ -16,10 +21,10 @@ export default function BookingsOverviewPage() {
             <div className="p-2 rounded-lg bg-teal-50">
               <Ship className="h-5 w-5 text-teal-600" />
             </div>
-            <h3 className="font-semibold text-[#5e5873]">Partenze</h3>
+            <h3 className="font-semibold text-[#5e5873]">{t("pages.bookings.overview.departures")}</h3>
           </div>
           <p className="text-sm text-[#b9b9c3]">
-            Crea e gestisci partenze con risorse e capacità
+            {t("pages.bookings.overview.departuresDesc")}
           </p>
         </div>
 
@@ -28,10 +33,10 @@ export default function BookingsOverviewPage() {
             <div className="p-2 rounded-lg bg-blue-50">
               <CalendarCheck className="h-5 w-5 text-blue-600" />
             </div>
-            <h3 className="font-semibold text-[#5e5873]">Prenotazioni</h3>
+            <h3 className="font-semibold text-[#5e5873]">{t("pages.bookings.overview.reservations")}</h3>
           </div>
           <p className="text-sm text-[#b9b9c3]">
-            Visualizza e gestisci le prenotazioni dei clienti
+            {t("pages.bookings.overview.reservationsDesc")}
           </p>
         </div>
 
@@ -40,10 +45,10 @@ export default function BookingsOverviewPage() {
             <div className="p-2 rounded-lg bg-amber-50">
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
-            <h3 className="font-semibold text-[#5e5873]">In Attesa</h3>
+            <h3 className="font-semibold text-[#5e5873]">{t("pages.bookings.overview.pendingTitle")}</h3>
           </div>
           <p className="text-sm text-[#b9b9c3]">
-            Prenotazioni in attesa di conferma con timer di scadenza
+            {t("pages.bookings.overview.pendingDesc")}
           </p>
         </div>
       </div>

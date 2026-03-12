@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { PIM_PRODUCT_SCHEMA, FIELD_CATEGORIES } from "@/lib/pim/schema";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type ImportSource = {
   _id: string;
@@ -51,6 +52,7 @@ export default function SourceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const sourceId = params?.source_id as string;
+  const { t } = useTranslation();
 
   const [source, setSource] = useState<ImportSource | null>(null);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
@@ -241,8 +243,8 @@ export default function SourceDetailPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Import Sources", href: "/b2b/pim/sources" },
+          { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+          { label: t("pages.pim.sources.title"), href: "/b2b/pim/sources" },
           { label: source.source_name },
         ]}
       />
@@ -304,7 +306,7 @@ export default function SourceDetailPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Changes"}
+                {isSaving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
               </button>
             </>
           ) : (
@@ -313,7 +315,7 @@ export default function SourceDetailPage() {
               className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Settings className="h-4 w-4" />
-              Edit Source
+              {t("pages.pim.sources.editSource")}
             </button>
           )}
         </div>
@@ -376,7 +378,7 @@ export default function SourceDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Basic Settings */}
         <div className="rounded-lg bg-card p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold mb-4">Basic Settings</h2>
+          <h2 className="text-lg font-semibold mb-4">{t("pages.pim.sources.basicSettings")}</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Source Name</label>
@@ -429,7 +431,7 @@ export default function SourceDetailPage() {
 
         {/* Auto-Publish Settings */}
         <div className="rounded-lg bg-card p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold mb-4">Auto-Publish Settings</h2>
+          <h2 className="text-lg font-semibold mb-4">{t("pages.pim.sources.autoPublishSettings")}</h2>
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               {isEditing ? (
@@ -555,7 +557,7 @@ export default function SourceDetailPage() {
         <div className="rounded-lg bg-card p-6 shadow-sm border lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold">Field Mappings</h2>
+              <h2 className="text-lg font-semibold">{t("pages.pim.sources.fieldMappings")}</h2>
               <p className="text-xs text-muted-foreground mt-1">
                 {Object.keys(source.field_mappings || {}).length} mappings configured.
                 Fields not listed use 1:1 mapping.
@@ -569,7 +571,7 @@ export default function SourceDetailPage() {
               className="flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
-              Add Mapping
+              {t("pages.pim.sources.addMapping")}
             </button>
           </div>
 

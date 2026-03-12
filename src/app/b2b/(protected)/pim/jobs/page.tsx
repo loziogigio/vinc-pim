@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   CheckCircle2,
   XCircle,
@@ -80,6 +81,7 @@ type Job = ImportJob | AssociationJob;
 
 export default function JobsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -262,17 +264,17 @@ export default function JobsPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Import Jobs" },
+          { label: t("pages.pim.breadcrumbPim"), href: "/b2b/pim" },
+          { label: t("pages.pim.jobs.title") },
         ]}
       />
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Import Jobs</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.jobs.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Track and monitor product import jobs
+            {t("pages.pim.jobs.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -283,14 +285,14 @@ export default function JobsPage() {
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded border-border"
             />
-            Auto-refresh
+            {t("pages.pim.jobs.autoRefresh")}
           </label>
           <button
             onClick={() => fetchJobs()}
             className="flex items-center gap-2 px-4 py-2 rounded border border-border hover:bg-muted"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            {t("common.refresh")}
           </button>
         </div>
       </div>
@@ -302,7 +304,7 @@ export default function JobsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by file name, job ID, or source..."
+              placeholder={t("pages.pim.jobs.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -319,12 +321,12 @@ export default function JobsPage() {
             }}
             className="px-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[150px]"
           >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">{t("pages.pim.jobs.allStatuses")}</option>
+            <option value="pending">{t("common.pending")}</option>
+            <option value="processing">{t("pages.pim.jobs.processing")}</option>
+            <option value="completed">{t("pages.pim.jobs.completed")}</option>
+            <option value="failed">{t("pages.pim.jobs.failed")}</option>
+            <option value="cancelled">{t("pages.pim.jobs.cancelled")}</option>
           </select>
         </div>
         <div className="flex items-center justify-between">
@@ -363,7 +365,7 @@ export default function JobsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {/* Created Date Range */}
             <div>
-              <label className="block text-xs text-muted-foreground mb-2">Created Date Range</label>
+              <label className="block text-xs text-muted-foreground mb-2">{t("pages.pim.jobs.createdDateRange")}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -391,7 +393,7 @@ export default function JobsPage() {
 
             {/* Completed Date Range */}
             <div>
-              <label className="block text-xs text-muted-foreground mb-2">Completed Date Range</label>
+              <label className="block text-xs text-muted-foreground mb-2">{t("pages.pim.jobs.completedDateRange")}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -437,19 +439,19 @@ export default function JobsPage() {
                 className="flex items-center gap-2 px-3 py-2 text-sm rounded border border-border hover:bg-muted text-muted-foreground"
               >
                 <X className="h-4 w-4" />
-                Clear Filters
+                {t("pages.pim.jobs.clearFilters")}
               </button>
             )}
             <div className="text-sm text-muted-foreground">
               {pagination.total > 0 ? (
-                <>Showing {jobs.length} of {pagination.total} jobs</>
+                <>{t("common.showing")} {jobs.length} {t("common.of")} {pagination.total} {t("pages.pim.jobs.jobs")}</>
               ) : (
-                <>No jobs found</>
+                <>{t("pages.pim.jobs.noJobsFound")}</>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Per page:</span>
+            <span className="text-sm text-muted-foreground">{t("common.perPage")}:</span>
             <select
               value={pagination.limit}
               onChange={(e) => {
@@ -471,9 +473,9 @@ export default function JobsPage() {
         {jobs.length === 0 ? (
           <div className="rounded-lg bg-card p-12 shadow-sm text-center">
             <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No import jobs</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("pages.pim.jobs.noImportJobs")}</h3>
             <p className="text-sm text-muted-foreground">
-              Import jobs will appear here once you upload files
+              {t("pages.pim.jobs.jobsWillAppear")}
             </p>
           </div>
         ) : (
@@ -668,27 +670,27 @@ export default function JobsPage() {
                   {job.job_category === "import" ? (
                     <div className="grid grid-cols-5 gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Total Rows:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.totalRows")}:</span>
                         <div className="font-medium">{job.total_rows}</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Successful:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.successful")}:</span>
                         <div className="font-medium text-emerald-600">
                           {job.successful_rows}
                         </div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Failed:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.failedLabel")}:</span>
                         <div className="font-medium text-red-600">{job.failed_rows}</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Auto-published:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.autoPublished")}:</span>
                         <div className="font-medium text-blue-600">
                           {job.auto_published_count}
                         </div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Duration:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.duration")}:</span>
                         <div className="font-medium">
                           {formatDuration(job.duration_seconds)}
                         </div>
@@ -697,21 +699,21 @@ export default function JobsPage() {
                   ) : (
                     <div className="grid grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Total Items:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.totalItems")}:</span>
                         <div className="font-medium">{job.total_items}</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Successful:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.successful")}:</span>
                         <div className="font-medium text-emerald-600">
                           {job.successful_items}
                         </div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Failed:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.failedLabel")}:</span>
                         <div className="font-medium text-red-600">{job.failed_items}</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Duration:</span>
+                        <span className="text-muted-foreground">{t("pages.pim.jobs.duration")}:</span>
                         <div className="font-medium">
                           {job.started_at && job.completed_at
                             ? formatDuration(
@@ -729,10 +731,10 @@ export default function JobsPage() {
 
                   {/* Timestamps */}
                   <div className="mt-3 text-xs text-muted-foreground">
-                    <span>Started: {formatDate(job.created_at)}</span>
+                    <span>{t("pages.pim.jobs.started")}: {formatDate(job.created_at)}</span>
                     {job.completed_at && (
                       <span className="ml-4">
-                        Completed: {formatDate(job.completed_at)}
+                        {t("pages.pim.jobs.completedAt")}: {formatDate(job.completed_at)}
                       </span>
                     )}
                   </div>
@@ -788,7 +790,7 @@ export default function JobsPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between rounded-lg bg-card p-4 shadow-sm">
           <div className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages}
+            {t("common.page")} {pagination.page} {t("common.of")} {pagination.totalPages}
           </div>
           <div className="flex gap-2">
             <button
@@ -796,14 +798,14 @@ export default function JobsPage() {
               disabled={pagination.page === 1}
               className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Previous
+              {t("common.previous")}
             </button>
             <button
               onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
               disabled={pagination.page === pagination.totalPages}
               className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {t("common.next")}
             </button>
           </div>
         </div>

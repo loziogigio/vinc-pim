@@ -14,6 +14,7 @@ import {
   Copy,
   Home,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ export default function PagesManagementPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const { t } = useTranslation();
   const pathname = usePathname() || "";
   const tenantPrefix =
     pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -77,7 +79,7 @@ export default function PagesManagementPage({
       const json = await res.json();
       setPages(json.data?.items || []);
     } catch (err) {
-      setError("Failed to load pages");
+      setError(t("pages.b2c.pagesManagement.failedToLoad"));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -101,34 +103,34 @@ export default function PagesManagementPage({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to create page");
+        throw new Error(data.error || t("pages.b2c.pagesManagement.failedToCreate"));
       }
       setShowAddDialog(false);
       setNewTitle("");
       setNewSlug("");
-      setSuccess("Page created successfully");
+      setSuccess(t("pages.b2c.pagesManagement.pageCreated"));
       await fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create page");
+      setError(err instanceof Error ? err.message : t("pages.b2c.pagesManagement.failedToCreate"));
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleDeletePage = async (pageSlug: string) => {
-    if (!confirm(`Delete page "${pageSlug}"? This will also delete all form submissions.`))
+    if (!confirm(t("pages.b2c.pagesManagement.deleteConfirm").replace("{slug}", pageSlug)))
       return;
     setError(null);
     try {
       const res = await fetch(`${apiBase}/${pageSlug}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to delete page");
+        throw new Error(data.error || t("pages.b2c.pagesManagement.failedToDelete"));
       }
-      setSuccess("Page deleted");
+      setSuccess(t("pages.b2c.pagesManagement.pageDeleted"));
       await fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete page");
+      setError(err instanceof Error ? err.message : t("pages.b2c.pagesManagement.failedToDelete"));
     }
   };
 
@@ -148,15 +150,15 @@ export default function PagesManagementPage({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to update page");
+        throw new Error(data.error || t("pages.b2c.pagesManagement.failedToUpdate"));
       }
       setRenameTarget(null);
       setRenameTitle("");
       setRenameSlug("");
-      setSuccess("Page updated");
+      setSuccess(t("pages.b2c.pagesManagement.pageUpdated"));
       await fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update page");
+      setError(err instanceof Error ? err.message : t("pages.b2c.pagesManagement.failedToUpdate"));
     } finally {
       setIsRenaming(false);
     }
@@ -171,13 +173,13 @@ export default function PagesManagementPage({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to duplicate page");
+        throw new Error(data.error || t("pages.b2c.pagesManagement.failedToDuplicate"));
       }
       const data = await res.json();
-      setSuccess(`Page duplicated as "${data.data?.slug || "copy"}"`);
+      setSuccess(t("pages.b2c.pagesManagement.duplicatedAs").replace("{slug}", data.data?.slug || "copy"));
       await fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to duplicate page");
+      setError(err instanceof Error ? err.message : t("pages.b2c.pagesManagement.failedToDuplicate"));
     } finally {
       setIsDuplicating(null);
     }
@@ -213,16 +215,16 @@ export default function PagesManagementPage({
         items={[
           { label: "Dashboard", href: "/b2b/b2c" },
           { label: slug, href: `/b2b/b2c/storefronts/${slug}` },
-          { label: "Pages" },
+          { label: t("pages.b2c.pagesManagement.title") },
         ]}
       />
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#5e5873]">Pages</h1>
+          <h1 className="text-xl font-semibold text-[#5e5873]">{t("pages.b2c.pagesManagement.title")}</h1>
           <p className="text-sm text-[#b9b9c3]">
-            Manage custom pages for {slug} ({pages.length} total)
+            {t("pages.b2c.pagesManagement.subtitle").replace("{slug}", slug).replace("{count}", String(pages.length))}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -231,14 +233,14 @@ export default function PagesManagementPage({
             className="inline-flex items-center gap-2 rounded-lg border border-[#009688] px-4 py-2 text-sm font-medium text-[#009688] hover:bg-[#009688]/10 transition-colors"
           >
             <Home className="h-4 w-4" />
-            Home Builder
+            {t("pages.b2c.pagesManagement.homeBuilder")}
           </Link>
           <Button
             onClick={() => setShowAddDialog(true)}
             className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b]"
           >
             <Plus className="h-4 w-4" />
-            Add Page
+            {t("pages.b2c.pagesManagement.addPage")}
           </Button>
         </div>
       </div>
@@ -264,7 +266,7 @@ export default function PagesManagementPage({
               type="text"
               value={filterTitle}
               onChange={(e) => setFilterTitle(e.target.value)}
-              placeholder="Filter by title..."
+              placeholder={t("pages.b2c.pagesManagement.filterByTitle")}
               className="h-9 w-48 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
             />
           </div>
@@ -274,7 +276,7 @@ export default function PagesManagementPage({
               type="text"
               value={filterSlug}
               onChange={(e) => setFilterSlug(e.target.value)}
-              placeholder="Filter by slug..."
+              placeholder={t("pages.b2c.pagesManagement.filterBySlug")}
               className="h-9 w-48 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
             />
           </div>
@@ -283,9 +285,9 @@ export default function PagesManagementPage({
             onChange={(e) => setFilterStatus(e.target.value as "" | "active" | "inactive")}
             className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
           >
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="">{t("pages.b2c.pagesManagement.allStatuses")}</option>
+            <option value="active">{t("common.active")}</option>
+            <option value="inactive">{t("common.inactive")}</option>
           </select>
         </div>
       )}
@@ -302,7 +304,7 @@ export default function PagesManagementPage({
         <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
           <FileText className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
           <p className="text-sm text-[#b9b9c3]">
-            No pages yet. Click &quot;Add Page&quot; to create your first custom page.
+            {t("pages.b2c.pagesManagement.noPages")}
           </p>
         </div>
       )}
@@ -311,7 +313,7 @@ export default function PagesManagementPage({
       {!isLoading && pages.length > 0 && filteredPages.length === 0 && (
         <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
           <Search className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-          <p className="text-sm text-[#b9b9c3]">No pages match your filters.</p>
+          <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.pagesManagement.noFilterResults")}</p>
         </div>
       )}
 
@@ -321,13 +323,13 @@ export default function PagesManagementPage({
           <table className="w-full text-sm">
             <thead className="bg-[#fafafc]">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Title</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Slug</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Content</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Show in Nav</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">Last Saved</th>
-                <th className="px-4 py-3 text-right font-medium text-[#5e5873]">Actions</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colTitle")}</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colSlug")}</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("common.status")}</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colContent")}</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colShowInNav")}</th>
+                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colLastSaved")}</th>
+                <th className="px-4 py-3 text-right font-medium text-[#5e5873]">{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#ebe9f1]">
@@ -382,13 +384,13 @@ export default function PagesManagementPage({
                         href={`${tenantPrefix}/b2b/b2c-page-builder?storefront=${slug}&page=${pg.slug}`}
                         className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors"
                       >
-                        Edit
+                        {t("common.edit")}
                       </Link>
                       <button
                         type="button"
                         onClick={() => { setRenameTarget(pg); setRenameTitle(pg.title); setRenameSlug(pg.slug); }}
                         className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10 transition-colors"
-                        title="Rename"
+                        title={t("pages.b2c.pagesManagement.rename")}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -397,7 +399,7 @@ export default function PagesManagementPage({
                         onClick={() => handleDuplicatePage(pg.slug)}
                         disabled={isDuplicating === pg.slug}
                         className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10 transition-colors disabled:opacity-50"
-                        title="Duplicate"
+                        title={t("common.duplicate")}
                       >
                         {isDuplicating === pg.slug ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -409,7 +411,7 @@ export default function PagesManagementPage({
                         type="button"
                         onClick={() => handleDeletePage(pg.slug)}
                         className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete"
+                        title={t("common.delete")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -427,12 +429,12 @@ export default function PagesManagementPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
             <h2 className="text-lg font-semibold text-[#5e5873]">
-              Create New Page
+              {t("pages.b2c.pagesManagement.createNewPage")}
             </h2>
             <div className="mt-4 space-y-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">
-                  Page Title
+                  {t("pages.b2c.pagesManagement.pageTitle")}
                 </label>
                 <Input
                   value={newTitle}
@@ -442,23 +444,23 @@ export default function PagesManagementPage({
                       setNewSlug(generateSlug(e.target.value));
                     }
                   }}
-                  placeholder="e.g., About Us"
+                  placeholder={t("pages.b2c.pagesManagement.pageTitlePlaceholder")}
                   className="mt-1"
                   autoFocus
                 />
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">
-                  URL Slug
+                  {t("pages.b2c.pagesManagement.urlSlug")}
                 </label>
                 <Input
                   value={newSlug}
                   onChange={(e) => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  placeholder="e.g., about-us"
+                  placeholder={t("pages.b2c.pagesManagement.urlSlugPlaceholder")}
                   className="mt-1"
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  URL path: /{newSlug || "..."}
+                  {t("pages.b2c.pagesManagement.urlPath")}: /{newSlug || "..."}
                 </p>
               </div>
             </div>
@@ -471,7 +473,7 @@ export default function PagesManagementPage({
                   setNewSlug("");
                 }}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleCreatePage}
@@ -481,7 +483,7 @@ export default function PagesManagementPage({
                 {isCreating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Create Page
+                {t("pages.b2c.pagesManagement.createPage")}
               </Button>
             </div>
           </div>
@@ -492,39 +494,39 @@ export default function PagesManagementPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
             <h2 className="text-lg font-semibold text-[#5e5873]">
-              Edit Page
+              {t("pages.b2c.pagesManagement.editPage")}
             </h2>
             <div className="mt-4 space-y-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">
-                  Page Title
+                  {t("pages.b2c.pagesManagement.pageTitle")}
                 </label>
                 <Input
                   value={renameTitle}
                   onChange={(e) => setRenameTitle(e.target.value)}
-                  placeholder="Page title"
+                  placeholder={t("pages.b2c.pagesManagement.pageTitle")}
                   className="mt-1"
                   autoFocus
                 />
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">
-                  URL Slug
+                  {t("pages.b2c.pagesManagement.urlSlug")}
                 </label>
                 <Input
                   value={renameSlug}
                   onChange={(e) => setRenameSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  placeholder="e.g., about-us"
+                  placeholder={t("pages.b2c.pagesManagement.urlSlugPlaceholder")}
                   className="mt-1"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleRenamePage();
                   }}
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  URL path: /{renameSlug || "..."}
+                  {t("pages.b2c.pagesManagement.urlPath")}: /{renameSlug || "..."}
                   {renameSlug !== renameTarget.slug && (
                     <span className="ml-2 text-amber-600">
-                      (changing slug will update template &amp; form references)
+                      {t("pages.b2c.pagesManagement.slugChangeWarning")}
                     </span>
                   )}
                 </p>
@@ -535,7 +537,7 @@ export default function PagesManagementPage({
                 variant="ghost"
                 onClick={() => { setRenameTarget(null); setRenameTitle(""); setRenameSlug(""); }}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleRenamePage}
@@ -550,7 +552,7 @@ export default function PagesManagementPage({
                 {isRenaming ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Save
+                {t("common.save")}
               </Button>
             </div>
           </div>

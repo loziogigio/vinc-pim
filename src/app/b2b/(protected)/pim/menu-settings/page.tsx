@@ -5,6 +5,7 @@ import { MenuBuilder } from "@/components/menu/menu-builder";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface ChannelOption {
   code: string;
@@ -14,6 +15,7 @@ interface ChannelOption {
 }
 
 export default function MenuSettingsPage() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const channelParam = searchParams.get("channel");
 
@@ -52,28 +54,27 @@ export default function MenuSettingsPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Menu Settings" },
+          { label: t("pages.pim.breadcrumbPim"), href: "/b2b/pim" },
+          { label: t("pages.pim.menuSettings.title") },
         ]}
       />
 
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Menu Management</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">{t("pages.pim.menuSettings.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Configure your navigation menus with drag-and-drop. Add items from
-          collections, categories, brands, and more.
+          {t("pages.pim.menuSettings.subtitle")}
         </p>
       </div>
 
       {/* Channel Selector */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-2">
-          Channel
+          {t("pages.pim.menuSettings.channel")}
         </label>
         {loadingChannels ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Loading channels...
+            {t("pages.pim.menuSettings.loadingChannels")}
           </div>
         ) : (
           <div className="flex gap-2 flex-wrap">
@@ -105,7 +106,7 @@ export default function MenuSettingsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Header Menu
+          {t("pages.pim.menuSettings.headerMenu")}
         </button>
         <button
           onClick={() => setActiveLocation("footer")}
@@ -115,7 +116,7 @@ export default function MenuSettingsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Footer Menu
+          {t("pages.pim.menuSettings.footerMenu")}
         </button>
         <button
           onClick={() => setActiveLocation("mobile")}
@@ -125,7 +126,7 @@ export default function MenuSettingsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Mobile Menu
+          {t("pages.pim.menuSettings.mobileMenu")}
         </button>
       </div>
 

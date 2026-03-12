@@ -11,32 +11,34 @@ import {
   LogOut,
   Store
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import { UILanguageSwitcher } from "./UILanguageSwitcher";
 
 const apps = [
   {
-    name: "PIM",
-    description: "Product management",
+    nameKey: "apps.pim.name",
+    descriptionKey: "launcher.productManagement",
     href: "/b2b/pim",
     icon: Package,
     color: "bg-violet-500",
   },
   {
-    name: "Home Builder",
-    description: "Design your storefront",
+    nameKey: "apps.builder.name",
+    descriptionKey: "launcher.designStorefront",
     href: "/b2b/home-builder",
     icon: LayoutDashboard,
     color: "bg-blue-500",
   },
   {
-    name: "Home Settings",
-    description: "Configure homepage",
+    nameKey: "apps.settings.name",
+    descriptionKey: "launcher.configureHomepage",
     href: "/b2b/home-settings",
     icon: Home,
     color: "bg-emerald-500",
   },
   {
-    name: "Store",
-    description: "Orders & Customers",
+    nameKey: "apps.store-orders.name",
+    descriptionKey: "launcher.ordersAndCustomers",
     href: "/b2b/store/orders",
     icon: Store,
     color: "bg-amber-500",
@@ -45,6 +47,7 @@ const apps = [
 
 export function AppLauncher() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     await fetch("/api/b2b/logout", { method: "POST" });
@@ -55,6 +58,9 @@ export function AppLauncher() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-6">
       <div className="w-full max-w-2xl">
+        <div className="flex justify-end mb-4">
+          <UILanguageSwitcher />
+        </div>
         <div className="mb-20 text-center">
           <div className="mb-2 flex justify-center">
             <Image
@@ -66,17 +72,17 @@ export function AppLauncher() {
             />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Welcome to VendereInCloud - CommerceSuite
+            {t("launcher.welcome")}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Select an application to get started
+            {t("launcher.selectApp")}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-5">
           {apps.map((app) => (
             <Link
-              key={app.name}
+              key={app.href}
               href={app.href}
               className="group flex flex-col items-center gap-3 rounded-2xl p-4 transition-all hover:bg-muted/50"
             >
@@ -87,10 +93,10 @@ export function AppLauncher() {
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">
-                  {app.name}
+                  {t(app.nameKey)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {app.description}
+                  {t(app.descriptionKey)}
                 </p>
               </div>
             </Link>
@@ -104,8 +110,8 @@ export function AppLauncher() {
               <LogOut className="h-8 w-8 text-white" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Logout</p>
-              <p className="text-xs text-muted-foreground">Sign out</p>
+              <p className="text-sm font-medium text-foreground">{t("common.logout")}</p>
+              <p className="text-xs text-muted-foreground">{t("common.signOut")}</p>
             </div>
           </button>
         </div>

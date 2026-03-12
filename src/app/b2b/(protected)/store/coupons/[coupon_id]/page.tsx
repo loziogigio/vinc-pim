@@ -29,8 +29,10 @@ import {
   parseDecimalValue,
   toDecimalInputValue,
 } from "@/lib/utils/decimal-input";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function CouponDetailPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b/);
@@ -225,7 +227,7 @@ export default function CouponDetailPage() {
     try {
       const discountValue = parseDecimalValue(discountValueInput);
       if (!discountValue || discountValue <= 0) {
-        setError("Inserisci un valore sconto valido");
+        setError(t("pages.store.couponDetail.errorInvalidDiscount"));
         setIsSaving(false);
         return;
       }
@@ -269,14 +271,14 @@ export default function CouponDetailPage() {
 
       const data = await res.json();
       if (!data.success) {
-        setError(data.error || "Errore nel salvataggio");
+        setError(data.error || t("pages.store.couponDetail.errorSave"));
         return;
       }
 
-      setSuccess("Coupon aggiornato con successo");
+      setSuccess(t("pages.store.couponDetail.successUpdated"));
       fetchCoupon();
     } catch (err) {
-      setError("Errore di rete");
+      setError(t("pages.store.couponDetail.errorNetwork"));
       console.error(err);
     } finally {
       setIsSaving(false);
@@ -304,7 +306,7 @@ export default function CouponDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24 text-[#b9b9c3]">
-        Caricamento...
+        {t("pages.store.couponDetail.loading")}
       </div>
     );
   }
@@ -312,7 +314,7 @@ export default function CouponDetailPage() {
   if (!coupon) {
     return (
       <div className="flex items-center justify-center py-24 text-red-500">
-        Coupon non trovato
+        {t("pages.store.couponDetail.couponNotFound")}
       </div>
     );
   }
@@ -321,8 +323,8 @@ export default function CouponDetailPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Store", href: "/b2b/store/orders" },
-          { label: "Coupons", href: "/b2b/store/coupons" },
+          { label: "Store", href: "/b2b/store" },
+          { label: t("pages.store.coupons.title"), href: "/b2b/store/coupons" },
           { label: coupon.code },
         ]}
       />
@@ -341,7 +343,7 @@ export default function CouponDetailPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Indietro
+            {t("pages.store.couponDetail.back")}
           </Button>
           <Button
             className="bg-[#009688] hover:bg-[#00796b] text-white"
@@ -349,7 +351,7 @@ export default function CouponDetailPage() {
             disabled={isSaving}
           >
             <Save className="h-4 w-4 mr-2" />
-            {isSaving ? "Salvataggio..." : "Salva"}
+            {isSaving ? t("pages.store.couponDetail.saving") : t("pages.store.couponDetail.save")}
           </Button>
         </div>
       </div>
@@ -375,7 +377,7 @@ export default function CouponDetailPage() {
               : "border-transparent text-[#6e6b7b] hover:text-[#5e5873]"
           }`}
         >
-          Dettagli
+          {t("pages.store.couponDetail.details")}
         </button>
         <button
           onClick={() => setActiveTab("usage")}
@@ -385,7 +387,7 @@ export default function CouponDetailPage() {
               : "border-transparent text-[#6e6b7b] hover:text-[#5e5873]"
           }`}
         >
-          Storico utilizzo ({coupon.usage_count})
+          {t("pages.store.couponDetail.usageHistory")} ({coupon.usage_count})
         </button>
       </div>
 
@@ -395,17 +397,17 @@ export default function CouponDetailPage() {
           <div className="space-y-6">
             <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
               <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-                Informazioni
+                {t("pages.store.couponDetail.information")}
               </h2>
               <div className="space-y-4">
                 <div>
-                  <Label>Canale *</Label>
+                  <Label>{t("pages.store.couponDetail.channelRequired")}</Label>
                   <select
                     value={channel}
                     onChange={(e) => setChannel(e.target.value)}
                     className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
                   >
-                    <option value="">Seleziona canale...</option>
+                    <option value="">{t("pages.store.couponDetail.selectChannel")}</option>
                     {channels.map((ch) => (
                       <option key={ch.code} value={ch.code}>
                         {ch.name} ({ch.code})
@@ -419,18 +421,18 @@ export default function CouponDetailPage() {
                   </select>
                 </div>
                 <div>
-                  <Label>Etichetta (visibile al cliente)</Label>
+                  <Label>{t("pages.store.couponDetail.label")}</Label>
                   <Input
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label>Descrizione (interna)</Label>
+                  <Label>{t("pages.store.couponDetail.descriptionInternal")}</Label>
                   <RichTextEditor
                     content={description}
                     onChange={setDescription}
-                    placeholder="Descrizione coupon..."
+                    placeholder={t("pages.store.couponDetail.descriptionPlaceholder")}
                     minHeight="150px"
                   />
                 </div>
@@ -439,11 +441,11 @@ export default function CouponDetailPage() {
 
             <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
               <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-                Sconto
+                {t("pages.store.couponDetail.discountSection")}
               </h2>
               <div className="space-y-4">
                 <div>
-                  <Label>Tipo sconto</Label>
+                  <Label>{t("pages.store.couponDetail.discountType")}</Label>
                   <select
                     value={discountType}
                     onChange={(e) =>
@@ -453,13 +455,13 @@ export default function CouponDetailPage() {
                     }
                     className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
                   >
-                    <option value="percentage">Percentuale (%)</option>
-                    <option value="fixed">Valore fisso (EUR)</option>
+                    <option value="percentage">{t("pages.store.couponDetail.percentage")}</option>
+                    <option value="fixed">{t("pages.store.couponDetail.fixedValue")}</option>
                   </select>
                 </div>
                 <div>
                   <Label>
-                    Valore{" "}
+                    {t("pages.store.couponDetail.value")}{" "}
                     {discountType === "percentage" ? "(%)" : "(EUR)"}
                   </Label>
                   <Input
@@ -475,7 +477,7 @@ export default function CouponDetailPage() {
                   />
                 </div>
                 <div>
-                  <Label>Sconto massimo (EUR)</Label>
+                  <Label>{t("pages.store.couponDetail.maxDiscount")}</Label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -486,7 +488,7 @@ export default function CouponDetailPage() {
                         setMaxDiscountAmountInput
                       )
                     }
-                    placeholder="Nessun limite"
+                    placeholder={t("pages.store.couponDetail.noLimitPlaceholder")}
                   />
                 </div>
                 <div className="flex items-center gap-3">
@@ -498,7 +500,7 @@ export default function CouponDetailPage() {
                     className="rounded border-[#ebe9f1]"
                   />
                   <Label htmlFor="includeShipping" className="cursor-pointer">
-                    Applica anche al costo di spedizione
+                    {t("pages.store.couponDetail.applyToShipping")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-3">
@@ -510,7 +512,7 @@ export default function CouponDetailPage() {
                     className="rounded border-[#ebe9f1]"
                   />
                   <Label htmlFor="isCumulative" className="cursor-pointer">
-                    Cumulabile con altri sconti
+                    {t("pages.store.couponDetail.cumulativeWithOthers")}
                   </Label>
                 </div>
               </div>
@@ -521,12 +523,12 @@ export default function CouponDetailPage() {
           <div className="space-y-6">
             <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
               <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-                Validita
+                {t("pages.store.couponDetail.validitySection")}
               </h2>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Data inizio</Label>
+                    <Label>{t("pages.store.couponDetail.startDate")}</Label>
                     <Input
                       type="date"
                       value={startDate}
@@ -534,7 +536,7 @@ export default function CouponDetailPage() {
                     />
                   </div>
                   <div>
-                    <Label>Data fine</Label>
+                    <Label>{t("pages.store.couponDetail.endDate")}</Label>
                     <Input
                       type="date"
                       value={endDate}
@@ -544,23 +546,23 @@ export default function CouponDetailPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Utilizzi massimi</Label>
+                    <Label>{t("pages.store.couponDetail.maxUses")}</Label>
                     <Input
                       type="number"
                       min={1}
                       value={maxUses}
                       onChange={(e) => setMaxUses(e.target.value)}
-                      placeholder="Illimitato"
+                      placeholder={t("pages.store.couponDetail.unlimitedPlaceholder")}
                     />
                   </div>
                   <div>
-                    <Label>Max per cliente</Label>
+                    <Label>{t("pages.store.couponDetail.maxPerCustomer")}</Label>
                     <Input
                       type="number"
                       min={1}
                       value={maxUsesPerCustomer}
                       onChange={(e) => setMaxUsesPerCustomer(e.target.value)}
-                      placeholder="Illimitato"
+                      placeholder={t("pages.store.couponDetail.unlimitedPlaceholder")}
                     />
                   </div>
                 </div>
@@ -569,11 +571,11 @@ export default function CouponDetailPage() {
 
             <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
               <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-                Soglie ordine
+                {t("pages.store.couponDetail.orderThresholds")}
               </h2>
               <div className="space-y-4">
                 <div>
-                  <Label>Importo minimo ordine (EUR)</Label>
+                  <Label>{t("pages.store.couponDetail.minOrderAmount")}</Label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -584,11 +586,11 @@ export default function CouponDetailPage() {
                         setMinOrderAmountInput
                       )
                     }
-                    placeholder="Nessun minimo"
+                    placeholder={t("pages.store.couponDetail.noMinimumPlaceholder")}
                   />
                 </div>
                 <div>
-                  <Label>Importo massimo ordine (EUR)</Label>
+                  <Label>{t("pages.store.couponDetail.maxOrderAmount")}</Label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -599,7 +601,7 @@ export default function CouponDetailPage() {
                         setMaxOrderAmountInput
                       )
                     }
-                    placeholder="Nessun massimo"
+                    placeholder={t("pages.store.couponDetail.noMaximumPlaceholder")}
                   />
                 </div>
               </div>
@@ -608,11 +610,10 @@ export default function CouponDetailPage() {
             <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
               <h2 className="text-lg font-semibold text-[#5e5873] mb-4 flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Clienti autorizzati
+                {t("pages.store.couponDetail.authorizedCustomers")}
               </h2>
               <p className="text-xs text-[#b9b9c3] mb-3">
-                Lascia vuoto per tutti i clienti. Cerca per email o ragione
-                sociale.
+                {t("pages.store.couponDetail.authorizedCustomersHint")}
               </p>
               <div className="relative">
                 <div className="flex items-center gap-2">
@@ -629,7 +630,7 @@ export default function CouponDetailPage() {
                         addCustomerByEmail(customerSearch);
                       }
                     }}
-                    placeholder="Cerca o digita email + Invio..."
+                    placeholder={t("pages.store.couponDetail.searchOrTypeEmail")}
                     className="flex-1"
                   />
                 </div>
@@ -654,7 +655,7 @@ export default function CouponDetailPage() {
                 )}
                 {isSearching && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border border-[#ebe9f1] bg-white shadow-lg p-3 text-sm text-[#b9b9c3]">
-                    Ricerca...
+                    {t("pages.store.couponDetail.searching")}
                   </div>
                 )}
               </div>
@@ -686,7 +687,7 @@ export default function CouponDetailPage() {
 
             <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
               <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
-                Note interne
+                {t("pages.store.couponDetail.internalNotes")}
               </h2>
               <textarea
                 value={notes}
@@ -704,23 +705,23 @@ export default function CouponDetailPage() {
           {coupon.usage_history.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-[#b9b9c3]">
               <Clock className="h-12 w-12 mb-3 opacity-40" />
-              <p>Nessun utilizzo registrato</p>
+              <p>{t("pages.store.couponDetail.noUsageRecorded")}</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#ebe9f1] bg-[#fafafc]">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                    Ordine
+                    {t("pages.store.couponDetail.orderCol")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                    Cliente
+                    {t("pages.store.couponDetail.customerCol")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                    Sconto applicato
+                    {t("pages.store.couponDetail.discountApplied")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
-                    Data
+                    {t("pages.store.couponDetail.dateCol")}
                   </th>
                 </tr>
               </thead>

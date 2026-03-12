@@ -12,10 +12,12 @@ import { CampaignScheduleModal } from "@/components/notifications/CampaignSchedu
 import { CampaignSuccessModal } from "@/components/notifications/CampaignSuccessModal";
 import { CampaignList } from "@/components/notifications/CampaignList";
 import { Breadcrumbs, type BreadcrumbItem } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type PageTab = "create" | "history";
 
 export default function CampaignsPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<PageTab>("create");
 
   // Form state from custom hook
@@ -50,14 +52,14 @@ export default function CampaignsPage() {
   // Build breadcrumbs
   const buildBreadcrumbs = (): BreadcrumbItem[] => {
     const items: BreadcrumbItem[] = [
-      { label: "Notifiche", href: "/b2b/notifications" },
+      { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
     ];
 
     if (form.editingDraftId) {
-      items.push({ label: "Campagne", href: "/b2b/notifications/campaigns" });
-      items.push({ label: form.campaignName || "Modifica Bozza" });
+      items.push({ label: t("pages.notifications.campaigns.breadcrumb"), href: "/b2b/notifications/campaigns" });
+      items.push({ label: form.campaignName || t("pages.notifications.campaigns.editDraft") });
     } else {
-      items.push({ label: "Campagne" });
+      items.push({ label: t("pages.notifications.campaigns.breadcrumb") });
     }
 
     return items;
@@ -81,10 +83,10 @@ export default function CampaignsPage() {
         throw new Error(data.error || "Failed to send test");
       }
 
-      setToast({ type: "success", message: "Test inviato con successo!" });
+      setToast({ type: "success", message: t("pages.notifications.campaigns.testSuccess") });
       setShowTestModal(false);
     } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Errore nell'invio del test" });
+      setToast({ type: "error", message: error instanceof Error ? error.message : t("pages.notifications.campaigns.testError") });
     } finally {
       setIsSending(false);
     }
@@ -115,8 +117,8 @@ export default function CampaignsPage() {
       form.resetForm();
     } catch (error) {
       setErrorModal({
-        title: "Errore nell'invio della campagna",
-        message: error instanceof Error ? error.message : "Si è verificato un errore durante l'invio",
+        title: t("pages.notifications.campaigns.sendErrorTitle"),
+        message: error instanceof Error ? error.message : t("pages.notifications.campaigns.sendErrorMessage"),
       });
     } finally {
       setIsSending(false);
@@ -125,12 +127,12 @@ export default function CampaignsPage() {
 
   const handleSaveDraft = async () => {
     if (!form.campaignName.trim()) {
-      setToast({ type: "error", message: "Inserisci un nome per la campagna" });
+      setToast({ type: "error", message: t("pages.notifications.campaigns.draftNameRequired") });
       return;
     }
 
     if (!form.title.trim() && !form.body.trim() && !form.emailHtml.trim()) {
-      setToast({ type: "error", message: "Inserisci almeno un titolo, descrizione o contenuto email" });
+      setToast({ type: "error", message: t("pages.notifications.campaigns.draftContentRequired") });
       return;
     }
 
@@ -157,14 +159,16 @@ export default function CampaignsPage() {
       }
 
       const data = await res.json();
-      const action = isUpdate ? "aggiornata" : "salvata";
-      setToast({ type: "success", message: `Bozza "${data.campaign.name}" ${action}!` });
+      const msg = isUpdate
+        ? t("pages.notifications.campaigns.draftUpdated").replace("{name}", data.campaign.name)
+        : t("pages.notifications.campaigns.draftSaved").replace("{name}", data.campaign.name);
+      setToast({ type: "success", message: msg });
 
       if (!isUpdate) {
         form.resetForm();
       }
     } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Errore nel salvataggio della bozza" });
+      setToast({ type: "error", message: error instanceof Error ? error.message : t("pages.notifications.campaigns.draftSaveError") });
     } finally {
       setIsSavingDraft(false);
     }
@@ -172,12 +176,12 @@ export default function CampaignsPage() {
 
   const handleScheduleCampaign = async (scheduledAt: Date) => {
     if (!form.campaignName.trim()) {
-      setToast({ type: "error", message: "Inserisci un nome per la campagna" });
+      setToast({ type: "error", message: t("pages.notifications.campaigns.draftNameRequired") });
       return;
     }
 
     if (!form.isValid()) {
-      setToast({ type: "error", message: "Compila tutti i campi obbligatori" });
+      setToast({ type: "error", message: t("pages.notifications.campaigns.allFieldsRequired") });
       return;
     }
 
@@ -221,7 +225,7 @@ export default function CampaignsPage() {
       });
       form.resetForm();
     } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Errore nella programmazione" });
+      setToast({ type: "error", message: error instanceof Error ? error.message : t("pages.notifications.campaigns.scheduleError") });
     } finally {
       setIsScheduling(false);
     }
@@ -264,7 +268,7 @@ export default function CampaignsPage() {
       }
     } catch (error) {
       console.error("Error loading draft:", error);
-      setToast({ type: "error", message: "Errore nel caricamento della bozza" });
+      setToast({ type: "error", message: t("pages.notifications.campaigns.draftLoadError") });
     }
   };
 
@@ -279,8 +283,8 @@ export default function CampaignsPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Campagne</h1>
-            <p className="text-sm text-slate-500 mt-1">Crea e gestisci campagne di notifica</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.campaigns.title")}</h1>
+            <p className="text-sm text-slate-500 mt-1">{t("pages.notifications.campaigns.subtitle")}</p>
           </div>
         </div>
 
@@ -294,7 +298,7 @@ export default function CampaignsPage() {
             )}
           >
             <Send className="w-4 h-4" />
-            {form.editingDraftId ? "Modifica Bozza" : "Crea Campagna"}
+            {form.editingDraftId ? t("pages.notifications.campaigns.editDraft") : t("pages.notifications.campaigns.createTab")}
           </button>
           <button
             onClick={() => { setActiveTab("history"); form.setEditingDraftId(null); }}
@@ -304,7 +308,7 @@ export default function CampaignsPage() {
             )}
           >
             <Clock className="w-4 h-4" />
-            Storico
+            {t("pages.notifications.campaigns.history")}
           </button>
         </div>
       </div>
@@ -355,11 +359,11 @@ export default function CampaignsPage() {
           <div className="flex items-center gap-3 pt-4 mt-8 border-t border-slate-200">
             <Button variant="outline" onClick={() => setShowPreview(true)} disabled={!form.title && !form.body} className="gap-2">
               <Eye className="w-4 h-4" />
-              Anteprima
+              {t("pages.notifications.campaigns.preview")}
             </Button>
             <Button variant="outline" onClick={() => setShowTestModal(true)} disabled={!form.isValid()} className="gap-2">
               <TestTube className="w-4 h-4" />
-              Invia Test
+              {t("pages.notifications.campaigns.sendTest")}
             </Button>
             <Button
               variant="outline"
@@ -368,7 +372,7 @@ export default function CampaignsPage() {
               className="gap-2"
             >
               <Clock className="w-4 h-4" />
-              Pianifica
+              {t("pages.notifications.campaigns.schedule")}
             </Button>
             <Button
               variant="outline"
@@ -377,11 +381,11 @@ export default function CampaignsPage() {
               className="gap-2"
             >
               {isSavingDraft ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salva Bozza
+              {t("pages.notifications.campaigns.saveDraft")}
             </Button>
             <Button onClick={handleSendCampaign} disabled={!form.isValid() || isSending} className="gap-2">
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Invia Ora
+              {t("pages.notifications.campaigns.sendNow")}
             </Button>
           </div>
         </div>
@@ -443,7 +447,7 @@ export default function CampaignsPage() {
             </div>
             <p className="text-slate-600 mb-6">{errorModal.message}</p>
             <div className="flex justify-end">
-              <Button onClick={() => setErrorModal(null)}>Chiudi</Button>
+              <Button onClick={() => setErrorModal(null)}>{t("pages.notifications.campaigns.close")}</Button>
             </div>
           </div>
         </div>

@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface EmailLog {
   _id: string;
@@ -66,15 +67,6 @@ interface LogsResponse {
 
 type TimeFilter = "all" | "today" | "yesterday" | "7days" | "30days" | "custom";
 
-const TIME_FILTER_OPTIONS: { value: TimeFilter; label: string }[] = [
-  { value: "all", label: "All time" },
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "7days", label: "Last 7 days" },
-  { value: "30days", label: "Last 30 days" },
-  { value: "custom", label: "Custom range" },
-];
-
 function getDateRange(filter: TimeFilter): { dateFrom: string; dateTo: string } | null {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -115,6 +107,7 @@ function getDateRange(filter: TimeFilter): { dateFrom: string; dateTo: string } 
 }
 
 export default function LogsPage() {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +120,15 @@ export default function LogsPage() {
   const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const TIME_FILTER_OPTIONS: { value: TimeFilter; label: string }[] = [
+    { value: "all", label: t("pages.notifications.logs.allTime") },
+    { value: "today", label: t("pages.notifications.logs.today") },
+    { value: "yesterday", label: t("pages.notifications.logs.yesterday") },
+    { value: "7days", label: t("pages.notifications.logs.last7days") },
+    { value: "30days", label: t("pages.notifications.logs.last30days") },
+    { value: "custom", label: t("pages.notifications.logs.customRange") },
+  ];
 
   // Copy log ID to clipboard
   const copyToClipboard = async (emailId: string) => {
@@ -150,7 +152,7 @@ export default function LogsPage() {
         throw new Error(data.error || "Failed to send email");
       }
       // Show success toast
-      setToast({ type: "success", message: "Email inviata con successo" });
+      setToast({ type: "success", message: t("pages.notifications.logs.emailSentSuccess") });
       // Reload logs to show updated status
       await loadLogs();
     } catch (error) {
@@ -234,15 +236,15 @@ export default function LogsPage() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche", href: "/b2b/notifications" },
-          { label: "Logs" },
+          { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+          { label: t("pages.notifications.logs.title") },
         ]} />
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Notification Logs</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.logs.title")}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          View history of all sent notifications
+          {t("pages.notifications.logs.subtitle")}
         </p>
       </div>
 
@@ -254,7 +256,7 @@ export default function LogsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by email or subject..."
+            placeholder={t("pages.notifications.logs.searchPlaceholder")}
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -263,7 +265,7 @@ export default function LogsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
-          <option value="">All statuses</option>
+          <option value="">{t("pages.notifications.logs.allStatuses")}</option>
           <option value="sent">Sent</option>
           <option value="failed">Failed</option>
           <option value="queued">Queued</option>
@@ -289,7 +291,7 @@ export default function LogsPage() {
               onChange={(e) => setCustomDateFrom(e.target.value)}
               className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            <span className="text-slate-400">to</span>
+            <span className="text-slate-400">{t("common.to").toLowerCase()}</span>
             <input
               type="date"
               value={customDateTo}
@@ -309,9 +311,9 @@ export default function LogsPage() {
         ) : logs.length === 0 ? (
           <div className="text-center py-12">
             <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">No logs found</p>
+            <p className="text-slate-500">{t("pages.notifications.logs.noLogs")}</p>
             <p className="text-sm text-slate-400 mt-1">
-              Sent notifications will appear here
+              {t("pages.notifications.logs.noLogsSub")}
             </p>
           </div>
         ) : (
@@ -319,25 +321,25 @@ export default function LogsPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Log ID
+                  {t("pages.notifications.logs.logId")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Date
+                  {t("pages.notifications.logs.date")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Recipient
+                  {t("pages.notifications.logs.recipient")}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Subject
+                  {t("pages.notifications.logs.subject")}
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Status
+                  {t("pages.notifications.logs.status")}
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Opened
+                  {t("pages.notifications.logs.opened")}
                 </th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Actions
+                  {t("common.actions")}
                 </th>
               </tr>
             </thead>
@@ -348,7 +350,7 @@ export default function LogsPage() {
                     <button
                       onClick={() => copyToClipboard(log.email_id)}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
-                      title="Copy log ID for API calls"
+                      title={t("pages.notifications.logs.copyLogId")}
                     >
                       {copiedId === log.email_id ? (
                         <Check className="w-3 h-3 text-emerald-500" />
@@ -399,7 +401,7 @@ export default function LogsPage() {
                           ) : (
                             <Play className="w-3.5 h-3.5" />
                           )}
-                          Send
+                          {t("pages.notifications.logs.send")}
                         </Button>
                       )}
                       <Button
@@ -409,7 +411,7 @@ export default function LogsPage() {
                         onClick={() => setSelectedLog(log)}
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        View
+                        {t("pages.notifications.logs.view")}
                       </Button>
                     </div>
                   </td>
@@ -424,9 +426,10 @@ export default function LogsPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-slate-500">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} logs
+            {t("pages.notifications.logs.showing")
+              .replace("{from}", String((pagination.page - 1) * pagination.limit + 1))
+              .replace("{to}", String(Math.min(pagination.page * pagination.limit, pagination.total)))
+              .replace("{total}", String(pagination.total))}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -435,7 +438,7 @@ export default function LogsPage() {
               disabled={pagination.page <= 1}
               onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
             >
-              Previous
+              {t("pages.notifications.logs.previous")}
             </Button>
             <Button
               variant="outline"
@@ -443,7 +446,7 @@ export default function LogsPage() {
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
             >
-              Next
+              {t("pages.notifications.logs.next")}
             </Button>
           </div>
         </div>
@@ -456,6 +459,7 @@ export default function LogsPage() {
           onClose={() => setSelectedLog(null)}
           onSendNow={handleSendNow}
           isSending={sendingIds.has(selectedLog.email_id)}
+          t={t}
         />
       )}
 
@@ -514,9 +518,10 @@ interface LogDetailModalProps {
   onClose: () => void;
   onSendNow: (emailId: string) => Promise<void>;
   isSending: boolean;
+  t: (key: string) => string;
 }
 
-function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalProps) {
+function LogDetailModal({ log, onClose, onSendNow, isSending, t }: LogDetailModalProps) {
   const [activeTab, setActiveTab] = useState<"details" | "content" | "tracking">("details");
 
   const formatDate = (dateStr: string) => {
@@ -553,7 +558,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
               <Mail className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Email Log Details</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{t("pages.notifications.logs.emailLogDetails")}</h2>
               <p className="text-sm text-slate-500">{log.email_id}</p>
             </div>
           </div>
@@ -576,7 +581,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 : "text-slate-500 hover:text-slate-700"
             )}
           >
-            Details
+            {t("pages.notifications.logs.details")}
           </button>
           <button
             onClick={() => setActiveTab("content")}
@@ -587,7 +592,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 : "text-slate-500 hover:text-slate-700"
             )}
           >
-            Content
+            {t("pages.notifications.logs.content")}
           </button>
           <button
             onClick={() => setActiveTab("tracking")}
@@ -598,7 +603,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 : "text-slate-500 hover:text-slate-700"
             )}
           >
-            Tracking
+            {t("pages.notifications.logs.tracking")}
           </button>
         </div>
 
@@ -621,19 +626,19 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                   <StatusBadge status={log.status} />
                   <div className="text-sm">
                     {log.status === "sent" && log.sent_at && (
-                      <span className="text-emerald-700">Sent on {formatDate(log.sent_at)}</span>
+                      <span className="text-emerald-700">{t("pages.notifications.logs.sentOn").replace("{date}", formatDate(log.sent_at))}</span>
                     )}
                     {log.status === "failed" && log.error && (
                       <span className="text-rose-700">{log.error}</span>
                     )}
                     {log.status === "queued" && (
-                      <span className="text-slate-700">Waiting to be sent</span>
+                      <span className="text-slate-700">{t("pages.notifications.logs.waitingToBeSent")}</span>
                     )}
                     {log.status === "sending" && (
-                      <span className="text-blue-700">Currently being sent...</span>
+                      <span className="text-blue-700">{t("pages.notifications.logs.currentlySending")}</span>
                     )}
                     {log.status === "bounced" && (
-                      <span className="text-orange-700">Email bounced back</span>
+                      <span className="text-orange-700">{t("pages.notifications.logs.emailBounced")}</span>
                     )}
                   </div>
                 </div>
@@ -649,7 +654,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                     ) : (
                       <Play className="w-4 h-4" />
                     )}
-                    Send Now
+                    {t("pages.notifications.logs.sendNow")}
                   </Button>
                 )}
               </div>
@@ -658,12 +663,12 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
               <div className="grid grid-cols-2 gap-6">
                 <DetailItem
                   icon={User}
-                  label="From"
+                  label={t("pages.notifications.logs.from")}
                   value={log.from_name ? `${log.from_name} <${log.from}>` : log.from}
                 />
                 <DetailItem
                   icon={Send}
-                  label="To"
+                  label={t("pages.notifications.logs.to")}
                   value={formatRecipients(log.to)}
                 />
                 {log.cc && (
@@ -677,7 +682,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 )}
                 <DetailItem
                   icon={FileText}
-                  label="Subject"
+                  label={t("pages.notifications.logs.subject")}
                   value={log.subject}
                   className="col-span-2"
                 />
@@ -685,20 +690,20 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
 
               {/* Metadata */}
               <div className="border-t border-slate-200 pt-6">
-                <h3 className="text-sm font-medium text-slate-700 mb-4">Metadata</h3>
+                <h3 className="text-sm font-medium text-slate-700 mb-4">{t("pages.notifications.logs.metadata")}</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-slate-500">Created:</span>{" "}
+                    <span className="text-slate-500">{t("pages.notifications.logs.created")}</span>{" "}
                     <span className="text-slate-700">{formatDate(log.created_at)}</span>
                   </div>
                   {log.sent_at && (
                     <div>
-                      <span className="text-slate-500">Sent:</span>{" "}
+                      <span className="text-slate-500">{t("pages.notifications.logs.sent")}</span>{" "}
                       <span className="text-slate-700">{formatDate(log.sent_at)}</span>
                     </div>
                   )}
                   <div>
-                    <span className="text-slate-500">Attempts:</span>{" "}
+                    <span className="text-slate-500">{t("pages.notifications.logs.attempts")}</span>{" "}
                     <span className={cn(
                       "text-slate-700",
                       log.attempts >= log.max_attempts && "text-rose-600 font-medium"
@@ -708,7 +713,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                   </div>
                   {log.template_id && (
                     <div>
-                      <span className="text-slate-500">Template:</span>{" "}
+                      <span className="text-slate-500">{t("pages.notifications.logs.template")}</span>{" "}
                       <span className="text-slate-700 font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">
                         {log.template_id}
                       </span>
@@ -716,13 +721,13 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                   )}
                   {log.message_id && (
                     <div className="col-span-2">
-                      <span className="text-slate-500">Message ID:</span>{" "}
+                      <span className="text-slate-500">{t("pages.notifications.logs.messageId")}</span>{" "}
                       <span className="text-slate-700 font-mono text-xs">{log.message_id}</span>
                     </div>
                   )}
                   {log.tags && log.tags.length > 0 && (
                     <div className="col-span-2">
-                      <span className="text-slate-500">Tags:</span>{" "}
+                      <span className="text-slate-500">{t("pages.notifications.logs.tags")}</span>{" "}
                       <span className="inline-flex gap-1 ml-2">
                         {log.tags.map((tag) => (
                           <span
@@ -744,7 +749,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
             <div className="space-y-4">
               {log.html ? (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-2">HTML Content</h3>
+                  <h3 className="text-sm font-medium text-slate-700 mb-2">{t("pages.notifications.logs.htmlContent")}</h3>
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <iframe
                       srcDoc={log.html}
@@ -756,7 +761,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 </div>
               ) : log.text ? (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-2">Text Content</h3>
+                  <h3 className="text-sm font-medium text-slate-700 mb-2">{t("pages.notifications.logs.textContent")}</h3>
                   <pre className="p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap">
                     {log.text}
                   </pre>
@@ -764,7 +769,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
               ) : (
                 <div className="text-center py-12">
                   <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500">No content available</p>
+                  <p className="text-slate-500">{t("pages.notifications.logs.noContent")}</p>
                 </div>
               )}
             </div>
@@ -777,7 +782,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                   <div className="flex items-center gap-2 mb-1">
                     <Eye className="w-4 h-4 text-emerald-600" />
-                    <span className="text-sm font-medium text-emerald-700">Opens</span>
+                    <span className="text-sm font-medium text-emerald-700">{t("pages.notifications.logs.opens")}</span>
                   </div>
                   <p className="text-2xl font-bold text-emerald-600">{log.open_count}</p>
                   {log.first_opened_at && (
@@ -789,7 +794,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center gap-2 mb-1">
                     <MousePointer className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-700">Clicks</span>
+                    <span className="text-sm font-medium text-blue-700">{t("pages.notifications.logs.clicks")}</span>
                   </div>
                   <p className="text-2xl font-bold text-blue-600">{log.click_count}</p>
                 </div>
@@ -798,7 +803,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
               {/* Opens List */}
               {log.opens.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-3">Open Events</h3>
+                  <h3 className="text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.logs.openEvents")}</h3>
                   <div className="space-y-2">
                     {log.opens.map((open, index) => (
                       <div
@@ -826,7 +831,7 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
               {/* Clicks List */}
               {log.clicks.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-3">Click Events</h3>
+                  <h3 className="text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.logs.clickEvents")}</h3>
                   <div className="space-y-2">
                     {log.clicks.map((click, index) => (
                       <div
@@ -853,11 +858,11 @@ function LogDetailModal({ log, onClose, onSendNow, isSending }: LogDetailModalPr
               {log.opens.length === 0 && log.clicks.length === 0 && (
                 <div className="text-center py-12">
                   <Eye className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500">No tracking data yet</p>
+                  <p className="text-slate-500">{t("pages.notifications.logs.noTrackingData")}</p>
                   <p className="text-sm text-slate-400 mt-1">
                     {log.tracking_enabled
-                      ? "Opens and clicks will appear here once the email is opened"
-                      : "Tracking is disabled for this email"}
+                      ? t("pages.notifications.logs.trackingEnabled")
+                      : t("pages.notifications.logs.trackingDisabled")}
                   </p>
                 </div>
               )}

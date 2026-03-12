@@ -1,11 +1,11 @@
-import { AlertCircle } from "lucide-react";
+"use client";
 
-export const metadata = {
-  title: "AI Enhancement - VINC PIM",
-  description: "AI Enhancement feature",
-};
+import { AlertCircle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function AIEnhancementPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
       <div className="text-center max-w-md">
@@ -15,10 +15,10 @@ export default function AIEnhancementPage() {
           </div>
         </div>
         <h1 className="text-2xl font-bold tracking-tight mb-3">
-          AI Enhancement Not Active
+          {t("pages.pim.aiEnhancement.notActive")}
         </h1>
         <p className="text-muted-foreground">
-          Contact your commercial reference to activate this feature.
+          {t("pages.pim.aiEnhancement.contactCommercial")}
         </p>
       </div>
     </div>

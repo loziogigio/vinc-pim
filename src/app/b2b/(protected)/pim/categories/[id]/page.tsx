@@ -17,6 +17,7 @@ import {
   FolderTree,
 } from "lucide-react";
 import CategoryModal, { CategoryRecord } from "../_components/category-modal";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Category = CategoryRecord & {
   product_count: number;
@@ -39,6 +40,7 @@ export default function CategoryDetailPage() {
   const router = useRouter();
   const params = useParams();
   const categoryId = params?.id as string;
+  const { t } = useTranslation();
 
   const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -406,7 +408,7 @@ export default function CategoryDetailPage() {
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Categories
+            {t("pages.pim.categories.backToCategories")}
           </Link>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -435,7 +437,7 @@ export default function CategoryDetailPage() {
                 className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition"
               >
                 <Upload className="h-4 w-4" />
-                Import Products
+                {t("pages.pim.common.importProducts")}
               </button>
               <div className="relative group">
                 <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition">
@@ -468,7 +470,7 @@ export default function CategoryDetailPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                 type="button"
               >
-                Edit Category
+                {t("pages.pim.categories.editCategory")}
               </button>
             </div>
           </div>
@@ -480,14 +482,14 @@ export default function CategoryDetailPage() {
           <div className="md:col-span-2 space-y-6">
             <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Category Details</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.categories.categoryDetails")}</h2>
                 {category.parent_id && (
                   <button
                     onClick={() => router.push(`/b2b/pim/categories/${category.parent_id}`)}
                     className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    View Parent
+                    {t("pages.pim.categories.viewParent")}
                   </button>
                 )}
               </div>
@@ -541,7 +543,7 @@ export default function CategoryDetailPage() {
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition"
                   >
                     <Plus className="h-4 w-4" />
-                    Add Products
+                    {t("pages.pim.common.addProducts")}
                   </button>
                   <button
                     onClick={handleBulkDisassociate}
@@ -549,7 +551,7 @@ export default function CategoryDetailPage() {
                     className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Minus className="h-4 w-4" />
-                    Remove Selected
+                    {t("pages.pim.common.removeSelected")}
                   </button>
                 </div>
               </div>
@@ -558,7 +560,7 @@ export default function CategoryDetailPage() {
             <div className="rounded-lg border border-border bg-card shadow-sm">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Associated Products</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.common.associatedProducts")}</h2>
                   <p className="text-sm text-muted-foreground">
                     Showing {products.length} of {totalProducts} product(s)
                   </p>
@@ -662,7 +664,7 @@ export default function CategoryDetailPage() {
           <div className="space-y-6">
             {category.hero_image?.url && (
               <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                <h2 className="mb-3 text-sm font-semibold text-foreground">Hero Image</h2>
+                <h2 className="mb-3 text-sm font-semibold text-foreground">{t("pages.pim.categories.heroImage")}</h2>
                 <div className="aspect-video overflow-hidden rounded-lg border border-border bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

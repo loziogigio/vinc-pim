@@ -13,6 +13,7 @@ import {
   Phone,
   ExternalLink,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface PaginationInfo {
   page: number;
@@ -22,6 +23,7 @@ interface PaginationInfo {
 }
 
 export default function ResellerCustomersPage() {
+  const { t } = useTranslation();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
@@ -70,8 +72,8 @@ export default function ResellerCustomersPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Customers", href: "/b2b/customers" },
-          { label: "Reseller" },
+          { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
+          { label: t("pages.store.customers.resellers") },
         ]}
       />
 
@@ -82,9 +84,9 @@ export default function ResellerCustomersPage() {
             <Store className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Reseller Partners</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.store.customersReseller.title")}</h1>
             <p className="text-sm text-muted-foreground">
-              {pagination.total} reseller partners
+              {pagination.total} {t("pages.store.customersReseller.countSuffix")}
             </p>
           </div>
         </div>
@@ -96,7 +98,7 @@ export default function ResellerCustomersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by company name, email, VAT..."
+            placeholder={t("pages.store.customersReseller.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
@@ -106,7 +108,7 @@ export default function ResellerCustomersPage() {
           type="submit"
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
         >
-          Search
+          {t("pages.store.customersReseller.searchButton")}
         </button>
       </form>
 
@@ -115,12 +117,12 @@ export default function ResellerCustomersPage() {
         {isLoading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading resellers...</p>
+            <p className="mt-2 text-muted-foreground">{t("pages.store.customersReseller.loadingResellers")}</p>
           </div>
         ) : customers.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <Store className="mx-auto h-10 w-10 mb-2 opacity-50" />
-            <p>No reseller partners found</p>
+            <p>{t("pages.store.customersReseller.noResellersFound")}</p>
           </div>
         ) : (
           <>
@@ -128,19 +130,19 @@ export default function ResellerCustomersPage() {
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Company
+                    {t("pages.store.customersReseller.company")}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Contact
+                    {t("pages.store.customersReseller.contact")}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    VAT Number
+                    {t("pages.store.customersReseller.vatNumber")}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Addresses
+                    {t("pages.store.customersReseller.addresses")}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Created
+                    {t("pages.store.customersReseller.created")}
                   </th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -191,7 +193,7 @@ export default function ResellerCustomersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-sm text-muted-foreground">
-                        {customer.addresses?.length || 0} addresses
+                        {customer.addresses?.length || 0} {t("pages.store.customersReseller.addressesSuffix")}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -204,7 +206,7 @@ export default function ResellerCustomersPage() {
                         href={`/b2b/customers/${customer.customer_id}`}
                         className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                       >
-                        View
+                        {t("common.view")}
                         <ExternalLink className="h-3 w-3" />
                       </Link>
                     </td>
@@ -217,8 +219,8 @@ export default function ResellerCustomersPage() {
             {pagination.totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+                  {t("common.showing")} {(pagination.page - 1) * pagination.limit + 1} {t("common.to")}{" "}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} {t("common.of")}{" "}
                   {pagination.total}
                 </p>
                 <div className="flex items-center gap-2">
@@ -232,7 +234,7 @@ export default function ResellerCustomersPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <span className="text-sm text-foreground">
-                    Page {pagination.page} of {pagination.totalPages}
+                    {t("pages.store.customersReseller.pageOf", { page: pagination.page, totalPages: pagination.totalPages })}
                   </span>
                   <button
                     onClick={() =>

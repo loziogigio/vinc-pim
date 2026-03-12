@@ -18,6 +18,7 @@ import {
   PROVIDER_CAPABILITIES,
 } from "@/lib/constants/payment";
 import type { PaymentProvider, PaymentMethod } from "@/lib/constants/payment";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TenantConfig {
   tenant_id: string;
@@ -29,6 +30,7 @@ interface TenantConfig {
 }
 
 export default function PaymentSettingsPage() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<TenantConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,10 +89,10 @@ export default function PaymentSettingsPage() {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        alert(data.error || "Errore nel salvataggio");
+        alert(data.error || t("pages.payments.settings.saveError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.payments.settings.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -117,10 +119,10 @@ export default function PaymentSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            Impostazioni Pagamenti
+            {t("pages.payments.settings.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configura provider predefinito e metodi di pagamento accettati.
+            {t("pages.payments.settings.subtitle")}
           </p>
         </div>
         <button
@@ -141,7 +143,7 @@ export default function PaymentSettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {saveSuccess ? "Salvato!" : "Salva Impostazioni"}
+          {saveSuccess ? t("pages.payments.settings.saved") : t("pages.payments.settings.saveSettings")}
         </button>
       </div>
 
@@ -153,9 +155,9 @@ export default function PaymentSettingsPage() {
               <Settings2 className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Provider Predefinito</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.payments.settings.defaultProvider")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Il gateway utilizzato per i nuovi pagamenti quando non specificato.
+                {t("pages.payments.settings.defaultProviderDesc")}
               </p>
             </div>
           </div>
@@ -166,7 +168,7 @@ export default function PaymentSettingsPage() {
             onChange={(e) => setEditDefaultProvider(e.target.value)}
             className="w-full max-w-md px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
           >
-            <option value="">— Nessun provider predefinito —</option>
+            <option value="">{t("pages.payments.settings.noDefaultProvider")}</option>
             {PAYMENT_PROVIDERS.filter((p) => p !== "manual").map((p) => (
               <option key={p} value={p}>
                 {PAYMENT_PROVIDER_LABELS[p]}
@@ -185,9 +187,9 @@ export default function PaymentSettingsPage() {
               <CreditCard className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Metodi Accettati</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.payments.settings.acceptedMethods")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Seleziona i metodi di pagamento abilitati per il checkout.
+                {t("pages.payments.settings.acceptedMethodsDesc")}
               </p>
             </div>
           </div>
@@ -227,9 +229,9 @@ export default function PaymentSettingsPage() {
               <Shield className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Commissione Piattaforma</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.payments.settings.platformCommission")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Impostato dall&apos;amministratore.
+                {t("pages.payments.settings.platformCommissionDesc")}
               </p>
             </div>
           </div>
@@ -239,13 +241,13 @@ export default function PaymentSettingsPage() {
             <span className="text-lg font-bold text-[#5e5873]">
               {((config?.commission_rate || 0) * 100).toFixed(1)}%
             </span>
-            <span className="text-sm text-muted-foreground">predefinita per transazione</span>
+            <span className="text-sm text-muted-foreground">{t("pages.payments.settings.defaultPerTransaction")}</span>
           </div>
 
           {/* Per-provider overrides */}
           {config?.provider_commission_rates && Object.keys(config.provider_commission_rates).length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Commissioni per provider:</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("pages.payments.settings.providerCommissions")}</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(config.provider_commission_rates).map(([provider, rate]) => (
                   <span
@@ -274,9 +276,9 @@ export default function PaymentSettingsPage() {
               <CreditCard className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Stato Provider</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.payments.settings.providerStatus")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Stato di configurazione di ogni gateway.
+                {t("pages.payments.settings.providerStatusDesc")}
               </p>
             </div>
           </div>
@@ -310,7 +312,7 @@ export default function PaymentSettingsPage() {
                     <span className="px-1.5 py-0.5 text-[10px] bg-purple-50 text-purple-600 rounded">MOTO</span>
                   )}
                   {caps.supportsRecurring && (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-600 rounded">Ricorrente</span>
+                    <span className="px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-600 rounded">Recurring</span>
                   )}
                   {caps.supportsAutomaticSplit && (
                     <span className="px-1.5 py-0.5 text-[10px] bg-amber-50 text-amber-600 rounded">Split</span>

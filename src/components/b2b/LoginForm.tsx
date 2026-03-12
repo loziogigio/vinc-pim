@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, User, Building2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import { UILanguageSwitcher } from "./UILanguageSwitcher";
 
 interface B2BLoginFormProps {
   tenant?: string;
@@ -14,6 +16,7 @@ interface B2BLoginFormProps {
 
 export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tenant, setTenant] = useState(initialTenant || "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +28,7 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
     setError("");
 
     if (!tenant.trim()) {
-      setError("Please enter your tenant ID");
+      setError(t("login.enterTenantId"));
       return;
     }
 
@@ -44,7 +47,7 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        setError(data.error || t("login.loginFailed"));
         setIsLoading(false);
         return;
       }
@@ -53,13 +56,16 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
       router.push(`/${tenant}/b2b`);
       router.refresh();
     } catch {
-      setError("An unexpected error occurred");
+      setError(t("login.unexpectedError"));
       setIsLoading(false);
     }
   };
 
   return (
     <div className="w-full max-w-md space-y-6">
+      <div className="flex justify-end">
+        <UILanguageSwitcher />
+      </div>
       <div className="space-y-2 text-center">
         <div className="mb-2 flex justify-center">
           <Image
@@ -70,20 +76,20 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
             priority
           />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight whitespace-nowrap">Welcome to VendereInCloud - CommerceSuite</h1>
-        <p className="text-muted-foreground">Sign in to continue</p>
+        <h1 className="text-2xl font-bold tracking-tight whitespace-nowrap">{t("login.welcome")}</h1>
+        <p className="text-muted-foreground">{t("login.signInToContinue")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {!initialTenant && (
           <div className="space-y-2">
-            <Label htmlFor="tenant">Tenant ID</Label>
+            <Label htmlFor="tenant">{t("login.tenantId")}</Label>
             <div className="relative">
               <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="tenant"
                 type="text"
-                placeholder="Enter your tenant ID (e.g., acme-corp)"
+                placeholder={t("login.tenantPlaceholder")}
                 value={tenant}
                 onChange={(e) => setTenant(e.target.value.toLowerCase().trim())}
                 className="pl-10"
@@ -95,13 +101,13 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="username">Username or Email</Label>
+          <Label htmlFor="username">{t("login.usernameOrEmail")}</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="username"
               type="text"
-              placeholder="Enter your username or email"
+              placeholder={t("login.usernamePlaceholder")}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="pl-10"
@@ -112,13 +118,13 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("login.password")}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder={t("login.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10"
@@ -135,12 +141,12 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Signing in..." : "Sign In"}
+          {isLoading ? t("login.signingIn") : t("login.signIn")}
         </Button>
       </form>
 
       <div className="text-center text-sm text-muted-foreground">
-        <p>Need access? Contact your account manager</p>
+        <p>{t("login.needAccess")}</p>
       </div>
     </div>
   );

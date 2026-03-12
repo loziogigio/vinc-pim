@@ -10,45 +10,48 @@ import {
   Settings,
   Truck,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function PaymentsNavigation() {
+  const { t } = useTranslation();
+
   return (
-    <AppSidebar title="Payments & Shipping" icon={CreditCard}>
+    <AppSidebar title={t("nav.payments.title")} icon={CreditCard}>
       <NavLink
         href="/b2b/payments"
         icon={LayoutDashboard}
-        label="Dashboard"
+        label={t("nav.payments.dashboard")}
         exactMatch
       />
       <NavLink
         href="/b2b/payments/transactions"
         icon={Receipt}
-        label="Transazioni"
+        label={t("nav.payments.transactions")}
       />
       <NavLink
         href="/b2b/payments/gateways"
         icon={CreditCard}
-        label="Gateway"
+        label={t("nav.payments.gateways")}
       />
       <NavLink
         href="/b2b/payments/moto"
         icon={Phone}
-        label="Terminale MOTO"
+        label={t("nav.payments.motoTerminal")}
       />
       <NavLink
         href="/b2b/payments/recurring"
         icon={RefreshCw}
-        label="Ricorrenti"
+        label={t("nav.payments.recurring")}
       />
       <NavLink
         href="/b2b/payments/shipping"
         icon={Truck}
-        label="Spedizioni"
+        label={t("nav.payments.shipping")}
       />
       <NavLink
         href="/b2b/payments/settings"
         icon={Settings}
-        label="Impostazioni"
+        label={t("nav.payments.settings")}
       />
     </AppSidebar>
   );

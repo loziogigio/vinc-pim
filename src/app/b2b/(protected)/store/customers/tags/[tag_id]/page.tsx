@@ -20,6 +20,7 @@ import {
   User,
   Store,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 // ============================================
 // TYPES
@@ -79,6 +80,7 @@ function getCustomerCode(c: CustomerEntry): string {
 // ============================================
 
 export default function TagDetailPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -177,7 +179,7 @@ export default function TagDetailPage() {
   // ============================================
 
   const handleRemoveCustomer = async (customerId: string) => {
-    if (!confirm("Remove tag from this customer?")) return;
+    if (!confirm(t("pages.store.tagDetail.removeTagConfirm"))) return;
     setRemovingCustomerId(customerId);
     try {
       const res = await fetch(`/api/b2b/customer-tags/${tagId}/customers`, {
@@ -214,7 +216,7 @@ export default function TagDetailPage() {
   ) => {
     if (!tag) return;
     const key = `${customerId}:${addressId}`;
-    if (!confirm("Remove tag override from this address?")) return;
+    if (!confirm(t("pages.store.tagDetail.removeAddressConfirm"))) return;
     setRemovingAddressKey(key);
     try {
       const res = await fetch(
@@ -301,7 +303,7 @@ export default function TagDetailPage() {
     return (
       <div className="p-6">
         <div className="p-12 text-center text-muted-foreground">
-          Tag not found
+          {t("pages.store.tagDetail.tagNotFound")}
         </div>
       </div>
     );
@@ -314,8 +316,8 @@ export default function TagDetailPage() {
       <Breadcrumbs
         items={[
           { label: "Store", href: "/b2b/store" },
-          { label: "Customers", href: "/b2b/store/customers" },
-          { label: "Customer Tags", href: "/b2b/store/customers/tags" },
+          { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
+          { label: t("pages.store.customerTags.title"), href: "/b2b/store/customers/tags" },
           { label: tag.code },
         ]}
       />
@@ -336,7 +338,7 @@ export default function TagDetailPage() {
               </code>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="h-3 w-3" />
-                {tag.customer_count} customers
+                {tag.customer_count} {t("pages.store.tagDetail.customers").toLowerCase()}
               </span>
             </div>
           </div>
@@ -346,7 +348,7 @@ export default function TagDetailPage() {
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
         >
           <UserPlus className="h-4 w-4" />
-          Add Customer
+          {t("pages.store.tagDetail.addCustomer")}
         </button>
       </div>
 
@@ -371,7 +373,7 @@ export default function TagDetailPage() {
         >
           <span className="flex items-center gap-1.5">
             <Users className="h-4 w-4" />
-            Customers ({customerPagination.total})
+            {t("pages.store.tagDetail.customers")} ({customerPagination.total})
           </span>
         </button>
         <button
@@ -384,7 +386,7 @@ export default function TagDetailPage() {
         >
           <span className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4" />
-            Address Overrides ({addressOverrides.length})
+            {t("pages.store.tagDetail.addressOverrides")} ({addressOverrides.length})
           </span>
         </button>
       </div>
@@ -396,7 +398,7 @@ export default function TagDetailPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Filter assigned customers..."
+              placeholder={t("pages.store.tagDetail.filterPlaceholder")}
               value={customerSearch}
               onChange={(e) => {
                 setCustomerSearch(e.target.value);
@@ -414,17 +416,17 @@ export default function TagDetailPage() {
             ) : customers.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-sm">
                 {customerSearch
-                  ? "No customers match your search"
-                  : "No customers assigned to this tag"}
+                  ? t("pages.store.tagDetail.noCustomersMatch")
+                  : t("pages.store.tagDetail.noCustomersAssigned")}
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Customer</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Code</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Email</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Type</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.customerCol")}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.codeCol")}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.emailCol")}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.typeCol")}</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>
@@ -462,7 +464,7 @@ export default function TagDetailPage() {
                             onClick={() => handleRemoveCustomer(c.customer_id)}
                             disabled={removingCustomerId === c.customer_id}
                             className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                            title="Remove tag"
+                            title={t("pages.store.tagDetail.removeTag")}
                           >
                             {removingCustomerId === c.customer_id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -481,7 +483,7 @@ export default function TagDetailPage() {
             {customerPagination.totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <span className="text-xs text-muted-foreground">
-                  Page {customerPagination.page} of {customerPagination.totalPages} ({customerPagination.total} customers)
+                  {t("common.page")} {customerPagination.page} {t("common.of")} {customerPagination.totalPages} ({customerPagination.total})
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -518,7 +520,7 @@ export default function TagDetailPage() {
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
             >
               <MapPinPlus className="h-4 w-4" />
-              Add Address Override
+              {t("pages.store.tagDetail.addAddressOverride")}
             </button>
           </div>
 
@@ -538,14 +540,14 @@ export default function TagDetailPage() {
             ) : addressOverrides.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-sm">
                 <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                No addresses have this tag as override
+                {t("pages.store.tagDetail.noAddressOverrides")}
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Customer</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Address</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.customerCol")}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.addressCol")}</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>
@@ -578,7 +580,7 @@ export default function TagDetailPage() {
                             }
                             disabled={removingAddressKey === key}
                             className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                            title="Remove override"
+                            title={t("pages.store.tagDetail.removeOverride")}
                           >
                             {removingAddressKey === key ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

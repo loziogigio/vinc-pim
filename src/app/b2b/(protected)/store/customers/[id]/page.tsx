@@ -9,6 +9,7 @@ import type { Order } from "@/lib/types/order";
 import { CustomerTagsCard } from "@/components/orders/CustomerTagsCard";
 import { AddressTagOverrides } from "@/components/orders/AddressTagOverrides";
 import { AddAddressModal } from "@/components/orders/AddAddressModal";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   ArrowLeft,
   Building2,
@@ -70,6 +71,7 @@ export default function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -116,13 +118,13 @@ export default function CustomerDetailPage({
           setAddressStats(data.customer.orders_by_address);
         }
       } else if (res.status === 404) {
-        setError("Customer not found");
+        setError(t("pages.store.customerDetail.customerNotFound"));
       } else {
-        setError("Failed to load customer");
+        setError(t("pages.store.customerDetail.failedToLoadCustomer"));
       }
     } catch (err) {
       console.error("Error fetching customer:", err);
-      setError("Failed to load customer");
+      setError(t("pages.store.customerDetail.failedToLoadCustomer"));
     } finally {
       setIsLoading(false);
     }
@@ -234,11 +236,11 @@ export default function CustomerDetailPage({
         router.push(`${tenantPrefix}/b2b/store/orders/${data.order.order_id}`);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to create order");
+        alert(error.error || t("pages.store.customerDetail.failedToCreateOrder"));
       }
     } catch (err) {
       console.error("Error creating order:", err);
-      alert("Failed to create order");
+      alert(t("pages.store.customerDetail.failedToCreateOrder"));
     } finally {
       setIsCreatingOrder(false);
     }
@@ -257,11 +259,11 @@ export default function CustomerDetailPage({
         router.push(`${tenantPrefix}/b2b/store/customers/list`);
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to delete customer");
+        alert(data.error || t("pages.store.customerDetail.failedToDeleteCustomer"));
       }
     } catch (err) {
       console.error("Error deleting customer:", err);
-      alert("Failed to delete customer");
+      alert(t("pages.store.customerDetail.failedToDeleteCustomer"));
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -337,21 +339,21 @@ export default function CustomerDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Customers", href: "/b2b/store/customers" },
-            { label: "Error" },
+            { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
+            { label: t("common.error") },
           ]}
         />
         <div className="rounded-lg bg-card p-8 shadow-sm text-center">
           <User className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
           <h2 className="text-lg font-semibold text-foreground mb-2">
-            {error || "Customer not found"}
+            {error || t("pages.store.customerDetail.customerNotFound")}
           </h2>
           <Link
             href={`${tenantPrefix}/b2b/store/customers`}
             className="text-primary hover:underline inline-flex items-center gap-1"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to customers
+            {t("pages.store.customerDetail.backToCustomers")}
           </Link>
         </div>
       </div>
@@ -360,13 +362,13 @@ export default function CustomerDetailPage({
 
   const displayName = customer.company_name ||
     `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
-    "Unnamed Customer";
+    t("pages.store.customerDetail.unnamedCustomer");
 
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Customers", href: "/b2b/store/customers" },
+          { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
           { label: displayName },
         ]}
       />
@@ -400,12 +402,12 @@ export default function CustomerDetailPage({
                 </span>
                 {customer.is_guest && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600">
-                    Guest
+                    {t("pages.store.customerDetail.guest")}
                   </span>
                 )}
                 {/* ERP Code - Secondary */}
                 {customer.external_code && (
-                  <span className="text-xs text-muted-foreground font-mono" title="ERP Code">
+                  <span className="text-xs text-muted-foreground font-mono" title={t("pages.store.customerDetail.erpCode")}>
                     ERP: {customer.external_code}
                   </span>
                 )}
@@ -419,18 +421,18 @@ export default function CustomerDetailPage({
             className="flex items-center gap-2 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition"
           >
             <Plus className="h-4 w-4" />
-            Create Order
+            {t("pages.store.customerDetail.createOrder")}
           </button>
           <button className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-muted transition">
             <Edit className="h-4 w-4" />
-            Edit
+            {t("pages.store.customerDetail.editCustomer")}
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            {t("pages.store.customerDetail.deleteCustomer")}
           </button>
         </div>
       </div>
@@ -441,11 +443,11 @@ export default function CustomerDetailPage({
           <div className="bg-card rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
-              Create Order for {displayName}
+              {t("pages.store.customerDetail.createOrderFor").replace("{name}", displayName)}
             </h3>
             {/* Order Type Selection */}
             <div className="mb-4">
-              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Order Type</p>
+              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">{t("pages.store.customerDetail.orderType")}</p>
               <div className="grid grid-cols-2 gap-2">
                 <label
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
@@ -463,9 +465,9 @@ export default function CustomerDetailPage({
                   <div>
                     <span className="font-medium text-foreground flex items-center gap-1">
                       <Truck className="h-4 w-4" />
-                      Product
+                      {t("pages.store.customerDetail.productOrder")}
                     </span>
-                    <p className="text-xs text-muted-foreground">Requires delivery</p>
+                    <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.requiresDeliveryLabel")}</p>
                   </div>
                 </label>
                 <label
@@ -484,9 +486,9 @@ export default function CustomerDetailPage({
                   <div>
                     <span className="font-medium text-foreground flex items-center gap-1">
                       <Briefcase className="h-4 w-4" />
-                      Service
+                      {t("pages.store.customerDetail.serviceOrder")}
                     </span>
-                    <p className="text-xs text-muted-foreground">No delivery needed</p>
+                    <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.noDeliveryNeeded")}</p>
                   </div>
                 </label>
               </div>
@@ -495,7 +497,7 @@ export default function CustomerDetailPage({
             {/* Address Selection - Only show for Product orders */}
             {requiresDelivery && (
               <>
-                <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Delivery Address</p>
+                <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">{t("pages.store.customerDetail.deliveryAddress")}</p>
                 {customer.addresses && customer.addresses.filter((a) => a.address_type === "delivery" || a.address_type === "both").length > 0 ? (
                   <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
                     {customer.addresses
@@ -524,7 +526,7 @@ export default function CustomerDetailPage({
                               </span>
                               {address.is_default && (
                                 <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                                  Default
+                                  {t("pages.store.customerDetail.defaultLabel")}
                                 </span>
                               )}
                             </div>
@@ -541,7 +543,7 @@ export default function CustomerDetailPage({
                 ) : (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                     <p className="text-sm text-amber-700">
-                      No delivery addresses found. The order will be created without a shipping address.
+                      {t("pages.store.customerDetail.noDeliveryAddresses")}
                     </p>
                   </div>
                 )}
@@ -554,7 +556,7 @@ export default function CustomerDetailPage({
                 disabled={isCreatingOrder}
                 className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition disabled:opacity-50"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleCreateOrder}
@@ -564,12 +566,12 @@ export default function CustomerDetailPage({
                 {isCreatingOrder ? (
                   <>
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                    Creating...
+                    {t("pages.store.customerDetail.creating")}
                   </>
                 ) : (
                   <>
                     <Plus className="h-4 w-4" />
-                    Create Order
+                    {t("pages.store.customerDetail.createOrder")}
                   </>
                 )}
               </button>
@@ -583,15 +585,17 @@ export default function CustomerDetailPage({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Delete Customer
+              {t("pages.store.customerDetail.deleteCustomerTitle")}
             </h3>
             <p className="text-muted-foreground mb-4">
-              Are you sure you want to delete <strong>{displayName}</strong>? This action cannot be undone.
+              {t("pages.store.customerDetail.deleteCustomerConfirm").split("{name}")[0]}
+              <strong>{displayName}</strong>
+              {t("pages.store.customerDetail.deleteCustomerConfirm").split("{name}")[1]}
             </p>
             {orderStats && orderStats.order_count > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-amber-700">
-                  This customer has {orderStats.order_count} order(s). Deleting will not remove the orders.
+                  {t("pages.store.customerDetail.deleteCustomerWarning").replace("{count}", String(orderStats.order_count))}
                 </p>
               </div>
             )}
@@ -601,7 +605,7 @@ export default function CustomerDetailPage({
                 disabled={isDeleting}
                 className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition disabled:opacity-50"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleDelete}
@@ -611,12 +615,12 @@ export default function CustomerDetailPage({
                 {isDeleting ? (
                   <>
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                    Deleting...
+                    {t("pages.store.customerDetail.deletingLabel")}
                   </>
                 ) : (
                   <>
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    {t("common.delete")}
                   </>
                 )}
               </button>
@@ -630,13 +634,13 @@ export default function CustomerDetailPage({
         <div className="rounded-lg bg-card p-5 shadow-sm">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <User className="h-4 w-4" />
-            Contact Information
+            {t("pages.store.customerDetail.customerInfo")}
           </h2>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.email")}</p>
                 <a href={`mailto:${customer.email}`} className="text-sm text-primary hover:underline">
                   {customer.email}
                 </a>
@@ -646,7 +650,7 @@ export default function CustomerDetailPage({
               <div className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.phone")}</p>
                   <a href={`tel:${customer.phone}`} className="text-sm text-foreground">
                     {customer.phone}
                   </a>
@@ -656,7 +660,7 @@ export default function CustomerDetailPage({
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Customer Since</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.customerSince")}</p>
                 <p className="text-sm text-foreground">
                   {new Date(customer.created_at).toLocaleDateString("it-IT", {
                     year: "numeric",
@@ -673,25 +677,25 @@ export default function CustomerDetailPage({
         <div className="rounded-lg bg-card p-5 shadow-sm">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Legal Information
+            {t("pages.store.customerDetail.legalInfo")}
           </h2>
           {customer.legal_info && (customer.legal_info.vat_number || customer.legal_info.fiscal_code || customer.legal_info.pec_email || customer.legal_info.sdi_code) ? (
             <div className="space-y-4">
               {customer.legal_info.vat_number && (
                 <div>
-                  <p className="text-xs text-muted-foreground">VAT Number (P.IVA)</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.vatNumber")}</p>
                   <p className="text-sm font-mono text-foreground">{customer.legal_info.vat_number}</p>
                 </div>
               )}
               {customer.legal_info.fiscal_code && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Fiscal Code</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.fiscalCode")}</p>
                   <p className="text-sm font-mono text-foreground">{customer.legal_info.fiscal_code}</p>
                 </div>
               )}
               {customer.legal_info.pec_email && (
                 <div>
-                  <p className="text-xs text-muted-foreground">PEC Email</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.pecEmail")}</p>
                   <a href={`mailto:${customer.legal_info.pec_email}`} className="text-sm text-primary hover:underline">
                     {customer.legal_info.pec_email}
                   </a>
@@ -699,53 +703,53 @@ export default function CustomerDetailPage({
               )}
               {customer.legal_info.sdi_code && (
                 <div>
-                  <p className="text-xs text-muted-foreground">SDI Code</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.sdiCode")}</p>
                   <p className="text-sm font-mono text-foreground">{customer.legal_info.sdi_code}</p>
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No legal information provided</p>
+            <p className="text-sm text-muted-foreground">{t("pages.store.customerDetail.noLegalInfo")}</p>
           )}
         </div>
 
         {/* Customer Codes & IDs */}
         <div className="rounded-lg bg-card p-5 shadow-sm">
-          <h2 className="font-semibold text-foreground mb-4">Identification Codes</h2>
+          <h2 className="font-semibold text-foreground mb-4">{t("pages.store.customerDetail.identificationCodes")}</h2>
           <div className="space-y-4">
             {/* Public Customer Code - Primary */}
             <div>
-              <p className="text-xs text-muted-foreground">Public Customer Code</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.publicCustomerCode")}</p>
               {customer.public_code ? (
                 <p className="text-lg font-mono font-bold text-primary">{customer.public_code}</p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">Not assigned</p>
+                <p className="text-sm text-muted-foreground italic">{t("pages.store.customerDetail.notAssigned")}</p>
               )}
             </div>
             {/* ERP Code - Secondary */}
             <div>
-              <p className="text-xs text-muted-foreground">Customer Code (ERP)</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.customerCodeErp")}</p>
               {customer.external_code ? (
                 <p className="text-sm font-mono text-foreground">{customer.external_code}</p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">Not assigned</p>
+                <p className="text-sm text-muted-foreground italic">{t("pages.store.customerDetail.notAssigned")}</p>
               )}
             </div>
             {/* Internal ID */}
             <div>
-              <p className="text-xs text-muted-foreground">Internal ID</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.internalId")}</p>
               <p className="text-xs font-mono text-muted-foreground">{customer.customer_id}</p>
             </div>
             {customer.tenant_id && (
               <div>
-                <p className="text-xs text-muted-foreground">Tenant</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.tenant")}</p>
                 <p className="text-sm font-mono bg-primary/10 text-primary px-2 py-0.5 rounded inline-block">
                   {customer.tenant_id}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-xs text-muted-foreground">Last Updated</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.lastUpdated")}</p>
               <p className="text-sm text-foreground">
                 {new Date(customer.updated_at).toLocaleDateString("it-IT", {
                   year: "numeric",
@@ -768,14 +772,14 @@ export default function CustomerDetailPage({
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            Addresses ({customer.addresses?.length || 0})
+            {t("pages.store.customerDetail.addresses")} ({customer.addresses?.length || 0})
           </h2>
           <button
             onClick={() => setShowAddAddress(true)}
             className="flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="h-4 w-4" />
-            Add Address
+            {t("pages.store.customerDetail.addAddress")}
           </button>
         </div>
         {customer.addresses && customer.addresses.length > 0 ? (
@@ -809,7 +813,7 @@ export default function CustomerDetailPage({
                         </span>
                         {address.is_default && (
                           <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                            Default
+                            {t("pages.store.customerDetail.defaultLabel")}
                           </span>
                         )}
                       </div>
@@ -829,7 +833,7 @@ export default function CustomerDetailPage({
                       )}
                       {address.external_code && (
                         <p className="text-xs text-muted-foreground mt-1 font-mono">
-                          Code: {address.external_code}
+                          {t("pages.store.customerDetail.addressCode").replace("{code}", address.external_code)}
                         </p>
                       )}
                       {/* Address Tag Overrides */}
@@ -843,7 +847,7 @@ export default function CustomerDetailPage({
                     <button
                       onClick={() => setEditingAddress(address)}
                       className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition"
-                      title="Modifica indirizzo"
+                      title={t("pages.store.customerDetail.editAddressTitle")}
                     >
                       <Edit className="h-4 w-4" />
                     </button>
@@ -851,7 +855,7 @@ export default function CustomerDetailPage({
                       onClick={() => deleteAddress(address.address_id)}
                       disabled={deletingAddressId === address.address_id}
                       className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
-                      title="Elimina indirizzo"
+                      title={t("pages.store.customerDetail.deleteAddressTitle")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -863,7 +867,7 @@ export default function CustomerDetailPage({
         ) : (
           <div className="p-8 text-center text-muted-foreground">
             <MapPin className="mx-auto h-10 w-10 mb-2 opacity-50" />
-            <p>No addresses added yet</p>
+            <p>{t("pages.store.customerDetail.noAddresses")}</p>
           </div>
         )}
       </div>
@@ -876,7 +880,7 @@ export default function CustomerDetailPage({
               <ShoppingCart className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Orders</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.totalOrders")}</p>
               <p className="text-xl font-bold text-foreground">
                 {orderStats?.order_count || 0}
               </p>
@@ -890,7 +894,7 @@ export default function CustomerDetailPage({
               <Euro className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Spent</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.totalSpent")}</p>
               <p className="text-xl font-bold text-foreground">
                 {formatCurrency(orderStats?.total_spent || 0)}
               </p>
@@ -904,7 +908,7 @@ export default function CustomerDetailPage({
               <TrendingUp className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Avg Order Value</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.avgOrderValue")}</p>
               <p className="text-xl font-bold text-foreground">
                 {formatCurrency(orderStats?.avg_order_value || 0)}
               </p>
@@ -918,7 +922,7 @@ export default function CustomerDetailPage({
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Last Order</p>
+              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.lastOrder")}</p>
               <p className="text-sm font-medium text-foreground">
                 {orderStats?.last_order_date
                   ? new Date(orderStats.last_order_date).toLocaleDateString("it-IT", {
@@ -926,7 +930,7 @@ export default function CustomerDetailPage({
                       month: "short",
                       day: "numeric",
                     })
-                  : "No orders yet"}
+                  : t("pages.store.customerDetail.noOrders")}
               </p>
             </div>
           </div>
@@ -938,26 +942,26 @@ export default function CustomerDetailPage({
         <div className="p-4 border-b border-border">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            Orders by Period
+            {t("pages.store.customerDetail.ordersByPeriod")}
           </h2>
         </div>
         <div className="grid grid-cols-3 divide-x divide-border">
           <div className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Last 30 Days</p>
+            <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last30Days")}</p>
             <p className="text-2xl font-bold text-foreground">{orderStats?.orders_30d || 0}</p>
             <p className="text-sm text-emerald-600 font-medium">
               {formatCurrency(orderStats?.spent_30d || 0)}
             </p>
           </div>
           <div className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Last 60 Days</p>
+            <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last60Days")}</p>
             <p className="text-2xl font-bold text-foreground">{orderStats?.orders_60d || 0}</p>
             <p className="text-sm text-emerald-600 font-medium">
               {formatCurrency(orderStats?.spent_60d || 0)}
             </p>
           </div>
           <div className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Last 90 Days</p>
+            <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last90Days")}</p>
             <p className="text-2xl font-bold text-foreground">{orderStats?.orders_90d || 0}</p>
             <p className="text-sm text-emerald-600 font-medium">
               {formatCurrency(orderStats?.spent_90d || 0)}
@@ -966,27 +970,27 @@ export default function CustomerDetailPage({
         </div>
         {/* Status Breakdown */}
         <div className="p-4 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-3">Status Breakdown</p>
+          <p className="text-xs text-muted-foreground mb-3">{t("pages.store.customerDetail.statusBreakdown")}</p>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm">
               <ShoppingCart className="h-3 w-3" />
-              <span>{orderStats?.draft_count || 0} Draft</span>
+              <span>{orderStats?.draft_count || 0} {t("pages.store.customerDetail.draft")}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-sm">
               <Clock className="h-3 w-3" />
-              <span>{orderStats?.pending_count || 0} Pending</span>
+              <span>{orderStats?.pending_count || 0} {t("pages.store.customerDetail.pending")}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-sm">
               <CheckCircle2 className="h-3 w-3" />
-              <span>{orderStats?.confirmed_count || 0} Confirmed</span>
+              <span>{orderStats?.confirmed_count || 0} {t("pages.store.customerDetail.confirmed")}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 text-sm">
               <Truck className="h-3 w-3" />
-              <span>{orderStats?.shipped_count || 0} Shipped</span>
+              <span>{orderStats?.shipped_count || 0} {t("pages.store.customerDetail.shipped")}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm">
               <XCircle className="h-3 w-3" />
-              <span>{orderStats?.cancelled_count || 0} Cancelled</span>
+              <span>{orderStats?.cancelled_count || 0} {t("pages.store.customerDetail.cancelled")}</span>
             </div>
           </div>
         </div>
@@ -998,7 +1002,7 @@ export default function CustomerDetailPage({
           <div className="p-4 border-b border-border">
             <h2 className="font-semibold text-foreground flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Orders by Delivery Address
+              {t("pages.store.customerDetail.ordersByDeliveryAddress")}
             </h2>
           </div>
           <div className="divide-y divide-border">
@@ -1023,13 +1027,13 @@ export default function CustomerDetailPage({
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">{addrStat.order_count} orders</p>
+                    <p className="text-sm font-medium text-foreground">{t("pages.store.customerDetail.nOrders").replace("{n}", String(addrStat.order_count))}</p>
                     <p className="text-xs text-muted-foreground">
                       {addrStat.last_order_date
-                        ? `Last: ${new Date(addrStat.last_order_date).toLocaleDateString("it-IT", {
+                        ? t("pages.store.customerDetail.lastDate").replace("{date}", new Date(addrStat.last_order_date).toLocaleDateString("it-IT", {
                             month: "short",
                             day: "numeric",
-                          })}`
+                          }))
                         : ""}
                     </p>
                   </div>
@@ -1048,7 +1052,7 @@ export default function CustomerDetailPage({
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" />
-            Orders ({orders.length})
+            {t("pages.store.customerDetail.orderHistory")} ({orders.length})
           </h2>
           <div className="flex items-center gap-3">
             {/* Address Filter */}
@@ -1058,7 +1062,7 @@ export default function CustomerDetailPage({
                 onChange={(e) => handleAddressFilterChange(e.target.value)}
                 className="text-sm rounded border border-border bg-background px-3 py-1.5 focus:border-primary focus:outline-none"
               >
-                <option value="all">All Addresses</option>
+                <option value="all">{t("pages.store.customerDetail.allAddresses")}</option>
                 {customer.addresses.map((addr: Address) => (
                   <option key={addr.address_id} value={addr.address_id}>
                     {addr.label || addr.recipient_name || addr.city || addr.address_id}
@@ -1072,16 +1076,16 @@ export default function CustomerDetailPage({
               onChange={(e) => handleDateFilterChange(e.target.value)}
               className="text-sm rounded border border-border bg-background px-3 py-1.5 focus:border-primary focus:outline-none"
             >
-              <option value="all">All Time</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="60d">Last 60 Days</option>
-              <option value="90d">Last 90 Days</option>
+              <option value="all">{t("pages.store.customerDetail.allTime")}</option>
+              <option value="30d">{t("pages.store.customerDetail.last30d")}</option>
+              <option value="60d">{t("pages.store.customerDetail.last60d")}</option>
+              <option value="90d">{t("pages.store.customerDetail.last90d")}</option>
             </select>
             <Link
               href={`${tenantPrefix}/b2b/store/orders/list?customer_id=${customer.customer_id}`}
               className="text-sm text-primary hover:underline"
             >
-              View All Orders →
+              {t("pages.store.customerDetail.viewAllOrdersLink")} →
             </Link>
           </div>
         </div>
@@ -1096,7 +1100,7 @@ export default function CustomerDetailPage({
         ) : orders.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <ShoppingCart className="mx-auto h-10 w-10 mb-2 opacity-50" />
-            <p>No orders yet</p>
+            <p>{t("pages.store.customerDetail.noOrdersYet")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1104,22 +1108,22 @@ export default function CustomerDetailPage({
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                    Order ID
+                    {t("pages.store.customerDetail.orderId")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                    Items
+                    {t("pages.store.customerDetail.itemsHeader")}
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                    Total
+                    {t("pages.store.customerDetail.totalHeader")}
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                    Status
+                    {t("pages.store.customerDetail.statusHeader")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                    Created
+                    {t("pages.store.customerDetail.createdHeader")}
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                    Actions
+                    {t("pages.store.customerDetail.actionsHeader")}
                   </th>
                 </tr>
               </thead>
@@ -1159,7 +1163,7 @@ export default function CustomerDetailPage({
                             )}
                           </div>
                           <span className="text-sm text-foreground">
-                            {order.items?.length || 0} items
+                            {t("pages.store.customerDetail.nItems").replace("{n}", String(order.items?.length || 0))}
                           </span>
                         </div>
                       </td>
@@ -1191,7 +1195,7 @@ export default function CustomerDetailPage({
                           className="flex items-center justify-end gap-1 text-xs text-primary hover:underline font-medium"
                         >
                           <Eye className="h-3 w-3" />
-                          View
+                          {t("pages.store.customerDetail.viewOrder")}
                         </Link>
                       </td>
                     </tr>
@@ -1205,7 +1209,7 @@ export default function CustomerDetailPage({
                   href={`${tenantPrefix}/b2b/store/orders/list?customer_id=${customer.customer_id}`}
                   className="text-sm text-primary hover:underline"
                 >
-                  View all {orders.length} orders →
+                  {t("pages.store.customerDetail.viewAllNOrders").replace("{n}", String(orders.length))} →
                 </Link>
               </div>
             )}

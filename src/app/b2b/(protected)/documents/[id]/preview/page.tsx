@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, Download, Printer, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   DOCUMENT_TYPE_LABELS,
 } from "@/lib/constants/document";
@@ -14,6 +15,7 @@ export default function DocumentPreviewPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantPrefix =
@@ -49,7 +51,7 @@ export default function DocumentPreviewPage({
     try {
       const res = await fetch(`/api/b2b/documents/${documentId}/pdf`);
       if (!res.ok) {
-        alert("Errore generazione PDF");
+        alert(t("pages.documents.preview.pdfError"));
         return;
       }
       const blob = await res.blob();
@@ -60,7 +62,7 @@ export default function DocumentPreviewPage({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.preview.networkError"));
     } finally {
       setIsDownloading(false);
     }
@@ -84,7 +86,7 @@ export default function DocumentPreviewPage({
   if (!doc) {
     return (
       <div className="p-6 text-center text-muted-foreground">
-        Documento non trovato.
+        {t("pages.documents.preview.documentNotFound")}
       </div>
     );
   }
@@ -111,7 +113,7 @@ export default function DocumentPreviewPage({
             <ArrowLeft className="w-5 h-5 text-[#5e5873]" />
           </button>
           <span className="font-semibold text-[#5e5873]">
-            Anteprima: {doc.document_number || "Bozza"}
+            {t("pages.documents.preview.previewLabel")} {doc.document_number || t("pages.documents.preview.draftLabel")}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -120,7 +122,7 @@ export default function DocumentPreviewPage({
             className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm"
           >
             <Printer className="w-4 h-4" />
-            Stampa
+            {t("pages.documents.preview.print")}
           </button>
           <button
             onClick={handleDownload}
@@ -132,7 +134,7 @@ export default function DocumentPreviewPage({
             ) : (
               <Download className="w-4 h-4" />
             )}
-            Scarica PDF
+            {t("pages.documents.preview.downloadPdf")}
           </button>
         </div>
       </div>
@@ -168,12 +170,12 @@ export default function DocumentPreviewPage({
               )}
               {doc.company?.vat_number && (
                 <p className="text-sm text-gray-600">
-                  P.IVA: {doc.company.vat_number}
+                  {t("pages.documents.preview.vatNumber")} {doc.company.vat_number}
                 </p>
               )}
               {doc.company?.fiscal_code && (
                 <p className="text-sm text-gray-600">
-                  C.F.: {doc.company.fiscal_code}
+                  {t("pages.documents.preview.fiscalCode")} {doc.company.fiscal_code}
                 </p>
               )}
             </div>
@@ -183,11 +185,11 @@ export default function DocumentPreviewPage({
               </h2>
               {doc.document_number && (
                 <p className="text-lg font-semibold text-gray-700 mt-1">
-                  N. {doc.document_number}
+                  {t("pages.documents.preview.numberLabel")} {doc.document_number}
                 </p>
               )}
               <p className="text-sm text-gray-500 mt-1">
-                Data:{" "}
+                {t("pages.documents.preview.dateLabel")}{" "}
                 {new Date(doc.finalized_at || doc.created_at).toLocaleDateString(
                   "it-IT",
                   { day: "2-digit", month: "long", year: "numeric" },
@@ -198,7 +200,7 @@ export default function DocumentPreviewPage({
 
           {/* Customer */}
           <div className="mb-8 p-4 border border-gray-200 rounded">
-            <p className="text-xs text-gray-400 mb-1">Spett.le</p>
+            <p className="text-xs text-gray-400 mb-1">{t("pages.documents.preview.attentionOf")}</p>
             <p className="font-semibold">{customerName}</p>
             {doc.customer?.billing_address && (
               <p className="text-sm text-gray-600">
@@ -213,12 +215,12 @@ export default function DocumentPreviewPage({
             )}
             {doc.customer?.vat_number && (
               <p className="text-sm text-gray-600">
-                P.IVA: {doc.customer.vat_number}
+                {t("pages.documents.preview.vatNumber")} {doc.customer.vat_number}
               </p>
             )}
             {doc.customer?.fiscal_code && (
               <p className="text-sm text-gray-600">
-                C.F.: {doc.customer.fiscal_code}
+                {t("pages.documents.preview.fiscalCode")} {doc.customer.fiscal_code}
               </p>
             )}
             {doc.customer?.sdi_code && (
@@ -241,24 +243,24 @@ export default function DocumentPreviewPage({
                   #
                 </th>
                 <th className="text-left py-2 font-semibold text-gray-700">
-                  Descrizione
+                  {t("pages.documents.preview.description")}
                 </th>
                 <th className="text-center py-2 font-semibold text-gray-700">
-                  Qtà
+                  {t("pages.documents.preview.qty")}
                 </th>
                 <th className="text-right py-2 font-semibold text-gray-700">
-                  Prezzo
+                  {t("pages.documents.preview.unitPrice")}
                 </th>
                 <th className="text-center py-2 font-semibold text-gray-700">
-                  IVA
+                  {t("pages.documents.preview.vat")}
                 </th>
                 {doc.items?.some((i) => (i.discount_percent || 0) > 0) && (
                   <th className="text-center py-2 font-semibold text-gray-700">
-                    Sconto
+                    {t("pages.documents.preview.discount")}
                   </th>
                 )}
                 <th className="text-right py-2 font-semibold text-gray-700">
-                  Importo
+                  {t("pages.documents.preview.amount")}
                 </th>
               </tr>
             </thead>
@@ -304,14 +306,14 @@ export default function DocumentPreviewPage({
             <div className="flex justify-end mb-8">
               <div className="w-64 space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Imponibile</span>
+                  <span className="text-gray-500">{t("pages.documents.preview.subtotal")}</span>
                   <span>
                     {formatCurrency(doc.totals.subtotal_net, doc.currency)}
                   </span>
                 </div>
                 {doc.totals.total_discount > 0 && (
                   <div className="flex justify-between text-red-600">
-                    <span>Sconto</span>
+                    <span>{t("pages.documents.preview.discount")}</span>
                     <span>
                       -{formatCurrency(doc.totals.total_discount, doc.currency)}
                     </span>
@@ -320,13 +322,13 @@ export default function DocumentPreviewPage({
                 {doc.totals.vat_breakdown?.map(
                   (v: { rate: number; taxable: number; vat: number }) => (
                     <div key={v.rate} className="flex justify-between">
-                      <span className="text-gray-500">IVA {v.rate}%</span>
+                      <span className="text-gray-500">{t("pages.documents.preview.vat")} {v.rate}%</span>
                       <span>{formatCurrency(v.vat, doc.currency)}</span>
                     </div>
                   ),
                 )}
                 <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 pt-2 mt-2">
-                  <span>TOTALE</span>
+                  <span>{t("pages.documents.preview.total")}</span>
                   <span>{formatCurrency(doc.totals.total, doc.currency)}</span>
                 </div>
               </div>
@@ -337,7 +339,7 @@ export default function DocumentPreviewPage({
           {doc.payment_terms && (
             <div className="mb-4">
               <p className="text-sm text-gray-600">
-                <span className="font-semibold">Pagamento:</span>{" "}
+                <span className="font-semibold">{t("pages.documents.preview.payment")}</span>{" "}
                 {doc.payment_terms}
               </p>
             </div>

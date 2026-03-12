@@ -17,6 +17,7 @@ import {
   X,
   UserPlus,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { CreateCustomerModal } from "@/components/documents/CreateCustomerModal";
 import {
   DOCUMENT_TYPES,
@@ -47,6 +48,7 @@ interface CustomerResult {
 }
 
 export default function CreateDocumentPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantPrefix =
@@ -195,7 +197,7 @@ export default function CreateDocumentPage() {
   // Save
   const handleSave = async () => {
     if (!customerId) {
-      alert("Seleziona un cliente");
+      alert(t("pages.documents.create.selectCustomer"));
       return;
     }
     setIsSaving(true);
@@ -226,10 +228,10 @@ export default function CreateDocumentPage() {
           `${tenantPrefix}/b2b/documents/${data.document.document_id}`,
         );
       } else {
-        alert(data.error || "Errore nella creazione");
+        alert(data.error || t("pages.documents.create.creationError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.create.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -247,10 +249,10 @@ export default function CreateDocumentPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            Nuovo Documento
+            {t("pages.documents.create.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Crea una nuova bozza di documento.
+            {t("pages.documents.create.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -258,7 +260,7 @@ export default function CreateDocumentPage() {
             onClick={() => router.back()}
             className="px-5 py-2.5 border border-[#ebe9f1] rounded-lg text-sm hover:bg-[#f8f8f8] transition-colors font-medium text-[#5e5873]"
           >
-            Annulla
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleSave}
@@ -270,7 +272,7 @@ export default function CreateDocumentPage() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            Salva Bozza
+            {t("pages.documents.create.saveDraft")}
           </button>
         </div>
       </div>
@@ -283,7 +285,7 @@ export default function CreateDocumentPage() {
               <FileText className="w-4 h-4 text-[#009688]" />
             </div>
             <h2 className="font-semibold text-[#5e5873]">
-              Informazioni Documento
+              {t("pages.documents.create.documentInfo")}
             </h2>
           </div>
         </div>
@@ -291,7 +293,7 @@ export default function CreateDocumentPage() {
           <div className="grid grid-cols-3 gap-5">
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-                Tipo Documento
+                {t("pages.documents.create.documentType")}
               </label>
               <select
                 value={documentType}
@@ -310,7 +312,7 @@ export default function CreateDocumentPage() {
 
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-                Termini di Pagamento
+                {t("pages.documents.create.paymentTerms")}
               </label>
               <select
                 value={paymentTerms}
@@ -321,7 +323,7 @@ export default function CreateDocumentPage() {
                 }}
                 className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
               >
-                <option value="">— Nessuno —</option>
+                <option value="">{t("pages.documents.create.noPaymentTerms")}</option>
                 {PAYMENT_TERMS.map((t) => (
                   <option key={t} value={t}>
                     {PAYMENT_TERMS_LABELS[t]}
@@ -336,7 +338,7 @@ export default function CreateDocumentPage() {
                     max={365}
                     value={customDays}
                     onChange={(e) => setCustomDays(e.target.value)}
-                    placeholder="Numero di giorni..."
+                    placeholder={t("pages.documents.create.numberOfDays")}
                     className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                   />
                 </div>
@@ -356,7 +358,7 @@ export default function CreateDocumentPage() {
 
             <div className="relative">
               <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-                Cliente *
+                {t("pages.documents.create.customerRequired")}
               </label>
               {customerId ? (
                 <div className="flex items-center gap-2">
@@ -380,7 +382,7 @@ export default function CreateDocumentPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Cerca per nome azienda o P.IVA..."
+                      placeholder={t("pages.documents.create.customerSearchPlaceholder")}
                       value={customerSearch}
                       onChange={(e) => {
                         setCustomerSearch(e.target.value);
@@ -427,14 +429,14 @@ export default function CreateDocumentPage() {
                         className="w-full text-left px-3 py-2.5 hover:bg-[#009688]/5 text-sm transition-colors border-t border-[#ebe9f1] flex items-center gap-2 text-[#009688]"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
-                        <span className="font-medium">Crea nuovo cliente</span>
+                        <span className="font-medium">{t("pages.documents.create.createNewCustomer")}</span>
                       </button>
                     </div>
                   )}
                   {showCustomerDropdown && customerResults.length === 0 && customerSearch.length >= 2 && !isSearching && (
                     <div className="absolute z-50 top-full mt-1 w-full bg-white border border-[#ebe9f1] rounded-lg shadow-lg">
                       <p className="px-3 py-2.5 text-sm text-muted-foreground">
-                        Nessun cliente trovato
+                        {t("pages.documents.create.noCustomerFound")}
                       </p>
                       <button
                         onMouseDown={() => {
@@ -444,7 +446,7 @@ export default function CreateDocumentPage() {
                         className="w-full text-left px-3 py-2.5 hover:bg-[#009688]/5 text-sm transition-colors border-t border-[#ebe9f1] flex items-center gap-2 text-[#009688]"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
-                        <span className="font-medium">Crea nuovo cliente</span>
+                        <span className="font-medium">{t("pages.documents.create.createNewCustomer")}</span>
                       </button>
                     </div>
                   )}
@@ -463,10 +465,10 @@ export default function CreateDocumentPage() {
               <List className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Righe Documento</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.create.documentLines")}</h2>
               {items.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {items.length} {items.length === 1 ? "riga" : "righe"}
+                  {t("pages.documents.create.linesCount", { count: items.length })}
                 </p>
               )}
             </div>
@@ -476,7 +478,7 @@ export default function CreateDocumentPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#009688] text-white rounded-lg hover:bg-[#00796b] transition-colors font-medium"
           >
             <Plus className="w-3.5 h-3.5" />
-            Aggiungi Riga
+            {t("pages.documents.create.addLine")}
           </button>
         </div>
 
@@ -484,7 +486,7 @@ export default function CreateDocumentPage() {
           <div className="p-12 text-center">
             <List className="w-10 h-10 text-[#ebe9f1] mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-              Nessuna riga. Clicca &quot;Aggiungi Riga&quot; per iniziare.
+              {t("pages.documents.create.noLines")}
             </p>
           </div>
         ) : (
@@ -493,25 +495,25 @@ export default function CreateDocumentPage() {
               <thead>
                 <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
                   <th className="text-left px-4 py-3 font-medium text-[#5e5873]">
-                    Descrizione
+                    {t("common.description")}
                   </th>
                   <th className="text-center px-3 py-3 font-medium text-[#5e5873] w-24">
-                    Qtà
+                    {t("pages.documents.create.qty")}
                   </th>
                   <th className="text-right px-3 py-3 font-medium text-[#5e5873] w-32">
-                    Prezzo Unit.
+                    {t("pages.documents.create.unitPrice")}
                   </th>
                   <th className="text-center px-3 py-3 font-medium text-[#5e5873] w-24">
-                    IVA %
+                    {t("pages.documents.create.vatPercent")}
                   </th>
                   <th className="text-center px-3 py-3 font-medium text-[#5e5873] w-24">
-                    Sconto %
+                    {t("pages.documents.create.discountPercent")}
                   </th>
                   <th className="text-right px-3 py-3 font-medium text-[#5e5873] w-32">
-                    Netto
+                    {t("pages.documents.create.net")}
                   </th>
                   <th className="text-right px-4 py-3 font-medium text-[#5e5873] w-32">
-                    Totale
+                    {t("pages.documents.create.lineTotal")}
                   </th>
                   <th className="w-20"></th>
                 </tr>
@@ -529,7 +531,7 @@ export default function CreateDocumentPage() {
                         onChange={(e) =>
                           updateItem(idx, "description", e.target.value)
                         }
-                        placeholder="Descrizione articolo..."
+                        placeholder={t("pages.documents.create.descriptionPlaceholder")}
                         className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                       />
                     </td>
@@ -585,14 +587,14 @@ export default function CreateDocumentPage() {
                       <div className="flex items-center gap-0.5">
                         <button
                           onClick={() => duplicateItem(idx)}
-                          title="Duplica riga"
+                          title={t("pages.documents.create.duplicateLine")}
                           className="p-1.5 text-slate-400 hover:text-[#009688] hover:bg-[#009688]/5 rounded transition-colors"
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => removeItem(idx)}
-                          title="Elimina riga"
+                          title={t("pages.documents.create.deleteLine")}
                           className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -611,30 +613,30 @@ export default function CreateDocumentPage() {
           <div className="flex justify-end p-5 border-t border-[#ebe9f1] bg-[#f8f8f8]/50">
             <div className="w-80 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Imponibile</span>
+                <span className="text-muted-foreground">{t("pages.documents.create.subtotal")}</span>
                 <span className="font-medium">
                   {formatCurrency(docTotals.subtotal_net)}
                 </span>
               </div>
               {docTotals.total_discount > 0 && (
                 <div className="flex justify-between text-red-600">
-                  <span>Sconto totale</span>
+                  <span>{t("pages.documents.create.totalDiscount")}</span>
                   <span>-{formatCurrency(docTotals.total_discount)}</span>
                 </div>
               )}
               {docTotals.vat_breakdown.map((v) => (
                 <div key={v.rate} className="flex justify-between">
                   <span className="text-muted-foreground">
-                    IVA {v.rate}%{" "}
+                    {t("pages.documents.preview.vat")} {v.rate}%{" "}
                     <span className="text-xs">
-                      (su {formatCurrency(v.taxable)})
+                      ({t("pages.documents.create.vatOnAmount")} {formatCurrency(v.taxable)})
                     </span>
                   </span>
                   <span>{formatCurrency(v.vat)}</span>
                 </div>
               ))}
               <div className="flex justify-between font-bold text-base border-t border-[#ebe9f1] pt-3 mt-3 text-[#5e5873]">
-                <span>Totale</span>
+                <span>{t("pages.documents.create.total")}</span>
                 <span>{formatCurrency(docTotals.total)}</span>
               </div>
             </div>
@@ -649,31 +651,31 @@ export default function CreateDocumentPage() {
             <div className="p-2 rounded-lg bg-[#009688]/10">
               <MessageSquare className="w-4 h-4 text-[#009688]" />
             </div>
-            <h2 className="font-semibold text-[#5e5873]">Note</h2>
+            <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.create.notesSection")}</h2>
           </div>
         </div>
         <div className="p-5 grid grid-cols-2 gap-5">
           <div>
             <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-              Note (visibili al cliente)
+              {t("pages.documents.create.notesVisible")}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Condizioni, istruzioni o note per il cliente..."
+              placeholder={t("pages.documents.create.notesVisiblePlaceholder")}
               className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20 resize-none"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-              Note Interne
+              {t("pages.documents.create.internalNotes")}
             </label>
             <textarea
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
               rows={3}
-              placeholder="Note interne, non visibili al cliente..."
+              placeholder={t("pages.documents.create.internalNotesPlaceholder")}
               className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20 resize-none"
             />
           </div>

@@ -13,6 +13,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { CreateCustomerModal } from "@/components/documents/CreateCustomerModal";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { Customer } from "@/lib/types/customer";
 
 interface CustomerStats {
@@ -25,6 +26,7 @@ interface CustomerStats {
 }
 
 export default function CustomersOverviewPage() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -79,28 +81,28 @@ export default function CustomersOverviewPage() {
 
   const statCards = [
     {
-      label: "Total Customers",
+      label: t("pages.store.customers.totalCustomers"),
       value: stats.total,
       icon: Users,
       color: "text-blue-600 bg-blue-100",
       href: `${tenantPrefix}/b2b/store/customers/list`,
     },
     {
-      label: "Business",
+      label: t("pages.store.customers.business"),
       value: stats.business,
       icon: Building2,
       color: "text-emerald-600 bg-emerald-100",
       href: `${tenantPrefix}/b2b/store/customers/business`,
     },
     {
-      label: "Private",
+      label: t("pages.store.customers.private"),
       value: stats.private,
       icon: User,
       color: "text-purple-600 bg-purple-100",
       href: `${tenantPrefix}/b2b/store/customers/private`,
     },
     {
-      label: "Resellers",
+      label: t("pages.store.customers.resellers"),
       value: stats.reseller,
       icon: Store,
       color: "text-amber-600 bg-amber-100",
@@ -110,13 +112,13 @@ export default function CustomersOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: "Customers" }]} />
+      <Breadcrumbs items={[{ label: t("pages.store.customers.title") }]} />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Customers Overview</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.store.customers.overview")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your customer profiles and addresses
+            {t("pages.store.customers.subtitle")}
           </p>
         </div>
         <button
@@ -124,7 +126,7 @@ export default function CustomersOverviewPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#00796b]"
         >
           <UserPlus className="h-4 w-4" />
-          New Customer
+          {t("pages.store.customers.newCustomer")}
         </button>
       </div>
 
@@ -151,7 +153,7 @@ export default function CustomersOverviewPage() {
               </div>
               <div className="mt-3 flex items-center text-xs text-muted-foreground group-hover:text-primary transition">
                 <TrendingUp className="h-3 w-3 mr-1" />
-                View details
+                {t("pages.store.customers.viewDetails")}
               </div>
             </Link>
           );
@@ -162,12 +164,12 @@ export default function CustomersOverviewPage() {
       <div className="rounded-lg bg-card shadow-sm">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-foreground">Recent Customers</h2>
+            <h2 className="font-semibold text-foreground">{t("pages.store.customers.recentCustomers")}</h2>
             <Link
               href={`${tenantPrefix}/b2b/store/customers/list`}
               className="text-sm text-primary hover:underline"
             >
-              View all
+              {t("pages.store.customers.viewAll")}
             </Link>
           </div>
         </div>
@@ -183,7 +185,7 @@ export default function CustomersOverviewPage() {
           ) : stats.recent.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Users className="mx-auto h-10 w-10 mb-2 opacity-50" />
-              <p>No customers yet</p>
+              <p>{t("pages.store.customers.noCustomersYet")}</p>
             </div>
           ) : (
             stats.recent.map((customer) => (
@@ -221,7 +223,7 @@ export default function CustomersOverviewPage() {
                   </span>
                   {customer.is_guest && (
                     <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-600">
-                      Guest
+                      {t("pages.store.customers.guest")}
                     </span>
                   )}
                 </div>

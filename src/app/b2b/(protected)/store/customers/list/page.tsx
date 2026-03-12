@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import { CreateCustomerModal } from "@/components/documents/CreateCustomerModal";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type FilterState = {
   search: string;
@@ -38,6 +39,7 @@ type CustomerWithStats = Customer & {
 };
 
 export default function CustomersListPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -139,11 +141,11 @@ export default function CustomersListPage() {
     <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <div className="text-center text-[#5e5873]">
         <Users className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
-        <p className="text-[1.05rem] font-semibold">No customers found</p>
+        <p className="text-[1.05rem] font-semibold">{t("pages.store.customersList.noCustomersFound")}</p>
         <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
           {filters.search || filters.customer_type
-            ? "Try adjusting your filters"
-            : "Customers will appear here once created"}
+            ? t("pages.store.customersList.tryAdjustingFilters")
+            : t("pages.store.customersList.customersWillAppear")}
         </p>
       </div>
     </div>
@@ -153,16 +155,16 @@ export default function CustomersListPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Customers", href: basePath },
-          { label: "All Customers" },
+          { label: t("pages.store.customers.title"), href: basePath },
+          { label: t("pages.store.customersList.title") },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">All Customers</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.store.customersList.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your customer profiles ({pagination.total} total)
+            {t("pages.store.customersList.subtitle")} ({pagination.total} {t("pages.store.customersList.totalSuffix")})
           </p>
         </div>
         <button
@@ -170,7 +172,7 @@ export default function CustomersListPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#00796b]"
         >
           <Plus className="h-4 w-4" />
-          New Customer
+          {t("pages.store.customersList.newCustomer")}
         </button>
       </div>
 
@@ -182,7 +184,7 @@ export default function CustomersListPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by public code, email, name, or company..."
+              placeholder={t("pages.store.customersList.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="w-full rounded border border-border bg-background px-9 py-2 text-sm focus:border-primary focus:outline-none"
@@ -195,10 +197,10 @@ export default function CustomersListPage() {
             onChange={(e) => updateFilters({ customer_type: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Types</option>
-            <option value="business">Business</option>
-            <option value="private">Private</option>
-            <option value="reseller">Reseller</option>
+            <option value="">{t("pages.store.customersList.allTypes")}</option>
+            <option value="business">{t("pages.store.customersList.business")}</option>
+            <option value="private">{t("pages.store.customersList.private")}</option>
+            <option value="reseller">{t("pages.store.customersList.reseller")}</option>
           </select>
 
           {/* Guest Filter */}
@@ -207,19 +209,19 @@ export default function CustomersListPage() {
             onChange={(e) => updateFilters({ is_guest: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="">All Customers</option>
-            <option value="false">Registered</option>
-            <option value="true">Guests</option>
+            <option value="">{t("pages.store.customersList.allCustomers")}</option>
+            <option value="false">{t("pages.store.customersList.registered")}</option>
+            <option value="true">{t("pages.store.customersList.guests")}</option>
           </select>
         </div>
 
         {/* Active Filters */}
         {(filters.customer_type || filters.search || filters.is_guest) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">{t("pages.store.customersList.activeFilters")}</span>
             {filters.customer_type && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>Type: {filters.customer_type}</span>
+                <span>{t("pages.store.customersList.type")}: {filters.customer_type}</span>
                 <button
                   onClick={() => updateFilters({ customer_type: "" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
@@ -230,7 +232,7 @@ export default function CustomersListPage() {
             )}
             {filters.is_guest && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>{filters.is_guest === "true" ? "Guests" : "Registered"}</span>
+                <span>{filters.is_guest === "true" ? t("pages.store.customersList.guests") : t("pages.store.customersList.registered")}</span>
                 <button
                   onClick={() => updateFilters({ is_guest: "" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
@@ -241,7 +243,7 @@ export default function CustomersListPage() {
             )}
             {filters.search && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                <span>Search: &quot;{filters.search}&quot;</span>
+                <span>{t("common.search")}: &quot;{filters.search}&quot;</span>
                 <button
                   onClick={() => updateFilters({ search: "" })}
                   className="hover:bg-primary/20 rounded-full p-0.5"
@@ -254,7 +256,7 @@ export default function CustomersListPage() {
               onClick={() => updateFilters({ customer_type: "", is_guest: "", search: "" })}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
-              Clear all
+              {t("pages.store.customersList.clearAll")}
             </button>
           </div>
         )}
@@ -279,25 +281,25 @@ export default function CustomersListPage() {
                 <thead className="bg-muted/50 border-b border-border">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Customer
+                      {t("pages.store.customersList.customer")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Email
+                      {t("pages.store.customersList.email")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Type
+                      {t("pages.store.customersList.type")}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                      Addresses
+                      {t("pages.store.customersList.addresses")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      VAT Number
+                      {t("pages.store.customersList.vatNumber")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                      Created
+                      {t("pages.store.customersList.created")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -345,7 +347,7 @@ export default function CustomersListPage() {
                         </span>
                         {customer.is_guest && (
                           <span className="ml-1 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-600">
-                            Guest
+                            {t("pages.store.customersList.guest")}
                           </span>
                         )}
                       </td>
@@ -379,7 +381,7 @@ export default function CustomersListPage() {
                           className="flex items-center justify-end gap-1 text-xs text-primary hover:underline font-medium"
                         >
                           <Eye className="h-3 w-3" />
-                          View
+                          {t("common.view")}
                         </Link>
                       </td>
                     </tr>
@@ -392,9 +394,7 @@ export default function CustomersListPage() {
             {pagination.pages > 1 && (
               <div className="border-t border-border px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                  {pagination.total} customers
+                  {t("pages.store.customersList.showingPagination", { from: (pagination.page - 1) * pagination.limit + 1, to: Math.min(pagination.page * pagination.limit, pagination.total), total: pagination.total })}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -405,7 +405,7 @@ export default function CustomersListPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <div className="text-sm font-medium text-foreground">
-                    Page {pagination.page} of {pagination.pages}
+                    {t("pages.store.customersList.pageOf", { page: pagination.page, pages: pagination.pages })}
                   </div>
                   <button
                     onClick={() => goToPage(pagination.page + 1)}

@@ -24,6 +24,7 @@ import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
 import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { calculateUnitPrice, calculatePackagePrice, ensurePackagingIds, ensurePromoRows, syncPackagingFlags } from "@/lib/utils/packaging";
 import {
   ProductImage,
@@ -209,6 +210,7 @@ export default function ProductDetailPage({
   const { entity_code } = use(params);
   const { version: versionParam } = use(searchParams);
   const router = useRouter();
+  const { t } = useTranslation();
   const pathname = usePathname();
   // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/pim/products/..." -> "/dfl-eventi-it")
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -1205,8 +1207,8 @@ export default function ProductDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Products", href: "/b2b/pim/products" },
+            { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+            { label: t("pages.pim.products.title"), href: "/b2b/pim/products" },
             { label: "Loading..." },
           ]}
         />
@@ -1226,8 +1228,8 @@ export default function ProductDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Product Information Management", href: "/b2b/pim" },
-            { label: "Products", href: "/b2b/pim/products" },
+            { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+            { label: t("pages.pim.products.title"), href: "/b2b/pim/products" },
             { label: "Not Found" },
           ]}
         />
@@ -1270,7 +1272,7 @@ export default function ProductDetailPage({
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-2xl font-bold text-foreground">Edit Product</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.products.editProduct")}</h1>
           </div>
           <p className="text-sm text-muted-foreground font-mono">
             SKU: {product.sku} | Entity: {product.entity_code}
@@ -1283,7 +1285,7 @@ export default function ProductDetailPage({
             className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
           >
             <History className="h-4 w-4" />
-            Version History
+            {t("pages.pim.history.title")}
           </Link>
           <button
             onClick={() => setShowPreview(!showPreview)}
@@ -1309,12 +1311,12 @@ export default function ProductDetailPage({
           >
             <Save className="h-4 w-4" />
             {isSaving
-              ? "Saving..."
+              ? t("pages.pim.common.saving")
               : formData.status === "published"
-                ? "Commit Update"
+                ? t("pages.pim.products.commitUpdate")
                 : formData.status === "draft"
-                  ? "Save Draft"
-                  : "Save Changes"
+                  ? t("pages.pim.products.saveDraft")
+                  : t("pages.pim.common.saveChanges")
             }
           </button>
 

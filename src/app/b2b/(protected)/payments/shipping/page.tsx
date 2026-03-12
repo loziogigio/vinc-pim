@@ -15,6 +15,7 @@ import {
 import type { IShippingZone, IShippingMethod } from "@/lib/types/shipping";
 import { Input } from "@/components/ui/input";
 import { MethodCard } from "@/components/shipping/MethodCard";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 // ============================================
 // LOCAL STATE TYPE
@@ -61,6 +62,7 @@ function ZoneCard({
   onUpdate: (updated: EditZone) => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation();
   const countryInput = zone.countries.join(", ");
 
   function setCountries(raw: string) {
@@ -103,15 +105,15 @@ function ZoneCard({
         <Input
           value={zone.name}
           onChange={(e) => onUpdate({ ...zone, name: e.target.value })}
-          placeholder="Nome zona (es. Italia)"
+          placeholder={t("pages.payments.shipping.zoneNamePlaceholder")}
           className="flex-1 h-9 font-semibold"
         />
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Paesi:</span>
+          <span className="text-xs text-muted-foreground">{t("pages.payments.shipping.countries")}</span>
           <Input
             value={countryInput}
             onChange={(e) => setCountries(e.target.value)}
-            placeholder="IT, DE, FR o * per tutti"
+            placeholder={t("pages.payments.shipping.countriesPlaceholder")}
             className="w-44 h-9 text-xs font-mono"
           />
         </div>
@@ -119,7 +121,7 @@ function ZoneCard({
           type="button"
           onClick={onRemove}
           className="text-muted-foreground hover:text-red-500 transition-colors"
-          title="Rimuovi zona"
+          title={t("pages.payments.shipping.removeZone")}
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -142,7 +144,7 @@ function ZoneCard({
             onClick={addMethod}
             className="flex items-center gap-1.5 text-sm text-[#009688] hover:underline mt-2"
           >
-            <Plus className="h-3.5 w-3.5" /> Aggiungi metodo di spedizione
+            <Plus className="h-3.5 w-3.5" /> {t("pages.payments.shipping.addShippingMethod")}
           </button>
         </div>
       )}
@@ -155,6 +157,7 @@ function ZoneCard({
 // ============================================
 
 export default function ShippingConfigPage() {
+  const { t } = useTranslation();
   const [zones, setZones] = useState<EditZone[]>([]);
   const [enabledPaymentMethods, setEnabledPaymentMethods] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,7 +179,7 @@ export default function ShippingConfigPage() {
       const paymentJson = await paymentRes.json();
       setEnabledPaymentMethods(paymentJson.config?.enabled_methods ?? []);
     } catch {
-      setError("Errore nel caricamento della configurazione");
+      setError(t("pages.payments.shipping.loadError"));
     } finally {
       setLoading(false);
     }
@@ -199,14 +202,14 @@ export default function ShippingConfigPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error || "Errore nel salvataggio");
+        setError(json.error || t("pages.payments.shipping.saveError"));
       } else {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
         loadConfig();
       }
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.shipping.networkError"));
     } finally {
       setSaving(false);
     }
@@ -238,10 +241,10 @@ export default function ShippingConfigPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            Configurazione Spedizioni
+            {t("pages.payments.shipping.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Definisci zone di consegna, metodi e tariffe a scaglioni.
+            {t("pages.payments.shipping.subtitle")}
           </p>
         </div>
         <button
@@ -262,7 +265,7 @@ export default function ShippingConfigPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {saveSuccess ? "Salvato!" : "Salva Configurazione"}
+          {saveSuccess ? t("pages.payments.shipping.saved") : t("pages.payments.shipping.saveConfig")}
         </button>
       </div>
 
@@ -280,11 +283,7 @@ export default function ShippingConfigPage() {
             <Info className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-sm text-muted-foreground">
-            Usa codici paese ISO come <code className="text-xs bg-[#f8f8f8] px-1 py-0.5 rounded border border-[#ebe9f1]">IT</code>,{" "}
-            <code className="text-xs bg-[#f8f8f8] px-1 py-0.5 rounded border border-[#ebe9f1]">DE</code>,{" "}
-            <code className="text-xs bg-[#f8f8f8] px-1 py-0.5 rounded border border-[#ebe9f1]">FR</code>.{" "}
-            Usa <code className="text-xs bg-[#f8f8f8] px-1 py-0.5 rounded border border-[#ebe9f1]">*</code> come zona di fallback.
-            Le tariffe sono valutate dal <em>Min ordine</em> più alto verso il basso.
+            {t("pages.payments.shipping.infoText")}
           </div>
         </div>
       </div>
@@ -298,9 +297,9 @@ export default function ShippingConfigPage() {
                 <Truck className="w-4 h-4 text-[#009688]" />
               </div>
               <div>
-                <h2 className="font-semibold text-[#5e5873]">Zone di Spedizione</h2>
+                <h2 className="font-semibold text-[#5e5873]">{t("pages.payments.shipping.shippingZones")}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {zones.length} zona{zones.length !== 1 ? "e" : ""} configurata{zones.length !== 1 ? "e" : ""}
+                  {t("pages.payments.shipping.zonesConfigured", { count: zones.length })}
                 </p>
               </div>
             </div>
@@ -310,7 +309,7 @@ export default function ShippingConfigPage() {
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#ebe9f1] text-sm font-medium text-[#5e5873] hover:border-[#009688]/30 hover:bg-[#009688]/5 transition-all"
             >
               <Plus className="h-4 w-4" />
-              Aggiungi Zona
+              {t("pages.payments.shipping.addZone")}
             </button>
           </div>
         </div>
@@ -320,7 +319,7 @@ export default function ShippingConfigPage() {
             <div className="text-center py-8">
               <Truck className="w-10 h-10 mx-auto mb-2 text-slate-300" />
               <p className="text-muted-foreground">
-                Nessuna zona configurata. Aggiungi una zona per iniziare.
+                {t("pages.payments.shipping.noZones")}
               </p>
             </div>
           ) : (

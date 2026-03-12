@@ -21,8 +21,10 @@ import type { PaymentProvider } from "@/lib/constants/payment";
 import { PROVIDER_FIELDS } from "@/lib/constants/provider-fields";
 import type { ProviderFieldDef } from "@/lib/constants/provider-fields";
 import StripeConnectOnboarding from "@/components/payments/StripeConnectOnboarding";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function ProviderConfigPage() {
+  const { t } = useTranslation();
   const { provider } = useParams<{ provider: string }>();
   const pathname = usePathname();
   const tenantPrefix =
@@ -57,11 +59,11 @@ export default function ProviderConfigPage() {
         setFormData(defaults);
       }
     } catch {
-      setError("Errore nel caricamento della configurazione");
+      setError(t("pages.payments.gatewayConfig.loadError"));
     } finally {
       setIsLoading(false);
     }
-  }, [provider, fields]);
+  }, [provider, fields, t]);
 
   useEffect(() => {
     if (provider && fields.length > 0) loadConfig();
@@ -83,10 +85,10 @@ export default function ProviderConfigPage() {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        setError(data.error || "Errore nel salvataggio");
+        setError(data.error || t("pages.payments.gatewayConfig.saveError"));
       }
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.gatewayConfig.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -114,11 +116,11 @@ export default function ProviderConfigPage() {
           className="inline-flex items-center gap-1.5 text-sm text-[#009688] hover:underline mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          Torna ai Gateway
+          {t("pages.payments.gatewayConfig.backToGateways")}
         </Link>
         <div className="bg-white rounded-lg border border-[#ebe9f1] p-8 text-center">
           <p className="text-muted-foreground">
-            Provider &quot;{provider}&quot; non configurabile.
+            {t("pages.payments.gatewayConfig.providerNotConfigurable", { provider })}
           </p>
         </div>
       </div>
@@ -141,14 +143,14 @@ export default function ProviderConfigPage() {
         className="inline-flex items-center gap-1.5 text-sm text-[#009688] hover:underline"
       >
         <ArrowLeft className="w-4 h-4" />
-        Torna ai Gateway
+        {t("pages.payments.gatewayConfig.backToGateways")}
       </Link>
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#5e5873]">
-            Configura {label}
+            {t("pages.payments.gatewayConfig.configure", { label })}
           </h1>
           {caps && (
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -159,7 +161,7 @@ export default function ProviderConfigPage() {
                 <span className="px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-600">MOTO</span>
               )}
               {caps.supportsRecurring && (
-                <span className="px-2 py-0.5 rounded text-xs bg-cyan-50 text-cyan-600">Ricorrente</span>
+                <span className="px-2 py-0.5 rounded text-xs bg-cyan-50 text-cyan-600">{t("pages.payments.gatewayConfig.recurring")}</span>
               )}
               {caps.supportsAutomaticSplit && (
                 <span className="px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-600">Split</span>
@@ -185,7 +187,7 @@ export default function ProviderConfigPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {saveSuccess ? "Salvato!" : "Salva"}
+          {saveSuccess ? t("pages.payments.gatewayConfig.saved") : t("pages.payments.gatewayConfig.save")}
         </button>
       </div>
 
@@ -238,6 +240,7 @@ function FieldRenderer({
   onToggleSecret: () => void;
   provider: string;
 }) {
+  const { t } = useTranslation();
   const inputClass =
     `w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20${field.readOnly ? " bg-gray-50 text-gray-500 cursor-not-allowed" : ""}`;
 
@@ -321,7 +324,7 @@ function FieldRenderer({
             disabled={field.readOnly}
             className={inputClass}
           >
-            <option value="">— Seleziona —</option>
+            <option value="">{t("pages.payments.gatewayConfig.selectOption")}</option>
             {field.options?.map((opt) => (
               <option key={opt} value={opt}>
                 {field.optionLabels?.[opt] ?? opt}
@@ -419,6 +422,7 @@ function WebhookUrlField({
   onChange: (val: string) => void;
   provider: string;
 }) {
+  const { t } = useTranslation();
   const [domains, setDomains] = useState<TenantDomainOption[]>([]);
   const [tenantId, setTenantId] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("custom");
@@ -511,7 +515,7 @@ function WebhookUrlField({
   return (
     <div className="space-y-3">
       <label className="block text-sm font-medium text-[#5e5873]">
-        Webhook URL
+        {t("pages.payments.gatewayConfig.webhookUrl")}
       </label>
 
       {/* Domain selector */}
@@ -527,10 +531,10 @@ function WebhookUrlField({
             {domains.map((d) => (
               <option key={d.hostname} value={d.hostname}>
                 {d.protocol}://{d.hostname}
-                {d.is_primary ? " (principale)" : ""}
+                {d.is_primary ? ` (${t("pages.payments.gatewayConfig.primary")})` : ""}
               </option>
             ))}
-            <option value="custom">Dominio personalizzato...</option>
+            <option value="custom">{t("pages.payments.gatewayConfig.customDomain")}</option>
           </select>
         </div>
       </div>
@@ -556,7 +560,7 @@ function WebhookUrlField({
             type="button"
             onClick={handleCopy}
             className="shrink-0 p-1.5 rounded hover:bg-gray-200 transition-colors"
-            title="Copia URL"
+            title={t("pages.payments.gatewayConfig.copyUrl")}
           >
             {copied ? (
               <Check className="w-4 h-4 text-green-600" />
@@ -568,8 +572,7 @@ function WebhookUrlField({
       )}
 
       <p className="text-xs text-gray-400">
-        Copia questo URL e registralo come webhook nel pannello del provider.
-        Dopo la registrazione, incolla il Webhook ID nel campo sotto.
+        {t("pages.payments.gatewayConfig.webhookInstructions")}
       </p>
     </div>
   );

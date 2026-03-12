@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ArrowLeft, Save, Cpu } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalizedString, type MultiLangString } from "@/lib/types/pim";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type TechnicalSpecification = {
   _id: string;
@@ -43,6 +44,7 @@ export default function EditProductTypePage() {
   const router = useRouter();
   const params = useParams();
   const productTypeId = params.id as string;
+  const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -221,9 +223,9 @@ export default function EditProductTypePage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Product Types", href: "/b2b/pim/product-types" },
-          { label: "Edit Product Type" },
+          { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+          { label: t("pages.pim.productTypes.title"), href: "/b2b/pim/product-types" },
+          { label: t("pages.pim.productTypes.editProductType") },
         ]}
       />
 
@@ -239,9 +241,9 @@ export default function EditProductTypePage() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Edit Product Type</h1>
+              <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.productTypes.editProductType")}</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Update product type and technical specifications
+                {t("pages.pim.productTypes.editDescription")}
               </p>
             </div>
           </div>
@@ -251,7 +253,7 @@ export default function EditProductTypePage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
           >
             <Save className="h-5 w-5" />
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
           </button>
         </div>
 
@@ -259,7 +261,7 @@ export default function EditProductTypePage() {
         <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Cpu className="h-5 w-5" />
-            Basic Information
+            {t("pages.pim.productTypes.basicInformation")}
           </h2>
 
           <div className="grid grid-cols-3 gap-4">
@@ -352,7 +354,7 @@ export default function EditProductTypePage() {
         {/* Technical Specifications Selection */}
         <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Select Technical Specifications</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.productTypes.selectTechnicalSpecs")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               Choose which specifications apply to this product type. Selected: {selectedSpecifications.size}
             </p>
@@ -472,7 +474,7 @@ export default function EditProductTypePage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
           >
             <Save className="h-5 w-5" />
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
           </button>
         </div>
       </form>

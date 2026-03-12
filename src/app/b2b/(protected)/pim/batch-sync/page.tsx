@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useEffect } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   RefreshCw,
   Loader2,
@@ -129,6 +130,7 @@ const REQUIRED_FIELD_OPTIONS: { value: RequiredField; label: string }[] = [
 // ============================================
 
 export default function BatchSyncPage() {
+  const { t } = useTranslation();
   // Form state
   const [cleanupMode, setCleanupMode] = useState<CleanupMode>("none");
   const [cleanupMinScore, setCleanupMinScore] = useState(50);
@@ -290,8 +292,8 @@ export default function BatchSyncPage() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "PIM", href: "/b2b/pim" },
-          { label: "Batch Sync" },
+          { label: t("pages.pim.breadcrumbPim"), href: "/b2b/pim" },
+          { label: t("pages.pim.batchSync.title") },
         ]}
       />
 
@@ -356,13 +358,13 @@ export default function BatchSyncPage() {
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h2 className="text-lg font-semibold text-[#5e5873] mb-4 flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              Run Batch Sync
+              {t("pages.pim.batchSync.runBatchSync")}
             </h2>
 
             {/* Cleanup Mode */}
             <div className="mb-5">
               <label className="block text-sm font-medium text-[#5e5873] mb-2">
-                Cleanup Mode
+                {t("pages.pim.batchSync.cleanupMode")}
               </label>
               <div className="space-y-2">
                 {[
@@ -441,8 +443,8 @@ export default function BatchSyncPage() {
             <div className="mb-5 border-t border-[#ebe9f1] pt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="text-sm font-medium text-[#5e5873]">Resync to Solr</label>
-                  <p className="text-xs text-[#b9b9c3]">Re-index published products meeting minimum score</p>
+                  <label className="text-sm font-medium text-[#5e5873]">{t("pages.pim.batchSync.resyncToSolr")}</label>
+                  <p className="text-xs text-[#b9b9c3]">{t("pages.pim.batchSync.resyncDescription")}</p>
                 </div>
                 <button
                   onClick={() => setResyncEnabled(!resyncEnabled)}
@@ -478,7 +480,7 @@ export default function BatchSyncPage() {
                       onChange={(e) => setRecalcScores(e.target.checked)}
                       className="accent-[#009688]"
                     />
-                    Recalculate scores before syncing
+                    {t("pages.pim.batchSync.recalculateScores")}
                   </label>
                   <label className="flex items-center gap-2 text-sm text-[#5e5873] cursor-pointer">
                     <input
@@ -487,7 +489,7 @@ export default function BatchSyncPage() {
                       onChange={(e) => setRebuildEmbeddings(e.target.checked)}
                       className="accent-[#009688]"
                     />
-                    Rebuild embedded data (categories, brands)
+                    {t("pages.pim.batchSync.rebuildEmbeddings")}
                   </label>
                 </div>
               )}
@@ -505,7 +507,7 @@ export default function BatchSyncPage() {
                 ) : (
                   <Eye className="h-4 w-4" />
                 )}
-                Preview
+                {t("common.preview")}
               </button>
               <button
                 onClick={() => setShowConfirm(true)}
@@ -517,7 +519,7 @@ export default function BatchSyncPage() {
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
-                Run Batch Sync
+                {t("pages.pim.batchSync.runBatchSync")}
               </button>
             </div>
           </div>
@@ -527,7 +529,7 @@ export default function BatchSyncPage() {
             <div className="rounded-[0.428rem] border border-blue-200 bg-blue-50 p-5">
               <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Eye className="h-4 w-4" />
-                Preview Results
+                {t("pages.pim.batchSync.previewResults")}
                 <span className="text-xs font-normal text-blue-600">
                   ({previewResult.duration_ms}ms)
                 </span>
@@ -610,7 +612,7 @@ export default function BatchSyncPage() {
             <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 p-5">
               <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
-                Batch Sync Complete
+                {t("pages.pim.batchSync.batchSyncComplete")}
                 <span className="text-xs font-normal text-emerald-600">
                   ({(executeResult.duration_ms / 1000).toFixed(1)}s)
                 </span>
@@ -658,7 +660,7 @@ export default function BatchSyncPage() {
           <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-5 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
             <h3 className="text-sm font-semibold text-[#5e5873] mb-3 flex items-center gap-2">
               <Search className="h-4 w-4" />
-              Fast Check
+              {t("pages.pim.batchSync.fastCheck")}
             </h3>
             <div className="flex gap-2">
               <input
@@ -783,7 +785,7 @@ export default function BatchSyncPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-[#5e5873] flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Activity History
+            {t("pages.pim.batchSync.activityHistory")}
           </h2>
           <button
             onClick={loadHistory}
@@ -795,27 +797,27 @@ export default function BatchSyncPage() {
             ) : (
               <RefreshCw className="h-3 w-3" />
             )}
-            Refresh
+            {t("common.refresh")}
           </button>
         </div>
 
         {history.length === 0 ? (
           <div className="text-center py-8 text-[#b9b9c3] text-sm">
-            No batch sync runs yet
+            {t("pages.pim.batchSync.noRunsYet")}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-[#b9b9c3] border-b border-[#ebe9f1]">
-                  <th className="pb-2 font-medium">Date</th>
-                  <th className="pb-2 font-medium">Started By</th>
-                  <th className="pb-2 font-medium">Cleanup</th>
-                  <th className="pb-2 font-medium">Removed</th>
-                  <th className="pb-2 font-medium">Indexed</th>
-                  <th className="pb-2 font-medium">Failed</th>
-                  <th className="pb-2 font-medium">Duration</th>
-                  <th className="pb-2 font-medium">Status</th>
+                  <th className="pb-2 font-medium">{t("common.date")}</th>
+                  <th className="pb-2 font-medium">{t("pages.pim.batchSync.startedBy")}</th>
+                  <th className="pb-2 font-medium">{t("pages.pim.batchSync.cleanup")}</th>
+                  <th className="pb-2 font-medium">{t("pages.pim.batchSync.removed")}</th>
+                  <th className="pb-2 font-medium">{t("pages.pim.batchSync.indexed")}</th>
+                  <th className="pb-2 font-medium">{t("pages.pim.batchSync.historyFailed")}</th>
+                  <th className="pb-2 font-medium">{t("pages.pim.batchSync.historyDuration")}</th>
+                  <th className="pb-2 font-medium">{t("common.status")}</th>
                 </tr>
               </thead>
               <tbody>

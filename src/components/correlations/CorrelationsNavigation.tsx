@@ -9,36 +9,38 @@ import {
   BellRing,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const navItems = [
   {
-    label: "Dashboard",
+    labelKey: "nav.correlations.dashboard",
     href: "/b2b/correlations",
     icon: LayoutDashboard,
-    description: "Overview & stats",
+    descKey: "nav.correlations.dashboardDesc",
   },
   {
-    label: "Articoli Correlati",
+    labelKey: "nav.correlations.relatedProducts",
     href: "/b2b/correlations/related-products",
     icon: Link2,
-    description: "Related products",
+    descKey: "nav.correlations.relatedProductsDesc",
   },
   {
-    label: "Likes",
+    labelKey: "nav.correlations.likes",
     href: "/b2b/correlations/likes",
     icon: Heart,
-    description: "Wishlist analytics",
+    descKey: "nav.correlations.likesDesc",
   },
   {
-    label: "Reminders",
+    labelKey: "nav.correlations.reminders",
     href: "/b2b/correlations/reminders",
     icon: BellRing,
-    description: "Back-in-stock",
+    descKey: "nav.correlations.remindersDesc",
   },
 ];
 
 export function CorrelationsNavigation() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/correlations" -> "/dfl-eventi-it")
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -46,7 +48,7 @@ export function CorrelationsNavigation() {
     <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
       <div className="mb-2 pb-3 border-b border-[#ebe9f1]">
         <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
-          Correlazioni & Analytics
+          {t("nav.correlations.title")}
         </h2>
       </div>
       {navItems.map((item) => {
@@ -69,7 +71,7 @@ export function CorrelationsNavigation() {
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}

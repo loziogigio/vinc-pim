@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface FCMSettings {
   configured: boolean;
@@ -40,6 +41,7 @@ interface FCMSettings {
 }
 
 export default function FCMSettingsPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,12 +95,12 @@ export default function FCMSettingsPage() {
       setIosAppId(data.ios_app_id || "");
       setIosBundleId(data.ios_bundle_id || "");
     } catch (err) {
-      setError("Failed to load FCM settings");
+      setError(t("pages.notifications.fcm.loadError"));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadSettings();
@@ -120,7 +122,7 @@ export default function FCMSettingsPage() {
           if (json.client_email) setClientEmail(json.client_email);
           setPrivateKey(json.private_key);
           setPrivateKeySet(false);
-          setSuccess("Firebase service account loaded from JSON file");
+          setSuccess(t("pages.notifications.fcm.serviceAccountLoaded"));
         }
         // Check if this is google-services.json (Android)
         else if (json.project_info) {
@@ -136,14 +138,14 @@ export default function FCMSettingsPage() {
           if (apiKey) setAndroidApiKey(apiKey);
           if (appId) setAndroidAppId(appId);
 
-          setSuccess("Android google-services.json loaded. Remember to also upload the service account key for server-side push.");
+          setSuccess(t("pages.notifications.fcm.googleServicesLoaded"));
         } else {
           throw new Error("Unknown format");
         }
 
         setTimeout(() => setSuccess(null), 5000);
       } catch {
-        setError("Invalid JSON file. Upload either a service account key or google-services.json");
+        setError(t("pages.notifications.fcm.invalidJsonFile"));
         setTimeout(() => setError(null), 5000);
       }
     };
@@ -192,7 +194,7 @@ export default function FCMSettingsPage() {
         throw new Error(data.error || "Failed to save settings");
       }
 
-      setSuccess("FCM settings saved successfully!");
+      setSuccess(t("pages.notifications.fcm.saveSuccess"));
       setPrivateKey(""); // Clear the private key input
       setPrivateKeySet(true); // Mark as set
       setTimeout(() => setSuccess(null), 3000);
@@ -211,7 +213,7 @@ export default function FCMSettingsPage() {
       if (!res.ok) throw new Error("Failed to disable FCM");
 
       setEnabled(false);
-      setSuccess("FCM disabled");
+      setSuccess(t("pages.notifications.fcm.fcmDisabled"));
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disable FCM");
@@ -233,8 +235,8 @@ export default function FCMSettingsPage() {
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumbs items={[
-          { label: "Notifiche", href: "/b2b/notifications" },
-          { label: "Impostazioni", href: "/b2b/notifications/settings" },
+          { label: t("pages.notifications.dashboard.breadcrumb"), href: "/b2b/notifications" },
+          { label: t("pages.notifications.settings.breadcrumb"), href: "/b2b/notifications/settings" },
           { label: "FCM" },
         ]} />
       </div>
@@ -247,10 +249,10 @@ export default function FCMSettingsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
-              Firebase Cloud Messaging (FCM)
+              {t("pages.notifications.fcm.title")}
             </h1>
             <p className="text-sm text-slate-500">
-              Configure push notifications for iOS and Android mobile apps
+              {t("pages.notifications.fcm.subtitle")}
             </p>
           </div>
         </div>
@@ -274,9 +276,9 @@ export default function FCMSettingsPage() {
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-medium text-slate-900">Enable FCM</h3>
+            <h3 className="font-medium text-slate-900">{t("pages.notifications.fcm.enableFcm")}</h3>
             <p className="text-sm text-slate-500">
-              Toggle push notifications for mobile apps
+              {t("pages.notifications.fcm.togglePushNotifications")}
             </p>
           </div>
           <Switch checked={enabled} onCheckedChange={setEnabled} />
@@ -286,15 +288,13 @@ export default function FCMSettingsPage() {
       {/* Upload JSON File */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
         <h3 className="font-medium text-slate-900 mb-4">
-          Import Firebase Configuration
+          {t("pages.notifications.fcm.importFirebaseConfig")}
         </h3>
-        <p className="text-sm text-slate-500 mb-4">
-          Upload either the <strong>service account JSON</strong> (for server push) or <strong>google-services.json</strong> (for Android client config)
-        </p>
+        <p className="text-sm text-slate-500 mb-4" dangerouslySetInnerHTML={{ __html: t("pages.notifications.fcm.importDesc") }} />
         <label className="flex items-center justify-center gap-2 p-6 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
           <Upload className="w-5 h-5 text-slate-400" />
           <span className="text-sm text-slate-600">
-            Click to upload JSON file
+            {t("pages.notifications.fcm.uploadJsonFile")}
           </span>
           <input
             type="file"
@@ -308,13 +308,13 @@ export default function FCMSettingsPage() {
       {/* Manual Configuration */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
         <h3 className="font-medium text-slate-900 mb-4">
-          Firebase Configuration
+          {t("pages.notifications.fcm.firebaseConfig")}
         </h3>
 
         <div className="space-y-4">
           {/* Project ID */}
           <div>
-            <Label htmlFor="project_id">Project ID</Label>
+            <Label htmlFor="project_id">{t("pages.notifications.fcm.projectId")}</Label>
             <Input
               id="project_id"
               value={projectId}
@@ -326,7 +326,7 @@ export default function FCMSettingsPage() {
 
           {/* Client Email */}
           <div>
-            <Label htmlFor="client_email">Client Email</Label>
+            <Label htmlFor="client_email">{t("pages.notifications.fcm.clientEmail")}</Label>
             <Input
               id="client_email"
               value={clientEmail}
@@ -339,10 +339,10 @@ export default function FCMSettingsPage() {
           {/* Private Key */}
           <div>
             <Label htmlFor="private_key">
-              Private Key
+              {t("pages.notifications.fcm.privateKey")}
               {privateKeySet && !privateKey && (
                 <span className="ml-2 text-xs text-emerald-600 font-normal">
-                  ✓ Already configured
+                  {t("pages.notifications.fcm.alreadyConfigured")}
                 </span>
               )}
             </Label>
@@ -353,7 +353,7 @@ export default function FCMSettingsPage() {
                 onChange={(e) => setPrivateKey(e.target.value)}
                 placeholder={
                   privateKeySet
-                    ? "Leave empty to keep existing key, or paste new key to replace"
+                    ? t("pages.notifications.fcm.keepExistingKey")
                     : "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
                 }
                 className="w-full h-32 px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -379,12 +379,12 @@ export default function FCMSettingsPage() {
 
       {/* Optional Settings */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-        <h3 className="font-medium text-slate-900 mb-4">Optional Settings</h3>
+        <h3 className="font-medium text-slate-900 mb-4">{t("pages.notifications.fcm.optionalSettings")}</h3>
 
         <div className="space-y-4">
           {/* Default Icon */}
           <div>
-            <Label htmlFor="default_icon">Default Notification Icon URL</Label>
+            <Label htmlFor="default_icon">{t("pages.notifications.fcm.defaultIconUrl")}</Label>
             <Input
               id="default_icon"
               value={defaultIcon}
@@ -393,13 +393,13 @@ export default function FCMSettingsPage() {
               className="mt-1"
             />
             <p className="text-xs text-slate-500 mt-1">
-              URL to the default notification icon (recommended: 192x192px PNG)
+              {t("pages.notifications.fcm.iconUrlHint")}
             </p>
           </div>
 
           {/* Default Color */}
           <div>
-            <Label htmlFor="default_color">Notification Accent Color</Label>
+            <Label htmlFor="default_color">{t("pages.notifications.fcm.accentColor")}</Label>
             <div className="flex items-center gap-2 mt-1">
               <input
                 type="color"
@@ -419,16 +419,16 @@ export default function FCMSettingsPage() {
 
           {/* iOS Badge Behavior */}
           <div>
-            <Label htmlFor="ios_badge">iOS Badge Behavior</Label>
+            <Label htmlFor="ios_badge">{t("pages.notifications.fcm.iosBadgeBehavior")}</Label>
             <select
               id="ios_badge"
               value={iosBadgeBehavior}
               onChange={(e) => setIosBadgeBehavior(e.target.value)}
               className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="increment">Increment badge count</option>
-              <option value="set">Set specific badge number</option>
-              <option value="none">Don&apos;t modify badge</option>
+              <option value="increment">{t("pages.notifications.fcm.incrementBadge")}</option>
+              <option value="set">{t("pages.notifications.fcm.setBadge")}</option>
+              <option value="none">{t("pages.notifications.fcm.dontModifyBadge")}</option>
             </select>
           </div>
         </div>
@@ -437,16 +437,16 @@ export default function FCMSettingsPage() {
       {/* Client-Side Config (for mobile app SDK) */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
         <h3 className="font-medium text-slate-900 mb-2">
-          Client-Side Configuration
+          {t("pages.notifications.fcm.clientSideConfig")}
         </h3>
         <p className="text-sm text-slate-500 mb-4">
-          These values are used by the mobile app to initialize Firebase SDK
+          {t("pages.notifications.fcm.clientSideConfigDesc")}
         </p>
 
         <div className="space-y-4">
           {/* Messaging Sender ID */}
           <div>
-            <Label htmlFor="messaging_sender_id">Messaging Sender ID</Label>
+            <Label htmlFor="messaging_sender_id">{t("pages.notifications.fcm.messagingSenderId")}</Label>
             <Input
               id="messaging_sender_id"
               value={messagingSenderId}
@@ -455,13 +455,13 @@ export default function FCMSettingsPage() {
               className="mt-1"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Found in google-services.json as project_number
+              {t("pages.notifications.fcm.senderIdHint")}
             </p>
           </div>
 
           {/* Storage Bucket */}
           <div>
-            <Label htmlFor="storage_bucket">Storage Bucket</Label>
+            <Label htmlFor="storage_bucket">{t("pages.notifications.fcm.storageBucket")}</Label>
             <Input
               id="storage_bucket"
               value={storageBucket}
@@ -479,13 +479,13 @@ export default function FCMSettingsPage() {
           <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
             <span className="text-green-600 text-lg">🤖</span>
           </div>
-          <h3 className="font-medium text-slate-900">Android Configuration</h3>
+          <h3 className="font-medium text-slate-900">{t("pages.notifications.fcm.androidConfig")}</h3>
         </div>
 
         <div className="space-y-4">
           {/* Android API Key */}
           <div>
-            <Label htmlFor="android_api_key">API Key</Label>
+            <Label htmlFor="android_api_key">{t("pages.notifications.fcm.apiKey")}</Label>
             <Input
               id="android_api_key"
               value={androidApiKey}
@@ -497,7 +497,7 @@ export default function FCMSettingsPage() {
 
           {/* Android App ID */}
           <div>
-            <Label htmlFor="android_app_id">App ID</Label>
+            <Label htmlFor="android_app_id">{t("pages.notifications.fcm.appId")}</Label>
             <Input
               id="android_app_id"
               value={androidAppId}
@@ -515,13 +515,13 @@ export default function FCMSettingsPage() {
           <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
             <span className="text-blue-600 text-lg">🍎</span>
           </div>
-          <h3 className="font-medium text-slate-900">iOS Configuration</h3>
+          <h3 className="font-medium text-slate-900">{t("pages.notifications.fcm.iosConfig")}</h3>
         </div>
 
         <div className="space-y-4">
           {/* iOS API Key */}
           <div>
-            <Label htmlFor="ios_api_key">API Key</Label>
+            <Label htmlFor="ios_api_key">{t("pages.notifications.fcm.apiKey")}</Label>
             <Input
               id="ios_api_key"
               value={iosApiKey}
@@ -533,7 +533,7 @@ export default function FCMSettingsPage() {
 
           {/* iOS App ID */}
           <div>
-            <Label htmlFor="ios_app_id">App ID</Label>
+            <Label htmlFor="ios_app_id">{t("pages.notifications.fcm.appId")}</Label>
             <Input
               id="ios_app_id"
               value={iosAppId}
@@ -545,7 +545,7 @@ export default function FCMSettingsPage() {
 
           {/* iOS Bundle ID */}
           <div>
-            <Label htmlFor="ios_bundle_id">Bundle ID</Label>
+            <Label htmlFor="ios_bundle_id">{t("pages.notifications.fcm.bundleId")}</Label>
             <Input
               id="ios_bundle_id"
               value={iosBundleId}
@@ -566,7 +566,7 @@ export default function FCMSettingsPage() {
           className="text-red-600 hover:text-red-700 hover:bg-red-50"
         >
           <Trash2 className="w-4 h-4 mr-2" />
-          Disable FCM
+          {t("pages.notifications.fcm.disableFcm")}
         </Button>
 
         <Button
@@ -579,19 +579,19 @@ export default function FCMSettingsPage() {
           ) : (
             <Save className="w-4 h-4 mr-2" />
           )}
-          Save Settings
+          {t("pages.notifications.fcm.saveSettings")}
         </Button>
       </div>
 
       {/* Help Text */}
       <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="font-medium text-blue-900 mb-2">How to get Firebase credentials</h3>
+        <h3 className="font-medium text-blue-900 mb-2">{t("pages.notifications.fcm.howToGetCredentials")}</h3>
         <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
-          <li>Go to Firebase Console → Your Project</li>
-          <li>Click the gear icon ⚙️ → Project settings</li>
-          <li>Go to &quot;Service accounts&quot; tab</li>
-          <li>Click &quot;Generate new private key&quot;</li>
-          <li>Upload the downloaded JSON file above</li>
+          <li>{t("pages.notifications.fcm.step1")}</li>
+          <li>{t("pages.notifications.fcm.step2")}</li>
+          <li>{t("pages.notifications.fcm.step3")}</li>
+          <li>{t("pages.notifications.fcm.step4")}</li>
+          <li>{t("pages.notifications.fcm.step5")}</li>
         </ol>
       </div>
     </div>

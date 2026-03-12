@@ -5,6 +5,7 @@ import { Plus, Search, Edit, Trash2, ExternalLink, BookOpen } from "lucide-react
 import Link from "next/link";
 import { toast } from "sonner";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type SynonymDictionary = {
   dictionary_id: string;
@@ -20,6 +21,7 @@ type SynonymDictionary = {
 };
 
 export default function SynonymDictionariesPage() {
+  const { t } = useTranslation();
   // Use language store like product detail page
   const { languages, fetchLanguages, getEnabledLanguages } = useLanguageStore();
   const enabledLanguages = getEnabledLanguages();
@@ -207,9 +209,9 @@ export default function SynonymDictionariesPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Synonym Dictionaries</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.synonymDictionaries.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create synonym groups to improve product search relevance.
+            {t("pages.pim.synonymDictionaries.subtitle")}
           </p>
         </div>
         <button
@@ -218,7 +220,7 @@ export default function SynonymDictionariesPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition"
         >
           <Plus className="h-4 w-4" />
-          New Dictionary
+          {t("pages.pim.synonymDictionaries.newDictionary")}
         </button>
       </div>
 
@@ -247,7 +249,7 @@ export default function SynonymDictionariesPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by key or terms..."
+              placeholder={t("pages.pim.synonymDictionaries.searchPlaceholder")}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -257,19 +259,19 @@ export default function SynonymDictionariesPage() {
               onChange={(event) => setFilterActive(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="all">All statuses</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="all">{t("pages.pim.synonymDictionaries.allStatuses")}</option>
+              <option value="true">{t("common.active")}</option>
+              <option value="false">{t("common.inactive")}</option>
             </select>
             <select
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="display_order">Display order</option>
-              <option value="key">Key</option>
-              <option value="product_count">Product count</option>
-              <option value="created_at">Created date</option>
+              <option value="display_order">{t("pages.pim.synonymDictionaries.displayOrder")}</option>
+              <option value="key">{t("pages.pim.synonymDictionaries.key")}</option>
+              <option value="product_count">{t("pages.pim.synonymDictionaries.productCount")}</option>
+              <option value="created_at">{t("common.createdAt")}</option>
             </select>
             <select
               value={sortOrder}
@@ -286,17 +288,17 @@ export default function SynonymDictionariesPage() {
       <div className="rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold text-foreground">
-            Dictionary Directory ({selectedLocale.toUpperCase()})
+            {t("pages.pim.synonymDictionaries.directory")} ({selectedLocale.toUpperCase()})
           </h2>
         </div>
 
         {loading ? (
           <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-            Loading dictionaries...
+            {t("pages.pim.synonymDictionaries.loading")}
           </div>
         ) : dictionaries.length === 0 ? (
           <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-            No dictionaries found for this locale. Create your first dictionary to get started.
+            {t("pages.pim.synonymDictionaries.noDictionaries")}
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -316,7 +318,7 @@ export default function SynonymDictionariesPage() {
                       <h3 className="text-base font-semibold text-foreground">{dict.key}</h3>
                       {!dict.is_active && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          Inactive
+                          {t("common.inactive")}
                         </span>
                       )}
                       <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium">
@@ -356,7 +358,7 @@ export default function SynonymDictionariesPage() {
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Open
+                    {t("pages.pim.open")}
                   </Link>
                   <button
                     type="button"
@@ -364,7 +366,7 @@ export default function SynonymDictionariesPage() {
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                   >
                     <Edit className="h-4 w-4" />
-                    Edit
+                    {t("common.edit")}
                   </button>
                   <button
                     type="button"
@@ -372,7 +374,7 @@ export default function SynonymDictionariesPage() {
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>
@@ -388,10 +390,10 @@ export default function SynonymDictionariesPage() {
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
-                    {editingDict ? "Edit Dictionary" : "Create Dictionary"}
+                    {editingDict ? t("pages.pim.synonymDictionaries.editDictionary") : t("pages.pim.synonymDictionaries.createDictionary")}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Define a synonym group with related search terms.
+                    {t("pages.pim.synonymDictionaries.modalSubtitle")}
                   </p>
                 </div>
               </div>
@@ -534,13 +536,13 @@ export default function SynonymDictionariesPage() {
                   onClick={() => setShowModal(false)}
                   className="px-4 py-2 rounded border border-border hover:bg-muted transition"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded bg-primary text-white hover:bg-primary/90 transition"
                 >
-                  {editingDict ? "Update Dictionary" : "Create Dictionary"}
+                  {editingDict ? t("pages.pim.synonymDictionaries.updateDictionary") : t("pages.pim.synonymDictionaries.createDictionary")}
                 </button>
               </div>
             </form>

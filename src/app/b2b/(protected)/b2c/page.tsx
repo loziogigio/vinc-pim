@@ -17,6 +17,7 @@ import {
   PauseCircle,
 } from "lucide-react";
 import { ChannelSelect } from "@/components/shared/ChannelSelect";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface StorefrontDomain {
   domain: string;
@@ -66,6 +67,8 @@ function DomainListInput({
   domains: DomainEntry[];
   onChange: (domains: DomainEntry[]) => void;
 }) {
+  const { t } = useTranslation();
+
   function add() {
     onChange([...domains, { protocol: "https", host: "" }]);
   }
@@ -115,13 +118,14 @@ function DomainListInput({
         className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
       >
         <Plus className="h-3.5 w-3.5" />
-        Add domain
+        {t("pages.b2c.dashboard.addDomain")}
       </button>
     </div>
   );
 }
 
 export default function B2CDashboardPage() {
+  const { t } = useTranslation();
   const pathname = usePathname() || "";
   const tenantPrefix =
     pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -178,7 +182,7 @@ export default function B2CDashboardPage() {
 
   async function handleCreate() {
     if (!newName.trim() || !newSlug.trim()) {
-      setError("Name and slug are required");
+      setError(t("pages.b2c.dashboard.nameSlugRequired"));
       return;
     }
 
@@ -198,21 +202,21 @@ export default function B2CDashboardPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to create");
+        setError(data.error || t("pages.b2c.dashboard.failedToCreate"));
         return;
       }
 
       resetCreateForm();
       fetchStorefronts();
     } catch {
-      setError("Network error");
+      setError(t("pages.b2c.dashboard.networkError"));
     } finally {
       setCreating(false);
     }
   }
 
   async function handleDelete(slug: string, name: string) {
-    if (!confirm(`Delete storefront "${name}"? This will also delete all its home template versions.`)) {
+    if (!confirm(t("pages.b2c.dashboard.deleteConfirm").replace("{name}", name))) {
       return;
     }
 
@@ -230,15 +234,15 @@ export default function B2CDashboardPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-[#5e5873]">B2C Storefront</h1>
-          <p className="text-sm text-[#b9b9c3]">Manage your storefronts and pages</p>
+          <h1 className="text-xl font-semibold text-[#5e5873]">{t("pages.b2c.dashboard.title")}</h1>
+          <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.dashboard.subtitle")}</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
           className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
         >
           <Plus className="h-4 w-4" />
-          New Storefront
+          {t("pages.b2c.dashboard.newStorefront")}
         </button>
       </div>
 
@@ -247,7 +251,7 @@ export default function B2CDashboardPage() {
         <div className="mb-4">
           <input
             type="text"
-            placeholder="Search storefronts..."
+            placeholder={t("pages.b2c.dashboard.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -262,12 +266,12 @@ export default function B2CDashboardPage() {
       {showCreate && (
         <div className="mb-6 rounded-lg border border-[#ebe9f1] bg-white p-6 shadow-sm">
           <h3 className="font-semibold text-[#5e5873] mb-4">
-            Create New Storefront
+            {t("pages.b2c.dashboard.createTitle")}
           </h3>
           <div className="space-y-3 max-w-lg">
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Name
+                {t("pages.b2c.dashboard.nameLabel")}
               </label>
               <input
                 type="text"
@@ -289,7 +293,7 @@ export default function B2CDashboardPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Slug
+                {t("pages.b2c.dashboard.slugLabel")}
               </label>
               <input
                 type="text"
@@ -302,19 +306,19 @@ export default function B2CDashboardPage() {
                 className="w-full rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
               />
               <p className="mt-1 text-xs text-[#b9b9c3]">
-                Lowercase, alphanumeric with dashes
+                {t("pages.b2c.dashboard.slugHelp")}
               </p>
             </div>
             <ChannelSelect
               value={newChannel}
               onChange={setNewChannel}
-              label="Channel"
+              label={t("pages.b2c.dashboard.channelLabel")}
               required
               className="!border-[#ebe9f1] !rounded-lg !focus:border-[#009688] !focus:ring-0"
             />
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1">
-                Domains
+                {t("pages.b2c.dashboard.domainsLabel")}
               </label>
               <DomainListInput domains={newDomains} onChange={setNewDomains} />
             </div>
@@ -327,13 +331,13 @@ export default function B2CDashboardPage() {
                 disabled={creating}
                 className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50"
               >
-                {creating ? "Creating..." : "Create"}
+                {creating ? t("pages.b2c.dashboard.creating") : t("pages.b2c.dashboard.create")}
               </button>
               <button
                 onClick={resetCreateForm}
                 className="rounded-lg border border-[#ebe9f1] px-4 py-2 text-sm text-[#5e5873] hover:bg-gray-50"
               >
-                Cancel
+                {t("pages.b2c.dashboard.cancel")}
               </button>
             </div>
           </div>
@@ -348,16 +352,16 @@ export default function B2CDashboardPage() {
       ) : storefronts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[#ebe9f1] bg-white p-12 text-center">
           <Store className="mx-auto h-12 w-12 text-[#b9b9c3]" />
-          <h3 className="mt-4 text-lg font-medium text-[#5e5873]">No storefronts yet</h3>
+          <h3 className="mt-4 text-lg font-medium text-[#5e5873]">{t("pages.b2c.dashboard.noStorefronts")}</h3>
           <p className="mt-2 text-sm text-[#b9b9c3]">
-            Create your first B2C storefront to start building pages.
+            {t("pages.b2c.dashboard.noStorefrontsDesc")}
           </p>
           <button
             onClick={() => setShowCreate(true)}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Create Storefront
+            {t("pages.b2c.dashboard.createStorefront")}
           </button>
         </div>
       ) : (
@@ -366,19 +370,19 @@ export default function B2CDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
               {
-                label: "Total Storefronts",
+                label: t("pages.b2c.dashboard.totalStorefronts"),
                 count: storefronts.length,
                 icon: Store,
                 iconBg: "bg-[#009688]",
               },
               {
-                label: "Active",
+                label: t("pages.b2c.dashboard.active"),
                 count: storefronts.filter((s) => s.status === "active").length,
                 icon: CheckCircle,
                 iconBg: "bg-emerald-500",
               },
               {
-                label: "Inactive",
+                label: t("pages.b2c.dashboard.inactive"),
                 count: storefronts.filter((s) => s.status === "inactive").length,
                 icon: PauseCircle,
                 iconBg: "bg-slate-400",
@@ -430,7 +434,7 @@ export default function B2CDashboardPage() {
                           : "bg-gray-100 text-gray-500"
                       }`}
                     >
-                      {sf.status}
+                      {sf.status === "active" ? t("pages.b2c.dashboard.active") : t("pages.b2c.dashboard.inactive")}
                     </span>
                   </div>
                 </div>
@@ -459,7 +463,7 @@ export default function B2CDashboardPage() {
                   ) : (
                     <div className="flex items-center gap-1.5 text-xs text-[#b9b9c3]">
                       <Globe className="h-3.5 w-3.5" />
-                      <span>No domains</span>
+                      <span>{t("pages.b2c.dashboard.noDomains")}</span>
                     </div>
                   )}
                 </div>
@@ -472,34 +476,34 @@ export default function B2CDashboardPage() {
                   <Link
                     href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${sf.slug}`}
                     className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
-                    title="Home Builder"
+                    title={t("pages.b2c.dashboard.homeBuilder")}
                   >
                     <Pencil className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Builder</span>
+                    <span className="text-[10px] font-medium">{t("pages.b2c.dashboard.builder")}</span>
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}/pages`}
                     className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
-                    title="Pages"
+                    title={t("pages.b2c.dashboard.pages")}
                   >
                     <FileText className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Pages</span>
+                    <span className="text-[10px] font-medium">{t("pages.b2c.dashboard.pages")}</span>
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}/forms`}
                     className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
-                    title="Form Submissions"
+                    title={t("pages.b2c.dashboard.forms")}
                   >
                     <Inbox className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Forms</span>
+                    <span className="text-[10px] font-medium">{t("pages.b2c.dashboard.forms")}</span>
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2c/storefronts/${sf.slug}`}
                     className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
-                    title="Settings"
+                    title={t("pages.b2c.dashboard.settingsAction")}
                   >
                     <Settings className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Settings</span>
+                    <span className="text-[10px] font-medium">{t("pages.b2c.dashboard.settingsAction")}</span>
                   </Link>
                 </div>
 
@@ -510,7 +514,7 @@ export default function B2CDashboardPage() {
                     handleDelete(sf.slug, sf.name);
                   }}
                   className="absolute top-2 right-2 rounded-md p-1.5 text-transparent group-hover:text-[#b9b9c3] hover:!text-red-600 hover:bg-red-50 transition-colors"
-                  title="Delete storefront"
+                  title={t("pages.b2c.dashboard.deleteStorefront")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -522,7 +526,7 @@ export default function B2CDashboardPage() {
           {pagination && pagination.totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">
               <p className="text-xs text-[#b9b9c3]">
-                {pagination.total} storefront{pagination.total !== 1 ? "s" : ""}
+                {t("pages.b2c.dashboard.storefrontCount").replace("{count}", String(pagination.total))}
               </p>
               <div className="flex gap-1">
                 {Array.from({ length: pagination.totalPages }, (_, i) => (

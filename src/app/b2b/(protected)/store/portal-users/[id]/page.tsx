@@ -30,6 +30,7 @@ import {
   EyeOff,
   Radio,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type CustomerWithDetails = Customer & {
   display_name?: string;
@@ -40,6 +41,7 @@ export default function PortalUserDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const router = useRouter();
   const pathname = usePathname();
@@ -92,13 +94,13 @@ export default function PortalUserDetailPage({
           channel: data.portal_user.channel ?? "default",
         });
       } else if (res.status === 404) {
-        setError("Portal user not found");
+        setError(t("pages.store.portalUserDetail.portalUserNotFound"));
       } else {
-        setError("Failed to load portal user");
+        setError(t("pages.store.portalUserDetail.failedToLoad"));
       }
     } catch (err) {
       console.error("Error fetching portal user:", err);
-      setError("Failed to load portal user");
+      setError(t("pages.store.portalUserDetail.failedToLoad"));
     } finally {
       setIsLoading(false);
     }
@@ -183,14 +185,14 @@ export default function PortalUserDetailPage({
         const data = await res.json();
         setPortalUser(data.portal_user);
         setIsEditingBasic(false);
-        setSaveSuccess("User details updated successfully");
+        setSaveSuccess(t("pages.store.portalUserDetail.userUpdated"));
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to update user");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToUpdate"));
       }
     } catch (err) {
-      setSaveError("Failed to update user");
+      setSaveError(t("pages.store.portalUserDetail.failedToUpdate"));
     } finally {
       setIsSubmitting(false);
     }
@@ -199,11 +201,11 @@ export default function PortalUserDetailPage({
   async function handleSavePassword(e: React.FormEvent) {
     e.preventDefault();
     if (passwordForm.password !== passwordForm.confirm) {
-      setSaveError("Passwords do not match");
+      setSaveError(t("pages.store.portalUserDetail.passwordsDoNotMatch"));
       return;
     }
     if (passwordForm.password.length < 8) {
-      setSaveError("Password must be at least 8 characters");
+      setSaveError(t("pages.store.portalUserDetail.passwordTooShort"));
       return;
     }
 
@@ -223,14 +225,14 @@ export default function PortalUserDetailPage({
       if (res.ok) {
         setIsEditingPassword(false);
         setPasswordForm({ password: "", confirm: "" });
-        setSaveSuccess("Password updated successfully");
+        setSaveSuccess(t("pages.store.portalUserDetail.passwordUpdated"));
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to update password");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToUpdatePassword"));
       }
     } catch (err) {
-      setSaveError("Failed to update password");
+      setSaveError(t("pages.store.portalUserDetail.failedToUpdatePassword"));
     } finally {
       setIsSubmitting(false);
     }
@@ -252,14 +254,14 @@ export default function PortalUserDetailPage({
       if (res.ok) {
         const data = await res.json();
         setPortalUser(data.portal_user);
-        setSaveSuccess(`User ${data.portal_user.is_active ? "activated" : "deactivated"} successfully`);
+        setSaveSuccess(data.portal_user.is_active ? t("pages.store.portalUserDetail.userActivated") : t("pages.store.portalUserDetail.userDeactivated"));
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to update status");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToUpdateStatus"));
       }
     } catch (err) {
-      setSaveError("Failed to update status");
+      setSaveError(t("pages.store.portalUserDetail.failedToUpdateStatus"));
     } finally {
       setIsSubmitting(false);
     }
@@ -278,11 +280,11 @@ export default function PortalUserDetailPage({
         router.push(`${tenantPrefix}/b2b/store/portal-users`);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to delete user");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToDelete"));
         setShowDeleteConfirm(false);
       }
     } catch (err) {
-      setSaveError("Failed to delete user");
+      setSaveError(t("pages.store.portalUserDetail.failedToDelete"));
       setShowDeleteConfirm(false);
     } finally {
       setIsDeleting(false);
@@ -313,14 +315,14 @@ export default function PortalUserDetailPage({
         setIsAddingCustomer(false);
         setCustomerSearch("");
         setSearchResults([]);
-        setSaveSuccess("Customer access added");
+        setSaveSuccess(t("pages.store.portalUserDetail.customerAccessAdded"));
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to add customer access");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToAddAccess"));
       }
     } catch (err) {
-      setSaveError("Failed to add customer access");
+      setSaveError(t("pages.store.portalUserDetail.failedToAddAccess"));
     } finally {
       setIsSubmitting(false);
     }
@@ -346,14 +348,14 @@ export default function PortalUserDetailPage({
       if (res.ok) {
         const data = await res.json();
         setPortalUser(data.portal_user);
-        setSaveSuccess("Customer access removed");
+        setSaveSuccess(t("pages.store.portalUserDetail.customerAccessRemoved"));
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to remove customer access");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToRemoveAccess"));
       }
     } catch (err) {
-      setSaveError("Failed to remove customer access");
+      setSaveError(t("pages.store.portalUserDetail.failedToRemoveAccess"));
     } finally {
       setIsSubmitting(false);
     }
@@ -379,14 +381,14 @@ export default function PortalUserDetailPage({
       if (res.ok) {
         const data = await res.json();
         setPortalUser(data.portal_user);
-        setSaveSuccess("Address access updated");
+        setSaveSuccess(t("pages.store.portalUserDetail.addressAccessUpdated"));
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
         const data = await res.json();
-        setSaveError(data.error || "Failed to update address access");
+        setSaveError(data.error || t("pages.store.portalUserDetail.failedToUpdateAccess"));
       }
     } catch (err) {
-      setSaveError("Failed to update address access");
+      setSaveError(t("pages.store.portalUserDetail.failedToUpdateAccess"));
     } finally {
       setIsSubmitting(false);
     }
@@ -436,21 +438,21 @@ export default function PortalUserDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: "Portal Users", href: "/b2b/store/portal-users" },
-            { label: "Error" },
+            { label: t("pages.store.portalUsers.title"), href: "/b2b/store/portal-users" },
+            { label: t("pages.store.portalUserDetail.error") },
           ]}
         />
         <div className="rounded-lg bg-card p-8 shadow-sm text-center">
           <UserCog className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
           <h2 className="text-lg font-semibold text-foreground mb-2">
-            {error || "Portal user not found"}
+            {error || t("pages.store.portalUserDetail.portalUserNotFound")}
           </h2>
           <Link
             href={`${tenantPrefix}/b2b/store/portal-users`}
             className="text-primary hover:underline inline-flex items-center gap-1"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to portal users
+            {t("pages.store.portalUserDetail.backToPortalUsers")}
           </Link>
         </div>
       </div>
@@ -461,7 +463,7 @@ export default function PortalUserDetailPage({
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Portal Users", href: "/b2b/store/portal-users" },
+          { label: t("pages.store.portalUsers.title"), href: "/b2b/store/portal-users" },
           { label: portalUser.username },
         ]}
       />
@@ -502,12 +504,12 @@ export default function PortalUserDetailPage({
                 {portalUser.is_active ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                     <CheckCircle className="h-3 w-3" />
-                    Active
+                    {t("common.active")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                     <XCircle className="h-3 w-3" />
-                    Inactive
+                    {t("common.inactive")}
                   </span>
                 )}
               </div>
@@ -528,12 +530,12 @@ export default function PortalUserDetailPage({
             {portalUser.is_active ? (
               <>
                 <XCircle className="h-4 w-4" />
-                Deactivate
+                {t("pages.store.portalUserDetail.deactivate")}
               </>
             ) : (
               <>
                 <CheckCircle className="h-4 w-4" />
-                Activate
+                {t("pages.store.portalUserDetail.activate")}
               </>
             )}
           </button>
@@ -542,7 +544,7 @@ export default function PortalUserDetailPage({
             className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            {t("common.delete")}
           </button>
         </div>
       </div>
@@ -552,15 +554,15 @@ export default function PortalUserDetailPage({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Delete Portal User
+              {t("pages.store.portalUserDetail.deletePortalUser")}
             </h3>
             <p className="text-muted-foreground mb-4">
-              Are you sure you want to permanently delete <strong>{portalUser.username}</strong>? This action cannot be undone.
+              {t("pages.store.portalUserDetail.deleteConfirm")} <strong>{portalUser.username}</strong>? {t("pages.store.portalUserDetail.deleteWarning")}
             </p>
             {portalUser.customer_access && portalUser.customer_access.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-amber-700">
-                  This user has access to {portalUser.customer_access.length} customer(s). The customers will not be affected.
+                  {t("pages.store.portalUserDetail.deleteCustomerWarning").replace("{count}", String(portalUser.customer_access.length))}
                 </p>
               </div>
             )}
@@ -570,7 +572,7 @@ export default function PortalUserDetailPage({
                 disabled={isDeleting}
                 className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition disabled:opacity-50"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleDelete}
@@ -580,12 +582,12 @@ export default function PortalUserDetailPage({
                 {isDeleting ? (
                   <>
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                    Deleting...
+                    {t("pages.store.portalUserDetail.deleting")}
                   </>
                 ) : (
                   <>
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    {t("common.delete")}
                   </>
                 )}
               </button>
@@ -600,7 +602,7 @@ export default function PortalUserDetailPage({
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-foreground flex items-center gap-2">
               <User className="h-4 w-4" />
-              User Information
+              {t("pages.store.portalUserDetail.userInformation")}
             </h2>
             {!isEditingBasic && (
               <button
@@ -615,7 +617,7 @@ export default function PortalUserDetailPage({
           {isEditingBasic ? (
             <form onSubmit={handleSaveBasic} className="space-y-4">
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Username</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.portalUserDetail.usernameLabel")}</label>
                 <input
                   type="text"
                   value={basicForm.username}
@@ -625,7 +627,7 @@ export default function PortalUserDetailPage({
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Email</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.portalUserDetail.emailLabel")}</label>
                 <input
                   type="email"
                   value={basicForm.email}
@@ -637,7 +639,7 @@ export default function PortalUserDetailPage({
               <ChannelSelect
                 value={basicForm.channel}
                 onChange={(code) => setBasicForm({ ...basicForm, channel: code })}
-                label="Channel"
+                label={t("pages.store.portalUserDetail.channelLabel")}
               />
               <div className="flex items-center gap-2 pt-2">
                 <button
@@ -646,7 +648,7 @@ export default function PortalUserDetailPage({
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-sm rounded hover:bg-primary/90 transition disabled:opacity-50"
                 >
                   <Save className="h-3 w-3" />
-                  Save
+                  {t("common.save")}
                 </button>
                 <button
                   type="button"
@@ -660,7 +662,7 @@ export default function PortalUserDetailPage({
                   }}
                   className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>
@@ -669,14 +671,14 @@ export default function PortalUserDetailPage({
               <div className="flex items-center gap-3">
                 <UserCog className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Username</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.portalUserDetail.usernameLabel")}</p>
                   <p className="text-sm font-medium text-foreground">{portalUser.username}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.portalUserDetail.emailLabel")}</p>
                   <a href={`mailto:${portalUser.email}`} className="text-sm text-primary hover:underline">
                     {portalUser.email}
                   </a>
@@ -685,7 +687,7 @@ export default function PortalUserDetailPage({
               <div className="flex items-center gap-3">
                 <Radio className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Channel</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.portalUserDetail.channelLabel")}</p>
                   <p className="text-sm font-medium text-foreground">
                     {portalUser.channel ?? "default"}
                   </p>
@@ -694,7 +696,7 @@ export default function PortalUserDetailPage({
               <div className="flex items-center gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Created</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.portalUserDetail.createdLabel")}</p>
                   <p className="text-sm text-foreground">
                     {new Date(portalUser.created_at).toLocaleDateString("it-IT", {
                       year: "numeric",
@@ -707,7 +709,7 @@ export default function PortalUserDetailPage({
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Last Login</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.portalUserDetail.lastLoginLabel")}</p>
                   <p className="text-sm text-foreground">
                     {portalUser.last_login_at
                       ? new Date(portalUser.last_login_at).toLocaleDateString("it-IT", {
@@ -717,7 +719,7 @@ export default function PortalUserDetailPage({
                           hour: "2-digit",
                           minute: "2-digit",
                         })
-                      : "Never"}
+                      : t("pages.store.portalUserDetail.never")}
                   </p>
                 </div>
               </div>
@@ -730,7 +732,7 @@ export default function PortalUserDetailPage({
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-foreground flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Password
+              {t("pages.store.portalUserDetail.passwordSection")}
             </h2>
             {!isEditingPassword && (
               <button
@@ -745,14 +747,14 @@ export default function PortalUserDetailPage({
           {isEditingPassword ? (
             <form onSubmit={handleSavePassword} className="space-y-4">
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">New Password</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.portalUserDetail.newPassword")}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     value={passwordForm.password}
                     onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 pr-10 text-sm focus:border-primary focus:outline-none"
-                    placeholder="Min. 8 characters"
+                    placeholder={t("pages.store.portalUserDetail.newPasswordPlaceholder")}
                     required
                     minLength={8}
                   />
@@ -766,13 +768,13 @@ export default function PortalUserDetailPage({
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Confirm Password</label>
+                <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.portalUserDetail.confirmPassword")}</label>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={passwordForm.confirm}
                   onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Repeat password"
+                  placeholder={t("pages.store.portalUserDetail.confirmPasswordPlaceholder")}
                   required
                 />
               </div>
@@ -783,7 +785,7 @@ export default function PortalUserDetailPage({
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-sm rounded hover:bg-primary/90 transition disabled:opacity-50"
                 >
                   <Save className="h-3 w-3" />
-                  Update Password
+                  {t("pages.store.portalUserDetail.updatePassword")}
                 </button>
                 <button
                   type="button"
@@ -793,19 +795,19 @@ export default function PortalUserDetailPage({
                   }}
                   className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>
           ) : (
             <div className="text-center py-4">
               <Key className="mx-auto h-8 w-8 text-muted-foreground mb-2 opacity-50" />
-              <p className="text-sm text-muted-foreground">Password is encrypted</p>
+              <p className="text-sm text-muted-foreground">{t("pages.store.portalUserDetail.passwordEncrypted")}</p>
               <button
                 onClick={() => setIsEditingPassword(true)}
                 className="mt-2 text-sm text-primary hover:underline"
               >
-                Change password
+                {t("pages.store.portalUserDetail.changePassword")}
               </button>
             </div>
           )}
@@ -815,13 +817,13 @@ export default function PortalUserDetailPage({
         <div className="rounded-lg bg-card p-5 shadow-sm">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Access Summary
+            {t("pages.store.portalUserDetail.accessSummary")}
           </h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">Customers</span>
+                <span className="text-sm text-foreground">{t("pages.store.portalUserDetail.customersLabel")}</span>
               </div>
               <span className="text-lg font-bold text-foreground">
                 {portalUser.customer_access?.length || 0}
@@ -830,12 +832,12 @@ export default function PortalUserDetailPage({
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">Address Access</span>
+                <span className="text-sm text-foreground">{t("pages.store.portalUserDetail.addressAccess")}</span>
               </div>
               <span className="text-sm font-medium text-foreground">
                 {portalUser.customer_access?.some((ca) => ca.address_access === "all")
-                  ? "Full access"
-                  : "Restricted"}
+                  ? t("pages.store.portalUserDetail.fullAccess")
+                  : t("pages.store.portalUserDetail.restricted")}
               </span>
             </div>
           </div>
@@ -847,14 +849,14 @@ export default function PortalUserDetailPage({
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Customer Access ({portalUser.customer_access?.length || 0})
+            {t("pages.store.portalUserDetail.customerAccessSection")} ({portalUser.customer_access?.length || 0})
           </h2>
           <button
             onClick={() => setIsAddingCustomer(true)}
             className="flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="h-4 w-4" />
-            Add Customer
+            {t("pages.store.portalUserDetail.addCustomer")}
           </button>
         </div>
 
@@ -865,7 +867,7 @@ export default function PortalUserDetailPage({
               <div className="flex-1 relative">
                 <input
                   type="text"
-                  placeholder="Search customers by name, email, or code..."
+                  placeholder={t("pages.store.portalUserDetail.searchCustomersPlaceholder")}
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -885,7 +887,7 @@ export default function PortalUserDetailPage({
                 }}
                 className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
 
@@ -917,7 +919,7 @@ export default function PortalUserDetailPage({
                         disabled={isSubmitting}
                         className="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
                       >
-                        Add (All Addresses)
+                        {t("pages.store.portalUserDetail.addAllAddresses")}
                       </button>
                     </div>
                   </div>
@@ -927,7 +929,7 @@ export default function PortalUserDetailPage({
 
             {customerSearch && !isSearching && searchResults.length === 0 && (
               <p className="mt-3 text-sm text-muted-foreground text-center py-4">
-                No customers found matching &quot;{customerSearch}&quot;
+                {t("pages.store.portalUserDetail.noCustomersMatchSearch")} &quot;{customerSearch}&quot;
               </p>
             )}
           </div>
@@ -970,12 +972,11 @@ export default function PortalUserDetailPage({
                           <MapPin className="h-3 w-3 text-muted-foreground" />
                           {access.address_access === "all" ? (
                             <span className="text-xs text-emerald-600 font-medium">
-                              All addresses ({customer.addresses?.length || 0})
+                              {t("pages.store.portalUserDetail.allAddresses")} ({customer.addresses?.length || 0})
                             </span>
                           ) : (
                             <span className="text-xs text-amber-600 font-medium">
-                              {(access.address_access as string[]).length} of{" "}
-                              {customer.addresses?.length || 0} addresses
+                              {(access.address_access as string[]).length} {t("pages.store.portalUserDetail.ofAddresses").replace("{total}", String(customer.addresses?.length || 0))}
                             </span>
                           )}
                         </div>
@@ -988,7 +989,7 @@ export default function PortalUserDetailPage({
                           disabled={isSubmitting}
                           className="px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition"
                         >
-                          Grant all
+                          {t("pages.store.portalUserDetail.grantAll")}
                         </button>
                       )}
                       <button
@@ -1007,12 +1008,12 @@ export default function PortalUserDetailPage({
         ) : (
           <div className="p-8 text-center text-muted-foreground">
             <Users className="mx-auto h-10 w-10 mb-2 opacity-50" />
-            <p>No customer access configured</p>
+            <p>{t("pages.store.portalUserDetail.noCustomerAccess")}</p>
             <button
               onClick={() => setIsAddingCustomer(true)}
               className="mt-2 text-sm text-primary hover:underline"
             >
-              Add first customer
+              {t("pages.store.portalUserDetail.addFirstCustomer")}
             </button>
           </div>
         )}

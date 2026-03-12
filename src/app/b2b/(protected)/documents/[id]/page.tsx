@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { getAllowedDocumentTransitions } from "@/lib/constants/document";
 import type { DocumentStatus } from "@/lib/constants/document";
 import {
@@ -28,6 +29,7 @@ export default function DocumentDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantPrefix =
@@ -187,10 +189,10 @@ export default function DocumentDetailPage({
         setDoc(data.document);
         setHasChanges(false);
       } else {
-        alert(data.error || "Errore nel salvataggio");
+        alert(data.error || t("pages.documents.detail.saveError"));
       }
     } catch {
-      alert("Errore di rete");
+      alert(t("pages.documents.detail.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -235,7 +237,7 @@ export default function DocumentDetailPage({
   if (!doc) {
     return (
       <div className="p-6 text-center text-muted-foreground">
-        Documento non trovato.
+        {t("pages.documents.detail.documentNotFound")}
       </div>
     );
   }
