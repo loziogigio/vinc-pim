@@ -62,6 +62,7 @@ export interface ILineItem {
   unit_price: number;
   promo_price?: number;
   vat_rate: number;
+  vat_included?: boolean; // true = prices are gross (VAT-inclusive)
 
   // Line Totals
   line_gross: number;
@@ -381,6 +382,10 @@ export interface IOrder extends Document {
   // Line-level negotiation adjustments
   line_adjustments?: ILineAdjustment[];
 
+  // Coupon
+  coupon_code?: string;
+  coupon_id?: string;
+
   // ============================================
   // Payment Tracking
   // ============================================
@@ -656,6 +661,7 @@ const LineItemSchema = new Schema<ILineItem>(
     unit_price: { type: Number, required: true },
     promo_price: { type: Number },
     vat_rate: { type: Number, required: true },
+    vat_included: { type: Boolean, default: false },
 
     // Line Totals
     line_gross: { type: Number, required: true, default: 0 },
@@ -874,6 +880,10 @@ const OrderSchema = new Schema<IOrder>(
     // Line-level adjustments
     line_adjustments: { type: [LineAdjustmentSchema], default: [] },
 
+    // Coupon
+    coupon_code: { type: String },
+    coupon_id: { type: String },
+
     // ============================================
     // Payment Tracking
     // ============================================
@@ -1075,17 +1085,22 @@ export function recalculateOrderTotals(order: IOrder): void {
     const item = items.find((i) => i.line_number === adj.line_number);
     if (!item) continue;
 
+    // VAT factor depends on whether item prices include VAT
+    const vatFactor = item.vat_included
+      ? item.vat_rate / (100 + item.vat_rate)
+      : item.vat_rate / 100;
+
     if (adj.type === "price_override") {
       const priceDiff = (item.unit_price - adj.new_value) * item.quantity;
       subtotalNet -= priceDiff;
-      totalVat -= priceDiff * (item.vat_rate / 100);
+      totalVat -= priceDiff * vatFactor;
     } else if (adj.type === "discount_percentage") {
       const lineDiscount = item.line_net * Math.abs(adj.new_value) / 100;
       subtotalNet -= lineDiscount;
-      totalVat -= lineDiscount * (item.vat_rate / 100);
+      totalVat -= lineDiscount * vatFactor;
     } else if (adj.type === "discount_fixed") {
       subtotalNet -= Math.abs(adj.new_value);
-      totalVat -= Math.abs(adj.new_value) * (item.vat_rate / 100);
+      totalVat -= Math.abs(adj.new_value) * vatFactor;
     }
   }
 
@@ -1119,14 +1134,35 @@ export function recalculateOrderTotals(order: IOrder): void {
 }
 
 /**
- * Calculate line item totals
+ * Calculate line item totals.
+ * When vat_included is true, prices are gross (VAT-inclusive) and VAT is extracted.
+ * When false/undefined, prices are net and VAT is added on top (default behavior).
  */
 export function calculateLineItemTotals(
   quantity: number,
   list_price: number,
   unit_price: number,
-  vat_rate: number
+  vat_rate: number,
+  vat_included?: boolean
 ): Pick<ILineItem, "line_gross" | "line_net" | "line_vat" | "line_total"> {
+  if (vat_included) {
+    // Prices are gross (VAT-inclusive) — extract VAT
+    const divisor = 1 + vat_rate / 100;
+    const line_total = quantity * unit_price;
+    const line_net = line_total / divisor;
+    const line_vat = line_total - line_net;
+    const line_gross_total = quantity * list_price;
+    const line_gross = line_gross_total / divisor;
+
+    return {
+      line_gross: Math.round(line_gross * 100) / 100,
+      line_net: Math.round(line_net * 100) / 100,
+      line_vat: Math.round(line_vat * 100) / 100,
+      line_total: Math.round(line_total * 100) / 100,
+    };
+  }
+
+  // Default: prices are net (VAT-exclusive) — add VAT on top
   const line_gross = quantity * list_price;
   const line_net = quantity * unit_price;
   const line_vat = line_net * (vat_rate / 100);

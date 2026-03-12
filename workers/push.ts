@@ -9,6 +9,7 @@
 
 import { Worker, Job } from "bullmq";
 import { processQueuedPush } from "../src/lib/push";
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 import type { PushPayload } from "../src/lib/push/types";
 
 interface PushJobData {
@@ -107,11 +108,13 @@ console.log("[Push Worker] Ready and listening for jobs");
 process.on("SIGINT", async () => {
   console.log("[Push Worker] Shutting down...");
   await worker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("[Push Worker] Shutting down...");
   await worker.close();
+  await closeAllConnections();
   process.exit(0);
 });

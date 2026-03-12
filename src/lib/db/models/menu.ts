@@ -10,6 +10,7 @@ export type MenuItemType =
   | "page"
   | "url"
   | "search" // Search product link
+  | "text" // Plain text label (no link)
   | "divider"; // Visual separator
 
 export type MenuLocation = "header" | "footer" | "mobile" | "mega_menu";
@@ -97,6 +98,7 @@ const MenuItemSchema = new Schema<IMenuItem>(
         "page",
         "url",
         "search",
+        "text",
         "divider",
       ],
       required: true,

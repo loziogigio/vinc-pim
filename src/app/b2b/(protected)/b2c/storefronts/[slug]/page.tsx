@@ -10,8 +10,9 @@ import { BrandingSection } from "@/components/b2c/storefront-settings/branding-s
 import { HeaderSection, DEFAULT_B2C_HEADER_CONFIG } from "@/components/b2c/storefront-settings/header-section";
 import { FooterSection } from "@/components/b2c/storefront-settings/footer-section";
 import { SeoSection } from "@/components/b2c/storefront-settings/seo-section";
+import { ScriptsSection } from "@/components/b2c/storefront-settings/scripts-section";
 import { SitemapSection } from "@/components/b2c/storefront-settings/sitemap-section";
-import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, HeaderConfig } from "@/components/b2c/storefront-settings/types";
+import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, IB2CCustomScript, HeaderConfig } from "@/components/b2c/storefront-settings/types";
 
 interface Storefront {
   _id: string;
@@ -26,6 +27,7 @@ interface Storefront {
   footer: IB2CStorefrontFooter;
   footer_draft?: IB2CStorefrontFooter;
   meta_tags?: IB2CStorefrontMetaTags;
+  custom_scripts?: IB2CCustomScript[];
   settings: { default_language?: string; theme?: string };
   created_at: string;
   updated_at: string;
@@ -72,6 +74,9 @@ export default function StorefrontDetailPage({
   // SEO
   const [metaTags, setMetaTags] = useState<IB2CStorefrontMetaTags>({});
 
+  // Custom Scripts
+  const [customScripts, setCustomScripts] = useState<IB2CCustomScript[]>([]);
+
   // Load storefront
   useEffect(() => {
     fetch(`/api/b2b/b2c/storefronts/${slug}`)
@@ -91,6 +96,7 @@ export default function StorefrontDetailPage({
           setFooter(sf.footer || {});
           setFooterDraft(sf.footer_draft ?? sf.footer ?? {});
           setMetaTags(sf.meta_tags || {});
+          setCustomScripts(sf.custom_scripts || []);
         }
       })
       .catch(console.error)
@@ -121,6 +127,7 @@ export default function StorefrontDetailPage({
           footer,
           footer_draft: footerDraft,
           meta_tags: metaTags,
+          custom_scripts: customScripts,
           settings: { default_language: defaultLanguage || undefined },
         }),
       });
@@ -161,14 +168,16 @@ export default function StorefrontDetailPage({
 
   // Publish footer: copy draft to published and save
   async function handlePublishFooter() {
-    setFooter(footerDraft);
+    // When publishing, promote footer_html_draft to footer_html
+    const published = { ...footerDraft, footer_html: footerDraft.footer_html_draft || undefined };
+    setFooter(published);
     setSaving(true);
     setError("");
     try {
       const res = await fetch(`/api/b2b/b2c/storefronts/${slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ footer: footerDraft, footer_draft: footerDraft }),
+        body: JSON.stringify({ footer: published, footer_draft: footerDraft }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to publish footer"); return; }
@@ -303,6 +312,15 @@ export default function StorefrontDetailPage({
           <SeoSection
             metaTags={metaTags}
             onChange={handleMetaTagChange}
+            saving={saving}
+            onSave={handleSave}
+          />
+        )}
+
+        {activeSection === "scripts" && (
+          <ScriptsSection
+            scripts={customScripts}
+            onChange={setCustomScripts}
             saving={saving}
             onSave={handleSave}
           />

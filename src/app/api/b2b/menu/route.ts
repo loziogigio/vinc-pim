@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { invalidateB2CCache } from "@/lib/cache/redis-client";
 import { MenuLocation } from "@/lib/db/models/menu";
@@ -11,12 +11,10 @@ import { nanoid } from "nanoid";
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
@@ -64,12 +62,10 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
@@ -110,7 +106,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!["url", "search", "divider", "page"].includes(type) && !reference_id) {
+    if (!["url", "search", "divider", "text", "page"].includes(type) && !reference_id) {
       return NextResponse.json(
         { error: `reference_id is required for type '${type}'` },
         { status: 400 }

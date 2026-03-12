@@ -18,6 +18,7 @@ import type {
   IB2CStorefrontHeader,
   IB2CStorefrontFooter,
   IB2CStorefrontMetaTags,
+  IB2CCustomScript,
   IStorefrontDomain,
 } from "@/lib/db/models/b2c-storefront";
 import type { HeaderConfig } from "@/lib/types/home-settings";
@@ -55,6 +56,7 @@ export interface UpdateStorefrontInput {
   footer?: IB2CStorefrontFooter;
   footer_draft?: IB2CStorefrontFooter;
   meta_tags?: IB2CStorefrontMetaTags;
+  custom_scripts?: IB2CCustomScript[];
   settings?: {
     default_language?: string;
     theme?: string;
@@ -241,6 +243,24 @@ export async function updateStorefront(
   }
   if (input.meta_tags !== undefined) {
     (storefront as any).meta_tags = { ...(storefront as any).meta_tags, ...input.meta_tags };
+  }
+  if (input.custom_scripts !== undefined) {
+    // Validate: max 20 scripts, each needs label + (src or inline_code), src must be https
+    if (input.custom_scripts.length > 20) {
+      throw new Error("Maximum 20 custom scripts allowed");
+    }
+    for (const script of input.custom_scripts) {
+      if (!script.label?.trim()) {
+        throw new Error("Each script must have a label");
+      }
+      if (!script.src && !script.inline_code) {
+        throw new Error(`Script "${script.label}" needs either a URL or inline code`);
+      }
+      if (script.src && !script.src.startsWith("https://")) {
+        throw new Error(`Script "${script.label}" URL must start with https://`);
+      }
+    }
+    (storefront as any).custom_scripts = input.custom_scripts;
   }
   if (input.settings !== undefined) {
     storefront.settings = { ...storefront.settings, ...input.settings };

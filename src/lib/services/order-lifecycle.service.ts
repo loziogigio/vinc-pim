@@ -37,6 +37,7 @@ import type {
   AdjustmentReason,
 } from "@/lib/constants/order";
 import { getModelRegistry } from "@/lib/db/model-registry";
+import { confirmCouponUsage } from "@/lib/services/coupon.service";
 import { getNextOrderNumber } from "@/lib/db/models/counter";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { populateOrderSnapshots } from "@/lib/services/order-snapshot.service";
@@ -146,6 +147,23 @@ export async function transitionStatus(
   }
 
   await order.save();
+
+  // Confirm coupon usage when order transitions from draft/quotation to a transaction status
+  if (
+    canModifyOrder(fromStatus) &&
+    !canModifyOrder(toStatus) &&
+    order.coupon_id
+  ) {
+    const cpnDisc = order.cart_discounts?.find((d: any) => d.reason === "coupon");
+    await confirmCouponUsage(
+      tenantDb.name,
+      order.coupon_id,
+      order.order_id,
+      order.customer_id,
+      cpnDisc ? Math.abs(cpnDisc.value) : undefined
+    );
+  }
+
   return { success: true, order };
 }
 
@@ -212,6 +230,19 @@ export async function submitOrder(
   }
 
   await order.save();
+
+  // Confirm coupon usage — order is leaving draft
+  if (order.coupon_id) {
+    const cpnDisc = order.cart_discounts?.find((d: any) => d.reason === "coupon");
+    await confirmCouponUsage(
+      tenantDb.name,
+      order.coupon_id,
+      order.order_id,
+      order.customer_id,
+      cpnDisc ? Math.abs(cpnDisc.value) : undefined
+    );
+  }
+
   return { success: true, order };
 }
 

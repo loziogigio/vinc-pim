@@ -212,6 +212,7 @@ Add a single item to the cart. If the `entity_code` already exists, the quantity
 | `promo_code` | string | External promo code |
 | `promo_row` | number | External promo row |
 | `is_gift_line` | boolean | Is this a gift item? |
+| `vat_included` | boolean | Are prices VAT-inclusive? (see [VAT-Inclusive Pricing](#vat-inclusive-pricing) section) |
 | `added_from` | string | Source: pdp, plp, search, quick_order |
 | `added_via` | string | Action: main_cta, row_action, carousel |
 
@@ -624,6 +625,32 @@ Prices are calculated automatically:
 | `line_total` | `line_net + line_vat` |
 | `total_discount` | `subtotal_gross - subtotal_net` |
 | `order_total` | `subtotal_net + total_vat + shipping_cost` |
+
+### VAT-Inclusive Pricing
+
+When `vat_included: true`, the `unit_price` and `list_price` are treated as **gross prices** (VAT already included). The system extracts VAT instead of adding it:
+
+| Field | Calculation (vat_included: true) |
+|-------|----------------------------------|
+| `line_gross` | `quantity × list_price` |
+| `line_net` | `quantity × unit_price / (1 + vat_rate / 100)` |
+| `line_vat` | `line_net × (vat_rate / 100)` |
+| `line_total` | `quantity × unit_price` (same as gross, since VAT is included) |
+
+**Example:** Product at €122.00 with `vat_rate: 22` and `vat_included: true`:
+- `line_net` = 122.00 / 1.22 = **€100.00**
+- `line_vat` = 100.00 × 0.22 = **€22.00**
+- `line_total` = **€122.00**
+
+#### Auto-Resolution
+
+The `vat_included` field is **optional**. When omitted, the API automatically resolves it from the PIM product data:
+
+1. Check packaging-level pricing (`packaging_options[].pricing.vat_included`)
+2. Fall back to product-level pricing (`pricing.vat_included`)
+3. Default to `false` (VAT-exclusive) if not found
+
+If you pass `vat_included` explicitly (`true` or `false`), that value is used as-is and no PIM lookup is performed.
 
 ---
 

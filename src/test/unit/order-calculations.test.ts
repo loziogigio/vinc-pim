@@ -338,3 +338,193 @@ describe("unit: getNextLineNumber", () => {
     expect(getNextLineNumber(undefined)).toBe(10);
   });
 });
+
+// ============================================
+// calculateLineItemTotals - VAT inclusive
+// ============================================
+
+describe("unit: calculateLineItemTotals (vat_included)", () => {
+  it("should extract VAT from gross price (22%)", () => {
+    // Price 122 gross, vat_rate=22% → net=100, vat=22
+    const result = calculateLineItemTotals(1, 122, 122, 22, true);
+    expect(result.line_net).toBe(100);
+    expect(result.line_vat).toBe(22);
+    expect(result.line_total).toBe(122);
+    expect(result.line_gross).toBe(100);
+  });
+
+  it("should extract VAT from gross price (10%)", () => {
+    // Price 110 gross, vat_rate=10% → net=100, vat=10
+    const result = calculateLineItemTotals(1, 110, 110, 10, true);
+    expect(result.line_net).toBe(100);
+    expect(result.line_vat).toBe(10);
+    expect(result.line_total).toBe(110);
+  });
+
+  it("should extract VAT from gross price (4%)", () => {
+    // Price 104 gross, vat_rate=4% → net=100, vat=4
+    const result = calculateLineItemTotals(1, 104, 104, 4, true);
+    expect(result.line_net).toBe(100);
+    expect(result.line_vat).toBe(4);
+    expect(result.line_total).toBe(104);
+  });
+
+  it("should handle discounted VAT-inclusive price", () => {
+    // list=122 (gross), unit=100 (discounted gross), vat=22%
+    // line_gross = 122/1.22 = 100, line_net = 100/1.22 ≈ 81.97
+    const result = calculateLineItemTotals(1, 122, 100, 22, true);
+    expect(result.line_gross).toBe(100);
+    expect(result.line_net).toBeCloseTo(81.97, 2);
+    expect(result.line_total).toBe(100);
+  });
+
+  it("should handle multiple quantities with VAT-inclusive", () => {
+    // qty=5, unit_price=12.20 (gross), vat=22%
+    // line_total = 5 * 12.20 = 61, line_net = 61/1.22 = 50, line_vat = 11
+    const result = calculateLineItemTotals(5, 12.20, 12.20, 22, true);
+    expect(result.line_total).toBe(61);
+    expect(result.line_net).toBe(50);
+    expect(result.line_vat).toBe(11);
+  });
+
+  it("should handle zero VAT rate with vat_included", () => {
+    // VAT-exempt: price is the same whether gross or net
+    const result = calculateLineItemTotals(10, 100, 80, 0, true);
+    expect(result.line_gross).toBe(1000);
+    expect(result.line_net).toBe(800);
+    expect(result.line_vat).toBe(0);
+    expect(result.line_total).toBe(800);
+  });
+
+  it("should default to net calculation when vat_included is false", () => {
+    const resultFalse = calculateLineItemTotals(10, 100, 80, 22, false);
+    const resultUndefined = calculateLineItemTotals(10, 100, 80, 22);
+    expect(resultFalse).toEqual(resultUndefined);
+    expect(resultFalse.line_net).toBe(800);
+    expect(resultFalse.line_vat).toBe(176);
+  });
+
+  it("should round extracted VAT to 2 decimal places", () => {
+    // 9.99 gross, 22% → net = 9.99/1.22 = 8.1885... → 8.19, vat = 1.80
+    const result = calculateLineItemTotals(1, 9.99, 9.99, 22, true);
+    expect(result.line_net).toBe(8.19);
+    expect(result.line_vat).toBe(1.80);
+    expect(result.line_total).toBe(9.99);
+  });
+});
+
+// ============================================
+// recalculateOrderTotals - VAT inclusive items
+// ============================================
+
+describe("unit: recalculateOrderTotals (vat_included items)", () => {
+  function createMockOrder(items: Partial<ILineItem>[]): IOrder {
+    return {
+      items: items.map((item, index) => ({
+        line_number: (index + 1) * 10,
+        entity_code: `PROD-${index}`,
+        sku: `SKU-${index}`,
+        quantity: 1,
+        list_price: 100,
+        unit_price: 100,
+        vat_rate: 22,
+        line_gross: item.line_gross ?? 100,
+        line_net: item.line_net ?? 100,
+        line_vat: item.line_vat ?? 22,
+        line_total: item.line_total ?? 122,
+        discounts: [],
+        total_discount_percent: 0,
+        is_gift_line: false,
+        name: `Product ${index}`,
+        added_at: new Date(),
+        updated_at: new Date(),
+        ...item,
+      })) as ILineItem[],
+      subtotal_gross: 0,
+      subtotal_net: 0,
+      total_discount: 0,
+      total_vat: 0,
+      shipping_cost: 0,
+      order_total: 0,
+    } as IOrder;
+  }
+
+  it("should calculate totals for VAT-inclusive items", () => {
+    // Item with gross price 122, vat_rate=22%, vat_included=true
+    // Calculated: line_net=100, line_vat=22, line_gross=100
+    const order = createMockOrder([
+      {
+        vat_included: true,
+        list_price: 122,
+        unit_price: 122,
+        vat_rate: 22,
+        line_gross: 100,
+        line_net: 100,
+        line_vat: 22,
+        line_total: 122,
+      },
+    ]);
+
+    recalculateOrderTotals(order);
+
+    expect(order.subtotal_gross).toBe(100);
+    expect(order.subtotal_net).toBe(100);
+    expect(order.total_vat).toBe(22);
+    expect(order.order_total).toBe(122);
+  });
+
+  it("should handle mixed VAT-inclusive and VAT-exclusive items", () => {
+    // Item 1: VAT-inclusive, gross 122 → net=100, vat=22
+    // Item 2: VAT-exclusive, net=200, vat=44 (22%)
+    const order = createMockOrder([
+      {
+        vat_included: true,
+        line_gross: 100,
+        line_net: 100,
+        line_vat: 22,
+      },
+      {
+        vat_included: false,
+        line_gross: 200,
+        line_net: 200,
+        line_vat: 44,
+      },
+    ]);
+
+    recalculateOrderTotals(order);
+
+    expect(order.subtotal_gross).toBe(300);
+    expect(order.subtotal_net).toBe(300);
+    expect(order.total_vat).toBe(66);
+    expect(order.order_total).toBe(366);
+  });
+
+  it("should apply line adjustment with correct VAT factor for VAT-inclusive item", () => {
+    // VAT-inclusive item: unit_price=122 (gross), vat_rate=22%
+    // line_net=100, line_vat=22
+    // Price override to 100 (gross) → priceDiff = (122-100)*1 = 22
+    // vatFactor for vat_included = 22/(100+22) = 0.18032...
+    // VAT reduction = 22 * 0.18032... ≈ 3.97
+    const order = createMockOrder([
+      {
+        vat_included: true,
+        unit_price: 122,
+        vat_rate: 22,
+        line_gross: 100,
+        line_net: 100,
+        line_vat: 22,
+        quantity: 1,
+      },
+    ]);
+    order.line_adjustments = [
+      { line_number: 10, type: "price_override", new_value: 100 } as any,
+    ];
+
+    recalculateOrderTotals(order);
+
+    // subtotal_net = 100 - 22 = 78
+    expect(order.subtotal_net).toBe(78);
+    // totalVat = 22 - 22*(22/122) ≈ 22 - 3.97 ≈ 18.03
+    expect(order.total_vat).toBeCloseTo(18.03, 2);
+  });
+});

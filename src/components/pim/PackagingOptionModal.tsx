@@ -34,6 +34,7 @@ interface PackagingOptionModalProps {
   defaultLanguageCode: string;
   availablePackagingCodes: string[]; // Available codes for price_ref dropdown
   allPackagingOptions: PackagingOption[]; // Full packaging options for reference price lookup
+  productVatIncluded?: boolean; // Product-level vat_included default
   onSave: (option: PackagingOption) => void;
   onClose: () => void;
 }
@@ -70,6 +71,7 @@ export function PackagingOptionModal({
   defaultLanguageCode,
   availablePackagingCodes,
   allPackagingOptions,
+  productVatIncluded,
   onSave,
   onClose,
 }: PackagingOptionModalProps) {
@@ -400,6 +402,44 @@ export function PackagingOptionModal({
           {/* Pricing — only shown when sellable */}
           {formData.is_sellable !== false && <div className="border-t pt-4">
             <h4 className="text-sm font-semibold text-slate-900 mb-3">Pricing</h4>
+
+            {/* VAT Included Override */}
+            <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div>
+                <div className="text-sm font-medium text-slate-700">VAT Included in Price</div>
+                <div className="text-xs text-slate-500">
+                  Product default: {productVatIncluded ? "Included" : "Excluded"}
+                  {formData.pricing?.vat_included !== undefined && " (overridden)"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {formData.pricing?.vat_included !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => updatePricing("vat_included", undefined)}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition"
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = formData.pricing?.vat_included ?? productVatIncluded ?? false;
+                    updatePricing("vat_included", !current);
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    (formData.pricing?.vat_included ?? productVatIncluded) ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (formData.pricing?.vat_included ?? productVatIncluded) ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
 
             {/* Row 1: Price Reference + Retail (Unit) */}
             <div className="grid grid-cols-2 gap-4">

@@ -495,6 +495,32 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
 };
 
 // ============================================================================
+// Image Versions Settings (PIM Product Upload)
+// ============================================================================
+
+/** Configuration for a single image version generated during PIM product upload */
+export interface ImageVersionConfig {
+  /** Unique key for this version (e.g., "main", "gallery") */
+  key: string;
+  /** Prefix prepended to the filename (e.g., "main_", "gallery_") */
+  prefix: string;
+  /** Max width in pixels */
+  width: number;
+  /** Max height in pixels */
+  height: number;
+  /** Whether this is a built-in version that cannot be deleted */
+  is_default?: boolean;
+}
+
+/** Image versions settings for PIM product upload */
+export interface ImageVersionsSettings {
+  /** Whether version generation is enabled */
+  enabled: boolean;
+  /** List of image versions to generate */
+  versions: ImageVersionConfig[];
+}
+
+// ============================================================================
 // Home Settings Document
 // ============================================================================
 
@@ -527,6 +553,8 @@ export interface HomeSettings {
   headerConfigDraft?: HeaderConfig;
   /** SEO meta tags configuration */
   meta_tags?: MetaTags;
+  /** Image version generation settings for PIM product uploads */
+  image_versions?: ImageVersionsSettings;
   createdAt: string | Date;
   updatedAt: string | Date;
   lastModifiedBy?: string;

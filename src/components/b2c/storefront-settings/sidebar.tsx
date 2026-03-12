@@ -7,6 +7,7 @@ import {
   FileCode2,
   Globe,
   MapPin,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import type { StorefrontActiveSection, SidebarItemConfig } from "./types";
@@ -18,6 +19,7 @@ const SIDEBAR_ITEMS: SidebarItemConfig[] = [
   { key: "header", icon: LayoutTemplate, label: "Header", description: "Header rows & widgets" },
   { key: "footer", icon: FileCode2, label: "Footer", description: "Footer columns & links" },
   { key: "seo", icon: Globe, label: "SEO & Meta Tags", description: "Search engine optimization" },
+  { key: "scripts", icon: Code2, label: "Custom Scripts", description: "Analytics & tracking" },
   { key: "sitemap", icon: MapPin, label: "Sitemap", description: "Robots & sitemap config" },
 ];
 

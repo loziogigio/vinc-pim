@@ -22,6 +22,7 @@ import {
   queueCampaignSend,
 } from "../src/lib/queue/notification-worker";
 import { scheduleCleanupForAllTenants } from "../src/lib/queue/cleanup-worker";
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 
 // Fallback polling interval (5 minutes)
 // Primary scheduling uses BullMQ delayed jobs for exact timing
@@ -92,13 +93,15 @@ runScheduler().catch((error) => {
 });
 
 // Keep the process running
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("[Scheduler] Shutting down...");
+  await closeAllConnections();
   process.exit(0);
 });
 
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("[Scheduler] Shutting down...");
+  await closeAllConnections();
   process.exit(0);
 });
 

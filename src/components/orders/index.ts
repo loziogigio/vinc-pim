@@ -9,6 +9,7 @@
  * - NewOrderModal: Create new order with customer selection
  * - AddItemsModal: Add items to order with product search
  * - OrderSnapshotCard: Customer/address/fiscal snapshot display
+ * - CouponCard: Apply/view/remove coupon on an order
  */
 
 export { StatusActionsCard } from "./StatusActionsCard";
@@ -18,3 +19,4 @@ export { DeliveryCard } from "./DeliveryCard";
 export { NewOrderModal } from "./NewOrderModal";
 export { AddItemsModal } from "./AddItemsModal";
 export { OrderSnapshotCard } from "./OrderSnapshotCard";
+export { CouponCard } from "./CouponCard";

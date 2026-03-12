@@ -43,6 +43,7 @@ export interface ProductPricing {
   sale?: number;                  // Discounted price (if applicable)
   currency: string;               // Currency code (EUR, USD, etc.)
   vat_rate?: number;              // VAT percentage (22, 10, 4, 0)
+  vat_included?: boolean;         // true = prices are gross (VAT-inclusive)
 }
 
 /**
@@ -64,6 +65,7 @@ export interface PackagingPricing {
   list_discount_amt?: number;     // Fixed amount discount from retail to get list (e.g., 5 for -€5)
   sale_discount_pct?: number;     // Percentage discount from list to get sale (e.g., 10 for -10%)
   sale_discount_amt?: number;     // Fixed amount discount from list to get sale (e.g., 5 for -€5)
+  vat_included?: boolean;         // Override product-level vat_included for this packaging
 }
 
 export interface IPIMProduct extends Document {
@@ -581,6 +583,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         size_bytes: { type: Number },
         uploaded_at: { type: Date },
         uploaded_by: { type: String },
+        versions: { type: Schema.Types.Mixed },
       },
     ],
 
@@ -893,6 +896,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
           sale_discount_amt: { type: Number },
           // Customer tag filter — empty = all customers, otherwise requires matching tag
           tag_filter: [{ type: String }],
+          // Override product-level vat_included for this packaging
+          vat_included: { type: Boolean },
         },
         // Promotions specific to this packaging option
         promotions: [
@@ -975,6 +980,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       sale: { type: Number },                     // Discounted price
       currency: { type: String },                 // Currency code (EUR, USD, etc.)
       vat_rate: { type: Number },                 // VAT percentage (22, 10, 4, 0)
+      vat_included: { type: Boolean },              // true = prices are gross (VAT-inclusive)
     },
 
     // Product Kind (standard, bookable, service)

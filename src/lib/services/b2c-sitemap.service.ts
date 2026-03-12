@@ -435,6 +435,73 @@ export async function getSitemapData(
   return B2CSitemap.findOne({ storefront_slug: storefrontSlug }).lean() as Promise<IB2CSitemap | null>;
 }
 
+/**
+ * Get paginated, filtered sitemap URLs for admin browsing.
+ */
+export async function getSitemapUrls(
+  tenantDb: string,
+  storefrontSlug: string,
+  options: { type?: string; search?: string; page?: number; limit?: number }
+): Promise<{
+  urls: ISitemapUrl[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+  primary_domain: string | null;
+}> {
+  const { B2CSitemap, B2CStorefront } = await connectWithModels(tenantDb);
+
+  const page = Math.max(1, options.page || 1);
+  const limit = Math.min(100, Math.max(1, options.limit || 25));
+
+  // Get sitemap URLs
+  const sitemap = (await B2CSitemap.findOne({ storefront_slug: storefrontSlug })
+    .select("urls")
+    .lean()) as Pick<IB2CSitemap, "urls"> | null;
+
+  let urls = sitemap?.urls || [];
+
+  // Filter by type
+  if (options.type && options.type !== "all") {
+    urls = urls.filter((u) => u.type === options.type);
+  }
+
+  // Filter by search (path substring, case-insensitive)
+  if (options.search) {
+    const search = options.search.toLowerCase();
+    urls = urls.filter((u) => u.path.toLowerCase().includes(search));
+  }
+
+  const total = urls.length;
+  const totalPages = Math.ceil(total / limit);
+  const start = (page - 1) * limit;
+  const paginatedUrls = urls.slice(start, start + limit);
+
+  // Get primary domain
+  const storefront = (await B2CStorefront.findOne({ slug: storefrontSlug })
+    .select("domains")
+    .lean()) as { domains?: Array<string | { domain: string; is_primary?: boolean }> } | null;
+
+  let primaryDomain: string | null = null;
+  if (storefront?.domains) {
+    for (const d of storefront.domains) {
+      if (typeof d === "object" && d.is_primary) {
+        primaryDomain = d.domain;
+        break;
+      }
+    }
+    // Fallback to first domain
+    if (!primaryDomain && storefront.domains.length > 0) {
+      const first = storefront.domains[0];
+      primaryDomain = typeof first === "string" ? first : first.domain;
+    }
+  }
+
+  return {
+    urls: paginatedUrls,
+    pagination: { page, limit, total, totalPages },
+    primary_domain: primaryDomain,
+  };
+}
+
 // ============================================
 // REDIS PUB/SUB NOTIFICATION
 // ============================================

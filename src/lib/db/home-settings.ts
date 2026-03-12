@@ -1,5 +1,5 @@
 import type { HomeSettingsDocument } from "./models/home-settings";
-import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, MetaTags } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNConfiguration, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, MetaTags, ImageVersionsSettings } from "@/lib/types/home-settings";
 export { computeMediaCardStyle, computeMediaHoverDeclarations } from "@/lib/home-settings/style-utils";
 import { connectWithModels, autoDetectTenantDb } from "./connection";
 
@@ -223,6 +223,7 @@ type HomeSettingsUpdate = {
   headerConfig?: HeaderConfig;
   headerConfigDraft?: HeaderConfig;
   meta_tags?: Partial<MetaTags> | MetaTags;
+  image_versions?: ImageVersionsSettings;
   lastModifiedBy?: string;
 };
 
@@ -351,6 +352,11 @@ export async function upsertHomeSettings(
         });
       }
 
+      // ImageVersionsSettings — replace as a whole
+      if (data.image_versions !== undefined) {
+        updateFields.image_versions = data.image_versions;
+      }
+
       if (data.lastModifiedBy) {
         updateFields.lastModifiedBy = data.lastModifiedBy;
       }
@@ -379,6 +385,7 @@ export async function upsertHomeSettings(
         headerConfig: data.headerConfig ?? DEFAULT_HEADER_CONFIG,
         headerConfigDraft: data.headerConfigDraft ?? data.headerConfig ?? DEFAULT_HEADER_CONFIG,
         meta_tags: data.meta_tags,
+        image_versions: data.image_versions,
         lastModifiedBy: data.lastModifiedBy
       });
 

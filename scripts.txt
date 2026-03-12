@@ -1,0 +1,69 @@
+=====================================
+IUBENDA SCRIPTS — Correct format for Custom Scripts feature
+=====================================
+
+Each section below = one "Add Script" entry in the admin.
+Paste the <script> tags into the paste area. The HTML <a> links go in the footer (not here).
+
+
+--- ENTRY 1: Iubenda Cookie Banner ---
+
+Label: Iubenda Cookie Banner
+Paste this:
+
+<script type="text/javascript">
+var _iub = _iub || [];
+_iub.csConfiguration = {"askConsentAtCookiePolicyUpdate":true,"floatingPreferencesButtonDisplay":"bottom-right","perPurposeConsent":true,"siteId":3623447,"cookiePolicyId":79894560,"lang":"it", "banner":{ "acceptButtonCaptionColor":"#FFFFFF","acceptButtonColor":"#0073CE","acceptButtonDisplay":true,"backgroundColor":"#FFFFFF","closeButtonRejects":true,"customizeButtonCaptionColor":"#4D4D4D","customizeButtonColor":"#DADADA","customizeButtonDisplay":true,"explicitWithdrawal":true,"listPurposes":true,"logo":null,"ownerName":false,"position":"float-top-center","showTitle":false,"textColor":"#000000" }};
+</script>
+<script type="text/javascript" src="https://cs.iubenda.com/autoblocking/3623447.js"></script>
+<script type="text/javascript" src="//cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></script>
+
+NOTE: The parser will create 3 entries from this (one inline + two external).
+The "//cdn.iubenda.com" URL will need to be changed to "https://cdn.iubenda.com" (must start with https://).
+
+
+--- ENTRY 2: Iubenda Consent Database ---
+
+Label: Iubenda Consent Database
+Paste this:
+
+<script type="text/javascript">var _iub = _iub || {}; _iub.cons_instructions = _iub.cons_instructions || []; _iub.cons_instructions.push(["init", {api_key: "O7sz4WeyZqLyUm38inyS7ro4UqKjzNKX"}]);</script>
+<script type="text/javascript" src="https://cdn.iubenda.com/cons/iubenda_cons.js" async></script>
+
+The parser will create 1 entry: inline code + external URL.
+
+
+--- ENTRY 3: Iubenda JS Loader (for Privacy/Cookie/Terms links) ---
+
+Label: Iubenda JS Loader
+Paste this:
+
+<script type="text/javascript">
+(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);
+</script>
+
+This is a single inline script. Only needed once (even though the docx repeats it 3 times).
+
+
+=====================================
+FOOTER HTML LINKS (not custom scripts — add these in the Footer section)
+=====================================
+
+These <a> tags should go in the Footer HTML editor, not in Custom Scripts:
+
+<a href="https://www.iubenda.com/privacy-policy/79894560" class="iubenda-white iubenda-noiframe iubenda-embed iubenda-noiframe" title="Privacy Policy">Privacy Policy</a>
+
+<a href="https://www.iubenda.com/privacy-policy/79894560/cookie-policy" class="iubenda-white iubenda-noiframe iubenda-embed iubenda-noiframe" title="Cookie Policy">Cookie Policy</a>
+
+<a href="https://www.iubenda.com/termini-e-condizioni/79894560" class="iubenda-white iubenda-noiframe iubenda-embed iubenda-noiframe" title="Termini e Condizioni">Termini e Condizioni</a>
+
+
+=====================================
+IMPORTANT: Protocol-relative URLs
+=====================================
+
+Iubenda uses "//cdn.iubenda.com/..." (protocol-relative, no https:).
+Our validator requires https://, so change:
+  //cdn.iubenda.com  →  https://cdn.iubenda.com
+
+This is safe — all modern sites use HTTPS anyway.

@@ -33,6 +33,11 @@ vi.mock("@/lib/db/b2c-home-templates", () => ({
   deleteB2CHomeTemplates: vi.fn(() => Promise.resolve()),
 }));
 
+// Mock page service — deleteStorefront calls deleteAllPagesForStorefront
+vi.mock("@/lib/services/b2c-page.service", () => ({
+  deleteAllPagesForStorefront: vi.fn(() => Promise.resolve()),
+}));
+
 // Import after mocks
 import {
   createStorefront,
@@ -75,7 +80,7 @@ describe("unit: B2C Storefront Service", () => {
 
       expect(result.name).toBe(payload.name);
       expect(result.slug).toBe(payload.slug);
-      expect(result.domains).toEqual(
+      expect(result.domains.map((d: any) => d.domain)).toEqual(
         payload.domains!.map((d: string) => d.toLowerCase())
       );
       expect(result.status).toBe("active");
@@ -151,6 +156,7 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Shop A",
         slug: "shop-a",
+        channel: "ch-shop-a",
         domains: ["shop.example.com"],
       });
 
@@ -158,6 +164,7 @@ describe("unit: B2C Storefront Service", () => {
         createStorefront(TEST_DB, {
           name: "Shop B",
           slug: "shop-b",
+          channel: "ch-shop-b",
           domains: ["shop.example.com"],
         })
       ).rejects.toThrow("already assigned");
@@ -167,10 +174,11 @@ describe("unit: B2C Storefront Service", () => {
       const result = await createStorefront(TEST_DB, {
         name: "Test",
         slug: "test-norm",
+        channel: "ch-test-norm",
         domains: ["SHOP.Example.COM", "  www.example.com  "],
       });
 
-      expect(result.domains).toEqual(["shop.example.com", "www.example.com"]);
+      expect(result.domains.map((d: any) => d.domain)).toEqual(["shop.example.com", "www.example.com"]);
     });
   });
 
@@ -251,11 +259,13 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Store 1",
         slug: "store-one",
+        channel: "ch-store-one",
         domains: ["taken.example.com"],
       });
       await createStorefront(TEST_DB, {
         name: "Store 2",
         slug: "store-two",
+        channel: "ch-store-two",
         domains: ["other.example.com"],
       });
 
@@ -270,6 +280,7 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Store",
         slug: "store-own",
+        channel: "ch-store-own",
         domains: ["mine.example.com"],
       });
 
@@ -278,8 +289,9 @@ describe("unit: B2C Storefront Service", () => {
         domains: ["mine.example.com", "new.example.com"],
       });
 
-      expect(updated.domains).toContain("mine.example.com");
-      expect(updated.domains).toContain("new.example.com");
+      const domainStrings = updated.domains.map((d: any) => d.domain);
+      expect(domainStrings).toContain("mine.example.com");
+      expect(domainStrings).toContain("new.example.com");
     });
 
     it("should throw for non-existent storefront", async () => {
@@ -298,6 +310,7 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "To Delete",
         slug: "to-delete",
+        channel: "ch-to-delete",
       });
 
       await deleteStorefront(TEST_DB, "to-delete");
@@ -326,6 +339,7 @@ describe("unit: B2C Storefront Service", () => {
         await createStorefront(TEST_DB, {
           name: `Store ${i}`,
           slug: `list-store-${i}`,
+          channel: `ch-list-${i}`,
           domains: [],
         });
       }
@@ -342,11 +356,13 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Alpha Store",
         slug: "alpha-store",
+        channel: "ch-alpha",
         domains: [],
       });
       await createStorefront(TEST_DB, {
         name: "Beta Store",
         slug: "beta-store",
+        channel: "ch-beta",
         domains: [],
       });
 
@@ -360,11 +376,13 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Domain Store",
         slug: "domain-store",
+        channel: "ch-domain",
         domains: ["unique-domain.com"],
       });
       await createStorefront(TEST_DB, {
         name: "Other Store",
         slug: "other-store",
+        channel: "ch-other",
         domains: ["other.com"],
       });
 
@@ -384,6 +402,7 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "By Domain",
         slug: "by-domain",
+        channel: "ch-by-domain",
         domains: ["shop.test.com"],
       });
 
@@ -397,6 +416,7 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Inactive",
         slug: "inactive-sf",
+        channel: "ch-inactive",
         domains: ["inactive.test.com"],
       });
       await updateStorefront(TEST_DB, "inactive-sf", { status: "inactive" });
@@ -415,6 +435,7 @@ describe("unit: B2C Storefront Service", () => {
       await createStorefront(TEST_DB, {
         name: "Case Test",
         slug: "case-test",
+        channel: "ch-case-test",
         domains: ["shop.case.com"],
       });
 

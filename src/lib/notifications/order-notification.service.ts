@@ -197,11 +197,24 @@ async function buildOrderVariables(
         order_items_html: buildItemsTableHtml(order.items || [], order.currency),
         items_count: String((order.items || []).length),
         subtotal_net: formatCurrency(order.subtotal_net, order.currency),
-        total_discount: order.total_discount ? formatCurrency(order.total_discount, order.currency) : "",
+        total_discount: (() => {
+          if (!order.total_discount) return "";
+          // When a coupon is present, subtract coupon discount to avoid double-counting
+          const cpn = order.cart_discounts?.find((d) => d.reason === "coupon");
+          const nonCouponDiscount = cpn
+            ? order.total_discount - Math.abs(cpn.value)
+            : order.total_discount;
+          return nonCouponDiscount > 0 ? formatCurrency(nonCouponDiscount, order.currency) : "";
+        })(),
         total_vat: formatCurrency(order.total_vat, order.currency),
         shipping_cost: order.shipping_cost ? formatCurrency(order.shipping_cost, order.currency) : "",
         payment_method: formatPaymentMethod(paymentMethod),
         payment_terms: order.payment?.payment_terms || "",
+        coupon_code: order.coupon_code || "",
+        coupon_discount: (() => {
+          const cpn = order.cart_discounts?.find((d) => d.reason === "coupon");
+          return cpn ? formatCurrency(Math.abs(cpn.value), order.currency) : "";
+        })(),
         order_url: buildOrderUrl(frontendUrl, order.order_id),
         // Invoice / business fields
         invoice_company_name: order.invoice_data?.company_name || order.buyer?.company_name || "",

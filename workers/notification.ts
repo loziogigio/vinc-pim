@@ -11,6 +11,7 @@
  */
 
 import { notificationWorker } from "../src/lib/queue/notification-worker";
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 
 const redisHost = process.env.REDIS_HOST || "localhost";
 const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
@@ -25,11 +26,13 @@ console.log("[Notification Worker] Ready and listening for jobs");
 process.on("SIGINT", async () => {
   console.log("[Notification Worker] Shutting down...");
   await notificationWorker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("[Notification Worker] Shutting down...");
   await notificationWorker.close();
+  await closeAllConnections();
   process.exit(0);
 });

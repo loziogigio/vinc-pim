@@ -95,11 +95,12 @@ export interface LineItem {
   unit_price: number; // Price after all discounts (what customer pays)
   promo_price?: number; // Special promo price if active
   vat_rate: number; // VAT percentage (22, 10, 4, 0)
+  vat_included?: boolean; // true = prices are gross (VAT-inclusive)
 
   // Line Totals (calculated)
-  line_gross: number; // quantity × list_price
-  line_net: number; // quantity × unit_price
-  line_vat: number; // line_net × vat_rate%
+  line_gross: number; // quantity × list_price (net-equivalent)
+  line_net: number; // quantity × unit_price (net-equivalent)
+  line_vat: number; // extracted or added VAT
   line_total: number; // line_net + line_vat
 
   // Discounts
@@ -360,6 +361,10 @@ export interface Order {
   // Cart-level discounts (applicable in any status)
   cart_discounts?: CartDiscount[];
 
+  // Coupon reference
+  coupon_code?: string;
+  coupon_id?: string;
+
   // Line-level negotiation adjustments
   line_adjustments?: LineAdjustment[];
 
@@ -482,6 +487,7 @@ export interface AddItemRequest {
   list_price: number;
   unit_price: number;
   vat_rate: number;
+  vat_included?: boolean; // true = prices are gross (VAT-inclusive)
   name: string;
 
   // Optional pricing

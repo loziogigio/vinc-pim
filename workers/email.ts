@@ -10,6 +10,7 @@
 
 import { Worker, Job } from "bullmq";
 import { processQueuedEmail } from "../src/lib/email";
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 
 /**
  * Parse command line arguments
@@ -85,11 +86,13 @@ console.log("[Email Worker] Ready and listening for jobs");
 process.on("SIGINT", async () => {
   console.log("[Email Worker] Shutting down...");
   await worker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("[Email Worker] Shutting down...");
   await worker.close();
+  await closeAllConnections();
   process.exit(0);
 });

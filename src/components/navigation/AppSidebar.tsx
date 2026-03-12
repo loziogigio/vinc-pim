@@ -28,7 +28,7 @@ export function AppSidebar({ title, icon: Icon, children }: AppSidebarProps) {
       <nav className="p-2 space-y-0.5 flex-1">{children}</nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-[#ebe9f1] text-center">
+      <div className="p-3 border-t border-[#ebe9f1] text-center space-y-1">
         <a
           href="https://vendereincloud.it"
           target="_blank"
@@ -37,6 +37,9 @@ export function AppSidebar({ title, icon: Icon, children }: AppSidebarProps) {
         >
           Provided by vendereincloud.it
         </a>
+        <p className="text-[10px] text-muted-foreground/60">
+          v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
+        </p>
       </div>
     </aside>
   );

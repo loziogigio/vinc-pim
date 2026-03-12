@@ -54,7 +54,8 @@ import { Button } from "@/components/ui/button";
 import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
 import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
-import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation, ImageVersionsSettings } from "@/lib/types/home-settings";
+import ImageVersionsSection from "@/components/home-settings/ImageVersionsSection";
 import { LAYOUT_WIDTHS, LAYOUT_BLOCK_COUNT, HEADER_WIDGET_LIBRARY } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 
@@ -103,7 +104,7 @@ const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: strin
   }
 ];
 
-type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "company" | "apikeys" | "footer" | "header" | "seo" | "vetrina";
+type ActiveSection = "branding" | "product" | "cdn" | "smtp" | "company" | "apikeys" | "footer" | "header" | "seo" | "vetrina" | "image-versions";
 
 const DEFAULT_CDN_CREDENTIALS: CDNCredentials = {
   cdn_url: "",
@@ -344,6 +345,7 @@ export default function HomeSettingsPage() {
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [metaTags, setMetaTags] = useState<MetaTags>(DEFAULT_META_TAGS);
+  const [imageVersions, setImageVersions] = useState<ImageVersionsSettings>({ enabled: true, versions: [] });
   const [activeSection, setActiveSection] = useState<ActiveSection>("branding");
   const [previewVariant, setPreviewVariant] = useState<PreviewVariant>("b2b");
 
@@ -429,6 +431,9 @@ export default function HomeSettingsPage() {
         ...DEFAULT_META_TAGS,
         ...(data.meta_tags ?? {})
       });
+      if (data.image_versions) {
+        setImageVersions(data.image_versions);
+      }
       setDirty(false);
       setToast("Settings loaded.");
     } catch (loadError) {
@@ -535,6 +540,7 @@ export default function HomeSettingsPage() {
           footerHtmlDraft,
           headerConfigDraft,
           meta_tags: metaTags,
+          image_versions: imageVersions,
           lastModifiedBy: "admin"
         })
       });
@@ -740,6 +746,13 @@ export default function HomeSettingsPage() {
               onClick={() => setActiveSection("seo")}
             />
             <SidebarItem
+              icon={Image}
+              label="Image Versions"
+              description="PIM upload resize settings"
+              active={activeSection === "image-versions"}
+              onClick={() => setActiveSection("image-versions")}
+            />
+            <SidebarItem
               icon={Store}
               label="Vetrina"
               description="Public storefront listing"
@@ -872,6 +885,16 @@ export default function HomeSettingsPage() {
               metaTags={metaTags}
               onChange={(key, value) => {
                 setMetaTags(prev => ({ ...prev, [key]: value }));
+                setDirty(true);
+              }}
+            />
+          )}
+
+          {activeSection === "image-versions" && (
+            <ImageVersionsSection
+              value={imageVersions}
+              onChange={(val) => {
+                setImageVersions(val);
                 setDirty(true);
               }}
             />

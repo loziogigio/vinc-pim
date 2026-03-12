@@ -22,6 +22,10 @@ import {
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "sonner";
 import type { Order, PaymentRecord } from "@/lib/types/order";
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+} from "@/lib/utils/decimal-input";
 import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/lib/constants/order";
 import {
   GatewayTransactionRow,
@@ -95,6 +99,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     paymentId: string;
     amount: number;
   }>({ open: false, paymentId: "", amount: 0 });
+  const [processingConfirmOpen, setProcessingConfirmOpen] = useState(false);
   const allowedMethods = getAllowedManualMethods(order.allowed_payment_methods);
   const [newPayment, setNewPayment] = useState({
     amount: "",
@@ -168,7 +173,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
   // Initialize payment data if not present
   const paymentStatus = payment?.payment_status || "awaiting";
-  const amountDue = payment?.amount_due ?? order.order_total;
+  const amountDue = payment?.amount_due || order.order_total;
   const payments = payment?.payments || [];
 
   // Calculate pending and confirmed amounts from payments
@@ -188,6 +193,19 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
     .reduce((sum, t) => sum + t.gross_amount, 0);
   const effectiveConfirmed = Math.max(0, confirmedAmount - staleRefundedAmount);
   const remainingAfterConfirmed = amountDue - effectiveConfirmed;
+
+  // Gateway-aware remaining: also account for completed/captured gateway
+  // transactions that may not yet have a corresponding manual payment record.
+  const gatewayPaidAmount = gatewayTransactions
+    .filter((t) => t.status === "completed" || t.status === "captured")
+    .reduce((sum, t) => sum + t.gross_amount, 0);
+  const gatewayProcessingAmount = gatewayTransactions
+    .filter((t) => t.status === "processing" || t.status === "pending" || t.status === "authorized")
+    .reduce((sum, t) => sum + t.gross_amount, 0);
+  // True remaining considers the higher of confirmed manual payments vs gateway completed
+  // to avoid double-counting when both exist for the same transaction.
+  const effectivePaid = Math.max(effectiveConfirmed, gatewayPaidAmount);
+  const trueRemaining = Math.max(0, amountDue - effectivePaid);
 
   // Status badge colors
   const statusColors: Record<string, { bg: string; text: string; icon: React.ElementType }> = {
@@ -220,8 +238,8 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
   // Handle add payment
   const handleAddPayment = async () => {
-    const amount = parseFloat(newPayment.amount);
-    if (!amount || amount <= 0) {
+    const parsedAmount = parseDecimalValue(newPayment.amount);
+    if (!parsedAmount || parsedAmount <= 0) {
       toast.error("Inserisci un importo valido");
       return;
     }
@@ -232,7 +250,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount,
+          amount: parsedAmount,
           method: newPayment.method,
           reference: newPayment.reference || undefined,
           notes: newPayment.notes || undefined,
@@ -299,8 +317,8 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
   const handleEditPayment = async () => {
     if (!editingPayment) return;
 
-    const amount = parseFloat(editingPayment.amount);
-    if (!amount || amount <= 0) {
+    const parsedAmount = parseDecimalValue(editingPayment.amount);
+    if (!parsedAmount || parsedAmount <= 0) {
       toast.error("Inserisci un importo valido");
       return;
     }
@@ -312,7 +330,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           payment_id: editingPayment.payment_id,
-          amount,
+          amount: parsedAmount,
           method: editingPayment.method,
           reference: editingPayment.reference || undefined,
           notes: editingPayment.notes || undefined,
@@ -367,23 +385,33 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
   // Generate a PayPal payment link to share with the customer
   const handleGeneratePaymentLink = async () => {
-    // Block only if there's nothing left to pay
-    if (remainingAfterConfirmed <= 0) {
+    // Block only if there's nothing left to pay (gateway-aware)
+    if (trueRemaining <= 0) {
       toast.error("L'ordine è già stato pagato.");
       return;
     }
 
-    // Parse custom amount or default to remaining
+    // Warn if there are pending/processing gateway transactions
+    if (gatewayProcessingAmount > 0) {
+      setProcessingConfirmOpen(true);
+      return;
+    }
+
+    await doGeneratePaymentLink();
+  };
+
+  const doGeneratePaymentLink = async () => {
+    // Parse custom amount or default to true remaining
     const parsedAmount = linkAmount
-      ? parseFloat(linkAmount.replace(",", "."))
-      : remainingAfterConfirmed;
+      ? (parseDecimalValue(linkAmount) ?? 0)
+      : trueRemaining;
 
     if (!parsedAmount || parsedAmount <= 0) {
       toast.error("Inserisci un importo valido.");
       return;
     }
-    if (parsedAmount > remainingAfterConfirmed) {
-      toast.error(`L'importo non può superare il rimanente (${formatCurrency(remainingAfterConfirmed)}).`);
+    if (parsedAmount > trueRemaining) {
+      toast.error(`L'importo non può superare il rimanente (${formatCurrency(trueRemaining)}).`);
       return;
     }
 
@@ -589,13 +617,9 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 inputMode="decimal"
                                 value={editingPayment.amount}
                                 onChange={(e) => {
-                                  let value = e.target.value;
-                                  if (value.includes(".") && value.includes(",")) {
-                                    value = value.replace(/\./g, "").replace(",", ".");
-                                  } else if (value.includes(",")) {
-                                    value = value.replace(",", ".");
-                                  }
-                                  setEditingPayment({ ...editingPayment, amount: value });
+                                  const normalized = normalizeDecimalInput(e.target.value);
+                                  if (normalized === null) return;
+                                  setEditingPayment({ ...editingPayment, amount: normalized });
                                 }}
                                 className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20"
                               />
@@ -806,13 +830,9 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   placeholder={remainingAfterConfirmed.toFixed(2)}
                   value={newPayment.amount}
                   onChange={(e) => {
-                    let value = e.target.value;
-                    if (value.includes(".") && value.includes(",")) {
-                      value = value.replace(/\./g, "").replace(",", ".");
-                    } else if (value.includes(",")) {
-                      value = value.replace(",", ".");
-                    }
-                    setNewPayment({ ...newPayment, amount: value });
+                    const normalized = normalizeDecimalInput(e.target.value);
+                    if (normalized === null) return;
+                    setNewPayment({ ...newPayment, amount: normalized });
                   }}
                   className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
@@ -908,60 +928,79 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                 Registra Pagamento
               </button>
 
-              {/* Payment destination selector */}
-              {storefronts.length > 0 && (
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">
-                    Destinazione dopo il pagamento
-                  </label>
-                  <select
-                    value={selectedDestination}
-                    onChange={(e) => setSelectedDestination(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
+              {/* Payment link section — only if there's a true remaining after gateway */}
+              {trueRemaining > 0 ? (
+                <>
+                  {/* Warning about processing transactions */}
+                  {gatewayProcessingAmount > 0 && (
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                      <span>
+                        {formatCurrency(gatewayProcessingAmount)} in transazioni gateway in elaborazione.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Payment destination selector */}
+                  {storefronts.length > 0 && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Destinazione dopo il pagamento
+                      </label>
+                      <select
+                        value={selectedDestination}
+                        onChange={(e) => setSelectedDestination(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
+                      >
+                        <option value="generic">Pagina generica (VINC Commerce)</option>
+                        {storefronts.map((sf) => (
+                          <option key={sf.slug} value={sf.slug}>
+                            {sf.branding?.title || sf.name} ({(typeof sf.domains[0] === "string" ? sf.domains[0] : sf.domains[0]?.domain)?.replace(/^https?:\/\//, "")})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Payment link amount */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Importo link di pagamento
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={linkAmount}
+                      onChange={(e) => {
+                        const normalized = normalizeDecimalInput(e.target.value);
+                        if (normalized === null) return;
+                        setLinkAmount(normalized);
+                      }}
+                      placeholder={trueRemaining.toFixed(2).replace(".", ",")}
+                      className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
+                    />
+                  </div>
+
+                  {/* Generate PayPal Payment Link */}
+                  <button
+                    onClick={handleGeneratePaymentLink}
+                    disabled={isGeneratingLink}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#0070ba] text-white text-sm font-medium hover:bg-[#005c99] transition disabled:opacity-50"
                   >
-                    <option value="generic">Pagina generica (VINC Commerce)</option>
-                    {storefronts.map((sf) => (
-                      <option key={sf.slug} value={sf.slug}>
-                        {sf.branding?.title || sf.name} ({(typeof sf.domains[0] === "string" ? sf.domains[0] : sf.domains[0]?.domain)?.replace(/^https?:\/\//, "")})
-                      </option>
-                    ))}
-                  </select>
+                    {isGeneratingLink ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="h-4 w-4" />
+                    )}
+                    Genera Link Pagamento PayPal
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+                  <CheckCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <span>Pagamento completato tramite gateway.</span>
                 </div>
               )}
-
-              {/* Payment link amount */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">
-                  Importo link di pagamento
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={linkAmount}
-                  onChange={(e) => {
-                    let v = e.target.value;
-                    if (/^[0-9]*[.,]?[0-9]{0,2}$/.test(v)) {
-                      setLinkAmount(v);
-                    }
-                  }}
-                  placeholder={remainingAfterConfirmed.toFixed(2).replace(".", ",")}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
-                />
-              </div>
-
-              {/* Generate PayPal Payment Link */}
-              <button
-                onClick={handleGeneratePaymentLink}
-                disabled={isGeneratingLink}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#0070ba] text-white text-sm font-medium hover:bg-[#005c99] transition disabled:opacity-50"
-              >
-                {isGeneratingLink ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CreditCard className="h-4 w-4" />
-                )}
-                Genera Link Pagamento PayPal
-              </button>
             </div>
           )
         )}
@@ -1014,6 +1053,21 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         onCancel={() =>
           setDeleteConfirmDialog({ open: false, paymentId: "", amount: 0 })
         }
+      />
+
+      {/* Confirm generating link when gateway transactions are processing */}
+      <ConfirmDialog
+        open={processingConfirmOpen}
+        title="Transazioni in Elaborazione"
+        message={`Ci sono transazioni gateway in elaborazione per ${formatCurrency(gatewayProcessingAmount)}. Vuoi comunque generare un nuovo link di pagamento?`}
+        confirmText="Genera Link"
+        cancelText="Annulla"
+        variant="warning"
+        onConfirm={() => {
+          setProcessingConfirmOpen(false);
+          doGeneratePaymentLink();
+        }}
+        onCancel={() => setProcessingConfirmOpen(false)}
       />
     </div>
   );

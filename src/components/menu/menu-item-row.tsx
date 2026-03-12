@@ -70,6 +70,8 @@ export function MenuItemRow({
         return "🔗";
       case "search":
         return "🔍";
+      case "text":
+        return "📝";
       case "divider":
         return "➖";
       default:

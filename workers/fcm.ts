@@ -9,6 +9,7 @@
 
 import { Worker, Job } from "bullmq";
 import { processQueuedFCM } from "../src/lib/fcm";
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 import type { FCMJobData } from "../src/lib/fcm/types";
 
 interface FCMWorkerJobData extends FCMJobData {
@@ -103,11 +104,13 @@ console.log("[FCM Worker] Ready and listening for jobs");
 process.on("SIGINT", async () => {
   console.log("[FCM Worker] Shutting down...");
   await worker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("[FCM Worker] Shutting down...");
   await worker.close();
+  await closeAllConnections();
   process.exit(0);
 });

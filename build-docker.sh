@@ -7,25 +7,45 @@
 # into the image — pass them at runtime via docker-compose or docker run -e.
 #
 # Usage:
-#   ./build-docker.sh [version] [--push]
+#   ./build-docker.sh [version] [--push] [--only runner|worker]
 #
 # Examples:
 #   ./build-docker.sh              # build with version from .env.deploy
 #   ./build-docker.sh 2.8.0        # override version
 #   ./build-docker.sh 2.8.0 --push # build and push
+#   ./build-docker.sh --only runner # build only the runner image
+#   ./build-docker.sh --only worker # build only the worker image
+#   ./build-docker.sh 2.8.0 --only runner --push
 
 set -e
 
 # ============================================================================
 # Arguments
 # ============================================================================
-if [[ "$1" == "--push" ]]; then
-    VERSION_ARG=""
-    PUSH="--push"
-else
-    VERSION_ARG=${1:-""}
-    PUSH=${2:-""}
-fi
+VERSION_ARG=""
+PUSH=""
+BUILD_ONLY=""  # "", "runner", or "worker"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --push)
+            PUSH="--push"
+            shift
+            ;;
+        --only)
+            BUILD_ONLY="$2"
+            if [[ "$BUILD_ONLY" != "runner" && "$BUILD_ONLY" != "worker" ]]; then
+                echo "Error: --only accepts 'runner' or 'worker'"
+                exit 1
+            fi
+            shift 2
+            ;;
+        *)
+            VERSION_ARG="$1"
+            shift
+            ;;
+    esac
+done
 
 # ============================================================================
 # Load Configuration
@@ -53,8 +73,15 @@ echo "========================================"
 echo "  VINC Commerce Suite Docker Build"
 echo "========================================"
 echo "Config:  ${ENV_FILE}"
-echo "Runner:  ${IMAGE_NAME}:${VERSION}"
-echo "Worker:  ${IMAGE_NAME}:${VERSION}-worker"
+if [[ -n "$BUILD_ONLY" ]]; then
+    echo "Target:  ${BUILD_ONLY} only"
+fi
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "runner" ]]; then
+    echo "Runner:  ${IMAGE_NAME}:${VERSION}"
+fi
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "worker" ]]; then
+    echo "Worker:  ${IMAGE_NAME}:${VERSION}-worker"
+fi
 echo "========================================"
 echo ""
 
@@ -74,38 +101,47 @@ echo ""
 # ============================================================================
 # Build Runner Image (default target)
 # ============================================================================
-echo "Step 1/5: Building runner image..."
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "runner" ]]; then
+    echo "Step 1/5: Building runner image..."
 
-docker build \
-  --build-arg SOLR_URL="${SOLR_URL:-}" \
-  --build-arg SOLR_ENABLED="${SOLR_ENABLED:-true}" \
-  --build-arg NEXT_PUBLIC_BASE_URL="${NEXT_PUBLIC_BASE_URL:-}" \
-  --build-arg NEXT_PUBLIC_CUSTOMER_WEB_URL="${NEXT_PUBLIC_CUSTOMER_WEB_URL:-}" \
-  --label "version=${VERSION}" \
-  --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-  -t ${IMAGE_NAME}:${VERSION} \
-  -t ${IMAGE_NAME}:latest \
-  .
+    docker build \
+      --build-arg SOLR_URL="${SOLR_URL:-}" \
+      --build-arg SOLR_ENABLED="${SOLR_ENABLED:-true}" \
+      --build-arg NEXT_PUBLIC_BASE_URL="${NEXT_PUBLIC_BASE_URL:-}" \
+      --build-arg NEXT_PUBLIC_CUSTOMER_WEB_URL="${NEXT_PUBLIC_CUSTOMER_WEB_URL:-}" \
+      --build-arg NEXT_PUBLIC_APP_VERSION="${VERSION}" \
+      --label "version=${VERSION}" \
+      --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+      -t ${IMAGE_NAME}:${VERSION} \
+      -t ${IMAGE_NAME}:latest \
+      .
 
-echo ""
-echo "Runner build complete!"
-echo ""
+    echo ""
+    echo "Runner build complete!"
+    echo ""
+else
+    echo "Step 1/5: Skipping runner image (--only ${BUILD_ONLY})"
+fi
 
 # ============================================================================
 # Build Worker Image
 # ============================================================================
-echo "Step 2/5: Building worker image..."
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "worker" ]]; then
+    echo "Step 2/5: Building worker image..."
 
-docker build --target worker \
-  --label "version=${VERSION}-worker" \
-  --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-  -t ${IMAGE_NAME}:${VERSION}-worker \
-  -t ${IMAGE_NAME}:latest-worker \
-  .
+    docker build --target worker \
+      --label "version=${VERSION}-worker" \
+      --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+      -t ${IMAGE_NAME}:${VERSION}-worker \
+      -t ${IMAGE_NAME}:latest-worker \
+      .
 
-echo ""
-echo "Worker build complete!"
-echo ""
+    echo ""
+    echo "Worker build complete!"
+    echo ""
+else
+    echo "Step 2/5: Skipping worker image (--only ${BUILD_ONLY})"
+fi
 
 # ============================================================================
 # Show Image Tags
@@ -118,9 +154,13 @@ echo ""
 # Test Images
 # ============================================================================
 echo "Step 4/5: Testing images..."
-docker run --rm ${IMAGE_NAME}:${VERSION} node --version
-docker run --rm ${IMAGE_NAME}:${VERSION} sh -c "test -f /app/server.js && echo 'Next.js standalone build verified'"
-docker run --rm ${IMAGE_NAME}:${VERSION}-worker node --version
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "runner" ]]; then
+    docker run --rm ${IMAGE_NAME}:${VERSION} node --version
+    docker run --rm ${IMAGE_NAME}:${VERSION} sh -c "test -f /app/server.js && echo 'Next.js standalone build verified'"
+fi
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "worker" ]]; then
+    docker run --rm ${IMAGE_NAME}:${VERSION}-worker node --version
+fi
 echo ""
 
 # ============================================================================
@@ -128,10 +168,14 @@ echo ""
 # ============================================================================
 if [[ "$PUSH" == "--push" ]]; then
     echo "Step 5/5: Pushing to registry..."
-    docker push ${IMAGE_NAME}:${VERSION}
-    docker push ${IMAGE_NAME}:latest
-    docker push ${IMAGE_NAME}:${VERSION}-worker
-    docker push ${IMAGE_NAME}:latest-worker
+    if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "runner" ]]; then
+        docker push ${IMAGE_NAME}:${VERSION}
+        docker push ${IMAGE_NAME}:latest
+    fi
+    if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "worker" ]]; then
+        docker push ${IMAGE_NAME}:${VERSION}-worker
+        docker push ${IMAGE_NAME}:latest-worker
+    fi
     echo "Images pushed successfully!"
 else
     echo "Step 5/5: Skipping push (use --push to push to registry)"
@@ -146,12 +190,20 @@ echo "  Build Complete!"
 echo "========================================"
 echo ""
 echo "Images created:"
-echo "  ${IMAGE_NAME}:${VERSION}          (runner)"
-echo "  ${IMAGE_NAME}:${VERSION}-worker   (worker)"
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "runner" ]]; then
+    echo "  ${IMAGE_NAME}:${VERSION}          (runner)"
+fi
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "worker" ]]; then
+    echo "  ${IMAGE_NAME}:${VERSION}-worker   (worker)"
+fi
 echo ""
 echo "Image sizes:"
-docker images ${IMAGE_NAME}:${VERSION} --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
-docker images ${IMAGE_NAME}:${VERSION}-worker --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "runner" ]]; then
+    docker images ${IMAGE_NAME}:${VERSION} --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
+fi
+if [[ -z "$BUILD_ONLY" || "$BUILD_ONLY" == "worker" ]]; then
+    docker images ${IMAGE_NAME}:${VERSION}-worker --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
+fi
 echo ""
 echo "Run with secrets at runtime:"
 echo "  docker run -p 3000:3000 -e VINC_MONGO_URL=... -e VINC_ANTHROPIC_API_KEY=... ${IMAGE_NAME}:${VERSION}"

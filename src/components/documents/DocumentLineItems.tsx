@@ -1,7 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { DocumentLineItem, DocumentTotals } from "@/lib/types/document";
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+  toDecimalInputValue,
+} from "@/lib/utils/decimal-input";
 
 interface Props {
   items: DocumentLineItem[];
@@ -24,6 +30,31 @@ export function DocumentLineItems({
   onUpdateItem,
   onRemoveItem,
 }: Props) {
+  // Local string state for decimal inputs keyed by `${index}_${field}`
+  const [inputs, setInputs] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    items.forEach((item, i) => {
+      init[`${i}_quantity`] = toDecimalInputValue(item.quantity);
+      init[`${i}_unit_price`] = toDecimalInputValue(item.unit_price);
+      init[`${i}_discount_percent`] = toDecimalInputValue(item.discount_percent || undefined);
+    });
+    return init;
+  });
+
+  function getInput(idx: number, field: string, fallback: number | undefined): string {
+    return inputs[`${idx}_${field}`] ?? toDecimalInputValue(fallback);
+  }
+
+  function handleDecimalChange(idx: number, field: string, rawValue: string) {
+    const normalized = normalizeDecimalInput(rawValue);
+    if (normalized === null) return;
+    setInputs(prev => ({ ...prev, [`${idx}_${field}`]: normalized }));
+    const numValue = parseDecimalValue(normalized);
+    if (numValue !== undefined) {
+      onUpdateItem(idx, field, numValue);
+    }
+  }
+
   return (
     <div className="bg-white rounded-lg border border-[#ebe9f1]">
       <div className="p-4 border-b border-[#ebe9f1] flex items-center justify-between">
@@ -94,12 +125,8 @@ export function DocumentLineItems({
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={item.quantity}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(",", ".");
-                        const n = parseFloat(v);
-                        if (!isNaN(n)) onUpdateItem(idx, "quantity", n);
-                      }}
+                      value={getInput(idx, "quantity", item.quantity)}
+                      onChange={(e) => handleDecimalChange(idx, "quantity", e.target.value)}
                       className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm text-center"
                     />
                   ) : (
@@ -111,12 +138,8 @@ export function DocumentLineItems({
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={item.unit_price}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(",", ".");
-                        const n = parseFloat(v);
-                        if (!isNaN(n)) onUpdateItem(idx, "unit_price", n);
-                      }}
+                      value={getInput(idx, "unit_price", item.unit_price)}
+                      onChange={(e) => handleDecimalChange(idx, "unit_price", e.target.value)}
                       className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm text-right"
                     />
                   ) : (
@@ -146,16 +169,8 @@ export function DocumentLineItems({
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={item.discount_percent || ""}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(",", ".");
-                        const n = parseFloat(v);
-                        onUpdateItem(
-                          idx,
-                          "discount_percent",
-                          isNaN(n) ? 0 : n,
-                        );
-                      }}
+                      value={getInput(idx, "discount_percent", item.discount_percent || undefined)}
+                      onChange={(e) => handleDecimalChange(idx, "discount_percent", e.target.value)}
                       placeholder="0"
                       className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm text-center"
                     />

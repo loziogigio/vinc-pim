@@ -19,6 +19,8 @@ import {
   hasCustomerAccess,
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
+import { connectWithModels } from "@/lib/db/connection";
+import { resolveVatIncluded } from "@/lib/utils/packaging";
 
 /**
  * Authenticate and get tenant ID
@@ -122,6 +124,25 @@ export async function POST(
     });
     if (quantityError) {
       return NextResponse.json({ error: quantityError }, { status: 400 });
+    }
+
+    // Auto-resolve vat_included from PIM product if not explicitly provided
+    if (body.vat_included === undefined && body.entity_code) {
+      try {
+        const { PIMProduct } = await connectWithModels(auth.tenantDb!);
+        const product = await PIMProduct.findOne(
+          { entity_code: body.entity_code },
+          { pricing: 1, packaging_options: 1 }
+        ).lean();
+        if (product) {
+          const pkg = body.packaging_code
+            ? product.packaging_options?.find((p: any) => p.code === body.packaging_code)
+            : null;
+          body.vat_included = resolveVatIncluded(pkg?.pricing, product.pricing);
+        }
+      } catch {
+        // Non-critical: fall back to false if PIM lookup fails
+      }
     }
 
     // Smart merge: only merge if ALL key fields match

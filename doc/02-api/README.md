@@ -51,6 +51,14 @@ REST API documentation for the VINC Commerce Suite.
   - Unread count endpoint
   - Multi-channel template integration (email, web_push, in_app)
 
+- **[Menu Settings API](./pim/menu-settings.md)** - Storefront navigation menus
+  - Hierarchical menu builder (header, footer, mobile, mega menu)
+  - Entity-based items (categories, brands, collections, products, tags)
+  - Multi-channel support with time-bound visibility
+  - Drag-and-drop reordering
+  - External menu import
+  - Public API with URL resolution and tree structure
+
 ### AI Search API
 
 - **[ELIA AI Search](./elia-api.md)** - AI-powered natural language product search

@@ -25,9 +25,12 @@ export const LivePreview = ({
   isDirty = true
 }: LivePreviewProps) => {
   const [previewKey, setPreviewKey] = useState(0);
+  const [iframeReady, setIframeReady] = useState(false);
 
   // Send blocks to preview iframe via postMessage (instant, no DB save)
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const blocksRef = useRef<PageBlock[]>(blocks);
+  blocksRef.current = blocks;
 
   const previewUrl = useMemo(() => {
     let url;
@@ -43,10 +46,27 @@ export const LivePreview = ({
     return url;
   }, [productId, pageType, pageSlug, customerWebUrl]);
 
+  // Reset iframeReady when the iframe is recreated (previewKey changes)
   useEffect(() => {
-    if (blocks.length === 0 || !iframeRef.current?.contentWindow) return;
+    setIframeReady(false);
+  }, [previewKey]);
 
-    const blocksWithPosition = blocks.map((block, index) => ({
+  // Listen for PREVIEW_READY from the storefront iframe (sent after its app mounts)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'PREVIEW_READY') {
+        setIframeReady(true);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const sendBlocksToIframe = () => {
+    const currentBlocks = blocksRef.current;
+    if (currentBlocks.length === 0 || !iframeRef.current?.contentWindow) return;
+
+    const blocksWithPosition = currentBlocks.map((block, index) => ({
       ...block,
       _builderPosition: index + 1,
       _builderIndex: index,
@@ -62,10 +82,14 @@ export const LivePreview = ({
       showPositionIndicators: true,
     } as const;
 
-    // Use '*' — both builder and storefront are trusted; the storefront
-    // validates the message type on its side.
     iframeRef.current.contentWindow.postMessage(payload, '*');
-  }, [blocks, productId, previewUrl, customerWebUrl, isDirty]);
+  };
+
+  // Send blocks whenever they change, or when iframe signals it's ready
+  useEffect(() => {
+    if (!iframeReady) return;
+    sendBlocksToIframe();
+  }, [blocks, productId, previewUrl, customerWebUrl, isDirty, iframeReady]);
 
   // REMOVED: Auto-save to preview cache - not needed with postMessage
   // Preview is now instant via postMessage, only save when user clicks "Save Draft"

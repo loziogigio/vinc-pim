@@ -88,6 +88,17 @@ export const APPS: AppConfig[] = [
     hasNavigation: true,
   },
   {
+    id: "store-coupons",
+    name: "Coupons",
+    description: "Gestione coupon e codici sconto",
+    href: "/b2b/store/coupons",
+    icon: Store,
+    color: "bg-amber-500",
+    showInLauncher: false,
+    showInHeader: false,
+    hasNavigation: true,
+  },
+  {
     id: "store-customers",
     name: "Customers",
     description: "Gestione clienti",

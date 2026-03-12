@@ -74,7 +74,7 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
   }, [location, item]);
 
   // Types without an entity name — label is required
-  const labelRequired = ["url", "page", "search"].includes(formData.type);
+  const labelRequired = ["url", "page", "search", "text"].includes(formData.type);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -100,7 +100,7 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
       }
 
       if (
-        !["url", "search", "divider", "page"].includes(formData.type) &&
+        !["url", "search", "divider", "text", "page"].includes(formData.type) &&
         !formData.reference_id
       ) {
         toast.error("Please select an item");
@@ -254,6 +254,7 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
                 <option value="page">Page</option>
                 <option value="url">URL</option>
                 <option value="search">Search Product</option>
+                <option value="text">Text</option>
                 <option value="divider">Divider</option>
               </select>
             </div>

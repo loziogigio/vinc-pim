@@ -16,6 +16,10 @@ import {
   PROVIDER_CAPABILITIES,
 } from "@/lib/constants/payment";
 import type { PaymentProvider } from "@/lib/constants/payment";
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+} from "@/lib/utils/decimal-input";
 
 const MOTO_PROVIDERS = PAYMENT_PROVIDERS.filter(
   (p) => PROVIDER_CAPABILITIES[p].supportsMoto
@@ -76,12 +80,10 @@ export default function MotoTerminalPage() {
   }, [loadConfig]);
 
   const updateAmountInput = (value: string) => {
-    const normalized = value.replace(",", ".");
-    if (normalized === "" || /^[0-9]*\.?[0-9]*$/.test(normalized)) {
-      setAmountInput(normalized);
-      const parsed = parseFloat(normalized);
-      setAmount(isNaN(parsed) ? 0 : parsed);
-    }
+    const normalized = normalizeDecimalInput(value);
+    if (normalized === null) return;
+    setAmountInput(normalized);
+    setAmount(parseDecimalValue(normalized) ?? 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

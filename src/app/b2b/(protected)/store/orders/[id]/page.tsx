@@ -50,13 +50,15 @@ import {
   PenLine,
   Tag,
   MessageSquare,
+  Ticket,
 } from "lucide-react";
 
 // Import lifecycle components
-import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal, OrderSnapshotCard } from "@/components/orders";
+import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal, OrderSnapshotCard, CouponCard } from "@/components/orders";
 import { ThreadPanel } from "@/components/threads";
 import { ShippingMethodSelector } from "@/components/store/ShippingMethodSelector";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { normalizeDecimalInput, parseDecimalValue } from "@/lib/utils/decimal-input";
 
 interface PaginationMeta {
   page: number;
@@ -220,17 +222,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   // Update quantity from input field (allows typing decimals)
   function updateEditingLineQuantityInput(value: string) {
     if (!editingLine) return;
-    // Replace comma with dot for decimal
-    const normalizedValue = value.replace(",", ".");
-    // Allow empty, partial decimals like "1." or just numbers
-    if (normalizedValue === "" || /^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
-      const parsed = parseFloat(normalizedValue);
-      setEditingLine({
-        ...editingLine,
-        quantityInput: normalizedValue,
-        quantity: isNaN(parsed) ? 0 : parsed,
-      });
-    }
+    const normalized = normalizeDecimalInput(value);
+    if (normalized === null) return;
+    setEditingLine({
+      ...editingLine,
+      quantityInput: normalized,
+      quantity: parseDecimalValue(normalized) ?? 0,
+    });
   }
 
   // Update price in the editing line (from direct value)
@@ -243,17 +241,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   // Update price from input field (allows typing decimals)
   function updateEditingLinePriceInput(value: string) {
     if (!editingLine) return;
-    // Replace comma with dot for decimal
-    const normalizedValue = value.replace(",", ".");
-    // Allow empty, partial decimals like "25." or just numbers
-    if (normalizedValue === "" || /^[0-9]*\.?[0-9]*$/.test(normalizedValue)) {
-      const parsed = parseFloat(normalizedValue);
-      setEditingLine({
-        ...editingLine,
-        unitPriceInput: normalizedValue,
-        unitPrice: isNaN(parsed) ? 0 : parsed,
-      });
-    }
+    const normalized = normalizeDecimalInput(value);
+    if (normalized === null) return;
+    setEditingLine({
+      ...editingLine,
+      unitPriceInput: normalized,
+      unitPrice: parseDecimalValue(normalized) ?? 0,
+    });
   }
 
   // Cancel editing
@@ -938,7 +932,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           )}
                           <div>
                             <span className="text-muted-foreground">VAT: </span>
-                            <span>{item.vat_rate}%</span>
+                            <span>{item.vat_rate}%{item.vat_included ? " incl." : ""}</span>
                           </div>
                         </div>
                       </div>
@@ -1107,6 +1101,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             onDeliveryChange={() => fetchOrder(false)}
           />
 
+          {/* Coupon Card */}
+          <CouponCard
+            order={order}
+            onCouponChange={() => fetchOrder(false)}
+            tenantPrefix={tenantPrefix}
+          />
+
           {/* Thread/Discussion Button */}
           <div className="rounded-lg bg-card shadow-sm border border-border p-4">
             <button
@@ -1165,12 +1166,44 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   }).format(order.subtotal_gross)}
                 </span>
               </div>
-              {order.total_discount > 0 && (
+              {/* Coupon discount (shown separately) */}
+              {order.coupon_code && order.cart_discounts?.find((d) => d.reason === "coupon") && (() => {
+                const cpnDisc = order.cart_discounts!.find((d) => d.reason === "coupon")!;
+                const otherDiscount = order.total_discount - Math.abs(cpnDisc.value);
+                return (
+                  <>
+                    {otherDiscount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Discount</span>
+                        <span className="font-medium text-emerald-600">
+                          -{new Intl.NumberFormat("it-IT", {
+                            style: "currency",
+                            currency: order.currency || "EUR",
+                          }).format(otherDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Ticket className="h-3.5 w-3.5" />
+                        Coupon {order.coupon_code}
+                      </span>
+                      <span className="font-medium text-emerald-600">
+                        -{new Intl.NumberFormat("it-IT", {
+                          style: "currency",
+                          currency: order.currency || "EUR",
+                        }).format(Math.abs(cpnDisc.value))}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+              {/* Generic discount (no coupon) */}
+              {(!order.coupon_code || !order.cart_discounts?.find((d) => d.reason === "coupon")) && order.total_discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
                   <span className="font-medium text-emerald-600">
-                    -
-                    {new Intl.NumberFormat("it-IT", {
+                    -{new Intl.NumberFormat("it-IT", {
                       style: "currency",
                       currency: order.currency || "EUR",
                     }).format(order.total_discount)}

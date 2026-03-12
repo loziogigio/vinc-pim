@@ -1714,6 +1714,7 @@ export default function ProductDetailPage({
                   const displayPricing = defaultPkg?.pricing || product.pricing;
                   const currency = product.pricing?.currency || "EUR";
                   const vatRate = product.pricing?.vat_rate;
+                  const vatIncluded = product.pricing?.vat_included;
 
                   if (!displayPricing) return null;
 
@@ -1757,6 +1758,12 @@ export default function ProductDetailPage({
                             <div className="text-lg font-semibold text-foreground">{vatRate}%</div>
                           </div>
                         )}
+                        <div className="p-3 bg-muted/50 rounded-lg border">
+                          <div className="text-xs text-muted-foreground mb-1">VAT in Price</div>
+                          <div className={`text-lg font-semibold ${vatIncluded ? "text-emerald-600" : "text-foreground"}`}>
+                            {vatIncluded ? "Included" : "Excluded"}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2874,6 +2881,7 @@ export default function ProductDetailPage({
         defaultLanguageCode={defaultLanguageCode}
         availablePackagingCodes={[...new Set((product?.packaging_options || []).map((p) => p.code))]}
         allPackagingOptions={product?.packaging_options || []}
+        productVatIncluded={product?.pricing?.vat_included}
         onSave={handleSavePackaging}
         onClose={() => {
           setPackagingModalOpen(false);

@@ -39,8 +39,13 @@ export async function connectToAdminDatabase(): Promise<mongoose.Connection> {
   // unhandled rejection warnings during the initial connection phase
   const conn = mongoose.createConnection(mongoUrl, {
     dbName: ADMIN_DB,
-    minPoolSize: 0,
+    minPoolSize: 2,
     maxPoolSize: 10,
+    maxIdleTimeMS: 30_000,
+    socketTimeoutMS: 45_000,
+    heartbeatFrequencyMS: 10_000,
+    retryWrites: true,
+    retryReads: true,
     serverSelectionTimeoutMS: 5000,
     connectTimeoutMS: 5000,
   });
@@ -48,11 +53,17 @@ export async function connectToAdminDatabase(): Promise<mongoose.Connection> {
   conn.on("error", (err) => {
     console.error("Admin database connection error:", err);
     adminConnection = null;
+    connectionPromise = null;
   });
 
   conn.on("disconnected", () => {
     console.log("Admin database disconnected");
     adminConnection = null;
+    connectionPromise = null;
+  });
+
+  conn.on("reconnected", () => {
+    console.log("Admin database reconnected");
   });
 
   conn.on("close", () => {

@@ -289,6 +289,7 @@ export async function PATCH(
     // Allow updating specific fields
     const allowedFields = [
       "name",
+      "slug",
       "product_model",
       "description",
       "short_description",
@@ -309,6 +310,7 @@ export async function PATCH(
       "synonym_keys",
       "share_images_with_variants",
       "share_media_with_variants",
+      "pricing",                      // Product-level pricing (list, retail, sale, currency, vat_rate, vat_included)
       "packaging_options",          // Pricing & packaging (array of { code, qty, uom, pricing, ... })
       "packaging_info",              // Physical packaging info (informational only — not related to selling)
       "promotions",                 // Product-level promotions (array with target_pkg_ids)

@@ -19,7 +19,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2, Upload, Image as ImageIcon, X, ZoomIn, Star } from "lucide-react";
+import { toast } from "sonner";
 import { ProductImage } from "@/lib/types/pim";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ImageGalleryProps {
   images: ProductImage[];
@@ -168,6 +170,7 @@ export function ImageGallery({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<ProductImage | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Sync local state when initialImages prop changes (e.g., after upload)
   useEffect(() => {
@@ -201,18 +204,22 @@ export function ImageGallery({
     }
   };
 
-  const handleDelete = async (s3_key: string) => {
-    if (!confirm("Are you sure you want to delete this image?")) {
-      return;
-    }
+  const handleDeleteClick = (s3_key: string) => {
+    setDeleteConfirm(s3_key);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return;
+    const s3_key = deleteConfirm;
+    setDeleteConfirm(null);
     setDeleting(s3_key);
     try {
       await onDelete(s3_key);
       setImages(images.filter((img) => img.cdn_key !== s3_key));
+      toast.success("Image deleted successfully");
     } catch (error) {
       console.error("Failed to delete image:", error);
-      alert("Failed to delete image. Please try again.");
+      toast.error("Failed to delete image. Please try again.");
     } finally {
       setDeleting(null);
     }
@@ -224,9 +231,10 @@ export function ImageGallery({
     setSettingPrimary(s3_key);
     try {
       await onSetPrimary(s3_key);
+      toast.success("Primary image updated");
     } catch (error) {
       console.error("Failed to set primary image:", error);
-      alert("Failed to set primary image. Please try again.");
+      toast.error("Failed to set primary image. Please try again.");
     } finally {
       setSettingPrimary(null);
     }
@@ -239,11 +247,11 @@ export function ImageGallery({
     setUploading(true);
     try {
       await onUpload(files);
-      // Clear the input
       e.target.value = "";
+      toast.success(`${files.length} image(s) uploaded successfully`);
     } catch (error) {
       console.error("Failed to upload images:", error);
-      alert("Failed to upload images. Please try again.");
+      toast.error("Failed to upload images. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -302,7 +310,7 @@ export function ImageGallery({
                 <SortableImageItem
                   key={image.cdn_key || image._id || `image-${index}`}
                   image={image}
-                  onDelete={handleDelete}
+                  onDelete={handleDeleteClick}
                   onPreview={setPreviewImage}
                   onSetPrimary={onSetPrimary ? handleSetPrimary : undefined}
                   isPrimary={primaryImageKey === image.cdn_key || image.position === 0}
@@ -327,6 +335,18 @@ export function ImageGallery({
           </ul>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Delete Image"
+        message="Are you sure you want to delete this image? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* Image Preview Lightbox */}
       {previewImage && (

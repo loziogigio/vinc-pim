@@ -12,6 +12,7 @@ import {
   Search,
   Pencil,
   Copy,
+  Home,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -224,13 +225,22 @@ export default function PagesManagementPage({
             Manage custom pages for {slug} ({pages.length} total)
           </p>
         </div>
-        <Button
-          onClick={() => setShowAddDialog(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b]"
-        >
-          <Plus className="h-4 w-4" />
-          Add Page
-        </Button>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${slug}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#009688] px-4 py-2 text-sm font-medium text-[#009688] hover:bg-[#009688]/10 transition-colors"
+          >
+            <Home className="h-4 w-4" />
+            Home Builder
+          </Link>
+          <Button
+            onClick={() => setShowAddDialog(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b]"
+          >
+            <Plus className="h-4 w-4" />
+            Add Page
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}

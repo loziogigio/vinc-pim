@@ -136,10 +136,37 @@ Key files: `connection-pool.ts`, `model-registry.ts`, `connection.ts`, `admin-co
 
 ## Common Patterns
 
-### Decimal Input Fields
+### Decimal Input Fields (ALWAYS use shared utilities)
 
-Use `src/lib/utils/decimal-input.ts`: `normalizeDecimalInput()`, `parseDecimalValue()`, `toDecimalInputValue()`.
-Always use `type="text"` + `inputMode="decimal"` (NOT `type="number"`).
+For any input that accepts prices, rates, percentages, or monetary values, **always** use the shared utilities from `src/lib/utils/decimal-input.ts`:
+
+- `normalizeDecimalInput(rawValue)` — validates & normalizes (comma→dot, thousand separators)
+- `parseDecimalValue(normalized)` — string → number (or undefined)
+- `toDecimalInputValue(num)` — number → display string
+
+**Rules:**
+
+- Use `type="text"` + `inputMode="decimal"` (NOT `type="number"`) for all decimal fields
+- Keep a **local string state** for display, sync to numeric on change
+- Never use inline `.replace(",", ".")` + `parseFloat()` — use the shared utilities instead
+
+```tsx
+import { normalizeDecimalInput, parseDecimalValue, toDecimalInputValue } from "@/lib/utils/decimal-input";
+
+const [priceInput, setPriceInput] = useState(toDecimalInputValue(initialPrice));
+
+function handleChange(rawValue: string) {
+  const normalized = normalizeDecimalInput(rawValue);
+  if (normalized === null) return; // invalid input, ignore
+  setPriceInput(normalized);
+  const numValue = parseDecimalValue(normalized);
+  // update your data model with numValue
+}
+
+<Input type="text" inputMode="decimal" value={priceInput} onChange={e => handleChange(e.target.value)} />
+```
+
+**Exception:** Integer-only fields (quantity as whole number, days, page numbers) may use `type="number"`.
 
 ### Server-Side Pagination
 

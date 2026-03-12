@@ -36,11 +36,13 @@ ARG SOLR_URL
 ARG SOLR_ENABLED
 ARG NEXT_PUBLIC_BASE_URL
 ARG NEXT_PUBLIC_CUSTOMER_WEB_URL
+ARG NEXT_PUBLIC_APP_VERSION=0.0.0
 
 ENV SOLR_URL=$SOLR_URL
 ENV SOLR_ENABLED=$SOLR_ENABLED
 ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
 ENV NEXT_PUBLIC_CUSTOMER_WEB_URL=$NEXT_PUBLIC_CUSTOMER_WEB_URL
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
 RUN --mount=type=cache,id=next-cache,target=/app/.next/cache \
     pnpm build
@@ -94,8 +96,10 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 # Carry forward NEXT_PUBLIC_* from build (inlined in client JS, but also needed for SSR)
 ARG NEXT_PUBLIC_BASE_URL
 ARG NEXT_PUBLIC_CUSTOMER_WEB_URL
+ARG NEXT_PUBLIC_APP_VERSION=0.0.0
 ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
 ENV NEXT_PUBLIC_CUSTOMER_WEB_URL=$NEXT_PUBLIC_CUSTOMER_WEB_URL
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
 # Create non-root user, cache dir, remove shell utilities in one layer
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs \
@@ -111,4 +115,9 @@ USER nextjs
 
 # All secrets (VINC_MONGO_URL, VINC_ANTHROPIC_API_KEY, etc.) injected at runtime via docker-compose
 EXPOSE 3000
+
+# Auto-restart container when MongoDB connection is dead
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
 CMD ["node", "server.js"]

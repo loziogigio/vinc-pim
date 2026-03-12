@@ -18,6 +18,7 @@ import {
   KeyRound,
   UserCog,
   Tags,
+  Ticket,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -30,6 +31,7 @@ const orderPaths = [
   { label: "Confirmed", path: "/b2b/store/orders/confirmed", icon: CheckCircle },
   { label: "Shipped", path: "/b2b/store/orders/shipped", icon: Truck },
   { label: "Cancelled", path: "/b2b/store/orders/cancelled", icon: XCircle },
+  { label: "Coupons", path: "/b2b/store/coupons", icon: Ticket },
 ];
 
 const customerPaths = [

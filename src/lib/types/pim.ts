@@ -179,6 +179,7 @@ export type PIMPricing = {
   sale?: number;                  // Discounted price (if applicable)
   currency: string;               // Currency code (EUR, USD, etc.)
   vat_rate?: number;              // VAT percentage (22, 10, 4, 0)
+  vat_included?: boolean;         // true = prices are gross (VAT-inclusive)
 };
 
 /**
@@ -210,6 +211,8 @@ export type PackagingPricing = {
   text_discount?: string;         // Computed: base discount chain (e.g., "-50%" or "-50% -10%")
   /** Customer tag filter — empty/undefined = applies to all; otherwise requires matching customer tag */
   tag_filter?: string[];          // e.g., ["categoria-di-sconto:sconto-45"]
+  /** Override product-level vat_included for this packaging (if undefined, inherits from product pricing) */
+  vat_included?: boolean;
 };
 
 // ============================================
@@ -301,6 +304,14 @@ export type ProductInventory = {
  * Product image item (used in images[] array)
  * Primary image is always images[0] (position 0)
  */
+/** Metadata for a generated image version */
+export type ImageVersion = {
+  url: string;
+  cdn_key: string;
+  width: number;
+  height: number;
+};
+
 export type ProductImage = {
   _id?: string;
   url: string;
@@ -312,6 +323,8 @@ export type ProductImage = {
   size_bytes?: number;
   uploaded_at?: string;
   uploaded_by?: string;
+  /** Generated image versions keyed by version name (e.g., "main", "gallery") */
+  versions?: Record<string, ImageVersion>;
 };
 
 /**

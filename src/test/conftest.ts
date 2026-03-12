@@ -659,6 +659,7 @@ export const B2CStorefrontFactory = {
     return {
       name: `Test Store ${id}`,
       slug: `store-${id}`,
+      channel: `ch-${id}`,
       domains: [`${id}.example.com`],
       ...overrides,
     };

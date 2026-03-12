@@ -48,6 +48,7 @@ type PackagingOption = {
     retail_unit?: number;
     sale_unit?: number;
     tag_filter?: string[];
+    vat_included?: boolean;
   };
   promotions?: Promotion[];
 };
@@ -70,6 +71,7 @@ type Product = {
     sale?: number;
     currency: string;
     vat_rate?: number;
+    vat_included?: boolean;
   };
   packaging_options?: PackagingOption[];
 };
@@ -748,6 +750,10 @@ export function AddItemsModal({
       for (const { item, product } of additions) {
         const { quantity, unitPrice, listPrice, packagingCode, packagingLabel, packSize, minOrderQuantity, promoCode, promoLabel } = item;
         try {
+          // Resolve vat_included: packaging pricing > product pricing > false
+          const selectedPkg = product.packaging_options?.find(p => p.code === packagingCode);
+          const vatIncluded = selectedPkg?.pricing?.vat_included ?? product.pricing?.vat_included ?? false;
+
           const res = await fetch(`/api/b2b/orders/${orderId}/items`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -759,6 +765,7 @@ export function AddItemsModal({
               list_price: listPrice,
               unit_price: unitPrice,
               vat_rate: product.pricing?.vat_rate || product.vat_rate || 22,
+              vat_included: vatIncluded,
               product_source: "pim",
               image_url: product.images?.[0]?.url,
               brand: getBrandName(product),

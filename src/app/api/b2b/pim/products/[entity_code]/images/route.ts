@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { uploadMultipleImages, deleteFromCdn } from "vinc-cdn";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  deleteFromCdn,
+  createS3Client,
+  getCdnBaseUrl,
+  sanitizeFilename,
+  validateImageFile,
+} from "vinc-cdn";
 import { getCdnConfig } from "@/lib/services/cdn-config";
+import {
+  getImageVersionConfigs,
+  generateImageVersions,
+  deleteImageVersions,
+} from "@/lib/services/image-versions";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/images
  * Upload images for a product
+ *
+ * S3 key structure: {sku}/{sanitized-filename}
+ * Versions:         {sku}/{prefix}_{sanitized-filename}
  */
 export async function POST(
   req: NextRequest,
@@ -39,22 +54,9 @@ export async function POST(
       return NextResponse.json({ error: "CDN not configured" }, { status: 500 });
     }
 
-    // Upload images to CDN
-    const uploadResults = await uploadMultipleImages(
-      config,
-      files,
-      `products/${entity_code}`
-    );
-
-    if (uploadResults.failed.length > 0 && uploadResults.successful.length === 0) {
-      return NextResponse.json(
-        {
-          error: "All image uploads failed",
-          failures: uploadResults.failed,
-        },
-        { status: 400 }
-      );
-    }
+    const s3Client = createS3Client(config);
+    const baseUrl = getCdnBaseUrl(config);
+    const folderPrefix = config.folder ? `${config.folder}/` : "";
 
     // Connect to tenant database
     const tenantDb = `vinc-${session.tenantId}`;
@@ -63,7 +65,6 @@ export async function POST(
     // Find the product
     const product = await PIMProductModel.findOne({
       entity_code,
-      // No wholesaler_id - database provides isolation
       isCurrent: true,
     });
 
@@ -81,20 +82,106 @@ export async function POST(
         ? Math.max(...currentImages.map((img: any) => img.position || 0))
         : -1;
 
-    // Prepare new images with positions
-    const newImages = uploadResults.successful.map((result, index) => ({
-      url: result.url,
-      cdn_key: result.key,
-      position: maxPosition + index + 1,
-      uploaded_at: new Date(),
-      uploaded_by: session.userId,
-      file_name: result.fileName,
-      file_type: result.fileType,
-      size_bytes: result.sizeBytes,
-    }));
+    // Load image version configs
+    const versionConfig = await getImageVersionConfigs();
+
+    // Use product SKU for folder, product name for filename
+    const sku = (product as any).sku || entity_code;
+    const sanitizedSku = sanitizeFilename(sku);
+
+    // Extract product name (MultilingualText → first available string value)
+    const productName = (product as any).name;
+    let productNameStr = sku; // fallback to SKU
+    if (productName && typeof productName === "object") {
+      const firstVal = Object.values(productName).find((v) => typeof v === "string" && (v as string).trim());
+      if (firstVal) productNameStr = firstVal as string;
+    } else if (typeof productName === "string" && productName.trim()) {
+      productNameStr = productName;
+    }
+    const sanitizedProductName = sanitizeFilename(productNameStr);
+
+    // Upload each file: pim-product/{sku}/{product-name}.ext
+    const newImages = [];
+    const failed: { file: string; error: string }[] = [];
+
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+
+      // Validate image file
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        failed.push({ file: file.name, error: validation.error || "Invalid file" });
+        continue;
+      }
+
+      try {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        // Use product name as filename, preserve original extension
+        const ext = file.name.includes(".") ? file.name.substring(file.name.lastIndexOf(".")) : "";
+        // First image: product-name.ext, subsequent: product-name_1.ext, product-name_2.ext
+        const imageIndex = currentImages.length + index;
+        const nameForKey = imageIndex === 0
+          ? `${sanitizedProductName}${ext}`
+          : `${sanitizedProductName}_${imageIndex}${ext}`;
+        const cdnKey = `${folderPrefix}pim-product/${sanitizedSku}/${nameForKey}`;
+
+        // Upload original to S3 with clean key
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: config.bucket,
+            Key: cdnKey,
+            Body: buffer,
+            ContentType: file.type,
+            ACL: "public-read",
+          })
+        );
+
+        const url = `${baseUrl}/${cdnKey}`;
+
+        // Generate resized versions
+        let versions: Record<string, any> | undefined;
+        if (versionConfig.enabled && versionConfig.versions.length > 0) {
+          try {
+            versions = await generateImageVersions(
+              config,
+              buffer,
+              cdnKey,
+              file.type,
+              versionConfig.versions
+            );
+          } catch (err) {
+            console.error(`[images] Version generation failed for ${file.name}:`, err);
+          }
+        }
+
+        newImages.push({
+          url,
+          cdn_key: cdnKey,
+          position: maxPosition + index + 1,
+          uploaded_at: new Date(),
+          uploaded_by: session.userId,
+          file_name: file.name,
+          file_type: file.type,
+          size_bytes: file.size,
+          ...(versions && Object.keys(versions).length > 0 ? { versions } : {}),
+        });
+      } catch (err) {
+        console.error(`[images] Upload failed for ${file.name}:`, err);
+        failed.push({
+          file: file.name,
+          error: err instanceof Error ? err.message : "Upload failed",
+        });
+      }
+    }
+
+    if (newImages.length === 0) {
+      return NextResponse.json(
+        { error: "All image uploads failed", failures: failed },
+        { status: 400 }
+      );
+    }
 
     // Check if we should update the main image
-    // Update if: no images exist yet
     const shouldUpdateMainImage = currentImages.length === 0;
 
     // Build update object
@@ -106,28 +193,23 @@ export async function POST(
       },
     };
 
-    // If this is the first image, remove "Missing product image" from critical issues
     if (shouldUpdateMainImage && newImages.length > 0) {
       updateData.$pull = { critical_issues: "Missing primary product image" };
     }
 
     // Update product with new images
     const updatedProduct = await PIMProductModel.findOneAndUpdate(
-      {
-        entity_code,
-        // No wholesaler_id - database provides isolation
-        isCurrent: true,
-      },
+      { entity_code, isCurrent: true },
       updateData,
       { new: true }
     ).lean();
 
     return NextResponse.json({
       success: true,
-      message: `${uploadResults.successful.length} image(s) uploaded successfully`,
-      uploaded: uploadResults.successful.length,
-      failed: uploadResults.failed.length,
-      failures: uploadResults.failed,
+      message: `${newImages.length} image(s) uploaded successfully`,
+      uploaded: newImages.length,
+      failed: failed.length,
+      failures: failed,
       images: newImages,
       product: updatedProduct,
     });
@@ -413,6 +495,18 @@ export async function DELETE(
       }
     } else {
       cdnError = "CDN deletion skipped (no cdn_key available)";
+    }
+
+    // Delete image versions from CDN (best-effort)
+    if (imageItem.versions && typeof imageItem.versions === "object") {
+      try {
+        const versionConfig = await getCdnConfig();
+        if (versionConfig) {
+          await deleteImageVersions(versionConfig, imageItem.versions);
+        }
+      } catch (err) {
+        console.warn("[images] Version deletion failed:", err);
+      }
     }
 
     return NextResponse.json({

@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings, FCMSettings } from "@/lib/types/home-settings";
+import type { CompanyBranding, ProductCardStyle, HomeSettings, CDNConfiguration, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, MetaTags, WebPushSettings, FCMSettings, ImageVersionsSettings, ImageVersionConfig } from "@/lib/types/home-settings";
 
 export interface HomeSettingsDocument
   extends Omit<HomeSettings, "createdAt" | "updatedAt"> {
@@ -306,6 +306,29 @@ const HeaderConfigSchema = new Schema(
   { _id: false }
 );
 
+// ============================================================================
+// Image Versions Settings Schema (PIM Product Upload)
+// ============================================================================
+
+const ImageVersionConfigSchema = new Schema(
+  {
+    key: { type: String, required: true },
+    prefix: { type: String, required: true },
+    width: { type: Number, required: true },
+    height: { type: Number, required: true },
+    is_default: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const ImageVersionsSettingsSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    versions: { type: [ImageVersionConfigSchema], default: [] },
+  },
+  { _id: false }
+);
+
 // Home settings schema
 const HomeSettingsSchema = new Schema(
   {
@@ -364,6 +387,9 @@ const HomeSettingsSchema = new Schema(
     },
     meta_tags: {
       type: MetaTagsSchema
+    },
+    image_versions: {
+      type: ImageVersionsSettingsSchema
     },
     lastModifiedBy: { type: String }
   },

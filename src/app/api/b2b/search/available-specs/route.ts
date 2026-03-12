@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
-import { getSolrConfig, isSolrEnabled } from "@/config/project.config";
+import { getSolrConfig, isSolrEnabled, getProjectConfig } from "@/config/project.config";
 import { connectWithModels } from "@/lib/db/connection";
 
 /**
@@ -78,7 +78,9 @@ export async function GET(req: NextRequest) {
     } else if (productTypeCode) {
       fq.push(`product_type_code:${productTypeCode}`);
     } else if (productTypeSlug) {
-      fq.push(`product_type_slug:${productTypeSlug}`);
+      // product_type_slug is a translatable field indexed as product_type_slug_text_{lang}
+      const lang = searchParams.get("lang") || getProjectConfig().defaultLanguage;
+      fq.push(`product_type_slug_text_${lang}:${productTypeSlug}`);
     }
 
     // Query Solr for sample products that have technical specifications

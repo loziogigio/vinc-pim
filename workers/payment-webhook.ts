@@ -15,6 +15,7 @@ import { getPooledConnection } from "../src/lib/db/connection";
 import { getModelRegistry } from "../src/lib/db/model-registry";
 import { capturePayment } from "../src/lib/payments/payment.service";
 import { initializeProviders } from "../src/lib/payments/providers/register-providers";
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 import type { WebhookEvent } from "../src/lib/types/payment";
 
 // ============================================
@@ -211,6 +212,7 @@ process.on("SIGINT", async () => {
   console.log("[Payment Worker] Shutting down...");
   await worker.close();
   await mongoose.disconnect();
+  await closeAllConnections();
   process.exit(0);
 });
 
@@ -218,5 +220,6 @@ process.on("SIGTERM", async () => {
   console.log("[Payment Worker] Shutting down...");
   await worker.close();
   await mongoose.disconnect();
+  await closeAllConnections();
   process.exit(0);
 });

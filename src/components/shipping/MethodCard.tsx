@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { Plus, Trash2, Package, CreditCard, AlertTriangle, Clock, BarChart3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { IShippingMethod, IShippingTier } from "@/lib/types/shipping";
@@ -7,16 +8,11 @@ import {
   PAYMENT_METHOD_LABELS,
   type PaymentMethod,
 } from "@/lib/constants/payment";
-
-// ============================================
-// HELPERS
-// ============================================
-
-function parseDecimal(value: string): number {
-  const normalized = value.replace(",", ".");
-  const parsed = parseFloat(normalized);
-  return isNaN(parsed) ? 0 : Math.round(parsed * 100) / 100;
-}
+import {
+  normalizeDecimalInput,
+  parseDecimalValue,
+  toDecimalInputValue,
+} from "@/lib/utils/decimal-input";
 
 /** Check if tiers have a logical issue: a higher subtotal should not have a higher rate */
 function getTierWarning(tiers: IShippingTier[]): string | null {
@@ -47,6 +43,26 @@ export function MethodCard({
   onChange,
   onRemove,
 }: MethodCardProps) {
+  // Local string state for tier decimal inputs
+  const [tierInputs, setTierInputs] = useState<Record<string, string>>(() => {
+    const inputs: Record<string, string> = {};
+    method.tiers.forEach((tier, i) => {
+      inputs[`${i}_min_subtotal`] = toDecimalInputValue(tier.min_subtotal);
+      inputs[`${i}_rate`] = toDecimalInputValue(tier.rate);
+    });
+    return inputs;
+  });
+
+  // Sync local inputs when tiers change externally (add/remove tier)
+  const syncInputs = useCallback((tiers: IShippingTier[]) => {
+    const inputs: Record<string, string> = {};
+    tiers.forEach((tier, i) => {
+      inputs[`${i}_min_subtotal`] = toDecimalInputValue(tier.min_subtotal);
+      inputs[`${i}_rate`] = toDecimalInputValue(tier.rate);
+    });
+    setTierInputs(inputs);
+  }, []);
+
   function updateField<K extends keyof IShippingMethod>(
     key: K,
     value: IShippingMethod[K]
@@ -54,9 +70,17 @@ export function MethodCard({
     onChange({ ...method, [key]: value });
   }
 
+  function getTierInputValue(index: number, field: keyof IShippingTier): string {
+    return tierInputs[`${index}_${field}`] ?? toDecimalInputValue((method.tiers[index] as Record<string, number>)?.[field]);
+  }
+
   function updateTier(index: number, field: keyof IShippingTier, rawValue: string) {
+    const normalized = normalizeDecimalInput(rawValue);
+    if (normalized === null) return;
+    setTierInputs(prev => ({ ...prev, [`${index}_${field}`]: normalized }));
+    const numValue = parseDecimalValue(normalized) ?? 0;
     const newTiers = method.tiers.map((t, i) =>
-      i === index ? { ...t, [field]: parseDecimal(rawValue) } : t
+      i === index ? { ...t, [field]: numValue } : t
     );
     onChange({ ...method, tiers: newTiers });
   }
@@ -64,11 +88,15 @@ export function MethodCard({
   function addTier() {
     const lastTier = method.tiers[method.tiers.length - 1];
     const nextMin = lastTier ? lastTier.min_subtotal + 50 : 0;
-    onChange({ ...method, tiers: [...method.tiers, { min_subtotal: nextMin, rate: 0 }] });
+    const newTiers = [...method.tiers, { min_subtotal: nextMin, rate: 0 }];
+    syncInputs(newTiers);
+    onChange({ ...method, tiers: newTiers });
   }
 
   function removeTier(index: number) {
-    onChange({ ...method, tiers: method.tiers.filter((_, i) => i !== index) });
+    const newTiers = method.tiers.filter((_, i) => i !== index);
+    syncInputs(newTiers);
+    onChange({ ...method, tiers: newTiers });
   }
 
   function togglePaymentMethod(pm: string, checked: boolean) {
@@ -223,7 +251,7 @@ export function MethodCard({
                       <Input
                         type="text"
                         inputMode="decimal"
-                        value={tier.min_subtotal}
+                        value={getTierInputValue(i, "min_subtotal")}
                         onChange={(e) => updateTier(i, "min_subtotal", e.target.value)}
                         className="w-24 h-8"
                         placeholder="0"
@@ -236,7 +264,7 @@ export function MethodCard({
                       <Input
                         type="text"
                         inputMode="decimal"
-                        value={tier.rate}
+                        value={getTierInputValue(i, "rate")}
                         onChange={(e) => updateTier(i, "rate", e.target.value)}
                         className="w-24 h-8 font-medium"
                         placeholder="0"

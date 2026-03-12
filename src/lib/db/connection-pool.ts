@@ -56,8 +56,13 @@ async function getBaseConnection(): Promise<mongoose.Connection> {
 
   console.log("[Pool] Creating base connection");
   const conn = mongoose.createConnection(MONGO_URI, {
-    minPoolSize: 0,
+    minPoolSize: 2,
     maxPoolSize: PER_DB_POOL_SIZE,
+    maxIdleTimeMS: 30_000,
+    socketTimeoutMS: 45_000,
+    heartbeatFrequencyMS: 10_000,
+    retryWrites: true,
+    retryReads: true,
     bufferCommands: false,
     serverSelectionTimeoutMS: 5000,
     connectTimeoutMS: 5000,
@@ -68,12 +73,18 @@ async function getBaseConnection(): Promise<mongoose.Connection> {
   conn.on("error", (err) => {
     console.error("[Pool] Base connection error:", err.message);
     baseConnection = null;
+    baseConnectionPromise = null;
   });
 
   conn.on("disconnected", () => {
     console.log("[Pool] Base connection disconnected");
     baseConnection = null;
+    baseConnectionPromise = null;
     pool.clear(); // Clear all useDb connections since base is gone
+  });
+
+  conn.on("reconnected", () => {
+    console.log("[Pool] Base connection reconnected");
   });
 
   baseConnectionPromise = conn.asPromise();

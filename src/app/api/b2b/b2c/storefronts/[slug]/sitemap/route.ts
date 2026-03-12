@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import {
   getSitemapData,
+  getSitemapUrls,
   generateSitemapForStorefront,
   validateSitemap,
   updateRobotsRules,
@@ -103,6 +104,16 @@ export async function POST(
         }
         await updateRobotsRules(tenantDb, slug, custom_rules);
         return NextResponse.json({ success: true });
+      }
+
+      case "browse_urls": {
+        const result = await getSitemapUrls(tenantDb, slug, {
+          type: body.type,
+          search: body.search,
+          page: body.page,
+          limit: body.limit,
+        });
+        return NextResponse.json({ success: true, data: result });
       }
 
       default:

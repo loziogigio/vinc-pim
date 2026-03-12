@@ -217,7 +217,7 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     variables: [
       "customer_name", "order_number", "order_date", "order_total", "order_url", "shop_name",
       "shipping_address", "billing_address", "order_items_html", "items_count",
-      "subtotal_net", "total_discount", "total_vat", "shipping_cost",
+      "subtotal_net", "total_discount", "total_vat", "shipping_cost", "coupon_code", "coupon_discount",
       "payment_method", "payment_terms",
       "invoice_company_name", "invoice_vat_number", "invoice_fiscal_code", "invoice_pec", "invoice_sdi",
       "bank_iban", "bank_beneficiary", "bank_bic_swift", "bank_name", "bank_causale",
@@ -305,6 +305,12 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
           <td style="color: #64748b; padding: 6px 0;">Subtotale:</td>
           <td style="color: #1e293b; text-align: right; padding: 6px 0;">{{subtotal_net}}</td>
         </tr>
+        {{#if coupon_code}}
+        <tr>
+          <td style="color: #059669; padding: 6px 0;">Coupon {{coupon_code}}:</td>
+          <td style="color: #059669; text-align: right; padding: 6px 0;">-{{coupon_discount}}</td>
+        </tr>
+        {{/if}}
         {{#if total_discount}}
         <tr>
           <td style="color: #dc2626; padding: 6px 0;">Sconto:</td>

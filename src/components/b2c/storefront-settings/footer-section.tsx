@@ -1,21 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Loader2, Send, Save } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Trash2, Loader2, Send, Save, Upload, Code, LayoutGrid, Type, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "./section-card";
 import { Field, ColorField, inputClass } from "./field-helpers";
 import type { IB2CStorefrontFooter } from "./types";
-import type { IFooterColumn, IFooterSocial } from "@/lib/db/models/b2c-storefront";
+import type { IFooterColumn, IFooterColumnItem, FooterItemType } from "@/lib/db/models/b2c-storefront";
+import { useImageUpload } from "@/hooks/useImageUpload";
 
-const SOCIAL_PLATFORMS = [
-  { value: "facebook", label: "Facebook" },
-  { value: "instagram", label: "Instagram" },
-  { value: "twitter", label: "X / Twitter" },
-  { value: "linkedin", label: "LinkedIn" },
-  { value: "youtube", label: "YouTube" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "pinterest", label: "Pinterest" },
+const ITEM_TYPE_BUTTONS: { type: FooterItemType; label: string; Icon: typeof Type }[] = [
+  { type: "text", label: "Text", Icon: Type },
+  { type: "image", label: "Image", Icon: ImageIcon },
+  { type: "link", label: "Link", Icon: LinkIcon },
 ];
 
 // ============================================
@@ -26,7 +23,6 @@ function FooterPreview({ footer }: { footer: IB2CStorefrontFooter }) {
   const bgColor = footer.bg_color || "#1f2937";
   const textColor = footer.text_color || "#d1d5db";
   const columns = footer.columns || [];
-  const socialLinks = footer.social_links || [];
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -34,7 +30,6 @@ function FooterPreview({ footer }: { footer: IB2CStorefrontFooter }) {
         <span className="text-xs font-medium text-slate-600">Live Preview</span>
       </div>
       <div className="p-3" style={{ backgroundColor: bgColor, color: textColor }}>
-        {/* Newsletter */}
         {footer.show_newsletter && (
           <div className="mb-4 text-center">
             <p className="text-sm font-semibold" style={{ color: textColor }}>
@@ -51,43 +46,183 @@ function FooterPreview({ footer }: { footer: IB2CStorefrontFooter }) {
           </div>
         )}
 
-        {/* Columns */}
-        {columns.length > 0 && (
+        {/* HTML mode preview */}
+        {footer.footer_html_draft ? (
+          <div className="mb-3 text-[10px] opacity-80 line-clamp-4" dangerouslySetInnerHTML={{ __html: footer.footer_html_draft }} />
+        ) : columns.length > 0 && (
           <div className="flex gap-4 mb-3">
-            {columns.map((col, i) => (
-              <div key={i} className="flex-1 min-w-0">
-                <p className="text-xs font-semibold mb-1 truncate" style={{ color: textColor }}>
-                  {col.title || "Column"}
-                </p>
-                {col.links.map((link, j) => (
-                  <p key={j} className="text-[10px] opacity-70 truncate">{link.label || "Link"}</p>
-                ))}
-              </div>
-            ))}
+            {columns.map((col, i) => {
+              const items = col.items;
+              return (
+                <div key={i} className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold mb-1 truncate" style={{ color: textColor }}>
+                    {col.title || "Column"}
+                  </p>
+                  {items ? items.map((item, j) => (
+                    <div key={j}>
+                      {item.type === "text" && <p className="text-[10px] opacity-70 line-clamp-2">{item.text_content || "..."}</p>}
+                      {item.type === "link" && <p className="text-[10px] opacity-70 truncate">{item.label || "Link"}</p>}
+                      {item.type === "image" && (
+                        item.image_url
+                          ? <img src={item.image_url} alt={item.image_alt || ""} className="max-h-8 object-contain my-0.5" />
+                          : <span className="text-[10px] opacity-40">[Image]</span>
+                      )}
+                    </div>
+                  )) : col.links.map((link, j) => (
+                    <p key={j} className="text-[10px] opacity-70 truncate">{link.label || "Link"}</p>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* Social Links */}
-        {socialLinks.length > 0 && (
-          <div className="flex gap-2 mb-2">
-            {socialLinks.map((social, i) => (
-              <div key={i} className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
-                <span className="text-[8px] font-bold uppercase">{(social.platform || "?")[0]}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Copyright */}
         {footer.copyright_text && (
           <p className="text-[10px] opacity-50 text-center border-t border-white/10 pt-2 mt-2">
             {footer.copyright_text}
           </p>
         )}
 
-        {!footer.copyright_text && columns.length === 0 && socialLinks.length === 0 && !footer.show_newsletter && (
+        {!footer.copyright_text && columns.length === 0 && !footer.show_newsletter && (
           <p className="text-[10px] opacity-40 text-center py-4">Footer preview will appear here</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// Image Item Editor (extracted to manage its own file input ref)
+// ============================================
+
+function ImageItemEditor({ item, onChange }: { item: IFooterColumnItem; onChange: (updates: Partial<IFooterColumnItem>) => void }) {
+  const { uploadState, uploadImage } = useImageUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (file: File) => {
+    const url = await uploadImage(file);
+    if (url) onChange({ image_url: url });
+  };
+
+  return (
+    <div className="space-y-2">
+      {item.image_url && (
+        <div className="relative inline-block">
+          <img src={item.image_url} alt={item.image_alt || ""} className="max-h-20 rounded border border-slate-200 object-contain" />
+          <button type="button" onClick={() => onChange({ image_url: undefined })} className="absolute -right-2 -top-2 rounded-full bg-red-500 p-0.5 text-white hover:bg-red-600">
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadState.isUploading}
+          className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {uploadState.isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+          {uploadState.isUploading ? "Uploading..." : "Upload"}
+        </button>
+        <input type="text" value={item.image_url || ""} onChange={(e) => onChange({ image_url: e.target.value })} placeholder="Paste image URL" className={`${inputClass} flex-1 text-xs`} />
+      </div>
+      {uploadState.error && <p className="text-xs text-red-500">{uploadState.error}</p>}
+      <div className="grid grid-cols-2 gap-2">
+        <input type="text" value={item.image_alt || ""} onChange={(e) => onChange({ image_alt: e.target.value })} placeholder="Alt text" className={`${inputClass} text-xs`} />
+        <input type="text" inputMode="numeric" value={item.image_max_width ?? ""} onChange={(e) => onChange({ image_max_width: e.target.value ? parseInt(e.target.value, 10) : undefined })} placeholder="Max width (px)" className={`${inputClass} text-xs`} />
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// Footer Column Editor (mixed items)
+// ============================================
+
+function FooterColumnEditor({
+  col, colIdx, onUpdateColumn, onRemoveColumn,
+}: {
+  col: IFooterColumn;
+  colIdx: number;
+  onUpdateColumn: (index: number, col: IFooterColumn) => void;
+  onRemoveColumn: (index: number) => void;
+}) {
+  const items = col.items || col.links.map((l): IFooterColumnItem => ({ type: "link", label: l.label, href: l.href, open_in_new_tab: l.open_in_new_tab }));
+
+  function setItems(newItems: IFooterColumnItem[]) {
+    onUpdateColumn(colIdx, { ...col, items: newItems, links: [] });
+  }
+
+  function addItem(type: FooterItemType) {
+    setItems([...items, { type }]);
+  }
+
+  function updateItem(idx: number, updates: Partial<IFooterColumnItem>) {
+    const updated = [...items];
+    updated[idx] = { ...updated[idx], ...updates };
+    setItems(updated);
+  }
+
+  function removeItem(idx: number) {
+    setItems(items.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-gray-50 p-4 space-y-3">
+      {/* Column header */}
+      <div className="flex items-center gap-2">
+        <input type="text" value={col.title} onChange={(e) => onUpdateColumn(colIdx, { ...col, title: e.target.value })} placeholder="Column title" className={`${inputClass} flex-1 font-medium`} />
+        <button type="button" onClick={() => onRemoveColumn(colIdx)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+      </div>
+
+      {/* Items */}
+      {items.map((item, idx) => (
+        <div key={idx} className="flex gap-2 pl-3 border-l-2 border-slate-200">
+          <div className="flex-1 space-y-1">
+            {/* Text item */}
+            {item.type === "text" && (
+              <textarea
+                value={item.text_content || ""}
+                onChange={(e) => updateItem(idx, { text_content: e.target.value })}
+                rows={3}
+                placeholder="Address, phone, opening hours..."
+                className={`${inputClass} w-full text-xs`}
+              />
+            )}
+
+            {/* Link item */}
+            {item.type === "link" && (
+              <div className="flex items-center gap-2">
+                <input type="text" value={item.label || ""} onChange={(e) => updateItem(idx, { label: e.target.value })} placeholder="Label" className={`${inputClass} flex-1`} />
+                <input type="text" value={item.href || ""} onChange={(e) => updateItem(idx, { href: e.target.value })} placeholder="/page or https://..." className={`${inputClass} flex-1`} />
+              </div>
+            )}
+
+            {/* Image item */}
+            {item.type === "image" && (
+              <ImageItemEditor item={item} onChange={(updates) => updateItem(idx, updates)} />
+            )}
+          </div>
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <span className="rounded bg-slate-200 px-1 py-0.5 text-[9px] font-medium text-slate-500 uppercase">{item.type}</span>
+            <button type="button" onClick={() => removeItem(idx)} className="p-0.5 text-slate-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+          </div>
+        </div>
+      ))}
+
+      {/* Add item buttons */}
+      <div className="flex items-center gap-1.5 pl-3">
+        {ITEM_TYPE_BUTTONS.map(({ type, label, Icon }) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => addItem(type)}
+            className="inline-flex items-center gap-1 text-[11px] text-[#009688] hover:text-[#00796b] rounded border border-dashed border-[#009688]/30 px-2 py-1 hover:bg-[#009688]/5"
+          >
+            <Icon className="h-3 w-3" /> {label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -126,45 +261,15 @@ export function FooterSection({
 
   // Column helpers
   function addColumn() {
-    update("columns", [...(footerDraft.columns || []), { title: "", links: [] }]);
+    update("columns", [...(footerDraft.columns || []), { title: "", items: [], links: [] }]);
   }
-  function updateColumn(index: number, title: string) {
+  function updateColumnObj(index: number, col: IFooterColumn) {
     const cols = [...(footerDraft.columns || [])];
-    cols[index] = { ...cols[index], title };
+    cols[index] = col;
     update("columns", cols);
   }
   function removeColumn(index: number) {
     update("columns", (footerDraft.columns || []).filter((_, i) => i !== index));
-  }
-  function addLink(colIndex: number) {
-    const cols = [...(footerDraft.columns || [])];
-    cols[colIndex] = { ...cols[colIndex], links: [...cols[colIndex].links, { label: "", href: "" }] };
-    update("columns", cols);
-  }
-  function updateLink(colIndex: number, linkIndex: number, field: string, value: string | boolean) {
-    const cols = [...(footerDraft.columns || [])];
-    const links = [...cols[colIndex].links];
-    links[linkIndex] = { ...links[linkIndex], [field]: value };
-    cols[colIndex] = { ...cols[colIndex], links };
-    update("columns", cols);
-  }
-  function removeLink(colIndex: number, linkIndex: number) {
-    const cols = [...(footerDraft.columns || [])];
-    cols[colIndex] = { ...cols[colIndex], links: cols[colIndex].links.filter((_, i) => i !== linkIndex) };
-    update("columns", cols);
-  }
-
-  // Social helpers
-  function addSocial() {
-    update("social_links", [...(footerDraft.social_links || []), { platform: "", url: "" }]);
-  }
-  function updateSocial(index: number, field: keyof IFooterSocial, value: string) {
-    const links = [...(footerDraft.social_links || [])];
-    links[index] = { ...links[index], [field]: value };
-    update("social_links", links);
-  }
-  function removeSocial(index: number) {
-    update("social_links", (footerDraft.social_links || []).filter((_, i) => i !== index));
   }
 
   return (
@@ -197,7 +302,6 @@ export function FooterSection({
       </div>
 
       <div className="space-y-4">
-        {/* Form */}
         <SectionCard title="Footer Settings" description="Configure footer content, links, and appearance.">
             {/* Colors */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -228,53 +332,64 @@ export function FooterSection({
               )}
             </div>
 
-            {/* Footer Columns */}
+            {/* Editor Mode Toggle */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Link Columns</p>
-                <button type="button" onClick={addColumn} className="inline-flex items-center gap-1 text-xs font-medium text-[#009688] hover:text-[#00796b]">
-                  <Plus className="h-3.5 w-3.5" /> Add column
-                </button>
-              </div>
-              {(footerDraft.columns || []).map((col, colIdx) => (
-                <div key={colIdx} className="rounded-lg border border-slate-200 bg-gray-50 p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <input type="text" value={col.title} onChange={(e) => updateColumn(colIdx, e.target.value)} placeholder="Column title" className={`${inputClass} flex-1 font-medium`} />
-                    <button type="button" onClick={() => removeColumn(colIdx)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                  {col.links.map((link, linkIdx) => (
-                    <div key={linkIdx} className="flex items-center gap-2 pl-4">
-                      <input type="text" value={link.label} onChange={(e) => updateLink(colIdx, linkIdx, "label", e.target.value)} placeholder="Label" className={`${inputClass} flex-1`} />
-                      <input type="text" value={link.href} onChange={(e) => updateLink(colIdx, linkIdx, "href", e.target.value)} placeholder="/page" className={`${inputClass} flex-1`} />
-                      <button type="button" onClick={() => removeLink(colIdx, linkIdx)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => addLink(colIdx)} className="ml-4 inline-flex items-center gap-1 text-xs text-[#009688] hover:text-[#00796b]">
-                    <Plus className="h-3 w-3" /> Add link
+                <p className="text-sm font-medium text-slate-700">Footer Content</p>
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => update("footer_html_draft", undefined)}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${!footerDraft.footer_html_draft ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    <LayoutGrid className="h-3 w-3" /> Structured
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update("footer_html_draft", footerDraft.footer_html_draft || footerDraft.footer_html || "")}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${footerDraft.footer_html_draft ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    <Code className="h-3 w-3" /> HTML
                   </button>
                 </div>
-              ))}
+              </div>
+
+              {/* HTML Editor Mode */}
+              {footerDraft.footer_html_draft !== undefined ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-500">Write custom HTML for the entire footer. This replaces the structured columns.</p>
+                  <textarea
+                    value={footerDraft.footer_html_draft || ""}
+                    onChange={(e) => update("footer_html_draft", e.target.value)}
+                    rows={12}
+                    placeholder={"<div class='container'>\n  <div class='row'>\n    <div class='col'>Your footer content...</div>\n  </div>\n</div>"}
+                    className={`${inputClass} w-full font-mono text-xs`}
+                  />
+                  <p className="text-[10px] text-slate-400">{(footerDraft.footer_html_draft || "").length} characters</p>
+                </div>
+              ) : (
+                /* Structured Columns Mode */
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={addColumn}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#009688] hover:text-[#00796b] rounded-md border border-dashed border-[#009688]/30 px-2.5 py-1.5 hover:bg-[#009688]/5"
+                  >
+                    <Plus className="h-3 w-3" /> Add Column
+                  </button>
+                  {(footerDraft.columns || []).map((col, colIdx) => (
+                    <FooterColumnEditor
+                      key={colIdx}
+                      col={col}
+                      colIdx={colIdx}
+                      onUpdateColumn={updateColumnObj}
+                      onRemoveColumn={removeColumn}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Social Links */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Social Links</p>
-                <button type="button" onClick={addSocial} className="inline-flex items-center gap-1 text-xs font-medium text-[#009688] hover:text-[#00796b]">
-                  <Plus className="h-3.5 w-3.5" /> Add social
-                </button>
-              </div>
-              {(footerDraft.social_links || []).map((social, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <select value={social.platform} onChange={(e) => updateSocial(i, "platform", e.target.value)} className={`${inputClass} w-36`}>
-                    <option value="">Platform</option>
-                    {SOCIAL_PLATFORMS.map((p) => (<option key={p.value} value={p.value}>{p.label}</option>))}
-                  </select>
-                  <input type="text" value={social.url} onChange={(e) => updateSocial(i, "url", e.target.value)} placeholder="https://..." className={`${inputClass} flex-1`} />
-                  <button type="button" onClick={() => removeSocial(i)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                </div>
-              ))}
-            </div>
         </SectionCard>
 
         {/* Preview */}

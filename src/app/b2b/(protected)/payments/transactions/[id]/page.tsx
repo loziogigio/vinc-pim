@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { TransactionStatusBadge, ProviderBadge } from "@/components/payments";
+import { normalizeDecimalInput, parseDecimalValue } from "@/lib/utils/decimal-input";
 import {
   PAYMENT_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
@@ -127,8 +128,8 @@ export default function TransactionDetailPage() {
     const body: Record<string, unknown> = {
       transaction_id: transaction.transaction_id,
     };
-    const amt = parseFloat(refundAmount.replace(",", "."));
-    if (!isNaN(amt) && amt > 0 && amt < transaction.gross_amount) {
+    const amt = parseDecimalValue(refundAmount);
+    if (amt !== undefined && amt > 0 && amt < transaction.gross_amount) {
       body.amount = amt;
     }
 
@@ -352,10 +353,9 @@ export default function TransactionDetailPage() {
                         placeholder={String(transaction.gross_amount)}
                         value={refundAmount}
                         onChange={(e) => {
-                          const v = e.target.value.replace(",", ".");
-                          if (v === "" || /^[0-9]*\.?[0-9]*$/.test(v)) {
-                            setRefundAmount(v);
-                          }
+                          const normalized = normalizeDecimalInput(e.target.value);
+                          if (normalized === null) return;
+                          setRefundAmount(normalized);
                         }}
                         className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                       />

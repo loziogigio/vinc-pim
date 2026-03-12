@@ -79,6 +79,8 @@ export async function GET(req: NextRequest) {
       header_config: (storefront as any).header_config || { rows: [] },
       footer: storefront.footer || {},
       meta_tags: (storefront as any).meta_tags || {},
+      custom_scripts: ((storefront as any).custom_scripts || [])
+        .filter((s: any) => s.enabled),
     };
 
     // 5. Get published home template

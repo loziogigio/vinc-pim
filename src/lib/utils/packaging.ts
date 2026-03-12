@@ -5,7 +5,20 @@
  * The pricing model stores unit prices and calculates package prices on the fly.
  */
 
-import type { PackagingOption, PackagingPricing, PackagingInfo } from "@/lib/types/pim";
+import type { PackagingOption, PackagingPricing, PackagingInfo, PIMPricing } from "@/lib/types/pim";
+
+/**
+ * Resolve vat_included for a packaging option.
+ * Priority: packaging.pricing.vat_included > productPricing.vat_included > false
+ */
+export function resolveVatIncluded(
+  packagingPricing?: PackagingPricing | null,
+  productPricing?: PIMPricing | null
+): boolean {
+  if (packagingPricing?.vat_included !== undefined) return packagingPricing.vat_included;
+  if (productPricing?.vat_included !== undefined) return productPricing.vat_included;
+  return false;
+}
 
 /**
  * Ensure every packaging option has a unique pkg_id (incremental string: "1", "2", "3"...).

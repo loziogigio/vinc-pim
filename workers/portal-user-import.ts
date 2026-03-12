@@ -9,6 +9,7 @@
  */
 
 import { portalUserImportWorker } from '../src/lib/queue/portal-user-import-worker';
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 
 /**
  * Parse command line arguments
@@ -53,12 +54,14 @@ async function startWorker() {
 process.on('SIGTERM', async () => {
   console.log('⚠️  SIGTERM received, closing worker...');
   await portalUserImportWorker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('⚠️  SIGINT received, closing worker...');
   await portalUserImportWorker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 

@@ -92,8 +92,33 @@ export interface IFooterLink {
   open_in_new_tab?: boolean;
 }
 
+export const FOOTER_ITEM_TYPES = ["text", "image", "link"] as const;
+export type FooterItemType = (typeof FOOTER_ITEM_TYPES)[number];
+
+/** A single content item inside a footer column (text, image, or link) */
+export interface IFooterColumnItem {
+  type: FooterItemType;
+  /** Text/HTML content (type: "text") */
+  text_content?: string;
+  /** Image URL (type: "image") */
+  image_url?: string;
+  /** Alt text for image (type: "image") */
+  image_alt?: string;
+  /** Max width of image in px (type: "image", default 200) */
+  image_max_width?: number;
+  /** Link label (type: "link") */
+  label?: string;
+  /** Link href (type: "link") */
+  href?: string;
+  /** Open link in new tab (type: "link") */
+  open_in_new_tab?: boolean;
+}
+
 export interface IFooterColumn {
   title: string;
+  /** Mixed content items — when present, takes priority over links */
+  items?: IFooterColumnItem[];
+  /** Legacy links array — kept for backward compatibility */
   links: IFooterLink[];
 }
 
@@ -119,6 +144,35 @@ export interface IB2CStorefrontFooter {
   bg_color?: string;
   /** Footer text color */
   text_color?: string;
+  /** Full HTML footer content (published) — when set, overrides structured columns */
+  footer_html?: string;
+  /** Full HTML footer content (draft) */
+  footer_html_draft?: string;
+}
+
+// ============================================
+// CUSTOM SCRIPTS
+// ============================================
+
+export const SCRIPT_PLACEMENTS = ["head", "body_end"] as const;
+export type ScriptPlacement = (typeof SCRIPT_PLACEMENTS)[number];
+
+export const SCRIPT_LOADING_STRATEGIES = ["async", "defer", "blocking"] as const;
+export type ScriptLoadingStrategy = (typeof SCRIPT_LOADING_STRATEGIES)[number];
+
+export interface IB2CCustomScript {
+  /** Human-readable label (e.g., "Google Analytics", "Iubenda") */
+  label: string;
+  /** External script URL (e.g., https://www.googletagmanager.com/gtag/js?id=G-XXX) */
+  src?: string;
+  /** Inline script content (e.g., gtag('config', 'G-XXX')) — can be combined with src */
+  inline_code?: string;
+  /** Where to inject: head (default) or body_end */
+  placement: ScriptPlacement;
+  /** Loading strategy for external scripts: async (default), defer, blocking */
+  loading_strategy: ScriptLoadingStrategy;
+  /** Toggle on/off without deleting */
+  enabled: boolean;
 }
 
 // ============================================
@@ -189,6 +243,8 @@ export interface IB2CStorefront {
   footer_draft?: IB2CStorefrontFooter;
   /** SEO meta tags */
   meta_tags?: IB2CStorefrontMetaTags;
+  /** Third-party scripts (analytics, cookie consent, tracking pixels, etc.) */
+  custom_scripts?: IB2CCustomScript[];
   settings: IB2CStorefrontSettings;
   created_at: Date;
   updated_at: Date;
@@ -216,9 +272,24 @@ const FooterLinkSchema = new Schema(
   { _id: false }
 );
 
+const FooterColumnItemSchema = new Schema(
+  {
+    type: { type: String, enum: FOOTER_ITEM_TYPES, required: true },
+    text_content: { type: String },
+    image_url: { type: String },
+    image_alt: { type: String },
+    image_max_width: { type: Number },
+    label: { type: String },
+    href: { type: String },
+    open_in_new_tab: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const FooterColumnSchema = new Schema(
   {
     title: { type: String, required: true },
+    items: { type: [FooterColumnItemSchema], default: undefined },
     links: { type: [FooterLinkSchema], default: [] },
   },
   { _id: false }
@@ -272,6 +343,8 @@ const B2CStorefrontFooterSchema = new Schema(
     newsletter_placeholder: { type: String },
     bg_color: { type: String },
     text_color: { type: String },
+    footer_html: { type: String },
+    footer_html_draft: { type: String },
   },
   { _id: false }
 );
@@ -305,6 +378,18 @@ const B2CStorefrontMetaTagsSchema = new Schema(
     google_site_verification: { type: String },
     bing_site_verification: { type: String },
     structured_data: { type: String },
+  },
+  { _id: false }
+);
+
+const CustomScriptSchema = new Schema(
+  {
+    label: { type: String, required: true },
+    src: { type: String },
+    inline_code: { type: String },
+    placement: { type: String, enum: SCRIPT_PLACEMENTS, default: "head" },
+    loading_strategy: { type: String, enum: SCRIPT_LOADING_STRATEGIES, default: "async" },
+    enabled: { type: Boolean, default: true },
   },
   { _id: false }
 );
@@ -425,6 +510,10 @@ const B2CStorefrontSchema = new Schema(
     meta_tags: {
       type: B2CStorefrontMetaTagsSchema,
       default: () => ({}),
+    },
+    custom_scripts: {
+      type: [CustomScriptSchema],
+      default: [],
     },
     settings: {
       type: B2CStorefrontSettingsSchema,

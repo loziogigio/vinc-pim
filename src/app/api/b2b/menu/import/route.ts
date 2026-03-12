@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { invalidateB2CCache } from "@/lib/cache/redis-client";
 import { nanoid } from "nanoid";
@@ -31,12 +31,10 @@ interface ExternalAPIResponse {
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();

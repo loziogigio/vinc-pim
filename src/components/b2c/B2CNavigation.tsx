@@ -10,6 +10,7 @@ import {
   LayoutTemplate,
   FileCode2,
   Globe,
+  Code2,
   MapPin,
   FileText,
   Inbox,
@@ -28,6 +29,7 @@ const STOREFRONT_SECTIONS: {
   { key: "header", icon: LayoutTemplate, label: "Header" },
   { key: "footer", icon: FileCode2, label: "Footer" },
   { key: "seo", icon: Globe, label: "SEO & Meta Tags" },
+  { key: "scripts", icon: Code2, label: "Custom Scripts" },
   { key: "sitemap", icon: MapPin, label: "Sitemap" },
 ];
 

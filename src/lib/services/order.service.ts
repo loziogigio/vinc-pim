@@ -219,7 +219,8 @@ export function updateItemQuantity(
     newQuantity,
     item.list_price,
     item.unit_price,
-    item.vat_rate
+    item.vat_rate,
+    item.vat_included
   );
 
   item.quantity = newQuantity;
@@ -241,7 +242,8 @@ export function updateItemPrice(
     item.quantity,
     item.list_price,
     newUnitPrice,
-    item.vat_rate
+    item.vat_rate,
+    item.vat_included
   );
 
   item.unit_price = newUnitPrice;
@@ -263,7 +265,8 @@ export function createLineItem(
     body.quantity,
     body.list_price,
     body.unit_price,
-    body.vat_rate
+    body.vat_rate,
+    body.vat_included
   );
 
   // Calculate total discount percent from discounts array
@@ -302,6 +305,7 @@ export function createLineItem(
     unit_price: body.unit_price,
     promo_price: body.promo_price,
     vat_rate: body.vat_rate,
+    vat_included: body.vat_included || false,
 
     // Line Totals
     ...totals,

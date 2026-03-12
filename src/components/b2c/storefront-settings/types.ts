@@ -4,6 +4,7 @@ import type {
   IB2CStorefrontHeader,
   IB2CStorefrontFooter,
   IB2CStorefrontMetaTags,
+  IB2CCustomScript,
   IStorefrontDomain,
 } from "@/lib/db/models/b2c-storefront";
 import type { HeaderConfig } from "@/lib/types/home-settings";
@@ -14,6 +15,7 @@ export type StorefrontActiveSection =
   | "header"
   | "footer"
   | "seo"
+  | "scripts"
   | "sitemap";
 
 export interface SidebarItemConfig {
@@ -34,6 +36,7 @@ export {
   type IB2CStorefrontHeader,
   type IB2CStorefrontFooter,
   type IB2CStorefrontMetaTags,
+  type IB2CCustomScript,
   type IStorefrontDomain,
   type HeaderConfig,
 };

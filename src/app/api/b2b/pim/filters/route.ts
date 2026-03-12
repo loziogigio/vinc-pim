@@ -39,13 +39,18 @@ export async function GET(req: NextRequest) {
         break;
 
       case "category":
-        // Get distinct category names
-        const categories = await PIMProduct.distinct("category.name", {
-          ...query,
-          "category.name": { $exists: true, $ne: null, $nin: [""] },
-          ...(search && { "category.name": { $regex: search, $options: "i" } }),
-        });
-        results = categories.filter((c) => c).sort();
+        // category.name is MultilingualText (e.g., {it: "Cavi", en: "Cables"})
+        // Use aggregation to extract distinct string values from all languages
+        const categoryAgg = await PIMProduct.aggregate([
+          { $match: { ...query, "category.name": { $exists: true, $ne: null } } },
+          { $project: { names: { $objectToArray: "$category.name" } } },
+          { $unwind: "$names" },
+          { $match: { "names.v": { $ne: "" }, ...(search && { "names.v": { $regex: search, $options: "i" } }) } },
+          { $group: { _id: "$names.v" } },
+          { $sort: { _id: 1 } },
+          { $limit: 10 },
+        ]);
+        results = categoryAgg.map((c: { _id: string }) => c._id).filter(Boolean);
         break;
 
       case "currency":

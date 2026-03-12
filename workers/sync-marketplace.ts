@@ -12,6 +12,7 @@
 import { connectToDatabase } from '../src/lib/db/connection';
 import { syncWorker } from '../src/lib/queue/sync-worker';
 import { AdapterFactory, loadAdapterConfigs } from '../src/lib/adapters';
+import { closeAllConnections } from "../src/lib/db/connection-pool";
 
 /**
  * Parse command line arguments
@@ -82,12 +83,14 @@ async function startWorker() {
 process.on('SIGTERM', async () => {
   console.log('⚠️  SIGTERM received, closing worker...');
   await syncWorker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('⚠️  SIGINT received, closing worker...');
   await syncWorker.close();
+  await closeAllConnections();
   process.exit(0);
 });
 

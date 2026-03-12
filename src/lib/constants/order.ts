@@ -121,6 +121,7 @@ export const ADJUSTMENT_REASONS = [
   "negotiation", // Negotiated during quotation
   "loyalty", // Loyalty discount
   "clearance", // End of line
+  "coupon", // Coupon code discount
 ] as const;
 
 export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
