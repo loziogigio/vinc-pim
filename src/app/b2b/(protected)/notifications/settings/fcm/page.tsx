@@ -490,7 +490,7 @@ export default function FCMSettingsPage() {
               id="android_api_key"
               value={androidApiKey}
               onChange={(e) => setAndroidApiKey(e.target.value)}
-              placeholder="AIzaSyCDpmyEki1PB6VbgINzR1zkVHJqx0iOUss"
+              placeholder="AIzaSyAbc123..."
               className="mt-1"
             />
           </div>
