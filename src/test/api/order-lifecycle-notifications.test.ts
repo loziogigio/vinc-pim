@@ -173,7 +173,9 @@ describe("integration: Order Lifecycle Notification Triggers", () => {
 
   describe("POST /api/b2b/orders/[id]/submit", () => {
     it("should dispatch order_confirmation trigger on successful submit", async () => {
-      const order = await createDraftOrder();
+      const order = await createDraftOrder({
+        payment: { payment_method: "bank_transfer", payment_status: "awaiting", amount_due: 122, amount_paid: 0, amount_remaining: 122, payments: [] },
+      });
       const req = createRequest("POST", undefined, `http://localhost:3000/api/b2b/orders/${order.order_id}/submit`);
 
       const res = await submitOrder(req, createParams({ id: order.order_id }));
@@ -181,7 +183,8 @@ describe("integration: Order Lifecycle Notification Triggers", () => {
 
       expect(res.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.order.status).toBe("pending");
+      // Deferred payment orders are auto-confirmed on submit (draft → confirmed)
+      expect(data.order.status).toBe("confirmed");
 
       // Verify notification was dispatched
       expect(mockDispatchTrigger).toHaveBeenCalledOnce();
@@ -193,9 +196,9 @@ describe("integration: Order Lifecycle Notification Triggers", () => {
           portalUserId: TEST_USER_ID,
         })
       );
-      // The order in the dispatch call should have status "pending"
+      // The order in the dispatch call should have status "confirmed" (auto-confirmed)
       const dispatchedOrder = mockDispatchTrigger.mock.calls[0][2].order;
-      expect(dispatchedOrder.status).toBe("pending");
+      expect(dispatchedOrder.status).toBe("confirmed");
     });
 
     it("should NOT dispatch trigger when submit fails (empty order)", async () => {
@@ -448,25 +451,22 @@ describe("integration: Order Lifecycle Notification Triggers", () => {
 
   describe("Full order lifecycle", () => {
     it("should dispatch correct triggers through complete lifecycle", async () => {
-      // 1. Create draft order
-      const order = await createDraftOrder();
+      // 1. Create draft order with deferred payment (auto-confirms on submit)
+      const order = await createDraftOrder({
+        payment: { payment_method: "bank_transfer", payment_status: "awaiting", amount_due: 122, amount_paid: 0, amount_remaining: 122, payments: [] },
+      });
       const orderId = order.order_id;
 
-      // 2. Submit (draft → pending) → order_confirmation
+      // 2. Submit (draft → confirmed, auto-confirmed for deferred payment) → order_confirmation
       const submitReq = createRequest("POST", undefined, `http://localhost:3000/api/b2b/orders/${orderId}/submit`);
       const submitRes = await submitOrder(submitReq, createParams({ id: orderId }));
-      expect((await submitRes.json()).success).toBe(true);
+      const submitData = await submitRes.json();
+      expect(submitData.success).toBe(true);
+      expect(submitData.order.status).toBe("confirmed");
       expect(mockDispatchTrigger).toHaveBeenCalledTimes(1);
       expect(mockDispatchTrigger.mock.calls[0][1]).toBe("order_confirmation");
 
-      // 3. Confirm (pending → confirmed) → order_confirmation
-      const confirmReq = createRequest("POST", undefined, `http://localhost:3000/api/b2b/orders/${orderId}/confirm`);
-      const confirmRes = await confirmOrder(confirmReq, createParams({ id: orderId }));
-      expect((await confirmRes.json()).success).toBe(true);
-      expect(mockDispatchTrigger).toHaveBeenCalledTimes(2);
-      expect(mockDispatchTrigger.mock.calls[1][1]).toBe("order_confirmation");
-
-      // 4. Ship (confirmed → shipped) → order_shipped
+      // 3. Ship (confirmed → shipped) → order_shipped
       const shipReq = createRequest(
         "POST",
         { carrier: "GLS", tracking_number: "GLS789" },
@@ -474,18 +474,18 @@ describe("integration: Order Lifecycle Notification Triggers", () => {
       );
       const shipRes = await shipOrder(shipReq, createParams({ id: orderId }));
       expect((await shipRes.json()).success).toBe(true);
-      expect(mockDispatchTrigger).toHaveBeenCalledTimes(3);
-      expect(mockDispatchTrigger.mock.calls[2][1]).toBe("order_shipped");
+      expect(mockDispatchTrigger).toHaveBeenCalledTimes(2);
+      expect(mockDispatchTrigger.mock.calls[1][1]).toBe("order_shipped");
 
-      // 5. Deliver (shipped → delivered) → order_delivered
+      // 4. Deliver (shipped → delivered) → order_delivered
       const deliverReq = createRequest("POST", undefined, `http://localhost:3000/api/b2b/orders/${orderId}/deliver`);
       const deliverRes = await deliverOrder(deliverReq, createParams({ id: orderId }));
       expect((await deliverRes.json()).success).toBe(true);
-      expect(mockDispatchTrigger).toHaveBeenCalledTimes(4);
-      expect(mockDispatchTrigger.mock.calls[3][1]).toBe("order_delivered");
+      expect(mockDispatchTrigger).toHaveBeenCalledTimes(3);
+      expect(mockDispatchTrigger.mock.calls[2][1]).toBe("order_delivered");
 
-      // Verify all 4 triggers used the correct tenant DB
-      for (let i = 0; i < 4; i++) {
+      // Verify all 3 triggers used the correct tenant DB
+      for (let i = 0; i < 3; i++) {
         expect(mockDispatchTrigger.mock.calls[i][0]).toBe(TEST_DB_NAME);
       }
     });

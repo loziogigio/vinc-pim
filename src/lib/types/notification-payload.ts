@@ -189,6 +189,7 @@ import type { NotificationTrigger } from "@/lib/constants/notification";
 export const TRIGGER_CATEGORY_MAP: Record<NotificationTrigger, NotificationCategory> = {
   // Generic
   welcome: "generic",
+  welcome_self_registration: "generic",
   newsletter: "generic",
   custom: "generic",
   registration_request_admin: "generic",

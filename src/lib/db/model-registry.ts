@@ -66,6 +66,8 @@ import { B2CPageSchema } from "./models/b2c-page";
 import { FormSubmissionSchema } from "./models/form-submission";
 import { B2CSitemapSchema } from "./models/b2c-sitemap";
 import { CouponSchema } from "./models/coupon";
+import { TenantPricingConfigSchema } from "./models/tenant-pricing-config";
+import { PricingRequestLogSchema } from "./models/pricing-request-log";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -127,6 +129,8 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   FormSubmission: FormSubmissionSchema,
   B2CSitemap: B2CSitemapSchema,
   Coupon: CouponSchema,
+  TenantPricingConfig: TenantPricingConfigSchema,
+  PricingRequestLog: PricingRequestLogSchema,
 };
 
 /**
@@ -230,6 +234,8 @@ export async function getTenantModels(dbName: string) {
     FormSubmission: connection.models.FormSubmission,
     B2CSitemap: connection.models.B2CSitemap,
     Coupon: connection.models.Coupon,
+    TenantPricingConfig: connection.models.TenantPricingConfig,
+    PricingRequestLog: connection.models.PricingRequestLog,
   };
 }
 
@@ -301,6 +307,8 @@ export function getModelRegistry(connection: mongoose.Connection) {
     FormSubmission: connection.models.FormSubmission,
     B2CSitemap: connection.models.B2CSitemap,
     Coupon: connection.models.Coupon,
+    TenantPricingConfig: connection.models.TenantPricingConfig,
+    PricingRequestLog: connection.models.PricingRequestLog,
   };
 }
 

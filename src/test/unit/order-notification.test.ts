@@ -297,7 +297,7 @@ describe("unit: Order Notification Trigger System", () => {
       await dispatchOrderNotification("vinc-test", "order_confirmation", order);
 
       const vars = mockSendNotification.mock.calls[0][0].variables;
-      expect(vars.order_number).toBe("42");
+      expect(vars.order_number).toBe("OR/42/2026");
       expect(vars.order_total).toContain("162");
       expect(vars.shipping_address).toContain("Via Roma 123");
       expect(vars.shipping_address).toContain("Milano");
@@ -346,7 +346,7 @@ describe("unit: Order Notification Trigger System", () => {
       expect(vars.bank_beneficiary).toBe("Rossi S.r.l.");
       expect(vars.bank_bic_swift).toBe("BPPIITRRXXX");
       expect(vars.bank_name).toBe("Intesa Sanpaolo");
-      expect(vars.bank_causale).toBe("Ordine #42");
+      expect(vars.bank_causale).toBe("Ordine OR/42/2026");
     });
 
     it("should leave bank fields empty when payment is not bank_transfer", async () => {
@@ -415,7 +415,7 @@ describe("unit: Order Notification Trigger System", () => {
       expect(call.payload).toBeDefined();
       expect(call.payload.category).toBe("order");
       expect(call.payload.order.id).toBe("abc123def456");
-      expect(call.payload.order.number).toBe("#42");
+      expect(call.payload.order.number).toBe("OR/42/2026");
       expect(call.payload.order.carrier).toBe("BRT");
       expect(call.payload.order.tracking_code).toBe("BRT123456789");
       expect(call.payload.order.items).toHaveLength(1);
@@ -448,7 +448,7 @@ describe("unit: Order Notification Trigger System", () => {
       await dispatchOrderNotification("vinc-test", "order_confirmation", order);
 
       const vars = mockSendNotification.mock.calls[0][0].variables;
-      expect(vars.shipping_address).toBe("N/A");
+      expect(vars.shipping_address).toBe("");
     });
 
     it("should fall back to 'Cliente' when no name is found", async () => {

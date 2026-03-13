@@ -2,20 +2,39 @@
  * SSO Login API Tests
  *
  * Tests for the /api/auth/login endpoint.
+ * Route authenticates portal users via bcrypt against MongoDB.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
-import { POST } from "@/app/api/auth/login/route";
 
-// Mock modules
-vi.mock("@/lib/vinc-api", () => ({
-  getVincApiForTenant: vi.fn(),
-  VincApiError: class VincApiError extends Error {
-    constructor(public status: number, public detail: string) {
-      super(detail);
-      this.name = "VincApiError";
-    }
+// ============================================
+// MOCKS — must be before route imports
+// ============================================
+
+const mockFindOne = vi.fn();
+const mockUpdateOne = vi.fn().mockReturnValue({ catch: vi.fn() });
+const mockFind = vi.fn();
+
+vi.mock("@/lib/db/connection", () => ({
+  connectWithModels: vi.fn(() =>
+    Promise.resolve({
+      PortalUser: {
+        findOne: mockFindOne,
+        updateOne: mockUpdateOne,
+      },
+      Customer: {
+        find: (...args: unknown[]) => ({
+          lean: () => mockFind(...args),
+        }),
+      },
+    })
+  ),
+}));
+
+vi.mock("bcryptjs", () => ({
+  default: {
+    compare: vi.fn().mockResolvedValue(true),
   },
 }));
 
@@ -53,29 +72,84 @@ vi.mock("@/lib/sso/oauth", () => ({
   validateClientForTenant: vi.fn().mockResolvedValue({ client_id: "test-client" }),
 }));
 
-import { getVincApiForTenant, VincApiError } from "@/lib/vinc-api";
+// ============================================
+// IMPORTS — after mocks
+// ============================================
+
+import { POST } from "@/app/api/auth/login/route";
 import {
   checkRateLimit,
   checkGlobalIPRateLimit,
   logLoginAttempt,
 } from "@/lib/sso/rate-limit";
 import { createSession } from "@/lib/sso/session";
-import { validateClient, validateClientForTenant, createAuthCode } from "@/lib/sso/oauth";
+import { createAuthCode, validateClientForTenant } from "@/lib/sso/oauth";
 import { getClientIP, parseUserAgent } from "@/lib/sso/device";
+import bcrypt from "bcryptjs";
+
+// ============================================
+// HELPERS
+// ============================================
+
+/** Default mock portal user */
+function createMockUser(overrides?: Record<string, unknown>) {
+  return {
+    _id: "mongo-id-123",
+    portal_user_id: "user-123",
+    tenant_id: "test-tenant",
+    username: "test@example.com",
+    email: "test@example.com",
+    password_hash: "$2a$10$hashedpassword",
+    is_active: true,
+    customer_access: [{ customer_id: "cust-001", address_access: "all" }],
+    ...overrides,
+  };
+}
+
+/** Default mock customer */
+function createMockCustomer(overrides?: Record<string, unknown>) {
+  return {
+    customer_id: "cust-001",
+    external_code: "EXT-001",
+    company_name: "Test Company",
+    first_name: "John",
+    last_name: "Doe",
+    addresses: [],
+    ...overrides,
+  };
+}
+
+function createRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest("http://localhost:3001/api/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 Test Browser",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Set up standard mocks for a successful login */
+function setupSuccessfulLogin(
+  userOverrides?: Record<string, unknown>,
+  customerOverrides?: Record<string, unknown>
+) {
+  const user = createMockUser(userOverrides);
+  mockFindOne.mockResolvedValue(user);
+  mockFind.mockResolvedValue([createMockCustomer(customerOverrides)]);
+  (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+}
+
+// ============================================
+// TESTS
+// ============================================
 
 describe("api: SSO Login", () => {
-  const mockVincApi = {
-    auth: {
-      login: vi.fn(),
-      getProfile: vi.fn(),
-    },
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Re-set default mock implementations after clearing
-    (getVincApiForTenant as ReturnType<typeof vi.fn>).mockReturnValue(mockVincApi);
     (checkGlobalIPRateLimit as ReturnType<typeof vi.fn>).mockResolvedValue({ allowed: true });
     (checkRateLimit as ReturnType<typeof vi.fn>).mockResolvedValue({ allowed: true });
     (logLoginAttempt as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
@@ -94,25 +168,14 @@ describe("api: SSO Login", () => {
         expires_in: 900,
       },
     });
-    (validateClient as ReturnType<typeof vi.fn>).mockResolvedValue({ client_id: "test-client" });
     (validateClientForTenant as ReturnType<typeof vi.fn>).mockResolvedValue({ client_id: "test-client" });
     (createAuthCode as ReturnType<typeof vi.fn>).mockResolvedValue("test-auth-code");
+    mockUpdateOne.mockReturnValue({ catch: vi.fn() });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
-  function createRequest(body: Record<string, unknown>): NextRequest {
-    return new NextRequest("http://localhost:3001/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 Test Browser",
-      },
-      body: JSON.stringify(body),
-    });
-  }
 
   describe("validation", () => {
     it("should return 400 when password is missing", async () => {
@@ -240,26 +303,9 @@ describe("api: SSO Login", () => {
     });
   });
 
-  describe("VINC API authentication", () => {
-    it("should authenticate successfully via VINC API", async () => {
-      mockVincApi.auth.login.mockResolvedValueOnce({
-        access_token: "vinc-access-token",
-        refresh_token: "vinc-refresh-token",
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-
-      mockVincApi.auth.getProfile.mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        name: "Test User",
-        role: "reseller",
-        status: "active",
-        supplier_id: "supplier-456",
-        supplier_name: "Test Supplier",
-        customers: [],
-        has_password: true,
-      });
+  describe("portal user authentication", () => {
+    it("should authenticate successfully via bcrypt", async () => {
+      setupSuccessfulLogin();
 
       const req = createRequest({
         email: "test@example.com",
@@ -275,18 +321,14 @@ describe("api: SSO Login", () => {
       expect(data.user.id).toBe("user-123");
       expect(data.user.email).toBe("test@example.com");
       expect(data.user.role).toBe("reseller");
-      expect(data.user.supplier_name).toBe("Test Supplier");
       expect(data.tenant_id).toBe("test-tenant");
       expect(data.session_id).toBe("test-session-id");
-      expect(data.vinc_tokens).toBeDefined();
-      expect(data.vinc_tokens.access_token).toBe("vinc-access-token");
 
-      expect(getVincApiForTenant).toHaveBeenCalledWith("test-tenant");
-      expect(mockVincApi.auth.login).toHaveBeenCalledWith({
-        email: "test@example.com",
-        password: "password123",
-      });
-      expect(mockVincApi.auth.getProfile).toHaveBeenCalledWith("vinc-access-token");
+      expect(mockFindOne).toHaveBeenCalled();
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        "password123",
+        "$2a$10$hashedpassword"
+      );
       expect(createSession).toHaveBeenCalledWith(
         expect.objectContaining({
           tenant_id: "test-tenant",
@@ -297,11 +339,8 @@ describe("api: SSO Login", () => {
       );
     });
 
-    it("should return 401 for invalid credentials", async () => {
-      const { VincApiError: MockVincApiError } = await import("@/lib/vinc-api");
-      mockVincApi.auth.login.mockRejectedValueOnce(
-        new MockVincApiError(401, "Invalid credentials")
-      );
+    it("should return 401 when user not found", async () => {
+      mockFindOne.mockResolvedValue(null);
 
       const req = createRequest({
         email: "test@example.com",
@@ -325,41 +364,25 @@ describe("api: SSO Login", () => {
       );
     });
 
-    it("should return 503 for VINC API server error", async () => {
-      const { VincApiError: MockVincApiError } = await import("@/lib/vinc-api");
-      mockVincApi.auth.login.mockRejectedValueOnce(
-        new MockVincApiError(500, "Internal server error")
-      );
+    it("should return 401 for invalid password", async () => {
+      mockFindOne.mockResolvedValue(createMockUser());
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       const req = createRequest({
         email: "test@example.com",
-        password: "password123",
+        password: "wrongpassword",
         tenant_id: "test-tenant",
       });
 
       const response = await POST(req);
       const data = await response.json();
 
-      expect(response.status).toBe(503);
-      expect(data.error).toBe("Authentication service error");
+      expect(response.status).toBe(401);
+      expect(data.error).toBe("Invalid credentials");
     });
 
     it("should normalize email to lowercase", async () => {
-      mockVincApi.auth.login.mockResolvedValueOnce({
-        access_token: "token",
-        refresh_token: "refresh",
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-
-      mockVincApi.auth.getProfile.mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        role: "reseller",
-        status: "active",
-        customers: [],
-        has_password: true,
-      });
+      setupSuccessfulLogin();
 
       const req = createRequest({
         email: "TEST@EXAMPLE.COM",
@@ -369,31 +392,18 @@ describe("api: SSO Login", () => {
 
       await POST(req);
 
-      expect(mockVincApi.auth.login).toHaveBeenCalledWith({
-        email: "test@example.com",
-        password: "password123",
-      });
+      // The route normalizes to lowercase before querying
+      expect(mockFindOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: "test@example.com",
+        })
+      );
     });
   });
 
   describe("OAuth flow", () => {
     it("should return authorization code for OAuth flow", async () => {
-      mockVincApi.auth.login.mockResolvedValueOnce({
-        access_token: "vinc-access-token",
-        refresh_token: "vinc-refresh-token",
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-
-      mockVincApi.auth.getProfile.mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        name: "Test User",
-        role: "reseller",
-        status: "active",
-        customers: [],
-        has_password: true,
-      });
+      setupSuccessfulLogin();
 
       const req = createRequest({
         email: "test@example.com",
@@ -417,23 +427,11 @@ describe("api: SSO Login", () => {
   });
 
   describe("company name extraction", () => {
-    it("should use supplier_name when available", async () => {
-      mockVincApi.auth.login.mockResolvedValueOnce({
-        access_token: "token",
-        refresh_token: "refresh",
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-
-      mockVincApi.auth.getProfile.mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        role: "reseller",
-        status: "active",
-        supplier_name: "Test Supplier Co",
-        customers: [{ business_name: "Customer Business" }],
-        has_password: true,
-      });
+    it("should use customer company_name when available", async () => {
+      setupSuccessfulLogin(
+        undefined,
+        { company_name: "Test Supplier Co" }
+      );
 
       const req = createRequest({
         email: "test@example.com",
@@ -450,55 +448,11 @@ describe("api: SSO Login", () => {
       );
     });
 
-    it("should fall back to customer business_name", async () => {
-      mockVincApi.auth.login.mockResolvedValueOnce({
-        access_token: "token",
-        refresh_token: "refresh",
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-
-      mockVincApi.auth.getProfile.mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        role: "reseller",
-        status: "active",
-        customers: [{ business_name: "Customer Business" }],
-        has_password: true,
-      });
-
-      const req = createRequest({
-        email: "test@example.com",
-        password: "password123",
-        tenant_id: "test-tenant",
-      });
-
-      await POST(req);
-
-      expect(createSession).toHaveBeenCalledWith(
-        expect.objectContaining({
-          company_name: "Customer Business",
-        })
+    it("should fall back to customer first/last name", async () => {
+      setupSuccessfulLogin(
+        undefined,
+        { company_name: undefined, first_name: "John", last_name: "Doe" }
       );
-    });
-
-    it("should fall back to user name", async () => {
-      mockVincApi.auth.login.mockResolvedValueOnce({
-        access_token: "token",
-        refresh_token: "refresh",
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-
-      mockVincApi.auth.getProfile.mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        name: "John Doe",
-        role: "reseller",
-        status: "active",
-        customers: [],
-        has_password: true,
-      });
 
       const req = createRequest({
         email: "test@example.com",
@@ -511,6 +465,27 @@ describe("api: SSO Login", () => {
       expect(createSession).toHaveBeenCalledWith(
         expect.objectContaining({
           company_name: "John Doe",
+        })
+      );
+    });
+
+    it("should fall back to user email when no customer data", async () => {
+      // No customer_access → no customers found
+      mockFindOne.mockResolvedValue(createMockUser({ customer_access: [] }));
+      mockFind.mockResolvedValue([]);
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const req = createRequest({
+        email: "test@example.com",
+        password: "password123",
+        tenant_id: "test-tenant",
+      });
+
+      await POST(req);
+
+      expect(createSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          company_name: "test@example.com",
         })
       );
     });

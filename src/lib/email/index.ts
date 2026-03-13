@@ -504,7 +504,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
   // Send immediately or queue
   if (options.immediate) {
-    return await sendEmailNow(emailLog, notificationLog.log_id);
+    return await sendEmailNow(emailLog, notificationLog.log_id, tenantConfig);
   } else {
     return await queueEmail(emailLog, options.scheduledAt, tenantDb, notificationLog.log_id);
   }
@@ -512,13 +512,15 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
 /**
  * Send email immediately (bypasses queue)
- * Dispatches to SMTP or Graph API based on tenant config
+ * Dispatches to SMTP or Graph API based on tenant config.
+ * Accepts pre-fetched config to avoid redundant DB lookups and race conditions.
  */
 async function sendEmailNow(
   emailLog: IEmailLog,
-  notificationLogId?: string
+  notificationLogId?: string,
+  prefetchedConfig?: TenantEmailConfig
 ): Promise<SendEmailResult> {
-  const tenantConfig = await fetchTenantEmailConfig(emailLog.tenant_db);
+  const tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db);
 
   try {
     let messageId: string | undefined;

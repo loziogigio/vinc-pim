@@ -27,6 +27,9 @@ export * from './customer';
 // Coupon types
 export * from './coupon';
 
+// Pricing Provider types
+export * from './pricing-provider';
+
 // Entity types (Brand, Category, Collection, ProductType, Tag)
 // Note: Some types overlap with search.ts (hierarchy items, features)
 // Entity types are for MongoDB embedding, search types are for Solr response

@@ -57,6 +57,28 @@ vi.mock("@/lib/db/b2c-home-templates", () => ({
   ),
 }));
 
+// Mock Redis client (used by PATCH route for cache invalidation)
+vi.mock("@/lib/cache/redis-client", () => ({
+  getRedis: vi.fn(() => ({
+    publish: vi.fn().mockResolvedValue(0),
+  })),
+}));
+
+// Mock Traefik config service (used by update/delete)
+vi.mock("@/lib/services/traefik-config.service", () => ({
+  regenerateB2CConfigDebounced: vi.fn(),
+}));
+
+// Mock sitemap service (used by update)
+vi.mock("@/lib/services/b2c-sitemap.service", () => ({
+  regenerateSitemapDebounced: vi.fn(),
+}));
+
+// Mock page service (used by delete)
+vi.mock("@/lib/services/b2c-page.service", () => ({
+  deleteAllPagesForStorefront: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock API key auth for public API tests
 vi.mock("@/lib/auth/api-key-auth", () => ({
   verifyAPIKeyFromRequest: vi.fn(() =>
@@ -186,7 +208,7 @@ describe("integration: B2C Storefronts API", () => {
     it("should reject invalid slug format (400)", async () => {
       const req = makeReq("/api/b2b/b2c/storefronts", {
         method: "POST",
-        body: { name: "Bad Slug", slug: "Has Spaces!" },
+        body: { name: "Bad Slug", slug: "Has Spaces!", channel: "ch-bad" },
       });
 
       const res = await createStorefrontRoute(req);
@@ -196,11 +218,11 @@ describe("integration: B2C Storefronts API", () => {
     });
 
     it("should reject duplicate slug (409)", async () => {
-      await createViaAPI({ name: "First", slug: "dup-slug", domains: [] });
+      await createViaAPI({ name: "First", slug: "dup-slug", channel: "ch-dup", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts", {
         method: "POST",
-        body: { name: "Second", slug: "dup-slug" },
+        body: { name: "Second", slug: "dup-slug", channel: "ch-dup2" },
       });
 
       const res = await createStorefrontRoute(req);
@@ -215,8 +237,8 @@ describe("integration: B2C Storefronts API", () => {
 
   describe("GET /api/b2b/b2c/storefronts", () => {
     it("should return paginated storefronts", async () => {
-      await createViaAPI({ name: "Store A", slug: "store-a", domains: [] });
-      await createViaAPI({ name: "Store B", slug: "store-b", domains: [] });
+      await createViaAPI({ name: "Store A", slug: "store-a", channel: "ch-a", domains: [] });
+      await createViaAPI({ name: "Store B", slug: "store-b", channel: "ch-b", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts?page=1&limit=10");
       const res = await listStorefronts(req);
@@ -228,8 +250,8 @@ describe("integration: B2C Storefronts API", () => {
     });
 
     it("should filter by search", async () => {
-      await createViaAPI({ name: "Alpha Store", slug: "alpha", domains: [] });
-      await createViaAPI({ name: "Beta Store", slug: "beta", domains: [] });
+      await createViaAPI({ name: "Alpha Store", slug: "alpha", channel: "ch-alpha", domains: [] });
+      await createViaAPI({ name: "Beta Store", slug: "beta", channel: "ch-beta", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts?search=Alpha");
       const res = await listStorefronts(req);
@@ -247,7 +269,7 @@ describe("integration: B2C Storefronts API", () => {
   describe("GET /api/b2b/b2c/storefronts/[slug]", () => {
     it("should return storefront with branding/header/footer", async () => {
       // Create via API, then update with branding via PATCH
-      await createViaAPI({ name: "Full Store", slug: "full-store", domains: [] });
+      await createViaAPI({ name: "Full Store", slug: "full-store", channel: "ch-full", domains: [] });
 
       const patchReq = makeReq("/api/b2b/b2c/storefronts/full-store", {
         method: "PATCH",
@@ -298,7 +320,7 @@ describe("integration: B2C Storefronts API", () => {
 
   describe("PATCH /api/b2b/b2c/storefronts/[slug]", () => {
     it("should update branding", async () => {
-      await createViaAPI({ name: "Patch Test", slug: "patch-brand", domains: [] });
+      await createViaAPI({ name: "Patch Test", slug: "patch-brand", channel: "ch-brand", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts/patch-brand", {
         method: "PATCH",
@@ -321,7 +343,7 @@ describe("integration: B2C Storefronts API", () => {
     });
 
     it("should update header nav links", async () => {
-      await createViaAPI({ name: "Nav Test", slug: "patch-nav", domains: [] });
+      await createViaAPI({ name: "Nav Test", slug: "patch-nav", channel: "ch-nav", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts/patch-nav", {
         method: "PATCH",
@@ -345,7 +367,7 @@ describe("integration: B2C Storefronts API", () => {
     });
 
     it("should update footer columns and social links", async () => {
-      await createViaAPI({ name: "Footer Test", slug: "patch-footer", domains: [] });
+      await createViaAPI({ name: "Footer Test", slug: "patch-footer", channel: "ch-footer", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts/patch-footer", {
         method: "PATCH",
@@ -396,7 +418,7 @@ describe("integration: B2C Storefronts API", () => {
 
   describe("DELETE /api/b2b/b2c/storefronts/[slug]", () => {
     it("should delete storefront", async () => {
-      await createViaAPI({ name: "Delete Me", slug: "delete-me", domains: [] });
+      await createViaAPI({ name: "Delete Me", slug: "delete-me", channel: "ch-del", domains: [] });
 
       const req = makeReq("/api/b2b/b2c/storefronts/delete-me", {
         method: "DELETE",
@@ -447,7 +469,8 @@ describe("integration: B2C Public Home API", () => {
       await B2CStorefrontModel.create({
         name: "Public Shop",
         slug: "public-shop",
-        domains: ["shop.test.com"],
+        channel: "ch-public",
+        domains: [{ domain: "shop.test.com", is_primary: true }],
         status: "active",
         branding: {
           title: "Public Brand",
@@ -533,7 +556,8 @@ describe("integration: B2C Public Home API", () => {
       await B2CStorefrontModel.create({
         name: "Empty Shop",
         slug: "empty-shop",
-        domains: ["empty.test.com"],
+        channel: "ch-empty",
+        domains: [{ domain: "empty.test.com", is_primary: true }],
         status: "active",
         branding: { title: "Empty" },
         header: {},

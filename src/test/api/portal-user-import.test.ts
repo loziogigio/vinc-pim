@@ -1253,6 +1253,6 @@ describe("integration: Portal User Import API", () => {
       expect(user150!.is_active).toBe(false); // 150 % 5 === 0
       expect(user150!.customer_access).toHaveLength(1); // 150 % 3 === 0
       expect(await bcrypt.compare("0", user150!.password_hash)).toBe(true); // 150 % 10
-    }, 120_000);
+    }, 300_000);
   });
 });

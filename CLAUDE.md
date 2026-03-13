@@ -100,6 +100,37 @@ Key files:
 
 **Important:** Use collections API (`/admin/collections?action=...`), not cores API.
 
+### Translations (i18n) — ALWAYS respect translations
+
+The project uses a custom i18n system with 3 locales: **English (en)**, **Italian (it)**, **Slovak (sk)**.
+
+**Rules:**
+
+- **Never hard-code user-facing strings** in components. Always use translation keys via `t()`.
+- When adding new UI text, add the key to **all 3 locale files** (`en.ts`, `it.ts`, `sk.ts`).
+- Use the `useTranslation()` hook in client components:
+
+```tsx
+"use client";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+
+export function MyComponent() {
+  const { t } = useTranslation();
+  return <h1>{t("pages.myFeature.title")}</h1>;
+}
+```
+
+- Follow the existing nested key structure (e.g., `pages.pim.products.title`, `common.save`).
+- Use `common.*` keys for shared terms (Save, Cancel, Delete, etc.) — don't duplicate them.
+- Parameter substitution uses `{{param}}` syntax: `t("messages.greeting", { name: "John" })`.
+
+**Key files:**
+
+- Locale definitions: `src/lib/i18n/locales/en.ts`, `it.ts`, `sk.ts`
+- Hook: `src/lib/i18n/useTranslation.ts`
+- Core: `src/lib/i18n/index.ts` — `createT()`, fallback to English
+- Locale store: `src/lib/stores/uiLanguageStore.ts` (Zustand + localStorage)
+
 ### React Components
 
 - Functional components with TypeScript, define prop interfaces
@@ -180,6 +211,7 @@ Never hard-code magic values. See `docs/claude/constants-guide.md` for patterns.
 
 ### Things to NEVER Do
 
+- Hard-coded user-facing strings (always use `t()` translation keys, add to all 3 locales)
 - Client-side pagination (always server-side)
 - Hard-coded magic values (use constants)
 - Hard-coded secrets, API keys, or credentials in source files — always use environment variables (e.g., `process.env.SEED_API_KEY_ID`). Scripts in `scripts/` must read credentials from `.env` or CLI env vars, never inline them.
@@ -188,6 +220,7 @@ Never hard-code magic values. See `docs/claude/constants-guide.md` for patterns.
 
 ### Things to ALWAYS Do
 
+- Use `t()` for all user-facing text; add keys to `en.ts`, `it.ts`, and `sk.ts`
 - Server-side pagination via API with `page`/`limit` params
 - Use typed constants for statuses, types, rates
 - Use `requireTenantAuth` for all B2B routes

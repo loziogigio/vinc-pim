@@ -11,10 +11,8 @@ mongodb-exports/
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 
-# environment & logs
-.env
-.env.*
-.env.deploy
+# Environment
+.env*
 *.log
 
 # editor artifacts
@@ -29,7 +27,6 @@ test-*.json
 test-*.html
 sample-*.csv
 sample-*.json
-.env.local
 
 # E2E test scripts (contain API keys)
 scripts/e2e-*.ts

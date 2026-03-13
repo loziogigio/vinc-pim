@@ -9,40 +9,43 @@ import {
   Ban,
   Radio,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function AdminNavigation() {
+  const { t } = useTranslation();
+
   return (
-    <AppSidebar title="Admin">
+    <AppSidebar title={t("nav.admin.title")}>
       <NavLink
         href="/b2b/admin"
         icon={LayoutDashboard}
-        label="Dashboard"
+        label={t("nav.admin.dashboard")}
         exactMatch
       />
       <NavLink
         href="/b2b/admin/sessions"
         icon={Monitor}
-        label="Sessioni"
+        label={t("nav.admin.sessions")}
       />
       <NavLink
         href="/b2b/admin/login-attempts"
         icon={History}
-        label="Login Attempts"
+        label={t("nav.admin.loginAttempts")}
       />
       <NavLink
         href="/b2b/admin/security"
         icon={ShieldCheck}
-        label="Sicurezza"
+        label={t("nav.admin.security")}
       />
       <NavLink
         href="/b2b/admin/blocked-ips"
         icon={Ban}
-        label="IP Bloccati"
+        label={t("nav.admin.blockedIPs")}
       />
       <NavLink
         href="/b2b/admin/channels"
         icon={Radio}
-        label="Canali"
+        label={t("nav.admin.channels")}
       />
     </AppSidebar>
   );

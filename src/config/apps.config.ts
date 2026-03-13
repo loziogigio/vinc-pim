@@ -22,6 +22,7 @@ import {
   CalendarCheck,
   FileText,
   CreditCard,
+  DollarSign,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -171,6 +172,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/payments",
     icon: CreditCard,
     color: "bg-green-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "pricing",
+    name: "Pricing",
+    description: "Pricing provider management",
+    href: "/b2b/pricing",
+    icon: DollarSign,
+    color: "bg-indigo-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,
