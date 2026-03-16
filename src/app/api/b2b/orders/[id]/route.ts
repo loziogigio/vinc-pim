@@ -256,6 +256,11 @@ export async function PATCH(
       }
     }
 
+    // payment_method lives under the payment subdocument
+    if (body.payment_method !== undefined) {
+      updateDoc["payment.payment_method"] = body.payment_method;
+    }
+
     // Update the order (with tenant filter for security)
     const updatedOrder = await OrderModel.findOneAndUpdate(
       { order_id, tenant_id: tenantId },
