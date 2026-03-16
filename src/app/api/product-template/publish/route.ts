@@ -6,7 +6,7 @@ import { publishTemplate } from "@/lib/db/product-templates-simple";
 
 const assertAdminSession = async () => {
   const cookieStore = await cookies();
-  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions);
+  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions());
   if (!session.isLoggedIn) {
     return null;
   }

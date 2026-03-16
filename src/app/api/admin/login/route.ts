@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
-  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions);
+  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions());
   session.isLoggedIn = true;
   session.username = ADMIN_USERNAME;
   session.lastLoginAt = new Date().toISOString();

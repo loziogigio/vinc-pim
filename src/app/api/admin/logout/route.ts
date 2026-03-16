@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function POST() {
   const cookieStore = await cookies();
-  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions);
+  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions());
   await session.destroy();
   return NextResponse.json({ ok: true });
 }

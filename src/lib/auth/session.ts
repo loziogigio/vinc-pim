@@ -19,20 +19,22 @@ function getAdminSessionSecret(): string {
   return secret;
 }
 
-export const sessionOptions: SessionOptions = {
-  cookieName: "vinc_admin_session",
-  password: getAdminSessionSecret(),
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/"
-  }
-};
+export function sessionOptions(): SessionOptions {
+  return {
+    cookieName: "vinc_admin_session",
+    password: getAdminSessionSecret(),
+    cookieOptions: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/"
+    }
+  };
+}
 
 export const getAdminSession = async (): Promise<IronSession<AdminSessionData>> => {
   const cookieStore = await cookies();
-  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions);
+  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions());
   if (!session.isLoggedIn) {
     session.isLoggedIn = false;
   }

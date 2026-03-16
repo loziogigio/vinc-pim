@@ -6,7 +6,7 @@ import { duplicateVersion } from "@/lib/db/pages";
 
 const assertAdminSession = async () => {
   const cookieStore = await cookies();
-  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions);
+  const session = await getIronSession<AdminSessionData>(cookieStore, sessionOptions());
   if (!session.isLoggedIn) {
     return null;
   }
