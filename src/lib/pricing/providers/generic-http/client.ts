@@ -22,6 +22,53 @@ function getConfig(
   return tenantConfig as unknown as IGenericHttpProviderConfig;
 }
 
+/**
+ * Validate that a URL is safe (not targeting internal/private networks).
+ * Blocks private IPs, localhost, link-local, and cloud metadata endpoints.
+ */
+function validateExternalUrl(urlString: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    throw new Error("Invalid URL format");
+  }
+
+  // Only allow HTTPS in production
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("Only HTTP(S) protocols are allowed");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Block localhost and loopback
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "0.0.0.0"
+  ) {
+    throw new Error("Requests to localhost are not allowed");
+  }
+
+  // Block private IP ranges and cloud metadata
+  const privatePatterns = [
+    /^10\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^192\.168\./,
+    /^169\.254\./, // Link-local / AWS metadata
+    /^fc00:/i,
+    /^fd[0-9a-f]{2}:/i,
+    /^fe80:/i,
+  ];
+
+  for (const pattern of privatePatterns) {
+    if (pattern.test(hostname)) {
+      throw new Error("Requests to private/internal networks are not allowed");
+    }
+  }
+}
+
 function buildHeaders(config: IGenericHttpProviderConfig): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -121,6 +168,9 @@ export const genericHttpProvider: IPricingProvider = {
       : `/${config.endpoint}`;
     const url = `${baseUrl}${endpoint}`;
 
+    // SSRF protection: block requests to internal/private networks
+    validateExternalUrl(url);
+
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
@@ -187,6 +237,13 @@ export const genericHttpProvider: IPricingProvider = {
       : `/${config.endpoint}`;
     const url = `${baseUrl}${endpoint}`;
     const start = Date.now();
+
+    // SSRF protection: block requests to internal/private networks
+    try {
+      validateExternalUrl(url);
+    } catch (err: any) {
+      return { success: false, message: err.message, latency_ms: 0 };
+    }
 
     try {
       const controller = new AbortController();

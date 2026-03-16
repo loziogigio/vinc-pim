@@ -196,7 +196,15 @@ async function buildOrderVariables(
         billing_address: formatAddress(order.billing_snapshot),
         order_items_html: buildItemsTableHtml(order.items || [], order.currency),
         items_count: String((order.items || []).length),
-        subtotal_net: formatCurrency(order.subtotal_net, order.currency),
+        // When all items are vat_included, show gross subtotal (line_total); otherwise show net
+        subtotal_net: (() => {
+          const items = order.items || [];
+          const allVatIncluded = items.length > 0 && items.every((i) => i.vat_included);
+          const subtotal = allVatIncluded
+            ? items.reduce((sum, item) => sum + item.line_total, 0)
+            : items.reduce((sum, item) => sum + item.line_net, 0);
+          return formatCurrency(subtotal, order.currency);
+        })(),
         total_discount: (() => {
           if (!order.total_discount) return "";
           // When a coupon is present, subtract coupon discount to avoid double-counting
@@ -206,7 +214,12 @@ async function buildOrderVariables(
             : order.total_discount;
           return nonCouponDiscount > 0 ? formatCurrency(nonCouponDiscount, order.currency) : "";
         })(),
-        total_vat: formatCurrency(order.total_vat, order.currency),
+        // Hide IVA line when all items are vat_included (prices already include VAT)
+        total_vat: (() => {
+          const items = order.items || [];
+          const allVatIncluded = items.length > 0 && items.every((i) => i.vat_included);
+          return allVatIncluded ? "" : formatCurrency(order.total_vat, order.currency);
+        })(),
         shipping_cost: order.shipping_cost ? formatCurrency(order.shipping_cost, order.currency) : "",
         payment_method: formatPaymentMethod(paymentMethod),
         payment_terms: order.payment?.payment_terms || "",
@@ -215,6 +228,7 @@ async function buildOrderVariables(
           const cpn = order.cart_discounts?.find((d) => d.reason === "coupon");
           return cpn ? formatCurrency(Math.abs(cpn.value), order.currency) : "";
         })(),
+        customer_notes: order.notes || "",
         order_url: buildOrderUrl(frontendUrl, order.order_id),
         // Invoice / business fields
         invoice_company_name: order.invoice_data?.company_name || order.buyer?.company_name || "",
@@ -399,8 +413,9 @@ function buildItemsTableHtml(items: ILineItem[], currency?: string): string {
     const name = item.name || item.entity_code;
     const sku = item.sku || item.entity_code;
     const qty = item.quantity;
+    // When vat_included, show gross prices directly (unit_price is already gross, line_total includes VAT)
     const unitPrice = formatCurrency(item.unit_price, currency);
-    const lineTotal = formatCurrency(item.line_net, currency);
+    const lineTotal = formatCurrency(item.vat_included ? item.line_total : item.line_net, currency);
 
     const imgHtml = item.image_url
       ? `<img src="${escapeHtml(item.image_url)}" alt="" width="44" height="44" style="display: block; width: 44px; height: 44px; object-fit: cover; border: 1px solid #e2e8f0;" />`

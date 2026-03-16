@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,8 +21,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
     const skip = (page - 1) * limit;
 
     const tenantDb = `vinc-${session.tenantId}`;
@@ -34,10 +35,10 @@ export async function GET(req: NextRequest) {
     };
 
     if (search) {
-      const searchRegex = { $regex: search, $options: "i" };
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { email: searchRegex },
-        { username: searchRegex },
+        { email: safeSearch },
+        { username: safeSearch },
       ];
     }
 

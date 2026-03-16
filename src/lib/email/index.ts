@@ -209,6 +209,17 @@ async function getAdminEmailLogModel() {
 }
 
 // ============================================
+// EMAIL HEADER SANITIZATION
+// ============================================
+
+/**
+ * Strip CRLF and control chars to prevent email header injection.
+ */
+function sanitizeEmailHeader(value: string): string {
+  return value.replace(/[\r\n\x00-\x1f]/g, "").trim();
+}
+
+// ============================================
 // TRANSPORTER
 // ============================================
 
@@ -550,8 +561,8 @@ async function sendEmailNow(
 
       const result = await smtpTransport.sendMail({
         from: emailLog.from_name
-          ? `"${emailLog.from_name}" <${emailLog.from}>`
-          : emailLog.from,
+          ? `"${sanitizeEmailHeader(emailLog.from_name)}" <${sanitizeEmailHeader(emailLog.from)}>`
+          : sanitizeEmailHeader(emailLog.from),
         to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
         cc: emailLog.cc
           ? Array.isArray(emailLog.cc)
@@ -563,8 +574,8 @@ async function sendEmailNow(
             ? emailLog.bcc.join(", ")
             : emailLog.bcc
           : undefined,
-        replyTo: emailLog.reply_to,
-        subject: emailLog.subject,
+        replyTo: emailLog.reply_to ? sanitizeEmailHeader(emailLog.reply_to) : undefined,
+        subject: sanitizeEmailHeader(emailLog.subject),
         html: emailLog.html,
         text: emailLog.text,
         attachments: (emailLog as any)._attachments || undefined,

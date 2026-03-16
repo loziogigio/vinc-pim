@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { upsertTagRef } from "@/lib/services/tag-pricing.service";
+import { safeRegexQuery } from "@/lib/security";
 
 type RouteContext = { params: Promise<{ tag_id: string }> };
 
@@ -49,14 +50,15 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   };
 
   if (search) {
+    const safeSearch = safeRegexQuery(search);
     query.$or = [
-      { company_name: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
-      { first_name: { $regex: search, $options: "i" } },
-      { last_name: { $regex: search, $options: "i" } },
-      { customer_id: { $regex: search, $options: "i" } },
-      { public_code: { $regex: search, $options: "i" } },
-      { external_code: { $regex: search, $options: "i" } },
+      { company_name: safeSearch },
+      { email: safeSearch },
+      { first_name: safeSearch },
+      { last_name: safeSearch },
+      { customer_id: safeSearch },
+      { public_code: safeSearch },
+      { external_code: safeSearch },
     ];
   }
 

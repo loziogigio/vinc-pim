@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 
-// Default Header HTML - Uses variables for branding (responsive with MSO conditionals)
+// Default Header HTML - Clean white background with logo/name and accent border
 const DEFAULT_HEADER_HTML = `
 <style type="text/css">
   @media only screen and (max-width: 620px) {
@@ -25,13 +25,13 @@ const DEFAULT_HEADER_HTML = `
       <tr><td>
       <![endif]-->
       <div class="header-container" style="max-width: 600px; width: 100%; margin: 0 auto;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: {{primary_color}}; background: linear-gradient(135deg, {{primary_color}} 0%, #1e3a5f 100%); border-radius: 16px 16px 0 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px 16px 0 0; border-bottom: 3px solid {{primary_color}};">
           <tr>
-            <td class="header-content" align="center" style="padding: 40px 32px;">
+            <td class="header-content" align="center" style="padding: 32px 32px;">
               {{#if logo}}
                 <img src="{{logo}}" alt="{{company_name}}" class="header-logo" style="max-height: 56px; max-width: 220px;" />
               {{else}}
-                <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">{{company_name}}</h1>
+                <h1 style="margin: 0; font-size: 26px; font-weight: 700; color: #1e293b; letter-spacing: -0.5px;">{{company_name}}</h1>
               {{/if}}
             </td>
           </tr>

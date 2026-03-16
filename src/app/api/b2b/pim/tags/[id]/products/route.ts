@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 // GET /api/b2b/pim/tags/[id]/products - Get products linked to tag
 export async function GET(
@@ -29,8 +30,8 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10) || 50));
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {
@@ -40,10 +41,11 @@ export async function GET(
     };
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { entity_code: { $regex: search, $options: "i" } },
+        { name: safeSearch },
+        { sku: safeSearch },
+        { entity_code: safeSearch },
       ];
     }
 

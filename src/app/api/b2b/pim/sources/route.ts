@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * GET /api/b2b/pim/sources
@@ -34,8 +35,8 @@ export async function GET(req: NextRequest) {
     const { ImportSource: ImportSourceModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
     const search = searchParams.get("search") || "";
     const type = searchParams.get("type") || "";
 
@@ -43,9 +44,10 @@ export async function GET(req: NextRequest) {
     const query: any = {};
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { source_name: { $regex: search, $options: "i" } },
-        { source_id: { $regex: search, $options: "i" } },
+        { source_name: safeSearch },
+        { source_id: safeSearch },
       ];
     }
 

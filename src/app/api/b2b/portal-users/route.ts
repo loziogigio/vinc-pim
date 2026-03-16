@@ -13,6 +13,7 @@ import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import type { IPortalUserCreate, PortalUserSafe } from "@/lib/types/portal-user";
 import { DEFAULT_CHANNEL, isValidChannelCode } from "@/lib/constants/channel";
+import { safeRegexQuery } from "@/lib/security";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -44,10 +45,13 @@ async function authenticateAdmin(req: NextRequest): Promise<{
     tenantId = result.tenantId!;
     tenantDb = result.tenantDb!;
   } else {
-    // Session auth (admin users)
+    // Session auth (admin users only)
     const session = await getB2BSession();
     if (!session || !session.isLoggedIn || !session.tenantId) {
       return { authenticated: false, error: "Unauthorized", statusCode: 401 };
+    }
+    if (session.role !== "admin") {
+      return { authenticated: false, error: "Admin access required", statusCode: 403 };
     }
     tenantId = session.tenantId;
     tenantDb = `vinc-${session.tenantId}`;
@@ -92,10 +96,11 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = { tenant_id: auth.tenantId };
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { portal_user_id: { $regex: search, $options: "i" } },
-        { username: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { portal_user_id: safeSearch },
+        { username: safeSearch },
+        { email: safeSearch },
       ];
     }
 

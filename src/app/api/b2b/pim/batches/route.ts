@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * GET /api/b2b/pim/batches
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     // If search term provided, filter batch IDs
     if (search) {
-      query.batch_id = { $regex: search, $options: "i" };
+      query.batch_id = safeRegexQuery(search);
     }
 
     // Get distinct batch IDs from import jobs

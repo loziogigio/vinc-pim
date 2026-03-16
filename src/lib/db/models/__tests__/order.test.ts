@@ -18,16 +18,31 @@ describe("Order Utility Functions", () => {
       expect(result.line_total).toBe(244.0); // 200 + 44
     });
 
-    it("should handle fractional prices with rounding", () => {
+    it("should handle fractional prices with rounding (default price_decimals=2)", () => {
       const result = calculateLineItemTotals(3, 10.333, 8.567, 22);
 
-      // line_gross = 3 * 10.333 = 30.999 -> rounded to 31.0
+      // 10.333 → 10.33, 8.567 → 8.57 (rounded to 2dp before multiplying)
+      // line_gross = 3 * 10.33 = 30.99
+      expect(result.line_gross).toBe(30.99);
+      // line_net = 3 * 8.57 = 25.71
+      expect(result.line_net).toBe(25.71);
+      // line_vat = 25.71 * 0.22 = 5.6562 → 5.66
+      expect(result.line_vat).toBe(5.66);
+      // line_total = 25.71 + 5.66 = 31.37
+      expect(result.line_total).toBe(31.37);
+    });
+
+    it("should respect price_decimals=3 for higher precision", () => {
+      const result = calculateLineItemTotals(3, 10.333, 8.567, 22, false, 3);
+
+      // No rounding: 10.333 and 8.567 kept as-is (already 3dp)
+      // line_gross = 3 * 10.333 = 30.999 → 31.0
       expect(result.line_gross).toBe(31.0);
-      // line_net = 3 * 8.567 = 25.701 -> rounded to 25.7
+      // line_net = 3 * 8.567 = 25.701 → 25.7
       expect(result.line_net).toBe(25.7);
-      // line_vat = 25.7 * 0.22 = 5.654 -> rounded to 5.65
+      // line_vat = 25.701 * 0.22 = 5.65422 → 5.65
       expect(result.line_vat).toBe(5.65);
-      // line_total = 25.7 + 5.65 = 31.35 (actual: 31.36 due to floating point)
+      // line_total = 25.701 + 5.65422 = 31.35522 → 31.36
       expect(result.line_total).toBe(31.36);
     });
 

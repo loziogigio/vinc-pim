@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * GET /api/b2b/pim/filters
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
         const brands = await PIMProduct.distinct("brand.name", {
           ...query,
           "brand.name": { $exists: true, $ne: null, $nin: [""] },
-          ...(search && { "brand.name": { $regex: search, $options: "i" } }),
+          ...(search && { "brand.name": safeRegexQuery(search) }),
         });
         results = brands.filter((b) => b).sort();
         break;
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
           { $match: { ...query, "category.name": { $exists: true, $ne: null } } },
           { $project: { names: { $objectToArray: "$category.name" } } },
           { $unwind: "$names" },
-          { $match: { "names.v": { $ne: "" }, ...(search && { "names.v": { $regex: search, $options: "i" } }) } },
+          { $match: { "names.v": { $ne: "" }, ...(search && { "names.v": safeRegexQuery(search) }) } },
           { $group: { _id: "$names.v" } },
           { $sort: { _id: 1 } },
           { $limit: 10 },
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
         const currencies = await PIMProduct.distinct("currency", {
           ...query,
           currency: { $exists: true, $ne: null, $nin: [""] },
-          ...(search && { currency: { $regex: search, $options: "i" } }),
+          ...(search && { currency: safeRegexQuery(search) }),
         });
         results = currencies.filter((c) => c).sort();
         break;

@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import { DEFAULT_CHANNEL, isValidChannelCode } from "@/lib/constants/channel";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * Authenticate request via session or API key
@@ -87,8 +88,8 @@ export async function GET(req: NextRequest) {
     const { Customer: CustomerModel, Order: OrderModel } = auth.models;
 
     const searchParams = req.nextUrl.searchParams;
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
     const customerType = searchParams.get("customer_type");
     const isGuest = searchParams.get("is_guest");
     const search = searchParams.get("search");
@@ -124,13 +125,14 @@ export async function GET(req: NextRequest) {
 
     // Search across email, name, company, and codes
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { email: { $regex: search, $options: "i" } },
-        { first_name: { $regex: search, $options: "i" } },
-        { last_name: { $regex: search, $options: "i" } },
-        { company_name: { $regex: search, $options: "i" } },
-        { external_code: { $regex: search, $options: "i" } },
-        { public_code: { $regex: search, $options: "i" } },
+        { email: safeSearch },
+        { first_name: safeSearch },
+        { last_name: safeSearch },
+        { company_name: safeSearch },
+        { external_code: safeSearch },
+        { public_code: safeSearch },
       ];
     }
 

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 interface UserLookupResult {
   _id?: { toString(): string };
@@ -32,8 +33,8 @@ export async function GET(req: NextRequest) {
     const { FCMToken } = await connectWithModels(dbName);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
     const platform = searchParams.get("platform"); // ios, android
     const status = searchParams.get("status"); // active, inactive
     const search = searchParams.get("search") || "";
@@ -52,10 +53,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { user_id: { $regex: search, $options: "i" } },
-        { device_model: { $regex: search, $options: "i" } },
-        { device_id: { $regex: search, $options: "i" } },
+        { user_id: safeSearch },
+        { device_model: safeSearch },
+        { device_id: safeSearch },
       ];
     }
 

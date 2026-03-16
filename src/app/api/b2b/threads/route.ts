@@ -38,8 +38,8 @@ export async function GET(req: NextRequest) {
     const refId = searchParams.get("ref_id") || undefined;
     const status = searchParams.get("status") as "open" | "closed" | "archived" | undefined;
     const participantId = searchParams.get("participant_id") || undefined;
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
 
     const result = await listThreads(connection, {
       refType,

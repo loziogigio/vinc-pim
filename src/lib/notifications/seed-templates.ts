@@ -218,7 +218,7 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
       "customer_name", "order_number", "order_date", "order_total", "order_url", "shop_name",
       "shipping_address", "billing_address", "order_items_html", "items_count",
       "subtotal_net", "total_discount", "total_vat", "shipping_cost", "coupon_code", "coupon_discount",
-      "payment_method", "payment_terms",
+      "payment_method", "payment_terms", "customer_notes",
       "invoice_company_name", "invoice_vat_number", "invoice_fiscal_code", "invoice_pec", "invoice_sdi",
       "bank_iban", "bank_beneficiary", "bank_bic_swift", "bank_name", "bank_causale",
     ],
@@ -323,10 +323,12 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
           <td style="color: #1e293b; text-align: right; padding: 6px 0;">{{shipping_cost}}</td>
         </tr>
         {{/if}}
+        {{#if total_vat}}
         <tr>
           <td style="color: #64748b; padding: 6px 0;">IVA:</td>
           <td style="color: #1e293b; text-align: right; padding: 6px 0;">{{total_vat}}</td>
         </tr>
+        {{/if}}
         <tr>
           <td style="color: #1e293b; font-weight: 700; padding: 8px 0; border-top: 2px solid #1e293b; font-size: 16px;">Totale:</td>
           <td style="color: #166534; font-weight: 700; text-align: right; padding: 8px 0; border-top: 2px solid #1e293b; font-size: 16px;">{{order_total}}</td>
@@ -353,6 +355,18 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     <td bgcolor="#f8fafc" style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 14px;">
       <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 13px; font-weight: 600;">Indirizzo di Fatturazione</h4>
       <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.5;">{{billing_address}}</p>
+    </td>
+  </tr>
+</table>
+{{/if}}
+
+<!-- Customer Notes -->
+{{#if customer_notes}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#f8fafc" style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 14px;">
+      <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 13px; font-weight: 600;">Nota d&#39;Ordine</h4>
+      <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.5;">{{customer_notes}}</p>
     </td>
   </tr>
 </table>

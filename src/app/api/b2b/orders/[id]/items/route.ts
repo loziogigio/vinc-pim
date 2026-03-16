@@ -149,10 +149,12 @@ export async function POST(
     const existing = findMergeableItem(order, body);
     let item;
 
+    const pd = order.price_decimals ?? 2;
+
     if (existing) {
       // Update existing item - add to quantity
       const newQuantity = existing.item.quantity + body.quantity;
-      updateItemQuantity(existing.item, newQuantity);
+      updateItemQuantity(existing.item, newQuantity, pd);
       item = existing.item;
     } else {
       // Create new line item
@@ -223,7 +225,7 @@ export async function PATCH(
     }
 
     // Batch update items
-    const results = batchUpdateItems(order, itemsToUpdate);
+    const results = batchUpdateItems(order, itemsToUpdate, order.price_decimals ?? 2);
 
     // Save with recalculated totals
     await saveOrder(order);

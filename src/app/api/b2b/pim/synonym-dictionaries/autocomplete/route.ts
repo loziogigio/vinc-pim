@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 // GET /api/b2b/pim/synonym-dictionaries/autocomplete - Autocomplete search
 export async function GET(req: NextRequest) {
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q") || "";
     const locale = searchParams.get("locale") || "";
-    const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10", 10) || 10));
 
     if (!query || query.length < 2) {
       return NextResponse.json({ suggestions: [] });
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     // Build search query
     const searchQuery: Record<string, unknown> = {
       is_active: true,
-      terms: { $regex: query, $options: "i" },
+      terms: safeRegexQuery(query),
     };
 
     if (locale) {

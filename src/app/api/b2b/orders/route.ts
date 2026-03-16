@@ -8,6 +8,7 @@ import {
   getAccessibleCustomerIds,
   hasCustomerAccess,
 } from "@/lib/auth/portal-user-token";
+import { safeRegexQuery } from "@/lib/security";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import { nanoid } from "nanoid";
 import type { CreateOrderRequest } from "@/lib/types/order";
@@ -87,8 +88,8 @@ export async function GET(req: NextRequest) {
     const { Order: OrderModel, Customer: CustomerModel } = auth.models;
 
     const searchParams = req.nextUrl.searchParams;
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
     const status = searchParams.get("status");
     const year = searchParams.get("year");
     const dateFrom = searchParams.get("date_from");
@@ -187,7 +188,7 @@ export async function GET(req: NextRequest) {
     if (publicCode) {
       const matchingCustomers = await CustomerModel.find({
         tenant_id: tenantId,
-        public_code: { $regex: publicCode, $options: "i" },
+        public_code: safeRegexQuery(publicCode),
       })
         .select("customer_id")
         .lean();
@@ -515,6 +516,7 @@ export async function POST(req: NextRequest) {
       price_list_type: priceListType,
       order_type: orderType,
       currency: body.currency || "EUR",
+      price_decimals: body.price_decimals ?? 2,
       pricelist_type: body.pricelist_type,
       pricelist_code: body.pricelist_code,
 
@@ -536,6 +538,7 @@ export async function POST(req: NextRequest) {
       flow_id,
       source: "web",
       channel,
+      channel_ref: body.channel_ref || undefined,
 
       // Items (empty)
       items: [],

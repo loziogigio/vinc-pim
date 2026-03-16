@@ -40,6 +40,7 @@ import { getModelRegistry } from "@/lib/db/model-registry";
 import { confirmCouponUsage } from "@/lib/services/coupon.service";
 import { getNextOrderNumber } from "@/lib/db/models/counter";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
+import { createOrderNoteSubmission } from "@/lib/services/order-note.service";
 import { populateOrderSnapshots } from "@/lib/services/order-snapshot.service";
 
 // ============================================
@@ -1203,6 +1204,7 @@ export async function duplicateOrder(
     price_list_type: sourceOrder.price_list_type,
     order_type: sourceOrder.order_type,
     currency: sourceOrder.currency,
+    price_decimals: sourceOrder.price_decimals ?? 2,
     pricelist_type: sourceOrder.pricelist_type,
     pricelist_code: sourceOrder.pricelist_code,
 
@@ -1428,6 +1430,12 @@ export async function recordGatewayPayment(
           type: "order",
           order: confirmResult.order!,
         });
+
+        // Order note for online payments — only when customer left a note
+        if (confirmResult.order?.buyer && confirmResult.order.notes) {
+          void createOrderNoteSubmission(dbName, confirmResult.order);
+        }
+
         return { success: true, order: confirmResult.order };
       }
     } catch (err) {

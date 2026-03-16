@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * GET /api/b2b/pim/jobs
@@ -34,8 +35,8 @@ export async function GET(req: NextRequest) {
     const { ImportJob: ImportJobModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "25");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "25") || 25));
     const status = searchParams.get("status");
     const jobType = searchParams.get("job_type"); // "import" or "association"
     const source = searchParams.get("source");
@@ -89,18 +90,19 @@ export async function GET(req: NextRequest) {
       const importQuery = { ...baseQuery };
 
       if (source) {
-        importQuery.source_id = { $regex: source, $options: "i" };
+        importQuery.source_id = safeRegexQuery(source);
       }
 
       if (batch) {
-        importQuery.batch_id = { $regex: batch, $options: "i" };
+        importQuery.batch_id = safeRegexQuery(batch);
       }
 
       if (search) {
+        const safeSearch = safeRegexQuery(search);
         importQuery.$or = [
-          { file_name: { $regex: search, $options: "i" } },
-          { job_id: { $regex: search, $options: "i" } },
-          { source_id: { $regex: search, $options: "i" } },
+          { file_name: safeSearch },
+          { job_id: safeSearch },
+          { source_id: safeSearch },
         ];
       }
 
@@ -118,10 +120,11 @@ export async function GET(req: NextRequest) {
       const associationQuery = { ...baseQuery };
 
       if (search) {
+        const safeSearch = safeRegexQuery(search);
         associationQuery.$or = [
-          { entity_name: { $regex: search, $options: "i" } },
-          { job_id: { $regex: search, $options: "i" } },
-          { "metadata.file_name": { $regex: search, $options: "i" } },
+          { entity_name: safeSearch },
+          { job_id: safeSearch },
+          { "metadata.file_name": safeSearch },
         ];
       }
 

@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     const result = await listTemplates(tenantDb, {
-      page: parseInt(searchParams.get("page") || "1"),
-      limit: parseInt(searchParams.get("limit") || "20"),
+      page: Math.max(1, parseInt(searchParams.get("page") || "1") || 1),
+      limit: Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20)),
       trigger: searchParams.get("trigger") as any,
       is_active: searchParams.get("is_active") === "true" ? true : searchParams.get("is_active") === "false" ? false : undefined,
       is_default: searchParams.get("is_default") === "true" ? true : searchParams.get("is_default") === "false" ? false : undefined,

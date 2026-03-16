@@ -161,6 +161,24 @@ export async function createStorefront(
   // Initialize empty home template for this storefront
   await initB2CHomeTemplate(input.slug, input.name, tenantDb);
 
+  // Seed system form definitions (e.g., order_note)
+  try {
+    const { FormDefinition } = await connectWithModels(tenantDb);
+    await FormDefinition.create({
+      storefront_slug: input.slug,
+      slug: "order_note",
+      name: "Order Note",
+      config: { variant: "form", fields: [], title: "Order Note" },
+      notification_emails: [],
+      send_submitter_copy: false,
+      is_system: true,
+      enabled: true,
+    });
+  } catch (err) {
+    // Non-critical — log but don't block storefront creation
+    console.warn(`${logPrefix} Failed to seed order_note form definition:`, err);
+  }
+
   console.log(
     `${logPrefix} Created storefront "${input.name}" (slug: ${input.slug})`
   );

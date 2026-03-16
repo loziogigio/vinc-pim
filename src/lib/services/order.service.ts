@@ -213,14 +213,16 @@ export function findMergeableItem(
  */
 export function updateItemQuantity(
   item: ILineItem,
-  newQuantity: number
+  newQuantity: number,
+  price_decimals: number = 2
 ): void {
   const totals = calculateLineItemTotals(
     newQuantity,
     item.list_price,
     item.unit_price,
     item.vat_rate,
-    item.vat_included
+    item.vat_included,
+    price_decimals
   );
 
   item.quantity = newQuantity;
@@ -236,14 +238,16 @@ export function updateItemQuantity(
  */
 export function updateItemPrice(
   item: ILineItem,
-  newUnitPrice: number
+  newUnitPrice: number,
+  price_decimals: number = 2
 ): void {
   const totals = calculateLineItemTotals(
     item.quantity,
     item.list_price,
     newUnitPrice,
     item.vat_rate,
-    item.vat_included
+    item.vat_included,
+    price_decimals
   );
 
   item.unit_price = newUnitPrice;
@@ -266,7 +270,8 @@ export function createLineItem(
     body.list_price,
     body.unit_price,
     body.vat_rate,
-    body.vat_included
+    body.vat_included,
+    order.price_decimals ?? 2
   );
 
   // Calculate total discount percent from discounts array
@@ -365,7 +370,8 @@ interface UpdateItemInput {
  */
 export function batchUpdateItems(
   order: IOrder,
-  updates: UpdateItemInput[]
+  updates: UpdateItemInput[],
+  price_decimals: number = 2
 ): BatchItemResult[] {
   const results: BatchItemResult[] = [];
 
@@ -423,7 +429,7 @@ export function batchUpdateItems(
         continue;
       }
 
-      updateItemQuantity(item, quantity);
+      updateItemQuantity(item, quantity, price_decimals);
     }
 
     // Update unit price if provided
@@ -437,7 +443,7 @@ export function batchUpdateItems(
         continue;
       }
 
-      updateItemPrice(item, unit_price);
+      updateItemPrice(item, unit_price, price_decimals);
     }
 
     // Mark item as updated

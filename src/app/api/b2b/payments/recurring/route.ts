@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { getPooledConnection } from "@/lib/db/connection";
 import { getModelRegistry } from "@/lib/db/model-registry";
+import { safeRegexQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,10 +39,11 @@ export async function GET(req: NextRequest) {
     if (contractType) query.contract_type = contractType;
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { contract_id: { $regex: search, $options: "i" } },
-        { customer_id: { $regex: search, $options: "i" } },
-        { provider_contract_id: { $regex: search, $options: "i" } },
+        { contract_id: safeSearch },
+        { customer_id: safeSearch },
+        { provider_contract_id: safeSearch },
       ];
     }
 

@@ -10,6 +10,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { createDocument } from "@/lib/services/document.service";
 import { DOCUMENT_TYPES, DOCUMENT_STATUSES } from "@/lib/constants/document";
 import { authenticateDocumentRequest } from "./_auth";
+import { safeRegexQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateDocumentRequest(req);
@@ -41,10 +42,11 @@ export async function GET(req: NextRequest) {
     query["customer.customer_id"] = customerId;
   }
   if (search) {
+    const safeSearch = safeRegexQuery(search);
     query.$or = [
-      { document_number: { $regex: search, $options: "i" } },
-      { "customer.company_name": { $regex: search, $options: "i" } },
-      { "customer.vat_number": { $regex: search, $options: "i" } },
+      { document_number: safeSearch },
+      { "customer.company_name": safeSearch },
+      { "customer.vat_number": safeSearch },
     ];
   }
 

@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
+import { safeRegexQuery } from "@/lib/security";
 
 // GET /api/b2b/pim/brands - List all brands with filtering (session + API key auth)
 export async function GET(req: NextRequest) {
@@ -19,17 +20,18 @@ export async function GET(req: NextRequest) {
     const hasLogo = searchParams.get("has_logo");
     const sortBy = searchParams.get("sort_by") || "created_at";
     const sortOrder = searchParams.get("sort_order") || "desc";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
 
     // Build query - no wholesaler_id, database provides isolation
     const query: any = {};
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { label: { $regex: search, $options: "i" } },
-        { slug: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { label: safeSearch },
+        { slug: safeSearch },
+        { description: safeSearch },
       ];
     }
 

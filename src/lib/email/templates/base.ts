@@ -151,13 +151,25 @@ export function renderButton(text: string, url: string, primaryColor: string): s
 }
 
 /**
+ * Escape HTML special characters to prevent XSS in email templates
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Renders an info box with key-value pairs
  */
 export function renderInfoBox(items: Array<{ label: string; value: string }>, bgColor = '#f8f9fb'): string {
   const rows = items.map(item => `
     <tr>
-      <td style="padding: 8px 16px; font-size: 14px; color: #64748b; border-bottom: 1px solid #eaeef2;">${item.label}</td>
-      <td style="padding: 8px 16px; font-size: 14px; color: #1e293b; font-weight: 500; border-bottom: 1px solid #eaeef2;">${item.value}</td>
+      <td style="padding: 8px 16px; font-size: 14px; color: #64748b; border-bottom: 1px solid #eaeef2;">${escapeHtml(item.label)}</td>
+      <td style="padding: 8px 16px; font-size: 14px; color: #1e293b; font-weight: 500; border-bottom: 1px solid #eaeef2;">${escapeHtml(item.value)}</td>
     </tr>
   `).join('');
 

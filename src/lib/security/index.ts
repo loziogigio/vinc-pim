@@ -25,6 +25,7 @@ export {
   // Helper functions
   parseSearchParams,
   safeParseParams,
+  safePagination,
   buildProductFilter,
   buildSearchQuery,
   // Types

@@ -15,6 +15,7 @@ import {
   RECIPIENT_TYPES,
   type CampaignStatus,
 } from "@/lib/constants/notification";
+import { safeRegexQuery } from "@/lib/security";
 
 // ============================================
 // GET - List campaigns
@@ -45,12 +46,12 @@ export async function GET(req: NextRequest) {
 
     // Add search filter
     if (search && search.trim()) {
-      const searchTerm = search.trim();
+      const safeSearch = safeRegexQuery(search.trim());
       query.$or = [
-        { name: { $regex: searchTerm, $options: "i" } },
-        { title: { $regex: searchTerm, $options: "i" } },
-        { campaign_id: { $regex: searchTerm, $options: "i" } },
-        { slug: { $regex: searchTerm, $options: "i" } },
+        { name: safeSearch },
+        { title: safeSearch },
+        { campaign_id: safeSearch },
+        { slug: safeSearch },
       ];
     }
 

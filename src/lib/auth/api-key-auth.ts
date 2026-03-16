@@ -70,11 +70,11 @@ export function clearAuthCache(): void {
 
 /**
  * Extract tenant ID from API key format: "ak_{tenant-id}_{random}"
+ * Tenant IDs contain only lowercase alphanumeric chars and hyphens.
  */
 export function extractTenantFromKeyId(keyId: string): string | null {
-  // Match pattern: ak_{tenant-id}_{random}
-  // Tenant ID can contain hyphens, so we match everything between first and last underscore
-  const match = keyId.match(/^ak_(.+)_[a-f0-9]{12}$/);
+  // Non-greedy match: tenant ID is lowercase alphanumeric + hyphens only
+  const match = keyId.match(/^ak_([a-z0-9][a-z0-9-]{1,62}[a-z0-9])_[a-f0-9]{12}$/);
   return match ? match[1] : null;
 }
 
@@ -143,6 +143,11 @@ export async function verifyAPIKey(
     // 5. Check if active
     if (!keyDoc.is_active) {
       return { valid: false, error: "API key is inactive" };
+    }
+
+    // 5b. Verify extracted tenant matches stored key's tenant
+    if (keyDoc.tenant_id && keyDoc.tenant_id !== tenantId) {
+      return { valid: false, error: "API key tenant mismatch" };
     }
 
     // 6. Verify secret with bcrypt

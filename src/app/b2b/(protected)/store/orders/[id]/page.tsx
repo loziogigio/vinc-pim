@@ -882,9 +882,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               </span>
                             </div>
                           )}
-                          {/* Unit Price (Net) - with inline editing for draft */}
+                          {/* Unit Price - with inline editing for draft */}
                           <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground">Net: </span>
+                            <span className="text-muted-foreground">{item.vat_included ? "Gross: " : "Net: "}</span>
                             <span className="font-semibold text-foreground">
                               {new Intl.NumberFormat("it-IT", {
                                 style: "currency",

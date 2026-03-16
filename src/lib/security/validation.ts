@@ -242,6 +242,24 @@ export function buildSearchQuery(
 }
 
 // ============================================
+// Safe Pagination Helper
+// ============================================
+
+/**
+ * Parse and cap pagination parameters from URL search params.
+ * Prevents unbounded queries (DOS) by enforcing min/max limits.
+ */
+export function safePagination(
+  searchParams: URLSearchParams,
+  defaults: { page?: number; limit?: number; maxLimit?: number } = {}
+): { page: number; limit: number } {
+  const { page: defaultPage = 1, limit: defaultLimit = 20, maxLimit = 100 } = defaults;
+  const page = Math.max(1, parseInt(searchParams.get("page") || String(defaultPage)) || defaultPage);
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(searchParams.get("limit") || String(defaultLimit)) || defaultLimit));
+  return { page, limit };
+}
+
+// ============================================
 // Type Exports
 // ============================================
 

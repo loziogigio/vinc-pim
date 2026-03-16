@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
     const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
     const status = searchParams.get("status");
     const search = searchParams.get("search");
     const sourceId = searchParams.get("source_id");

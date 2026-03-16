@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateDocumentRequest } from "../../_auth";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateDocumentRequest(req);
@@ -25,13 +26,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, customers: [] });
   }
 
+  const safeQ = safeRegexQuery(q);
   const customers = await Customer.find({
     $or: [
-      { company_name: { $regex: q, $options: "i" } },
-      { "legal_info.vat_number": { $regex: q, $options: "i" } },
-      { first_name: { $regex: q, $options: "i" } },
-      { last_name: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } },
+      { company_name: safeQ },
+      { "legal_info.vat_number": safeQ },
+      { first_name: safeQ },
+      { last_name: safeQ },
+      { email: safeQ },
     ],
   })
     .select("customer_id company_name first_name last_name email phone customer_type legal_info addresses")

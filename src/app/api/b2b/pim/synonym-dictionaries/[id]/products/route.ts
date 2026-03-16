@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { Model } from "mongoose";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * Sync products to Solr after synonym_keys change
@@ -58,8 +59,8 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
 
     // Get the dictionary to find its key
     const dictionary = await SynonymDictionaryModel.findOne({
@@ -77,11 +78,12 @@ export async function GET(
     };
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { entity_code: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { "name.it": { $regex: search, $options: "i" } },
-        { "name.en": { $regex: search, $options: "i" } },
+        { entity_code: safeSearch },
+        { sku: safeSearch },
+        { "name.it": safeSearch },
+        { "name.en": safeSearch },
       ];
     }
 

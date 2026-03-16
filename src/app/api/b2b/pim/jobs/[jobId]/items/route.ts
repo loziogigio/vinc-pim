@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 /**
  * GET /api/b2b/pim/jobs/[jobId]/items
@@ -27,8 +28,8 @@ export async function GET(
     const { jobId } = await params;
     const { searchParams } = new URL(req.url);
 
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
     const search = searchParams.get("search") || "";
     const statusFilter = searchParams.get("status") || "";
 
@@ -75,11 +76,12 @@ export async function GET(
 
       // Add search filter
       if (search) {
+        const safeSearch = safeRegexQuery(search);
         conditions.push({
           $or: [
-            { entity_code: { $regex: search, $options: "i" } },
-            { sku: { $regex: search, $options: "i" } },
-            { name: { $regex: search, $options: "i" } },
+            { entity_code: safeSearch },
+            { sku: safeSearch },
+            { name: safeSearch },
           ],
         });
       }

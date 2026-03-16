@@ -337,6 +337,7 @@ export interface IOrder extends Document {
   price_list_type: PriceListType;
   order_type: OrderType;
   currency: string;
+  price_decimals: number; // Decimal precision for unit prices (default 2)
   pricelist_type?: string; // External pricelist type (e.g., "VEND")
   pricelist_code?: string; // External pricelist code (e.g., "02")
 
@@ -829,6 +830,7 @@ const OrderSchema = new Schema<IOrder>(
       default: "b2b",
     },
     currency: { type: String, required: true, default: "EUR" },
+    price_decimals: { type: Number, default: 2 }, // Decimal precision for unit prices
     pricelist_type: { type: String }, // External pricelist type (e.g., "VEND")
     pricelist_code: { type: String }, // External pricelist code (e.g., "02")
 
@@ -1104,22 +1106,34 @@ export function recalculateOrderTotals(order: IOrder): void {
     }
   }
 
-  // Apply cart-level discounts
-  let cartDiscountTotal = 0;
+  // Apply cart-level discounts.
+  // Fixed coupon amounts are always gross (VAT-inclusive): "€5 off" means
+  // €5 off the total the customer pays. Split into net + vat parts where
+  // vatPart = gross - netPart, guaranteeing they sum to exactly the gross
+  // amount (no floating-point drift).
+  const avgVatRate = subtotalNet > 0 ? totalVat / subtotalNet : 0;
+  let cartDiscountNet = 0;
+  let cartDiscountVat = 0;
+
   for (const discount of cartDiscounts) {
     if (discount.type === "percentage") {
-      cartDiscountTotal += subtotalNet * Math.abs(discount.value) / 100;
+      const netPart = subtotalNet * Math.abs(discount.value) / 100;
+      cartDiscountNet += netPart;
+      cartDiscountVat += netPart * avgVatRate;
     } else if (discount.type === "fixed") {
-      cartDiscountTotal += Math.abs(discount.value);
+      const grossAmt = Math.abs(discount.value);
+      if (avgVatRate > 0) {
+        const netPart = grossAmt / (1 + avgVatRate);
+        cartDiscountNet += netPart;
+        cartDiscountVat += grossAmt - netPart; // complement → exact sum
+      } else {
+        cartDiscountNet += grossAmt;
+      }
     }
   }
 
-  // Apply cart discount proportionally to VAT
-  if (cartDiscountTotal > 0 && subtotalNet > 0) {
-    const avgVatRate = totalVat / subtotalNet;
-    totalVat -= cartDiscountTotal * avgVatRate;
-  }
-  subtotalNet -= cartDiscountTotal;
+  subtotalNet -= cartDiscountNet;
+  totalVat -= cartDiscountVat;
 
   // Ensure non-negative values
   subtotalNet = Math.max(0, subtotalNet);
@@ -1137,21 +1151,30 @@ export function recalculateOrderTotals(order: IOrder): void {
  * Calculate line item totals.
  * When vat_included is true, prices are gross (VAT-inclusive) and VAT is extracted.
  * When false/undefined, prices are net and VAT is added on top (default behavior).
+ *
+ * @param price_decimals — decimal precision for unit prices (default 2).
+ *   Prices are rounded to this precision before multiplying by quantity,
+ *   so line totals match what the customer sees (e.g., 8.784 → 8.78).
  */
 export function calculateLineItemTotals(
   quantity: number,
   list_price: number,
   unit_price: number,
   vat_rate: number,
-  vat_included?: boolean
+  vat_included?: boolean,
+  price_decimals: number = 2
 ): Pick<ILineItem, "line_gross" | "line_net" | "line_vat" | "line_total"> {
+  const factor = Math.pow(10, price_decimals);
+  const roundedUnitPrice = Math.round(unit_price * factor) / factor;
+  const roundedListPrice = Math.round(list_price * factor) / factor;
+
   if (vat_included) {
     // Prices are gross (VAT-inclusive) — extract VAT
     const divisor = 1 + vat_rate / 100;
-    const line_total = quantity * unit_price;
+    const line_total = quantity * roundedUnitPrice;
     const line_net = line_total / divisor;
     const line_vat = line_total - line_net;
-    const line_gross_total = quantity * list_price;
+    const line_gross_total = quantity * roundedListPrice;
     const line_gross = line_gross_total / divisor;
 
     return {
@@ -1163,8 +1186,8 @@ export function calculateLineItemTotals(
   }
 
   // Default: prices are net (VAT-exclusive) — add VAT on top
-  const line_gross = quantity * list_price;
-  const line_net = quantity * unit_price;
+  const line_gross = quantity * roundedListPrice;
+  const line_net = quantity * roundedUnitPrice;
   const line_vat = line_net * (vat_rate / 100);
   const line_total = line_net + line_vat;
 
@@ -1186,18 +1209,25 @@ export function getNextLineNumber(items: ILineItem[]): number {
 }
 
 /**
- * Calculate total cart discount amount
+ * Calculate total cart discount amount (net equivalent).
+ * Fixed discounts are gross (VAT-inclusive) — converted to net using avgVatRate.
  */
 export function calculateCartDiscountTotal(
   subtotalNet: number,
-  cartDiscounts: ICartDiscount[]
+  cartDiscounts: ICartDiscount[],
+  totalVat?: number
 ): number {
   let total = 0;
+  const avgVatRate = totalVat && subtotalNet > 0 ? totalVat / subtotalNet : 0;
   for (const discount of cartDiscounts) {
     if (discount.type === "percentage") {
       total += subtotalNet * Math.abs(discount.value) / 100;
     } else if (discount.type === "fixed") {
-      total += Math.abs(discount.value);
+      if (avgVatRate > 0) {
+        total += Math.abs(discount.value) / (1 + avgVatRate);
+      } else {
+        total += Math.abs(discount.value);
+      }
     }
   }
   return Math.round(total * 100) / 100;

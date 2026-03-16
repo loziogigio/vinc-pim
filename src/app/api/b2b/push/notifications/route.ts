@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
 
     // Get query params
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
-    const skip = parseInt(searchParams.get("skip") || "0", 10);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
+    const skip = Math.max(0, parseInt(searchParams.get("skip") || "0") || 0);
     const unreadOnly = searchParams.get("unread") === "true";
 
     // Get user's subscriptions to find their notifications

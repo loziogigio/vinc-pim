@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { getPooledConnection } from "@/lib/db/connection";
 import { getModelRegistry } from "@/lib/db/model-registry";
+import { safeRegexQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,13 +53,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { transaction_id: { $regex: search, $options: "i" } },
-        { payment_number: { $regex: search, $options: "i" } },
-        { provider_payment_id: { $regex: search, $options: "i" } },
-        { provider_capture_id: { $regex: search, $options: "i" } },
-        { customer_email: { $regex: search, $options: "i" } },
-        { order_id: { $regex: search, $options: "i" } },
+        { transaction_id: safeSearch },
+        { payment_number: safeSearch },
+        { provider_payment_id: safeSearch },
+        { provider_capture_id: safeSearch },
+        { customer_email: safeSearch },
+        { order_id: safeSearch },
       ];
     }
 

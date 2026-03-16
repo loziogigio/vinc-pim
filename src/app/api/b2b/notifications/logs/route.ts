@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
+import { safeRegexQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,8 +27,8 @@ export async function GET(req: NextRequest) {
     const EmailLog = adminConn.models.EmailLog || adminConn.model("EmailLog", EmailLogSchema);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
     const skip = (page - 1) * limit;
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
@@ -38,9 +39,10 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = { tenant_db: tenantDb };
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { to: { $regex: search, $options: "i" } },
-        { subject: { $regex: search, $options: "i" } },
+        { to: safeSearch },
+        { subject: safeSearch },
       ];
     }
 

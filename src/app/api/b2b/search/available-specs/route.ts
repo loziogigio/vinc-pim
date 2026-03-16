@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     const productTypeId = searchParams.get("product_type_id");
     const productTypeCode = searchParams.get("product_type_code");
     const productTypeSlug = searchParams.get("product_type_slug");
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "100") || 100));
 
     // Build Solr query to get sample products
     const solrConfig = getSolrConfig();

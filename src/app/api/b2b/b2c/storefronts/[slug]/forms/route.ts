@@ -18,11 +18,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     const limit = parseInt(url.searchParams.get("limit") || "25", 10);
     const pageSlug = url.searchParams.get("page_slug") || undefined;
+    const formType = url.searchParams.get("form_type") || undefined;
 
     const { FormSubmission } = await connectWithModels(auth.tenantDb);
 
     const filter: Record<string, unknown> = { storefront_slug: slug };
     if (pageSlug) filter.page_slug = pageSlug;
+    if (formType) filter.form_type = formType;
 
     const skip = (page - 1) * limit;
 

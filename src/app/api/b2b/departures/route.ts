@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
       status: (searchParams.get("status") as DepartureListFilters["status"]) || undefined,
       date_from: searchParams.get("date_from") || undefined,
       date_to: searchParams.get("date_to") || undefined,
-      page: parseInt(searchParams.get("page") || "1"),
-      limit: parseInt(searchParams.get("limit") || "20"),
+      page: Math.max(1, parseInt(searchParams.get("page") || "1") || 1),
+      limit: Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20)),
     };
 
     const result = await listDepartures(auth.tenantDb, auth.tenantId, filters);

@@ -64,6 +64,7 @@ import { SalesChannelSchema } from "./models/sales-channel";
 import { BatchSyncLogSchema } from "./models/batch-sync-log";
 import { B2CPageSchema } from "./models/b2c-page";
 import { FormSubmissionSchema } from "./models/form-submission";
+import { FormDefinitionSchema } from "./models/form-definition";
 import { B2CSitemapSchema } from "./models/b2c-sitemap";
 import { CouponSchema } from "./models/coupon";
 import { TenantPricingConfigSchema } from "./models/tenant-pricing-config";
@@ -127,6 +128,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   BatchSyncLog: BatchSyncLogSchema,
   B2CPage: B2CPageSchema,
   FormSubmission: FormSubmissionSchema,
+  FormDefinition: FormDefinitionSchema,
   B2CSitemap: B2CSitemapSchema,
   Coupon: CouponSchema,
   TenantPricingConfig: TenantPricingConfigSchema,
@@ -232,6 +234,7 @@ export async function getTenantModels(dbName: string) {
     BatchSyncLog: connection.models.BatchSyncLog,
     B2CPage: connection.models.B2CPage,
     FormSubmission: connection.models.FormSubmission,
+    FormDefinition: connection.models.FormDefinition,
     B2CSitemap: connection.models.B2CSitemap,
     Coupon: connection.models.Coupon,
     TenantPricingConfig: connection.models.TenantPricingConfig,
@@ -305,6 +308,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     BatchSyncLog: connection.models.BatchSyncLog,
     B2CPage: connection.models.B2CPage,
     FormSubmission: connection.models.FormSubmission,
+    FormDefinition: connection.models.FormDefinition,
     B2CSitemap: connection.models.B2CSitemap,
     Coupon: connection.models.Coupon,
     TenantPricingConfig: connection.models.TenantPricingConfig,

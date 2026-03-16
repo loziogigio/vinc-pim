@@ -7,11 +7,21 @@ export type AdminSessionData = {
   lastLoginAt?: string;
 };
 
-const DEFAULT_SESSION_SECRET = "dev-admin-session-secret-change-me-please-123456";
+function getAdminSessionSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ADMIN_SESSION_SECRET must be set (min 32 chars) in production");
+    }
+    // Dev-only fallback — never used in production
+    return "dev-admin-session-secret-change-me-please-123456";
+  }
+  return secret;
+}
 
 export const sessionOptions: SessionOptions = {
   cookieName: "vinc_admin_session",
-  password: process.env.ADMIN_SESSION_SECRET ?? DEFAULT_SESSION_SECRET,
+  password: getAdminSessionSecret(),
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,

@@ -11,6 +11,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { submitOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { isDeferredPaymentMethod } from "@/lib/constants/payment";
+import { createOrderNoteSubmission } from "@/lib/services/order-note.service";
 
 export async function POST(
   req: NextRequest,
@@ -44,6 +45,11 @@ export async function POST(
         order: result.order!,
         portalUserId: auth.userId || undefined,
       });
+
+      // Order note for deferred payments — only when customer left a note
+      if (result.order?.buyer && result.order.notes) {
+        void createOrderNoteSubmission(dbName, result.order);
+      }
     }
 
     return NextResponse.json({

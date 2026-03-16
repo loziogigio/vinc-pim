@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { buildCategoryEmbedding } from "@/lib/services/category.service";
+import { safeRegexQuery } from "@/lib/security";
 
 // GET /api/b2b/pim/categories/[id]/products - Get products for a category
 export async function GET(
@@ -26,8 +27,8 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {
@@ -36,10 +37,11 @@ export async function GET(
     };
 
     if (search) {
+      const safeSearch = safeRegexQuery(search);
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { entity_code: { $regex: search, $options: "i" } },
+        { name: safeSearch },
+        { sku: safeSearch },
+        { entity_code: safeSearch },
       ];
     }
 

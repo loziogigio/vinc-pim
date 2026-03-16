@@ -85,20 +85,22 @@ describe("unit: calculateLineItemTotals", () => {
     expect(result4.line_vat).toBe(40); // 1000 * 0.04
   });
 
-  it("should round to 2 decimal places", () => {
+  it("should round to 2 decimal places (default price_decimals=2)", () => {
     /**
      * Ensure proper rounding for currency values.
-     * qty=3, unit_price=0.1056, vat=22%
-     * line_net = 3 * 0.1056 = 0.3168 → 0.32
-     * line_vat = 0.32 * 0.22 = 0.0704 → 0.07
+     * Prices rounded to 2dp first: 0.21106 → 0.21, 0.1056 → 0.11
+     * qty=3, roundedUnitPrice=0.11, vat=22%
+     * line_net = 3 * 0.11 = 0.33
+     * line_vat = 0.33 * 0.22 = 0.0726 → 0.07
+     * line_total = 0.33 + 0.0726 = 0.4026 → 0.4
      */
     // Arrange & Act
     const result = calculateLineItemTotals(3, 0.21106, 0.1056, 22);
 
     // Assert - values should be rounded
-    expect(result.line_net).toBe(0.32);
+    expect(result.line_net).toBe(0.33);
     expect(result.line_vat).toBe(0.07);
-    expect(result.line_total).toBe(0.39);
+    expect(result.line_total).toBe(0.4);
   });
 
   it("should handle large quantities", () => {
@@ -497,6 +499,70 @@ describe("unit: recalculateOrderTotals (vat_included items)", () => {
     expect(order.subtotal_net).toBe(300);
     expect(order.total_vat).toBe(66);
     expect(order.order_total).toBe(366);
+  });
+
+  it("should apply fixed coupon discount as gross (VAT-inclusive) amount", () => {
+    // B2C scenario: 2 items with vat_included, 22% VAT, fixed €5 coupon, €9.90 shipping
+    // Item 1: gross 14.05 → net 11.52, vat 2.53
+    // Item 2: gross 8.78  → net 7.20,  vat 1.58
+    // Gross subtotal = 14.05 + 8.78 = 22.83
+    // B2C expected total: 22.83 - 5.00 + 9.90 = 27.73
+    const item1 = calculateLineItemTotals(1, 14.05, 14.05, 22, true);
+    const item2 = calculateLineItemTotals(1, 8.78, 8.78, 22, true);
+
+    const order = createMockOrder([
+      { vat_included: true, vat_rate: 22, quantity: 1, list_price: 14.05, unit_price: 14.05, ...item1 },
+      { vat_included: true, vat_rate: 22, quantity: 1, list_price: 8.78, unit_price: 8.78, ...item2 },
+    ]);
+    order.shipping_cost = 9.90;
+    order.cart_discounts = [
+      { discount_id: "cpn1", reason: "coupon", type: "fixed", value: -5, label: "SPRING-2026" } as any,
+    ];
+
+    recalculateOrderTotals(order);
+
+    // order_total must match B2C gross math exactly: 22.83 - 5.00 + 9.90 = 27.73
+    expect(order.order_total).toBe(27.73);
+  });
+
+  it("should apply fixed coupon discount correctly with 3 B2C items", () => {
+    // Item 1: gross 15.13, Item 2: gross 14.05, Item 3: gross 8.78
+    // Gross subtotal = 37.96 (15.13+14.05+8.78)
+    // B2C total: 37.96 - 5.00 + 9.90 = 42.86
+    const item1 = calculateLineItemTotals(1, 15.13, 15.13, 22, true);
+    const item2 = calculateLineItemTotals(1, 14.05, 14.05, 22, true);
+    const item3 = calculateLineItemTotals(1, 8.78, 8.78, 22, true);
+
+    const order = createMockOrder([
+      { vat_included: true, vat_rate: 22, quantity: 1, list_price: 15.13, unit_price: 15.13, ...item1 },
+      { vat_included: true, vat_rate: 22, quantity: 1, list_price: 14.05, unit_price: 14.05, ...item2 },
+      { vat_included: true, vat_rate: 22, quantity: 1, list_price: 8.78, unit_price: 8.78, ...item3 },
+    ]);
+    order.shipping_cost = 9.90;
+    order.cart_discounts = [
+      { discount_id: "cpn1", reason: "coupon", type: "fixed", value: -5, label: "SPRING-2026" } as any,
+    ];
+
+    recalculateOrderTotals(order);
+
+    // 15.13 + 14.05 + 8.78 = 37.96, minus 5.00 + 9.90 = 42.86
+    expect(order.order_total).toBe(42.86);
+  });
+
+  it("should not change fixed discount behavior for B2B (no VAT on items)", () => {
+    // B2B: net prices, vat_rate=0 → fixed discount applied as-is
+    const order = createMockOrder([
+      { vat_included: false, vat_rate: 0, line_gross: 100, line_net: 100, line_vat: 0 },
+    ]);
+    order.cart_discounts = [
+      { discount_id: "cpn1", reason: "coupon", type: "fixed", value: -10, label: "TEST" } as any,
+    ];
+
+    recalculateOrderTotals(order);
+
+    expect(order.subtotal_net).toBe(90);
+    expect(order.total_vat).toBe(0);
+    expect(order.order_total).toBe(90);
   });
 
   it("should apply line adjustment with correct VAT factor for VAT-inclusive item", () => {
