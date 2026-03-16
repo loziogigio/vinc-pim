@@ -139,8 +139,10 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
       return;
     }
 
-    // Get siblings at the same level
-    const siblings = menuItems.filter((i) => i.parent_id === activeItem.parent_id);
+    // Get siblings at the same level, sorted by position to match visual order
+    const siblings = menuItems
+      .filter((i) => i.parent_id === activeItem.parent_id)
+      .sort((a, b) => a.position - b.position);
     const oldIndex = siblings.findIndex((i) => i.menu_item_id === active.id);
     const newIndex = siblings.findIndex((i) => i.menu_item_id === over.id);
 

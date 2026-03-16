@@ -124,38 +124,30 @@ export interface TenantEmailConfig {
  * Returns transport type + relevant settings for each transport
  */
 export async function fetchTenantEmailConfig(tenantDb?: string): Promise<TenantEmailConfig> {
-  try {
-    const { getHomeSettings } = await import("@/lib/db/home-settings");
-    const settings = await getHomeSettings(tenantDb);
+  const { getHomeSettings } = await import("@/lib/db/home-settings");
+  const settings = await getHomeSettings(tenantDb);
 
-    const transport: EmailTransport = settings?.email_transport || "smtp";
+  const transport: EmailTransport = settings?.email_transport || "smtp";
 
-    // Build SMTP config (always needed as fallback)
-    let smtpConfig: EmailConfig = getEmailConfigFromEnv();
-    if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
-      smtpConfig = {
-        host: settings.smtp_settings.host,
-        port: settings.smtp_settings.port || 587,
-        secure: settings.smtp_settings.secure || false,
-        user: settings.smtp_settings.user || "",
-        password: settings.smtp_settings.password || "",
-        from: settings.smtp_settings.from,
-        fromName: settings.smtp_settings.from_name || "VINC Commerce",
-      };
-    }
-
-    return {
-      transport,
-      smtp: smtpConfig,
-      graph: settings?.graph_settings ?? undefined,
-    };
-  } catch (error) {
-    console.warn("[Email] Failed to fetch tenant email config from DB:", error);
-    return {
-      transport: "smtp",
-      smtp: getEmailConfigFromEnv(),
+  // Build SMTP config (always needed as fallback)
+  let smtpConfig: EmailConfig = getEmailConfigFromEnv();
+  if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
+    smtpConfig = {
+      host: settings.smtp_settings.host,
+      port: settings.smtp_settings.port || 587,
+      secure: settings.smtp_settings.secure || false,
+      user: settings.smtp_settings.user || "",
+      password: settings.smtp_settings.password || "",
+      from: settings.smtp_settings.from,
+      fromName: settings.smtp_settings.from_name || "VINC Commerce",
     };
   }
+
+  return {
+    transport,
+    smtp: smtpConfig,
+    graph: settings?.graph_settings ?? undefined,
+  };
 }
 
 // ============================================
@@ -480,10 +472,17 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     status: options.immediate ? "sending" : "queued",
   });
 
-  // Store notification log ID on email log for cross-reference
+  // Store notification log ID and resolved transport config for queue processing.
+  // This ensures the worker uses the same transport (Graph/SMTP) that was resolved
+  // at queue time, avoiding silent fallback to unconfigured SMTP on transient DB errors.
   emailLog.metadata = {
     ...emailLog.metadata,
     notification_log_id: notificationLog.log_id,
+    transport_config: {
+      transport: tenantConfig.transport,
+      smtp: tenantConfig.transport === "smtp" ? tenantConfig.smtp : undefined,
+      graph: tenantConfig.transport === "graph" ? tenantConfig.graph : undefined,
+    },
   };
   await emailLog.save();
 
@@ -690,10 +689,44 @@ export async function processQueuedEmail(
   // Get notification log ID from metadata if not provided
   const logId = notificationLogId || (emailLog.metadata as { notification_log_id?: string })?.notification_log_id;
 
+  // 1. Use stored transport config (set at queue time in sendEmail)
+  let tenantConfig: TenantEmailConfig | undefined;
+  const storedConfig = (emailLog.metadata as Record<string, any>)?.transport_config;
+
+  if (storedConfig?.transport) {
+    tenantConfig = {
+      transport: storedConfig.transport,
+      smtp: storedConfig.smtp || getEmailConfigFromEnv(),
+      graph: storedConfig.graph,
+    };
+  }
+
+  // 2. Fallback for legacy emails queued before this fix: re-fetch from DB
+  if (!tenantConfig) {
+    const effectiveTenantDb = emailLog.tenant_db || tenantDb;
+    tenantConfig = await fetchTenantEmailConfig(effectiveTenantDb);
+
+    // Detect silent fallback: if email was composed with a different 'from' than env SMTP,
+    // the DB fetch likely failed and returned the env default. Throw to trigger BullMQ retry.
+    const envSmtp = getEmailConfigFromEnv();
+    if (
+      tenantConfig.transport === "smtp" &&
+      !tenantConfig.smtp.user &&
+      emailLog.from &&
+      envSmtp.from !== emailLog.from
+    ) {
+      throw new Error(
+        `[Email] Transport config mismatch for ${emailId}: ` +
+        `email.from="${emailLog.from}" but env SMTP.from="${envSmtp.from}". ` +
+        `DB config fetch may have failed — retrying.`
+      );
+    }
+  }
+
   emailLog.status = "sending";
   await emailLog.save();
 
-  return await sendEmailNow(emailLog as IEmailLog, logId);
+  return await sendEmailNow(emailLog as IEmailLog, logId, tenantConfig);
 }
 
 // ============================================
