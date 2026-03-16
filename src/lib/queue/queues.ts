@@ -169,6 +169,24 @@ export const portalUserImportQueue = new Queue("portal-user-import-queue", {
   },
 });
 
+// Email queue (transactional emails: order confirmations, password resets, etc.)
+export const emailQueue = new Queue("email", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+    removeOnComplete: {
+      count: 100,
+    },
+    removeOnFail: {
+      count: 500,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
@@ -180,4 +198,5 @@ export const QUEUE_NAMES = {
   PAYMENT: "payment-queue",
   CUSTOMER_IMPORT: "customer-import-queue",
   PORTAL_USER_IMPORT: "portal-user-import-queue",
+  EMAIL: "email",
 } as const;

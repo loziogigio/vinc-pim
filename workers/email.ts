@@ -51,7 +51,8 @@ const worker = new Worker(
       throw new Error("No tenant database specified. Either pass --tenant to worker or ensure job data includes tenantDb.");
     }
 
-    const result = await processQueuedEmail(emailId, effectiveTenantDb);
+    const notificationLogId = (job.data as { notificationLogId?: string }).notificationLogId;
+    const result = await processQueuedEmail(emailId, effectiveTenantDb, notificationLogId);
 
     if (!result.success) {
       throw new Error(result.error || "Failed to send email");

@@ -5,6 +5,7 @@
  *
  * This retries sending an existing email without creating a duplicate log entry.
  * It updates the existing log with the new status and attempt count.
+ * Supports both SMTP and Microsoft Graph transports based on tenant config.
  *
  * Email logs are stored in vinc-admin database for centralized tracking.
  */
@@ -14,7 +15,8 @@ import nodemailer from "nodemailer";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
-import { fetchEmailConfigFromDb } from "@/lib/email";
+import { fetchTenantEmailConfig } from "@/lib/email";
+import { sendViaGraph, isGraphConfigured } from "@/lib/email/graph-transport";
 
 export async function POST(
   req: NextRequest,
@@ -55,12 +57,21 @@ export async function POST(
       );
     }
 
-    // Get email config for this tenant
-    const config = await fetchEmailConfigFromDb(tenantDb);
-    // Allow localhost without auth for dev testing
-    const isLocalhost = config.host === "localhost" || config.host === "127.0.0.1";
-    const hasAuth = config.user && config.password;
-    if (!(config.host && config.from && (hasAuth || isLocalhost))) {
+    // Fetch full tenant email config (transport type + settings)
+    const tenantConfig = await fetchTenantEmailConfig(tenantDb);
+
+    // Check if email is configured based on transport type
+    const isConfigured =
+      tenantConfig.transport === "graph"
+        ? isGraphConfigured(tenantConfig.graph)
+        : (() => {
+            const c = tenantConfig.smtp;
+            const isLocalhost = c.host === "localhost" || c.host === "127.0.0.1";
+            const hasAuth = c.user && c.password;
+            return !!(c.host && c.from && (hasAuth || isLocalhost));
+          })();
+
+    if (!isConfigured) {
       return NextResponse.json(
         { error: "Email service not configured" },
         { status: 500 }
@@ -73,53 +84,82 @@ export async function POST(
     await emailLog.save();
 
     try {
-      // Create transporter and send
-      const transporter = nodemailer.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.secure,
-        auth: {
-          user: config.user,
-          pass: config.password,
-        },
-      });
+      let messageId: string | undefined;
 
-      const result = await transporter.sendMail({
-        from: emailLog.from_name
-          ? `"${emailLog.from_name}" <${emailLog.from}>`
-          : emailLog.from,
-        to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
-        cc: emailLog.cc
-          ? Array.isArray(emailLog.cc)
-            ? emailLog.cc.join(", ")
-            : emailLog.cc
-          : undefined,
-        bcc: emailLog.bcc
-          ? Array.isArray(emailLog.bcc)
-            ? emailLog.bcc.join(", ")
-            : emailLog.bcc
-          : undefined,
-        replyTo: emailLog.reply_to,
-        subject: emailLog.subject,
-        html: emailLog.html,
-        text: emailLog.text,
-      });
+      if (tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)) {
+        // ---- GRAPH API TRANSPORT ----
+        const result = await sendViaGraph(tenantConfig.graph!, {
+          to: emailLog.to,
+          subject: emailLog.subject,
+          html: emailLog.html,
+          text: emailLog.text,
+          cc: emailLog.cc,
+          bcc: emailLog.bcc,
+          from: emailLog.from,
+          fromName: emailLog.from_name,
+          replyTo: emailLog.reply_to,
+        });
+
+        if (!result.success) {
+          throw new Error(result.error || "Graph API send failed");
+        }
+        messageId = result.messageId;
+      } else {
+        // ---- SMTP TRANSPORT ----
+        const config = tenantConfig.smtp;
+        const transportOptions: nodemailer.TransportOptions = {
+          host: config.host,
+          port: config.port,
+          secure: config.secure,
+        } as nodemailer.TransportOptions;
+
+        if (config.user && config.password) {
+          (transportOptions as { auth?: { user: string; pass: string } }).auth = {
+            user: config.user,
+            pass: config.password,
+          };
+        }
+
+        const transporter = nodemailer.createTransport(transportOptions);
+
+        const result = await transporter.sendMail({
+          from: emailLog.from_name
+            ? `"${emailLog.from_name}" <${emailLog.from}>`
+            : emailLog.from,
+          to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
+          cc: emailLog.cc
+            ? Array.isArray(emailLog.cc)
+              ? emailLog.cc.join(", ")
+              : emailLog.cc
+            : undefined,
+          bcc: emailLog.bcc
+            ? Array.isArray(emailLog.bcc)
+              ? emailLog.bcc.join(", ")
+              : emailLog.bcc
+            : undefined,
+          replyTo: emailLog.reply_to,
+          subject: emailLog.subject,
+          html: emailLog.html,
+          text: emailLog.text,
+        });
+        messageId = result.messageId;
+      }
 
       // Mark as sent
       emailLog.status = "sent";
       emailLog.sent_at = new Date();
-      emailLog.message_id = result.messageId;
+      emailLog.message_id = messageId;
       emailLog.error = undefined;
       await emailLog.save();
 
-      console.log(`[Email] Sent (retry): ${emailLog.email_id} to ${emailLog.to} (attempt ${emailLog.attempts})`);
+      console.log(`[Email] Sent (retry via ${tenantConfig.transport}): ${emailLog.email_id} to ${emailLog.to} (attempt ${emailLog.attempts})`);
 
       return NextResponse.json({
         success: true,
         message: "Email sent successfully",
         email_id: id,
         attempts: emailLog.attempts,
-        message_id: result.messageId,
+        message_id: messageId,
       });
     } catch (sendError) {
       // Mark as failed
@@ -128,7 +168,7 @@ export async function POST(
       emailLog.error = errorMessage;
       await emailLog.save();
 
-      console.error(`[Email] Send failed (retry): ${emailLog.email_id} - ${errorMessage} (attempt ${emailLog.attempts})`);
+      console.error(`[Email] Send failed (retry via ${tenantConfig.transport}): ${emailLog.email_id} - ${errorMessage} (attempt ${emailLog.attempts})`);
 
       return NextResponse.json(
         { error: errorMessage, attempts: emailLog.attempts },

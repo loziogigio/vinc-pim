@@ -5,7 +5,6 @@
  */
 
 import nodemailer from "nodemailer";
-import { Queue } from "bullmq";
 import { nanoid } from "nanoid";
 import type { IEmailLog, EmailStatus } from "@/lib/db/models/email-log";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
@@ -257,32 +256,12 @@ function getTransporter(config: EmailConfig): nodemailer.Transporter {
 }
 
 // ============================================
-// EMAIL QUEUE
+// EMAIL QUEUE (centralized in @/lib/queue/queues)
 // ============================================
 
-let emailQueue: Queue | null = null;
-
-function getEmailQueue(): Queue {
-  if (!emailQueue) {
-    const redisHost = process.env.REDIS_HOST || "localhost";
-    const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
-
-    emailQueue = new Queue("email", {
-      connection: {
-        host: redisHost,
-        port: redisPort,
-      },
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          delay: 5000,
-        },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    });
-  }
+function getEmailQueue() {
+  // Lazy import to avoid circular dependencies and module-level side effects at build time
+  const { emailQueue } = require("@/lib/queue/queues");
   return emailQueue;
 }
 
