@@ -12,7 +12,7 @@ import {
 } from "@/lib/services/customer.service";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import { resolveEffectiveTags } from "@/lib/services/tag-pricing.service";
-import { buildHookCtxFromOrder, runOnHook, runAfterHook, mergeOrderErpData } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtxFromOrder, runOnHookAsync, collectOnHookJob, runAfterHook } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -142,7 +142,47 @@ export async function POST(req: NextRequest) {
     );
 
     if (existingCart) {
-      // Return existing current cart
+      let orderToReturn = existingCart;
+
+      // ── Collect pending delivery hook result, or fire one for legacy carts ──
+      const erpData = existingCart.erp_data as Record<string, unknown> | undefined;
+      const hasDeliveryInfo = !!erpData?.delivery_info;
+      const pendingJobId = erpData?.delivery_job_id as string | undefined;
+
+      if (!hasDeliveryInfo) {
+        try {
+          if (pendingJobId) {
+            // Job was fired previously — check if it completed
+            const merged = await collectOnHookJob(
+              auth.tenantDb!, pendingJobId, OrderModel, existingCart._id,
+            );
+            if (merged) {
+              // Clear job ID and reload enriched cart
+              await OrderModel.updateOne(
+                { _id: existingCart._id },
+                { $unset: { "erp_data.delivery_job_id": "" } },
+              );
+              orderToReturn = await OrderModel.findOne({ order_id: existingCart.order_id }).lean() || existingCart;
+            }
+            // If not completed yet, return as-is — next call will retry
+          } else {
+            // Legacy cart: no job ever fired — fire one now
+            const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, tenant_id, "cart.create", existingCart, {
+              addressCode: body.address_code,
+            });
+            const { hooked, jobId } = await runOnHookAsync(hookCtx);
+            if (hooked && jobId) {
+              await OrderModel.updateOne(
+                { _id: existingCart._id },
+                { $set: { "erp_data.delivery_job_id": jobId } },
+              );
+            }
+          }
+        } catch (err) {
+          console.error("[cart/active] delivery hook collect/fire error:", err);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         cart_id: existingCart.order_id,
@@ -161,7 +201,7 @@ export async function POST(req: NextRequest) {
           address_code: existingCart.shipping_address_code,
           is_new: false,
         },
-        order: existingCart,
+        order: orderToReturn,
       });
     }
 
@@ -356,46 +396,35 @@ export async function POST(req: NextRequest) {
       throw createErr;
     }
 
-    // ── HOOK: cart.create on-hook (ERP cart creation + delivery info) ──
-    // Try sync with a short timeout (3s). If Windmill responds in time,
-    // delivery info is included in the response. If it times out,
-    // return the cart immediately — frontend falls back to legacy wrapper.
+    // ── HOOK: cart.create on-hook (async fire-and-forget) ──
+    // Fire the Windmill job asynchronously — no HTTP connection dependency.
+    // Store job ID on the order so the next POST /cart/active can collect the result.
     const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, tenant_id, "cart.create", newCart, {
-      customerCode: body.customer_code,
       addressCode: body.address_code,
       requestData: body as Record<string, unknown>,
     });
 
-    let enrichedCart = null;
-    const CART_HOOK_TIMEOUT = 3000; // 3s — normal run is ~0.4s
-
-    // Start hook — we'll race it against a timeout
-    const hookPromise = runOnHook(hookCtx).catch((err) => {
-      console.error("[cart/active] cart.create hook error:", err);
-      return null;
-    });
-
+    let cartToReturn = newCart;
     try {
-      const on = await Promise.race([
-        hookPromise,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), CART_HOOK_TIMEOUT)),
-      ]);
-      if (on && on.hooked && on.success && on.response?.data) {
-        await mergeOrderErpData(OrderModel, newCart._id, on.response);
-        enrichedCart = await OrderModel.findOne({ order_id }).lean();
-        runAfterHook(hookCtx);
-      } else {
-        // Hook didn't finish in time — let it complete in background and merge later
-        // This ensures erp_cart_id is saved even if the response already went out
-        void hookPromise.then(async (bgOn) => {
-          if (bgOn && bgOn.hooked && bgOn.success && bgOn.response?.data) {
-            await mergeOrderErpData(OrderModel, newCart._id, bgOn.response);
-          }
-          runAfterHook(hookCtx);
-        });
+      const { hooked, jobId } = await runOnHookAsync(hookCtx);
+      if (hooked && jobId) {
+        // Quick poll: the job typically finishes in ~300ms.
+        // Wait briefly then check — avoids an extra round-trip for most carts.
+        await new Promise((r) => setTimeout(r, 500));
+        const merged = await collectOnHookJob(auth.tenantDb!, jobId, OrderModel, newCart._id);
+        if (merged) {
+          cartToReturn = await OrderModel.findOne({ order_id }).lean() || newCart;
+        } else {
+          // Not done yet — store job ID for collection on next call
+          await OrderModel.updateOne(
+            { _id: newCart._id },
+            { $set: { "erp_data.delivery_job_id": jobId } },
+          );
+        }
       }
+      runAfterHook(hookCtx);
     } catch (err) {
-      console.error("[cart/active] cart.create hook race error:", err);
+      console.error("[cart/active] cart.create async hook error:", err);
     }
 
     return NextResponse.json(
@@ -417,7 +446,7 @@ export async function POST(req: NextRequest) {
           address_code: body.address_code,
           is_new: addressIsNew,
         },
-        order: enrichedCart || newCart,
+        order: cartToReturn,
       },
       { status: 201 }
     );

@@ -60,6 +60,8 @@ vi.mock("@/lib/services/windmill-proxy.service", async (importOriginal) => {
   return {
     ...actual,
     runOnHook: vi.fn().mockResolvedValue(undefined),
+    runOnHookAsync: vi.fn().mockResolvedValue({ hooked: false }),
+    collectOnHookJob: vi.fn().mockResolvedValue(null),
     runAfterHook: vi.fn().mockResolvedValue(undefined),
     mergeOrderErpData: vi.fn(),
   };

@@ -5,7 +5,7 @@
  * Routes call runBeforeHook / runOnHook / runAfterHook with a HookContext.
  */
 
-import { windmillRun, windmillRunAsync, WindmillError } from "./windmill-client";
+import { windmillRun, windmillRunAsync, windmillGetJobResult, WindmillError } from "./windmill-client";
 import { getHomeSettings } from "@/lib/db/home-settings";
 import type {
   WindmillProxySettings,
@@ -430,6 +430,66 @@ export async function pushWindmillJobRef(
  * Expects on.response.data to contain:
  *   { erp_data: {...}, erp_items?: [{ line_number, erp_data }] }
  */
+// ─── ASYNC ON-HOOK (fire-and-forget, collect later) ─────────────
+
+/**
+ * Fire on-hook asynchronously. Returns job ID immediately.
+ * The Windmill job runs independently — no HTTP connection dependency.
+ * Use `collectOnHookJob()` on a subsequent request to merge the result.
+ */
+export async function runOnHookAsync(
+  ctx: HookContext,
+): Promise<{ hooked: boolean; jobId?: string }> {
+  const settings = await getProxySettings(ctx.tenantDb);
+  if (!settings) return { hooked: false };
+
+  const hook = findHook(settings, ctx.channel, ctx.operation, "on");
+  if (!hook) return { hooked: false };
+
+  const payload = buildPayload(ctx, "on");
+  const ws = workspace(settings);
+  const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
+
+  try {
+    const jobId = await windmillRunAsync(ws, hook.script_path, payload, baseUrl);
+    return { hooked: true, jobId };
+  } catch (err) {
+    console.error(`[windmill-proxy] async on ${ctx.operation} failed:`, err);
+    return { hooked: false };
+  }
+}
+
+/**
+ * Check if an async on-hook job has completed. If so, merge the result.
+ * Returns the merged response or null if not yet completed / not hooked.
+ */
+export async function collectOnHookJob(
+  tenantDb: string,
+  jobId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  OrderModel: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orderDbId: any,
+): Promise<OnHookResponse | null> {
+  const settings = await getProxySettings(tenantDb);
+  const ws = settings?.workspace_name || process.env.WINDMILL_WORKSPACE || "";
+  const baseUrl = process.env.WINDMILL_BASE_URL || settings?.windmill_base_url || undefined;
+
+  try {
+    const job = await windmillGetJobResult<OnHookResponse>(ws, jobId, baseUrl);
+    if (!job.completed || !job.result) return null;
+
+    const res = job.result;
+    if (res.success !== false && res.data) {
+      await mergeOrderErpData(OrderModel, orderDbId, res);
+    }
+    return res;
+  } catch (err) {
+    console.error(`[windmill-proxy] collectOnHookJob ${jobId} failed:`, err);
+    return null;
+  }
+}
+
 // ─── ROUTE HELPERS ───────────────────────────────────────────────
 
 /**

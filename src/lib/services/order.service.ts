@@ -548,7 +548,8 @@ function recalculatePromoProgress(order: IOrder): void {
     if (p.goal_type === "value") {
       p.current_value += (item.unit_price || 0) * (item.quantity || 0);
     } else {
-      p.current_value += item.quantity || 0;
+      // Count unique rows (distinct articles), not quantity
+      p.current_value += 1;
     }
   }
 
