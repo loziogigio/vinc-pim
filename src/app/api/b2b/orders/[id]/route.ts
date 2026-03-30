@@ -9,6 +9,7 @@ import {
   hasCustomerAccess,
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
+import { buildHookCtxFromOrder, runOnHook, runOnMergeAfter, mergeOrderErpData } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -164,7 +165,15 @@ export async function GET(
       }
     }
 
+    // ── ON HOOK: enrich with ERP data (prices, stock) ──
+    const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, tenantId, "cart.get", order);
+    const on = await runOnHook(hookCtx);
+    if (on.hooked && on.success && on.response?.data) {
+      await mergeOrderErpData(OrderModel, (order as any)._id, on.response);
+    }
+
     // Return order with paginated items and customer/address details
+    // promo_progress is stored on the order itself (recalculated on every save)
     return NextResponse.json({
       success: true,
       order: {
@@ -178,9 +187,10 @@ export async function GET(
         limit,
         total: filteredCount,
         totalPages: Math.ceil(filteredCount / limit),
-        totalItemsCount, // Total items in order (unfiltered)
+        totalItemsCount,
         hasSearch: !!search,
       },
+      ...(on.hooked ? { windmill: { channel, on: { synced: on.success, timed_out: on.timedOut } } } : {}),
     });
   } catch (error) {
     console.error("Error fetching order:", error);
@@ -223,17 +233,27 @@ export async function PATCH(
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Only allow modifications on draft orders
-    if (order.status !== "draft") {
+    const body = await req.json();
+
+    // Fields that bypass the draft-only restriction
+    const anyStatusFields = ["erp_cart_id", "erp_order_id", "erp_sync_status", "erp_data", "erp_items", "processing_status", "processing_phase", "processing_job_id"];
+    const bodyKeys = Object.keys(body);
+    const isErpOnly = bodyKeys.every(k => anyStatusFields.includes(k));
+
+    // payment_method can be updated on draft OR pending orders (payment retry)
+    const isPaymentMethodOnly = bodyKeys.length === 1 && body.payment_method !== undefined;
+    const allowedStatuses = isPaymentMethodOnly ? ["draft", "pending"] : ["draft"];
+
+    if (!isErpOnly && !allowedStatuses.includes(order.status)) {
       return NextResponse.json(
-        { error: "Cannot modify non-draft orders" },
+        { error: isPaymentMethodOnly
+            ? "Cannot modify payment method on orders in this state"
+            : "Cannot modify non-draft orders" },
         { status: 400 }
       );
     }
 
-    const body = await req.json();
-
-    // Allowed fields to update
+    // Allowed fields to update (draft only)
     const allowedFields = [
       "requested_delivery_date",
       "delivery_slot",
@@ -261,12 +281,79 @@ export async function PATCH(
       updateDoc["payment.payment_method"] = body.payment_method;
     }
 
+    // is_current flag — only on draft orders, max one per customer+address
+    if (body.is_current !== undefined) {
+      if (order.status !== "draft") {
+        return NextResponse.json(
+          { error: "is_current can only be set on draft orders" },
+          { status: 400 },
+        );
+      }
+      const wantCurrent = !!body.is_current;
+      if (wantCurrent && order.customer_code && order.shipping_address_code) {
+        // Unset is_current on any other draft for same customer+address
+        await OrderModel.updateMany(
+          {
+            tenant_id: tenantId,
+            customer_code: order.customer_code,
+            shipping_address_code: order.shipping_address_code,
+            status: "draft",
+            is_current: true,
+            order_id: { $ne: order_id },
+          },
+          { $set: { is_current: false } },
+        );
+      }
+      updateDoc.is_current = wantCurrent;
+    }
+
+    // ERP fields — writable on any status (set by external systems)
+    const erpFields = ["erp_cart_id", "erp_order_id", "erp_sync_status", "processing_status", "processing_phase", "processing_job_id"];
+    const unsetDoc: Record<string, unknown> = {};
+    for (const field of erpFields) {
+      if (body[field] !== undefined) {
+        if (body[field] === null) {
+          unsetDoc[field] = "";
+        } else {
+          updateDoc[field] = body[field];
+        }
+      }
+    }
+    // erp_data: null clears entirely, object merges keys
+    if (body.erp_data === null) {
+      unsetDoc.erp_data = "";
+    } else if (body.erp_data && typeof body.erp_data === "object") {
+      for (const [key, value] of Object.entries(body.erp_data)) {
+        updateDoc[`erp_data.${key}`] = value;
+      }
+    }
+
     // Update the order (with tenant filter for security)
-    const updatedOrder = await OrderModel.findOneAndUpdate(
-      { order_id, tenant_id: tenantId },
-      { $set: updateDoc },
-      { new: true }
-    ).lean();
+    const updateOp: Record<string, unknown> = {};
+    if (Object.keys(updateDoc).length) updateOp.$set = updateDoc;
+    if (Object.keys(unsetDoc).length) updateOp.$unset = unsetDoc;
+
+    if (Object.keys(updateOp).length) {
+      await OrderModel.updateOne({ order_id, tenant_id: tenantId }, updateOp);
+    }
+
+    // Per-item ERP data: [{ line_number, erp_line_number?, erp_data? }]
+    if (Array.isArray(body.erp_items)) {
+      for (const item of body.erp_items) {
+        if (!item.line_number) continue;
+        const itemSet: Record<string, unknown> = {};
+        if (item.erp_line_number != null) itemSet["items.$.erp_line_number"] = item.erp_line_number;
+        if (item.erp_data) itemSet["items.$.erp_data"] = item.erp_data;
+        if (Object.keys(itemSet).length) {
+          await OrderModel.updateOne(
+            { order_id, tenant_id: tenantId, "items.line_number": item.line_number },
+            { $set: itemSet },
+          );
+        }
+      }
+    }
+
+    const updatedOrder = await OrderModel.findOne({ order_id, tenant_id: tenantId }).lean();
 
     return NextResponse.json({
       success: true,
@@ -322,11 +409,19 @@ export async function DELETE(
       );
     }
 
-    await OrderModel.deleteOne({ order_id, tenant_id: tenantId });
+    // ── HOOKS: sync deletion to ERP + fire-and-forget ──
+    const delCtx = buildHookCtxFromOrder(auth.tenantDb!, tenantId, "cart.delete", order);
+    await runOnMergeAfter(delCtx, OrderModel, (order as any)._id);
+
+    await OrderModel.updateOne(
+      { order_id, tenant_id: tenantId },
+      { $set: { status: "deleted", deleted_at: new Date(), is_current: false } }
+    );
 
     return NextResponse.json({
       success: true,
       message: "Order deleted successfully",
+      ...(delOn.hooked ? { windmill: { channel: delChannel, on: { synced: delOn.success, timed_out: delOn.timedOut } } } : {}),
     });
   } catch (error) {
     console.error("Error deleting order:", error);

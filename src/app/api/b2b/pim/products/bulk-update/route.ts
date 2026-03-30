@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       {
         job_id,
         job_type: "bulk_update",
-        // No wholesaler_id - database provides isolation
+        tenant_id: session.tenantId,
         product_ids,
         updates,
       },

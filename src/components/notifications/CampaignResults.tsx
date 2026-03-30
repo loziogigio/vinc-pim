@@ -16,6 +16,7 @@ import {
   Users,
   AlertCircle,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { NotificationChannel } from "@/lib/constants/notification";
 
 // ============================================
@@ -133,9 +134,11 @@ function StatCard({
 function ChannelCard({
   channel,
   results,
+  t,
 }: {
   channel: DisplayChannel;
   results: ChannelResults;
+  t: (key: string, params?: Record<string, unknown>) => string;
 }) {
   const Icon = channelIcons[channel];
   const colors = channelColors[channel];
@@ -167,7 +170,7 @@ function ChannelCard({
         <div className="bg-white rounded-lg p-3">
           <div className="flex items-center gap-1 text-emerald-600 mb-1">
             <CheckCircle2 className="w-3 h-3" />
-            <span className="text-xs">Inviati</span>
+            <span className="text-xs">{t("pages.notifications.campaigns.results.channelSent")}</span>
           </div>
           <p className="text-lg font-bold text-slate-900">{results.sent}</p>
         </div>
@@ -176,7 +179,7 @@ function ChannelCard({
         <div className="bg-white rounded-lg p-3">
           <div className="flex items-center gap-1 text-rose-600 mb-1">
             <XCircle className="w-3 h-3" />
-            <span className="text-xs">Falliti</span>
+            <span className="text-xs">{t("pages.notifications.campaigns.results.channelFailed")}</span>
           </div>
           <p className="text-lg font-bold text-slate-900">{results.failed}</p>
         </div>
@@ -185,7 +188,7 @@ function ChannelCard({
         <div className="bg-white rounded-lg p-3">
           <div className="flex items-center gap-1 text-blue-600 mb-1">
             <Send className="w-3 h-3" />
-            <span className="text-xs">Consegna</span>
+            <span className="text-xs">{t("pages.notifications.campaigns.results.channelDelivery")}</span>
           </div>
           <p className="text-lg font-bold text-slate-900">
             {formatPercent(deliveryRate)}
@@ -196,7 +199,7 @@ function ChannelCard({
         <div className="bg-white rounded-lg p-3">
           <div className="flex items-center gap-1 text-amber-600 mb-1">
             <Eye className="w-3 h-3" />
-            <span className="text-xs">Aperture</span>
+            <span className="text-xs">{t("pages.notifications.campaigns.results.channelOpens")}</span>
           </div>
           <p className="text-lg font-bold text-slate-900">
             {formatPercent(openRate)}
@@ -207,7 +210,7 @@ function ChannelCard({
         <div className="bg-white rounded-lg p-3 col-span-2">
           <div className="flex items-center gap-1 text-purple-600 mb-1">
             <MousePointerClick className="w-3 h-3" />
-            <span className="text-xs">Click</span>
+            <span className="text-xs">{t("pages.notifications.campaigns.results.channelClicks")}</span>
           </div>
           <p className="text-lg font-bold text-slate-900">
             {formatPercent(clickRate)}
@@ -223,6 +226,7 @@ function ChannelCard({
 // ============================================
 
 export function CampaignResults({ campaignId, onBack }: Props) {
+  const { t } = useTranslation();
   const [data, setData] = useState<CampaignResultsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,11 +242,11 @@ export function CampaignResults({ campaignId, onBack }: Props) {
           setData(json);
         } else {
           const json = await res.json();
-          setError(json.error || "Errore nel caricamento");
+          setError(json.error || t("pages.notifications.campaigns.results.loadError"));
         }
       } catch (err) {
         console.error("Error loading results:", err);
-        setError("Errore di connessione");
+        setError(t("pages.notifications.campaigns.results.connectionError"));
       } finally {
         setIsLoading(false);
       }
@@ -254,7 +258,7 @@ export function CampaignResults({ campaignId, onBack }: Props) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-        <span className="text-sm text-slate-500">Caricamento risultati...</span>
+        <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.results.loadingResults")}</span>
       </div>
     );
   }
@@ -263,13 +267,13 @@ export function CampaignResults({ campaignId, onBack }: Props) {
     return (
       <div className="text-center py-12">
         <AlertCircle className="w-12 h-12 text-rose-300 mx-auto mb-3" />
-        <p className="text-sm text-slate-500">{error || "Risultati non disponibili"}</p>
+        <p className="text-sm text-slate-500">{error || t("pages.notifications.campaigns.results.resultsUnavailable")}</p>
         {onBack && (
           <button
             onClick={onBack}
             className="mt-4 px-4 py-2 text-sm text-primary hover:underline"
           >
-            Torna alla lista
+            {t("pages.notifications.campaigns.results.backToList")}
           </button>
         )}
       </div>
@@ -294,12 +298,14 @@ export function CampaignResults({ campaignId, onBack }: Props) {
             {data.sent_at && (
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                Inviata: {formatDate(data.sent_at)}
+                {t("pages.notifications.campaigns.results.sentLabel", { date: formatDate(data.sent_at) })}
               </span>
             )}
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" />
-              {data.recipient_count} destinatar{data.recipient_count !== 1 ? "i" : "io"}
+              {data.recipient_count !== 1
+                ? t("pages.notifications.campaigns.results.recipientsPlural", { count: data.recipient_count })
+                : t("pages.notifications.campaigns.results.recipientsSingular", { count: data.recipient_count })}
             </span>
           </div>
         </div>
@@ -309,26 +315,26 @@ export function CampaignResults({ campaignId, onBack }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           icon={Send}
-          label="Totale Inviati"
+          label={t("pages.notifications.campaigns.results.totalSent")}
           value={data.totals.sent}
           color="text-emerald-600"
         />
         <StatCard
           icon={XCircle}
-          label="Totale Falliti"
+          label={t("pages.notifications.campaigns.results.totalFailed")}
           value={data.totals.failed}
           color="text-rose-600"
         />
         <StatCard
           icon={CheckCircle2}
-          label="Tasso Consegna"
+          label={t("pages.notifications.campaigns.results.deliveryRate")}
           value={formatPercent(data.totals.delivery_rate)}
           color="text-blue-600"
         />
         {data.totals.open_rate !== undefined && (
           <StatCard
             icon={Eye}
-            label="Tasso Apertura"
+            label={t("pages.notifications.campaigns.results.openRate")}
             value={formatPercent(data.totals.open_rate)}
             color="text-amber-600"
           />
@@ -338,17 +344,17 @@ export function CampaignResults({ campaignId, onBack }: Props) {
       {/* Per-Channel Results */}
       <div>
         <h3 className="text-lg font-semibold text-slate-900 mb-4">
-          Risultati per Canale
+          {t("pages.notifications.campaigns.results.resultsByChannel")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {data.results.email && (
-            <ChannelCard channel="email" results={data.results.email} />
+            <ChannelCard channel="email" results={data.results.email} t={t} />
           )}
           {data.results.mobile_app && (
-            <ChannelCard channel="mobile_app" results={data.results.mobile_app} />
+            <ChannelCard channel="mobile_app" results={data.results.mobile_app} t={t} />
           )}
           {data.results.web && (
-            <ChannelCard channel="web" results={data.results.web} />
+            <ChannelCard channel="web" results={data.results.web} t={t} />
           )}
         </div>
       </div>
@@ -358,7 +364,7 @@ export function CampaignResults({ campaignId, onBack }: Props) {
         <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg">
           <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-sm text-slate-500">
-            Nessun risultato dettagliato disponibile
+            {t("pages.notifications.campaigns.results.noDetailedResults")}
           </p>
         </div>
       )}

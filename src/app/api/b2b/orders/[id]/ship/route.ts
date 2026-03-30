@@ -11,6 +11,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { shipOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import type { UserRole } from "@/lib/constants/order";
+import { buildHookCtxFromOrder, runOnMergeAfter, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 interface RequestBody {
   carrier?: string;
@@ -55,14 +56,18 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    void dispatchTrigger(dbName, "order_shipped", {
-      type: "order",
-      order: result.order!,
+    // ── HOOKS: on (sync to ERP) + after (fire-and-forget) ──
+    const hookCtx = buildHookCtxFromOrder(dbName, auth.tenantId, "order.ship", result.order, {
+      requestData: body as Record<string, unknown>,
     });
+    const on = await runOnMergeAfter(hookCtx, connection.model("Order"), (result.order as any)?._id);
+
+    void dispatchTrigger(dbName, "order_shipped", { type: "order", order: result.order! });
 
     return NextResponse.json({
       success: true,
       order: result.order,
+      ...windmillResponseFragment(hookCtx.channel, null, on),
     });
   } catch (error) {
     console.error("Error shipping order:", error);

@@ -9,6 +9,7 @@ import {
   isValidPrefix,
   isValidCode,
 } from "@/lib/constants/customer-tag";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const TAG_COLORS = [
   "#3b82f6", // blue
@@ -37,6 +38,7 @@ interface CreateTagModalProps {
 }
 
 export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps) {
+  const { t } = useTranslation();
   const [prefix, setPrefix] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
@@ -146,7 +148,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to create tag");
+        setError(data.error || t("pages.store.createTagModal.failedToCreateTag"));
         return;
       }
 
@@ -160,7 +162,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
       onCreated();
       onClose();
     } catch {
-      setError("Network error");
+      setError(t("pages.store.createTagModal.networkError"));
     } finally {
       setSaving(false);
     }
@@ -175,8 +177,8 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
             <Tag className="h-5 w-5 text-emerald-600" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">Create Customer Tag</h3>
-            <p className="text-sm text-slate-500">Define a new tag for customer segmentation</p>
+            <h3 className="text-lg font-semibold text-slate-900">{t("pages.store.createTagModal.title")}</h3>
+            <p className="text-sm text-slate-500">{t("pages.store.createTagModal.subtitle")}</p>
           </div>
           <button
             onClick={onClose}
@@ -191,14 +193,14 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
           {/* Prefix */}
           <div ref={prefixRef}>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Prefix (Category) <span className="text-red-500">*</span>
+              {t("pages.store.createTagModal.prefixLabel")} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Input
                 value={prefixInput}
                 onChange={(e) => handlePrefixInputChange(e.target.value)}
                 onFocus={() => setShowPrefixDropdown(true)}
-                placeholder="Select or type a new prefix..."
+                placeholder={t("pages.store.createTagModal.selectOrTypePrefix")}
                 autoComplete="off"
               />
 
@@ -216,7 +218,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
                     >
                       <span className="font-medium font-mono">{opt.value}</span>
                       <span className="text-xs text-slate-400 ml-2">
-                        {opt.tagCount} tag{opt.tagCount !== 1 ? "s" : ""}
+                        {t("pages.store.createTagModal.tagCount", { count: String(opt.tagCount), plural: opt.tagCount !== 1 ? "s" : "" })}
                       </span>
                     </button>
                   ))}
@@ -227,7 +229,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
                       className="w-full text-left px-3 py-2 hover:bg-emerald-50 transition text-sm border-t border-slate-100 text-emerald-600"
                     >
                       <Plus className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />
-                      Create new prefix: <span className="font-mono font-medium">{normalizedInput}</span>
+                      {t("pages.store.createTagModal.createNewPrefix")} <span className="font-mono font-medium">{normalizedInput}</span>
                     </button>
                   )}
                 </div>
@@ -235,7 +237,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
             </div>
             {prefix && !isValidPrefix(prefix) && (
               <p className="text-xs text-red-500 mt-1">
-                Prefix must be lowercase kebab-case (e.g., my-new-category)
+                {t("pages.store.createTagModal.prefixValidation")}
               </p>
             )}
           </div>
@@ -243,16 +245,16 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
           {/* Code */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Code <span className="text-red-500">*</span>
+              {t("pages.store.createTagModal.codeLabel")} <span className="text-red-500">*</span>
             </label>
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g., sconto-45, idraulico, fascia-alta"
+              placeholder={t("pages.store.createTagModal.codePlaceholder")}
             />
             {code && !isCodeValid && (
               <p className="text-xs text-red-500 mt-1">
-                Code must be lowercase kebab-case (e.g., sconto-45)
+                {t("pages.store.createTagModal.codeValidation")}
               </p>
             )}
           </div>
@@ -260,7 +262,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
           {/* Full tag preview */}
           {prefix && isValidPrefix(prefix) && slugifiedCode && (
             <div className="px-3 py-2 bg-slate-50 rounded-md border border-slate-200 space-y-1">
-              <p className="text-xs text-slate-500">Saved as (use in API)</p>
+              <p className="text-xs text-slate-500">{t("pages.store.createTagModal.savedAs")}</p>
               <div className="flex items-center gap-3 text-sm font-mono">
                 <span>
                   <span className="text-slate-400">prefix: </span>
@@ -278,12 +280,12 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Description <span className="text-red-500">*</span>
+              {t("pages.store.createTagModal.descriptionLabel")} <span className="text-red-500">*</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Sconto base 45% su listino"
+              placeholder={t("pages.store.createTagModal.descriptionPlaceholder")}
               rows={2}
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
             />
@@ -291,7 +293,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
           {/* Color */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Color</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">{t("pages.store.createTagModal.colorLabel")}</label>
             <div className="flex gap-2 flex-wrap">
               {TAG_COLORS.map((c) => (
                 <button
@@ -315,14 +317,14 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={onClose} className="flex-1">
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
               disabled={!isValidPrefix(prefix) || !isCodeValid || !description.trim() || saving}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              {saving ? "Creating..." : "Create Tag"}
+              {saving ? t("pages.store.createTagModal.creating") : t("pages.store.createTagModal.createTag")}
             </Button>
           </div>
         </form>

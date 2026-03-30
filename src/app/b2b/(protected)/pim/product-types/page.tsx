@@ -94,16 +94,16 @@ export default function ProductTypesPage() {
       });
 
       if (res.ok) {
-        toast.success("Images updated successfully");
+        toast.success(t("pages.pim.productTypes.imagesUpdated"));
         setShowImageModal(false);
         fetchProductTypes();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to update images");
+        toast.error(error.error || t("pages.pim.productTypes.imagesUpdateFailed"));
       }
     } catch (error) {
       console.error("Error updating images:", error);
-      toast.error("Failed to update images");
+      toast.error(t("pages.pim.productTypes.imagesUpdateFailed"));
     }
   }
 
@@ -121,7 +121,7 @@ export default function ProductTypesPage() {
       }
     } catch (error) {
       console.error("Error fetching product types:", error);
-      toast.error("Failed to load product types");
+      toast.error(t("pages.pim.productTypes.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -130,12 +130,12 @@ export default function ProductTypesPage() {
   async function handleDelete(productType: ProductType) {
     if (productType.product_count > 0) {
       toast.error(
-        `Cannot delete product type with ${productType.product_count} products. Please reassign them first.`
+        t("pages.pim.productTypes.deleteHasProducts", { count: productType.product_count })
       );
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${getLocalizedString(productType.name)}"?`)) {
+    if (!confirm(t("pages.pim.productTypes.deleteConfirm", { name: getLocalizedString(productType.name) }))) {
       return;
     }
 
@@ -145,15 +145,15 @@ export default function ProductTypesPage() {
       });
 
       if (res.ok) {
-        toast.success("Product type deleted successfully");
+        toast.success(t("pages.pim.productTypes.deleteSuccess"));
         fetchProductTypes();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete product type");
+        toast.error(error.error || t("pages.pim.productTypes.deleteFailed"));
       }
     } catch (error) {
       console.error("Error deleting product type:", error);
-      toast.error("Failed to delete product type");
+      toast.error(t("pages.pim.productTypes.deleteFailed"));
     }
   }
 
@@ -166,15 +166,15 @@ export default function ProductTypesPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to sync product types");
+        toast.error(error.error || t("pages.pim.productTypes.syncFailed"));
         return;
       }
 
       const data = await res.json();
-      toast.success(data.message || "All product types synced successfully");
+      toast.success(data.message || t("pages.pim.productTypes.syncAll"));
     } catch (error) {
       console.error("Error syncing product types:", error);
-      toast.error("Failed to sync product types");
+      toast.error(t("pages.pim.productTypes.syncFailed"));
     } finally {
       setSyncing(false);
     }
@@ -393,7 +393,7 @@ export default function ProductTypesPage() {
       <FullScreenModal
         open={showImageModal}
         onClose={() => setShowImageModal(false)}
-        title={editingImagePT ? `Images — ${getLocalizedString(editingImagePT.name)}` : "Images"}
+        title={editingImagePT ? t("pages.pim.productTypes.imagesModalTitle", { name: getLocalizedString(editingImagePT.name) }) : t("pages.pim.productTypes.imagesModalTitleFallback")}
         actions={
           <>
             <button
@@ -428,7 +428,7 @@ export default function ProductTypesPage() {
                 value={imageFormData.image_alt}
                 onChange={(e) => setImageFormData((prev) => ({ ...prev, image_alt: e.target.value }))}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Descriptive alt text..."
+                placeholder={t("pages.pim.productTypes.altTextPlaceholder")}
               />
             </div>
           )}
@@ -447,7 +447,7 @@ export default function ProductTypesPage() {
                 value={imageFormData.mobile_image_alt}
                 onChange={(e) => setImageFormData((prev) => ({ ...prev, mobile_image_alt: e.target.value }))}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Descriptive alt text..."
+                placeholder={t("pages.pim.productTypes.altTextPlaceholder")}
               />
             </div>
           )}

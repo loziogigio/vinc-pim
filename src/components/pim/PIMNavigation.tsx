@@ -18,7 +18,8 @@ import {
   Menu,
   Languages,
   BookA,
-  RefreshCw
+  RefreshCw,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -36,6 +37,7 @@ const navItems = [
   { labelKey: "nav.pim.productTypes", href: "/b2b/pim/product-types", icon: Cpu, descKey: "nav.pim.productTypesDesc" },
   { labelKey: "nav.pim.technicalSpecs", href: "/b2b/pim/technical-specifications", icon: Sliders, descKey: "nav.pim.technicalSpecsDesc" },
   { labelKey: "nav.pim.aiEnhancement", href: "/b2b/pim/ai-enhancement", icon: Sparkles, descKey: "nav.pim.aiEnhancementDesc" },
+  { labelKey: "nav.pim.documentation", href: "/b2b/pim/documentation", icon: BookOpen, descKey: "nav.pim.documentationDesc" },
   { labelKey: "nav.pim.import", href: "/b2b/pim/import", icon: Upload, descKey: "nav.pim.importDesc" },
   { labelKey: "nav.pim.jobs", href: "/b2b/pim/jobs", icon: FileText, descKey: "nav.pim.jobsDesc" },
   { labelKey: "nav.pim.batchSync", href: "/b2b/pim/batch-sync", icon: RefreshCw, descKey: "nav.pim.batchSyncDesc" },

@@ -87,6 +87,7 @@ export interface IPIMProduct extends Document {
 
   // Publication
   status: "draft" | "published" | "archived";
+  not_visible?: boolean; // Hide from storefront even when published
   published_at?: Date;
 
   // Import Source
@@ -519,6 +520,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       enum: ["draft", "published", "archived"],
       default: "draft",
     },
+    not_visible: { type: Boolean, default: false, index: true },
     published_at: { type: Date },
 
     source: SourceSchema,

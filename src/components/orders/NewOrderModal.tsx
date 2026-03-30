@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   X,
   Search,
@@ -31,6 +32,7 @@ interface NewOrderModalProps {
 }
 
 export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModalProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -91,7 +93,7 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
 
   const handleCreateOrder = async () => {
     if (!selectedCustomer) {
-      toast.error("Please select a customer");
+      toast.error(t("pages.store.newOrderModal.pleaseSelectCustomer"));
       return;
     }
 
@@ -108,7 +110,7 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
       if (res.ok) {
         const data = await res.json();
         const orderId = data.order?.order_id;
-        toast.success("Order created successfully");
+        toast.success(t("pages.store.newOrderModal.orderCreatedSuccess"));
         onClose();
 
         if (onOrderCreated) {
@@ -118,11 +120,11 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
         }
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to create order");
+        toast.error(error.error || t("pages.store.newOrderModal.failedToCreate"));
       }
     } catch (error) {
       console.error("Error creating order:", error);
-      toast.error("Failed to create order");
+      toast.error(t("pages.store.newOrderModal.failedToCreate"));
     } finally {
       setIsCreating(false);
     }
@@ -150,7 +152,7 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">New Order</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("pages.store.newOrderModal.title")}</h2>
           </div>
           <button
             onClick={onClose}
@@ -165,13 +167,13 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
           {/* Customer Search */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Select Customer
+              {t("pages.store.newOrderModal.selectCustomer")}
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search by name, email, or code..."
+                placeholder={t("pages.store.newOrderModal.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -229,8 +231,8 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
           {searchQuery.length >= 2 && customers.length === 0 && !isSearching && !selectedCustomer && (
             <div className="text-center py-6 text-muted-foreground">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No customers found</p>
-              <p className="text-xs mt-1">Try a different search term</p>
+              <p className="text-sm">{t("pages.store.newOrderModal.noCustomersFound")}</p>
+              <p className="text-xs mt-1">{t("pages.store.newOrderModal.tryDifferentSearch")}</p>
             </div>
           )}
 
@@ -280,7 +282,7 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
           {!selectedCustomer && searchQuery.length < 2 && (
             <div className="text-center py-4 text-muted-foreground">
               <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Type at least 2 characters to search</p>
+              <p className="text-sm">{t("pages.store.newOrderModal.typeToSearch")}</p>
             </div>
           )}
         </div>
@@ -291,7 +293,7 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleCreateOrder}
@@ -303,7 +305,7 @@ export function NewOrderModal({ isOpen, onClose, onOrderCreated }: NewOrderModal
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            Create Order
+            {t("pages.store.newOrderModal.createOrder")}
           </button>
         </div>
       </div>

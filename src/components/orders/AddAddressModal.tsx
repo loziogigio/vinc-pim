@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, MapPin, Loader2, Edit } from "lucide-react";
 import type { Address } from "@/lib/types/customer";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Props {
   customerId: string;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function AddAddressModal({ customerId, customerName, address, onCreated, onClose }: Props) {
+  const { t } = useTranslation();
   const isEditMode = !!address;
 
   const [addressType, setAddressType] = useState<"both" | "delivery" | "billing">(address?.address_type || "both");
@@ -77,13 +79,13 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || (isEditMode ? "Errore nel salvataggio" : "Errore nella creazione"));
+        setError(data.error || (isEditMode ? t("pages.store.addAddressModal.errorSaving") : t("pages.store.addAddressModal.errorCreating")));
         return;
       }
 
       onCreated();
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.store.addAddressModal.networkError"));
     } finally {
       setSaving(false);
     }
@@ -102,10 +104,10 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-slate-900">
-              {isEditMode ? "Modifica Indirizzo" : "Nuovo Indirizzo"}
+              {isEditMode ? t("pages.store.addAddressModal.titleEdit") : t("pages.store.addAddressModal.titleAdd")}
             </h3>
             <p className="text-sm text-slate-500">
-              {isEditMode ? "Modifica i dati dell'indirizzo" : "Aggiungi un indirizzo al cliente"}
+              {isEditMode ? t("pages.store.addAddressModal.subtitleEdit") : t("pages.store.addAddressModal.subtitleAdd")}
             </p>
           </div>
           <button
@@ -119,7 +121,7 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Address Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Tipo Indirizzo</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">{t("pages.store.addAddressModal.addressType")}</label>
             <div className="flex gap-3">
               {(["both", "delivery", "billing"] as const).map((type) => (
                 <button
@@ -132,7 +134,7 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
                       : "border-slate-200 text-slate-500 hover:border-slate-300"
                   }`}
                 >
-                  {type === "both" ? "Entrambi" : type === "delivery" ? "Spedizione" : "Fatturazione"}
+                  {type === "both" ? t("pages.store.addAddressModal.typesBoth") : type === "delivery" ? t("pages.store.addAddressModal.typesDelivery") : t("pages.store.addAddressModal.typesBilling")}
                 </button>
               ))}
             </div>
@@ -141,35 +143,35 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
           {/* Label, Code & Recipient */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
-              Informazioni
+              {t("pages.store.addAddressModal.sectionInfo")}
             </h4>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Codice esterno</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.store.addAddressModal.externalCode")}</label>
                 <input
                   value={externalCode}
                   onChange={(e) => setExternalCode(e.target.value.toUpperCase())}
-                  placeholder="Es. ADDR-001"
+                  placeholder={t("pages.store.addAddressModal.externalCodePlaceholder")}
                   className={`${inputClass} uppercase font-mono`}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Etichetta</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.store.addAddressModal.label")}</label>
                 <input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  placeholder="Es. Sede legale, Magazzino..."
+                  placeholder={t("pages.store.addAddressModal.labelPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Destinatario <span className="text-red-500">*</span>
+                  {t("pages.store.addAddressModal.recipient")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
-                  placeholder="Nome destinatario"
+                  placeholder={t("pages.store.addAddressModal.recipientPlaceholder")}
                   className={inputClass}
                 />
               </div>
@@ -179,60 +181,60 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
           {/* Address */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
-              Indirizzo
+              {t("pages.store.addAddressModal.sectionAddress")}
             </h4>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">
-                Via / Indirizzo <span className="text-red-500">*</span>
+                {t("pages.store.addAddressModal.streetAddress")} <span className="text-red-500">*</span>
               </label>
               <input
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
-                placeholder="Via Roma, 1"
+                placeholder={t("pages.store.addAddressModal.streetAddressPlaceholder")}
                 className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Indirizzo (riga 2)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.store.addAddressModal.streetAddress2")}</label>
               <input
                 value={streetAddress2}
                 onChange={(e) => setStreetAddress2(e.target.value)}
-                placeholder="Interno, scala, piano..."
+                placeholder={t("pages.store.addAddressModal.streetAddress2Placeholder")}
                 className={inputClass}
               />
             </div>
             <div className="grid grid-cols-4 gap-4">
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Città <span className="text-red-500">*</span>
+                  {t("pages.store.addAddressModal.city")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Milano"
+                  placeholder={t("pages.store.addAddressModal.cityPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Provincia <span className="text-red-500">*</span>
+                  {t("pages.store.addAddressModal.province")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
-                  placeholder="MI"
+                  placeholder={t("pages.store.addAddressModal.provincePlaceholder")}
                   maxLength={2}
                   className={`${inputClass} uppercase`}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  CAP <span className="text-red-500">*</span>
+                  {t("pages.store.addAddressModal.postalCode")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  placeholder="20100"
+                  placeholder={t("pages.store.addAddressModal.postalCodePlaceholder")}
                   maxLength={5}
                   className={inputClass}
                 />
@@ -241,17 +243,17 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Paese <span className="text-red-500">*</span>
+                  {t("pages.store.addAddressModal.country")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  placeholder="IT"
+                  placeholder={t("pages.store.addAddressModal.countryPlaceholder")}
                   className={`${inputClass} uppercase`}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Telefono</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("common.phone")}</label>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -265,11 +267,11 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
           {/* Delivery Notes */}
           {(addressType === "delivery" || addressType === "both") && (
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Note di consegna</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.store.addAddressModal.deliveryNotes")}</label>
               <textarea
                 value={deliveryNotes}
                 onChange={(e) => setDeliveryNotes(e.target.value)}
-                placeholder="Istruzioni per il corriere..."
+                placeholder={t("pages.store.addAddressModal.deliveryNotesPlaceholder")}
                 rows={2}
                 className={inputClass}
               />
@@ -284,7 +286,7 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
               onChange={(e) => setIsDefault(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-[#009688] focus:ring-[#009688]"
             />
-            <span className="text-sm text-slate-700">Imposta come indirizzo predefinito</span>
+            <span className="text-sm text-slate-700">{t("pages.store.addAddressModal.setDefault")}</span>
           </label>
 
           {/* Error */}
@@ -299,7 +301,7 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
               onClick={onClose}
               className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
             >
-              Annulla
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -307,7 +309,7 @@ export function AddAddressModal({ customerId, customerName, address, onCreated, 
               className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[#009688] text-white hover:bg-[#00796b] transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {saving ? "Salvataggio..." : isEditMode ? "Salva Modifiche" : "Aggiungi Indirizzo"}
+              {saving ? t("pages.store.addAddressModal.saving") : isEditMode ? t("pages.store.addAddressModal.saveChanges") : t("pages.store.addAddressModal.addAddress")}
             </button>
           </div>
         </form>

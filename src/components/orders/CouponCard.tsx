@@ -6,6 +6,7 @@ import { Ticket, X, Search, Loader2, Check, Percent, Euro, ExternalLink } from "
 import { toast } from "sonner";
 import type { Order } from "@/lib/types/order";
 import type { CouponValidationResult } from "@/lib/types/coupon";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CouponCardProps {
   order: Order;
@@ -14,6 +15,7 @@ interface CouponCardProps {
 }
 
 export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponCardProps) {
+  const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
@@ -43,7 +45,7 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
       const data = await res.json();
       setValidation(data);
     } catch {
-      toast.error("Errore durante la validazione");
+      toast.error(t("pages.store.couponCard.errorValidating"));
     } finally {
       setIsValidating(false);
     }
@@ -60,15 +62,15 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Coupon ${code.toUpperCase()} applicato (${fmt(data.discount_applied)})`);
+        toast.success(t("pages.store.couponCard.couponApplied", { code: code.toUpperCase(), discount: fmt(data.discount_applied) }));
         setCode("");
         setValidation(null);
         onCouponChange();
       } else {
-        toast.error(data.error || "Errore nell'applicazione del coupon");
+        toast.error(data.error || t("pages.store.couponCard.errorApplying"));
       }
     } catch {
-      toast.error("Errore nell'applicazione del coupon");
+      toast.error(t("pages.store.couponCard.errorApplying"));
     } finally {
       setIsApplying(false);
     }
@@ -82,13 +84,13 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Coupon rimosso");
+        toast.success(t("pages.store.couponCard.couponRemoved"));
         onCouponChange();
       } else {
-        toast.error(data.error || "Errore nella rimozione del coupon");
+        toast.error(data.error || t("pages.store.couponCard.errorRemoving"));
       }
     } catch {
-      toast.error("Errore nella rimozione del coupon");
+      toast.error(t("pages.store.couponCard.errorRemoving"));
     } finally {
       setIsRemoving(false);
     }
@@ -99,7 +101,7 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Ticket className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-foreground">Coupon</h2>
+          <h2 className="font-semibold text-foreground">{t("pages.store.couponCard.title")}</h2>
         </div>
       </div>
 
@@ -126,7 +128,7 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
                   <Link
                     href={`${tenantPrefix}/b2b/store/coupons/${order.coupon_id}`}
                     className="p-1 rounded hover:bg-emerald-100 transition"
-                    title="Dettagli coupon"
+                    title={t("pages.store.couponCard.couponDetails")}
                   >
                     <ExternalLink className="h-3.5 w-3.5 text-emerald-600" />
                   </Link>
@@ -136,7 +138,7 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
                     onClick={handleRemove}
                     disabled={isRemoving}
                     className="p-1 rounded hover:bg-red-100 transition"
-                    title="Rimuovi coupon"
+                    title={t("pages.store.couponCard.removeCoupon")}
                   >
                     {isRemoving ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-red-500" />
@@ -154,7 +156,7 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Codice coupon..."
+                placeholder={t("pages.store.couponCard.codePlaceholder")}
                 value={code}
                 onChange={(e) => {
                   setCode(e.target.value.toUpperCase());
@@ -236,7 +238,7 @@ export function CouponCard({ order, onCouponChange, tenantPrefix = "" }: CouponC
             )}
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Nessun coupon applicato</p>
+          <p className="text-sm text-muted-foreground">{t("pages.store.couponCard.noCouponApplied")}</p>
         )}
       </div>
     </div>

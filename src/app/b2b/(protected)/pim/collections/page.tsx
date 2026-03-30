@@ -75,7 +75,7 @@ export default function CollectionsPage() {
       }
     } catch (error) {
       console.error("Error fetching collections:", error);
-      toast.error("Failed to load collections");
+      toast.error(t("pages.pim.collections.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -84,12 +84,12 @@ export default function CollectionsPage() {
   async function handleDelete(collection: Collection) {
     if (collection.product_count > 0) {
       toast.error(
-        `Cannot delete collection with ${collection.product_count} products. Please reassign them first.`
+        t("pages.pim.collections.hasProductsError", { count: collection.product_count })
       );
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${collection.name}"?`)) {
+    if (!confirm(t("pages.pim.collections.deleteConfirm", { name: collection.name }))) {
       return;
     }
 
@@ -99,15 +99,15 @@ export default function CollectionsPage() {
       });
 
       if (res.ok) {
-        toast.success("Collection deleted successfully");
+        toast.success(t("pages.pim.collections.deleteSuccess"));
         fetchCollections();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete collection");
+        toast.error(error.error || t("pages.pim.collections.deleteFailed"));
       }
     } catch (error) {
       console.error("Error deleting collection:", error);
-      toast.error("Failed to delete collection");
+      toast.error(t("pages.pim.collections.deleteFailed"));
     }
   }
 
@@ -177,10 +177,10 @@ export default function CollectionsPage() {
                 ? "border-border bg-background"
                 : "border-primary bg-primary/10 text-primary"
             }`}
-            title="Filter"
+            title={t("common.filter")}
           >
             <Filter className="h-5 w-5" />
-            {!showInactive && "Active only"}
+            {!showInactive && t("pages.pim.activeOnly")}
           </button>
         </div>
 
@@ -243,7 +243,7 @@ export default function CollectionsPage() {
                       </div>
                       {!collection.is_active && (
                         <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 ml-2">
-                          Inactive
+                          {t("common.inactive")}
                         </span>
                       )}
                     </div>
@@ -257,7 +257,7 @@ export default function CollectionsPage() {
                     {/* Product Count */}
                     <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                       <Package className="h-4 w-4" />
-                      <span>{collection.product_count} {t("pages.pim.products.title").toLowerCase()}</span>
+                      <span>{collection.product_count} {t("pages.pim.collections.productsCount")}</span>
                     </div>
 
                     {/* Actions */}
@@ -267,7 +267,7 @@ export default function CollectionsPage() {
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm"
                       >
                         <Eye className="h-4 w-4" />
-                        View
+                        {t("common.view")}
                       </Link>
                       <button
                         type="button"
@@ -275,7 +275,7 @@ export default function CollectionsPage() {
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded border border-border hover:bg-muted transition text-sm"
                       >
                         <Edit2 className="h-4 w-4" />
-                        Edit
+                        {t("common.edit")}
                       </button>
                       <button
                         type="button"
@@ -403,15 +403,19 @@ function CollectionModal({
       });
 
       if (res.ok) {
-        toast.success(collection ? "Collection updated successfully" : "Collection created successfully");
+        toast.success(
+          collection
+            ? t("pages.pim.collections.updateSuccess")
+            : t("pages.pim.collections.createSuccess")
+        );
         onSuccess();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to save collection");
+        toast.error(error.error || t("pages.pim.collections.saveFailed"));
       }
     } catch (error) {
       console.error("Error saving collection:", error);
-      toast.error("Failed to save collection");
+      toast.error(t("pages.pim.collections.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -429,7 +433,7 @@ function CollectionModal({
             onClick={onClose}
             className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -445,7 +449,9 @@ function CollectionModal({
       <div className="space-y-6">
         {/* Locale */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Locale *</label>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {t("pages.pim.collections.locale")} *
+          </label>
           <select
             required
             value={formData.locale}
@@ -461,7 +467,7 @@ function CollectionModal({
           </select>
           {collection && (
             <p className="text-xs text-muted-foreground mt-1">
-              Locale cannot be changed after creation
+              {t("pages.pim.collections.localeHint")}
             </p>
           )}
         </div>
@@ -469,7 +475,7 @@ function CollectionModal({
         {/* Name & Slug */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("common.name")} *</label>
             <input
               type="text"
               required
@@ -487,7 +493,9 @@ function CollectionModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.slug")} *
+            </label>
             <input
               type="text"
               required
@@ -504,7 +512,7 @@ function CollectionModal({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("common.description")}</label>
           <RichTextEditor
             content={formData.description}
             onChange={(html) => setFormData({ ...formData, description: html })}
@@ -516,7 +524,9 @@ function CollectionModal({
         {/* Display Order & Active */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.displayOrder")}
+            </label>
             <input
               type="number"
               value={formData.display_order}
@@ -534,14 +544,14 @@ function CollectionModal({
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
-              Active (visible to customers)
+              {t("pages.pim.collections.activeLabel")}
             </label>
           </div>
         </div>
 
         {/* Hero Image */}
         <ImageUpload
-          label="Hero Image"
+          label={t("pages.pim.collections.heroImage")}
           value={formData.hero_image_url}
           onChange={(url) =>
             setFormData((prev) => ({ ...prev, hero_image_url: url, hero_image_cdn_key: "" }))
@@ -551,7 +561,9 @@ function CollectionModal({
         {/* Alt Text (only shown when image is set) */}
         {formData.hero_image_url && (
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.imageAltText")}
+            </label>
             <input
               type="text"
               value={formData.hero_image_alt}
@@ -564,7 +576,7 @@ function CollectionModal({
 
         {/* Mobile Hero Image */}
         <ImageUpload
-          label="Mobile Hero Image"
+          label={t("pages.pim.collections.mobileHeroImage")}
           value={formData.mobile_hero_image_url}
           onChange={(url) =>
             setFormData((prev) => ({ ...prev, mobile_hero_image_url: url, mobile_hero_image_cdn_key: "" }))
@@ -573,7 +585,9 @@ function CollectionModal({
 
         {formData.mobile_hero_image_url && (
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.mobileImageAltText")}
+            </label>
             <input
               type="text"
               value={formData.mobile_hero_image_alt}
@@ -586,10 +600,12 @@ function CollectionModal({
 
         {/* SEO Fields */}
         <div className="space-y-4 pt-4 border-t border-border">
-          <h4 className="font-semibold text-foreground">SEO Settings</h4>
+          <h4 className="font-semibold text-foreground">{t("pages.pim.collections.seoSettings")}</h4>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">SEO Title</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.seoTitle")}
+            </label>
             <input
               type="text"
               value={formData.seo_title}
@@ -600,7 +616,9 @@ function CollectionModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">SEO Description</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.seoDescription")}
+            </label>
             <textarea
               value={formData.seo_description}
               onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
@@ -611,7 +629,9 @@ function CollectionModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Keywords (comma-separated)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("pages.pim.collections.seoKeywords")}
+            </label>
             <input
               type="text"
               value={formData.seo_keywords}

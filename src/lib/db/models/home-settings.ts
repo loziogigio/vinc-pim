@@ -391,6 +391,32 @@ const HomeSettingsSchema = new Schema(
     image_versions: {
       type: ImageVersionsSettingsSchema
     },
+    windmill_proxy: {
+      type: new Schema({
+        enabled: { type: Boolean, default: false },
+        windmill_base_url: { type: String },
+        windmill_external_url: { type: String },
+        workspace_name: { type: String },
+        timeout_ms: { type: Number, default: 5000 },
+        channels: [{
+          channel: { type: String, required: true },
+          enabled: { type: Boolean, default: true },
+          hooks: [{
+            operation: { type: String, required: true },
+            phase: { type: String, enum: ["before", "on", "after"], required: true },
+            script_path: { type: String, required: true },
+            enabled: { type: Boolean, default: true },
+            blocking: { type: Boolean, default: false },
+            timeout_ms: { type: Number },
+          }],
+        }],
+        sso_users: [{
+          vinc_email: { type: String, required: true },
+          windmill_email: { type: String, required: true },
+          windmill_password_encrypted: { type: String, required: true },
+        }],
+      }, { _id: false }),
+    },
     lastModifiedBy: { type: String }
   },
   {

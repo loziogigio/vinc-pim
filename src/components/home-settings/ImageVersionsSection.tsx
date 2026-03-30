@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Lock, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { ImageVersionsSettings, ImageVersionConfig } from "@/lib/types/home-settings";
 
 const DEFAULT_VERSIONS: ImageVersionConfig[] = [
@@ -16,6 +17,7 @@ interface ImageVersionsSectionProps {
 }
 
 export default function ImageVersionsSection({ value, onChange }: ImageVersionsSectionProps) {
+  const { t } = useTranslation();
   const [newKey, setNewKey] = useState("");
   const [newPrefix, setNewPrefix] = useState("");
   const [newWidth, setNewWidth] = useState(600);
@@ -61,11 +63,10 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
       <div className="border-b border-slate-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
           <Image className="h-5 w-5 text-primary" />
-          Image Versions
+          {t("components.imageVersions.sectionTitle")}
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Configure automatic image versions generated during PIM product upload.
-          Each version creates a resized copy with a prefix (e.g., <code>main_</code>, <code>gallery_</code>).
+          {t("components.imageVersions.sectionDescription")} <code>main_</code>, <code>gallery_</code>{t("components.imageVersions.sectionDescriptionEnd")}
         </p>
       </div>
 
@@ -79,7 +80,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
             className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
           />
           <span className="text-sm font-medium text-slate-700">
-            Enable automatic image version generation
+            {t("components.imageVersions.enableLabel")}
           </span>
         </label>
 
@@ -90,11 +91,11 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-slate-500">
-                    <th className="pb-2 pr-4 font-medium">Key</th>
-                    <th className="pb-2 pr-4 font-medium">Prefix</th>
-                    <th className="pb-2 pr-4 font-medium">Width (px)</th>
-                    <th className="pb-2 pr-4 font-medium">Height (px)</th>
-                    <th className="pb-2 font-medium w-20">Actions</th>
+                    <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colKey")}</th>
+                    <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colPrefix")}</th>
+                    <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colWidth")}</th>
+                    <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colHeight")}</th>
+                    <th className="pb-2 font-medium w-20">{t("components.imageVersions.colActions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -103,7 +104,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
                           {version.is_default && (
-                            <Lock className="h-3.5 w-3.5 text-slate-400" title="Built-in version" />
+                            <Lock className="h-3.5 w-3.5 text-slate-400" title={t("components.imageVersions.builtInVersion")} />
                           )}
                           <span className={version.is_default ? "text-slate-600 font-medium" : "text-slate-900"}>
                             {version.key}
@@ -149,7 +150,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                           <button
                             onClick={() => removeVersion(index)}
                             className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                            title="Remove version"
+                            title={t("components.imageVersions.removeVersion")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -163,10 +164,10 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
 
             {/* Add custom version */}
             <div className="border-t border-slate-200 pt-4">
-              <h3 className="text-sm font-medium text-slate-700 mb-3">Add Custom Version</h3>
+              <h3 className="text-sm font-medium text-slate-700 mb-3">{t("components.imageVersions.addCustomVersion")}</h3>
               <div className="flex items-end gap-3 flex-wrap">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Key</label>
+                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colKey")}</label>
                   <input
                     type="text"
                     value={newKey}
@@ -176,7 +177,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Prefix</label>
+                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colPrefix")}</label>
                   <input
                     type="text"
                     value={newPrefix}
@@ -186,7 +187,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Width</label>
+                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colWidth")}</label>
                   <input
                     type="number"
                     value={newWidth}
@@ -197,7 +198,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Height</label>
+                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colHeight")}</label>
                   <input
                     type="number"
                     value={newHeight}
@@ -214,7 +215,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                   disabled={!newKey.trim() || !newPrefix.trim()}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add
+                  {t("components.imageVersions.addButton")}
                 </Button>
               </div>
             </div>
@@ -222,9 +223,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
             {/* Info */}
             <div className="rounded-lg bg-blue-50 border border-blue-100 p-3">
               <p className="text-xs text-blue-700">
-                <strong>Note:</strong> The original image is always uploaded at full quality. Versions are resized
-                copies with the prefix prepended to the filename (e.g., <code>main_photo.jpg</code>).
-                Default versions (main, gallery) cannot be removed but their dimensions can be adjusted.
+                <strong>{t("components.imageVersions.noteTitle")}</strong> {t("components.imageVersions.noteText")} <code>main_photo.jpg</code>{t("components.imageVersions.noteTextEnd")}
               </p>
             </div>
           </>

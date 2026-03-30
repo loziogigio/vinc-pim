@@ -19,6 +19,7 @@ import {
   FileText,
   Package,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -144,6 +145,21 @@ export default function OrdersListPage() {
   const clearSelection = () => {
     setSelectedOrders(new Set());
   };
+
+  async function deleteOrder(orderId: string) {
+    if (!confirm(t("pages.store.ordersList.confirmDeleteCart"))) return;
+    try {
+      const res = await fetch(`/api/b2b/orders/${orderId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Failed to delete");
+        return;
+      }
+      fetchOrders();
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  }
 
   const isAllSelected = orders.length > 0 && selectedOrders.size === orders.length;
   const isSomeSelected = selectedOrders.size > 0 && selectedOrders.size < orders.length;
@@ -862,12 +878,20 @@ export default function OrdersListPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusStyle.bg}`}
-                          >
-                            <StatusIcon className="h-3 w-3" />
-                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusStyle.bg}`}
+                            >
+                              <StatusIcon className="h-3 w-3" />
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </span>
+                            {(order as Order & { is_current?: boolean }).is_current && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                                <ShoppingCart className="h-2.5 w-2.5" />
+                                {t("pages.store.ordersList.activeCart")}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-xs text-muted-foreground">
@@ -898,6 +922,15 @@ export default function OrdersListPage() {
                               <Eye className="h-3 w-3" />
                               {t("common.view")}
                             </Link>
+                            {order.status === "draft" && (
+                              <button
+                                onClick={() => deleteOrder(order.order_id)}
+                                className="flex items-center gap-1 text-xs text-destructive hover:underline font-medium"
+                                title={t("common.delete")}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

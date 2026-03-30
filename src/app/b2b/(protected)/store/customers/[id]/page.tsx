@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import type { Customer, Address } from "@/lib/types/customer";
 import type { Order } from "@/lib/types/order";
 import { CustomerTagsCard } from "@/components/orders/CustomerTagsCard";
+import { ConnectedPortalUsersCard } from "@/components/orders/ConnectedPortalUsersCard";
 import { AddressTagOverrides } from "@/components/orders/AddressTagOverrides";
 import { AddAddressModal } from "@/components/orders/AddAddressModal";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -766,6 +767,9 @@ export default function CustomerDetailPage({
 
       {/* Customer Tags */}
       <CustomerTagsCard customerId={id} />
+
+      {/* Connected Portal Users */}
+      <ConnectedPortalUsersCard customerId={id} />
 
       {/* Addresses */}
       <div className="rounded-lg bg-card shadow-sm">

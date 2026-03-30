@@ -224,6 +224,7 @@ type HomeSettingsUpdate = {
   headerConfigDraft?: HeaderConfig;
   meta_tags?: Partial<MetaTags> | MetaTags;
   image_versions?: ImageVersionsSettings;
+  windmill_proxy?: import("@/lib/types/windmill-proxy").WindmillProxySettings;
   lastModifiedBy?: string;
 };
 
@@ -355,6 +356,11 @@ export async function upsertHomeSettings(
       // ImageVersionsSettings — replace as a whole
       if (data.image_versions !== undefined) {
         updateFields.image_versions = data.image_versions;
+      }
+
+      // WindmillProxySettings — replace as a whole
+      if (data.windmill_proxy !== undefined) {
+        updateFields.windmill_proxy = data.windmill_proxy;
       }
 
       if (data.lastModifiedBy) {

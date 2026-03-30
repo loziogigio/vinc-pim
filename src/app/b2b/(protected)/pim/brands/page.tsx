@@ -138,28 +138,28 @@ export default function BrandsPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to save brand");
+        toast.error(error.error || t("pages.pim.brands.saveFailed"));
         return;
       }
 
-      toast.success(editingBrand ? "Brand updated successfully" : "Brand created successfully");
+      toast.success(editingBrand ? t("pages.pim.brands.updateSuccess") : t("pages.pim.brands.createSuccess"));
       setShowModal(false);
       fetchBrands();
     } catch (error) {
       console.error("Failed to save brand:", error);
-      toast.error("Failed to save brand");
+      toast.error(t("pages.pim.brands.saveFailed"));
     }
   }
 
   async function handleDelete(brandId: string, productCount: number) {
     if (productCount > 0) {
       toast.error(
-        `Cannot delete brand with ${productCount} associated products. Please remove products first.`
+        t("pages.pim.brands.hasProductsError", { count: productCount })
       );
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this brand?")) {
+    if (!confirm(t("pages.pim.brands.deleteConfirm"))) {
       return;
     }
 
@@ -170,16 +170,72 @@ export default function BrandsPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete brand");
+        toast.error(error.error || t("pages.pim.brands.deleteFailed"));
         return;
       }
 
-      toast.success("Brand deleted successfully");
+      toast.success(t("pages.pim.brands.deleteSuccess"));
       fetchBrands();
     } catch (error) {
       console.error("Failed to delete brand:", error);
-      toast.error("Failed to delete brand");
+      toast.error(t("pages.pim.brands.deleteFailed"));
     }
+  }
+
+  function renderPagination() {
+    if (!pagination || pagination.pages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-card shadow-sm border border-border">
+        <p className="text-sm text-muted-foreground">
+          {t("pages.pim.brands.showingOf", {
+            from: (pagination.page - 1) * pagination.limit + 1,
+            to: Math.min(pagination.page * pagination.limit, pagination.total),
+            total: pagination.total,
+          })}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page <= 1}
+            className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("common.previous")}
+          </button>
+          {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
+            let pageNum: number;
+            if (pagination.pages <= 7) {
+              pageNum = i + 1;
+            } else if (page <= 4) {
+              pageNum = i + 1;
+            } else if (page >= pagination.pages - 3) {
+              pageNum = pagination.pages - 6 + i;
+            } else {
+              pageNum = page - 3 + i;
+            }
+            return (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  pageNum === page
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-input hover:bg-accent"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page >= pagination.pages}
+            className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("common.next")}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   function generateSlug(label: string) {
@@ -250,12 +306,12 @@ export default function BrandsPage() {
           onChange={(e) => setSortBy(e.target.value)}
           className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="image_label">Image + Name</option>
-          <option value="label">Name</option>
-          <option value="created_at">Created Date</option>
-          <option value="updated_at">Updated Date</option>
-          <option value="product_count">Product Count</option>
-          <option value="display_order">Display Order</option>
+          <option value="image_label">{t("pages.pim.brands.sortImageLabel")}</option>
+          <option value="label">{t("pages.pim.brands.sortName")}</option>
+          <option value="created_at">{t("pages.pim.brands.sortCreated")}</option>
+          <option value="updated_at">{t("pages.pim.brands.sortUpdated")}</option>
+          <option value="product_count">{t("pages.pim.brands.sortProductCount")}</option>
+          <option value="display_order">{t("pages.pim.brands.sortDisplayOrder")}</option>
         </select>
 
         <button
@@ -282,7 +338,9 @@ export default function BrandsPage() {
           </button>
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <>
+        {renderPagination()}
+        <div className="border border-border rounded-lg overflow-hidden bg-card">
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
@@ -348,7 +406,7 @@ export default function BrandsPage() {
                           : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
                       }`}
                     >
-                      {brand.is_active ? "Active" : "Inactive"}
+                      {brand.is_active ? t("common.active") : t("common.inactive")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -359,9 +417,9 @@ export default function BrandsPage() {
                       <Link
                         href={`/b2b/pim/brands/${brand.brand_id}`}
                         className="text-sm text-primary hover:underline"
-                        title="View products"
+                        title={t("common.view")}
                       >
-                        View
+                        {t("common.view")}
                       </Link>
                       {brand.website_url && (
                         <a
@@ -397,58 +455,9 @@ export default function BrandsPage() {
             </tbody>
           </table>
         </div>
-      )}
 
-      {/* Pagination */}
-      {pagination && pagination.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {(pagination.page - 1) * pagination.limit + 1}–
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} brands
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={page <= 1}
-              className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
-              let pageNum: number;
-              if (pagination.pages <= 7) {
-                pageNum = i + 1;
-              } else if (page <= 4) {
-                pageNum = i + 1;
-              } else if (page >= pagination.pages - 3) {
-                pageNum = pagination.pages - 6 + i;
-              } else {
-                pageNum = page - 3 + i;
-              }
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${
-                    pageNum === page
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-input hover:bg-accent"
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={page >= pagination.pages}
-              className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      {renderPagination()}
+      </>
       )}
 
       {/* Modal */}
@@ -463,7 +472,7 @@ export default function BrandsPage() {
               onClick={() => setShowModal(false)}
               className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -480,7 +489,7 @@ export default function BrandsPage() {
           {/* Name & Slug */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Brand Name *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.brands.brandName")} *</label>
               <input
                 type="text"
                 required
@@ -498,7 +507,7 @@ export default function BrandsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.brands.colSlug")} *</label>
               <input
                 type="text"
                 required
@@ -511,14 +520,14 @@ export default function BrandsPage() {
                 placeholder="e.g., nike, apple, samsung"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                URL-friendly identifier (lowercase, no spaces)
+                {t("pages.pim.brands.slugHint")}
               </p>
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("common.description")}</label>
             <RichTextEditor
               content={formData.description}
               onChange={(html) => setFormData({ ...formData, description: html })}
@@ -529,21 +538,21 @@ export default function BrandsPage() {
 
           {/* Brand Logo */}
           <ImageUpload
-            label="Brand Logo"
+            label={t("pages.pim.brands.brandLogo")}
             value={formData.logo_url}
             onChange={(url) => setFormData((prev) => ({ ...prev, logo_url: url }))}
           />
 
           {/* Mobile Brand Logo */}
           <ImageUpload
-            label="Mobile Brand Logo"
+            label={t("pages.pim.brands.mobileBrandLogo")}
             value={formData.mobile_logo_url}
             onChange={(url) => setFormData((prev) => ({ ...prev, mobile_logo_url: url }))}
           />
 
           {/* Website URL */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Website URL</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.brands.websiteUrl")}</label>
             <input
               type="url"
               value={formData.website_url}
@@ -556,7 +565,7 @@ export default function BrandsPage() {
           {/* Display Order & Status */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.brands.displayOrder")}</label>
               <input
                 type="number"
                 value={formData.display_order}
@@ -574,7 +583,7 @@ export default function BrandsPage() {
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                   className="w-4 h-4"
                 />
-                Active
+                {t("common.active")}
               </label>
             </div>
           </div>

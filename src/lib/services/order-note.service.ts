@@ -50,7 +50,7 @@ function buildOrderNoteData(order: IOrder, storefrontName: string): OrderNoteEma
 
   return {
     order_number: order.order_number
-      ? `${order.order_number}/${order.year}`
+      ? `OR/${order.order_number}/${order.year}`
       : order.order_id,
     buyer_name: buyerName,
     buyer_email: buyer.email,
@@ -180,7 +180,7 @@ export async function createOrderNoteSubmission(
         subject,
         html,
         replyTo: order.buyer?.email,
-        immediate: true,
+        immediate: false,
         tenantDb,
         tags: ["order_note"],
       }).catch((err) => {
@@ -194,7 +194,7 @@ export async function createOrderNoteSubmission(
         to: order.buyer!.email,
         subject,
         html,
-        immediate: true,
+        immediate: false,
         tenantDb,
         tags: ["order_note", "submitter_copy"],
       }).catch((err) => {

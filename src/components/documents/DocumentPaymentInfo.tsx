@@ -2,6 +2,7 @@
 
 import { PAYMENT_TERMS, PAYMENT_TERMS_LABELS } from "@/lib/constants/document";
 import type { Document } from "@/lib/types/document";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Props {
   doc: Document;
@@ -24,11 +25,13 @@ export function DocumentPaymentInfo({
   onCustomDaysChange,
   onDueDateChange,
 }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="grid grid-cols-4 gap-4">
       <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
         <div className="text-xs text-muted-foreground mb-1">
-          Termini di Pagamento
+          {t("pages.documents.detail.payment.paymentTerms")}
         </div>
         {isDraft ? (
           <div className="space-y-2">
@@ -50,7 +53,7 @@ export function DocumentPaymentInfo({
                 min={1}
                 value={editCustomDays}
                 onChange={(e) => onCustomDaysChange(e.target.value)}
-                placeholder="Giorni"
+                placeholder={t("pages.documents.detail.payment.daysPlaceholder")}
                 className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm"
               />
             )}
@@ -74,7 +77,7 @@ export function DocumentPaymentInfo({
         )}
       </div>
       <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
-        <div className="text-xs text-muted-foreground mb-1">Scadenza</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("pages.documents.detail.payment.dueDate")}</div>
         <div className="font-medium text-sm">
           {doc.due_date
             ? new Date(doc.due_date).toLocaleDateString("it-IT", {
@@ -86,11 +89,11 @@ export function DocumentPaymentInfo({
         </div>
       </div>
       <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
-        <div className="text-xs text-muted-foreground mb-1">Valuta</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("pages.documents.detail.payment.currency")}</div>
         <div className="font-medium text-sm">{doc.currency || "EUR"}</div>
       </div>
       <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
-        <div className="text-xs text-muted-foreground mb-1">Ultimo Invio</div>
+        <div className="text-xs text-muted-foreground mb-1">{t("pages.documents.detail.payment.lastSent")}</div>
         <div className="font-medium text-sm">
           {doc.last_sent_at
             ? new Date(doc.last_sent_at).toLocaleDateString("it-IT", {

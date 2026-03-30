@@ -12,6 +12,7 @@ import {
   recalculateOrderTotals,
   ILineItem,
   IOrder,
+  IPromoProgress,
 } from "@/lib/db/models/order";
 import type { AddItemRequest } from "@/lib/types/order";
 
@@ -30,6 +31,7 @@ export interface BatchItemResult {
   line_number: number;
   success: boolean;
   error?: string;
+  removed?: boolean;
 }
 
 export interface QuantityValidation {
@@ -344,6 +346,18 @@ export function createLineItem(
     promo_discount_amt: body.promo_discount_amt,
     discount_chain: body.discount_chain,
 
+    // Promo goal
+    promo_goal_type: body.promo_goal_type,
+    promo_goal_value: body.promo_goal_value,
+    promo_goal_label: body.promo_goal_label,
+    promo_start_date: body.promo_start_date,
+    promo_end_date: body.promo_end_date,
+
+    // Promo reward
+    promo_reward_type: body.promo_reward_type,
+    promo_reward_gift_code: body.promo_reward_gift_code,
+    promo_reward_gift_quantity: body.promo_reward_gift_quantity,
+
     // Raw source payload
     raw_data: body as unknown as Record<string, unknown>,
   };
@@ -414,6 +428,14 @@ export function batchUpdateItems(
 
     // Validate and update quantity if provided
     if (quantity !== undefined) {
+      // quantity 0 means remove the item
+      if (quantity === 0) {
+        const idx = order.items.findIndex((i: ILineItem) => i.line_number === line_number);
+        if (idx >= 0) order.items.splice(idx, 1);
+        results.push({ line_number, success: true, removed: true });
+        continue;
+      }
+
       const validationError = validateQuantityForUpdate({
         quantity,
         min_order_quantity: item.min_order_quantity,
@@ -494,8 +516,55 @@ export function batchRemoveItems(
  * Save order after modifications.
  * Recalculates totals and persists to database.
  */
+/**
+ * Recalculate promo progress from line items.
+ * Aggregates per promo_code, computing current value/quantity toward goal.
+ */
+function recalculatePromoProgress(order: IOrder): void {
+  const map: Record<string, IPromoProgress> = {};
+
+  for (const item of order.items) {
+    if (!item.promo_code || !item.promo_goal_type || !item.promo_goal_value) continue;
+    const key = item.promo_code;
+    if (!map[key]) {
+      map[key] = {
+        promo_code: item.promo_code,
+        promo_label: item.promo_goal_label,
+        goal_type: item.promo_goal_type,
+        goal_value: item.promo_goal_value,
+        current_value: 0,
+        remaining: item.promo_goal_value,
+        reached: false,
+        start_date: item.promo_start_date,
+        end_date: item.promo_end_date,
+        item_count: 0,
+        reward_type: item.promo_reward_type,
+        reward_gift_code: item.promo_reward_gift_code,
+        reward_gift_quantity: item.promo_reward_gift_quantity,
+      };
+    }
+    const p = map[key];
+    p.item_count += 1;
+    if (p.goal_type === "value") {
+      p.current_value += (item.unit_price || 0) * (item.quantity || 0);
+    } else {
+      p.current_value += item.quantity || 0;
+    }
+  }
+
+  const progress = Object.values(map);
+  for (const p of progress) {
+    p.current_value = Math.round(p.current_value * 100) / 100;
+    p.remaining = Math.max(0, Math.round((p.goal_value - p.current_value) * 100) / 100);
+    p.reached = p.current_value >= p.goal_value;
+  }
+
+  order.promo_progress = progress.length > 0 ? progress : undefined;
+}
+
 export async function saveOrder(order: IOrder): Promise<void> {
   recalculateOrderTotals(order);
+  recalculatePromoProgress(order);
   await order.save();
 }
 

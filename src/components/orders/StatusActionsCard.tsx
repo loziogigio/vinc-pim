@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   Activity,
   ShoppingCart,
@@ -37,6 +38,7 @@ export function StatusActionsCard({
   onStatusChange,
   tenantPrefix = "",
 }: StatusActionsCardProps) {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const statusConfig: Record<
@@ -88,14 +90,14 @@ export function StatusActionsCard({
     switch (order.status) {
       case "draft":
         actions.push({
-          label: "Convert to Quotation",
+          label: t("pages.store.statusActionsCard.convertToQuotation"),
           action: "to-quotation",
           icon: FileText,
           variant: "secondary",
           endpoint: `/api/b2b/orders/${order.order_id}/to-quotation`,
         });
         actions.push({
-          label: "Submit Order",
+          label: t("pages.store.statusActionsCard.submitOrder"),
           action: "submit",
           icon: Send,
           variant: "primary",
@@ -106,7 +108,7 @@ export function StatusActionsCard({
       case "quotation":
         if (order.quotation?.quotation_status === "accepted") {
           actions.push({
-            label: "Confirm Order",
+            label: t("pages.store.statusActionsCard.confirmOrder"),
             action: "confirm",
             icon: CheckCircle,
             variant: "primary",
@@ -117,7 +119,7 @@ export function StatusActionsCard({
 
       case "pending":
         actions.push({
-          label: "Confirm Order",
+          label: t("pages.store.statusActionsCard.confirmOrder"),
           action: "confirm",
           icon: CheckCircle,
           variant: "primary",
@@ -127,7 +129,7 @@ export function StatusActionsCard({
 
       case "confirmed":
         actions.push({
-          label: "Mark as Shipped",
+          label: t("pages.store.statusActionsCard.markAsShipped"),
           action: "ship",
           icon: Truck,
           variant: "primary",
@@ -137,7 +139,7 @@ export function StatusActionsCard({
 
       case "shipped":
         actions.push({
-          label: "Mark as Delivered",
+          label: t("pages.store.statusActionsCard.markAsDelivered"),
           action: "deliver",
           icon: Package,
           variant: "primary",
@@ -147,7 +149,7 @@ export function StatusActionsCard({
 
       case "delivered":
         actions.push({
-          label: "Duplicate Order",
+          label: t("pages.store.statusActionsCard.duplicateOrder"),
           action: "duplicate",
           icon: Copy,
           variant: "secondary",
@@ -160,7 +162,7 @@ export function StatusActionsCard({
     if (!["delivered", "cancelled"].includes(order.status)) {
       if (canTransition(order.status as OrderStatus, "cancelled", userRole)) {
         actions.push({
-          label: "Cancel Order",
+          label: t("pages.store.statusActionsCard.cancelOrder"),
           action: "cancel",
           icon: XCircle,
           variant: "danger",
@@ -204,14 +206,14 @@ export function StatusActionsCard({
 
   const actions = getAvailableActions();
 
-  // Status timeline
+  // Status timeline — labels are not rendered in the UI (only step index/checkmark shown)
   const statusTimeline = [
-    { status: "draft", label: "Draft" },
-    { status: "quotation", label: "Quotation", optional: true },
-    { status: "pending", label: "Pending", optional: true },
-    { status: "confirmed", label: "Confirmed" },
-    { status: "shipped", label: "Shipped" },
-    { status: "delivered", label: "Delivered" },
+    { status: "draft", label: "draft" },
+    { status: "quotation", label: "quotation", optional: true },
+    { status: "pending", label: "pending", optional: true },
+    { status: "confirmed", label: "confirmed" },
+    { status: "shipped", label: "shipped" },
+    { status: "delivered", label: "delivered" },
   ];
 
   const currentIndex = statusTimeline.findIndex(
@@ -223,7 +225,7 @@ export function StatusActionsCard({
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-foreground">Status & Actions</h2>
+          <h2 className="font-semibold text-foreground">{t("pages.store.statusActionsCard.title")}</h2>
         </div>
       </div>
       <div className="p-4 space-y-4">
@@ -233,7 +235,7 @@ export function StatusActionsCard({
             <StatusIcon className={`h-5 w-5 ${currentStatus.color}`} />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Current Status</p>
+            <p className="text-xs text-muted-foreground">{t("pages.store.statusActionsCard.currentStatus")}</p>
             <p className="font-semibold text-foreground">
               {ORDER_STATUS_LABELS[order.status as OrderStatus] || order.status}
             </p>
@@ -283,7 +285,7 @@ export function StatusActionsCard({
         <div className="space-y-2 text-xs">
           {order.submitted_at && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Submitted</span>
+              <span className="text-muted-foreground">{t("pages.store.statusActionsCard.submitted")}</span>
               <span className="font-medium">
                 {new Date(order.submitted_at).toLocaleDateString("it-IT", {
                   day: "2-digit",
@@ -296,7 +298,7 @@ export function StatusActionsCard({
           )}
           {order.confirmed_at && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Confirmed</span>
+              <span className="text-muted-foreground">{t("pages.store.statusActionsCard.confirmed")}</span>
               <span className="font-medium">
                 {new Date(order.confirmed_at).toLocaleDateString("it-IT", {
                   day: "2-digit",
@@ -309,7 +311,7 @@ export function StatusActionsCard({
           )}
           {order.shipped_at && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Shipped</span>
+              <span className="text-muted-foreground">{t("pages.store.statusActionsCard.shipped")}</span>
               <span className="font-medium">
                 {new Date(order.shipped_at).toLocaleDateString("it-IT", {
                   day: "2-digit",
@@ -322,7 +324,7 @@ export function StatusActionsCard({
           )}
           {order.delivered_at && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Delivered</span>
+              <span className="text-muted-foreground">{t("pages.store.statusActionsCard.delivered")}</span>
               <span className="font-medium">
                 {new Date(order.delivered_at).toLocaleDateString("it-IT", {
                   day: "2-digit",

@@ -83,7 +83,7 @@ export default function SourcesPage() {
   }
 
   async function handleDelete(sourceId: string) {
-    if (!confirm("Are you sure you want to delete this source?")) return;
+    if (!confirm(t("pages.pim.sources.confirmDelete"))) return;
 
     try {
       const res = await fetch(`/api/b2b/pim/sources/${sourceId}`, {
@@ -249,7 +249,7 @@ export default function SourcesPage() {
                     <div>
                       <span className="text-muted-foreground">{t("pages.pim.sources.autoPublish")}:</span>
                       <span className="ml-2 font-medium">
-                        {source.auto_publish_enabled ? "On" : "Off"}
+                        {source.auto_publish_enabled ? t("pages.pim.sources.autoPublishOn") : t("pages.pim.sources.autoPublishOff")}
                       </span>
                     </div>
                   </div>
@@ -258,7 +258,7 @@ export default function SourcesPage() {
                   <button
                     onClick={() => toggleActive(source.source_id, source.is_active)}
                     className="p-2 rounded border border-border hover:bg-muted"
-                    title={source.is_active ? "Deactivate" : "Activate"}
+                    title={source.is_active ? t("pages.pim.sources.deactivateTitle") : t("pages.pim.sources.activateTitle")}
                   >
                     {source.is_active ? (
                       <XCircle className="h-4 w-4" />
@@ -269,14 +269,14 @@ export default function SourcesPage() {
                   <button
                     onClick={() => router.push(`${tenantPrefix}/b2b/pim/sources/${source.source_id}`)}
                     className="p-2 rounded border border-border hover:bg-muted"
-                    title="Edit source"
+                    title={t("pages.pim.sources.editTitle")}
                   >
                     <Edit className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(source.source_id)}
                     className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600"
-                    title="Delete source"
+                    title={t("pages.pim.sources.deleteTitle")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -361,11 +361,11 @@ function CreateSourceModal({
         onSuccess();
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to create source");
+        alert(error.error || t("pages.pim.sources.failedToCreate"));
       }
     } catch (error) {
       console.error("Error creating source:", error);
-      alert("Failed to create source");
+      alert(t("pages.pim.sources.failedToCreate"));
     } finally {
       setIsSaving(false);
     }
@@ -394,7 +394,7 @@ function CreateSourceModal({
                 placeholder="e.g., main-erp-feed"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Unique identifier (lowercase, alphanumeric and dashes only)
+                {t("pages.pim.sources.sourceIdHint")}
               </p>
             </div>
 
@@ -429,10 +429,10 @@ function CreateSourceModal({
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               >
                 <option value="csv">CSV</option>
-                <option value="excel">Excel</option>
+                <option value="excel">{t("pages.pim.sources.typeExcel")}</option>
                 <option value="xml">XML</option>
                 <option value="api">API</option>
-                <option value="manual">Manual</option>
+                <option value="manual">{t("pages.pim.sources.typeManual")}</option>
               </select>
             </div>
 
@@ -472,7 +472,7 @@ function CreateSourceModal({
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Products with score above this will auto-publish
+                  {t("pages.pim.sources.autoPublishScoreHint")}
                 </p>
               </div>
             )}
@@ -492,13 +492,13 @@ function CreateSourceModal({
                 }
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               >
-                <option value="automatic">Automatic (API always overwrites)</option>
-                <option value="manual">Manual (Protect manual edits)</option>
+                <option value="automatic">{t("pages.pim.sources.conflictAutomatic")}</option>
+                <option value="manual">{t("pages.pim.sources.conflictManual")}</option>
               </select>
               <p className="text-xs text-muted-foreground mt-1">
                 {formData.overwrite_level === "automatic"
-                  ? "API updates will always overwrite manual edits without creating conflicts"
-                  : "Manual edits will be protected - conflicts created when API tries to update them"}
+                  ? t("pages.pim.sources.conflictAutomaticDesc")
+                  : t("pages.pim.sources.conflictManualDesc")}
               </p>
             </div>
 

@@ -8,6 +8,7 @@ import type {
   ProductDataTableRowConfig
 } from "@/lib/types/blocks";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const GRID_WIDTH_CLASS_MAP: Record<number, string> = {
   120: "sm:grid-cols-[120px,1fr]",
@@ -72,12 +73,12 @@ const wrapWithLink = (node: ReactNode, row: ProductDataTableRowConfig) => {
   );
 };
 
-const renderLeftContent = (row: ProductDataTableRowConfig) => {
+const renderLeftContent = (row: ProductDataTableRowConfig, noImageLabel: string) => {
   const type = row.leftValueType ?? (row.valueType === "image" ? "text" : row.imageUrl ? "image" : "text");
 
   if (type === "image") {
     if (!row.imageUrl) {
-      return <span className="text-xs text-slate-400">Nessuna immagine</span>;
+      return <span className="text-xs text-slate-400">{noImageLabel}</span>;
     }
     const style: CSSProperties | undefined = row.imageAspectRatio ? { aspectRatio: row.imageAspectRatio } : undefined;
     return (
@@ -129,13 +130,13 @@ const wrapLeftContent = (node: ReactNode, row: ProductDataTableRowConfig) => {
   );
 };
 
-const renderRowValue = (row: ProductDataTableRowConfig) => {
+const renderRowValue = (row: ProductDataTableRowConfig, noImageLabel: string) => {
   const type = row.valueType ?? "text";
 
   if (type === "image") {
     const imageUrl = row.valueImageUrl || row.imageUrl;
     if (!imageUrl) {
-      return <span className="text-xs text-slate-400">Nessuna immagine</span>;
+      return <span className="text-xs text-slate-400">{noImageLabel}</span>;
     }
     const style: CSSProperties | undefined = row.valueImageAspectRatio
       ? { aspectRatio: row.valueImageAspectRatio }
@@ -171,6 +172,8 @@ export interface ProductDataTableSectionProps {
 }
 
 export const ProductDataTableSection = ({ config }: ProductDataTableSectionProps) => {
+  const { t } = useTranslation();
+  const noImageLabel = t("components.productDataTable.noImage");
   const columnWidth = clampColumnWidth(config.labelColumnWidth);
   const widthKey = Math.round(columnWidth / 10) * 10;
   const responsiveGridClass = GRID_WIDTH_CLASS_MAP[widthKey] ?? GRID_WIDTH_CLASS_MAP[220];
@@ -200,7 +203,7 @@ export const ProductDataTableSection = ({ config }: ProductDataTableSectionProps
             const highlight = row.highlight === true;
             const zebraClass = zebra && index % 2 === 1 ? "bg-slate-50/70" : "";
             const highlightClass = highlight ? "border-l-4 border-emerald-500 bg-emerald-50/70" : "";
-            const leftContent = wrapLeftContent(renderLeftContent(row), row) ?? (
+            const leftContent = wrapLeftContent(renderLeftContent(row, noImageLabel), row) ?? (
               <span className="block whitespace-pre-wrap break-words text-slate-800">{row.label}</span>
             );
 
@@ -231,7 +234,7 @@ export const ProductDataTableSection = ({ config }: ProductDataTableSectionProps
                     .join(" ")}
                 >
                   <div className="space-y-2">
-                    {wrapWithLink(renderRowValue(row), row)}
+                    {wrapWithLink(renderRowValue(row, noImageLabel), row)}
                     {row.helperText ? (
                       <p className="text-xs font-normal uppercase tracking-wide text-slate-400">
                         {row.helperText}

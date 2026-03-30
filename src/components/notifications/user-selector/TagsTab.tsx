@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Tag, Loader2, Check, Users } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { SelectedUser, UserType } from "./BrowseUsersTab";
 
 interface UserTag {
@@ -18,6 +19,7 @@ interface TagsTabProps {
 }
 
 export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
+  const { t } = useTranslation();
   const [tags, setTags] = useState<UserTag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
@@ -84,20 +86,20 @@ export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
   return (
     <div className="p-4">
       <p className="text-sm text-slate-500 mb-4">
-        Seleziona uno o più tag per aggiungere tutti gli utenti associati.
+        {t("pages.notifications.campaigns.tagsTab.description")}
       </p>
 
       {isLoadingTags ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-slate-500">Caricamento tag...</span>
+          <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.tagsTab.loadingTags")}</span>
         </div>
       ) : tags.length === 0 ? (
         <div className="text-center py-12">
           <Tag className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">Nessun tag disponibile</p>
+          <p className="text-sm text-slate-500">{t("pages.notifications.campaigns.tagsTab.noTags")}</p>
           <p className="text-xs text-slate-400 mt-1">
-            Crea tag dalla sezione Impostazioni → Tag Utenti
+            {t("pages.notifications.campaigns.tagsTab.noTagsHint")}
           </p>
         </div>
       ) : (
@@ -125,7 +127,9 @@ export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-slate-900">{tag.name}</p>
                   <p className="text-xs text-slate-500">
-                    {tag.user_count} utent{tag.user_count !== 1 ? "i" : "e"}
+                    {tag.user_count !== 1
+                      ? t("pages.notifications.campaigns.tagsTab.usersPlural", { count: tag.user_count })
+                      : t("pages.notifications.campaigns.tagsTab.usersSingular", { count: tag.user_count })}
                   </p>
                 </div>
                 {isSelected && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
@@ -140,7 +144,7 @@ export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
               className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-              Aggiungi utenti da {selectedTagIds.length} tag
+              {t("pages.notifications.campaigns.tagsTab.addUsersFromTags", { count: selectedTagIds.length })}
             </button>
           )}
         </div>

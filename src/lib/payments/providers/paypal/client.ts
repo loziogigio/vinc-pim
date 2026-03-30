@@ -178,7 +178,7 @@ export const paypalProvider: IPaymentProvider = {
         purchase_units: [purchaseUnit],
         application_context: {
           return_url: params.return_url || params.metadata?.return_url,
-          cancel_url: params.return_url || params.metadata?.cancel_url,
+          cancel_url: params.cancel_url || params.metadata?.cancel_url,
           user_action: "PAY_NOW",
           brand_name: params.metadata?.brand_name || "VINC Commerce",
         },

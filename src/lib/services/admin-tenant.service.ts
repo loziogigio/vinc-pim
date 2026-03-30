@@ -494,6 +494,16 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
   // Step 4: Seed home settings with default header
   await seedInitialHomeSettings(mongoDb, name);
 
+  // Step 4b: Provision Windmill folder for tenant (best-effort, non-blocking)
+  try {
+    const { windmillCreateFolder } = await import("./windmill-client");
+    await windmillCreateFolder(tenant_id);
+    console.log(`Windmill folder created: f/vinc_${tenant_id.replace(/-/g, "_")}/ in workspace ${process.env.WINDMILL_WORKSPACE || "(default)"}`);
+  } catch (err) {
+    // Non-critical: Windmill may not be running. Folder can be created later.
+    console.warn(`Windmill folder creation skipped for ${tenant_id}:`, (err as Error).message);
+  }
+
   // Step 5: Register tenant in admin database
   const tenant = await TenantModel.create({
     tenant_id,

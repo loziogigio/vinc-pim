@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { ProductSearchModal } from "./ProductSearchModal";
+import { getLocalizedString } from "@/lib/types/pim";
 
 type Product = {
   entity_code: string;
@@ -63,13 +65,7 @@ type Props = {
 };
 
 function getProductName(product: Product): string {
-  if (typeof product.name === "string") return product.name;
-  return (
-    product.name?.it ||
-    product.name?.en ||
-    Object.values(product.name || {})[0] ||
-    ""
-  );
+  return getLocalizedString(product.name, "");
 }
 
 function getProductImage(product: Product): string | null {
@@ -91,6 +87,7 @@ export function ProductAssociationSection({
   config,
   onProductCountChange,
 }: Props) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -236,11 +233,11 @@ export function ProductAssociationSection({
         fetchProducts();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to add products");
+        toast.error(error.error || t("pages.pim.productAssociation.failedToAdd"));
       }
     } catch (error) {
       console.error("Failed to add products:", error);
-      toast.error("Failed to add products");
+      toast.error(t("pages.pim.productAssociation.failedToAdd"));
     }
   }
 
@@ -279,7 +276,7 @@ export function ProductAssociationSection({
           fetchProducts();
         } else {
           const error = await res.json();
-          toast.error(error.error || "Failed to remove products");
+          toast.error(error.error || t("pages.pim.productAssociation.failedToRemove"));
         }
       } else {
         // Standard DELETE request
@@ -298,12 +295,12 @@ export function ProductAssociationSection({
           fetchProducts();
         } else {
           const error = await res.json();
-          toast.error(error.error || "Failed to remove products");
+          toast.error(error.error || t("pages.pim.productAssociation.failedToRemove"));
         }
       }
     } catch (error) {
       console.error("Failed to remove products:", error);
-      toast.error("Failed to remove products");
+      toast.error(t("pages.pim.productAssociation.failedToRemove"));
     }
   }
 
@@ -321,11 +318,11 @@ export function ProductAssociationSection({
         toast.success(`Synced ${data.synced} product(s) to Solr`);
       } else {
         const error = await res.json();
-        toast.error(error.error || "Sync failed");
+        toast.error(error.error || t("pages.pim.productAssociation.syncFailed"));
       }
     } catch (error) {
       console.error("Failed to sync:", error);
-      toast.error("Failed to sync products to Solr");
+      toast.error(t("pages.pim.productAssociation.failedToSync"));
     } finally {
       setSyncing(false);
     }
@@ -354,11 +351,11 @@ export function ProductAssociationSection({
         setTimeout(() => fetchProducts(), 2000);
       } else {
         const error = await res.json();
-        toast.error(error.error || "Import failed");
+        toast.error(error.error || t("pages.pim.productAssociation.importFailed"));
       }
     } catch (error) {
       console.error("Failed to import:", error);
-      toast.error("Failed to import products");
+      toast.error(t("pages.pim.productAssociation.failedToImport"));
     } finally {
       setImporting(false);
     }
@@ -386,12 +383,61 @@ export function ProductAssociationSection({
       }
     } catch (error) {
       console.error("Failed to export:", error);
-      toast.error("Failed to export products");
+      toast.error(t("pages.pim.productAssociation.failedToExport"));
     }
   }
 
   const totalProducts = pagination?.total || 0;
   const totalPages = pagination?.pages || Math.ceil(totalProducts / limit);
+
+  const paginationBar = totalProducts > limit ? (
+    <div className="flex items-center justify-between px-6 py-3 border-b border-border">
+      <p className="text-sm text-muted-foreground">
+        Showing {(page - 1) * limit + 1}–{Math.min(page * limit, totalProducts)} of {totalProducts} products
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Previous
+        </button>
+        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+          let pageNum: number;
+          if (totalPages <= 7) {
+            pageNum = i + 1;
+          } else if (page <= 4) {
+            pageNum = i + 1;
+          } else if (page >= totalPages - 3) {
+            pageNum = totalPages - 6 + i;
+          } else {
+            pageNum = page - 3 + i;
+          }
+          return (
+            <button
+              key={pageNum}
+              onClick={() => setPage(pageNum)}
+              className={`px-3 py-1.5 text-sm rounded-lg ${
+                pageNum === page
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-input hover:bg-accent"
+              }`}
+            >
+              {pageNum}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={page >= totalPages}
+          className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -524,6 +570,9 @@ export function ProductAssociationSection({
         </div>
       )}
 
+      {/* Top Pagination */}
+      {paginationBar}
+
       {/* Product List */}
       {loading ? (
         <div className="px-6 py-12 text-center text-sm text-muted-foreground">
@@ -586,28 +635,8 @@ export function ProductAssociationSection({
         </div>
       )}
 
-      {/* Pagination */}
-      {totalProducts > limit && (
-        <div className="flex items-center justify-center gap-2 px-6 py-4 border-t border-border">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 rounded border border-border text-sm disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= totalPages}
-            className="px-3 py-1 rounded border border-border text-sm disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-      )}
+      {/* Bottom Pagination */}
+      {paginationBar}
 
       {/* Add Products Modal */}
       <ProductSearchModal

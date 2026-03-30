@@ -7,6 +7,7 @@ import { ImageUpload } from "@/components/shared/ImageUpload";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { ChannelSelect } from "@/components/shared/ChannelSelect";
 import { SearchableCategorySelect, type CategoryRecord } from "@/components/pim/SearchableCategorySelect";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export type { CategoryRecord };
 
@@ -85,6 +86,7 @@ const CategoryModal = ({
   onClose,
   onSuccess,
 }: CategoryModalProps) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState(() => getInitialFormData(category, parentCategory));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -104,23 +106,23 @@ const CategoryModal = ({
       });
 
       if (response.ok) {
-        toast.success(category ? "Category updated successfully" : "Category created successfully");
+        toast.success(category ? t("pages.pim.categories.updateSuccess") : t("pages.pim.categories.createSuccess"));
         onSuccess();
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to save category");
+        toast.error(error.error || t("pages.pim.categories.saveFailed"));
       }
     } catch (error) {
       console.error("Error saving category:", error);
-      toast.error("Failed to save category");
+      toast.error(t("pages.pim.categories.saveFailed"));
     } finally {
       setIsSaving(false);
     }
   }
 
   const modalTitle = category
-    ? category.parent_id ? "Edit Category" : "Edit Root Category"
-    : parentCategory ? `New child of "${parentCategory.name}"` : "Create Root Category";
+    ? category.parent_id ? t("pages.pim.categories.editCategoryTitle") : t("pages.pim.categories.editRootCategory")
+    : parentCategory ? t("pages.pim.categories.newChildOf", { name: parentCategory.name }) : t("pages.pim.categories.createRootCategory");
 
   const canSubmit = !isSaving && formData.name && formData.slug && (formData.parent_id || formData.channel_code);
 
@@ -136,7 +138,7 @@ const CategoryModal = ({
             onClick={onClose}
             className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -144,7 +146,7 @@ const CategoryModal = ({
             disabled={!canSubmit}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
           >
-            {isSaving ? "Saving..." : category ? "Update" : "Create"}
+            {isSaving ? t("pages.pim.categories.savingBtn") : category ? t("common.update") : t("common.create")}
           </button>
         </>
       }
@@ -154,15 +156,15 @@ const CategoryModal = ({
         {!formData.parent_id && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
             <div>
-              <p className="text-sm font-medium text-foreground">Root Category</p>
+              <p className="text-sm font-medium text-foreground">{t("pages.pim.categories.rootCategory")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                A root category is the top-level grouping assigned to a sales channel. All child categories inherit the channel.
+                {t("pages.pim.categories.rootCategoryDesc")}
               </p>
             </div>
             <ChannelSelect
               value={formData.channel_code}
               onChange={(code) => updateField("channel_code", code)}
-              label="Sales Channel"
+              label={t("pages.pim.categories.salesChannel")}
               required
             />
           </div>
@@ -176,7 +178,7 @@ const CategoryModal = ({
         {/* Name & Slug */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.nameLabel")} *</label>
             <input
               type="text"
               required
@@ -194,7 +196,7 @@ const CategoryModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.slugFieldLabel")} *</label>
             <input
               type="text"
               required
@@ -208,7 +210,7 @@ const CategoryModal = ({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.descriptionLabel")}</label>
           <RichTextEditor
             content={formData.description}
             onChange={(html) => updateField("description", html)}
@@ -220,7 +222,7 @@ const CategoryModal = ({
         {/* Parent Category — only show when editing (to allow reparenting) */}
         {category && (
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Parent Category</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.parentCategoryLabel")}</label>
             <SearchableCategorySelect
               categories={categories}
               value={formData.parent_id || ""}
@@ -233,7 +235,7 @@ const CategoryModal = ({
         {/* Display Order & Active */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.displayOrder")}</label>
             <input
               type="number"
               value={formData.display_order}
@@ -249,20 +251,20 @@ const CategoryModal = ({
                 onChange={(e) => updateField("is_active", e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
-              Active (visible to customers)
+              {t("pages.pim.categories.activeVisible")}
             </label>
           </div>
         </div>
 
         {/* Hero Image */}
         <ImageUpload
-          label="Hero Image"
+          label={t("pages.pim.categories.heroImage")}
           value={formData.hero_image_url}
           onChange={(url) => setFormData((prev) => ({ ...prev, hero_image_url: url, hero_image_cdn_key: "" }))}
         />
         {formData.hero_image_url && (
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.imageAltText")}</label>
             <input
               type="text"
               value={formData.hero_image_alt}
@@ -275,13 +277,13 @@ const CategoryModal = ({
 
         {/* Mobile Hero Image */}
         <ImageUpload
-          label="Mobile Hero Image"
+          label={t("pages.pim.categories.mobileHeroImage")}
           value={formData.mobile_hero_image_url}
           onChange={(url) => setFormData((prev) => ({ ...prev, mobile_hero_image_url: url, mobile_hero_image_cdn_key: "" }))}
         />
         {formData.mobile_hero_image_url && (
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.mobileImageAltText")}</label>
             <input
               type="text"
               value={formData.mobile_hero_image_alt}
@@ -294,9 +296,9 @@ const CategoryModal = ({
 
         {/* SEO Fields */}
         <div className="space-y-4 pt-4 border-t border-border">
-          <h4 className="font-semibold text-foreground">SEO Settings</h4>
+          <h4 className="font-semibold text-foreground">{t("pages.pim.categories.seoSettings")}</h4>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">SEO Title</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.seoTitle")}</label>
             <input
               type="text"
               value={formData.seo_title}
@@ -306,7 +308,7 @@ const CategoryModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">SEO Description</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.seoDescription")}</label>
             <textarea
               value={formData.seo_description}
               onChange={(e) => updateField("seo_description", e.target.value)}
@@ -316,7 +318,7 @@ const CategoryModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Keywords (comma-separated)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.seoKeywords")}</label>
             <input
               type="text"
               value={formData.seo_keywords}

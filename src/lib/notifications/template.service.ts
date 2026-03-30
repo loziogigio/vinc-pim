@@ -412,6 +412,23 @@ export async function previewTemplate(
     }
   }
 
+  // Branding variables from tenant settings (for header/footer)
+  const brandingData: Record<string, string> = {
+    primary_color: DEFAULT_PRIMARY_COLOR,
+    company_name: "Your Company",
+    current_year: new Date().getFullYear().toString(),
+    ...companyInfo,
+  };
+
+  // Process header/footer with branding FIRST so tenant info is never
+  // overridden by caller-supplied variables (e.g. customer's company_name)
+  if (headerHtml) {
+    headerHtml = replaceTemplateVariables(headerHtml, brandingData);
+  }
+  if (footerHtml) {
+    footerHtml = replaceTemplateVariables(footerHtml, brandingData);
+  }
+
   // Combine header + content + footer
   let html = "";
   if (headerHtml || footerHtml) {
@@ -420,16 +437,13 @@ export async function previewTemplate(
     html = email.html_body;
   }
 
-  // Build all template variables - priority: sampleData > companyInfo > defaults
+  // Body variables: sampleData can override branding for body content only
   const allData: Record<string, string> = {
-    primary_color: DEFAULT_PRIMARY_COLOR,
-    company_name: "Your Company",
-    current_year: new Date().getFullYear().toString(),
-    ...companyInfo,
+    ...brandingData,
     ...sampleData,
   };
 
-  // Replace variables using shared utility
+  // Replace variables in subject and body (header/footer already resolved)
   const subject = replaceTemplateVariables(email.subject, allData);
   html = replaceTemplateVariables(html, allData);
 
@@ -487,6 +501,23 @@ export async function previewTemplateInline(
     }
   }
 
+  // Branding variables from tenant settings (for header/footer)
+  const brandingData: Record<string, string> = {
+    primary_color: DEFAULT_PRIMARY_COLOR,
+    company_name: "Your Company",
+    current_year: new Date().getFullYear().toString(),
+    ...companyInfo,
+  };
+
+  // Process header/footer with branding FIRST so tenant info is never
+  // overridden by caller-supplied variables (e.g. customer's company_name)
+  if (headerHtml) {
+    headerHtml = replaceTemplateVariables(headerHtml, brandingData);
+  }
+  if (footerHtml) {
+    footerHtml = replaceTemplateVariables(footerHtml, brandingData);
+  }
+
   // Combine header + content + footer
   let html = "";
   if (headerHtml || footerHtml) {
@@ -495,16 +526,13 @@ export async function previewTemplateInline(
     html = templateData.html_body;
   }
 
-  // Build all template variables - priority: sampleData > companyInfo > defaults
+  // Body variables: sampleData can override branding for body content only
   const allData: Record<string, string> = {
-    primary_color: DEFAULT_PRIMARY_COLOR,
-    company_name: "Your Company",
-    current_year: new Date().getFullYear().toString(),
-    ...companyInfo,
+    ...brandingData,
     ...sampleData,
   };
 
-  // Replace variables using shared utility
+  // Replace variables in subject and body (header/footer already resolved)
   const subject = replaceTemplateVariables(templateData.subject || "", allData);
   html = replaceTemplateVariables(html, allData);
 

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Plus, Trash2, Package, CreditCard, AlertTriangle, Clock, BarChart3 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Input } from "@/components/ui/input";
 import type { IShippingMethod, IShippingTier } from "@/lib/types/shipping";
 import {
@@ -14,13 +15,25 @@ import {
   toDecimalInputValue,
 } from "@/lib/utils/decimal-input";
 
+type TierWarningData = {
+  min: number;
+  rate: number;
+  prevMin: number;
+  prevRate: number;
+} | null;
+
 /** Check if tiers have a logical issue: a higher subtotal should not have a higher rate */
-function getTierWarning(tiers: IShippingTier[]): string | null {
+function getTierWarningData(tiers: IShippingTier[]): TierWarningData {
   if (tiers.length < 2) return null;
   const sorted = [...tiers].sort((a, b) => a.min_subtotal - b.min_subtotal);
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i].rate > sorted[i - 1].rate && sorted[i].min_subtotal > sorted[i - 1].min_subtotal) {
-      return `Lo scaglione da €${sorted[i].min_subtotal} ha un costo (€${sorted[i].rate}) più alto dello scaglione da €${sorted[i - 1].min_subtotal} (€${sorted[i - 1].rate}). Di solito il costo diminuisce con ordini più grandi.`;
+      return {
+        min: sorted[i].min_subtotal,
+        rate: sorted[i].rate,
+        prevMin: sorted[i - 1].min_subtotal,
+        prevRate: sorted[i - 1].rate,
+      };
     }
   }
   return null;
@@ -43,6 +56,7 @@ export function MethodCard({
   onChange,
   onRemove,
 }: MethodCardProps) {
+  const { t } = useTranslation();
   // Local string state for tier decimal inputs
   const [tierInputs, setTierInputs] = useState<Record<string, string>>(() => {
     const inputs: Record<string, string> = {};
@@ -107,7 +121,15 @@ export function MethodCard({
     updateField("allowed_payment_methods", updated.length > 0 ? updated : undefined);
   }
 
-  const tierWarning = getTierWarning(method.tiers);
+  const tierWarningData = getTierWarningData(method.tiers);
+  const tierWarning = tierWarningData
+    ? t("components.shippingMethodCard.tierWarning", {
+        min: String(tierWarningData.min),
+        rate: String(tierWarningData.rate),
+        prevMin: String(tierWarningData.prevMin),
+        prevRate: String(tierWarningData.prevRate),
+      })
+    : null;
 
   return (
     <div className="rounded-lg bg-[#f8f8f8] p-4">
@@ -117,13 +139,13 @@ export function MethodCard({
         <Input
           value={method.name}
           onChange={(e) => updateField("name", e.target.value)}
-          placeholder="Nome metodo (es. Consegna a domicilio)"
+          placeholder={t("components.shippingMethodCard.methodNamePlaceholder")}
           className="flex-1 h-9 font-medium"
         />
         <Input
           value={method.carrier ?? ""}
           onChange={(e) => updateField("carrier", e.target.value)}
-          placeholder="Corriere"
+          placeholder={t("components.shippingMethodCard.carrierPlaceholder")}
           className="w-32 h-9"
         />
         <label className="flex items-center gap-2 text-sm text-[#5e5873] cursor-pointer whitespace-nowrap">
@@ -133,13 +155,13 @@ export function MethodCard({
             onChange={(e) => updateField("enabled", e.target.checked)}
             className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
           />
-          Attivo
+          {t("components.shippingMethodCard.active")}
         </label>
         <button
           type="button"
           onClick={onRemove}
           className="text-muted-foreground hover:text-red-500 transition-colors"
-          title="Rimuovi metodo"
+          title={t("components.shippingMethodCard.removeMethod")}
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -154,7 +176,7 @@ export function MethodCard({
           <div className="rounded-lg bg-white p-3">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="h-3.5 w-3.5 text-[#009688]" />
-              <span className="text-xs font-semibold text-[#5e5873] uppercase tracking-wide">Consegna</span>
+              <span className="text-xs font-semibold text-[#5e5873] uppercase tracking-wide">{t("components.shippingMethodCard.deliverySection")}</span>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -163,7 +185,7 @@ export function MethodCard({
                 onChange={(e) =>
                   updateField("estimated_days_min", e.target.value ? parseInt(e.target.value) : undefined)
                 }
-                placeholder="min"
+                placeholder={t("components.shippingMethodCard.minPlaceholder")}
                 min={0}
                 className="w-16 h-9 text-center"
               />
@@ -174,11 +196,11 @@ export function MethodCard({
                 onChange={(e) =>
                   updateField("estimated_days_max", e.target.value ? parseInt(e.target.value) : undefined)
                 }
-                placeholder="max"
+                placeholder={t("components.shippingMethodCard.maxPlaceholder")}
                 min={0}
                 className="w-16 h-9 text-center"
               />
-              <span className="text-sm text-muted-foreground">giorni</span>
+              <span className="text-sm text-muted-foreground">{t("components.shippingMethodCard.days")}</span>
             </div>
           </div>
 
@@ -186,7 +208,7 @@ export function MethodCard({
           <div className="rounded-lg bg-white p-3">
             <div className="flex items-center gap-2 mb-3">
               <CreditCard className="h-3.5 w-3.5 text-[#009688]" />
-              <span className="text-xs font-semibold text-[#5e5873] uppercase tracking-wide">Pagamenti</span>
+              <span className="text-xs font-semibold text-[#5e5873] uppercase tracking-wide">{t("components.shippingMethodCard.paymentsSection")}</span>
             </div>
             {enabledPaymentMethods.length > 0 ? (
               <>
@@ -215,13 +237,13 @@ export function MethodCard({
                 </div>
                 {(!method.allowed_payment_methods || method.allowed_payment_methods.length === 0) && (
                   <p className="text-[11px] text-muted-foreground italic mt-2">
-                    Tutti i metodi abilitati sono accettati.
+                    {t("components.shippingMethodCard.allPaymentMethodsAccepted")}
                   </p>
                 )}
               </>
             ) : (
               <p className="text-xs text-muted-foreground italic">
-                Nessun metodo di pagamento configurato.
+                {t("components.shippingMethodCard.noPaymentMethods")}
               </p>
             )}
           </div>
@@ -231,14 +253,14 @@ export function MethodCard({
         <div className="rounded-lg bg-white p-3">
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 className="h-3.5 w-3.5 text-[#009688]" />
-            <span className="text-xs font-semibold text-[#5e5873] uppercase tracking-wide">Tariffe a scaglioni</span>
+            <span className="text-xs font-semibold text-[#5e5873] uppercase tracking-wide">{t("components.shippingMethodCard.tiersSection")}</span>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#ebe9f1]">
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Ordine minimo</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Costo spedizione</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Note</th>
+                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">{t("components.shippingMethodCard.minOrderCol")}</th>
+                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">{t("components.shippingMethodCard.shippingCostCol")}</th>
+                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">{t("components.shippingMethodCard.notesCol")}</th>
                 <th className="w-8"></th>
               </tr>
             </thead>
@@ -273,7 +295,7 @@ export function MethodCard({
                   </td>
                   <td className="py-2 pr-2">
                     {tier.rate === 0 && tier.min_subtotal > 0 && (
-                      <span className="inline-block rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-600">GRATIS</span>
+                      <span className="inline-block rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-600">{t("components.shippingMethodCard.free")}</span>
                     )}
                   </td>
                   <td className="py-2 text-right">
@@ -282,7 +304,7 @@ export function MethodCard({
                         type="button"
                         onClick={() => removeTier(i)}
                         className="text-muted-foreground hover:text-red-500 transition-colors"
-                        title="Rimuovi"
+                        title={t("components.shippingMethodCard.removeTier")}
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -303,7 +325,7 @@ export function MethodCard({
             onClick={addTier}
             className="flex items-center gap-1 text-xs text-[#009688] hover:underline mt-2"
           >
-            <Plus className="h-3 w-3" /> Aggiungi scaglione
+            <Plus className="h-3 w-3" /> {t("components.shippingMethodCard.addTier")}
           </button>
         </div>
       </div>

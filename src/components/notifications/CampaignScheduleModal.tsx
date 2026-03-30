@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Clock, Calendar, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CampaignScheduleModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export function CampaignScheduleModal({
   onSchedule,
   isScheduling = false,
 }: CampaignScheduleModalProps) {
+  const { t } = useTranslation();
   // Default to tomorrow at 9:00 AM
   const getDefaultDate = () => {
     const tomorrow = new Date();
@@ -79,8 +81,8 @@ export function CampaignScheduleModal({
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900">Pianifica Campagna</h3>
-              <p className="text-sm text-slate-500">Scegli quando inviare</p>
+              <h3 className="font-semibold text-slate-900">{t("pages.notifications.campaigns.scheduleModal.title")}</h3>
+              <p className="text-sm text-slate-500">{t("pages.notifications.campaigns.scheduleModal.subtitle")}</p>
             </div>
           </div>
           <button
@@ -98,7 +100,7 @@ export function CampaignScheduleModal({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <Calendar className="w-4 h-4 inline mr-1" />
-              Data e Ora
+              {t("pages.notifications.campaigns.scheduleModal.dateTime")}
             </label>
             <input
               type="datetime-local"
@@ -112,7 +114,7 @@ export function CampaignScheduleModal({
           {/* Preview */}
           <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-700">
-              La campagna verrà inviata:
+              {t("pages.notifications.campaigns.scheduleModal.willBeSent")}
             </p>
             <p className="text-sm font-medium text-blue-900 mt-1">
               {formatDateDisplay(selectedDate)}
@@ -130,7 +132,7 @@ export function CampaignScheduleModal({
               }}
               className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition"
             >
-              Tra 1 ora
+              {t("pages.notifications.campaigns.scheduleModal.in1Hour")}
             </button>
             <button
               type="button"
@@ -142,7 +144,7 @@ export function CampaignScheduleModal({
               }}
               className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition"
             >
-              Domani 9:00
+              {t("pages.notifications.campaigns.scheduleModal.tomorrow9")}
             </button>
             <button
               type="button"
@@ -154,7 +156,7 @@ export function CampaignScheduleModal({
               }}
               className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition"
             >
-              Tra 1 settimana
+              {t("pages.notifications.campaigns.scheduleModal.in1Week")}
             </button>
           </div>
         </div>
@@ -166,7 +168,7 @@ export function CampaignScheduleModal({
             onClick={onClose}
             disabled={isScheduling}
           >
-            Annulla
+            {t("common.cancel")}
           </Button>
           <Button
             onClick={handleSchedule}
@@ -176,12 +178,12 @@ export function CampaignScheduleModal({
             {isScheduling ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Pianificando...
+                {t("pages.notifications.campaigns.scheduleModal.scheduling")}
               </>
             ) : (
               <>
                 <Clock className="w-4 h-4" />
-                Pianifica
+                {t("pages.notifications.campaigns.scheduleModal.scheduleBtn")}
               </>
             )}
           </Button>

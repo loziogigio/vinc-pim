@@ -11,6 +11,8 @@ interface FullScreenModalProps {
   children: React.ReactNode;
   /** Optional footer actions (Save/Cancel buttons) */
   actions?: React.ReactNode;
+  /** Max width class for body content (default: "max-w-3xl") */
+  maxWidth?: string;
 }
 
 export function FullScreenModal({
@@ -19,6 +21,7 @@ export function FullScreenModal({
   title,
   children,
   actions,
+  maxWidth = "max-w-3xl",
 }: FullScreenModalProps) {
   // Lock body scroll when open
   useEffect(() => {
@@ -72,7 +75,7 @@ export function FullScreenModal({
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="mx-auto max-w-3xl">
+          <div className={`mx-auto ${maxWidth}`}>
             {children}
           </div>
         </div>

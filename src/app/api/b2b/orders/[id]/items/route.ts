@@ -21,6 +21,7 @@ import {
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import { connectWithModels } from "@/lib/db/connection";
 import { resolveVatIncluded } from "@/lib/utils/packaging";
+import { buildHookCtxFromOrder, runBeforeHook, runOnMergeAfter, updateCtxFromOrder, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -107,6 +108,23 @@ export async function POST(
 
     const body: AddItemRequest = await req.json();
 
+    // ── BEFORE HOOK: validate with ERP (stock check, price) ──
+    const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, auth.tenantId!, "item.add", order, {
+      entityCodes: [body.entity_code],
+      requestData: body as unknown as Record<string, unknown>,
+    });
+    const before = await runBeforeHook(hookCtx);
+    if (before.hooked && !before.allowed) {
+      return NextResponse.json(
+        { error: before.message || "Operation rejected by ERP", windmill: { phase: "before", blocked: true } },
+        { status: 422 },
+      );
+    }
+    // Apply modified data from ERP (e.g., corrected price)
+    if (before.modified_data) {
+      Object.assign(body, before.modified_data);
+    }
+
     // Validate required fields
     const missingFields = validateAddItemRequest(body);
     if (missingFields.length > 0) {
@@ -152,9 +170,8 @@ export async function POST(
     const pd = order.price_decimals ?? 2;
 
     if (existing) {
-      // Update existing item - add to quantity
-      const newQuantity = existing.item.quantity + body.quantity;
-      updateItemQuantity(existing.item, newQuantity, pd);
+      // Update existing item - overwrite quantity
+      updateItemQuantity(existing.item, body.quantity, pd);
       item = existing.item;
     } else {
       // Create new line item
@@ -165,10 +182,15 @@ export async function POST(
     // Save with recalculated totals
     await saveOrder(order);
 
+    // ── ON + AFTER HOOKS ──
+    updateCtxFromOrder(hookCtx, order);
+    const on = await runOnMergeAfter(hookCtx, order.constructor, order._id);
+
     return NextResponse.json({
       success: true,
       order: order.toObject(),
       item,
+      ...windmillResponseFragment(hookCtx.channel, before, on),
     });
   } catch (error) {
     console.error("Error adding item to order:", error);
@@ -224,16 +246,33 @@ export async function PATCH(
       );
     }
 
+    // ── BEFORE HOOK: validate with ERP ──
+    const updCtx = buildHookCtxFromOrder(auth.tenantDb!, auth.tenantId!, "item.update", order, {
+      requestData: body as Record<string, unknown>,
+    });
+    const updBefore = await runBeforeHook(updCtx);
+    if (updBefore.hooked && !updBefore.allowed) {
+      return NextResponse.json(
+        { error: updBefore.message || "Operation rejected by ERP", windmill: { phase: "before", blocked: true } },
+        { status: 422 },
+      );
+    }
+
     // Batch update items
     const results = batchUpdateItems(order, itemsToUpdate, order.price_decimals ?? 2);
 
     // Save with recalculated totals
     await saveOrder(order);
 
+    // ── ON + AFTER HOOKS ──
+    updateCtxFromOrder(updCtx, order);
+    const updOn = await runOnMergeAfter(updCtx, order.constructor, order._id);
+
     return NextResponse.json({
       success: true,
       order: order.toObject(),
       results,
+      ...windmillResponseFragment(updCtx.channel, updBefore, updOn),
     });
   } catch (error) {
     console.error("Error updating items:", error);
@@ -297,11 +336,18 @@ export async function DELETE(
     // Save with recalculated totals
     await saveOrder(order);
 
+    // ── ON + AFTER HOOKS ──
+    const rmCtx = buildHookCtxFromOrder(auth.tenantDb!, auth.tenantId!, "item.remove", order, {
+      requestData: body as Record<string, unknown>,
+    });
+    const rmOn = await runOnMergeAfter(rmCtx, order.constructor, order._id);
+
     return NextResponse.json({
       success: true,
       order: order.toObject(),
       results,
       message: `Removed ${results.filter((r) => r.success).length} item(s)`,
+      ...windmillResponseFragment(rmCtx.channel, null, rmOn),
     });
   } catch (error) {
     console.error("Error removing items:", error);

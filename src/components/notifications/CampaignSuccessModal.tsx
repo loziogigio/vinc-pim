@@ -2,6 +2,7 @@
 
 import { CheckCircle, Clock, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type SuccessType = "sent" | "scheduled";
 
@@ -22,6 +23,7 @@ export function CampaignSuccessModal({
   recipientCount,
   scheduledAt,
 }: CampaignSuccessModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const formatDate = (date: Date) => {
@@ -57,13 +59,13 @@ export function CampaignSuccessModal({
             <div className="flex items-center justify-center gap-2">
               <CheckCircle className={`w-5 h-5 ${isSent ? "text-emerald-600" : "text-blue-600"}`} />
               <h3 className={`text-lg font-semibold ${isSent ? "text-emerald-900" : "text-blue-900"}`}>
-                {isSent ? "Campagna Inviata!" : "Campagna Programmata!"}
+                {isSent ? t("pages.notifications.campaigns.successModal.campaignSent") : t("pages.notifications.campaigns.successModal.campaignScheduled")}
               </h3>
             </div>
             <p className={`text-sm mt-1 ${isSent ? "text-emerald-700" : "text-blue-700"}`}>
               {isSent
-                ? "La tua campagna è stata inviata con successo"
-                : "La tua campagna è stata programmata con successo"}
+                ? t("pages.notifications.campaigns.successModal.sentSuccess")
+                : t("pages.notifications.campaigns.successModal.scheduledSuccess")}
             </p>
           </div>
         </div>
@@ -72,23 +74,25 @@ export function CampaignSuccessModal({
         <div className="p-6 space-y-4">
           {campaignName && (
             <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Campagna</span>
+              <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.successModal.campaignLabel")}</span>
               <span className="text-sm font-medium text-slate-900">{campaignName}</span>
             </div>
           )}
 
           {isSent && recipientCount !== undefined && (
             <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Destinatari</span>
+              <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.successModal.recipientsLabel")}</span>
               <span className="text-sm font-medium text-slate-900">
-                {recipientCount} {recipientCount === 1 ? "utente" : "utenti"}
+                {recipientCount === 1
+                  ? t("pages.notifications.campaigns.successModal.userSingular", { count: recipientCount })
+                  : t("pages.notifications.campaigns.successModal.userPlural", { count: recipientCount })}
               </span>
             </div>
           )}
 
           {!isSent && scheduledAt && (
             <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Data invio</span>
+              <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.successModal.sendDateLabel")}</span>
               <span className="text-sm font-medium text-slate-900">{formatDate(scheduledAt)}</span>
             </div>
           )}
@@ -96,8 +100,8 @@ export function CampaignSuccessModal({
           <div className={`p-3 rounded-lg ${isSent ? "bg-emerald-50" : "bg-blue-50"}`}>
             <p className={`text-sm ${isSent ? "text-emerald-700" : "text-blue-700"}`}>
               {isSent
-                ? "Puoi monitorare i risultati nella sezione Storico."
-                : "La campagna verrà inviata automaticamente alla data programmata. Puoi annullarla dalla sezione Storico."}
+                ? t("pages.notifications.campaigns.successModal.sentMonitorHint")
+                : t("pages.notifications.campaigns.successModal.scheduledMonitorHint")}
             </p>
           </div>
         </div>
@@ -106,7 +110,7 @@ export function CampaignSuccessModal({
         <div className="flex justify-end gap-2 p-4 border-t border-slate-200 bg-slate-50">
           <Button onClick={onClose} className="gap-2">
             <CheckCircle className="w-4 h-4" />
-            OK, Capito
+            {t("pages.notifications.campaigns.successModal.okGotIt")}
           </Button>
         </div>
       </div>

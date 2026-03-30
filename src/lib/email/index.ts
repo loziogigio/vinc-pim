@@ -251,9 +251,9 @@ function getTransporter(config: EmailConfig): nodemailer.Transporter {
 // EMAIL QUEUE (centralized in @/lib/queue/queues)
 // ============================================
 
-function getEmailQueue() {
+async function getEmailQueue() {
   // Lazy import to avoid circular dependencies and module-level side effects at build time
-  const { emailQueue } = require("@/lib/queue/queues");
+  const { emailQueue } = await import("@/lib/queue/queues");
   return emailQueue;
 }
 
@@ -615,7 +615,7 @@ async function queueEmail(
   notificationLogId?: string
 ): Promise<SendEmailResult> {
   try {
-    const queue = getEmailQueue();
+    const queue = await getEmailQueue();
 
     const delay = scheduledAt ? scheduledAt.getTime() - Date.now() : 0;
 

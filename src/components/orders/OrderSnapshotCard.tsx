@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import Link from "next/link";
 import {
   User,
@@ -74,6 +75,7 @@ export function OrderSnapshotCard({
   order,
   customerProfileUrl,
 }: OrderSnapshotCardProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   const buyer = order.buyer;
@@ -107,8 +109,8 @@ export function OrderSnapshotCard({
   // Invoice request status
   const invoiceLabel = order.invoice_requested
     ? buyer?.customer_type === "business" || buyer?.customer_type === "reseller"
-      ? "Invoice (Company)"
-      : "Invoice (Private)"
+      ? t("pages.store.orderSnapshotCard.invoiceCompany")
+      : t("pages.store.orderSnapshotCard.invoicePrivate")
     : null;
 
   // Summary line for collapsed state
@@ -128,7 +130,7 @@ export function OrderSnapshotCard({
         <div className="flex items-center gap-2 min-w-0">
           <User className="h-5 w-5 text-primary shrink-0" />
           <h2 className="font-semibold text-foreground">
-            Customer & Addresses
+            {t("pages.store.orderSnapshotCard.title")}
           </h2>
           {!isOpen && typeStyle && (
             <span
@@ -165,7 +167,7 @@ export function OrderSnapshotCard({
               className="text-xs text-primary hover:underline flex items-center gap-1"
             >
               <ExternalLink className="h-3 w-3" />
-              Profile
+              {t("pages.store.orderSnapshotCard.profile")}
             </Link>
           )}
           <ChevronDown
@@ -185,7 +187,7 @@ export function OrderSnapshotCard({
               {channelLabel && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700">
                   <Globe className="h-3 w-3" />
-                  Channel: {channelLabel}
+                  {t("pages.store.orderSnapshotCard.channel")}: {channelLabel}
                 </span>
               )}
               {order.invoice_requested ? (
@@ -196,7 +198,7 @@ export function OrderSnapshotCard({
               ) : order.invoice_requested === false ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
                   <Receipt className="h-3 w-3" />
-                  No invoice requested
+                  {t("pages.store.orderSnapshotCard.noInvoice")}
                 </span>
               ) : null}
             </div>
@@ -219,46 +221,46 @@ export function OrderSnapshotCard({
               )}
               {buyerName && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Contact</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.contact")}</p>
                   <p className="text-sm font-medium">{buyerName}</p>
                 </div>
               )}
               {buyer.email && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.email")}</p>
                   <p className="text-sm font-medium">{buyer.email}</p>
                 </div>
               )}
               {buyer.phone && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.phone")}</p>
                   <p className="text-sm font-medium">{buyer.phone}</p>
                 </div>
               )}
               {buyer.is_guest && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                  Guest
+                  {t("pages.store.orderSnapshotCard.guest")}
                 </span>
               )}
             </div>
           )}
 
           {/* Shipping Address */}
-          <AddressBlock label="Shipping" icon={MapPin} snapshot={shipping} />
+          <AddressBlock label={t("pages.store.orderSnapshotCard.shipping")} icon={MapPin} snapshot={shipping} />
 
           {/* Billing Address */}
           {billing ? (
-            <AddressBlock label="Billing" icon={FileText} snapshot={billing} />
+            <AddressBlock label={t("pages.store.orderSnapshotCard.billing")} icon={FileText} snapshot={billing} />
           ) : shipping ? (
             <div className="border-t border-border pt-3">
               <div className="flex items-center gap-1 mb-1">
                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                 <p className="text-xs font-semibold text-muted-foreground uppercase">
-                  Billing
+                  {t("pages.store.orderSnapshotCard.billing")}
                 </p>
               </div>
               <p className="text-sm text-muted-foreground">
-                Same as shipping
+                {t("pages.store.orderSnapshotCard.sameAsShipping")}
               </p>
             </div>
           ) : null}
@@ -267,35 +269,35 @@ export function OrderSnapshotCard({
           {hasFiscal && (
             <div className="border-t border-border pt-3 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase">
-                Fiscal Data
+                {t("pages.store.orderSnapshotCard.fiscalData")}
               </p>
               {fiscal.company_name && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Company</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.company")}</p>
                   <p className="text-sm font-medium">{fiscal.company_name}</p>
                 </div>
               )}
               {fiscal.vat_number && (
                 <div>
-                  <p className="text-xs text-muted-foreground">VAT Number</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.vatNumber")}</p>
                   <p className="text-sm font-mono">{fiscal.vat_number}</p>
                 </div>
               )}
               {fiscal.fiscal_code && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Fiscal Code</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.fiscalCode")}</p>
                   <p className="text-sm font-mono">{fiscal.fiscal_code}</p>
                 </div>
               )}
               {fiscal.pec_email && (
                 <div>
-                  <p className="text-xs text-muted-foreground">PEC</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.pec")}</p>
                   <p className="text-sm font-medium">{fiscal.pec_email}</p>
                 </div>
               )}
               {fiscal.sdi_code && (
                 <div>
-                  <p className="text-xs text-muted-foreground">SDI Code</p>
+                  <p className="text-xs text-muted-foreground">{t("pages.store.orderSnapshotCard.sdiCode")}</p>
                   <p className="text-sm font-mono">{fiscal.sdi_code}</p>
                 </div>
               )}

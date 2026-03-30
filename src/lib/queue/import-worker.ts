@@ -1074,6 +1074,9 @@ async function processBulkUpdate(job: Job<any>) {
     if (updates.currency) {
       updateDoc.currency = updates.currency.toUpperCase();
     }
+    if (updates.not_visible !== undefined) {
+      updateDoc.not_visible = !!updates.not_visible;
+    }
 
     // Execute bulk update
     const result = await PIMProductModel.updateMany(

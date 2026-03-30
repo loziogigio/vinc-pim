@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { safeRegexQuery, safeRegexQueryWithMatchMode, sanitizeMongoQuery, type MatchMode } from "@/lib/security";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { buildProductSearchConditions } from "@/lib/search/product-search";
 import crypto from "crypto";
 
 /**
@@ -49,9 +50,6 @@ export async function GET(req: NextRequest) {
     const dateTo = searchParams.get("date_to");
     const sortBy = searchParams.get("sort") || "priority"; // priority | score | updated | name
 
-    // Default language for multilingual fields (name, description)
-    const defaultLang = "it";
-
     // Advanced filters
     const entityCode = searchParams.get("entity_code");
     const sku = searchParams.get("sku");
@@ -65,6 +63,8 @@ export async function GET(req: NextRequest) {
     const scoreMin = searchParams.get("score_min");
     const scoreMax = searchParams.get("score_max");
     const excludeProductType = searchParams.get("exclude_product_type");
+    const productType = searchParams.get("product_type");
+    const productKind = searchParams.get("product_kind");
 
     // Build query
     const query: any = {
@@ -73,6 +73,7 @@ export async function GET(req: NextRequest) {
     };
 
     if (status) query.status = sanitizeMongoQuery(status);
+    if (productKind) query.product_kind = sanitizeMongoQuery(productKind);
 
     // Exclude products already associated with a specific product type
     if (excludeProductType) {
@@ -91,14 +92,9 @@ export async function GET(req: NextRequest) {
       query["source.batch_id"] = safeRegexQuery(batchId);
     }
 
-    // Search by title (multilingual field - search in default language)
-    // Supports both string name and multilingual object name.it
+    // Search by name (all languages), SKU, entity_code, parent identifiers
     if (search) {
-      const searchRegex = safeRegexQuery(search);
-      query.$or = [
-        { [`name.${defaultLang}`]: searchRegex }, // Multilingual: name.it
-        { name: searchRegex }, // Simple string name (fallback)
-      ];
+      query.$or = await buildProductSearchConditions(search, tenantDb);
     }
 
     // Date range filter
@@ -128,10 +124,34 @@ export async function GET(req: NextRequest) {
       query.parent_sku = safeRegexQueryWithMatchMode(parentSku, parentSkuMatch);
     }
     if (brand) {
-      query["brand.name"] = safeRegexQuery(brand);
+      const brandRegex = safeRegexQuery(brand);
+      query.$and = query.$and || [];
+      query.$and.push({
+        "brand.label": brandRegex,
+      });
     }
     if (category) {
-      query["category.name"] = safeRegexQuery(category);
+      const catRegex = safeRegexQuery(category);
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { "category.name.it": catRegex },
+          { "category.name.en": catRegex },
+          { "category.name": catRegex },
+        ],
+      });
+    }
+    if (productType) {
+      // product_type.name is multilingual — search across all language values
+      const ptRegex = safeRegexQuery(productType);
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { "product_type.name.it": ptRegex },
+          { "product_type.name.en": ptRegex },
+          { "product_type.name": ptRegex },
+        ],
+      });
     }
 
     // Price range filter

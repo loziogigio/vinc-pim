@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
-import { safeRegexQuery } from "@/lib/security";
+import { buildProductSearchConditions } from "@/lib/search/product-search";
 
 // GET /api/b2b/pim/collections/[collectionId]/products - Get products for a collection
 export async function GET(
@@ -41,14 +41,9 @@ export async function GET(
       "collections.collection_id": collectionId,
     };
 
-    // Add search filter
+    // Add search filter (multilingual name + identifiers)
     if (search) {
-      const safeSearch = safeRegexQuery(search);
-      query.$or = [
-        { name: safeSearch },
-        { sku: safeSearch },
-        { entity_code: safeSearch },
-      ];
+      query.$or = await buildProductSearchConditions(search, tenantDb);
     }
 
     // Get products

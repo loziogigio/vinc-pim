@@ -49,10 +49,26 @@ vi.mock("@/lib/auth/tenant-auth", () => ({
 // Mock DB connection to use in-memory mongoose
 vi.mock("@/lib/db/connection", async () => {
   const mongoose = await import("mongoose");
+  const { OrderModel } = await import("@/lib/db/models/order");
   return {
     connectToDatabase: vi.fn(),
-    connectWithModels: vi.fn(),
+    connectWithModels: vi.fn(() => Promise.resolve({ Order: OrderModel })),
     getPooledConnection: vi.fn(() => Promise.resolve(mongoose.default.connection)),
+  };
+});
+
+// Mock windmill-proxy.service (used by order routes for ERP hooks)
+vi.mock("@/lib/services/windmill-proxy.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/windmill-proxy.service")>();
+  return {
+    ...actual,
+    runBeforeHook: vi.fn().mockResolvedValue({ hooked: false, allowed: true }),
+    runBeforeHookWithAsyncFallback: vi.fn().mockResolvedValue({ async: false, hooked: false, allowed: true }),
+    runOnHook: vi.fn().mockResolvedValue({ hooked: false, success: false }),
+    runOnHookWithAsyncFallback: vi.fn().mockResolvedValue({ async: false, hooked: false, success: false }),
+    runAfterHook: vi.fn().mockResolvedValue(undefined),
+    mergeOrderErpData: vi.fn(),
+    pushWindmillJobRef: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -219,7 +235,7 @@ describe("integration: Order Lifecycle Notification Triggers", () => {
       const res = await submitOrder(req, createParams({ id: "nonexistent" }));
       const data = await res.json();
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(404);
       expect(mockDispatchTrigger).not.toHaveBeenCalled();
     });
   });

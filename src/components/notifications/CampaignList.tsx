@@ -21,6 +21,7 @@ import {
   Check,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   CAMPAIGN_STATUS_LABELS,
   type CampaignStatus,
@@ -82,6 +83,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
 // ============================================
 
 export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -223,7 +225,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Cerca campagna..."
+            placeholder={t("pages.notifications.campaigns.list.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:border-primary focus:outline-none"
@@ -242,7 +244,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {status === "all" ? "Tutte" : CAMPAIGN_STATUS_LABELS[status]}
+              {status === "all" ? t("pages.notifications.campaigns.list.filterAll") : CAMPAIGN_STATUS_LABELS[status]}
             </button>
           ))}
         </div>
@@ -252,15 +254,15 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-slate-500">Caricamento...</span>
+          <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.list.loadingList")}</span>
         </div>
       ) : campaigns.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-slate-200 rounded-lg">
           <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-sm text-slate-500">
             {searchQuery || statusFilter !== "all"
-              ? "Nessuna campagna trovata"
-              : "Nessuna campagna creata"}
+              ? t("pages.notifications.campaigns.list.noCampaignsFound")
+              : t("pages.notifications.campaigns.list.noCampaignsCreated")}
           </p>
         </div>
       ) : (
@@ -303,7 +305,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                         copyToClipboard(campaign.campaign_id, campaign.campaign_id);
                       }}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
-                      title="Copia ID"
+                      title={t("pages.notifications.campaigns.list.copyId")}
                     >
                       {copiedId === campaign.campaign_id ? (
                         <Check className="w-3 h-3 text-emerald-500" />
@@ -319,7 +321,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                           copyToClipboard(campaign.slug, `slug-${campaign.campaign_id}`);
                         }}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-xs font-mono text-primary transition"
-                        title="Copia Slug"
+                        title={t("pages.notifications.campaigns.list.copySlug")}
                       >
                         {copiedId === `slug-${campaign.campaign_id}` ? (
                           <Check className="w-3 h-3 text-emerald-500" />
@@ -334,21 +336,23 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {campaign.sent_at
-                        ? `Inviata: ${formatDate(campaign.sent_at)}`
+                        ? t("pages.notifications.campaigns.list.sentDate", { date: formatDate(campaign.sent_at) })
                         : campaign.status === "scheduled" && campaign.scheduled_at
-                          ? `Programmata: ${formatDate(campaign.scheduled_at)}`
-                          : `Creata: ${formatDate(campaign.created_at)}`}
+                          ? t("pages.notifications.campaigns.list.scheduledDate", { date: formatDate(campaign.scheduled_at) })
+                          : t("pages.notifications.campaigns.list.createdDate", { date: formatDate(campaign.created_at) })}
                     </span>
                     {/* Warning for scheduled campaigns with past date */}
                     {campaign.status === "scheduled" && campaign.scheduled_at && new Date(campaign.scheduled_at) < new Date() && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
                         <AlertCircle className="w-3 h-3" />
-                        Data passata
+                        {t("pages.notifications.campaigns.list.pastDate")}
                       </span>
                     )}
                     {campaign.recipient_count !== undefined && (
                       <span>
-                        {campaign.recipient_count} destinatar{campaign.recipient_count !== 1 ? "i" : "io"}
+                        {campaign.recipient_count !== 1
+                          ? t("pages.notifications.campaigns.list.recipientsPlural", { count: campaign.recipient_count })
+                          : t("pages.notifications.campaigns.list.recipientsSingular", { count: campaign.recipient_count })}
                       </span>
                     )}
                     <span className="capitalize">
@@ -363,7 +367,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                     <button
                       onClick={() => onEditDraft(campaign.campaign_id)}
                       className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary transition"
-                      title="Modifica"
+                      title={t("pages.notifications.campaigns.list.editBtn")}
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -374,7 +378,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                       onClick={() => handleUnschedule(campaign.campaign_id)}
                       disabled={unschedulingId === campaign.campaign_id}
                       className="p-2 rounded-lg text-amber-500 hover:bg-amber-50 hover:text-amber-600 transition disabled:opacity-50"
-                      title="Annulla programmazione"
+                      title={t("pages.notifications.campaigns.list.unscheduleBtn")}
                     >
                       {unschedulingId === campaign.campaign_id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -393,7 +397,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                         }
                       }}
                       className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition"
-                      title="Risultati"
+                      title={t("pages.notifications.campaigns.list.resultsBtn")}
                     >
                       <BarChart3 className="w-4 h-4" />
                     </button>
@@ -403,7 +407,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                     onClick={() => handleDuplicate(campaign.campaign_id)}
                     disabled={duplicatingId === campaign.campaign_id}
                     className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition disabled:opacity-50"
-                    title="Duplica"
+                    title={t("pages.notifications.campaigns.list.duplicateBtn")}
                   >
                     {duplicatingId === campaign.campaign_id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -415,7 +419,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                     <button
                       onClick={() => setDeleteConfirm(campaign.campaign_id)}
                       className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 transition"
-                      title="Elimina"
+                      title={t("pages.notifications.campaigns.list.deleteBtn")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -431,7 +435,9 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4 border-t border-slate-200">
           <span className="text-sm text-slate-500">
-            {total} campagn{total !== 1 ? "e" : "a"} total{total !== 1 ? "i" : "e"}
+            {total !== 1
+              ? t("pages.notifications.campaigns.list.totalCampaignsPlural", { count: total })
+              : t("pages.notifications.campaigns.list.totalCampaignsSingular", { count: total })}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -442,7 +448,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span className="text-sm text-slate-600">
-              Pagina {page} di {totalPages}
+              {t("pages.notifications.campaigns.list.pageOf", { page, totalPages })}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -464,14 +470,14 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                 <Trash2 className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-slate-900">Elimina campagna</h4>
+                <h4 className="font-semibold text-slate-900">{t("pages.notifications.campaigns.list.deleteTitle")}</h4>
                 <p className="text-sm text-slate-500">
-                  Questa azione non può essere annullata
+                  {t("pages.notifications.campaigns.list.deleteWarning")}
                 </p>
               </div>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Sei sicuro di voler eliminare questa campagna? Tutti i dati associati verranno persi.
+              {t("pages.notifications.campaigns.list.deleteConfirmation")}
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -479,7 +485,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                 disabled={isDeleting}
                 className="px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
               >
-                Annulla
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
@@ -487,7 +493,7 @@ export function CampaignList({ onEditDraft, onViewResults, onSelectCampaign }: P
                 className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 flex items-center gap-2"
               >
                 {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
-                Elimina
+                {t("common.delete")}
               </button>
             </div>
           </div>

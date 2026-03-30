@@ -386,7 +386,7 @@ export default function DocumentSettingsPage() {
 
                   {/* Live Preview */}
                   <div className="flex items-center gap-2 pt-1 border-t border-black/5">
-                    <span className="text-[11px] text-muted-foreground">Anteprima:</span>
+                    <span className="text-[11px] text-muted-foreground">{t("pages.documents.settings.previewLabel")}</span>
                     <span className="font-mono text-sm font-medium text-[#5e5873]">
                       {previewNumber}
                     </span>
@@ -406,9 +406,9 @@ export default function DocumentSettingsPage() {
               <Settings2 className="w-4 h-4 text-[#009688]" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">Valori Predefiniti</h2>
+              <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.settings.defaults")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Valori applicati automaticamente ai nuovi documenti.
+                {t("pages.documents.settings.defaultsDesc")}
               </p>
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function DocumentSettingsPage() {
           <div className="grid grid-cols-3 gap-5">
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-                Valuta
+                {t("pages.documents.settings.currency")}
               </label>
               <select
                 value={editCurrency}
@@ -425,21 +425,21 @@ export default function DocumentSettingsPage() {
                 className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
               >
                 <option value="EUR">EUR - Euro</option>
-                <option value="USD">USD - Dollaro USA</option>
-                <option value="GBP">GBP - Sterlina</option>
-                <option value="CHF">CHF - Franco Svizzero</option>
+                <option value="USD">USD - US Dollar</option>
+                <option value="GBP">GBP - Pound Sterling</option>
+                <option value="CHF">CHF - Swiss Franc</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-                Termini di Pagamento
+                {t("pages.documents.settings.paymentTerms")}
               </label>
               <select
                 value={editPaymentTerms}
                 onChange={(e) => setEditPaymentTerms(e.target.value)}
                 className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
               >
-                <option value="">— Nessuno —</option>
+                <option value="">{t("pages.documents.settings.noPaymentTerms")}</option>
                 {PAYMENT_TERMS.map((t) => (
                   <option key={t} value={t}>
                     {PAYMENT_TERMS_LABELS[t]}
@@ -449,7 +449,7 @@ export default function DocumentSettingsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-                Validità Preventivo (giorni)
+                {t("pages.documents.settings.quotationValidity")}
               </label>
               <input
                 type="number"
@@ -464,13 +464,13 @@ export default function DocumentSettingsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
-              Note Predefinite
+              {t("pages.documents.settings.defaultNotes")}
             </label>
             <textarea
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
               rows={3}
-              placeholder="Note che appariranno di default su ogni nuovo documento..."
+              placeholder={t("pages.documents.settings.defaultNotesPlaceholder")}
               className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
             />
           </div>
@@ -487,10 +487,10 @@ export default function DocumentSettingsPage() {
               </div>
               <div>
                 <h2 className="font-semibold text-[#5e5873]">
-                  Contatori Numerazione
+                  {t("pages.documents.settings.counters")}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Gestisci i contatori progressivi per ogni tipo di documento.
+                  {t("pages.documents.settings.countersDesc")}
                 </p>
               </div>
             </div>
@@ -513,7 +513,7 @@ export default function DocumentSettingsPage() {
                 onClick={fetchCounters}
                 disabled={isLoadingCounters}
                 className="p-2 rounded-lg hover:bg-[#f8f8f8] transition-colors"
-                title="Aggiorna contatori"
+                title={t("pages.documents.settings.refreshCounters")}
               >
                 <RefreshCw
                   className={`w-4 h-4 text-muted-foreground ${isLoadingCounters ? "animate-spin" : ""}`}
@@ -560,7 +560,7 @@ export default function DocumentSettingsPage() {
                   <div className="flex items-end gap-3">
                     <div className="flex-1">
                       <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                        Ultimo numero emesso
+                        {t("pages.documents.settings.lastIssuedNumber")}
                       </label>
                       <input
                         type="number"
@@ -583,7 +583,7 @@ export default function DocumentSettingsPage() {
                       {savingCounterType === type ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        "Imposta"
+                        t("pages.documents.settings.setCounter")
                       )}
                     </button>
                   </div>
@@ -592,7 +592,7 @@ export default function DocumentSettingsPage() {
                   <div className="mt-3 pt-3 border-t border-[#ebe9f1] flex items-center gap-2">
                     <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     <span className="text-[11px] text-muted-foreground">
-                      Prossimo:
+                      {t("pages.documents.settings.nextLabel")}
                     </span>
                     <span className="text-xs font-mono font-medium text-[#5e5873]">
                       {nextPreview}
@@ -609,9 +609,7 @@ export default function DocumentSettingsPage() {
           <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
             <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-blue-700">
-              Il contatore viene incrementato automaticamente alla finalizzazione
-              di ogni documento. Modifica il valore solo se necessario allineare
-              la numerazione.
+              {t("pages.documents.settings.counterInfo")}
             </p>
           </div>
         </div>

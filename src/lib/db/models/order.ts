@@ -99,8 +99,45 @@ export interface ILineItem {
   promo_discount_amt?: number;
   discount_chain?: DiscountStep[]; // Full discount chain with type, value, source, order
 
+  // Promo goal (for threshold-based promos)
+  promo_goal_type?: "value" | "quantity";
+  promo_goal_value?: number; // target amount (€) or quantity
+  promo_goal_label?: string; // e.g. "OFFERTE LED1"
+  promo_start_date?: string;
+  promo_end_date?: string;
+
+  // Promo reward type (what the ERP gives when goal is reached)
+  promo_reward_type?: "extra_discount" | "fixed_price" | "gift";
+  promo_reward_gift_code?: string;
+  promo_reward_gift_quantity?: number;
+
   // Raw source payload (auto-captured from request body)
   raw_data?: Record<string, unknown>;
+
+  // ERP data (from Windmill hook responses)
+  erp_data?: Record<string, unknown>;
+}
+
+// ============================================
+// PROMO PROGRESS (threshold-based promo tracking)
+// ============================================
+
+export interface IPromoProgress {
+  promo_code: string;
+  promo_label?: string;
+  goal_type: "value" | "quantity";
+  goal_value: number;
+  current_value: number;
+  remaining: number;
+  reached: boolean;
+  start_date?: string;
+  end_date?: string;
+  item_count: number;
+
+  // Reward (what the ERP gives when goal is reached)
+  reward_type?: "extra_discount" | "fixed_price" | "gift";
+  reward_gift_code?: string;
+  reward_gift_quantity?: number;
 }
 
 // ============================================
@@ -303,6 +340,7 @@ export interface IOrder extends Document {
   year: number;
   status: OrderStatus;
   is_current: boolean; // Only ONE draft per customer+address can be current
+  cart_name?: string; // User-assigned name for saved carts
 
   // Tenant (multi-tenant support)
   tenant_id: string;
@@ -369,8 +407,34 @@ export interface IOrder extends Document {
   /** Optional reference within the channel (e.g. storefront slug, API key ID, "ios"/"android") */
   channel_ref?: string;
 
+  // ERP Integration
+  /** Cart ID assigned by external ERP */
+  erp_cart_id?: string;
+  /** Order ID assigned by external ERP */
+  erp_order_id?: string;
+  /** ERP-specific data from Windmill hook responses */
+  erp_data?: Record<string, unknown>;
+  /** ERP sync status for this order */
+  erp_sync_status?: "not_configured" | "pending" | "synced" | "failed";
+
+  // Async Processing (Windmill ERP jobs)
+  processing_job_id?: string;
+  processing_status?: "processing" | "completed" | "failed";
+  processing_phase?: "before" | "on"; // Which hook phase is running async
+  processing_started_at?: Date;
+  processing_completed_at?: Date;
+  processing_errors?: Array<string | {
+    message: string;
+    line_number?: number;
+    field?: string;
+    severity?: "error" | "warning";
+  }>;
+
   // Items
   items: ILineItem[];
+
+  // Promo progress (aggregated per promo_code, updated on item changes)
+  promo_progress?: IPromoProgress[];
 
   // ============================================
   // Quotation Data (when status = "quotation")
@@ -704,8 +768,24 @@ const LineItemSchema = new Schema<ILineItem>(
       order: { type: Number },
     }],
 
+    // Promo goal (for threshold-based promos)
+    promo_goal_type: { type: String, enum: ["value", "quantity"] },
+    promo_goal_value: { type: Number },
+    promo_goal_label: { type: String },
+    promo_start_date: { type: String },
+    promo_end_date: { type: String },
+
+    // Promo reward type (what the ERP gives when goal is reached)
+    promo_reward_type: { type: String, enum: ["extra_discount", "fixed_price", "gift"] },
+    promo_reward_gift_code: { type: String },
+    promo_reward_gift_quantity: { type: Number },
+
     // Raw source payload (auto-captured from request body)
     raw_data: { type: Schema.Types.Mixed },
+
+    // ERP data (from Windmill hook responses)
+    erp_line_number: { type: Number },
+    erp_data: { type: Schema.Types.Mixed },
   },
   { _id: false }
 );
@@ -734,6 +814,7 @@ const OrderSchema = new Schema<IOrder>(
       default: false,
       index: true,
     },
+    cart_name: { type: String, trim: true },
 
     // Tenant (multi-tenant support)
     tenant_id: { type: String, required: true, index: true },
@@ -868,6 +949,29 @@ const OrderSchema = new Schema<IOrder>(
       trim: true,
     },
 
+    // ERP Integration
+    erp_cart_id: { type: String },
+    erp_order_id: { type: String },
+    erp_data: { type: Schema.Types.Mixed },
+    erp_sync_status: {
+      type: String,
+      enum: ["not_configured", "pending", "synced", "failed"],
+    },
+
+    // Async Processing (Windmill ERP jobs)
+    processing_job_id: { type: String },
+    processing_status: {
+      type: String,
+      enum: ["processing", "completed", "failed"],
+    },
+    processing_phase: {
+      type: String,
+      enum: ["before", "on"],
+    },
+    processing_started_at: { type: Date },
+    processing_completed_at: { type: Date },
+    processing_errors: { type: [Schema.Types.Mixed], default: undefined },
+
     // Items
     items: { type: [LineItemSchema], default: [] },
 
@@ -875,6 +979,23 @@ const OrderSchema = new Schema<IOrder>(
     // Quotation Data
     // ============================================
     quotation: { type: QuotationDataSchema },
+
+    // Promo progress (aggregated, updated on item changes)
+    promo_progress: [{
+      promo_code: { type: String, required: true },
+      promo_label: { type: String },
+      goal_type: { type: String, enum: ["value", "quantity"], required: true },
+      goal_value: { type: Number, required: true },
+      current_value: { type: Number, default: 0 },
+      remaining: { type: Number, default: 0 },
+      reached: { type: Boolean, default: false },
+      start_date: { type: String },
+      end_date: { type: String },
+      item_count: { type: Number, default: 0 },
+      reward_type: { type: String, enum: ["extra_discount", "fixed_price", "gift"] },
+      reward_gift_code: { type: String },
+      reward_gift_quantity: { type: Number },
+    }],
 
     // Cart-level discounts
     cart_discounts: { type: [CartDiscountSchema], default: [] },
@@ -933,8 +1054,15 @@ OrderSchema.index({ customer_id: 1, status: 1 });
 // Cart per address (for multi-address support)
 OrderSchema.index({ customer_id: 1, shipping_address_id: 1, status: 1 });
 
-// Cart lookup by external codes (for cart/active endpoint)
-OrderSchema.index({ customer_code: 1, shipping_address_code: 1, is_current: 1 });
+// Cart lookup by external codes — UNIQUE when is_current:true + status:draft
+// Prevents race condition: only ONE active cart per customer+address
+OrderSchema.index(
+  { tenant_id: 1, customer_code: 1, shipping_address_code: 1, is_current: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { is_current: true, status: "draft" },
+  }
+);
 
 // Unique order number per year (only when assigned)
 OrderSchema.index(

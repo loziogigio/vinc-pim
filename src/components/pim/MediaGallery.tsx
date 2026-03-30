@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   DndContext,
   closestCenter,
@@ -133,6 +134,7 @@ function MediaFileItem({
   onLabelUpdate?: (cdn_key: string, newLabel: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -274,7 +276,7 @@ function MediaFileItem({
             className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
           >
             <ExternalLink className="h-4 w-4" />
-            Open in new tab
+            {t("pages.pim.mediaGallery.openInNewTab")}
           </a>
         </div>
       );
@@ -298,7 +300,7 @@ function MediaFileItem({
       if (!modelViewerLoaded) {
         return (
           <div className="mt-2 p-4 bg-gray-50 rounded border border-gray-200 text-center text-sm text-gray-600">
-            Loading 3D viewer...
+            {t("pages.pim.mediaGallery.loading3dViewer")}
           </div>
         );
       }
@@ -315,7 +317,7 @@ function MediaFileItem({
         <div className="mt-2 relative">
           {isModelLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded border border-gray-200 z-10">
-              <div className="text-sm text-gray-600">Loading 3D model...</div>
+              <div className="text-sm text-gray-600">{t("pages.pim.mediaGallery.loading3dModel")}</div>
             </div>
           )}
           <model-viewer
@@ -353,7 +355,7 @@ function MediaFileItem({
       return (
         <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
           <p className="text-sm text-blue-800">
-            Preview not available for this document type. Click download to view the file.
+            {t("pages.pim.mediaGallery.previewNotAvailable")}
           </p>
         </div>
       );
@@ -409,7 +411,7 @@ function MediaFileItem({
                 onChange={(e) => setEditedLabel(e.target.value)}
                 onKeyDown={handleKeyDownLabel}
                 className="flex-1 px-2 py-1 text-sm font-medium border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter label"
+                placeholder={t("pages.pim.mediaGallery.enterLabel")}
                 autoFocus
                 disabled={disabled}
               />
@@ -465,7 +467,7 @@ function MediaFileItem({
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <LinkIcon className="h-3 w-3" />
-                  External Link
+                  {t("pages.pim.mediaGallery.externalLink")}
                 </span>
               </>
             )}
@@ -566,7 +568,7 @@ function MediaFileItem({
           >
             {isModalModelLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-lg z-10">
-                <div className="text-white">Loading 3D model...</div>
+                <div className="text-white">{t("pages.pim.mediaGallery.loading3dModel")}</div>
               </div>
             )}
             {modelLoadError ? (
@@ -605,6 +607,7 @@ function AddLinkDialog({
   onAdd: (url: string, label: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
 
@@ -619,12 +622,12 @@ function AddLinkDialog({
     <div className="fixed inset-0 z-50 bg-black flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Add {getMediaTypeLabel(type).slice(0, -1)} Link
+          {t("pages.pim.mediaGallery.addLinkTitle", { type: getMediaTypeLabel(type).slice(0, -1) })}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              URL *
+              {t("pages.pim.mediaGallery.urlLabel")}
             </label>
             <input
               type="url"
@@ -642,13 +645,13 @@ function AddLinkDialog({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Label (optional)
+              {t("pages.pim.mediaGallery.labelOptional")}
             </label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Enter a descriptive label"
+              placeholder={t("pages.pim.mediaGallery.labelPlaceholder")}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -658,13 +661,13 @@ function AddLinkDialog({
               onClick={onCancel}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
             >
-              Add Link
+              {t("pages.pim.mediaGallery.addLink")}
             </button>
           </div>
         </form>
@@ -682,6 +685,7 @@ export function MediaGallery({
   onReorder,
   disabled = false,
 }: MediaGalleryProps) {
+  const { t } = useTranslation();
   const [media, setMedia] = useState(initialMedia);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -719,7 +723,7 @@ export function MediaGallery({
   }, [initialMedia]);
 
   const handleDelete = async (mediaId: string) => {
-    if (!confirm("Are you sure you want to delete this file?")) {
+    if (!confirm(t("pages.pim.mediaGallery.deleteConfirm"))) {
       return;
     }
 
@@ -729,7 +733,7 @@ export function MediaGallery({
       setMedia(media.filter((m) => getMediaId(m) !== mediaId));
     } catch (error) {
       console.error("Failed to delete media:", error);
-      alert("Failed to delete file. Please try again.");
+      alert(t("pages.pim.mediaGallery.deleteError"));
     } finally {
       setDeleting(null);
     }
@@ -748,7 +752,7 @@ export function MediaGallery({
       e.target.value = "";
     } catch (error) {
       console.error("Failed to upload files:", error);
-      alert("Failed to upload files. Please try again.");
+      alert(t("pages.pim.mediaGallery.uploadError"));
     } finally {
       setUploading(false);
     }
@@ -762,7 +766,7 @@ export function MediaGallery({
       setShowAddLinkDialog(null);
     } catch (error) {
       console.error("Failed to add link:", error);
-      alert("Failed to add link. Please try again.");
+      alert(t("pages.pim.mediaGallery.addLinkError"));
     }
   };
 
@@ -802,7 +806,11 @@ export function MediaGallery({
 
   const renderMediaGroup = (type: MediaType, items: MediaItem[]) => {
     const Icon = getMediaIcon(type);
-    const typeLabel = getMediaTypeLabel(type);
+    const typeLabel = type === "document"
+      ? t("pages.pim.mediaGallery.typeDocuments")
+      : type === "video"
+      ? t("pages.pim.mediaGallery.typeVideos")
+      : t("pages.pim.mediaGallery.type3dModels");
     const acceptTypes =
       type === "document"
         ? ".pdf,.doc,.docx,.txt,.xls,.xlsx"
@@ -827,7 +835,7 @@ export function MediaGallery({
               }`}
             >
               <Upload className="h-3 w-3" />
-              Upload
+              {t("pages.pim.mediaGallery.upload")}
               <input
                 type="file"
                 multiple
@@ -846,7 +854,7 @@ export function MediaGallery({
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
             >
               <LinkIcon className="h-3 w-3" />
-              Add Link
+              {t("pages.pim.mediaGallery.addLink")}
             </button>
           </div>
         </div>
@@ -855,8 +863,14 @@ export function MediaGallery({
         {items.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
             <Icon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-            <p className="text-sm text-gray-600 mb-1">No {typeLabel.toLowerCase()} yet</p>
-            <p className="text-xs text-gray-500">Upload files or add links</p>
+            <p className="text-sm text-gray-600 mb-1">
+              {type === "document"
+                ? t("pages.pim.mediaGallery.noDocuments")
+                : type === "video"
+                ? t("pages.pim.mediaGallery.noVideos")
+                : t("pages.pim.mediaGallery.no3dModels")}
+            </p>
+            <p className="text-xs text-gray-500">{t("pages.pim.mediaGallery.uploadFilesOrLinks")}</p>
           </div>
         ) : (
           <DndContext
@@ -889,9 +903,9 @@ export function MediaGallery({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Additional Media</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t("pages.pim.mediaGallery.title")}</h3>
         {uploading && (
-          <span className="text-sm text-blue-600">Uploading...</span>
+          <span className="text-sm text-blue-600">{t("pages.pim.mediaGallery.uploading")}</span>
         )}
       </div>
 

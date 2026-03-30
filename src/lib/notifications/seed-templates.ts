@@ -33,8 +33,8 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     name: "Nuova Richiesta Registrazione (Admin)",
     description: "Notifica all'amministratore quando un nuovo cliente richiede la registrazione B2B. Contiene i dati aziendali del richiedente.",
     trigger: "registration_request_admin",
-    variables: ["company_name", "email", "phone", "address", "vat_number", "admin_url"],
-    email_subject: "Nuova Richiesta di Registrazione B2B - {{company_name}}",
+    variables: ["customer_company", "email", "phone", "address", "vat_number", "admin_url"],
+    email_subject: "Nuova Richiesta di Registrazione B2B - {{customer_company}}",
     email_html: `
 <h2 style="color: #1e293b; margin: 0 0 16px 0;">Nuova Richiesta di Registrazione B2B</h2>
 <p style="color: #64748b; margin: 0 0 24px 0;">È stata ricevuta una nuova richiesta di registrazione al portale B2B.</p>
@@ -42,7 +42,7 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
 <div style="background-color: #f8f9fb; border-radius: 8px; padding: 20px; margin: 16px 0;">
   <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px;">Dati Azienda</h3>
   <table style="width: 100%; font-size: 14px;">
-    <tr><td style="padding: 4px 0; color: #64748b;">Ragione Sociale:</td><td style="color: #1e293b; font-weight: 500;">{{company_name}}</td></tr>
+    <tr><td style="padding: 4px 0; color: #64748b;">Ragione Sociale:</td><td style="color: #1e293b; font-weight: 500;">{{customer_company}}</td></tr>
     <tr><td style="padding: 4px 0; color: #64748b;">Email:</td><td style="color: #1e293b;">{{email}}</td></tr>
     <tr><td style="padding: 4px 0; color: #64748b;">Telefono:</td><td style="color: #1e293b;">{{phone}}</td></tr>
     <tr><td style="padding: 4px 0; color: #64748b;">Indirizzo:</td><td style="color: #1e293b;">{{address}}</td></tr>
@@ -62,13 +62,13 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     name: "Conferma Richiesta Registrazione",
     description: "Conferma al cliente che la sua richiesta di registrazione è stata ricevuta e sarà valutata.",
     trigger: "registration_request_customer",
-    variables: ["customer_name", "company_name", "shop_name"],
+    variables: ["customer_name", "customer_company", "shop_name"],
     email_subject: "Richiesta di Registrazione Ricevuta - {{shop_name}}",
     email_html: `
 <h2 style="color: #1e293b; margin: 0 0 16px 0;">Grazie per la tua richiesta!</h2>
 <p style="color: #64748b; margin: 0 0 16px 0;">Gentile {{customer_name}},</p>
 <p style="color: #64748b; margin: 0 0 24px 0;">
-  Abbiamo ricevuto la tua richiesta di registrazione per <strong>{{company_name}}</strong> al nostro portale B2B.
+  Abbiamo ricevuto la tua richiesta di registrazione per <strong>{{customer_company}}</strong> al nostro portale B2B.
 </p>
 <p style="color: #64748b; margin: 0 0 24px 0;">
   Il nostro team verificherà i dati forniti e ti invierà una comunicazione con le credenziali di accesso
@@ -84,13 +84,13 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     name: "Benvenuto - Credenziali Accesso",
     description: "Email di benvenuto con username e password per accedere al portale B2B. Inviata dopo approvazione.",
     trigger: "welcome",
-    variables: ["customer_name", "company_name", "username", "password", "login_url", "shop_name"],
+    variables: ["customer_name", "customer_company", "username", "password", "login_url", "shop_name"],
     email_subject: "Benvenuto su {{shop_name}} - Le tue credenziali di accesso",
     email_html: `
 <h2 style="color: #1e293b; margin: 0 0 16px 0;">Benvenuto su {{shop_name}}!</h2>
 <p style="color: #64748b; margin: 0 0 16px 0;">Gentile {{customer_name}},</p>
 <p style="color: #64748b; margin: 0 0 24px 0;">
-  Il tuo account B2B per <strong>{{company_name}}</strong> è stato attivato con successo.
+  Il tuo account B2B per <strong>{{customer_company}}</strong> è stato attivato con successo.
 </p>
 
 <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0;">
@@ -117,13 +117,13 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     name: "Benvenuto - Registrazione Autonoma",
     description: "Email di benvenuto per clienti che si registrano autonomamente. Senza credenziali (il cliente conosce già la password).",
     trigger: "welcome_self_registration",
-    variables: ["customer_name", "company_name", "login_url", "shop_name"],
+    variables: ["customer_name", "customer_company", "login_url", "shop_name"],
     email_subject: "Benvenuto su {{shop_name}}!",
     email_html: `
 <h2 style="color: #1e293b; margin: 0 0 16px 0;">Benvenuto su {{shop_name}}!</h2>
 <p style="color: #64748b; margin: 0 0 16px 0;">Gentile {{customer_name}},</p>
 <p style="color: #64748b; margin: 0 0 24px 0;">
-  Il tuo account{{#if company_name}} per <strong>{{company_name}}</strong>{{/if}} è stato creato con successo.
+  Il tuo account{{#if customer_company}} per <strong>{{customer_company}}</strong>{{/if}} è stato creato con successo.
 </p>
 
 <p style="color: #64748b; margin: 0 0 24px 0;">

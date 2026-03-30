@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const { tenantDb } = auth;
-    const { Brand: BrandModel } = await connectWithModels(tenantDb);
+    const { Brand: BrandModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -90,6 +90,19 @@ export async function GET(req: NextRequest) {
         BrandModel.find(query).sort(sort).skip(skip).limit(limit).lean(),
         BrandModel.countDocuments(query),
       ]);
+    }
+
+    // Enrich with live product counts (single aggregation for the page)
+    const brandIds = brands.map((b: any) => b.brand_id);
+    if (brandIds.length > 0) {
+      const counts = await PIMProductModel.aggregate([
+        { $match: { "brand.brand_id": { $in: brandIds }, isCurrent: true } },
+        { $group: { _id: "$brand.brand_id", count: { $sum: 1 } } },
+      ]);
+      const countMap = new Map(counts.map((c: any) => [c._id, c.count]));
+      for (const brand of brands as any[]) {
+        brand.product_count = countMap.get(brand.brand_id) || 0;
+      }
     }
 
     return NextResponse.json({

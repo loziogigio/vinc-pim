@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { Search, Loader2 } from "lucide-react";
 import type { Document } from "@/lib/types/document";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CustomerResult {
   customer_id: string;
@@ -36,6 +37,7 @@ export function DocumentPartiesInfo({
   isDraft,
   onDocumentUpdate,
 }: Props) {
+  const { t } = useTranslation();
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerResults, setCustomerResults] = useState<CustomerResult[]>([]);
@@ -87,7 +89,7 @@ export function DocumentPartiesInfo({
     <div className="grid grid-cols-2 gap-6">
       {/* Issuer Card */}
       <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
-        <h3 className="font-semibold text-[#5e5873] mb-2">Emittente</h3>
+        <h3 className="font-semibold text-[#5e5873] mb-2">{t("pages.documents.detail.parties.issuer")}</h3>
         <div className="text-sm space-y-0.5">
           <div className="font-medium">{doc.company?.legal_name}</div>
           {doc.company?.address_line1 && (
@@ -111,13 +113,13 @@ export function DocumentPartiesInfo({
       {/* Customer Card */}
       <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-[#5e5873]">Cliente</h3>
+          <h3 className="font-semibold text-[#5e5873]">{t("pages.documents.detail.parties.customer")}</h3>
           {isDraft && !editingCustomer && (
             <button
               onClick={() => setEditingCustomer(true)}
               className="text-xs text-[#009688] hover:underline"
             >
-              Cambia
+              {t("pages.documents.detail.parties.change")}
             </button>
           )}
         </div>
@@ -128,7 +130,7 @@ export function DocumentPartiesInfo({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Cerca cliente..."
+                placeholder={t("pages.documents.detail.parties.searchPlaceholder")}
                 value={customerSearch}
                 onChange={(e) => {
                   setCustomerSearch(e.target.value);
@@ -178,7 +180,7 @@ export function DocumentPartiesInfo({
               }}
               className="mt-2 text-xs text-muted-foreground hover:underline"
             >
-              Annulla
+              {t("common.cancel")}
             </button>
           </div>
         ) : (

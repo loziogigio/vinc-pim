@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { buildCategoryEmbedding } from "@/lib/services/category.service";
-import { safeRegexQuery } from "@/lib/security";
+import { buildProductSearchConditions } from "@/lib/search/product-search";
 
 // GET /api/b2b/pim/categories/[id]/products - Get products for a category
 export async function GET(
@@ -37,17 +37,12 @@ export async function GET(
     };
 
     if (search) {
-      const safeSearch = safeRegexQuery(search);
-      query.$or = [
-        { name: safeSearch },
-        { sku: safeSearch },
-        { entity_code: safeSearch },
-      ];
+      query.$or = await buildProductSearchConditions(search, tenantDb);
     }
 
     const [products, total] = await Promise.all([
       PIMProductModel.find(query)
-        .select("entity_code sku name image status quantity")
+        .select("entity_code sku name image images status quantity")
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(limit)

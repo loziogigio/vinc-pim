@@ -245,6 +245,7 @@ export interface IPlatformCommission {
 
 export interface PaymentResult {
   success: boolean;
+  idempotent?: boolean;
   transaction_id?: string;
   payment_number?: string;
   provider_payment_id?: string;
@@ -276,6 +277,7 @@ export interface CreatePaymentParams {
   customer_id?: string;
   customer_email?: string;
   return_url?: string;
+  cancel_url?: string;
   metadata?: Record<string, string>;
   idempotency_key?: string;
 }
@@ -317,6 +319,7 @@ export interface ContractResult {
 
 export interface RefundResult {
   success: boolean;
+  idempotent?: boolean;
   refund_id?: string;
   amount?: number;
   error?: string;

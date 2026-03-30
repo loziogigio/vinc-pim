@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { BlockLibrary } from "@/components/builder/BlockLibrary";
 import { Canvas } from "@/components/builder/Canvas";
 import { BlockSettingsModal } from "@/components/builder/BlockSettingsModal";
@@ -126,6 +127,7 @@ const buildPublishPayload = (form: PublishFormValues) => {
 };
 
 function B2CHomeBuilderContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const pathname = usePathname() || "";
   const storefrontSlug = searchParams.get("storefront");
@@ -199,11 +201,11 @@ function B2CHomeBuilderContent() {
   const canRedo = history.future.length > 0;
 
   const autosaveMessage = useMemo(() => {
-    if (isLoading) return "Loading...";
-    if (isSaving) return "Saving...";
-    if (isDirty) return "Unsaved changes";
-    return "All changes saved";
-  }, [isLoading, isSaving, isDirty]);
+    if (isLoading) return t("common.loading");
+    if (isSaving) return t("pages.builder.b2cHomeBuilder.savingChanges");
+    if (isDirty) return t("pages.builder.b2cHomeBuilder.unsavedChanges");
+    return t("pages.builder.b2cHomeBuilder.allChangesSaved");
+  }, [isLoading, isSaving, isDirty, t]);
 
   const updateUrlVersion = (version: number) => {
     const url = new URL(window.location.href);
@@ -656,12 +658,12 @@ function B2CHomeBuilderContent() {
                   )}
                 >
                   {isDefaultPublishedVersion
-                    ? "Default Published"
+                    ? t("pages.builder.b2cHomeBuilder.defaultPublished")
                     : isConditionalPublishedVersion
-                      ? "Published (Conditional)"
+                      ? t("pages.builder.b2cHomeBuilder.conditionalPublished")
                       : isEditingPublishedVersion
-                        ? "Published"
-                        : "Draft"}{" "}
+                        ? t("common.published")
+                        : t("common.draft")}{" "}
                   v{currentVersion}
                 </span>
               )}
@@ -734,7 +736,7 @@ function B2CHomeBuilderContent() {
             ) : (
               <EyeOff className="h-4 w-4" />
             )}
-            Block Builder
+            {t("pages.builder.b2cHomeBuilder.blockBuilder")}
           </Button>
 
           {isEditingPublishedVersion ? (
@@ -745,7 +747,7 @@ function B2CHomeBuilderContent() {
               onClick={handlePublishButtonClick}
             >
               <Settings2 className="h-4 w-4" />
-              Condition
+              {t("pages.builder.b2cHomeBuilder.condition")}
             </Button>
           ) : null}
 
@@ -756,7 +758,7 @@ function B2CHomeBuilderContent() {
             onClick={() => setIsVersionHistoryOpen(true)}
           >
             <History className="h-4 w-4" />
-            History
+            {t("pages.builder.b2cHomeBuilder.history")}
           </Button>
 
           {!isEditingPublishedVersion && (
@@ -771,7 +773,7 @@ function B2CHomeBuilderContent() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save Draft
+              {t("pages.builder.b2cHomeBuilder.saveDraft")}
             </Button>
           )}
 
@@ -787,7 +789,7 @@ function B2CHomeBuilderContent() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Hot Fix
+              {t("pages.builder.b2cHomeBuilder.hotFix")}
             </Button>
           )}
 
@@ -803,7 +805,7 @@ function B2CHomeBuilderContent() {
               ) : (
                 <Upload className="h-4 w-4" />
               )}
-              Publish
+              {t("common.publish")}
             </Button>
           )}
 
@@ -814,7 +816,7 @@ function B2CHomeBuilderContent() {
             onClick={handleStartNewVersion}
           >
             <RefreshCcw className="h-4 w-4" />
-            New Version
+            {t("pages.builder.b2cHomeBuilder.newVersion")}
           </Button>
         </div>
       </div>
@@ -833,10 +835,10 @@ function B2CHomeBuilderContent() {
       {isEditingPublishedVersion && !isDirty && (
         <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-[0.857rem] text-[#1976d2]">
           <strong>
-            Viewing published version {currentVersion}.
+            {t("pages.builder.b2cHomeBuilder.viewingPublishedBanner", { version: String(currentVersion) })}
           </strong>{" "}
-          Make changes and click <strong>Hot Fix</strong> to update, or{" "}
-          <strong>New Version</strong> to create a new draft.
+          {t("pages.builder.b2cHomeBuilder.viewingPublishedBannerSuffix")} <strong>{t("pages.builder.b2cHomeBuilder.hotFix")}</strong> {t("pages.builder.b2cHomeBuilder.viewingPublishedBannerMiddle")}{" "}
+          <strong>{t("pages.builder.b2cHomeBuilder.newVersion")}</strong> {t("pages.builder.b2cHomeBuilder.viewingPublishedBannerEnd")}
         </div>
       )}
 

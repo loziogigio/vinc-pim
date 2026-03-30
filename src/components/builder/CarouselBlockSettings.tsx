@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CarouselBlockSettingsProps {
   blockId: string;
@@ -13,6 +14,7 @@ interface CarouselBlockSettingsProps {
 }
 
 export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlockSettingsProps) {
+  const { t } = useTranslation();
   // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
   const onSaveRef = useRef(onSave);
   useEffect(() => {
@@ -81,7 +83,7 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="apiEndpoint">API Endpoint</Label>
+        <Label htmlFor="apiEndpoint">{t("components.builder.carouselBlock.apiEndpoint")}</Label>
         <Input
           id="apiEndpoint"
           type="text"
@@ -91,7 +93,7 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
           className="mt-1"
         />
         <p className="mt-1 text-xs text-gray-500">
-          API endpoint to fetch carousel data (e.g., /api/cms/slider-top or search query like /shop?text=makita)
+          {t("components.builder.carouselBlock.apiEndpointHint")}
         </p>
       </div>
 
@@ -104,13 +106,13 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
           size="sm"
         >
           {isPreviewLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Preview Data
+          {t("components.builder.carouselBlock.previewData")}
         </Button>
       </div>
 
       {previewData && (
         <div className="rounded-md border bg-gray-50 p-3">
-          <p className="mb-2 text-sm font-medium">Preview Result:</p>
+          <p className="mb-2 text-sm font-medium">{t("components.builder.carouselBlock.previewResult")}</p>
           <pre className="max-h-40 overflow-auto text-xs">
             {JSON.stringify(previewData, null, 2)}
           </pre>
@@ -127,7 +129,7 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
             className="h-4 w-4 rounded border-gray-300"
           />
           <Label htmlFor="autoplay" className="cursor-pointer">
-            Autoplay
+            {t("components.builder.carouselBlock.autoplay")}
           </Label>
         </div>
 
@@ -140,13 +142,13 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
             className="h-4 w-4 rounded border-gray-300"
           />
           <Label htmlFor="loop" className="cursor-pointer">
-            Loop
+            {t("components.builder.carouselBlock.loop")}
           </Label>
         </div>
       </div>
 
       <div>
-        <Label htmlFor="className">CSS Classes</Label>
+        <Label htmlFor="className">{t("components.builder.carouselBlock.cssClasses")}</Label>
         <Input
           id="className"
           type="text"
@@ -158,7 +160,7 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
       </div>
 
       <div>
-        <Label htmlFor="breakpoints">Breakpoints (JSON)</Label>
+        <Label htmlFor="breakpoints">{t("components.builder.carouselBlock.breakpointsJson")}</Label>
         <textarea
           id="breakpoints"
           value={breakpoints}
@@ -172,7 +174,7 @@ export function CarouselBlockSettings({ blockId, config, onSave }: CarouselBlock
 }`}
         />
         <p className="mt-1 text-xs text-gray-500">
-          Configure responsive breakpoints for the carousel (Swiper format)
+          {t("components.builder.carouselBlock.breakpointsHint")}
         </p>
       </div>
 

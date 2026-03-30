@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       customer_id,
       customer_email,
       return_url,
+      cancel_url,
       idempotency_key,
     } = body;
 
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
         customer_id,
         customer_email,
         return_url,
+        cancel_url,
         idempotency_key,
         metadata: body.metadata,
       }
@@ -74,13 +76,14 @@ export async function POST(req: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error || "Payment creation failed" },
+        { error: result.error || "Payment creation failed", idempotent: result.idempotent },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
+      idempotent: result.idempotent,
       transaction_id: result.transaction_id,
       payment_number: result.payment_number,
       provider_payment_id: result.provider_payment_id,

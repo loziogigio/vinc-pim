@@ -58,7 +58,7 @@ export default function SynonymDictionaryDetailPage() {
       setProductCount(data.dictionary.product_count || 0);
     } catch (error) {
       console.error("Failed to fetch dictionary:", error);
-      toast.error("Failed to load dictionary");
+      toast.error(t("pages.pim.synonyms.loadFailed"));
       router.push("/b2b/pim/synonym-dictionaries");
     } finally {
       setLoading(false);
@@ -78,11 +78,11 @@ export default function SynonymDictionaryDetailPage() {
         throw new Error("Failed to save");
       }
 
-      toast.success("Terms saved successfully");
+      toast.success(t("pages.pim.synonyms.saveSuccess"));
       fetchDictionary();
     } catch (error) {
       console.error("Failed to save terms:", error);
-      toast.error("Failed to save terms");
+      toast.error(t("pages.pim.synonyms.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -110,20 +110,20 @@ export default function SynonymDictionaryDetailPage() {
 
       if (res.ok) {
         toast.success(
-          dictionary?.is_active ? "Dictionary deactivated" : "Dictionary activated"
+          dictionary?.is_active ? t("pages.pim.synonyms.deactivatedSuccess") : t("pages.pim.synonyms.activatedSuccess")
         );
         fetchDictionary();
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      toast.error("Failed to update status");
+      toast.error(t("pages.pim.synonyms.statusUpdateFailed"));
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t("pages.pim.synonyms.loading")}</div>
       </div>
     );
   }
@@ -143,13 +143,12 @@ export default function SynonymDictionaryDetailPage() {
     syncUrl: `/api/b2b/pim/synonym-dictionaries/{id}/sync`,
     importUrl: `/api/b2b/pim/synonym-dictionaries/{id}/import`,
     exportUrl: `/api/b2b/pim/synonym-dictionaries/{id}/export`,
-    title: "Associated Products",
-    description: `Products using this synonym dictionary (${productCount} products)`,
-    emptyMessage: "No products associated with this dictionary yet.",
-    addButtonText: "Add Products",
-    addModalTitle: "Add Products",
-    addModalDescription:
-      "Search and select products to associate with this synonym dictionary",
+    title: t("pages.pim.synonyms.associatedProductsTitle"),
+    description: t("pages.pim.synonyms.associatedProductsDesc", { count: productCount }),
+    emptyMessage: t("pages.pim.synonyms.associatedProductsEmpty"),
+    addButtonText: t("pages.pim.synonyms.addProductsButton"),
+    addModalTitle: t("pages.pim.synonyms.addProductsModalTitle"),
+    addModalDescription: t("pages.pim.synonyms.addProductsModalDesc"),
     exportFilename: `synonym-dictionary-${dictionary.key}-products.csv`,
   };
 
@@ -174,7 +173,7 @@ export default function SynonymDictionaryDetailPage() {
               </span>
               {!dictionary.is_active && (
                 <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
-                  Inactive
+                  {t("pages.pim.synonyms.inactiveBadge")}
                 </span>
               )}
             </div>
@@ -203,7 +202,7 @@ export default function SynonymDictionaryDetailPage() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.synonyms.terms")}</h2>
             <p className="text-sm text-muted-foreground">
-              Synonyms and related search terms ({terms.length} terms)
+              {t("pages.pim.synonyms.termsSubtitle", { count: terms.length })}
             </p>
           </div>
           {hasUnsavedTerms && (
@@ -236,7 +235,7 @@ export default function SynonymDictionaryDetailPage() {
             ))}
             {terms.length === 0 && (
               <span className="text-sm text-muted-foreground">
-                No terms added yet. Add terms below.
+                {t("pages.pim.synonyms.noTermsYet")}
               </span>
             )}
           </div>
@@ -251,7 +250,7 @@ export default function SynonymDictionaryDetailPage() {
                   addTerm();
                 }
               }}
-              placeholder="Add a new term..."
+              placeholder={t("pages.pim.synonyms.addTermPlaceholder")}
               className="flex-1 rounded-lg border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none"
             />
             <button
@@ -259,7 +258,7 @@ export default function SynonymDictionaryDetailPage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-muted transition"
             >
               <Plus className="h-4 w-4" />
-              Add
+              {t("pages.pim.synonyms.addTermButton")}
             </button>
           </div>
         </div>

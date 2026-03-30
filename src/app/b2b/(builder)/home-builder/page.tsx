@@ -20,6 +20,7 @@ import {
   Settings2
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { BlockLibrary } from "@/components/builder/BlockLibrary";
 import { Canvas } from "@/components/builder/Canvas";
 import { BlockSettingsModal } from "@/components/builder/BlockSettingsModal";
@@ -127,6 +128,7 @@ const buildPublishPayload = (form: PublishFormValues) => {
 };
 
 function HomeBuilderContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const urlVersion = searchParams?.get("v") ?? null;
 
@@ -732,10 +734,10 @@ function HomeBuilderContent() {
   };
 
   const autosaveMessage = useMemo(() => {
-    if (isSaving) return "Saving changes…";
-    if (isDirty) return "Unsaved edits — remember to save.";
-    return "All changes saved.";
-  }, [isDirty, isSaving]);
+    if (isSaving) return t("pages.builder.homeBuilder.savingChanges");
+    if (isDirty) return t("pages.builder.homeBuilder.unsavedEdits");
+    return t("pages.builder.homeBuilder.allChangesSaved");
+  }, [isDirty, isSaving, t]);
 
   if (isLoading) {
     return (
@@ -760,7 +762,7 @@ function HomeBuilderContent() {
           </button>
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[1rem] font-semibold text-[#5e5873]">Home Page Builder</span>
+              <span className="text-[1rem] font-semibold text-[#5e5873]">{t("pages.builder.homeBuilder.title")}</span>
 
               {currentVersion > 0 ? (
                 <>
@@ -777,12 +779,12 @@ function HomeBuilderContent() {
                     )}
                   >
                     {isDefaultPublishedVersion
-                      ? "✓ Default Published"
+                      ? `✓ ${t("pages.builder.homeBuilder.defaultPublished")}`
                       : isConditionalPublishedVersion
-                        ? "✓ Published (Conditional)"
+                        ? `✓ ${t("pages.builder.homeBuilder.conditionalPublished")}`
                         : isEditingPublishedVersion
-                          ? "✓ Published"
-                          : "Draft"}{" "}
+                          ? `✓ ${t("common.published")}`
+                          : t("common.draft")}{" "}
                     · v{currentVersion}
                   </span>
                   {currentPublishedVersion && currentPublishedVersion !== currentVersion ? (
@@ -861,10 +863,10 @@ function HomeBuilderContent() {
                 : "border-[#ebe9f1] bg-[#fafafc] text-[#5e5873] hover:bg-white"
             )}
             onClick={toggleBuilderPanel}
-            title={isBuilderVisible ? "Hide Block Builder" : "Show Block Builder"}
+            title={isBuilderVisible ? t("components.builder.canvas.hideBlockBuilder") : t("components.builder.canvas.showBlockBuilder")}
           >
             {isBuilderVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            Block Builder
+            {t("pages.builder.homeBuilder.blockBuilder")}
           </Button>
 
           {isEditingPublishedVersion ? (
@@ -873,10 +875,9 @@ function HomeBuilderContent() {
               variant="ghost"
               className="flex items-center gap-2 rounded-[0.358rem] border border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#1565c0] transition hover:bg-[rgba(33,150,243,0.15)]"
               onClick={handlePublishButtonClick}
-              title="Edit conditional settings for this published version"
             >
               <Settings2 className="h-4 w-4" />
-              Condition
+              {t("pages.builder.homeBuilder.condition")}
             </Button>
           ) : (
             <Button
@@ -886,7 +887,7 @@ function HomeBuilderContent() {
               onClick={handlePreview}
             >
               <Eye className="h-4 w-4" />
-              Preview
+              {t("common.preview")}
             </Button>
           )}
 
@@ -900,7 +901,7 @@ function HomeBuilderContent() {
             }}
           >
             <History className="h-4 w-4" />
-            History
+            {t("pages.builder.homeBuilder.history")}
           </Button>
 
           {!isEditingPublishedVersion && (
@@ -911,7 +912,7 @@ function HomeBuilderContent() {
               disabled={isSaving || !isDirty || blocks.length === 0}
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Draft
+              {t("pages.builder.homeBuilder.saveDraft")}
             </Button>
           )}
 
@@ -921,10 +922,9 @@ function HomeBuilderContent() {
               className="flex items-center gap-2 rounded-[0.358rem] bg-gradient-to-tr from-[#ff5722] to-[rgba(255,87,34,0.7)] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(255,87,34,0.4)] transition hover:from-[#f4511e] hover:to-[rgba(244,81,30,0.7)]"
               onClick={handleHotfix}
               disabled={isHotfixing || !isDirty || blocks.length === 0}
-              title="Update published version directly without creating a new version"
             >
               {isHotfixing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Hot Fix
+              {t("pages.builder.homeBuilder.hotFix")}
             </Button>
           )}
 
@@ -934,10 +934,9 @@ function HomeBuilderContent() {
               className="flex items-center gap-2 rounded-[0.358rem] bg-[#009688] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(0,150,136,0.3)] transition hover:bg-[#00796b]"
               onClick={handlePublishButtonClick}
               disabled={isPublishing}
-              title="Publish the current draft version"
             >
               {isPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Publish
+              {t("common.publish")}
             </Button>
           )}
 
@@ -946,10 +945,9 @@ function HomeBuilderContent() {
             variant="ghost"
             className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
             onClick={handleStartNewVersion}
-            title="Start a new version from scratch"
           >
             <RefreshCcw className="h-4 w-4" />
-            New Version
+            {t("pages.builder.homeBuilder.newVersion")}
           </Button>
         </div>
       </div>
@@ -964,7 +962,8 @@ function HomeBuilderContent() {
       ) : null}
       {isEditingPublishedVersion && !isDirty ? (
         <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-[0.857rem] text-[#1976d2]">
-          <strong>Viewing {isConditionalPublishedVersion ? "conditional" : isDefaultPublishedVersion ? "default" : ""} published version {currentVersion}.</strong> Make changes and click <strong>Hot Fix</strong> to update this version directly, or click <strong>New Version</strong> to create a new draft.
+          <strong>{t("pages.builder.homeBuilder.viewingPublishedBanner", { qualifier: isConditionalPublishedVersion ? "conditional " : isDefaultPublishedVersion ? "default " : "", version: String(currentVersion) })}</strong>{" "}
+          {t("pages.builder.homeBuilder.viewingPublishedBannerSuffix")} <strong>{t("pages.builder.homeBuilder.hotFixAction")}</strong> {t("pages.builder.homeBuilder.viewingPublishedBannerMiddle")} <strong>{t("pages.builder.homeBuilder.newVersionAction")}</strong> {t("pages.builder.homeBuilder.viewingPublishedBannerEnd")}
         </div>
       ) : null}
 

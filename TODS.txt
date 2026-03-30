@@ -1,0 +1,20 @@
+/home/jire87/.claude/plans/glowing-soaring-penguin.md
+order hooks
+
+Plan updated. The hook system is now domain-agnostic and channel-scoped:
+
+Operations expanded across 6 domains:
+
+Cart: create, get, delete, item add/update/remove
+Order: confirm, ship, cancel, deliver
+Pricing: resolve (replaces/augments existing provider system), customer-specific pricing
+Stock: check availability, reserve on confirm
+Customer: validate (credit check), sync data to/from ERP
+Catalog: search proxy, product enrichment
+Key design decisions:
+
+Generic HookContext object — caller provides whichever fields are relevant (order, entityCodes, customerCode, etc.)
+pricing.resolve on-hook can replace the existing legacy_erp / generic_http providers — migration path, not a rewrite
+OPERATION_DOMAINS groups operations for the settings UI
+All three phases (before/on/after) available for every operation across all domains
+Ready to proceed with implementation when you are. Should I start with Phase 1 (windmill-client.ts) or do you want to adjust anything else in the plan first?

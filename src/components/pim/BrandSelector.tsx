@@ -21,6 +21,20 @@ export function BrandSelector({ value, onChange, disabled }: Props) {
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Enrich logo_url if missing from embedded brand data
+  useEffect(() => {
+    if (value?.brand_id && !value.logo_url) {
+      fetch(`/api/b2b/pim/brands/${value.brand_id}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data?.brand?.logo_url) {
+            onChange({ ...value, logo_url: data.brand.logo_url });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [value?.brand_id]);
+
   useEffect(() => {
     fetchBrands();
   }, [search]);

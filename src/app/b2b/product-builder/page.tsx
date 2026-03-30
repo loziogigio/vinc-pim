@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Public_Sans } from "next/font/google";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { BlockLibrary } from "@/components/builder/BlockLibrary";
 import { Canvas } from "@/components/builder/Canvas";
 import { BlockSettingsModal } from "@/components/builder/BlockSettingsModal";
@@ -49,6 +50,7 @@ const fetchPageConfig = async (slug: string) => {
 };
 
 function ProductBuilderContent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const productId = searchParams?.get("productId") || "default";
@@ -495,17 +497,17 @@ function ProductBuilderContent() {
   };
 
   const autosaveMessage = useMemo(() => {
-    if (isSaving) return "Saving changes…";
-    if (isDirty) return "Unsaved edits — remember to save.";
-    return "All changes saved to MongoDB";
-  }, [isDirty, isSaving]);
+    if (isSaving) return t("pages.builder.productBuilder.savingChanges");
+    if (isDirty) return t("pages.builder.productBuilder.unsavedEdits");
+    return t("pages.builder.productBuilder.allChangesSaved");
+  }, [isDirty, isSaving, t]);
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f8f7fa]">
         <div className="flex items-center gap-3 rounded-[0.428rem] border border-[#ebe9f1] bg-white px-6 py-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
           <Loader2 className="h-5 w-5 animate-spin text-[#009688]" />
-          <span className="text-[0.857rem] font-medium text-[#5e5873]">Loading product detail builder…</span>
+          <span className="text-[0.857rem] font-medium text-[#5e5873]">{t("pages.builder.productBuilder.loading")}</span>
         </div>
       </div>
     );
@@ -525,33 +527,33 @@ function ProductBuilderContent() {
           </button>
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[1rem] font-semibold text-[#5e5873]">B2B Portal</span>
-              <span className="text-[0.857rem] text-[#b9b9c3]">Product Detail Builder</span>
+              <span className="text-[1rem] font-semibold text-[#5e5873]">{t("pages.builder.productBuilder.portalLabel")}</span>
+              <span className="text-[0.857rem] text-[#b9b9c3]">{t("pages.builder.productBuilder.title")}</span>
               {productId !== "default" && (
                 <span className="rounded-[0.358rem] bg-[rgba(33,150,243,0.12)] px-[0.714rem] py-[0.286rem] text-[0.786rem] font-semibold text-[#1976d2]">
-                  Product: {productId}
+                  {t("pages.builder.productBuilder.productLabel")} {productId}
                 </span>
               )}
 
               {/* SKU and Parent SKU Input Fields */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <label className="text-[0.75rem] font-medium text-[#b9b9c3]">SKU:</label>
+                  <label className="text-[0.75rem] font-medium text-[#b9b9c3]">{t("pages.builder.productBuilder.skuLabel")}</label>
                   <input
                     type="text"
                     value={skuValue}
                     onChange={(e) => setSkuValue(e.target.value)}
-                    placeholder="Enter SKU"
+                    placeholder={t("pages.builder.productBuilder.skuPlaceholder")}
                     className="h-7 w-32 rounded-[0.358rem] border border-[#ebe9f1] bg-white px-2 text-[0.75rem] text-[#5e5873] focus:border-[#009688] focus:outline-none"
                   />
                 </div>
                 <div className="flex items-center gap-1">
-                  <label className="text-[0.75rem] font-medium text-[#b9b9c3]">Parent:</label>
+                  <label className="text-[0.75rem] font-medium text-[#b9b9c3]">{t("pages.builder.productBuilder.parentLabel")}</label>
                   <input
                     type="text"
                     value={parentSkuValue}
                     onChange={(e) => setParentSkuValue(e.target.value)}
-                    placeholder="Enter Parent SKU"
+                    placeholder={t("pages.builder.productBuilder.parentPlaceholder")}
                     className="h-7 w-32 rounded-[0.358rem] border border-[#ebe9f1] bg-white px-2 text-[0.75rem] text-[#5e5873] focus:border-[#009688] focus:outline-none"
                   />
                 </div>
@@ -607,7 +609,7 @@ function ProductBuilderContent() {
                         : "bg-[rgba(255,152,0,0.12)] text-[#e65100]"
                     )}
                   >
-                    {isEditingPublishedVersion ? "✓ Published" : "Draft"} · v{currentVersion}
+                    {isEditingPublishedVersion ? `✓ ${t("common.published")}` : t("common.draft")} · v{currentVersion}
                   </span>
                   {currentPublishedVersion && currentPublishedVersion !== currentVersion ? (
                     <span className="text-[0.786rem] text-[#b9b9c3]">latest published: v{currentPublishedVersion}</span>
@@ -702,10 +704,10 @@ function ProductBuilderContent() {
                 : "border-[#ebe9f1] bg-[#fafafc] text-[#5e5873] hover:bg-white"
             )}
             onClick={toggleBuilderPanel}
-            title={isBuilderVisible ? "Hide Block Builder" : "Show Block Builder"}
+            title={isBuilderVisible ? t("components.builder.canvas.hideBlockBuilder") : t("components.builder.canvas.showBlockBuilder")}
           >
             {isBuilderVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            Block Builder
+            {t("pages.builder.productBuilder.blockBuilder")}
           </Button>
 
           <Button
@@ -715,7 +717,7 @@ function ProductBuilderContent() {
             onClick={handlePreview}
           >
             <Eye className="h-4 w-4" />
-            Preview
+            {t("common.preview")}
           </Button>
 
           <Button
@@ -730,7 +732,7 @@ function ProductBuilderContent() {
             }}
           >
             <History className="h-4 w-4" />
-            History
+            {t("pages.builder.productBuilder.history")}
           </Button>
 
           {!isEditingPublishedVersion && (
@@ -741,7 +743,7 @@ function ProductBuilderContent() {
               disabled={isSaving || !isDirty || blocks.length === 0}
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
+              {t("common.save")}
             </Button>
           )}
 
@@ -751,10 +753,9 @@ function ProductBuilderContent() {
               className="flex items-center gap-2 rounded-[0.358rem] bg-gradient-to-tr from-[#ff5722] to-[rgba(255,87,34,0.7)] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(255,87,34,0.4)] transition hover:from-[#f4511e] hover:to-[rgba(244,81,30,0.7)]"
               onClick={handleHotfix}
               disabled={isHotfixing || !isDirty || blocks.length === 0}
-              title="Update published version directly without creating a new version"
             >
               {isHotfixing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Hot Fix
+              {t("pages.builder.productBuilder.hotFix")}
             </Button>
           )}
 
@@ -764,10 +765,9 @@ function ProductBuilderContent() {
               className="flex items-center gap-2 rounded-[0.358rem] bg-[#009688] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-white shadow-[0_0_10px_1px_rgba(0,150,136,0.3)] transition hover:bg-[#00796b]"
               onClick={handlePublish}
               disabled={isPublishing}
-              title="Publish the current draft version"
             >
               {isPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Publish
+              {t("common.publish")}
             </Button>
           )}
 
@@ -776,10 +776,9 @@ function ProductBuilderContent() {
             variant="ghost"
             className="flex items-center gap-2 rounded-[0.358rem] border border-[#ebe9f1] bg-[#fafafc] px-[1rem] py-[0.571rem] text-[0.95rem] font-medium text-[#5e5873] transition hover:bg-white"
             onClick={handleStartNewVersion}
-            title="Start a new version from scratch"
           >
             <RefreshCcw className="h-4 w-4" />
-            New Version
+            {t("pages.builder.productBuilder.newVersion")}
           </Button>
         </div>
       </header>
@@ -794,7 +793,8 @@ function ProductBuilderContent() {
       ) : null}
       {currentVersion === currentPublishedVersion && !isDirty ? (
         <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-[0.857rem] text-[#1976d2]">
-          <strong>Viewing published version {currentVersion}.</strong> Make changes and click <strong>Hot Fix</strong> to update this version directly, or click <strong>New Version</strong> to create a new draft.
+          <strong>{t("pages.builder.productBuilder.viewingPublishedBanner", { version: String(currentVersion) })}</strong>{" "}
+          {t("pages.builder.productBuilder.viewingPublishedBannerSuffix")} <strong>{t("pages.builder.productBuilder.hotFixAction")}</strong> {t("pages.builder.productBuilder.viewingPublishedBannerMiddle")} <strong>{t("pages.builder.productBuilder.newVersionAction")}</strong> {t("pages.builder.productBuilder.viewingPublishedBannerEnd")}
         </div>
       ) : null}
 
@@ -884,7 +884,6 @@ export default function B2BProductBuilderPage() {
         <div className="flex min-h-screen items-center justify-center bg-[#f8f7fa]">
           <div className="flex items-center gap-3 rounded-[0.428rem] border border-[#ebe9f1] bg-white px-6 py-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.1)]">
             <Loader2 className="h-5 w-5 animate-spin text-[#009688]" />
-            <span className="text-[0.857rem] font-medium text-[#5e5873]">Loading product detail builder…</span>
           </div>
         </div>
       }

@@ -58,6 +58,7 @@ import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, G
 import ImageVersionsSection from "@/components/home-settings/ImageVersionsSection";
 import { LAYOUT_WIDTHS, LAYOUT_BLOCK_COUNT, HEADER_WIDGET_LIBRARY } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const DEFAULT_BRANDING: CompanyBranding = {
   title: "My Company",
@@ -91,16 +92,16 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   hoverBackgroundColor: undefined
 };
 
-const CARD_VARIANTS: Array<{ value: PreviewVariant; label: string; helper: string }> = [
+const CARD_VARIANTS: Array<{ value: PreviewVariant; labelKey: string; helperKey: string }> = [
   {
     value: "b2b",
-    label: "Vertical",
-    helper: "Optimised for grid layouts (3-4 columns)"
+    labelKey: "pages.homeSettings.product.variantVertical",
+    helperKey: "pages.homeSettings.product.variantVerticalHelper"
   },
   {
     value: "horizontal",
-    label: "Horizontal",
-    helper: "Great for lists and search results"
+    labelKey: "pages.homeSettings.product.variantHorizontal",
+    helperKey: "pages.homeSettings.product.variantHorizontalHelper"
   }
 ];
 
@@ -286,7 +287,8 @@ const ColorInput = ({
   onChange,
   helper,
   allowClear,
-  onClear
+  onClear,
+  clearLabel
 }: {
   id: string;
   label: string;
@@ -295,6 +297,7 @@ const ColorInput = ({
   onChange: (value: string) => void;
   allowClear?: boolean;
   onClear?: () => void;
+  clearLabel?: string;
 }) => (
   <div className="space-y-2">
     <div className="flex items-center justify-between">
@@ -307,7 +310,7 @@ const ColorInput = ({
           onClick={onClear}
           className="text-xs font-medium text-slate-500 hover:text-slate-700"
         >
-          Clear
+          {clearLabel || "Clear"}
         </button>
       )}
     </div>
@@ -332,6 +335,7 @@ const ColorInput = ({
 );
 
 export default function HomeSettingsPage() {
+  const { t } = useTranslation();
   const [branding, setBranding] = useState<CompanyBranding>(DEFAULT_BRANDING);
   const [cardVariant, setCardVariant] = useState<PreviewVariant>("b2b");
   const [cardStyle, setCardStyle] = useState<ProductCardStyle>(DEFAULT_CARD_STYLE);
@@ -385,7 +389,7 @@ export default function HomeSettingsPage() {
         setCardVariant("b2b");
         setPreviewVariant("b2b");
         setDirty(false);
-        setToast("No settings found. Using defaults.");
+        setToast(t("pages.homeSettings.toasts.noSettingsFound"));
         return;
       }
 
@@ -435,7 +439,7 @@ export default function HomeSettingsPage() {
         setImageVersions(data.image_versions);
       }
       setDirty(false);
-      setToast("Settings loaded.");
+      setToast(t("pages.homeSettings.toasts.settingsLoaded"));
     } catch (loadError) {
       console.error("Error loading settings:", loadError);
       setError(loadError instanceof Error ? loadError.message : "Failed to load settings.");
@@ -550,7 +554,7 @@ export default function HomeSettingsPage() {
       }
 
       setDirty(false);
-      setToast("Settings saved successfully.");
+      setToast(t("pages.homeSettings.toasts.settingsSaved"));
     } catch (saveError) {
       console.error("Error saving settings:", saveError);
       setError(saveError instanceof Error ? saveError.message : "Failed to save settings.");
@@ -572,12 +576,12 @@ export default function HomeSettingsPage() {
         body: JSON.stringify({ is_listed: vetrinaListed }),
       });
       if (res.ok) {
-        setToast("Vetrina listing updated.");
+        setToast(t("pages.homeSettings.toasts.vetrinaUpdated"));
       } else {
-        setError("Failed to update vetrina listing.");
+        setError(t("pages.homeSettings.toasts.vetrinaFailed"));
       }
     } catch {
-      setError("Failed to update vetrina listing.");
+      setError(t("pages.homeSettings.toasts.vetrinaFailed"));
     } finally {
       setVetrinaLoading(false);
     }
@@ -589,7 +593,7 @@ export default function HomeSettingsPage() {
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center">
       <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-sm font-medium text-slate-700">Loading home settings…</span>
+        <span className="text-sm font-medium text-slate-700">{t("pages.homeSettings.loadingSettings")}</span>
       </div>
     </div>
   ) : (
@@ -599,19 +603,19 @@ export default function HomeSettingsPage() {
         <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between px-6 py-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold text-slate-900">B2B Ecommerce - Brand & Settings</h1>
+              <h1 className="text-lg font-semibold text-slate-900">{t("pages.homeSettings.pageTitle")}</h1>
               {dirty ? (
                 <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                  Unsaved changes
+                  {t("pages.homeSettings.unsavedChanges")}
                 </span>
               ) : (
                 <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                  Synced
+                  {t("pages.homeSettings.synced")}
                 </span>
               )}
             </div>
             <p className="text-sm text-slate-500">
-              Configure branding, SEO, layouts, and settings for your B2B storefront.
+              {t("pages.homeSettings.pageDescription")}
             </p>
           </div>
 
@@ -624,7 +628,7 @@ export default function HomeSettingsPage() {
               className="gap-2"
             >
               <RefreshCcw className="h-4 w-4" />
-              Reload
+              {t("pages.homeSettings.reload")}
             </Button>
             <Button
               variant="ghost"
@@ -635,10 +639,10 @@ export default function HomeSettingsPage() {
                 window.open(url, "_blank", "noreferrer");
               }}
               disabled={!branding.shopUrl}
-              title={branding.shopUrl || "Set Shop URL in Branding section"}
+              title={branding.shopUrl || t("pages.homeSettings.setShopUrlHint")}
             >
               <Eye className="h-4 w-4" />
-              Preview storefront
+              {t("pages.homeSettings.previewStorefront")}
             </Button>
             <Button
               variant="primary"
@@ -650,12 +654,12 @@ export default function HomeSettingsPage() {
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving…
+                  {t("pages.homeSettings.saving")}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4" />
-                  Save changes
+                  {t("pages.homeSettings.saveChanges")}
                 </>
               )}
             </Button>
@@ -684,78 +688,78 @@ export default function HomeSettingsPage() {
           <nav className="space-y-2">
             <SidebarItem
               icon={Palette}
-              label="Branding"
-              description="Colors, logo, identity"
+              label={t("pages.homeSettings.sidebar.branding")}
+              description={t("pages.homeSettings.sidebar.brandingDesc")}
               active={activeSection === "branding"}
               onClick={() => setActiveSection("branding")}
             />
             <SidebarItem
               icon={Monitor}
-              label="Product cards"
-              description="Layout, borders, hover effects"
+              label={t("pages.homeSettings.sidebar.productCards")}
+              description={t("pages.homeSettings.sidebar.productCardsDesc")}
               active={activeSection === "product"}
               onClick={() => setActiveSection("product")}
             />
             <SidebarItem
               icon={Cloud}
-              label="CDN Configuration"
-              description="Storage credentials for uploads"
+              label={t("pages.homeSettings.sidebar.cdn")}
+              description={t("pages.homeSettings.sidebar.cdnDesc")}
               active={activeSection === "cdn"}
               onClick={() => setActiveSection("cdn")}
             />
             <SidebarItem
               icon={Mail}
-              label="Email Settings"
-              description="SMTP or Microsoft Graph"
+              label={t("pages.homeSettings.sidebar.email")}
+              description={t("pages.homeSettings.sidebar.emailDesc")}
               active={activeSection === "smtp"}
               onClick={() => setActiveSection("smtp")}
             />
             <SidebarItem
               icon={Building2}
-              label="Company Info"
-              description="Contact details for email footers"
+              label={t("pages.homeSettings.sidebar.companyInfo")}
+              description={t("pages.homeSettings.sidebar.companyInfoDesc")}
               active={activeSection === "company"}
               onClick={() => setActiveSection("company")}
             />
             <SidebarItem
               icon={Key}
-              label="API Keys"
-              description="Manage programmatic access"
+              label={t("pages.homeSettings.sidebar.apiKeys")}
+              description={t("pages.homeSettings.sidebar.apiKeysDesc")}
               active={activeSection === "apikeys"}
               onClick={() => setActiveSection("apikeys")}
             />
             <SidebarItem
               icon={FileCode2}
-              label="Footer"
-              description="Custom footer HTML"
+              label={t("pages.homeSettings.sidebar.footer")}
+              description={t("pages.homeSettings.sidebar.footerDesc")}
               active={activeSection === "footer"}
               onClick={() => setActiveSection("footer")}
             />
             <SidebarItem
               icon={LayoutTemplate}
-              label="Header"
-              description="Header rows & widgets"
+              label={t("pages.homeSettings.sidebar.header")}
+              description={t("pages.homeSettings.sidebar.headerDesc")}
               active={activeSection === "header"}
               onClick={() => setActiveSection("header")}
             />
             <SidebarItem
               icon={Globe}
-              label="SEO & Meta Tags"
-              description="Search engine optimization"
+              label={t("pages.homeSettings.sidebar.seo")}
+              description={t("pages.homeSettings.sidebar.seoDesc")}
               active={activeSection === "seo"}
               onClick={() => setActiveSection("seo")}
             />
             <SidebarItem
               icon={Image}
-              label="Image Versions"
-              description="PIM upload resize settings"
+              label={t("pages.homeSettings.sidebar.imageVersions")}
+              description={t("pages.homeSettings.sidebar.imageVersionsDesc")}
               active={activeSection === "image-versions"}
               onClick={() => setActiveSection("image-versions")}
             />
             <SidebarItem
               icon={Store}
-              label="Vetrina"
-              description="Public storefront listing"
+              label={t("pages.homeSettings.sidebar.vetrina")}
+              description={t("pages.homeSettings.sidebar.vetrinaDesc")}
               active={activeSection === "vetrina"}
               onClick={() => setActiveSection("vetrina")}
             />
@@ -849,7 +853,7 @@ export default function HomeSettingsPage() {
                 });
                 if (response.ok) {
                   setFooterHtml(footerHtmlDraft);
-                  setToast("Footer published successfully.");
+                  setToast(t("pages.homeSettings.toasts.footerPublished"));
                 }
               }}
             />
@@ -875,7 +879,7 @@ export default function HomeSettingsPage() {
                 });
                 if (response.ok) {
                   setHeaderConfig(headerConfigDraft);
-                  setToast("Header published successfully.");
+                  setToast(t("pages.homeSettings.toasts.headerPublished"));
                 }
               }}
             />
@@ -905,19 +909,18 @@ export default function HomeSettingsPage() {
               <div className="border-b border-slate-200 px-6 py-4">
                 <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                   <Store className="h-5 w-5 text-primary" />
-                  Vetrina — Public Listing
+                  {t("pages.homeSettings.vetrina.title")}
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  Choose whether to display your store in the public storefront directory.
-                  Your store name, logo, and contact info from the Branding and Company sections will be shown.
+                  {t("pages.homeSettings.vetrina.description")}
                 </p>
               </div>
               <div className="px-6 py-5 space-y-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">List in Vetrina</p>
+                    <p className="text-sm font-medium text-slate-700">{t("pages.homeSettings.vetrina.listInVetrina")}</p>
                     <p className="text-xs text-slate-500">
-                      Your store will appear in the public storefront directory
+                      {t("pages.homeSettings.vetrina.listInVetrinaDesc")}
                     </p>
                   </div>
                   <button
@@ -944,12 +947,12 @@ export default function HomeSettingsPage() {
                     {vetrinaLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Saving…
+                        {t("pages.homeSettings.saving")}
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4" />
-                        Save Vetrina Setting
+                        {t("pages.homeSettings.vetrina.saveVetrina")}
                       </>
                     )}
                   </Button>
@@ -1015,6 +1018,7 @@ function BrandingForm({
   logoUpload,
   faviconUpload
 }: BrandingFormProps) {
+  const { t } = useTranslation();
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1040,13 +1044,13 @@ function BrandingForm({
 
   return (
     <SectionCard
-      title="Branding"
-      description="Define how your company is presented across the storefront."
+      title={t("pages.homeSettings.branding.title")}
+      description={t("pages.homeSettings.branding.description")}
     >
       <div className="grid gap-6 md:grid-cols-2">
         <div className="md:col-span-2 space-y-2">
           <label htmlFor="company-title" className="text-sm font-medium text-slate-600">
-            Company title
+            {t("pages.homeSettings.branding.companyTitle")}
           </label>
           <input
             id="company-title"
@@ -1057,15 +1061,15 @@ function BrandingForm({
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">
-            Appears in navigation, legal footer and browser metadata.
+            {t("pages.homeSettings.branding.companyTitleHelper")}
           </p>
         </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-sm font-medium text-slate-600">Logo</label>
-              <p className="text-xs text-slate-500">Upload a square SVG/PNG. Max 20MB.</p>
+              <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.branding.logo")}</label>
+              <p className="text-xs text-slate-500">{t("pages.homeSettings.branding.logoHelper")}</p>
             </div>
             {branding.logo ? (
               <Button
@@ -1075,7 +1079,7 @@ function BrandingForm({
                 className="text-xs text-slate-500 hover:text-rose-600"
                 onClick={() => onChange("logo", "")}
               >
-                Remove
+                {t("common.remove")}
               </Button>
             ) : null}
           </div>
@@ -1083,9 +1087,9 @@ function BrandingForm({
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50">
               {branding.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={branding.logo} alt="Logo preview" className="h-full w-full object-contain" />
+                <img src={branding.logo} alt={t("pages.homeSettings.branding.logoPreview")} className="h-full w-full object-contain" />
               ) : (
-                <span className="text-xs font-semibold uppercase text-slate-400">Logo</span>
+                <span className="text-xs font-semibold uppercase text-slate-400">{t("pages.homeSettings.branding.logo")}</span>
               )}
             </div>
             <div className="flex flex-col gap-2">
@@ -1097,7 +1101,7 @@ function BrandingForm({
                 disabled={logoUpload.isUploading}
               >
                 {logoUpload.isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {logoUpload.isUploading ? "Uploading…" : "Upload logo"}
+                {logoUpload.isUploading ? t("pages.homeSettings.branding.uploading") : t("pages.homeSettings.branding.uploadLogo")}
               </Button>
               {logoUpload.error ? (
                 <p className="text-xs text-rose-600">{logoUpload.error}</p>
@@ -1116,8 +1120,8 @@ function BrandingForm({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-sm font-medium text-slate-600">Favicon</label>
-              <p className="text-xs text-slate-500">Suggested 32×32 PNG/ICO.</p>
+              <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.branding.favicon")}</label>
+              <p className="text-xs text-slate-500">{t("pages.homeSettings.branding.faviconHelper")}</p>
             </div>
             {branding.favicon ? (
               <Button
@@ -1127,7 +1131,7 @@ function BrandingForm({
                 className="text-xs text-slate-500 hover:text-rose-600"
                 onClick={() => onChange("favicon", "")}
               >
-                Remove
+                {t("common.remove")}
               </Button>
             ) : null}
           </div>
@@ -1135,7 +1139,7 @@ function BrandingForm({
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50">
               {branding.favicon ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={branding.favicon} alt="Favicon preview" className="h-full w-full object-contain" />
+                <img src={branding.favicon} alt={t("pages.homeSettings.branding.faviconPreview")} className="h-full w-full object-contain" />
               ) : (
                 <span className="text-[10px] font-semibold uppercase text-slate-400">ICO</span>
               )}
@@ -1153,7 +1157,7 @@ function BrandingForm({
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
-                {faviconUpload.isUploading ? "Uploading…" : "Upload favicon"}
+                {faviconUpload.isUploading ? t("pages.homeSettings.branding.uploading") : t("pages.homeSettings.branding.uploadFavicon")}
               </Button>
               {faviconUpload.error ? (
                 <p className="text-xs text-rose-600">{faviconUpload.error}</p>
@@ -1171,7 +1175,7 @@ function BrandingForm({
 
         <div className="space-y-2">
           <label htmlFor="logo-url" className="text-sm font-medium text-slate-600">
-            Logo URL
+            {t("pages.homeSettings.branding.logoUrl")}
           </label>
           <input
             id="logo-url"
@@ -1181,12 +1185,12 @@ function BrandingForm({
             placeholder="https://example.com/logo.svg"
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-slate-500">SVG or PNG, ideally with transparent background.</p>
+          <p className="text-xs text-slate-500">{t("pages.homeSettings.branding.logoUrlHelper")}</p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="favicon-url" className="text-sm font-medium text-slate-600">
-            Favicon URL
+            {t("pages.homeSettings.branding.faviconUrl")}
           </label>
           <input
             id="favicon-url"
@@ -1196,12 +1200,12 @@ function BrandingForm({
             placeholder="https://example.com/favicon.ico"
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-slate-500">Square image (32×32 or 64×64) for browser tabs.</p>
+          <p className="text-xs text-slate-500">{t("pages.homeSettings.branding.faviconUrlHelper")}</p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="shop-url" className="text-sm font-medium text-slate-600">
-            Shop URL
+            {t("pages.homeSettings.branding.shopUrl")}
           </label>
           <input
             id="shop-url"
@@ -1211,12 +1215,12 @@ function BrandingForm({
             placeholder="https://shop.example.com"
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-slate-500">Storefront URL for email links and redirects.</p>
+          <p className="text-xs text-slate-500">{t("pages.homeSettings.branding.shopUrlHelper")}</p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="website-url" className="text-sm font-medium text-slate-600">
-            Company Website
+            {t("pages.homeSettings.branding.companyWebsite")}
           </label>
           <input
             id="website-url"
@@ -1226,24 +1230,24 @@ function BrandingForm({
             placeholder="https://www.example.com"
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-slate-500">Main company website URL.</p>
+          <p className="text-xs text-slate-500">{t("pages.homeSettings.branding.companyWebsiteHelper")}</p>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <ColorInput
           id="primary-color"
-          label="Primary colour"
+          label={t("pages.homeSettings.branding.primaryColor")}
           value={branding.primaryColor}
           onChange={(value) => onChange("primaryColor", value)}
-          helper="Buttons, highlights and active states."
+          helper={t("pages.homeSettings.branding.primaryColorHelper")}
         />
         <ColorInput
           id="secondary-color"
-          label="Secondary colour"
+          label={t("pages.homeSettings.branding.secondaryColor")}
           value={branding.secondaryColor}
           onChange={(value) => onChange("secondaryColor", value)}
-          helper="Badges, accents and hover states."
+          helper={t("pages.homeSettings.branding.secondaryColorHelper")}
         />
       </div>
 
@@ -1251,70 +1255,70 @@ function BrandingForm({
       <details className="group rounded-xl border border-slate-200 bg-slate-50/50">
         <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 hover:text-slate-900">
           <Palette className="h-4 w-4" />
-          Extended Theme Colours
-          <span className="ml-auto text-xs text-slate-400 group-open:hidden">Click to expand</span>
+          {t("pages.homeSettings.branding.extendedTheme")}
+          <span className="ml-auto text-xs text-slate-400 group-open:hidden">{t("pages.homeSettings.branding.clickToExpand")}</span>
         </summary>
         <div className="grid gap-4 border-t border-slate-200 px-4 py-4 md:grid-cols-2">
           <ColorInput
             id="accent-color"
-            label="Accent colour"
+            label={t("pages.homeSettings.branding.accentColor")}
             value={branding.accentColor}
             onChange={(value) => onChange("accentColor", value)}
-            helper="Buttons, links and CTAs."
+            helper={t("pages.homeSettings.branding.accentColorHelper")}
             allowClear
             onClear={() => onChange("accentColor", "")}
           />
           <ColorInput
             id="text-color"
-            label="Text colour"
+            label={t("pages.homeSettings.branding.textColor")}
             value={branding.textColor}
             onChange={(value) => onChange("textColor", value)}
-            helper="Main body text (default: #000000)."
+            helper={t("pages.homeSettings.branding.textColorHelper")}
             allowClear
             onClear={() => onChange("textColor", "")}
           />
           <ColorInput
             id="muted-color"
-            label="Muted colour"
+            label={t("pages.homeSettings.branding.mutedColor")}
             value={branding.mutedColor}
             onChange={(value) => onChange("mutedColor", value)}
-            helper="Secondary/muted text (default: #595959)."
+            helper={t("pages.homeSettings.branding.mutedColorHelper")}
             allowClear
             onClear={() => onChange("mutedColor", "")}
           />
           <ColorInput
             id="background-color"
-            label="Background colour"
+            label={t("pages.homeSettings.branding.backgroundColor")}
             value={branding.backgroundColor}
             onChange={(value) => onChange("backgroundColor", value)}
-            helper="Page background (default: #ffffff)."
+            helper={t("pages.homeSettings.branding.backgroundColorHelper")}
             allowClear
             onClear={() => onChange("backgroundColor", "")}
           />
           <ColorInput
             id="header-bg-color"
-            label="Header background"
+            label={t("pages.homeSettings.branding.headerBg")}
             value={branding.headerBackgroundColor}
             onChange={(value) => onChange("headerBackgroundColor", value)}
-            helper="Header background (empty = inherit)."
+            helper={t("pages.homeSettings.branding.headerBgHelper")}
             allowClear
             onClear={() => onChange("headerBackgroundColor", "")}
           />
           <ColorInput
             id="footer-bg-color"
-            label="Footer background"
+            label={t("pages.homeSettings.branding.footerBg")}
             value={branding.footerBackgroundColor}
             onChange={(value) => onChange("footerBackgroundColor", value)}
-            helper="Footer background (default: #f5f5f5)."
+            helper={t("pages.homeSettings.branding.footerBgHelper")}
             allowClear
             onClear={() => onChange("footerBackgroundColor", "")}
           />
           <ColorInput
             id="footer-text-color"
-            label="Footer text colour"
+            label={t("pages.homeSettings.branding.footerTextColor")}
             value={branding.footerTextColor}
             onChange={(value) => onChange("footerTextColor", value)}
-            helper="Footer text (default: #666666)."
+            helper={t("pages.homeSettings.branding.footerTextColorHelper")}
             allowClear
             onClear={() => onChange("footerTextColor", "")}
           />
@@ -1330,13 +1334,14 @@ function CardStyleForm({
   onVariantChange,
   onStyleChange
 }: CardStyleFormProps) {
+  const { t } = useTranslation();
   return (
     <SectionCard
-      title="Product cards"
-      description="Control how catalogue items appear to your customers."
+      title={t("pages.homeSettings.product.title")}
+      description={t("pages.homeSettings.product.description")}
     >
       <div className="space-y-4">
-        <label className="text-sm font-medium text-slate-600">Default layout</label>
+        <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.product.defaultLayout")}</label>
         <div className="grid gap-3 md:grid-cols-2">
           {CARD_VARIANTS.map((variant) => {
             const isActive = cardVariant === variant.value;
@@ -1364,8 +1369,8 @@ function CardStyleForm({
                     {variant.value === "b2b" ? "V" : "H"}
                   </span>
                   <div>
-                    <div className="text-sm font-semibold">{variant.label}</div>
-                    <div className="text-xs text-slate-500">{variant.helper}</div>
+                    <div className="text-sm font-semibold">{t(variant.labelKey)}</div>
+                    <div className="text-xs text-slate-500">{t(variant.helperKey)}</div>
                   </div>
                 </div>
               </button>
@@ -1377,7 +1382,7 @@ function CardStyleForm({
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-3">
           <label className="text-sm font-medium text-slate-600">
-            Border width: {cardStyle.borderWidth}px
+            {t("pages.homeSettings.product.borderWidth")}: {cardStyle.borderWidth}px
           </label>
           <input
             type="range"
@@ -1392,14 +1397,14 @@ function CardStyleForm({
 
         <ColorInput
           id="border-color"
-          label="Border colour"
+          label={t("pages.homeSettings.product.borderColor")}
           value={cardStyle.borderColor}
           onChange={(value) => onStyleChange("borderColor", value)}
         />
 
         <div className="space-y-2">
           <label htmlFor="border-style" className="text-sm font-medium text-slate-600">
-            Border style
+            {t("pages.homeSettings.product.borderStyle")}
           </label>
           <select
             id="border-style"
@@ -1409,16 +1414,16 @@ function CardStyleForm({
             }
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="solid">Solid</option>
-            <option value="dashed">Dashed</option>
-            <option value="dotted">Dotted</option>
-            <option value="none">None</option>
+            <option value="solid">{t("pages.homeSettings.product.borderSolid")}</option>
+            <option value="dashed">{t("pages.homeSettings.product.borderDashed")}</option>
+            <option value="dotted">{t("pages.homeSettings.product.borderDotted")}</option>
+            <option value="none">{t("common.none")}</option>
           </select>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="border-radius" className="text-sm font-medium text-slate-600">
-            Border radius
+            {t("pages.homeSettings.product.borderRadius")}
           </label>
           <select
             id="border-radius"
@@ -1431,13 +1436,13 @@ function CardStyleForm({
             }
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="none">Sharp</option>
-            <option value="sm">Slightly rounded</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
-            <option value="xl">Extra large</option>
-            <option value="2xl">Pill</option>
-            <option value="full">Circle</option>
+            <option value="none">{t("pages.homeSettings.product.radiusSharp")}</option>
+            <option value="sm">{t("pages.homeSettings.product.radiusSlight")}</option>
+            <option value="md">{t("pages.homeSettings.product.radiusMedium")}</option>
+            <option value="lg">{t("pages.homeSettings.product.radiusLarge")}</option>
+            <option value="xl">{t("pages.homeSettings.product.radiusXl")}</option>
+            <option value="2xl">{t("pages.homeSettings.product.radiusPill")}</option>
+            <option value="full">{t("pages.homeSettings.product.radiusCircle")}</option>
           </select>
         </div>
       </div>
@@ -1445,7 +1450,7 @@ function CardStyleForm({
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <label htmlFor="shadow-size" className="text-sm font-medium text-slate-600">
-            Shadow size
+            {t("pages.homeSettings.product.shadowSize")}
           </label>
           <select
             id="shadow-size"
@@ -1455,18 +1460,18 @@ function CardStyleForm({
             }
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="none">None</option>
-            <option value="sm">Small</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
-            <option value="xl">Extra large</option>
-            <option value="2xl">Huge</option>
+            <option value="none">{t("common.none")}</option>
+            <option value="sm">{t("pages.homeSettings.product.sizeSmall")}</option>
+            <option value="md">{t("pages.homeSettings.product.sizeMedium")}</option>
+            <option value="lg">{t("pages.homeSettings.product.sizeLarge")}</option>
+            <option value="xl">{t("pages.homeSettings.product.sizeXl")}</option>
+            <option value="2xl">{t("pages.homeSettings.product.sizeHuge")}</option>
           </select>
         </div>
 
         <ColorInput
           id="shadow-color"
-          label="Shadow colour"
+          label={t("pages.homeSettings.product.shadowColor")}
           value={cardStyle.shadowColor}
           onChange={(value) => onStyleChange("shadowColor", value)}
         />
@@ -1475,7 +1480,7 @@ function CardStyleForm({
       <div className="space-y-6">
         <div className="space-y-2">
           <label htmlFor="hover-effect" className="text-sm font-medium text-slate-600">
-            Hover effect
+            {t("pages.homeSettings.product.hoverEffect")}
           </label>
           <select
             id="hover-effect"
@@ -1488,19 +1493,19 @@ function CardStyleForm({
             }
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="none">None</option>
-            <option value="lift">Lift up</option>
-            <option value="shadow">Add shadow</option>
-            <option value="scale">Scale</option>
-            <option value="border">Highlight border</option>
-            <option value="glow">Glow</option>
+            <option value="none">{t("common.none")}</option>
+            <option value="lift">{t("pages.homeSettings.product.hoverLift")}</option>
+            <option value="shadow">{t("pages.homeSettings.product.hoverShadow")}</option>
+            <option value="scale">{t("pages.homeSettings.product.hoverScale")}</option>
+            <option value="border">{t("pages.homeSettings.product.hoverBorder")}</option>
+            <option value="glow">{t("pages.homeSettings.product.hoverGlow")}</option>
           </select>
         </div>
 
         {cardStyle.hoverEffect === "scale" ? (
           <div className="space-y-3">
             <label className="text-sm font-medium text-slate-600">
-              Hover scale: {(cardStyle.hoverScale ?? 1.02).toFixed(2)}×
+              {t("pages.homeSettings.product.hoverScaleLabel")}: {(cardStyle.hoverScale ?? 1.02).toFixed(2)}×
             </label>
             <input
               type="range"
@@ -1517,7 +1522,7 @@ function CardStyleForm({
         {cardStyle.hoverEffect === "shadow" ? (
           <div className="space-y-2">
             <label htmlFor="hover-shadow" className="text-sm font-medium text-slate-600">
-              Hover shadow size
+              {t("pages.homeSettings.product.hoverShadowSize")}
             </label>
             <select
               id="hover-shadow"
@@ -1530,11 +1535,11 @@ function CardStyleForm({
               }
               className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <option value="sm">Small</option>
-              <option value="md">Medium</option>
-              <option value="lg">Large</option>
-              <option value="xl">Extra large</option>
-              <option value="2xl">Huge</option>
+              <option value="sm">{t("pages.homeSettings.product.sizeSmall")}</option>
+              <option value="md">{t("pages.homeSettings.product.sizeMedium")}</option>
+              <option value="lg">{t("pages.homeSettings.product.sizeLarge")}</option>
+              <option value="xl">{t("pages.homeSettings.product.sizeXl")}</option>
+              <option value="2xl">{t("pages.homeSettings.product.sizeHuge")}</option>
             </select>
           </div>
         ) : null}
@@ -1543,16 +1548,16 @@ function CardStyleForm({
       <div className="grid gap-6 md:grid-cols-2">
         <ColorInput
           id="background-color"
-          label="Background colour"
+          label={t("pages.homeSettings.branding.backgroundColor")}
           value={cardStyle.backgroundColor}
           onChange={(value) => onStyleChange("backgroundColor", value)}
         />
         <ColorInput
           id="hover-background-color"
-          label="Hover background"
+          label={t("pages.homeSettings.product.hoverBg")}
           value={cardStyle.hoverBackgroundColor}
           onChange={(value) => onStyleChange("hoverBackgroundColor", value)}
-          helper="Optional colour when the card is hovered."
+          helper={t("pages.homeSettings.product.hoverBgHelper")}
           allowClear
           onClear={() => onStyleChange("hoverBackgroundColor", undefined)}
         />
@@ -1577,7 +1582,7 @@ function CardStyleForm({
             onStyleChange("hoverBackgroundColor", DEFAULT_CARD_STYLE.hoverBackgroundColor);
           }}
         >
-          Reset style to defaults
+          {t("pages.homeSettings.product.resetDefaults")}
         </Button>
       </div>
     </SectionCard>
@@ -1591,6 +1596,7 @@ interface CDNFormProps {
 }
 
 function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) {
+  const { t } = useTranslation();
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -1637,13 +1643,13 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
 
   return (
     <SectionCard
-      title="CDN Configuration"
-      description="Configure S3-compatible storage credentials for file uploads."
+      title={t("pages.homeSettings.cdn.title")}
+      description={t("pages.homeSettings.cdn.description")}
     >
       <div className="grid gap-6 md:grid-cols-2">
         <div className="md:col-span-2 space-y-2">
           <label htmlFor="cdn-url" className="text-sm font-medium text-slate-600">
-            CDN Endpoint URL
+            {t("pages.homeSettings.cdn.endpointUrl")}
           </label>
           <input
             id="cdn-url"
@@ -1654,13 +1660,13 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">
-            S3-compatible endpoint URL (e.g., IBM Cloud Object Storage, AWS S3, MinIO)
+            {t("pages.homeSettings.cdn.endpointUrlHelper")}
           </p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="bucket-region" className="text-sm font-medium text-slate-600">
-            Bucket Region
+            {t("pages.homeSettings.cdn.bucketRegion")}
           </label>
           <input
             id="bucket-region"
@@ -1674,7 +1680,7 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
 
         <div className="space-y-2">
           <label htmlFor="bucket-name" className="text-sm font-medium text-slate-600">
-            Bucket Name
+            {t("pages.homeSettings.cdn.bucketName")}
           </label>
           <input
             id="bucket-name"
@@ -1688,7 +1694,7 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
 
         <div className="space-y-2">
           <label htmlFor="folder-name" className="text-sm font-medium text-slate-600">
-            Folder Name (optional)
+            {t("pages.homeSettings.cdn.folderName")}
           </label>
           <input
             id="folder-name"
@@ -1699,13 +1705,13 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">
-            Prefix folder for all uploaded files
+            {t("pages.homeSettings.cdn.folderNameHelper")}
           </p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="cdn-key" className="text-sm font-medium text-slate-600">
-            Access Key ID
+            {t("pages.homeSettings.cdn.accessKeyId")}
           </label>
           <input
             id="cdn-key"
@@ -1719,7 +1725,7 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
 
         <div className="space-y-2">
           <label htmlFor="cdn-secret" className="text-sm font-medium text-slate-600">
-            Secret Access Key
+            {t("pages.homeSettings.cdn.secretAccessKey")}
           </label>
           <input
             id="cdn-secret"
@@ -1733,11 +1739,11 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
       </div>
 
       <div className="border-t border-slate-200 pt-6 mt-6">
-        <h3 className="text-sm font-semibold text-slate-900 mb-4">Advanced Settings</h3>
+        <h3 className="text-sm font-semibold text-slate-900 mb-4">{t("pages.homeSettings.cdn.advancedSettings")}</h3>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="signed-url-expiry" className="text-sm font-medium text-slate-600">
-              Signed URL Expiry (seconds)
+              {t("pages.homeSettings.cdn.signedUrlExpiry")}
             </label>
             <input
               id="signed-url-expiry"
@@ -1749,13 +1755,13 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
               className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <p className="text-xs text-slate-500">
-              0 = public URLs (no expiry)
+              {t("pages.homeSettings.cdn.signedUrlExpiryHelper")}
             </p>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-600">
-              Delete from Cloud
+              {t("pages.homeSettings.cdn.deleteFromCloud")}
             </label>
             <div className="flex items-center gap-3 pt-1">
               <button
@@ -1774,11 +1780,11 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
                 />
               </button>
               <span className="text-sm text-slate-600">
-                {cdnCredentials.delete_from_cloud ? "Enabled" : "Disabled"}
+                {cdnCredentials.delete_from_cloud ? t("common.enabled") : t("common.disabled")}
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Delete files from cloud storage when removed from database
+              {t("pages.homeSettings.cdn.deleteFromCloudHelper")}
             </p>
           </div>
         </div>
@@ -1788,14 +1794,14 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
       <div className="border-t border-slate-200 pt-6 mt-6">
         {hasUnsavedChanges && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            Remember to save your configuration before testing the connection.
+            {t("pages.homeSettings.cdn.saveBeforeTesting")}
           </div>
         )}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Test Connection</h3>
+            <h3 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.cdn.testConnection")}</h3>
             <p className="text-xs text-slate-500">
-              Verify credentials by uploading and deleting a test file
+              {t("pages.homeSettings.cdn.testConnectionHelper")}
             </p>
           </div>
           <Button
@@ -1809,10 +1815,10 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
             {isTesting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Testing...
+                {t("pages.homeSettings.cdn.testing")}
               </>
             ) : (
-              "Test Connection"
+              t("pages.homeSettings.cdn.testConnection")
             )}
           </Button>
         </div>
@@ -1829,7 +1835,7 @@ function CDNForm({ cdnCredentials, onChange, hasUnsavedChanges }: CDNFormProps) 
             {testResult.message}
             {testResult.success && hasUnsavedChanges && (
               <span className="block mt-1 font-medium">
-                Save your settings to apply this configuration.
+                {t("pages.homeSettings.cdn.saveToApply")}
               </span>
             )}
           </div>
@@ -1856,6 +1862,7 @@ function EmailSettingsForm({
   graphSettings,
   onGraphChange,
 }: EmailSettingsFormProps) {
+  const { t } = useTranslation();
   const [isTesting, setIsTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -1961,13 +1968,13 @@ function EmailSettingsForm({
 
   return (
     <SectionCard
-      title="Email Settings"
-      description="Configure how emails are sent for notifications and transactional emails."
+      title={t("pages.homeSettings.email.title")}
+      description={t("pages.homeSettings.email.description")}
     >
       {/* Transport Selector */}
       <div className="mb-6">
         <label className="text-sm font-medium text-slate-600 mb-3 block">
-          Email Transport
+          {t("pages.homeSettings.email.transport")}
         </label>
         <div className="flex gap-3">
           <button
@@ -1980,8 +1987,8 @@ function EmailSettingsForm({
                 : "border-slate-200 hover:border-slate-300"
             )}
           >
-            <div className="text-sm font-semibold text-slate-900">SMTP</div>
-            <div className="text-xs text-slate-500 mt-0.5">Direct SMTP server connection</div>
+            <div className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.email.smtp")}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{t("pages.homeSettings.email.smtpDesc")}</div>
           </button>
           <button
             type="button"
@@ -1993,8 +2000,8 @@ function EmailSettingsForm({
                 : "border-slate-200 hover:border-slate-300"
             )}
           >
-            <div className="text-sm font-semibold text-slate-900">Microsoft Graph</div>
-            <div className="text-xs text-slate-500 mt-0.5">Azure AD / Microsoft 365</div>
+            <div className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.email.graph")}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{t("pages.homeSettings.email.graphDesc")}</div>
           </button>
         </div>
       </div>
@@ -2004,7 +2011,7 @@ function EmailSettingsForm({
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="smtp-host" className="text-sm font-medium text-slate-600">
-              SMTP Host
+              {t("pages.homeSettings.email.smtpHost")}
             </label>
             <input
               id="smtp-host"
@@ -2018,7 +2025,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label htmlFor="smtp-port" className="text-sm font-medium text-slate-600">
-              Port
+              {t("pages.homeSettings.email.port")}
             </label>
             <input
               id="smtp-port"
@@ -2029,13 +2036,13 @@ function EmailSettingsForm({
               className={inputClass}
             />
             <p className="text-xs text-slate-500">
-              Common ports: 587 (STARTTLS), 465 (SSL/TLS)
+              {t("pages.homeSettings.email.portHelper")}
             </p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="smtp-user" className="text-sm font-medium text-slate-600">
-              Username
+              {t("pages.homeSettings.email.username")}
             </label>
             <input
               id="smtp-user"
@@ -2049,7 +2056,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label htmlFor="smtp-password" className="text-sm font-medium text-slate-600">
-              Password
+              {t("pages.homeSettings.email.password")}
             </label>
             <input
               id="smtp-password"
@@ -2063,7 +2070,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label htmlFor="smtp-from" className="text-sm font-medium text-slate-600">
-              From Email
+              {t("pages.homeSettings.email.fromEmail")}
             </label>
             <input
               id="smtp-from"
@@ -2077,7 +2084,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label htmlFor="smtp-from-name" className="text-sm font-medium text-slate-600">
-              From Name
+              {t("pages.homeSettings.email.fromName")}
             </label>
             <input
               id="smtp-from-name"
@@ -2091,7 +2098,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label htmlFor="smtp-default-to" className="text-sm font-medium text-slate-600">
-              Default Recipient
+              {t("pages.homeSettings.email.defaultRecipient")}
             </label>
             <input
               id="smtp-default-to"
@@ -2102,13 +2109,13 @@ function EmailSettingsForm({
               className={inputClass}
             />
             <p className="text-xs text-slate-500">
-              For system notifications and alerts
+              {t("pages.homeSettings.email.defaultRecipientHelper")}
             </p>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-600">
-              Secure Connection (TLS)
+              {t("pages.homeSettings.email.secureTls")}
             </label>
             <div className="flex items-center gap-3 pt-1">
               <button
@@ -2127,7 +2134,7 @@ function EmailSettingsForm({
                 />
               </button>
               <span className="text-sm text-slate-600">
-                {smtpSettings.secure ? "Enabled (port 465)" : "Disabled (port 587)"}
+                {smtpSettings.secure ? t("pages.homeSettings.email.secureEnabled") : t("pages.homeSettings.email.secureDisabled")}
               </span>
             </div>
           </div>
@@ -2139,7 +2146,7 @@ function EmailSettingsForm({
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="graph-client-id" className="text-sm font-medium text-slate-600">
-              Client ID
+              {t("pages.homeSettings.email.clientId")}
             </label>
             <input
               id="graph-client-id"
@@ -2150,13 +2157,13 @@ function EmailSettingsForm({
               className={inputClass}
             />
             <p className="text-xs text-slate-500">
-              Azure AD Application (client) ID
+              {t("pages.homeSettings.email.clientIdHelper")}
             </p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="graph-tenant-id" className="text-sm font-medium text-slate-600">
-              Azure Tenant ID
+              {t("pages.homeSettings.email.azureTenantId")}
             </label>
             <input
               id="graph-tenant-id"
@@ -2167,13 +2174,13 @@ function EmailSettingsForm({
               className={inputClass}
             />
             <p className="text-xs text-slate-500">
-              Azure AD directory (tenant) ID
+              {t("pages.homeSettings.email.azureTenantIdHelper")}
             </p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <label htmlFor="graph-secret" className="text-sm font-medium text-slate-600">
-              Client Secret
+              {t("pages.homeSettings.email.clientSecret")}
             </label>
             <input
               id="graph-secret"
@@ -2187,7 +2194,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label htmlFor="graph-sender" className="text-sm font-medium text-slate-600">
-              Sender Email
+              {t("pages.homeSettings.email.senderEmail")}
             </label>
             <input
               id="graph-sender"
@@ -2198,13 +2205,13 @@ function EmailSettingsForm({
               className={inputClass}
             />
             <p className="text-xs text-slate-500">
-              Must be a licensed mailbox in Azure AD
+              {t("pages.homeSettings.email.senderEmailHelper")}
             </p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="graph-sender-name" className="text-sm font-medium text-slate-600">
-              Sender Name
+              {t("pages.homeSettings.email.senderName")}
             </label>
             <input
               id="graph-sender-name"
@@ -2218,7 +2225,7 @@ function EmailSettingsForm({
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-600">
-              Save to Sent Items
+              {t("pages.homeSettings.email.saveToSent")}
             </label>
             <div className="flex items-center gap-3 pt-1">
               <button
@@ -2237,11 +2244,11 @@ function EmailSettingsForm({
                 />
               </button>
               <span className="text-sm text-slate-600">
-                {graphSettings.save_to_sent_items ? "Enabled" : "Disabled"}
+                {graphSettings.save_to_sent_items ? t("common.enabled") : t("common.disabled")}
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Save sent emails in the sender&apos;s Sent Items folder
+              {t("pages.homeSettings.email.saveToSentHelper")}
             </p>
           </div>
         </div>
@@ -2251,16 +2258,16 @@ function EmailSettingsForm({
       <div className="border-t border-slate-200 pt-6 mt-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Test Connection</h3>
+            <h3 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.email.testConnection")}</h3>
             <p className="text-xs text-slate-500">
-              Send a test email to verify {emailTransport === "smtp" ? "SMTP" : "Graph API"} credentials
+              {t("pages.homeSettings.email.testConnectionHelper", { transport: emailTransport === "smtp" ? "SMTP" : "Graph API" })}
             </p>
           </div>
 
           <div className="flex items-end gap-3">
             <div className="flex-1 space-y-2">
               <label htmlFor="test-email" className="text-sm font-medium text-slate-600">
-                Send test to
+                {t("pages.homeSettings.email.sendTestTo")}
               </label>
               <input
                 id="test-email"
@@ -2286,10 +2293,10 @@ function EmailSettingsForm({
               {isTesting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Sending...
+                  {t("pages.homeSettings.email.sending")}
                 </>
               ) : (
-                "Send Test Email"
+                t("pages.homeSettings.email.sendTestEmail")
               )}
             </Button>
           </div>
@@ -2322,15 +2329,16 @@ interface CompanyInfoFormProps {
 }
 
 function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
+  const { t } = useTranslation();
   return (
     <SectionCard
-      title="Company Contact Info"
-      description="Contact information displayed in email footers and used for legal compliance."
+      title={t("pages.homeSettings.company.title")}
+      description={t("pages.homeSettings.company.description")}
     >
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <label htmlFor="company-legal-name" className="text-sm font-medium text-slate-600">
-            Legal Company Name
+            {t("pages.homeSettings.company.legalName")}
           </label>
           <input
             id="company-legal-name"
@@ -2341,13 +2349,13 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">
-            Official registered company name
+            {t("pages.homeSettings.company.legalNameHelper")}
           </p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="company-vat" className="text-sm font-medium text-slate-600">
-            VAT Number / P.IVA
+            {t("pages.homeSettings.company.vatNumber")}
           </label>
           <input
             id="company-vat"
@@ -2361,7 +2369,7 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
 
         <div className="space-y-2">
           <label htmlFor="company-address1" className="text-sm font-medium text-slate-600">
-            Address Line 1
+            {t("pages.homeSettings.company.addressLine1")}
           </label>
           <input
             id="company-address1"
@@ -2375,7 +2383,7 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
 
         <div className="space-y-2">
           <label htmlFor="company-address2" className="text-sm font-medium text-slate-600">
-            Address Line 2
+            {t("pages.homeSettings.company.addressLine2")}
           </label>
           <input
             id="company-address2"
@@ -2386,13 +2394,13 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">
-            City, ZIP, Country
+            {t("pages.homeSettings.company.addressLine2Helper")}
           </p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="company-phone" className="text-sm font-medium text-slate-600">
-            Phone Number
+            {t("pages.homeSettings.company.phone")}
           </label>
           <input
             id="company-phone"
@@ -2406,7 +2414,7 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
 
         <div className="space-y-2">
           <label htmlFor="company-email" className="text-sm font-medium text-slate-600">
-            General Email
+            {t("pages.homeSettings.company.generalEmail")}
           </label>
           <input
             id="company-email"
@@ -2420,7 +2428,7 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
 
         <div className="space-y-2">
           <label htmlFor="company-support-email" className="text-sm font-medium text-slate-600">
-            Support Email
+            {t("pages.homeSettings.company.supportEmail")}
           </label>
           <input
             id="company-support-email"
@@ -2431,13 +2439,13 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-slate-500">
-            For customer support inquiries
+            {t("pages.homeSettings.company.supportEmailHelper")}
           </p>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="company-hours" className="text-sm font-medium text-slate-600">
-            Business Hours
+            {t("pages.homeSettings.company.businessHours")}
           </label>
           <input
             id="company-hours"
@@ -2451,8 +2459,8 @@ function CompanyInfoForm({ companyInfo, onChange }: CompanyInfoFormProps) {
       </div>
 
       <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 className="text-sm font-semibold text-slate-900">Email Footer Preview</h4>
-        <p className="text-xs text-slate-500 mb-3">This is how your company info will appear in email footers</p>
+        <h4 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.company.footerPreview")}</h4>
+        <p className="text-xs text-slate-500 mb-3">{t("pages.homeSettings.company.footerPreviewHelper")}</p>
         <div className="bg-white rounded border border-slate-200 p-4 text-center">
           <p className="font-semibold text-slate-900 text-sm">{companyInfo.legal_name || "Company Name"}</p>
           {(companyInfo.address_line1 || companyInfo.address_line2) && (
@@ -2496,6 +2504,7 @@ interface APIKeyPermission {
 }
 
 function APIKeysForm() {
+  const { t } = useTranslation();
   const [keys, setKeys] = useState<APIKeyData[]>([]);
   const [permissions, setPermissions] = useState<APIKeyPermission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -2645,7 +2654,7 @@ function APIKeysForm() {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Never";
+    if (!dateString) return t("pages.homeSettings.apiKeys.never");
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -2657,8 +2666,8 @@ function APIKeysForm() {
 
   return (
     <SectionCard
-      title="API Keys"
-      description="Manage API keys for programmatic access to your B2B APIs."
+      title={t("pages.homeSettings.apiKeys.title")}
+      description={t("pages.homeSettings.apiKeys.description")}
     >
       {error && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -2673,15 +2682,15 @@ function APIKeysForm() {
             <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex-1 space-y-3">
               <div>
-                <h4 className="font-semibold text-amber-800">Save your API credentials now!</h4>
+                <h4 className="font-semibold text-amber-800">{t("pages.homeSettings.apiKeys.saveCredentials")}</h4>
                 <p className="text-sm text-amber-700">
-                  The secret will not be shown again. Store it securely.
+                  {t("pages.homeSettings.apiKeys.secretWarning")}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <div>
-                  <label className="text-xs font-medium text-amber-700">API Key</label>
+                  <label className="text-xs font-medium text-amber-700">{t("pages.homeSettings.apiKeys.apiKey")}</label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-amber-200">
                       {createdKey.key_id}
@@ -2703,7 +2712,7 @@ function APIKeysForm() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-amber-700">API Secret</label>
+                  <label className="text-xs font-medium text-amber-700">{t("pages.homeSettings.apiKeys.apiSecret")}</label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-amber-200">
                       {createdKey.secret}
@@ -2732,7 +2741,7 @@ function APIKeysForm() {
                 onClick={() => setCreatedKey(null)}
                 className="text-amber-700 border-amber-300 hover:bg-amber-100"
               >
-                I&apos;ve saved the credentials
+                {t("pages.homeSettings.apiKeys.savedCredentials")}
               </Button>
             </div>
           </div>
@@ -2742,7 +2751,7 @@ function APIKeysForm() {
       {/* Keys List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Your API Keys</h3>
+          <h3 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.apiKeys.yourKeys")}</h3>
           <Button
             type="button"
             size="sm"
@@ -2750,7 +2759,7 @@ function APIKeysForm() {
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
-            Create New Key
+            {t("pages.homeSettings.apiKeys.createNewKey")}
           </Button>
         </div>
 
@@ -2761,8 +2770,8 @@ function APIKeysForm() {
         ) : keys.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-8 text-center">
             <Key className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm text-slate-600">No API keys yet</p>
-            <p className="text-xs text-slate-500">Create your first API key to enable programmatic access</p>
+            <p className="mt-2 text-sm text-slate-600">{t("pages.homeSettings.apiKeys.noKeysYet")}</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.apiKeys.noKeysYetDesc")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -2788,15 +2797,15 @@ function APIKeysForm() {
                             : "bg-slate-200 text-slate-600"
                         )}
                       >
-                        {key.is_active ? "Active" : "Inactive"}
+                        {key.is_active ? t("common.active") : t("common.inactive")}
                       </span>
                     </div>
                     <p className="mt-1 text-xs font-mono text-slate-500 truncate">
                       {key.key_id}
                     </p>
                     <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
-                      <span>Created: {formatDate(key.created_at)}</span>
-                      <span>Last used: {formatDate(key.last_used_at)}</span>
+                      <span>{t("pages.homeSettings.apiKeys.created")}: {formatDate(key.created_at)}</span>
+                      <span>{t("pages.homeSettings.apiKeys.lastUsed")}: {formatDate(key.last_used_at)}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {key.permissions.map((perm) => (
@@ -2804,7 +2813,7 @@ function APIKeysForm() {
                           key={perm}
                           className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                         >
-                          {perm === "*" ? "Full Access" : perm}
+                          {perm === "*" ? t("pages.homeSettings.apiKeys.fullAccess") : perm}
                         </span>
                       ))}
                     </div>
@@ -2846,15 +2855,15 @@ function APIKeysForm() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-900">Create New API Key</h3>
+            <h3 className="text-lg font-semibold text-slate-900">{t("pages.homeSettings.apiKeys.createNewKey")}</h3>
             <p className="mt-1 text-sm text-slate-500">
-              Generate a new API key for programmatic access.
+              {t("pages.homeSettings.apiKeys.createNewKeyDesc")}
             </p>
 
             <div className="mt-4 space-y-4">
               <div className="space-y-2">
                 <label htmlFor="key-name" className="text-sm font-medium text-slate-600">
-                  Key Name
+                  {t("pages.homeSettings.apiKeys.keyName")}
                 </label>
                 <input
                   id="key-name"
@@ -2867,7 +2876,7 @@ function APIKeysForm() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-600">Permissions</label>
+                <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.apiKeys.permissions")}</label>
                 <div className="space-y-2">
                   {permissions.map((perm) => (
                     <label key={perm.value} className="flex items-start gap-3 cursor-pointer">
@@ -2921,10 +2930,10 @@ function APIKeysForm() {
                 {isCreating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {t("pages.homeSettings.apiKeys.creating")}
                   </>
                 ) : (
-                  "Create Key"
+                  t("pages.homeSettings.apiKeys.createKey")
                 )}
               </Button>
             </div>
@@ -2941,10 +2950,9 @@ function APIKeysForm() {
                 <AlertTriangle className="h-5 w-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Delete API Key</h3>
+                <h3 className="text-lg font-semibold text-slate-900">{t("pages.homeSettings.apiKeys.deleteKey")}</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Are you sure you want to delete <strong>{keyToDelete.name}</strong>? This action
-                  cannot be undone and any systems using this key will lose access.
+                  {t("pages.homeSettings.apiKeys.deleteKeyConfirm", { name: keyToDelete.name })}
                 </p>
               </div>
             </div>
@@ -2967,10 +2975,10 @@ function APIKeysForm() {
                 {isDeleting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
+                    {t("pages.homeSettings.apiKeys.deleting")}
                   </>
                 ) : (
-                  "Delete Key"
+                  t("pages.homeSettings.apiKeys.deleteKey")
                 )}
               </Button>
             </div>
@@ -2996,6 +3004,7 @@ interface FooterImage {
 }
 
 function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPublish }: FooterFormProps) {
+  const { t } = useTranslation();
   const [isPublishing, setIsPublishing] = useState(false);
   const [footerImages, setFooterImages] = useState<FooterImage[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
@@ -3076,15 +3085,15 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
         <div className="flex items-center gap-2">
           {hasUnsavedChanges ? (
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-              Draft has unpublished changes
+              {t("pages.homeSettings.footer.draftUnpublished")}
             </span>
           ) : footerHtml ? (
             <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-              Published
+              {t("common.published")}
             </span>
           ) : (
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-              No footer configured
+              {t("pages.homeSettings.footer.noFooter")}
             </span>
           )}
         </div>
@@ -3097,7 +3106,7 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
               onClick={() => onDraftChange(footerHtml)}
               className="text-xs text-slate-500"
             >
-              Revert to Published
+              {t("pages.homeSettings.footer.revertToPublished")}
             </Button>
           )}
           <Button
@@ -3110,12 +3119,12 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
             {isPublishing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Publishing...
+                {t("pages.homeSettings.footer.publishing")}
               </>
             ) : (
               <>
                 <Send className="h-4 w-4" />
-                Publish
+                {t("common.publish")}
               </>
             )}
           </Button>
@@ -3126,8 +3135,8 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
       <AccordionGroup>
         {/* HTML Editor Accordion */}
         <AccordionItem
-          title="HTML Editor"
-          description="Write custom HTML with Tailwind CSS classes"
+          title={t("pages.homeSettings.footer.htmlEditor")}
+          description={t("pages.homeSettings.footer.htmlEditorDesc")}
           defaultOpen={true}
           badge={
             footerHtmlDraft ? (
@@ -3147,7 +3156,7 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
               className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <p className="text-xs text-slate-500">
-              Use Tailwind CSS classes for styling. HTML is sanitized with DOMPurify before rendering.
+              {t("pages.homeSettings.footer.htmlEditorHelper")}
             </p>
             <div className="flex items-center gap-3">
               <Button
@@ -3157,7 +3166,7 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
                 onClick={() => onDraftChange(exampleHtml)}
                 className="text-xs"
               >
-                Load Example
+                {t("pages.homeSettings.footer.loadExample")}
               </Button>
               <Button
                 type="button"
@@ -3174,8 +3183,8 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
 
         {/* Footer Images Accordion */}
         <AccordionItem
-          title="Footer Images"
-          description="Upload images to use in your footer HTML"
+          title={t("pages.homeSettings.footer.footerImages")}
+          description={t("pages.homeSettings.footer.footerImagesDesc")}
           defaultOpen={false}
           badge={
             footerImages.length > 0 ? (
@@ -3205,7 +3214,7 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
                 {uploadState.isUploading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
+                    {t("pages.homeSettings.branding.uploading")}
                   </>
                 ) : (
                   <>
@@ -3290,8 +3299,8 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
             ) : (
               <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-6 text-center">
                 <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-                <p className="text-sm text-slate-500">No images uploaded yet</p>
-                <p className="text-xs text-slate-400">Click "Upload" to add images for your footer</p>
+                <p className="text-sm text-slate-500">{t("pages.homeSettings.footer.noImages")}</p>
+                <p className="text-xs text-slate-400">{t("pages.homeSettings.footer.noImagesDesc")}</p>
               </div>
             )}
           </div>
@@ -3299,8 +3308,8 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
 
         {/* Live Preview Accordion */}
         <AccordionItem
-          title="Live Preview"
-          description="See how your footer will appear on the storefront"
+          title={t("pages.homeSettings.footer.livePreview")}
+          description={t("pages.homeSettings.footer.livePreviewDesc")}
           defaultOpen={true}
           badge={
             <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
@@ -3327,7 +3336,7 @@ function FooterForm({ footerHtml, footerHtmlDraft, branding, onDraftChange, onPu
 
                 {!sanitizedHtml && (
                   <div className="mx-auto max-w-[1920px] px-4 py-8 text-center text-sm text-slate-400">
-                    Enter HTML above to see a preview
+                    {t("pages.homeSettings.footer.enterHtmlPreview")}
                   </div>
                 )}
 
@@ -3392,14 +3401,15 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
 // ============================================================================
 
 function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       {/* Basic SEO */}
-      <SectionCard title="Basic SEO" description="Essential meta tags for search engines">
+      <SectionCard title={t("pages.homeSettings.seo.basicTitle")} description={t("pages.homeSettings.seo.basicDescription")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="meta-title" className="text-sm font-medium text-slate-600">
-              Page Title
+              {t("pages.homeSettings.seo.pageTitle")}
             </label>
             <input
               id="meta-title"
@@ -3409,12 +3419,12 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
               placeholder="Your Company - B2B Store"
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
             />
-            <p className="text-xs text-slate-500">Appears in browser tab and search results (50-60 characters recommended)</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.pageTitleHelper")}</p>
           </div>
 
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="meta-description" className="text-sm font-medium text-slate-600">
-              Meta Description
+              {t("pages.homeSettings.seo.metaDescription")}
             </label>
             <textarea
               id="meta-description"
@@ -3424,12 +3434,12 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
             />
-            <p className="text-xs text-slate-500">Description shown in search results (150-160 characters recommended)</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.metaDescriptionHelper")}</p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="meta-keywords" className="text-sm font-medium text-slate-600">
-              Keywords
+              {t("pages.homeSettings.seo.keywords")}
             </label>
             <input
               id="meta-keywords"
@@ -3439,12 +3449,12 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
               placeholder="b2b, wholesale, products"
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
             />
-            <p className="text-xs text-slate-500">Comma-separated keywords (less important for modern SEO)</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.keywordsHelper")}</p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="meta-author" className="text-sm font-medium text-slate-600">
-              Author
+              {t("pages.homeSettings.seo.author")}
             </label>
             <input
               id="meta-author"
@@ -3458,7 +3468,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="meta-robots" className="text-sm font-medium text-slate-600">
-              Robots Directive
+              {t("pages.homeSettings.seo.robotsDirective")}
             </label>
             <select
               id="meta-robots"
@@ -3466,17 +3476,17 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
               onChange={(e) => onChange("robots", e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
             >
-              <option value="index, follow">Index, Follow (default)</option>
-              <option value="noindex, follow">No Index, Follow</option>
-              <option value="index, nofollow">Index, No Follow</option>
-              <option value="noindex, nofollow">No Index, No Follow</option>
+              <option value="index, follow">{t("pages.homeSettings.seo.robotsIndexFollow")}</option>
+              <option value="noindex, follow">{t("pages.homeSettings.seo.robotsNoIndexFollow")}</option>
+              <option value="index, nofollow">{t("pages.homeSettings.seo.robotsIndexNoFollow")}</option>
+              <option value="noindex, nofollow">{t("pages.homeSettings.seo.robotsNoIndexNoFollow")}</option>
             </select>
-            <p className="text-xs text-slate-500">Controls how search engines crawl and index the site</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.robotsHelper")}</p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="meta-canonical" className="text-sm font-medium text-slate-600">
-              Canonical URL
+              {t("pages.homeSettings.seo.canonicalUrl")}
             </label>
             <input
               id="meta-canonical"
@@ -3486,17 +3496,17 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
               placeholder="https://shop.example.com"
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
             />
-            <p className="text-xs text-slate-500">Preferred URL for the homepage</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.canonicalUrlHelper")}</p>
           </div>
         </div>
       </SectionCard>
 
       {/* Open Graph */}
-      <SectionCard title="Open Graph (Social Sharing)" description="How your site appears when shared on Facebook, LinkedIn, etc.">
+      <SectionCard title={t("pages.homeSettings.seo.ogTitle")} description={t("pages.homeSettings.seo.ogDescription")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="og-title" className="text-sm font-medium text-slate-600">
-              OG Title
+              {t("pages.homeSettings.seo.ogTitleField")}
             </label>
             <input
               id="og-title"
@@ -3510,7 +3520,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="og-sitename" className="text-sm font-medium text-slate-600">
-              Site Name
+              {t("pages.homeSettings.seo.siteName")}
             </label>
             <input
               id="og-sitename"
@@ -3524,7 +3534,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="og-description" className="text-sm font-medium text-slate-600">
-              OG Description
+              {t("pages.homeSettings.seo.ogDescField")}
             </label>
             <textarea
               id="og-description"
@@ -3538,7 +3548,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2 sm:col-span-2">
             <label htmlFor="og-image" className="text-sm font-medium text-slate-600">
-              OG Image URL
+              {t("pages.homeSettings.seo.ogImageUrl")}
             </label>
             <input
               id="og-image"
@@ -3548,12 +3558,12 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
               placeholder="https://cdn.example.com/og-image.jpg"
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
             />
-            <p className="text-xs text-slate-500">Recommended size: 1200x630 pixels (JPG or PNG)</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.ogImageHelper")}</p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="og-type" className="text-sm font-medium text-slate-600">
-              OG Type
+              {t("pages.homeSettings.seo.ogType")}
             </label>
             <select
               id="og-type"
@@ -3571,11 +3581,11 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
       </SectionCard>
 
       {/* Twitter Card */}
-      <SectionCard title="Twitter Card" description="How your site appears when shared on Twitter/X">
+      <SectionCard title={t("pages.homeSettings.seo.twitterTitle")} description={t("pages.homeSettings.seo.twitterDescription")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="twitter-card" className="text-sm font-medium text-slate-600">
-              Card Type
+              {t("pages.homeSettings.seo.cardType")}
             </label>
             <select
               id="twitter-card"
@@ -3592,7 +3602,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="twitter-site" className="text-sm font-medium text-slate-600">
-              Site @username
+              {t("pages.homeSettings.seo.siteUsername")}
             </label>
             <input
               id="twitter-site"
@@ -3606,7 +3616,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="twitter-creator" className="text-sm font-medium text-slate-600">
-              Creator @username
+              {t("pages.homeSettings.seo.creatorUsername")}
             </label>
             <input
               id="twitter-creator"
@@ -3620,7 +3630,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="twitter-image" className="text-sm font-medium text-slate-600">
-              Twitter Image URL
+              {t("pages.homeSettings.seo.twitterImageUrl")}
             </label>
             <input
               id="twitter-image"
@@ -3635,11 +3645,11 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
       </SectionCard>
 
       {/* Additional Settings */}
-      <SectionCard title="Additional Settings" description="Theme color and site verification">
+      <SectionCard title={t("pages.homeSettings.seo.additionalTitle")} description={t("pages.homeSettings.seo.additionalDescription")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="theme-color" className="text-sm font-medium text-slate-600">
-              Theme Color
+              {t("pages.homeSettings.seo.themeColor")}
             </label>
             <div className="flex items-center gap-3">
               <input
@@ -3657,12 +3667,12 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
                 className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
-            <p className="text-xs text-slate-500">Browser address bar color on mobile</p>
+            <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.themeColorHelper")}</p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="google-verification" className="text-sm font-medium text-slate-600">
-              Google Site Verification
+              {t("pages.homeSettings.seo.googleVerification")}
             </label>
             <input
               id="google-verification"
@@ -3676,7 +3686,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="bing-verification" className="text-sm font-medium text-slate-600">
-              Bing Site Verification
+              {t("pages.homeSettings.seo.bingVerification")}
             </label>
             <input
               id="bing-verification"
@@ -3691,10 +3701,10 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
       </SectionCard>
 
       {/* Structured Data */}
-      <SectionCard title="Structured Data (JSON-LD)" description="Advanced: Custom structured data for rich snippets">
+      <SectionCard title={t("pages.homeSettings.seo.structuredDataTitle")} description={t("pages.homeSettings.seo.structuredDataDescription")}>
         <div className="space-y-2">
           <label htmlFor="structured-data" className="text-sm font-medium text-slate-600">
-            JSON-LD Structured Data
+            {t("pages.homeSettings.seo.jsonLdLabel")}
           </label>
           <textarea
             id="structured-data"
@@ -3709,7 +3719,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
             rows={10}
             className="w-full rounded-lg border border-slate-300 px-4 py-2.5 font-mono text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary"
           />
-          <p className="text-xs text-slate-500">Optional JSON-LD for Organization, LocalBusiness, or other schema types</p>
+          <p className="text-xs text-slate-500">{t("pages.homeSettings.seo.jsonLdHelper")}</p>
         </div>
       </SectionCard>
     </div>
@@ -3717,6 +3727,7 @@ function MetaTagsForm({ metaTags, onChange }: MetaTagsFormProps) {
 }
 
 function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, onPublish }: HeaderFormProps) {
+  const { t } = useTranslation();
   const [selectedWidget, setSelectedWidget] = useState<{ rowId: string; blockId: string; widgetId: string } | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -3900,15 +3911,15 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
         <div className="flex items-center gap-2">
           {hasUnpublishedChanges ? (
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-              Draft has unpublished changes
+              {t("pages.homeSettings.header.draftUnpublished")}
             </span>
           ) : headerConfig.rows.length > 0 ? (
             <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-              Published
+              {t("common.published")}
             </span>
           ) : (
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-              No header configured
+              {t("pages.homeSettings.header.noHeader")}
             </span>
           )}
         </div>
@@ -3921,7 +3932,7 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
               onClick={handleRevertToPublished}
               className="text-xs text-slate-500"
             >
-              Revert to Published
+              {t("pages.homeSettings.header.revertToPublished")}
             </Button>
           )}
           <Button
@@ -3934,7 +3945,7 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
             {isPublishing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Publishing...
+                {t("pages.homeSettings.header.publishing")}
               </>
             ) : (
               <>
@@ -3953,8 +3964,8 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
           <AccordionGroup>
             {/* Row Configuration Accordion */}
             <AccordionItem
-              title="Row Configuration"
-              description="Configure header rows, layout, and widgets"
+              title={t("pages.homeSettings.header.rowConfig")}
+              description={t("pages.homeSettings.header.rowConfigDesc")}
               defaultOpen={true}
               badge={
                 headerConfigDraft.rows.length > 0 ? (
@@ -4019,7 +4030,7 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
                   title={row.fixed ? "Fixed/Sticky" : "Scrollable"}
                 >
                   {row.fixed ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                  {row.fixed ? "Fixed" : "Scroll"}
+                  {row.fixed ? t("pages.homeSettings.header.fixed") : t("pages.homeSettings.header.scroll")}
                 </button>
 
                 {/* Row Actions */}
@@ -4152,7 +4163,7 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
 
                   {/* Row Background Color */}
                   <div className="mt-3 flex items-center gap-3 pt-3 border-t border-slate-100">
-                    <label className="text-xs text-slate-500">Background:</label>
+                    <label className="text-xs text-slate-500">{t("pages.homeSettings.header.background")}:</label>
                     <input
                       type="color"
                       value={row.backgroundColor || "#ffffff"}
@@ -4179,15 +4190,15 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
             className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-4 text-sm font-medium text-slate-500 transition-colors hover:border-primary hover:text-primary"
           >
             <Plus className="h-4 w-4" />
-            Add Row
+            {t("pages.homeSettings.header.addRow")}
           </button>
           </div>
         </AccordionItem>
 
         {/* Available Widgets Accordion */}
         <AccordionItem
-          title="Available Widgets"
-          description="Reference guide for header widgets. Click + in a block to add widgets."
+          title={t("pages.homeSettings.header.availableWidgets")}
+          description={t("pages.homeSettings.header.availableWidgetsDesc")}
           defaultOpen={false}
           badge={
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
@@ -4227,8 +4238,8 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
 
         {/* Header Preview Accordion */}
         <AccordionItem
-          title="Header Preview"
-          description="Preview of your header configuration"
+          title={t("pages.homeSettings.header.headerPreview")}
+          description={t("pages.homeSettings.header.headerPreviewDesc")}
           defaultOpen={true}
           badge={
             <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
@@ -4377,7 +4388,7 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
 
             {headerConfigDraft.rows.filter(r => r.enabled).length === 0 && (
               <div className="p-8 text-center text-sm text-slate-400">
-                No header rows enabled. Add and enable rows above to see a preview.
+                {t("pages.homeSettings.header.noRowsEnabled")}
               </div>
             )}
           </div>
@@ -4410,6 +4421,7 @@ interface WidgetAdderProps {
 }
 
 function WidgetAdder({ onAdd, usedTypes }: WidgetAdderProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   const availableWidgets = (Object.entries(HEADER_WIDGET_LIBRARY) as [HeaderWidgetType, typeof HEADER_WIDGET_LIBRARY[HeaderWidgetType]][])
@@ -4435,7 +4447,7 @@ function WidgetAdder({ onAdd, usedTypes }: WidgetAdderProps) {
           />
           <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-slate-200 bg-white shadow-xl">
             <div className="border-b border-slate-100 px-3 py-2">
-              <span className="text-xs font-medium text-slate-600">Add Widget</span>
+              <span className="text-xs font-medium text-slate-600">{t("pages.homeSettings.header.addWidget")}</span>
             </div>
             <div className="max-h-80 overflow-y-auto p-1.5">
               {availableWidgets.map(([type, meta]) => {
@@ -4476,6 +4488,7 @@ interface WidgetConfigPanelProps {
 }
 
 function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: WidgetConfigPanelProps) {
+  const { t } = useTranslation();
   const radioLogoUploader = useImageUpload();
   const row = headerConfig.rows.find((r) => r.id === selectedWidget.rowId);
   const block = row?.blocks.find((b) => b.id === selectedWidget.blockId);
@@ -4544,7 +4557,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
 
   return (
     <SectionCard
-      title={`Configure: ${meta.label}`}
+      title={`${t("pages.homeSettings.widgets.configure")}: ${meta.label}`}
       description={meta.description}
     >
       <div className="space-y-4">
@@ -4597,17 +4610,17 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
           return (
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-slate-600">Label</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.label")}</label>
                 <input
                   type="text"
                   value={config.label || ""}
                   onChange={(e) => updateWidgetConfig({ label: e.target.value })}
-                  placeholder="Button text"
+                  placeholder={t("pages.homeSettings.widgets.buttonText")}
                   className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600">URL</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.url")}</label>
                 <input
                   type="text"
                   value={config.url || ""}
@@ -4617,34 +4630,34 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600">Open In</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.openIn")}</label>
                 <select
                   value={config.target || "_self"}
                   onChange={(e) => updateWidgetConfig({ target: e.target.value })}
                   className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="_self">Same Tab</option>
-                  <option value="_blank">New Tab</option>
+                  <option value="_self">{t("pages.homeSettings.widgets.sameTab")}</option>
+                  <option value="_blank">{t("pages.homeSettings.widgets.newTab")}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600">Variant</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.variant")}</label>
                 <select
                   value={config.variant || "primary"}
                   onChange={(e) => updateWidgetConfig({ variant: e.target.value })}
                   className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
-                  <option value="outline">Outline</option>
-                  <option value="ghost">Ghost</option>
-                  <option value="custom">Custom Colors</option>
+                  <option value="primary">{t("pages.homeSettings.widgets.variantPrimary")}</option>
+                  <option value="secondary">{t("pages.homeSettings.widgets.variantSecondary")}</option>
+                  <option value="outline">{t("pages.homeSettings.widgets.variantOutline")}</option>
+                  <option value="ghost">{t("pages.homeSettings.widgets.variantGhost")}</option>
+                  <option value="custom">{t("pages.homeSettings.widgets.variantCustom")}</option>
                 </select>
               </div>
               {config.variant === "custom" && (
                 <>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Background Color</label>
+                    <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.branding.backgroundColor")}</label>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="color"
@@ -4662,7 +4675,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Text Color</label>
+                    <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.branding.textColor")}</label>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="color"
@@ -4690,7 +4703,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
           return (
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-slate-600">Placeholder</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.placeholder")}</label>
                 <input
                   type="text"
                   value={config.placeholder || ""}
@@ -4700,16 +4713,16 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600">Width</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.width")}</label>
                 <select
                   value={config.width || "lg"}
                   onChange={(e) => updateWidgetConfig({ width: e.target.value })}
                   className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="sm">Small</option>
-                  <option value="md">Medium</option>
-                  <option value="lg">Large</option>
-                  <option value="full">Full</option>
+                  <option value="sm">{t("pages.homeSettings.product.sizeSmall")}</option>
+                  <option value="md">{t("pages.homeSettings.product.sizeMedium")}</option>
+                  <option value="lg">{t("pages.homeSettings.product.sizeLarge")}</option>
+                  <option value="full">{t("pages.homeSettings.widgets.widthFull")}</option>
                 </select>
               </div>
             </div>
@@ -4721,7 +4734,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
           return (
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-slate-600">Label</label>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.label")}</label>
                 <input
                   type="text"
                   value={config.label || ""}
@@ -4785,13 +4798,13 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                   onChange={(e) => updateWidgetConfig({ enabled: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-slate-600">Enabled</span>
+                <span className="text-sm text-slate-600">{t("common.enabled")}</span>
               </label>
 
               {/* Header Icon */}
               <div>
-                <label className="text-xs font-medium text-slate-600">Header Icon</label>
-                <p className="text-[10px] text-slate-400 mb-2">Image shown in the header for the radio button</p>
+                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.radio.headerIcon")}</label>
+                <p className="text-[10px] text-slate-400 mb-2">{t("pages.homeSettings.radio.headerIconHelper")}</p>
                 {config.headerIcon && (
                   <div className="mb-2 flex justify-center">
                     <div className="h-24 w-24 rounded border border-slate-200 bg-white p-1">
@@ -4831,20 +4844,20 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                   </label>
                 </div>
                 {radioLogoUploader.uploadState.isUploading && (
-                  <p className="mt-1 text-[10px] text-slate-400">Uploading...</p>
+                  <p className="mt-1 text-[10px] text-slate-400">{t("pages.homeSettings.branding.uploading")}</p>
                 )}
               </div>
 
               <div className="border-t border-slate-100 pt-3">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-slate-600">Radio Stations</label>
+                  <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.radio.stations")}</label>
                   <button
                     type="button"
                     onClick={addStation}
                     className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
                   >
                     <Plus className="h-3 w-3" />
-                    Add Station
+                    {t("pages.homeSettings.radio.addStation")}
                   </button>
                 </div>
 
@@ -4874,7 +4887,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
 
                         <div className="space-y-2">
                           <div>
-                            <label className="text-[10px] font-medium text-slate-500">Station Name</label>
+                            <label className="text-[10px] font-medium text-slate-500">{t("pages.homeSettings.radio.stationName")}</label>
                             <input
                               type="text"
                               value={station.name}
@@ -4885,7 +4898,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                           </div>
 
                           <div>
-                            <label className="text-[10px] font-medium text-slate-500">Logo</label>
+                            <label className="text-[10px] font-medium text-slate-500">{t("pages.homeSettings.branding.logo")}</label>
                             <div className="mt-0.5 flex items-center gap-2">
                               {station.logoUrl && (
                                 <div className="h-8 w-8 flex-shrink-0 rounded border border-slate-200 bg-white p-0.5">
@@ -4922,12 +4935,12 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                               </label>
                             </div>
                             {radioLogoUploader.uploadState.isUploading && (
-                              <p className="mt-1 text-[10px] text-slate-400">Uploading...</p>
+                              <p className="mt-1 text-[10px] text-slate-400">{t("pages.homeSettings.branding.uploading")}</p>
                             )}
                           </div>
 
                           <div>
-                            <label className="text-[10px] font-medium text-slate-500">Stream URL</label>
+                            <label className="text-[10px] font-medium text-slate-500">{t("pages.homeSettings.radio.streamUrl")}</label>
                             <input
                               type="text"
                               value={station.streamUrl}
@@ -4957,7 +4970,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                   onChange={(e) => updateWidgetConfig({ showLabel: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-slate-600">Show Label</span>
+                <span className="text-sm text-slate-600">{t("pages.homeSettings.widgets.showLabel")}</span>
               </label>
               {widget.type !== "no-price" && (
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -4967,7 +4980,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                     onChange={(e) => updateWidgetConfig({ showBadge: e.target.checked })}
                     className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                   />
-                  <span className="text-sm text-slate-600">Show Badge</span>
+                  <span className="text-sm text-slate-600">{t("pages.homeSettings.widgets.showBadge")}</span>
                 </label>
               )}
             </div>
@@ -4985,7 +4998,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                   onChange={(e) => updateWidgetConfig({ showDeliveryAddress: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-slate-600">Show Delivery Address</span>
+                <span className="text-sm text-slate-600">{t("pages.homeSettings.widgets.showDeliveryAddress")}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -4994,7 +5007,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
                   onChange={(e) => updateWidgetConfig({ showBalance: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-slate-600">Show Balance</span>
+                <span className="text-sm text-slate-600">{t("pages.homeSettings.widgets.showBalance")}</span>
               </label>
             </div>
           );
@@ -5002,7 +5015,7 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
 
         {(widget.type === "logo" || widget.type === "spacer" || widget.type === "divider") && (
           <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-            This widget has no additional configuration options.
+            {t("pages.homeSettings.widgets.noConfig")}
           </div>
         )}
 
@@ -5032,10 +5045,11 @@ interface BrandingPreviewProps {
 }
 
 function BrandingPreview({ branding, cardStyle }: BrandingPreviewProps) {
+  const { t } = useTranslation();
   return (
     <SectionCard
-      title="Branding Preview"
-      description="Theme colours and branding at a glance."
+      title={t("pages.homeSettings.preview.brandingTitle")}
+      description={t("pages.homeSettings.preview.brandingDescription")}
     >
       {/* Logo & Company Info */}
       <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
@@ -5165,14 +5179,15 @@ interface ProductCardPreviewPanelProps {
 }
 
 function ProductCardPreviewPanel({ cardStyle, branding, previewVariant, onVariantChange }: ProductCardPreviewPanelProps) {
+  const { t } = useTranslation();
   const previewHeading = previewVariant === "horizontal"
-    ? "Horizontal card"
-    : "Vertical card";
+    ? t("pages.homeSettings.preview.horizontalCard")
+    : t("pages.homeSettings.preview.verticalCard");
 
   return (
     <SectionCard
       title={previewHeading}
-      description="Live preview"
+      description={t("pages.homeSettings.preview.livePreview")}
     >
       <div className="flex gap-2 mb-4">
         {CARD_VARIANTS.map((variant) => (
@@ -5187,7 +5202,7 @@ function ProductCardPreviewPanel({ cardStyle, branding, previewVariant, onVarian
                 : "border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300"
             )}
           >
-            {variant.label}
+            {t(variant.labelKey)}
           </button>
         ))}
       </div>

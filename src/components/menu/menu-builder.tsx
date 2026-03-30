@@ -28,6 +28,7 @@ import { MenuItemRow } from "./menu-item-row";
 import { MenuItemForm } from "./menu-item-form";
 import { MenuLocation } from "@/lib/db/models/menu";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export interface MenuItem {
   menu_item_id: string;
@@ -63,6 +64,7 @@ interface MenuBuilderProps {
 }
 
 export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuilderProps) {
+  const { t } = useTranslation();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -91,7 +93,7 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
       setMenuItems(data.menuItems || []);
     } catch (error) {
       console.error("Error fetching menu items:", error);
-      toast.error("Failed to load menu items");
+      toast.error(t("components.menuBuilder.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -135,7 +137,7 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
 
     // Only allow reordering within the same parent
     if (activeItem.parent_id !== overItem.parent_id) {
-      toast.error("Can only reorder menu items within the same level");
+      toast.error(t("components.menuBuilder.reorderSameLevel"));
       return;
     }
 
@@ -177,10 +179,10 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
 
       if (!res.ok) throw new Error("Failed to reorder");
 
-      toast.success("Menu items reordered successfully");
+      toast.success(t("components.menuBuilder.reorderedSuccess"));
     } catch (error) {
       console.error("Error reordering menu:", error);
-      toast.error("Failed to reorder menu items");
+      toast.error(t("components.menuBuilder.failedToReorder"));
       fetchMenuItems(); // Revert on error
     }
   };
@@ -211,12 +213,12 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
         throw new Error(error.error || "Failed to delete");
       }
 
-      toast.success("Menu item deleted successfully");
+      toast.success(t("components.menuBuilder.deletedSuccess"));
       fetchMenuItems();
       onSave?.();
     } catch (error: any) {
       console.error("Error deleting menu item:", error);
-      toast.error(error.message || "Failed to delete menu item");
+      toast.error(error.message || t("components.menuBuilder.failedToDelete"));
     }
   };
 

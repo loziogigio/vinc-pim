@@ -60,6 +60,10 @@ export interface IPaymentTransaction extends Document {
   // Idempotency
   idempotency_key?: string;
 
+  // Provider redirect data (stored for idempotent "processing" lookups)
+  redirect_url?: string;
+  client_secret?: string;
+
   // Timestamps
   created_at: Date;
   updated_at: Date;
@@ -142,6 +146,10 @@ export const PaymentTransactionSchema = new Schema<IPaymentTransaction>(
 
     // Idempotency
     idempotency_key: { type: String, sparse: true, unique: true },
+
+    // Provider redirect data (stored for idempotent "processing" lookups)
+    redirect_url: String,
+    client_secret: String,
 
     // Completed
     completed_at: Date,

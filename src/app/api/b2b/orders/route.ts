@@ -16,6 +16,7 @@ import {
   findOrCreateCustomer,
   findOrCreateAddress,
 } from "@/lib/services/customer.service";
+import { buildHookCtx, runBeforeHook, updateCtxFromOrder, runOnMergeAfter } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate request via session or API key
@@ -125,6 +126,8 @@ export async function GET(req: NextRequest) {
     if (status) {
       const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
       query.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
+    } else {
+      query.status = { $ne: "deleted" };
     }
 
     if (year) {
@@ -465,6 +468,20 @@ export async function POST(req: NextRequest) {
     const channel = body.channel || (isB2CGuest ? "b2c" : "b2b");
     const priceListType = body.price_list_type || (orderType === "b2c" ? "retail" : "wholesale");
 
+    // ── BEFORE HOOK: validate with ERP ──
+    const hookCtx = buildHookCtx(auth.tenantDb!, tenant_id, "cart.create", {
+      channel,
+      customerCode: customer?.external_code,
+      requestData: body as Record<string, unknown>,
+    });
+    const before = await runBeforeHook(hookCtx);
+    if (before.hooked && !before.allowed) {
+      return NextResponse.json(
+        { error: before.message || "Operation rejected by ERP", windmill: { phase: "before", blocked: true } },
+        { status: 422 },
+      );
+    }
+
     // Create order with defaults
     const order = await OrderModel.create({
       order_id,
@@ -544,6 +561,10 @@ export async function POST(req: NextRequest) {
       items: [],
     });
 
+    // ── ON + AFTER HOOKS ──
+    updateCtxFromOrder(hookCtx, order);
+    const on = await runOnMergeAfter(hookCtx, OrderModel, order._id);
+
     return NextResponse.json(
       {
         success: true,
@@ -556,6 +577,11 @@ export async function POST(req: NextRequest) {
               email: customer.email,
             }
           : null,
+        windmill: {
+          channel,
+          before: before.hooked ? { allowed: before.allowed } : undefined,
+          on: on.hooked ? { synced: on.success, timed_out: on.timedOut, message: on.response?.message } : undefined,
+        },
       },
       { status: 201 }
     );

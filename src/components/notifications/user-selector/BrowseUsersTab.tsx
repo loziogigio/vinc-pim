@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, Building2, User, Loader2, Users, Check, AlertTriangle } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export type UserType = "b2b" | "portal";
 
@@ -28,6 +29,7 @@ interface BrowseUsersTabProps {
 }
 
 export function BrowseUsersTab({ selectedUsers, onToggleUser, onSelectAll }: BrowseUsersTabProps) {
+  const { t } = useTranslation();
   const [userType, setUserType] = useState<UserType>("b2b");
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<ApiUser[]>([]);
@@ -95,7 +97,7 @@ export function BrowseUsersTab({ selectedUsers, onToggleUser, onSelectAll }: Bro
           }`}
         >
           <Building2 className="w-4 h-4" />
-          Utenti B2B
+          {t("pages.notifications.campaigns.browseUsers.b2bUsers")}
         </button>
         <button
           type="button"
@@ -105,7 +107,7 @@ export function BrowseUsersTab({ selectedUsers, onToggleUser, onSelectAll }: Bro
           }`}
         >
           <User className="w-4 h-4" />
-          Clienti Portal
+          {t("pages.notifications.campaigns.browseUsers.portalCustomers")}
         </button>
       </div>
 
@@ -114,7 +116,7 @@ export function BrowseUsersTab({ selectedUsers, onToggleUser, onSelectAll }: Bro
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           type="text"
-          placeholder="Cerca per nome o email..."
+          placeholder={t("pages.notifications.campaigns.browseUsers.searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:border-primary focus:outline-none"
@@ -125,27 +127,29 @@ export function BrowseUsersTab({ selectedUsers, onToggleUser, onSelectAll }: Bro
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-slate-500">Caricamento...</span>
+          <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.browseUsers.loadingUsers")}</span>
         </div>
       ) : users.length === 0 ? (
         <div className="text-center py-12">
           <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-sm text-slate-500">
-            {searchQuery ? "Nessun utente trovato" : "Nessun utente disponibile"}
+            {searchQuery ? t("pages.notifications.campaigns.browseUsers.noUserFound") : t("pages.notifications.campaigns.browseUsers.noUserAvailable")}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <span className="text-xs text-slate-500">
-              {total} {userType === "b2b" ? "utenti B2B" : "clienti"} totali
+              {userType === "b2b"
+                ? t("pages.notifications.campaigns.browseUsers.totalB2bUsers", { count: total })
+                : t("pages.notifications.campaigns.browseUsers.totalPortalCustomers", { count: total })}
             </span>
             <button
               type="button"
               onClick={() => setShowConfirmAll(true)}
               className="text-xs text-primary hover:underline"
             >
-              Seleziona tutti visibili
+              {t("pages.notifications.campaigns.browseUsers.selectAllVisible")}
             </button>
           </div>
 
@@ -186,21 +190,24 @@ export function BrowseUsersTab({ selectedUsers, onToggleUser, onSelectAll }: Bro
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-slate-900">Conferma selezione</h4>
+                <h4 className="font-semibold text-slate-900">{t("pages.notifications.campaigns.browseUsers.confirmSelectionTitle")}</h4>
                 <p className="text-sm text-slate-500">
-                  Stai per selezionare {users.length} {userType === "b2b" ? "utenti" : "clienti"}
+                  {t("pages.notifications.campaigns.browseUsers.confirmSelectionDesc", {
+                    count: users.length,
+                    type: userType === "b2b" ? t("pages.notifications.campaigns.browseUsers.usersLabel") : t("pages.notifications.campaigns.browseUsers.customersLabel"),
+                  })}
                 </p>
               </div>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              Questa azione aggiungerà tutti gli utenti visibili alla lista dei destinatari. Continuare?
+              {t("pages.notifications.campaigns.browseUsers.confirmSelectionBody")}
             </p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowConfirmAll(false)} className="px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50">
-                Annulla
+                {t("common.cancel")}
               </button>
               <button onClick={handleSelectAll} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                Conferma
+                {t("common.confirm")}
               </button>
             </div>
           </div>

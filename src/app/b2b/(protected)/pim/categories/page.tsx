@@ -104,7 +104,7 @@ export default function CategoriesPage() {
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
-      toast.error("Failed to load categories");
+      toast.error(t("pages.pim.categories.loadCategoriesFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +152,7 @@ export default function CategoriesPage() {
 
     // Only allow reordering within the same parent
     if (activeCategory.parent_id !== overCategory.parent_id) {
-      toast.error("Can only reorder categories within the same level");
+      toast.error(t("pages.pim.categories.sameLevelOnly"));
       return;
     }
 
@@ -193,10 +193,10 @@ export default function CategoriesPage() {
         throw new Error("Failed to reorder");
       }
 
-      toast.success("Categories reordered successfully");
+      toast.success(t("pages.pim.categories.reorderSuccess"));
     } catch (error) {
       console.error("Error reordering categories:", error);
-      toast.error("Failed to reorder categories");
+      toast.error(t("pages.pim.categories.reorderFailed"));
       fetchCategories(); // Revert on error
     }
   }
@@ -204,7 +204,7 @@ export default function CategoriesPage() {
   async function handleDelete(category: Category) {
     if (category.product_count > 0) {
       toast.error(
-        `Cannot delete category with ${category.product_count} products. Please reassign them first.`
+        t("pages.pim.categories.hasProductsError", { count: category.product_count })
       );
       return;
     }
@@ -212,12 +212,12 @@ export default function CategoriesPage() {
     const childCount = categories.filter((c) => c.parent_id === category.category_id).length;
     if (childCount > 0) {
       toast.error(
-        `Cannot delete category with ${childCount} child categories. Please delete or reassign them first.`
+        t("pages.pim.categories.hasChildrenError", { count: childCount })
       );
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${category.name}"?`)) {
+    if (!confirm(t("pages.pim.categories.deleteConfirm", { name: category.name }))) {
       return;
     }
 
@@ -227,15 +227,15 @@ export default function CategoriesPage() {
       });
 
       if (res.ok) {
-        toast.success("Category deleted successfully");
+        toast.success(t("pages.pim.categories.deleteSuccess"));
         fetchCategories();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete category");
+        toast.error(error.error || t("pages.pim.categories.deleteFailed"));
       }
     } catch (error) {
       console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
+      toast.error(t("pages.pim.categories.deleteFailed"));
     }
   }
 
@@ -287,7 +287,7 @@ export default function CategoriesPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.categories.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {categories.length} total • {rootCategories.length} root categories
+              {categories.length} {t("pages.pim.categories.totalOf")} • {rootCategories.length} {t("pages.pim.categories.rootCategories")}
             </p>
           </div>
           <button
@@ -355,7 +355,7 @@ export default function CategoriesPage() {
             title="Filter"
           >
             <Filter className="h-5 w-5" />
-            {!showInactive && "Active only"}
+            {!showInactive && t("pages.pim.categories.activeOnly")}
           </button>
         </div>
 
@@ -454,6 +454,7 @@ function SortableCategoryRow({
   onDelete: () => void;
   channelInfo?: ChannelInfo;
 }) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: category.category_id,
   });
@@ -523,12 +524,12 @@ function SortableCategoryRow({
             )}
             {!category.parent_id && !channelInfo && (
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
-                Root — no channel
+                {t("pages.pim.categories.rootNoChannel")}
               </span>
             )}
             {!category.is_active && (
               <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
-                Inactive
+                {t("pages.pim.categories.inactive")}
               </span>
             )}
           </div>

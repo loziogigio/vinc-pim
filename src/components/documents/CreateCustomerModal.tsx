@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Building2, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CreatedCustomer {
   customer_id: string;
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
+  const { t } = useTranslation();
+
   // Customer type
   const [customerType, setCustomerType] = useState<"business" | "private">("business");
 
@@ -105,13 +108,13 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
       const data = await res.json();
       if (!res.ok) {
         const details = data.details as string[] | undefined;
-        setError(details?.length ? details.join(", ") : data.error || "Errore nella creazione");
+        setError(details?.length ? details.join(", ") : data.error || t("pages.documents.detail.customer.creationError"));
         return;
       }
 
       onCreated(data.customer);
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.documents.detail.customer.networkError"));
     } finally {
       setSaving(false);
     }
@@ -126,8 +129,8 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
             <Building2 className="h-5 w-5 text-[#009688]" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">Nuovo Cliente</h3>
-            <p className="text-sm text-slate-500">{subtitle || "Crea un nuovo cliente"}</p>
+            <h3 className="text-lg font-semibold text-slate-900">{t("pages.documents.detail.customer.title")}</h3>
+            <p className="text-sm text-slate-500">{subtitle || t("pages.documents.detail.customer.subtitle")}</p>
           </div>
           <button
             onClick={onClose}
@@ -140,7 +143,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Customer Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Tipo Cliente</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">{t("pages.documents.detail.customer.type")}</label>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -151,7 +154,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                     : "border-slate-200 text-slate-500 hover:border-slate-300"
                 }`}
               >
-                Azienda
+                {t("pages.documents.detail.customer.business")}
               </button>
               <button
                 type="button"
@@ -162,7 +165,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                     : "border-slate-200 text-slate-500 hover:border-slate-300"
                 }`}
               >
-                Privato
+                {t("pages.documents.detail.customer.private")}
               </button>
             </div>
           </div>
@@ -170,17 +173,17 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
           {/* Basic Info */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
-              Informazioni Base
+              {t("pages.documents.detail.customer.basicInfo")}
             </h4>
             {isBusiness && (
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Ragione Sociale <span className="text-red-500">*</span>
+                  {t("pages.documents.detail.customer.companyName")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Es. Acme S.r.l."
+                  placeholder={t("pages.documents.detail.customer.companyNamePlaceholder")}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                 />
               </div>
@@ -188,21 +191,21 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Nome {!isBusiness && <span className="text-red-500">*</span>}
+                  {t("pages.documents.detail.customer.firstName")} {!isBusiness && <span className="text-red-500">*</span>}
                 </label>
                 <input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Nome"
+                  placeholder={t("pages.documents.detail.customer.firstNamePlaceholder")}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Cognome</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.lastName")}</label>
                 <input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Cognome"
+                  placeholder={t("pages.documents.detail.customer.lastNamePlaceholder")}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                 />
               </div>
@@ -221,7 +224,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Telefono</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.phone")}</label>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -235,11 +238,11 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
           {/* Legal Info */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
-              Dati Fiscali
+              {t("pages.documents.detail.customer.fiscalData")}
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">P.IVA</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.vatNumber")}</label>
                 <input
                   value={vatNumber}
                   onChange={(e) => setVatNumber(e.target.value)}
@@ -248,21 +251,21 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Codice Fiscale</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.fiscalCode")}</label>
                 <input
                   value={fiscalCode}
                   onChange={(e) => setFiscalCode(e.target.value)}
-                  placeholder={isBusiness ? "01062490469 (11 cifre)" : "RSSMRA85M01H501Z"}
+                  placeholder={isBusiness ? t("pages.documents.detail.customer.fiscalCodePlaceholderBusiness") : t("pages.documents.detail.customer.fiscalCodePlaceholderPrivate")}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                 />
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  {isBusiness ? "11 cifre senza prefisso IT" : "16 caratteri alfanumerici"}
+                  {isBusiness ? t("pages.documents.detail.customer.fiscalCodeHintBusiness") : t("pages.documents.detail.customer.fiscalCodeHintPrivate")}
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">PEC</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.pec")}</label>
                 <input
                   type="email"
                   value={pecEmail}
@@ -272,7 +275,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Codice SDI</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.sdiCode")}</label>
                 <input
                   value={sdiCode}
                   onChange={(e) => setSdiCode(e.target.value)}
@@ -287,38 +290,38 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
           {/* Legal Seat Address */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
-              Sede Legale
+              {t("pages.documents.detail.customer.legalSeat")}
             </h4>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Destinatario</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.recipient")}</label>
               <input
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
-                placeholder={isBusiness ? companyName || "Ragione sociale" : [firstName, lastName].filter(Boolean).join(" ") || "Nome destinatario"}
+                placeholder={isBusiness ? companyName || t("pages.documents.detail.customer.recipientPlaceholderBusiness") : [firstName, lastName].filter(Boolean).join(" ") || t("pages.documents.detail.customer.recipientPlaceholderPrivate")}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Indirizzo</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.address")}</label>
               <input
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
-                placeholder="Via Roma, 1"
+                placeholder={t("pages.documents.detail.customer.addressPlaceholder")}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
               />
             </div>
             <div className="grid grid-cols-4 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Città</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.city")}</label>
                 <input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Milano"
+                  placeholder={t("pages.documents.detail.customer.cityPlaceholder")}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Provincia</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.province")}</label>
                 <input
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
@@ -328,7 +331,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">CAP</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.postalCode")}</label>
                 <input
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
@@ -339,7 +342,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
               </div>
             </div>
             <div className="w-1/2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Paese</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.country")}</label>
               <input
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -361,7 +364,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
               onClick={onClose}
               className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
             >
-              Annulla
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -369,7 +372,7 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
               className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[#009688] text-white hover:bg-[#00796b] transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {saving ? "Creazione..." : "Crea Cliente"}
+              {saving ? t("pages.documents.detail.customer.creating") : t("pages.documents.detail.customer.createButton")}
             </button>
           </div>
         </form>

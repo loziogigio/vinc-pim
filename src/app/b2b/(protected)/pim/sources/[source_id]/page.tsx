@@ -121,11 +121,11 @@ export default function SourceDetailPage() {
         setIsEditing(false);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to save changes");
+        alert(error.error || t("pages.pim.sources.failedToSave"));
       }
     } catch (error) {
       console.error("Error saving source:", error);
-      alert("Failed to save changes");
+      alert(t("pages.pim.sources.failedToSave"));
     } finally {
       setIsSaving(false);
     }
@@ -146,7 +146,7 @@ export default function SourceDetailPage() {
 
   async function saveFieldMapping(oldSupplierField: string) {
     if (!editingData.supplierField.trim() || !editingData.pimField.trim()) {
-      alert("Both supplier field and PIM field are required");
+      alert(t("pages.pim.sources.bothFieldsRequired"));
       return;
     }
 
@@ -183,16 +183,16 @@ export default function SourceDetailPage() {
         cancelEditingRow();
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to save mapping");
+        alert(error.error || t("pages.pim.sources.failedToSaveMapping"));
       }
     } catch (error) {
       console.error("Error saving mapping:", error);
-      alert("Failed to save mapping");
+      alert(t("pages.pim.sources.failedToSaveMapping"));
     }
   }
 
   async function deleteFieldMapping(supplierField: string) {
-    if (!confirm(`Delete mapping for "${supplierField}"?`)) return;
+    if (!confirm(t("pages.pim.sources.confirmDeleteMapping", { field: supplierField }))) return;
 
     try {
       const newMappings = { ...source?.field_mappings };
@@ -208,11 +208,11 @@ export default function SourceDetailPage() {
         await fetchSource();
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to delete mapping");
+        alert(error.error || t("pages.pim.sources.failedToDeleteMapping"));
       }
     } catch (error) {
       console.error("Error deleting mapping:", error);
-      alert("Failed to delete mapping");
+      alert(t("pages.pim.sources.failedToDeleteMapping"));
     }
   }
 
@@ -269,12 +269,12 @@ export default function SourceDetailPage() {
               {source.is_active ? (
                 <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                   <CheckCircle2 className="h-3 w-3" />
-                  Active
+                  {t("common.active")}
                 </span>
               ) : (
                 <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                   <XCircle className="h-3 w-3" />
-                  Inactive
+                  {t("common.inactive")}
                 </span>
               )}
             </div>
@@ -298,7 +298,7 @@ export default function SourceDetailPage() {
                 }}
                 className="px-4 py-2 rounded border border-border hover:bg-muted"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleSave}
@@ -330,7 +330,7 @@ export default function SourceDetailPage() {
                 <Package className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Products</p>
+                <p className="text-sm text-muted-foreground">{t("pages.pim.sources.statTotalProducts")}</p>
                 <p className="text-2xl font-bold">{statistics.total_products}</p>
               </div>
             </div>
@@ -342,7 +342,7 @@ export default function SourceDetailPage() {
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Published</p>
+                <p className="text-sm text-muted-foreground">{t("pages.pim.sources.statPublished")}</p>
                 <p className="text-2xl font-bold">{statistics.published_products}</p>
               </div>
             </div>
@@ -354,7 +354,7 @@ export default function SourceDetailPage() {
                 <FileText className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Drafts</p>
+                <p className="text-sm text-muted-foreground">{t("pages.pim.sources.statDrafts")}</p>
                 <p className="text-2xl font-bold">{statistics.draft_products}</p>
               </div>
             </div>
@@ -366,7 +366,7 @@ export default function SourceDetailPage() {
                 <TrendingUp className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Imports</p>
+                <p className="text-sm text-muted-foreground">{t("pages.pim.sources.statTotalImports")}</p>
                 <p className="text-2xl font-bold">{source.stats.total_imports}</p>
               </div>
             </div>
@@ -381,7 +381,7 @@ export default function SourceDetailPage() {
           <h2 className="text-lg font-semibold mb-4">{t("pages.pim.sources.basicSettings")}</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Source Name</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.labelSourceName")}</label>
               {isEditing ? (
                 <input
                   type="text"
@@ -397,17 +397,17 @@ export default function SourceDetailPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Source Type</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.labelSourceType")}</label>
               <p className="text-sm text-muted-foreground uppercase">{source.source_type}</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Wholesaler ID</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.labelWholesalerId")}</label>
               {/* wholesaler_id removed - database per wholesaler provides isolation */}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Created At</label>
+              <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.labelCreatedAt")}</label>
               <p className="text-sm text-muted-foreground">
                 {new Date(source.created_at).toLocaleString()}
               </p>
@@ -415,7 +415,7 @@ export default function SourceDetailPage() {
 
             {source.stats.last_import_at && (
               <div>
-                <label className="block text-sm font-medium mb-1">Last Import</label>
+                <label className="block text-sm font-medium mb-1">{t("pages.pim.sources.labelLastImport")}</label>
                 <p className="text-sm text-muted-foreground">
                   {new Date(source.stats.last_import_at).toLocaleString()}
                   {source.stats.last_import_status && (
@@ -445,20 +445,20 @@ export default function SourceDetailPage() {
                   className="rounded border-border"
                 />
               ) : (
-                <span className="text-sm text-muted-foreground">Status:</span>
+                <span className="text-sm text-muted-foreground">{t("pages.pim.sources.autoPublishStatus")}</span>
               )}
               <label htmlFor="auto_publish" className="text-sm font-medium">
                 {isEditing
-                  ? "Enable auto-publish"
+                  ? t("pages.pim.sources.enableAutoPublishLabel")
                   : source.auto_publish_enabled
-                  ? "Enabled"
-                  : "Disabled"}
+                  ? t("pages.pim.sources.autoPublishEnabledStatus")
+                  : t("pages.pim.sources.autoPublishDisabledStatus")}
               </label>
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Quality Score Threshold
+                {t("pages.pim.sources.qualityScoreThreshold")}
               </label>
               {isEditing ? (
                 <input
@@ -480,13 +480,13 @@ export default function SourceDetailPage() {
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Products with score above this will auto-publish
+                {t("pages.pim.sources.autoPublishScoreHint")}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Conflict Resolution
+                {t("pages.pim.sources.conflictResolution")}
               </label>
               {isEditing ? (
                 <select
@@ -499,8 +499,8 @@ export default function SourceDetailPage() {
                   }
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="automatic">Automatic (API always overwrites)</option>
-                  <option value="manual">Manual (Protect manual edits)</option>
+                  <option value="automatic">{t("pages.pim.sources.conflictAutomatic")}</option>
+                  <option value="manual">{t("pages.pim.sources.conflictManual")}</option>
                 </select>
               ) : (
                 <p className="text-sm text-muted-foreground capitalize">
@@ -509,13 +509,13 @@ export default function SourceDetailPage() {
               )}
               <p className="text-xs text-muted-foreground mt-1">
                 {editData.overwrite_level === "automatic"
-                  ? "API updates will always overwrite manual edits without creating conflicts"
-                  : "Manual edits will be protected - conflicts created when API tries to update them"}
+                  ? t("pages.pim.sources.conflictAutomaticDesc")
+                  : t("pages.pim.sources.conflictManualDesc")}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Required Fields</label>
+              <label className="block text-sm font-medium mb-2">{t("pages.pim.sources.labelRequiredFields")}</label>
               {isEditing ? (
                 <div className="space-y-2">
                   <textarea
@@ -534,7 +534,7 @@ export default function SourceDetailPage() {
                     placeholder="name, sku, price, image"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Comma-separated list of required field names
+                    {t("pages.pim.sources.requiredFieldsHint")}
                   </p>
                 </div>
               ) : (
@@ -559,8 +559,7 @@ export default function SourceDetailPage() {
             <div>
               <h2 className="text-lg font-semibold">{t("pages.pim.sources.fieldMappings")}</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {Object.keys(source.field_mappings || {}).length} mappings configured.
-                Fields not listed use 1:1 mapping.
+                {t("pages.pim.sources.mappingCountDesc", { count: Object.keys(source.field_mappings || {}).length })}
               </p>
             </div>
             <button
@@ -577,12 +576,10 @@ export default function SourceDetailPage() {
 
           <div className="mb-4 p-3 rounded bg-blue-50 border border-blue-200">
             <p className="text-sm text-blue-800">
-              <strong>Mapping Rules:</strong> Only add mappings when your supplier uses different field names than the PIM standard.
-              Unmapped fields automatically use 1:1 mapping (supplier field = PIM field).
+              <strong>{t("pages.pim.sources.mappingRulesTitle")}</strong> {t("pages.pim.sources.mappingRulesDesc")}
             </p>
             <p className="text-sm text-blue-800 mt-2">
-              <strong>Required Fields:</strong> <span className="px-1 py-0.5 rounded text-xs bg-purple-600 text-white">schema required</span> fields (entity_code, sku, name) cannot be unmarked.
-              Use the &quot;Required&quot; checkbox to mark additional fields as <span className="px-1 py-0.5 rounded text-xs bg-red-600 text-white">required</span> for this supplier.
+              <strong>{t("pages.pim.sources.requiredFieldsTitle")}</strong> <span className="px-1 py-0.5 rounded text-xs bg-purple-600 text-white">{t("pages.pim.sources.schemaRequiredBadge")}</span> {t("pages.pim.sources.schemaRequiredNote")}
             </p>
           </div>
 
@@ -601,7 +598,7 @@ export default function SourceDetailPage() {
                       type="text"
                       value={editingData.supplierField}
                       onChange={(e) => setEditingData({ ...editingData, supplierField: e.target.value })}
-                      placeholder="Supplier field name"
+                      placeholder={t("pages.pim.sources.supplierFieldPlaceholder")}
                       className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
                     />
                     <span className="text-muted-foreground">→</span>
@@ -610,7 +607,7 @@ export default function SourceDetailPage() {
                       onChange={(e) => setEditingData({ ...editingData, pimField: e.target.value })}
                       className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
                     >
-                      <option value="">Select PIM field...</option>
+                      <option value="">{t("pages.pim.sources.selectPimField")}</option>
                       {FIELD_CATEGORIES.map(category => (
                         <optgroup key={category.key} label={category.label}>
                           {PIM_PRODUCT_SCHEMA.filter(f => f.category === category.key).map(field => (
@@ -624,14 +621,14 @@ export default function SourceDetailPage() {
                     <button
                       onClick={() => saveFieldMapping(supplierField)}
                       className="p-2 rounded bg-green-600 text-white hover:bg-green-700"
-                      title="Save"
+                      title={t("common.save")}
                     >
                       <Save className="h-4 w-4" />
                     </button>
                     <button
                       onClick={cancelEditingRow}
                       className="p-2 rounded border border-border hover:bg-muted"
-                      title="Cancel"
+                      title={t("common.cancel")}
                     >
                       <XCircle className="h-4 w-4" />
                     </button>
@@ -667,12 +664,12 @@ export default function SourceDetailPage() {
                   )}
                   {isSchemaRequired && (
                     <span className="px-2 py-0.5 rounded text-xs bg-purple-600 text-white">
-                      schema required
+                      {t("pages.pim.sources.schemaRequiredBadge")}
                     </span>
                   )}
                   {!isSchemaRequired && isRequired && (
                     <span className="px-2 py-0.5 rounded text-xs bg-red-600 text-white">
-                      required
+                      {t("pages.pim.sources.requiredCheckbox")}
                     </span>
                   )}
                   <label className={`flex items-center gap-1 ${isSchemaRequired ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`} title={isSchemaRequired ? "Schema-level required field (cannot be changed)" : "Toggle required"}>
@@ -703,19 +700,19 @@ export default function SourceDetailPage() {
                       }}
                       className="rounded border-gray-300"
                     />
-                    <span className="text-xs text-muted-foreground">Required</span>
+                    <span className="text-xs text-muted-foreground">{t("pages.pim.sources.requiredCheckbox")}</span>
                   </label>
                   <button
                     onClick={() => startEditingRow(supplierField, pimField)}
                     className="p-2 rounded border border-border hover:bg-muted"
-                    title="Edit"
+                    title={t("common.edit")}
                   >
                     <Settings className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => deleteFieldMapping(supplierField)}
                     className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600"
-                    title="Delete"
+                    title={t("common.delete")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -730,7 +727,7 @@ export default function SourceDetailPage() {
                   type="text"
                   value={editingData.supplierField}
                   onChange={(e) => setEditingData({ ...editingData, supplierField: e.target.value })}
-                  placeholder="Supplier field name"
+                  placeholder={t("pages.pim.sources.supplierFieldPlaceholder")}
                   className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
                 />
                 <span className="text-muted-foreground">→</span>
@@ -739,7 +736,7 @@ export default function SourceDetailPage() {
                   onChange={(e) => setEditingData({ ...editingData, pimField: e.target.value })}
                   className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
                 >
-                  <option value="">Select PIM field...</option>
+                  <option value="">{t("pages.pim.sources.selectPimField")}</option>
                   {FIELD_CATEGORIES.map(category => (
                     <optgroup key={category.key} label={category.label}>
                       {PIM_PRODUCT_SCHEMA.filter(f => f.category === category.key).map(field => (
@@ -757,19 +754,19 @@ export default function SourceDetailPage() {
                     onChange={(e) => setIsNewFieldRequired(e.target.checked)}
                     className="rounded border-gray-300"
                   />
-                  <span className="text-xs text-muted-foreground">Required</span>
+                  <span className="text-xs text-muted-foreground">{t("pages.pim.sources.requiredCheckbox")}</span>
                 </label>
                 <button
                   onClick={() => saveFieldMapping("")}
                   className="p-2 rounded bg-green-600 text-white hover:bg-green-700"
-                  title="Save"
+                  title={t("common.save")}
                 >
                   <Save className="h-4 w-4" />
                 </button>
                 <button
                   onClick={cancelEditingRow}
                   className="p-2 rounded border border-border hover:bg-muted"
-                  title="Cancel"
+                  title={t("common.cancel")}
                 >
                   <XCircle className="h-4 w-4" />
                 </button>
@@ -780,17 +777,17 @@ export default function SourceDetailPage() {
             {Object.keys(source.field_mappings || {}).length === 0 && !isAddingNew && (
               <div className="text-center py-12 text-muted-foreground">
                 <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">No custom field mappings configured.</p>
-                <p className="text-xs mt-1">All fields will use 1:1 mapping by default.</p>
+                <p className="text-sm">{t("pages.pim.sources.noMappingsDesc")}</p>
+                <p className="text-xs mt-1">{t("pages.pim.sources.noMappingsHint")}</p>
               </div>
             )}
           </div>
 
           {/* PIM Schema Reference - Collapsible */}
           <div className="border-t mt-6 pt-6">
-            <h3 className="text-sm font-medium mb-3">PIM Product Schema Reference</h3>
+            <h3 className="text-sm font-medium mb-3">{t("pages.pim.sources.schemaReference")}</h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Click on categories to view available PIM fields and their descriptions
+              {t("pages.pim.sources.schemaReferenceHint")}
             </p>
             <div className="space-y-2">
               {FIELD_CATEGORIES.map(category => {
@@ -827,7 +824,7 @@ export default function SourceDetailPage() {
                                 </span>
                                 {field.required && (
                                   <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">
-                                    required
+                                    {t("pages.pim.sources.requiredCheckbox")}
                                   </span>
                                 )}
                               </div>

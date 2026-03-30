@@ -10,6 +10,7 @@ import { BulkUpdateModal, BulkUpdateData } from "@/components/pim/BulkUpdateModa
 import { ProductImage, PIMProductListItem } from "@/lib/types/pim";
 import { LanguageStatusBadge } from "@/components/pim/LanguageStatusBadge";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { AutocompleteInput } from "@/components/shared/AutocompleteInput";
 import {
   Search,
   Filter,
@@ -19,6 +20,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Eye,
+  EyeOff,
   X,
   ChevronDown,
   ChevronUp,
@@ -66,6 +68,8 @@ type FilterState = {
   sku_match: "exact" | "starts" | "includes" | "ends";
   parent_sku: string;
   parent_sku_match: "exact" | "starts" | "includes" | "ends";
+  product_kind: string;
+  product_type: string;
 };
 
 /**
@@ -103,6 +107,7 @@ export default function ProductsListPage() {
   const [batchSuggestions, setBatchSuggestions] = useState<string[]>([]);
   const [brandSuggestions, setBrandSuggestions] = useState<string[]>([]);
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
+  const [productTypeSuggestions, setProductTypeSuggestions] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -133,6 +138,8 @@ export default function ProductsListPage() {
     sku_match: (searchParams?.get("sku_match") as FilterState["sku_match"]) || "exact",
     parent_sku: searchParams?.get("parent_sku") || "",
     parent_sku_match: (searchParams?.get("parent_sku_match") as FilterState["parent_sku_match"]) || "exact",
+    product_kind: searchParams?.get("product_kind") || "",
+    product_type: searchParams?.get("product_type") || "",
   });
 
   // Selection handlers
@@ -188,11 +195,11 @@ export default function ProductsListPage() {
         window.URL.revokeObjectURL(url);
       } else {
         const error = await res.json();
-        alert(`Export failed: ${error.error || "Unknown error"}`);
+        alert(t("pages.pim.products.exportFailed", { error: error.error || "Unknown error" }));
       }
     } catch (error) {
       console.error("Error exporting products:", error);
-      alert("Failed to export products. Please try again.");
+      alert(t("pages.pim.products.failedToExport"));
     }
   };
 
@@ -215,11 +222,11 @@ export default function ProductsListPage() {
         router.push(`${tenantPrefix}/b2b/pim/jobs`);
       } else {
         const error = await res.json();
-        alert(`Bulk update failed: ${error.error || "Unknown error"}`);
+        alert(t("pages.pim.products.bulkUpdateFailed", { error: error.error || "Unknown error" }));
       }
     } catch (error) {
       console.error("Error bulk updating products:", error);
-      alert("Failed to queue bulk update. Please try again.");
+      alert(t("pages.pim.products.failedToBulkUpdate"));
     }
   };
 
@@ -236,6 +243,7 @@ export default function ProductsListPage() {
     fetchBatchSuggestions();
     fetchBrandSuggestions();
     fetchCategorySuggestions();
+    fetchProductTypeSuggestions();
   }, []);
 
   async function fetchBatchSuggestions(search: string = "") {
@@ -285,6 +293,22 @@ export default function ProductsListPage() {
     }
   }
 
+  async function fetchProductTypeSuggestions(search: string = "") {
+    try {
+      const params = new URLSearchParams();
+      params.set("type", "product_type");
+      if (search) params.set("search", search);
+
+      const res = await fetch(`/api/b2b/pim/filters?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProductTypeSuggestions(data.product_types || []);
+      }
+    } catch (error) {
+      console.error("Error fetching product type suggestions:", error);
+    }
+  }
+
   async function fetchProducts() {
     setIsLoading(true);
     try {
@@ -328,10 +352,64 @@ export default function ProductsListPage() {
     router.push(`${tenantPrefix}/b2b/pim/products?${params.toString()}`);
   }
 
-  function goToPage(page: number) {
+  function goToPage(newPage: number) {
     const params = new URLSearchParams(searchParams?.toString() || "");
-    params.set("page", page.toString());
+    params.set("page", newPage.toString());
     router.push(`${tenantPrefix}/b2b/pim/products?${params.toString()}`);
+  }
+
+  function renderPagination() {
+    if (pagination.pages <= 1) return null;
+    return (
+      <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+        <div className="text-sm text-muted-foreground">
+          Showing {(pagination.page - 1) * pagination.limit + 1}–
+          {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+          {pagination.total} products
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => goToPage(pagination.page - 1)}
+            disabled={pagination.page === 1}
+            className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
+            let pageNum: number;
+            if (pagination.pages <= 7) {
+              pageNum = i + 1;
+            } else if (pagination.page <= 4) {
+              pageNum = i + 1;
+            } else if (pagination.page >= pagination.pages - 3) {
+              pageNum = pagination.pages - 6 + i;
+            } else {
+              pageNum = pagination.page - 3 + i;
+            }
+            return (
+              <button
+                key={pageNum}
+                onClick={() => goToPage(pageNum)}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  pageNum === pagination.page
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-input hover:bg-accent"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => goToPage(pagination.page + 1)}
+            disabled={pagination.page === pagination.pages}
+            className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const renderEmptyState = () => (
@@ -376,7 +454,7 @@ export default function ProductsListPage() {
 
       {/* Filters */}
       <div className="rounded-lg bg-card p-3.5 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto_auto]">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -410,6 +488,18 @@ export default function ProductsListPage() {
             <option value="">{t("pages.pim.products.allItems")}</option>
             <option value="true">{t("pages.pim.products.needsMerge")}</option>
             <option value="false">{t("pages.pim.products.noConflicts")}</option>
+          </select>
+
+          {/* Product Kind Filter */}
+          <select
+            value={filters.product_kind}
+            onChange={(e) => updateFilters({ product_kind: e.target.value })}
+            className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          >
+            <option value="">{t("pages.pim.products.allProductKinds")}</option>
+            <option value="standard">{t("pages.pim.products.kindStandard")}</option>
+            <option value="bookable">{t("pages.pim.products.kindBookable")}</option>
+            <option value="service">{t("pages.pim.products.kindService")}</option>
           </select>
 
           {/* Sort */}
@@ -467,28 +557,15 @@ export default function ProductsListPage() {
         {showAdvancedFilters && (
           <div className="mt-3 p-4 border border-border rounded-lg bg-muted/30">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Batch ID</label>
-                <input
-                  type="text"
-                  placeholder="Filter by batch ID"
-                  value={filters.batch_id}
-                  onChange={(e) => {
-                    updateFilters({ batch_id: e.target.value });
-                    // Fetch suggestions as user types
-                    if (e.target.value.length > 0) {
-                      fetchBatchSuggestions(e.target.value);
-                    }
-                  }}
-                  list="batch-suggestions"
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
-                />
-                <datalist id="batch-suggestions">
-                  {batchSuggestions.map((batch) => (
-                    <option key={batch} value={batch} />
-                  ))}
-                </datalist>
-              </div>
+              <AutocompleteInput
+                label="Batch ID"
+                placeholder="Filter by batch ID"
+                value={filters.batch_id}
+                onChange={(v) => updateFilters({ batch_id: v })}
+                onSearch={(v) => v.length > 0 && fetchBatchSuggestions(v)}
+                suggestions={batchSuggestions}
+                inputClassName="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
+              />
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Entity Code</label>
                 <input
@@ -543,50 +620,30 @@ export default function ProductsListPage() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Brand</label>
-                <input
-                  type="text"
-                  placeholder="Filter by brand"
-                  value={filters.brand}
-                  onChange={(e) => {
-                    updateFilters({ brand: e.target.value });
-                    // Fetch suggestions as user types
-                    if (e.target.value.length > 0) {
-                      fetchBrandSuggestions(e.target.value);
-                    }
-                  }}
-                  list="brand-suggestions"
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-                <datalist id="brand-suggestions">
-                  {brandSuggestions.map((brand) => (
-                    <option key={brand} value={brand} />
-                  ))}
-                </datalist>
-              </div>
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Category</label>
-                <input
-                  type="text"
-                  placeholder="Filter by category"
-                  value={filters.category}
-                  onChange={(e) => {
-                    updateFilters({ category: e.target.value });
-                    // Fetch suggestions as user types
-                    if (e.target.value.length > 0) {
-                      fetchCategorySuggestions(e.target.value);
-                    }
-                  }}
-                  list="category-suggestions"
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-                <datalist id="category-suggestions">
-                  {categorySuggestions.map((category) => (
-                    <option key={category} value={category} />
-                  ))}
-                </datalist>
-              </div>
+              <AutocompleteInput
+                label="Brand"
+                placeholder="Filter by brand"
+                value={filters.brand}
+                onChange={(v) => updateFilters({ brand: v })}
+                onSearch={(v) => v.length > 0 && fetchBrandSuggestions(v)}
+                suggestions={brandSuggestions}
+              />
+              <AutocompleteInput
+                label="Category"
+                placeholder="Filter by category"
+                value={filters.category}
+                onChange={(v) => updateFilters({ category: v })}
+                onSearch={(v) => v.length > 0 && fetchCategorySuggestions(v)}
+                suggestions={categorySuggestions}
+              />
+              <AutocompleteInput
+                label={t("pages.pim.products.productType")}
+                placeholder={t("pages.pim.products.filterByProductType")}
+                value={filters.product_type}
+                onChange={(v) => updateFilters({ product_type: v })}
+                onSearch={(v) => v.length > 0 && fetchProductTypeSuggestions(v)}
+                suggestions={productTypeSuggestions}
+              />
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Min Price</label>
                 <input
@@ -638,7 +695,7 @@ export default function ProductsListPage() {
         {/* Active Filters */}
         {(filters.batch_id || filters.status || filters.search || filters.date_from || filters.date_to ||
           filters.has_conflict || filters.entity_code || filters.sku || filters.parent_sku || filters.brand || filters.category ||
-          filters.price_min || filters.price_max || filters.score_min || filters.score_max) && (
+          filters.price_min || filters.price_max || filters.score_min || filters.score_max || filters.product_kind || filters.product_type) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">{t("pages.pim.products.activeFilters")}:</span>
             {filters.batch_id && (
@@ -780,11 +837,34 @@ export default function ProductsListPage() {
                 </button>
               </div>
             )}
+            {filters.product_kind && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                <span>{t("pages.pim.products.productKind")}: {filters.product_kind}</span>
+                <button
+                  onClick={() => updateFilters({ product_kind: "" })}
+                  className="hover:bg-primary/20 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {filters.product_type && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                <span>{t("pages.pim.products.productType")}: {filters.product_type}</span>
+                <button
+                  onClick={() => updateFilters({ product_type: "" })}
+                  className="hover:bg-primary/20 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
             <button
               onClick={() => updateFilters({
                 batch_id: "", status: "", search: "", date_from: "", date_to: "", has_conflict: "",
                 entity_code: "", sku: "", sku_match: "exact", parent_sku: "", parent_sku_match: "exact",
-                brand: "", category: "", price_min: "", price_max: "", score_min: "", score_max: ""
+                brand: "", category: "", price_min: "", price_max: "", score_min: "", score_max: "",
+                product_kind: "", product_type: ""
               })}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
@@ -844,6 +924,7 @@ export default function ProductsListPage() {
           renderEmptyState()
         ) : (
           <>
+            {renderPagination()}
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-muted/50 border-b border-border">
@@ -983,18 +1064,26 @@ export default function ProductsListPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            product.status === "published"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : product.status === "draft"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
-                          {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              product.status === "published"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : product.status === "draft"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
+                            {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                          </span>
+                          {(product as Product & { not_visible?: boolean }).not_visible && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                              <EyeOff className="h-2.5 w-2.5" />
+                              {t("pages.pim.products.notVisible")}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-xs text-muted-foreground">
@@ -1049,35 +1138,7 @@ export default function ProductsListPage() {
               </table>
             </div>
 
-            {/* Pagination */}
-            {pagination.pages > 1 && (
-              <div className="border-t border-border px-4 py-3 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                  {pagination.total} products
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => goToPage(pagination.page - 1)}
-                    disabled={pagination.page === 1}
-                    className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <div className="text-sm font-medium text-foreground">
-                    Page {pagination.page} of {pagination.pages}
-                  </div>
-                  <button
-                    onClick={() => goToPage(pagination.page + 1)}
-                    disabled={pagination.page === pagination.pages}
-                    className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
+            {renderPagination()}
           </>
         )}
       </div>

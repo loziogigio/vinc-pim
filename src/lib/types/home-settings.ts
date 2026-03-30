@@ -555,6 +555,8 @@ export interface HomeSettings {
   meta_tags?: MetaTags;
   /** Image version generation settings for PIM product uploads */
   image_versions?: ImageVersionsSettings;
+  /** Windmill hook proxy settings for ERP integration */
+  windmill_proxy?: import("./windmill-proxy").WindmillProxySettings;
   createdAt: string | Date;
   updatedAt: string | Date;
   lastModifiedBy?: string;

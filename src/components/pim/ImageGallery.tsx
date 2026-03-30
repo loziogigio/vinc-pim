@@ -22,6 +22,7 @@ import { GripVertical, Trash2, Upload, Image as ImageIcon, X, ZoomIn, Star } fro
 import { toast } from "sonner";
 import { ProductImage } from "@/lib/types/pim";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface ImageGalleryProps {
   images: ProductImage[];
@@ -48,6 +49,7 @@ function SortableImageItem({
   isPrimary?: boolean;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -83,7 +85,7 @@ function SortableImageItem({
       {isPrimary && (
         <div className="absolute top-2 right-2 z-10 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
           <Star className="h-3 w-3 fill-current" />
-          PRIMARY
+          {t("pages.pim.imageGallery.primary")}
         </div>
       )}
 
@@ -132,10 +134,10 @@ function SortableImageItem({
               onClick={() => onSetPrimary(image.cdn_key)}
               disabled={disabled}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-yellow-500 text-white text-xs font-medium rounded hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Set as primary image"
+              title={t("pages.pim.imageGallery.setPrimary")}
             >
               <Star className="h-3 w-3" />
-              Set Primary
+              {t("pages.pim.imageGallery.setPrimary")}
             </button>
           )}
 
@@ -145,10 +147,10 @@ function SortableImageItem({
             onClick={() => onDelete(image.cdn_key)}
             disabled={disabled}
             className={`${onSetPrimary && !isPrimary ? '' : 'flex-1'} flex items-center justify-center gap-1 px-2 py-1.5 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed`}
-            title="Delete image"
+            title={t("pages.pim.imageGallery.delete")}
           >
             <Trash2 className="h-3 w-3" />
-            Delete
+            {t("pages.pim.imageGallery.delete")}
           </button>
         </div>
       </div>
@@ -165,6 +167,7 @@ export function ImageGallery({
   primaryImageKey,
   disabled = false,
 }: ImageGalleryProps) {
+  const { t } = useTranslation();
   const [images, setImages] = useState(initialImages);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -216,10 +219,10 @@ export function ImageGallery({
     try {
       await onDelete(s3_key);
       setImages(images.filter((img) => img.cdn_key !== s3_key));
-      toast.success("Image deleted successfully");
+      toast.success(t("pages.pim.imageGallery.deleteSuccess"));
     } catch (error) {
       console.error("Failed to delete image:", error);
-      toast.error("Failed to delete image. Please try again.");
+      toast.error(t("pages.pim.imageGallery.deleteError"));
     } finally {
       setDeleting(null);
     }
@@ -231,10 +234,10 @@ export function ImageGallery({
     setSettingPrimary(s3_key);
     try {
       await onSetPrimary(s3_key);
-      toast.success("Primary image updated");
+      toast.success(t("pages.pim.imageGallery.primaryUpdated"));
     } catch (error) {
       console.error("Failed to set primary image:", error);
-      toast.error("Failed to set primary image. Please try again.");
+      toast.error(t("pages.pim.imageGallery.primaryError"));
     } finally {
       setSettingPrimary(null);
     }
@@ -248,10 +251,10 @@ export function ImageGallery({
     try {
       await onUpload(files);
       e.target.value = "";
-      toast.success(`${files.length} image(s) uploaded successfully`);
+      toast.success(t("pages.pim.imageGallery.uploadSuccess", { count: String(files.length) }));
     } catch (error) {
       console.error("Failed to upload images:", error);
-      toast.error("Failed to upload images. Please try again.");
+      toast.error(t("pages.pim.imageGallery.uploadError"));
     } finally {
       setUploading(false);
     }
@@ -263,7 +266,7 @@ export function ImageGallery({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
-          Product Images
+          {t("pages.pim.imageGallery.title")}
         </h3>
         <label
           className={`
@@ -274,7 +277,7 @@ export function ImageGallery({
           `}
         >
           <Upload className="h-4 w-4" />
-          {uploading ? "Uploading..." : "Upload Images"}
+          {uploading ? t("pages.pim.imageGallery.uploading") : t("pages.pim.imageGallery.uploadImages")}
           <input
             type="file"
             multiple
@@ -290,9 +293,9 @@ export function ImageGallery({
       {images.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-600 mb-2">No images uploaded yet</p>
+          <p className="text-gray-600 mb-2">{t("pages.pim.imageGallery.noImages")}</p>
           <p className="text-sm text-gray-500">
-            Click &quot;Upload Images&quot; to add product images
+            {t("pages.pim.imageGallery.uploadHint")}
           </p>
         </div>
       ) : (
@@ -326,12 +329,12 @@ export function ImageGallery({
       <div className="flex items-start gap-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
         <ImageIcon className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-blue-900 mb-1">Image Management Guide:</p>
+          <p className="font-medium text-blue-900 mb-1">{t("pages.pim.imageGallery.guideTitle")}</p>
           <ul className="space-y-1">
-            <li>• <strong>Position #{'\u0023'}1</strong> is always the primary/main product image</li>
-            <li>• <strong>Drag</strong> the handle at the top to reorder images</li>
-            <li>• Click <strong>"Set Primary"</strong> to move any image to position #1</li>
-            <li>• Click on an image to <strong>preview</strong> it in full screen</li>
+            <li>• <strong>{t("pages.pim.imageGallery.guidePos1")}</strong></li>
+            <li>• <strong>{t("pages.pim.imageGallery.guideDrag")}</strong></li>
+            <li>• <strong>{t("pages.pim.imageGallery.guideSetPrimary")}</strong></li>
+            <li>• <strong>{t("pages.pim.imageGallery.guidePreview")}</strong></li>
           </ul>
         </div>
       </div>
@@ -339,10 +342,10 @@ export function ImageGallery({
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={!!deleteConfirm}
-        title="Delete Image"
-        message="Are you sure you want to delete this image? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={t("pages.pim.imageGallery.deleteDialogTitle")}
+        message={t("pages.pim.imageGallery.deleteDialogMessage")}
+        confirmText={t("pages.pim.imageGallery.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteConfirm(null)}

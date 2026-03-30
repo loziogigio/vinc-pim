@@ -33,6 +33,8 @@ export interface CreateDepartureRequest {
   /** Override default hold TTL (ms) for this departure */
   hold_ttl_ms?: number;
   resources: CreateResourceRequest[];
+  /** Extensible metadata (cruise itinerary, ports, destination, etc.) */
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdateDepartureRequest {
@@ -46,6 +48,7 @@ export interface UpdateDepartureRequest {
 
 export interface DepartureListFilters {
   product_entity_code?: string;
+  oc_cruise_id?: number;
   status?: DepartureStatus;
   date_from?: string;
   date_to?: string;

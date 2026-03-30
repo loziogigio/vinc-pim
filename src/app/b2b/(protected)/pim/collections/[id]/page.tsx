@@ -48,7 +48,7 @@ export default function CollectionDetailPage() {
       setProductCount(data.collection.product_count || 0);
     } catch (error) {
       console.error("Failed to fetch collection:", error);
-      toast.error("Failed to load collection");
+      toast.error(t("pages.pim.collections.loadFailed"));
       router.push("/b2b/pim/collections");
     } finally {
       setLoading(false);
@@ -67,20 +67,22 @@ export default function CollectionDetailPage() {
 
       if (res.ok) {
         toast.success(
-          collection.is_active ? "Collection deactivated" : "Collection activated"
+          collection.is_active
+            ? t("pages.pim.collections.deactivated")
+            : t("pages.pim.collections.activated")
         );
         fetchCollection();
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      toast.error("Failed to update status");
+      toast.error(t("pages.pim.collections.updateStatusFailed"));
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t("common.loading")}</div>
       </div>
     );
   }
@@ -88,7 +90,7 @@ export default function CollectionDetailPage() {
   if (!collection) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Collection not found</div>
+        <div className="text-muted-foreground">{t("pages.pim.collections.notFound")}</div>
       </div>
     );
   }
@@ -101,12 +103,12 @@ export default function CollectionDetailPage() {
     syncUrl: `/api/b2b/pim/collections/{id}/sync`,
     importUrl: `/api/b2b/pim/collections/{id}/import`,
     exportUrl: `/api/b2b/pim/collections/{id}/export`,
-    title: "Products in Collection",
-    description: `Products associated with this collection (${productCount} products)`,
-    emptyMessage: "No products in this collection yet.",
-    addButtonText: "Add Products",
-    addModalTitle: "Add Products to Collection",
-    addModalDescription: "Search and select products to add to this collection",
+    title: t("pages.pim.collections.productsInCollection"),
+    description: `${t("pages.pim.collections.productsInCollection")} (${productCount} ${t("pages.pim.collections.productsCount")})`,
+    emptyMessage: t("pages.pim.collections.noProductsInCollection"),
+    addButtonText: t("pages.pim.common.addProducts"),
+    addModalTitle: t("pages.pim.collections.addProductsToCollection"),
+    addModalDescription: t("pages.pim.collections.addProductsToCollectionDescription"),
     exportFilename: `collection-${collection.slug}-products.csv`,
     // Collections API uses POST with action field for both add/remove
     addRequestActionField: "action",
@@ -130,7 +132,7 @@ export default function CollectionDetailPage() {
               </h1>
               {!collection.is_active && (
                 <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
-                  Inactive
+                  {t("common.inactive")}
                 </span>
               )}
             </div>
@@ -141,9 +143,9 @@ export default function CollectionDetailPage() {
             )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
               <Package className="h-4 w-4" />
-              <span>{productCount} products</span>
+              <span>{productCount} {t("pages.pim.collections.productsCount")}</span>
               <span className="mx-2">|</span>
-              <span>Slug: {collection.slug}</span>
+              <span>{t("pages.pim.collections.slugLabel")} {collection.slug}</span>
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Language {
   _id: string;
@@ -32,6 +33,7 @@ interface LanguageStats {
 }
 
 export default function LanguageManagement() {
+  const { t } = useTranslation();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [stats, setStats] = useState<LanguageStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,8 +72,8 @@ export default function LanguageManagement() {
   // Toggle language enable/disable
   const toggleLanguage = async (language: Language) => {
     if (language.code === "it") {
-      toast.error("Cannot Disable Italian", {
-        description: "Italian (IT) is the required default language and cannot be disabled.",
+      toast.error(t("components.languageManagement.cannotDisableDefault"), {
+        description: t("components.languageManagement.cannotDisableDefaultDesc"),
         duration: 4000,
       });
       return;
@@ -83,7 +85,9 @@ export default function LanguageManagement() {
       setTogglingLang(language.code);
 
       toast.loading(
-        `${action === "enable" ? "Enabling" : "Disabling"} ${language.name} (${language.code.toUpperCase()})...`,
+        action === "enable"
+          ? t("components.languageManagement.enablingLanguage", { name: language.name, code: language.code.toUpperCase() })
+          : t("components.languageManagement.disablingLanguage", { name: language.name, code: language.code.toUpperCase() }),
         { id: `toggle-${language.code}` }
       );
 
@@ -97,12 +101,12 @@ export default function LanguageManagement() {
 
       if (data.success) {
         const successMsg = action === "enable"
-          ? `${language.name} Enabled for Data Entry`
-          : `${language.name} Disabled`;
+          ? t("components.languageManagement.enabledForDataEntry", { name: language.name })
+          : t("components.languageManagement.languageDisabled", { name: language.name });
 
         const description = action === "enable"
-          ? `✓ Solr schema fields created for ${language.code.toUpperCase()}\n✓ Language available in product forms\n\nNote: Search indexing is not yet active. Use the Search Engine toggle to enable it.`
-          : `Products with ${language.code.toUpperCase()} content remain accessible but new content cannot be added.`;
+          ? t("components.languageManagement.enabledDesc", { code: language.code.toUpperCase() })
+          : t("components.languageManagement.disabledDesc", { code: language.code.toUpperCase() });
 
         toast.success(successMsg, {
           id: `toggle-${language.code}`,
@@ -111,16 +115,21 @@ export default function LanguageManagement() {
         });
         await fetchLanguages();
       } else {
-        toast.error(`Failed to ${action === "enable" ? "Enable" : "Disable"} Language`, {
-          id: `toggle-${language.code}`,
-          description: data.error || "An unknown error occurred. Please try again.",
-          duration: 5000,
-        });
+        toast.error(
+          action === "enable"
+            ? t("components.languageManagement.failedToEnable")
+            : t("components.languageManagement.failedToDisable"),
+          {
+            id: `toggle-${language.code}`,
+            description: data.error || t("common.error"),
+            duration: 5000,
+          }
+        );
       }
     } catch (error) {
-      toast.error("Language Toggle Failed", {
+      toast.error(t("components.languageManagement.toggleFailed"), {
         id: `toggle-${language.code}`,
-        description: "Unable to connect to the server. Please check your internet connection and try again.",
+        description: t("components.languageManagement.toggleFailedDesc"),
         duration: 5000,
       });
       console.error(error);
@@ -132,8 +141,8 @@ export default function LanguageManagement() {
   // Toggle search engine enable/disable
   const toggleSearchEngine = async (language: Language) => {
     if (!language.isEnabled) {
-      toast.error("Cannot Enable Search Indexing", {
-        description: `${language.name} (${language.code.toUpperCase()}) must be enabled for data entry first. Please enable the language before activating search.`,
+      toast.error(t("components.languageManagement.cannotEnableSearch"), {
+        description: t("components.languageManagement.cannotEnableSearchDesc", { name: language.name, code: language.code.toUpperCase() }),
         duration: 5000,
       });
       return;
@@ -145,7 +154,9 @@ export default function LanguageManagement() {
       setTogglingSearch(language.code);
 
       toast.loading(
-        `${action === "enable" ? "Activating" : "Deactivating"} search engine for ${language.name} (${language.code.toUpperCase()})...`,
+        action === "enable"
+          ? t("components.languageManagement.activatingSearch", { name: language.name, code: language.code.toUpperCase() })
+          : t("components.languageManagement.deactivatingSearch", { name: language.name, code: language.code.toUpperCase() }),
         { id: `toggle-search-${language.code}` }
       );
 
@@ -161,8 +172,8 @@ export default function LanguageManagement() {
 
       if (data.success) {
         const successMsg = action === "enable"
-          ? `Search Engine Activated for ${language.name}`
-          : `Search Engine Deactivated for ${language.name}`;
+          ? t("components.languageManagement.searchActivated", { name: language.name })
+          : t("components.languageManagement.searchDeactivated", { name: language.name });
 
         let description = "";
         if (action === "enable" && data.jobQueued) {
@@ -182,16 +193,21 @@ export default function LanguageManagement() {
         });
         await fetchLanguages();
       } else {
-        toast.error(`Failed to ${action === "enable" ? "Activate" : "Deactivate"} Search Engine`, {
-          id: `toggle-search-${language.code}`,
-          description: data.error || "An unknown error occurred. Please check the console for details.",
-          duration: 6000,
-        });
+        toast.error(
+          action === "enable"
+            ? t("components.languageManagement.failedToActivateSearch")
+            : t("components.languageManagement.failedToDeactivateSearch"),
+          {
+            id: `toggle-search-${language.code}`,
+            description: data.error || t("common.error"),
+            duration: 6000,
+          }
+        );
       }
     } catch (error) {
-      toast.error("Search Engine Toggle Failed", {
+      toast.error(t("components.languageManagement.searchToggleFailed"), {
         id: `toggle-search-${language.code}`,
-        description: "Unable to connect to the server. Please check your internet connection and try again.",
+        description: t("components.languageManagement.toggleFailedDesc"),
         duration: 5000,
       });
       console.error(error);
@@ -220,10 +236,10 @@ export default function LanguageManagement() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Globe className="h-6 w-6" />
-          Language Management
+          {t("components.languageManagement.title")}
         </h1>
         <p className="text-sm text-gray-600 mt-1">
-          Enable or disable languages without restarting the application. Solr schema updates happen automatically.
+          {t("components.languageManagement.subtitle")}
         </p>
       </div>
 
@@ -231,19 +247,19 @@ export default function LanguageManagement() {
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="p-4">
-            <div className="text-sm text-gray-600">Total Languages</div>
+            <div className="text-sm text-gray-600">{t("components.languageManagement.totalLanguages")}</div>
             <div className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-gray-600">Enabled</div>
+            <div className="text-sm text-gray-600">{t("components.languageManagement.enabled")}</div>
             <div className="text-2xl font-bold text-green-600 mt-1">{stats.enabled}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-gray-600">Disabled</div>
+            <div className="text-sm text-gray-600">{t("components.languageManagement.disabled")}</div>
             <div className="text-2xl font-bold text-gray-400 mt-1">{stats.disabled}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-gray-600">Coverage</div>
+            <div className="text-sm text-gray-600">{t("components.languageManagement.coverage")}</div>
             <div className="text-2xl font-bold text-blue-600 mt-1">
               {Math.round((stats.enabled / stats.total) * 100)}%
             </div>
@@ -257,7 +273,7 @@ export default function LanguageManagement() {
           <div className="flex gap-3 flex-wrap">
             <Input
               type="text"
-              placeholder="Search languages..."
+              placeholder={t("components.languageManagement.searchPlaceholder")}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-64"
@@ -267,9 +283,9 @@ export default function LanguageManagement() {
               onChange={(e) => setStatusFilter(e.target.value as any)}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="all">All Languages</option>
-              <option value="enabled">Enabled Only</option>
-              <option value="disabled">Disabled Only</option>
+              <option value="all">{t("components.languageManagement.allLanguages")}</option>
+              <option value="enabled">{t("components.languageManagement.enabledOnly")}</option>
+              <option value="disabled">{t("components.languageManagement.disabledOnly")}</option>
             </select>
           </div>
           <Button
@@ -280,7 +296,7 @@ export default function LanguageManagement() {
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Reload
+            {t("components.languageManagement.reload")}
           </Button>
         </div>
       </Card>
@@ -292,22 +308,22 @@ export default function LanguageManagement() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Status
+                  {t("components.languageManagement.statusCol")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Code
+                  {t("components.languageManagement.codeCol")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Language
+                  {t("components.languageManagement.languageCol")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Direction
+                  {t("components.languageManagement.directionCol")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Search Engine
+                  {t("components.languageManagement.searchEngineCol")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Actions
+                  {t("components.languageManagement.actionsCol")}
                 </th>
               </tr>
             </thead>
@@ -316,13 +332,13 @@ export default function LanguageManagement() {
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
-                    <div className="text-sm text-gray-500 mt-2">Loading languages...</div>
+                    <div className="text-sm text-gray-500 mt-2">{t("components.languageManagement.loadingLanguages")}</div>
                   </td>
                 </tr>
               ) : filteredLanguages.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                    No languages found
+                    {t("components.languageManagement.noLanguagesFound")}
                   </td>
                 </tr>
               ) : (
@@ -333,17 +349,17 @@ export default function LanguageManagement() {
                         {lang.isEnabled ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             <Check className="h-3 w-3 mr-1" />
-                            Enabled
+                            {t("components.languageManagement.enabled")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                             <X className="h-3 w-3 mr-1" />
-                            Disabled
+                            {t("components.languageManagement.disabled")}
                           </span>
                         )}
                         {lang.isDefault && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Default
+                            {t("components.languageManagement.defaultBadge")}
                           </span>
                         )}
                       </div>
@@ -369,12 +385,12 @@ export default function LanguageManagement() {
                         {lang.searchEnabled ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
                             <Check className="h-3 w-3 mr-1" />
-                            Active
+                            {t("components.languageManagement.active")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
                             <Circle className="h-3 w-3 mr-1" />
-                            Inactive
+                            {t("components.languageManagement.inactive")}
                           </span>
                         )}
                         <Button
@@ -388,10 +404,10 @@ export default function LanguageManagement() {
                           variant="ghost"
                           title={
                             !lang.isEnabled
-                              ? "Enable language for data entry first"
+                              ? t("components.languageManagement.enableDataEntryFirst")
                               : lang.searchEnabled
-                              ? "Disable search indexing"
-                              : "Enable search indexing"
+                              ? t("components.languageManagement.disableSearchIndexing")
+                              : t("components.languageManagement.enableSearchIndexing")
                           }
                         >
                           {togglingSearch === lang.code ? (
@@ -415,17 +431,17 @@ export default function LanguageManagement() {
                         {togglingLang === lang.code ? (
                           <>
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            Working...
+                            {t("components.languageManagement.working")}
                           </>
                         ) : lang.isEnabled ? (
                           <>
                             <X className="h-3 w-3 mr-1" />
-                            Disable
+                            {t("components.languageManagement.disable")}
                           </>
                         ) : (
                           <>
                             <Check className="h-3 w-3 mr-1" />
-                            Enable
+                            {t("components.languageManagement.enable")}
                           </>
                         )}
                       </Button>
@@ -443,10 +459,9 @@ export default function LanguageManagement() {
         <div className="flex items-start gap-3">
           <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
           <div>
-            <h3 className="text-sm font-medium text-blue-900">Zero-Downtime Language Management</h3>
+            <h3 className="text-sm font-medium text-blue-900">{t("components.languageManagement.zeroDowntimeTitle")}</h3>
             <p className="text-sm text-blue-700 mt-1">
-              Enable or disable languages without restarting. Solr schema updates automatically.
-              Italian (IT) is the default language and cannot be disabled.
+              {t("components.languageManagement.zeroDowntimeDesc")}
             </p>
           </div>
         </div>

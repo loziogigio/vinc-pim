@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/customer.service";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import { resolveEffectiveTags } from "@/lib/services/tag-pricing.service";
+import { buildHookCtxFromOrder, runOnHook, runAfterHook, mergeOrderErpData } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -92,6 +93,12 @@ interface CartActiveRequest {
   // Optional: pricelist context
   pricelist_type?: string;
   pricelist_code?: string;
+
+  // Optional: price rounding precision (default 2)
+  price_decimals?: number;
+
+  // Optional: sales channel override (e.g., "b2b")
+  channel?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -121,12 +128,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Try to find existing current cart by external codes (with tenant filter)
-    const existingCart = await OrderModel.findOne({
-      tenant_id,
-      customer_code: body.customer_code,
-      shipping_address_code: body.address_code,
-      is_current: true,
-    });
+    // Use findOneAndUpdate to atomically mark it as "found" to prevent race conditions
+    const existingCart = await OrderModel.findOneAndUpdate(
+      {
+        tenant_id,
+        customer_code: body.customer_code,
+        shipping_address_code: body.address_code,
+        status: "draft",
+        is_current: true,
+      },
+      { $set: { last_accessed_at: new Date() } },
+      { new: true },
+    );
 
     if (existingCart) {
       // Return existing current cart
@@ -229,7 +242,40 @@ export async function POST(req: NextRequest) {
     const year = new Date().getFullYear();
     const cart_number = await getNextCartNumber(auth.tenantDb!, year);
 
-    const newCart = await OrderModel.create({
+    // Race condition guard: re-check before creating (another request may have created one)
+    const raceCheck = await OrderModel.findOne({
+      tenant_id,
+      customer_code: body.customer_code,
+      shipping_address_code: body.address_code,
+      status: "draft",
+      is_current: true,
+    });
+    if (raceCheck) {
+      return NextResponse.json({
+        success: true,
+        cart_id: raceCheck.order_id,
+        order_id: raceCheck.order_id,
+        cart_number: raceCheck.cart_number,
+        year: raceCheck.year,
+        is_new: false,
+        customer: {
+          customer_id: customer.customer_id,
+          customer_code: body.customer_code,
+          public_code: customer.public_code,
+          is_new: false,
+        },
+        address: {
+          address_id: address.address_id,
+          address_code: body.address_code,
+          is_new: false,
+        },
+        order: raceCheck,
+      });
+    }
+
+    let newCart;
+    try {
+    newCart = await OrderModel.create({
       order_id,
       cart_number, // Sequential cart number per year
       year,
@@ -255,6 +301,7 @@ export async function POST(req: NextRequest) {
       currency: "EUR",
       pricelist_type: body.pricelist_type,
       pricelist_code: body.pricelist_code,
+      price_decimals: body.price_decimals ?? 2,
 
       // Totals (all 0 initially)
       subtotal_gross: 0,
@@ -268,11 +315,88 @@ export async function POST(req: NextRequest) {
       session_id,
       flow_id,
       source: "web",
-      channel: (customer as { channel?: string }).channel || DEFAULT_CHANNEL,
+      channel: body.channel || (customer as { channel?: string }).channel || DEFAULT_CHANNEL,
 
       // Items (empty)
       items: [],
     });
+    } catch (createErr: any) {
+      // Duplicate key = race condition — another request created the cart first
+      if (createErr.code === 11000) {
+        const winner = await OrderModel.findOne({
+          tenant_id,
+          customer_code: body.customer_code,
+          shipping_address_code: body.address_code,
+          status: "draft",
+          is_current: true,
+        });
+        if (winner) {
+          return NextResponse.json({
+            success: true,
+            cart_id: winner.order_id,
+            order_id: winner.order_id,
+            cart_number: winner.cart_number,
+            year: winner.year,
+            is_new: false,
+            customer: {
+              customer_id: customer.customer_id,
+              customer_code: body.customer_code,
+              public_code: customer.public_code,
+              is_new: false,
+            },
+            address: {
+              address_id: address.address_id,
+              address_code: body.address_code,
+              is_new: false,
+            },
+            order: winner,
+          });
+        }
+      }
+      throw createErr;
+    }
+
+    // ── HOOK: cart.create on-hook (ERP cart creation + delivery info) ──
+    // Try sync with a short timeout (3s). If Windmill responds in time,
+    // delivery info is included in the response. If it times out,
+    // return the cart immediately — frontend falls back to legacy wrapper.
+    const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, tenant_id, "cart.create", newCart, {
+      customerCode: body.customer_code,
+      addressCode: body.address_code,
+      requestData: body as Record<string, unknown>,
+    });
+
+    let enrichedCart = null;
+    const CART_HOOK_TIMEOUT = 3000; // 3s — normal run is ~0.4s
+
+    // Start hook — we'll race it against a timeout
+    const hookPromise = runOnHook(hookCtx).catch((err) => {
+      console.error("[cart/active] cart.create hook error:", err);
+      return null;
+    });
+
+    try {
+      const on = await Promise.race([
+        hookPromise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), CART_HOOK_TIMEOUT)),
+      ]);
+      if (on && on.hooked && on.success && on.response?.data) {
+        await mergeOrderErpData(OrderModel, newCart._id, on.response);
+        enrichedCart = await OrderModel.findOne({ order_id }).lean();
+        runAfterHook(hookCtx);
+      } else {
+        // Hook didn't finish in time — let it complete in background and merge later
+        // This ensures erp_cart_id is saved even if the response already went out
+        void hookPromise.then(async (bgOn) => {
+          if (bgOn && bgOn.hooked && bgOn.success && bgOn.response?.data) {
+            await mergeOrderErpData(OrderModel, newCart._id, bgOn.response);
+          }
+          runAfterHook(hookCtx);
+        });
+      }
+    } catch (err) {
+      console.error("[cart/active] cart.create hook race error:", err);
+    }
 
     return NextResponse.json(
       {
@@ -285,7 +409,7 @@ export async function POST(req: NextRequest) {
         customer: {
           customer_id: customer.customer_id,
           customer_code: body.customer_code,
-          public_code:customer.public_code,
+          public_code: customer.public_code,
           is_new: customerIsNew,
         },
         address: {
@@ -293,7 +417,7 @@ export async function POST(req: NextRequest) {
           address_code: body.address_code,
           is_new: addressIsNew,
         },
-        order: newCart,
+        order: enrichedCart || newCart,
       },
       { status: 201 }
     );

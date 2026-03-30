@@ -102,7 +102,7 @@ export const nexiProvider: IPaymentProvider = {
           amount: Math.round(params.amount * 100).toString(),
           language: "ITA",
           resultUrl: params.return_url,
-          cancelUrl: params.return_url,
+          cancelUrl: params.cancel_url || params.return_url,
           notificationUrl: params.metadata?.webhook_url,
         },
       });

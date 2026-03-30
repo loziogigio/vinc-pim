@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { safeRegexQuery } from "@/lib/security";
+import { buildProductSearchConditions } from "@/lib/search/product-search";
 
 // GET /api/b2b/pim/brands/[id]/products - Get products for a brand
 export async function GET(
@@ -38,23 +38,18 @@ export async function GET(
     const query: any = {
       // No wholesaler_id - database provides isolation
       isCurrent: true,
-      "brand.id": id,
+      "brand.brand_id": id,
     };
 
-    // Add search filter
+    // Add search filter (multilingual name + identifiers)
     if (search) {
-      const safeSearch = safeRegexQuery(search);
-      query.$or = [
-        { name: safeSearch },
-        { sku: safeSearch },
-        { entity_code: safeSearch },
-      ];
+      query.$or = await buildProductSearchConditions(search, tenantDb);
     }
 
     // Get products
     const [products, total] = await Promise.all([
       PIMProductModel.find(query)
-        .select("entity_code sku name image status quantity")
+        .select("entity_code sku name image images status quantity")
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(limit)
@@ -125,17 +120,13 @@ export async function POST(
     if (action === "add") {
       // Associate products with brand
       const updateData: any = {
-        "brand.id": id,
-        "brand.name": brand.label,
+        "brand.brand_id": id,
+        "brand.label": brand.label,
         "brand.slug": brand.slug,
       };
 
       if (brand.logo_url) {
-        updateData["brand.image"] = {
-          id: id,
-          thumbnail: brand.logo_url,
-          original: brand.logo_url,
-        };
+        updateData["brand.logo_url"] = brand.logo_url;
       }
 
       const result = await PIMProductModel.updateMany(
@@ -151,7 +142,7 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "brand.id": id,
+        "brand.brand_id": id,
       });
 
       await BrandModel.updateOne(
@@ -170,7 +161,7 @@ export async function POST(
           entity_code: { $in: entity_codes },
           // No wholesaler_id - database provides isolation
           isCurrent: true,
-          "brand.id": id,
+          "brand.brand_id": id,
         },
         { $unset: { brand: "" } }
       );
@@ -179,7 +170,7 @@ export async function POST(
       const productCount = await PIMProductModel.countDocuments({
         // No wholesaler_id - database provides isolation
         isCurrent: true,
-        "brand.id": id,
+        "brand.brand_id": id,
       });
 
       await BrandModel.updateOne(

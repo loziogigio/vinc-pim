@@ -71,7 +71,7 @@ export default function TagsPage() {
       setTags(data.tags || []);
     } catch (error) {
       console.error("Failed to fetch tags:", error);
-      toast.error("Failed to load tags");
+      toast.error(t("pages.pim.tags.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -143,28 +143,26 @@ export default function TagsPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to save tag");
+        toast.error(error.error || t("pages.pim.tags.saveFailed"));
         return;
       }
 
-      toast.success(editingTag ? "Tag updated successfully" : "Tag created successfully");
+      toast.success(editingTag ? t("pages.pim.tags.updateSuccess") : t("pages.pim.tags.createSuccess"));
       setShowModal(false);
       fetchTags();
     } catch (error) {
       console.error("Failed to save tag:", error);
-      toast.error("Failed to save tag");
+      toast.error(t("pages.pim.tags.saveFailed"));
     }
   }
 
   async function handleDelete(tagId: string, productCount: number) {
     if (productCount > 0) {
-      toast.error(
-        `Cannot delete tag with ${productCount} associated products. Remove the tag from products first.`
-      );
+      toast.error(t("pages.pim.tags.hasProductsError", { count: productCount }));
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this tag?")) {
+    if (!confirm(t("pages.pim.tags.deleteConfirm"))) {
       return;
     }
 
@@ -175,15 +173,15 @@ export default function TagsPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete tag");
+        toast.error(error.error || t("pages.pim.tags.deleteFailed"));
         return;
       }
 
-      toast.success("Tag deleted successfully");
+      toast.success(t("pages.pim.tags.deleteSuccess"));
       fetchTags();
     } catch (error) {
       console.error("Failed to delete tag:", error);
-      toast.error("Failed to delete tag");
+      toast.error(t("pages.pim.tags.deleteFailed"));
     }
   }
 
@@ -232,27 +230,27 @@ export default function TagsPage() {
               onChange={(event) => setFilterActive(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="all">All statuses</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="all">{t("pages.pim.tags.filterAllStatuses")}</option>
+              <option value="true">{t("common.active")}</option>
+              <option value="false">{t("common.inactive")}</option>
             </select>
             <select
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="display_order">Display order</option>
-              <option value="name">Name</option>
-              <option value="product_count">Product count</option>
-              <option value="created_at">Created date</option>
+              <option value="display_order">{t("pages.pim.tags.sortDisplayOrder")}</option>
+              <option value="name">{t("pages.pim.tags.sortName")}</option>
+              <option value="product_count">{t("pages.pim.tags.sortProductCount")}</option>
+              <option value="created_at">{t("pages.pim.tags.sortCreated")}</option>
             </select>
             <select
               value={sortOrder}
               onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="asc">Asc</option>
-              <option value="desc">Desc</option>
+              <option value="asc">{t("pages.pim.tags.sortAsc")}</option>
+              <option value="desc">{t("pages.pim.tags.sortDesc")}</option>
             </select>
           </div>
         </div>
@@ -289,7 +287,7 @@ export default function TagsPage() {
                       <h3 className="text-base font-semibold text-foreground">{tag.name}</h3>
                       {!tag.is_active && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          Inactive
+                          {t("common.inactive")}
                         </span>
                       )}
                       {tag.color && (
@@ -309,8 +307,8 @@ export default function TagsPage() {
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <span>Products: {tag.product_count}</span>
-                      <span>Display order: {tag.display_order}</span>
+                      <span>{t("pages.pim.tags.productsCount", { count: tag.product_count })}</span>
+                      <span>{t("pages.pim.tags.displayOrderLabel", { order: tag.display_order })}</span>
                     </div>
                   </div>
                 </div>
@@ -321,7 +319,7 @@ export default function TagsPage() {
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Open
+                    {t("pages.pim.open")}
                   </Link>
                   <button
                     type="button"
@@ -329,7 +327,7 @@ export default function TagsPage() {
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                   >
                     <Edit className="h-4 w-4" />
-                    Edit
+                    {t("common.edit")}
                   </button>
                   <button
                     type="button"
@@ -337,7 +335,7 @@ export default function TagsPage() {
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>
@@ -357,7 +355,7 @@ export default function TagsPage() {
               onClick={() => setShowModal(false)}
               className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -372,13 +370,13 @@ export default function TagsPage() {
       >
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
-            Define standardized tags to reuse across your catalog.
+            {t("pages.pim.tags.formDescription")}
           </p>
 
           {/* Name & Slug */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t("common.name")} *</label>
               <input
                 value={formData.name}
                 onChange={(event) => {
@@ -395,7 +393,9 @@ export default function TagsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Slug *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.collections.slug")} *
+              </label>
               <input
                 value={formData.slug}
                 onChange={(event) => {
@@ -411,7 +411,7 @@ export default function TagsPage() {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("common.description")}</label>
             <RichTextEditor
               content={formData.description}
               onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
@@ -422,13 +422,15 @@ export default function TagsPage() {
 
           {/* Desktop Image */}
           <ImageUpload
-            label="Tag Image"
+            label={t("pages.pim.tags.tagImage")}
             value={formData.image_url}
             onChange={(url) => setFormData((prev) => ({ ...prev, image_url: url }))}
           />
           {formData.image_url && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Image Alt Text</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.tags.imageAltText")}
+              </label>
               <input
                 value={formData.image_alt}
                 onChange={(e) => setFormData((prev) => ({ ...prev, image_alt: e.target.value }))}
@@ -440,13 +442,15 @@ export default function TagsPage() {
 
           {/* Mobile Image */}
           <ImageUpload
-            label="Mobile Tag Image"
+            label={t("pages.pim.tags.mobileTagImage")}
             value={formData.mobile_image_url}
             onChange={(url) => setFormData((prev) => ({ ...prev, mobile_image_url: url }))}
           />
           {formData.mobile_image_url && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Mobile Image Alt Text</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.tags.mobileImageAltText")}
+              </label>
               <input
                 value={formData.mobile_image_alt}
                 onChange={(e) => setFormData((prev) => ({ ...prev, mobile_image_alt: e.target.value }))}
@@ -459,7 +463,9 @@ export default function TagsPage() {
           {/* Display Order & Color */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Display Order</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.tags.displayOrder")}
+              </label>
               <input
                 type="number"
                 value={formData.display_order}
@@ -470,7 +476,9 @@ export default function TagsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Color (hex or CSS value)</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.tags.colorLabel")}
+              </label>
               <input
                 value={formData.color}
                 onChange={(event) =>
@@ -492,7 +500,7 @@ export default function TagsPage() {
               }
               className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
             />
-            Active (visible in product pickers)
+            {t("pages.pim.tags.activeLabel")}
           </label>
         </div>
       </FullScreenModal>

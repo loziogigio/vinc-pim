@@ -8,6 +8,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { CustomImage } from "./ImageNode";
 import {
   Bold,
@@ -33,6 +34,7 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ content, onChange, placeholder = "Start typing..." }: RichTextEditorProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTextColor, setShowTextColor] = useState(false);
   const [showHighlight, setShowHighlight] = useState(false);
@@ -109,13 +111,13 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
 
     // Check file type
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
+      alert(t("components.richTextEditor.selectImageFile"));
       return;
     }
 
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image size should be less than 5MB");
+      alert(t("components.richTextEditor.imageSizeTooLarge"));
       return;
     }
 
@@ -202,7 +204,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
               setShowTextColor(!showTextColor);
               setShowHighlight(false);
             }}
-            title="Text Color"
+            title={t("components.richTextEditor.textColor")}
           >
             <Palette className="h-4 w-4" />
             <ChevronDown className="h-3 w-3" />
@@ -212,7 +214,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
               className="absolute top-full left-0 mt-1 bg-white border-2 border-slate-400 rounded-lg shadow-2xl p-3 z-50 w-48"
               onClick={(e) => e?.stopPropagation()}
             >
-              <div className="text-xs font-semibold text-slate-700 mb-2">Text Color</div>
+              <div className="text-xs font-semibold text-slate-700 mb-2">{t("components.richTextEditor.textColor")}</div>
               <div className="grid grid-cols-5 gap-2">
                 {["#000000", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b", "#ffffff"].map((color) => (
                   <button
@@ -242,7 +244,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
                 }}
                 className="w-full mt-2 text-xs px-2 py-1.5 border border-slate-300 rounded hover:bg-slate-100 font-medium"
               >
-                Reset to Black
+                {t("components.richTextEditor.resetToBlack")}
               </button>
             </div>
           )}
@@ -256,7 +258,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
               setShowHighlight(!showHighlight);
               setShowTextColor(false);
             }}
-            title="Highlight"
+            title={t("components.richTextEditor.highlightColor")}
           >
             <Highlighter className="h-4 w-4" />
             <ChevronDown className="h-3 w-3" />
@@ -266,7 +268,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
               className="absolute top-full left-0 mt-1 bg-white border-2 border-slate-400 rounded-lg shadow-2xl p-3 z-50 w-48"
               onClick={(e) => e?.stopPropagation()}
             >
-              <div className="text-xs font-semibold text-slate-700 mb-2">Highlight Color</div>
+              <div className="text-xs font-semibold text-slate-700 mb-2">{t("components.richTextEditor.highlightColor")}</div>
               <div className="grid grid-cols-5 gap-2">
                 {["#fef3c7", "#fecaca", "#fed7aa", "#d9f99d", "#bfdbfe", "#ddd6fe", "#fbcfe8", "#e2e8f0", "#fbbf24", "#ffffff"].map((color) => (
                   <button
@@ -296,7 +298,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
                 }}
                 className="w-full mt-2 text-xs px-2 py-1.5 border border-slate-300 rounded hover:bg-slate-100 font-medium"
               >
-                Remove Highlight
+                {t("components.richTextEditor.removeHighlight")}
               </button>
             </div>
           )}

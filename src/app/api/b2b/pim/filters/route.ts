@@ -30,13 +30,15 @@ export async function GET(req: NextRequest) {
 
     switch (type) {
       case "brand":
-        // Get distinct brand names
-        const brands = await PIMProduct.distinct("brand.name", {
-          ...query,
-          "brand.name": { $exists: true, $ne: null, $nin: [""] },
-          ...(search && { "brand.name": safeRegexQuery(search) }),
-        });
-        results = brands.filter((b) => b).sort();
+        // brand.label is a plain string field
+        const brandAgg = await PIMProduct.aggregate([
+          { $match: { ...query, "brand.label": { $exists: true, $nin: [null, ""] } } },
+          { $group: { _id: "$brand.label" } },
+          ...(search ? [{ $match: { _id: safeRegexQuery(search) } }] : []),
+          { $sort: { _id: 1 } },
+          { $limit: 10 },
+        ]);
+        results = brandAgg.map((b: { _id: string }) => b._id).filter(Boolean);
         break;
 
       case "category":
@@ -52,6 +54,20 @@ export async function GET(req: NextRequest) {
           { $limit: 10 },
         ]);
         results = categoryAgg.map((c: { _id: string }) => c._id).filter(Boolean);
+        break;
+
+      case "product_type":
+        // product_type.name is MultilingualText
+        const ptAgg = await PIMProduct.aggregate([
+          { $match: { ...query, "product_type.name": { $exists: true, $ne: null } } },
+          { $project: { names: { $objectToArray: "$product_type.name" } } },
+          { $unwind: "$names" },
+          { $match: { "names.v": { $ne: "" }, ...(search && { "names.v": safeRegexQuery(search) }) } },
+          { $group: { _id: "$names.v" } },
+          { $sort: { _id: 1 } },
+          { $limit: 10 },
+        ]);
+        results = ptAgg.map((p: { _id: string }) => p._id).filter(Boolean);
         break;
 
       case "currency":

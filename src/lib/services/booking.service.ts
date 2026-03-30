@@ -106,6 +106,7 @@ export async function createDeparture(
       : undefined,
     hold_ttl_ms: input.hold_ttl_ms ?? HOLD_TTL_MS,
     resources,
+    ...(input.metadata ? { metadata: input.metadata } : {}),
   });
 
   return { success: true, data: departure as IDeparture };
@@ -150,6 +151,9 @@ export async function listDepartures(
   const query: Record<string, unknown> = { tenant_id: tenantId };
   if (filters.product_entity_code) {
     query.product_entity_code = filters.product_entity_code;
+  }
+  if (filters.oc_cruise_id) {
+    query["metadata.oc_cruise_id"] = filters.oc_cruise_id;
   }
   if (filters.status) {
     query.status = filters.status;

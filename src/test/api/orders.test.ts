@@ -76,6 +76,21 @@ vi.mock("@/lib/services/customer.service", () => ({
   findOrCreateAddress: (...args: unknown[]) => mockFindOrCreateAddress(...args),
 }));
 
+// Mock windmill-proxy.service (used by items and orders routes for ERP hooks)
+vi.mock("@/lib/services/windmill-proxy.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/windmill-proxy.service")>();
+  return {
+    ...actual,
+    runBeforeHook: vi.fn().mockResolvedValue({ hooked: false, allowed: true }),
+    runOnHook: vi.fn().mockResolvedValue({ hooked: false, success: false }),
+    runAfterHook: vi.fn().mockResolvedValue(undefined),
+    runBeforeHookWithAsyncFallback: vi.fn().mockResolvedValue({ async: false, hooked: false, allowed: true }),
+    runOnHookWithAsyncFallback: vi.fn().mockResolvedValue({ async: false, hooked: false, success: false }),
+    mergeOrderErpData: vi.fn(),
+    pushWindmillJobRef: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 // ============================================
 // IMPORTS (after mocks)
 // ============================================
@@ -306,7 +321,7 @@ describe("integration: Orders API", () => {
 
       // Assert
       expect(data.order.items).toHaveLength(1);
-      expect(data.item.quantity).toBe(15); // 10 + 5
+      expect(data.item.quantity).toBe(5); // overwrites (was increment before ERP hooks)
     });
 
     it("should reject quantity below min_order_quantity", async () => {

@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { ProductPicker } from "@/components/notifications/ProductPicker";
 import { UserSelector, type SelectedUser } from "@/components/notifications/UserSelector";
 import { SearchUrlInput } from "@/components/notifications/SearchUrlInput";
@@ -37,9 +38,10 @@ const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
   web_in_app: Bell,
 };
 
-const TEMPLATE_TYPES: { id: TemplateType; label: string; description: string; icon: React.ElementType }[] = [
-  { id: "product", label: "Prodotti", description: "Seleziona prodotti dal PIM con anteprima", icon: Package },
-  { id: "generic", label: "Comunicazione Generica", description: "Testo personalizzato con link opzionale", icon: FileText },
+// Template type definitions - labels resolved via i18n in the component
+const TEMPLATE_TYPE_IDS: { id: TemplateType; labelKey: string; descKey: string; icon: React.ElementType }[] = [
+  { id: "product", labelKey: "pages.notifications.campaigns.form.typeProduct", descKey: "pages.notifications.campaigns.form.typeProductDesc", icon: Package },
+  { id: "generic", labelKey: "pages.notifications.campaigns.form.typeGeneric", descKey: "pages.notifications.campaigns.form.typeGenericDesc", icon: FileText },
 ];
 
 interface CampaignFormProps {
@@ -110,6 +112,7 @@ export function CampaignForm({
   onSelectedUsersChange,
   onToast,
 }: CampaignFormProps) {
+  const { t } = useTranslation();
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,12 +120,12 @@ export function CampaignForm({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      onToast({ type: "error", message: "Seleziona un file immagine valido" });
+      onToast({ type: "error", message: t("pages.notifications.campaigns.form.imageInvalidType") });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      onToast({ type: "error", message: "L'immagine deve essere inferiore a 5MB" });
+      onToast({ type: "error", message: t("pages.notifications.campaigns.form.imageMaxSize") });
       return;
     }
 
@@ -140,9 +143,9 @@ export function CampaignForm({
 
       const data = await res.json();
       onPushImageChange(data.url);
-      onToast({ type: "success", message: "Immagine caricata con successo" });
+      onToast({ type: "success", message: t("pages.notifications.campaigns.form.imageUploadSuccess") });
     } catch (error) {
-      onToast({ type: "error", message: error instanceof Error ? error.message : "Errore nel caricamento" });
+      onToast({ type: "error", message: error instanceof Error ? error.message : t("pages.notifications.campaigns.form.imageUploadError") });
     } finally {
       setIsUploadingImage(false);
       e.target.value = "";
@@ -155,22 +158,22 @@ export function CampaignForm({
     <div className="space-y-8">
       {/* Campaign Name */}
       <div className="max-w-xl">
-        <label className="block text-sm font-medium text-slate-700 mb-1">Nome Campagna</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.campaigns.form.campaignName")}</label>
         <input
           type="text"
           value={campaignName}
           onChange={(e) => onCampaignNameChange(e.target.value)}
-          placeholder="es. Promozione Inverno 2026, Lancio Nuovi Prodotti..."
+          placeholder={t("pages.notifications.campaigns.form.campaignNamePlaceholder")}
           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
-        <p className="text-xs text-slate-500 mt-1">Un nome descrittivo per identificare questa campagna</p>
+        <p className="text-xs text-slate-500 mt-1">{t("pages.notifications.campaigns.form.campaignNameHint")}</p>
       </div>
 
       {/* Campaign Type Selector */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-3">Tipo di Campagna</label>
+        <label className="block text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.campaigns.form.campaignType")}</label>
         <div className="grid grid-cols-2 gap-4 max-w-xl">
-          {TEMPLATE_TYPES.map((type) => {
+          {TEMPLATE_TYPE_IDS.map((type) => {
             const Icon = type.icon;
             const isSelected = campaignType === type.id;
 
@@ -193,8 +196,8 @@ export function CampaignForm({
                   <Icon className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-700")}>{type.label}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{type.description}</p>
+                  <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-700")}>{t(type.labelKey)}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t(type.descKey)}</p>
                 </div>
               </button>
             );
@@ -204,7 +207,7 @@ export function CampaignForm({
 
       {/* Channel Selector */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-3">Canali di Invio</label>
+        <label className="block text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.campaigns.form.sendChannels")}</label>
         <div className="flex flex-wrap gap-3">
           {NOTIFICATION_CHANNELS.map((channelId) => {
             const isEnabled = enabledChannels.has(channelId);
@@ -237,7 +240,7 @@ export function CampaignForm({
                 )}
                 {!isAvailable && (
                   <span className="absolute top-2 right-2 text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                    Non configurato
+                    {t("pages.notifications.campaigns.form.notConfigured")}
                   </span>
                 )}
               </button>
@@ -254,27 +257,27 @@ export function CampaignForm({
               <Smartphone className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-medium text-emerald-800">Contenuto Push Notification</h3>
-              <p className="text-xs text-emerald-600">Per notifiche mobile e web</p>
+              <h3 className="font-medium text-emerald-800">{t("pages.notifications.campaigns.form.pushContentTitle")}</h3>
+              <p className="text-xs text-emerald-600">{t("pages.notifications.campaigns.form.pushContentSubtitle")}</p>
             </div>
           </div>
           <div className="grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-emerald-700 mb-1">Titolo</label>
+              <label className="block text-sm font-medium text-emerald-700 mb-1">{t("pages.notifications.campaigns.form.pushTitle")}</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => onTitleChange(e.target.value)}
-                placeholder="Titolo della notifica..."
+                placeholder={t("pages.notifications.campaigns.form.pushTitlePlaceholder")}
                 className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-emerald-700 mb-1">Descrizione</label>
+              <label className="block text-sm font-medium text-emerald-700 mb-1">{t("pages.notifications.campaigns.form.pushDescription")}</label>
               <textarea
                 value={body}
                 onChange={(e) => onBodyChange(e.target.value)}
-                placeholder="Descrizione della notifica..."
+                placeholder={t("pages.notifications.campaigns.form.pushDescriptionPlaceholder")}
                 rows={2}
                 className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none bg-white"
               />
@@ -282,7 +285,7 @@ export function CampaignForm({
             <div>
               <label className="block text-sm font-medium text-emerald-700 mb-2">
                 <ImageIcon className="w-4 h-4 inline mr-1" />
-                Immagine
+                {t("pages.notifications.campaigns.form.pushImage")}
               </label>
               {pushImage && (
                 <div className="mb-3 relative inline-block">
@@ -306,14 +309,14 @@ export function CampaignForm({
                     )}
                   >
                     {isUploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    {isUploadingImage ? "Caricamento..." : "Carica"}
+                    {isUploadingImage ? t("pages.notifications.campaigns.form.uploading") : t("pages.notifications.campaigns.form.uploadBtn")}
                   </span>
                 </label>
                 <input
                   type="url"
                   value={pushImage}
                   onChange={(e) => onPushImageChange(e.target.value)}
-                  placeholder="oppure inserisci URL..."
+                  placeholder={t("pages.notifications.campaigns.form.imageUrlPlaceholder")}
                   className="flex-1 px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
                 />
               </div>
@@ -325,37 +328,38 @@ export function CampaignForm({
                   <SearchUrlInput
                     value={productsUrl}
                     onChange={onProductsUrlChange}
-                    label="URL Azione / Vedi Tutti"
+                    label={t("pages.notifications.campaigns.form.actionUrl")}
                     placeholder="shop?text=prodotto&filters-brand_id=004"
                   />
                   <p className="text-xs text-emerald-600 mt-1">
-                    URL per il pulsante &quot;Vedi tutti&quot; o azione della notifica. Incolla una keyword o una query avanzata (es.{" "}
-                    <code className="rounded bg-emerald-100 px-1 py-0.5 text-[10px]">shop?text=moon&amp;filters-brand_id=004</code> o{" "}
-                    <code className="rounded bg-emerald-100 px-1 py-0.5 text-[10px]">search?text=moon&amp;filters-brand_id=004</code>).
+                    {t("pages.notifications.campaigns.form.actionUrlHint", {
+                      example1: "shop?text=moon&filters-brand_id=004",
+                      example2: "search?text=moon&filters-brand_id=004",
+                    })}
                   </p>
                 </>
               ) : (
                 <>
                   <label className="block text-sm font-medium text-emerald-700 mb-1">
                     <LinkIcon className="w-4 h-4 inline mr-1" />
-                    URL Azione (opzionale)
+                    {t("pages.notifications.campaigns.form.genericActionUrl")}
                   </label>
                   <input
                     type="text"
                     value={productsUrl}
                     onChange={(e) => onProductsUrlChange(e.target.value)}
-                    placeholder="https://esempio.com/pagina o /percorso-interno"
+                    placeholder={t("pages.notifications.campaigns.form.genericActionUrlPlaceholder")}
                     className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
                   />
                   <p className="text-xs text-emerald-600 mt-1">
-                    URL esterno (https://...) o percorso interno (/pagina). Cliccando la notifica si aprirà questo link.
+                    {t("pages.notifications.campaigns.form.genericActionUrlHint")}
                   </p>
                 </>
               )}
               {productsUrl && (
                 <label className="flex items-center gap-2 mt-2">
                   <input type="checkbox" checked={openInNewTab} onChange={(e) => onOpenInNewTabChange(e.target.checked)} className="w-4 h-4 rounded text-emerald-500" />
-                  <span className="text-xs text-emerald-700">Apri in una nuova scheda</span>
+                  <span className="text-xs text-emerald-700">{t("pages.notifications.campaigns.form.openInNewTab")}</span>
                 </label>
               )}
             </div>
@@ -371,42 +375,42 @@ export function CampaignForm({
               <Mail className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-medium text-blue-800">Contenuto Email</h3>
-              <p className="text-xs text-blue-600">HTML personalizzato per email</p>
+              <h3 className="font-medium text-blue-800">{t("pages.notifications.campaigns.form.emailContentTitle")}</h3>
+              <p className="text-xs text-blue-600">{t("pages.notifications.campaigns.form.emailContentSubtitle")}</p>
             </div>
           </div>
           <div className="grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Oggetto Email</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">{t("pages.notifications.campaigns.form.emailSubject")}</label>
               <input
                 type="text"
                 value={emailSubject}
                 onChange={(e) => onEmailSubjectChange(e.target.value)}
-                placeholder="Oggetto della email..."
+                placeholder={t("pages.notifications.campaigns.form.emailSubjectPlaceholder")}
                 className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">Contenuto HTML</label>
+              <label className="block text-sm font-medium text-blue-700 mb-1">{t("pages.notifications.campaigns.form.emailHtmlContent")}</label>
               <textarea
                 value={emailHtml}
                 onChange={(e) => onEmailHtmlChange(e.target.value)}
-                placeholder="<h1>Titolo</h1>&#10;<p>Il tuo messaggio qui...</p>"
+                placeholder={t("pages.notifications.campaigns.form.emailHtmlPlaceholder")}
                 rows={6}
                 className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
               />
-              <p className="text-xs text-blue-600 mt-1">Inserisci il contenuto HTML. Header e footer verranno aggiunti automaticamente.</p>
+              <p className="text-xs text-blue-600 mt-1">{t("pages.notifications.campaigns.form.emailHtmlHint")}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-blue-700 mb-1">
                 <LinkIcon className="w-4 h-4 inline mr-1" />
-                Link &quot;Vedi tutti&quot; (opzionale)
+                {t("pages.notifications.campaigns.form.emailViewAllLink")}
               </label>
               <input
                 type="url"
                 value={emailLink}
                 onChange={(e) => onEmailLinkChange(e.target.value)}
-                placeholder="https://shop.esempio.com/prodotti"
+                placeholder={t("pages.notifications.campaigns.form.emailViewAllPlaceholder")}
                 className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
               />
             </div>
@@ -424,22 +428,22 @@ export function CampaignForm({
 
       {/* Recipients */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-3">Destinatari</label>
+        <label className="block text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.campaigns.form.recipients")}</label>
         <div className="space-y-2 max-w-xl">
           <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
             <input type="radio" name="recipients" value="all" checked={recipientType === "all"} onChange={() => onRecipientTypeChange("all")} className="w-4 h-4 text-primary" />
             <Users className="w-5 h-5 text-slate-400" />
             <div>
-              <p className="text-sm font-medium text-slate-700">Tutti i Clienti</p>
-              <p className="text-xs text-slate-500">Invia a tutti i clienti attivi</p>
+              <p className="text-sm font-medium text-slate-700">{t("pages.notifications.campaigns.form.allCustomers")}</p>
+              <p className="text-xs text-slate-500">{t("pages.notifications.campaigns.form.allCustomersDesc")}</p>
             </div>
           </label>
           <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
             <input type="radio" name="recipients" value="selected" checked={recipientType === "selected"} onChange={() => onRecipientTypeChange("selected")} className="w-4 h-4 text-primary" />
             <UserCheck className="w-5 h-5 text-slate-400" />
             <div>
-              <p className="text-sm font-medium text-slate-700">Destinatari Selezionati</p>
-              <p className="text-xs text-slate-500">Scegli utenti B2B o clienti Portal</p>
+              <p className="text-sm font-medium text-slate-700">{t("pages.notifications.campaigns.form.selectedRecipients")}</p>
+              <p className="text-xs text-slate-500">{t("pages.notifications.campaigns.form.selectedRecipientsDesc")}</p>
             </div>
           </label>
         </div>
@@ -492,16 +496,17 @@ function ValidationErrors({
   campaignType: TemplateType;
   products: ITemplateProduct[];
 }) {
+  const { t } = useTranslation();
   const errors: string[] = [];
 
   // Check campaign name
   if (!campaignName.trim()) {
-    errors.push("Nome campagna richiesto");
+    errors.push(t("pages.notifications.campaigns.form.validationCampaignName"));
   }
 
   // Check channels
   if (enabledChannels.size === 0) {
-    errors.push("Seleziona almeno un canale di invio");
+    errors.push(t("pages.notifications.campaigns.form.validationSelectChannel"));
   }
 
   const hasPush = enabledChannels.has("mobile") || enabledChannels.has("web_in_app");
@@ -509,31 +514,31 @@ function ValidationErrors({
   // Check push notification content
   if (hasPush) {
     if (!title.trim()) {
-      errors.push("Titolo notifica push richiesto");
+      errors.push(t("pages.notifications.campaigns.form.validationPushTitle"));
     }
     if (!body.trim()) {
-      errors.push("Descrizione notifica push richiesta");
+      errors.push(t("pages.notifications.campaigns.form.validationPushBody"));
     }
   }
 
   // Check email content
   if (enabledChannels.has("email")) {
     if (!emailSubject.trim()) {
-      errors.push("Oggetto email richiesto");
+      errors.push(t("pages.notifications.campaigns.form.validationEmailSubject"));
     }
     if (!emailHtml.trim()) {
-      errors.push("Contenuto HTML email richiesto");
+      errors.push(t("pages.notifications.campaigns.form.validationEmailHtml"));
     }
   }
 
   // Check products for product campaigns
   if (campaignType === "product" && hasPush && products.length === 0) {
-    errors.push("Seleziona almeno un prodotto");
+    errors.push(t("pages.notifications.campaigns.form.validationSelectProduct"));
   }
 
   // Check recipients
   if (recipientType === "selected" && selectedUsers.length === 0) {
-    errors.push("Seleziona almeno un destinatario");
+    errors.push(t("pages.notifications.campaigns.form.validationSelectRecipient"));
   }
 
   if (errors.length === 0) return null;
@@ -543,7 +548,7 @@ function ValidationErrors({
       <div className="flex items-start gap-2">
         <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-amber-800 mb-2">Informazioni mancanti</p>
+          <p className="font-medium text-amber-800 mb-2">{t("pages.notifications.campaigns.form.validationTitle")}</p>
           <ul className="space-y-1">
             {errors.map((error, idx) => (
               <li key={idx} className="text-sm text-amber-700 flex items-center gap-2">

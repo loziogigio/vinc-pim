@@ -7,6 +7,7 @@ import {
   TAG_PREFIX_LABELS,
   type TagPrefix,
 } from "@/lib/constants/customer-tag";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TagRef {
   tag_id: string;
@@ -29,6 +30,7 @@ interface CustomerTagsCardProps {
 }
 
 export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
+  const { t } = useTranslation();
   const [customerTags, setCustomerTags] = useState<TagRef[]>([]);
   const [allTags, setAllTags] = useState<TagDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,9 +125,9 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
       <div className="rounded-lg bg-card shadow-sm p-5">
         <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
           <Tag className="h-4 w-4" />
-          Customer Tags
+          {t("pages.store.customerTagsCard.title")}
         </h2>
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <p className="text-sm text-muted-foreground">{t("pages.store.customerTagsCard.loading")}</p>
       </div>
     );
   }
@@ -135,7 +137,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
       <div className="p-4 border-b border-border">
         <h2 className="font-semibold text-foreground flex items-center gap-2">
           <Tag className="h-4 w-4 text-emerald-600" />
-          Customer Tags
+          {t("pages.store.customerTagsCard.title")}
           {customerTags.length > 0 && (
             <span className="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">
               {customerTags.length}
@@ -147,7 +149,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
       <div className="divide-y divide-border">
         {availablePrefixes.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground text-center">
-            No tag categories defined yet.
+            {t("pages.store.customerTagsCard.noTagCategoriesDefined")}
           </div>
         ) : (
           availablePrefixes.map((prefix) => {
@@ -181,7 +183,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground mt-1.5 italic">Not assigned</p>
+                      <p className="text-xs text-muted-foreground mt-1.5 italic">{t("pages.store.customerTagsCard.notAssigned")}</p>
                     )}
                   </div>
 
@@ -191,7 +193,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                         onClick={() => removeTag(assigned.full_tag)}
                         disabled={saving}
                         className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                        title="Remove tag"
+                        title={t("pages.store.customerTagsCard.removeTagTitle")}
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -205,7 +207,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                         }
                         disabled={saving}
                         className="p-1 rounded text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
-                        title={assigned ? "Change tag" : "Assign tag"}
+                        title={assigned ? t("pages.store.customerTagsCard.changeTagTitle") : t("pages.store.customerTagsCard.assignTagTitle")}
                       >
                         {assigned ? (
                           <ChevronDown className="h-3.5 w-3.5" />
@@ -218,7 +220,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                         <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-border rounded-lg shadow-lg z-20">
                           <div className="p-2 border-b border-border">
                             <p className="text-xs font-medium text-muted-foreground">
-                              Select {getPrefixLabel(prefix)}
+                              {t("pages.store.customerTagsCard.selectLabel", { label: getPrefixLabel(prefix) })}
                             </p>
                           </div>
                           <div className="max-h-48 overflow-y-auto">

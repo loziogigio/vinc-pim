@@ -215,9 +215,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If forcing, remove old defaults
+    // If forcing, remove all seeded components (default + minimal)
     if (force) {
-      await EmailComponent.deleteMany({ is_default: true });
+      await EmailComponent.deleteMany({
+        component_id: { $in: ["header_default", "header_minimal", "footer_default", "footer_minimal"] }
+      });
     }
 
     // Create default components

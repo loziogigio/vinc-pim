@@ -112,8 +112,9 @@ export async function validateCoupon(
     return { valid: false, error: "Un coupon è già applicato a questo ordine" };
   }
 
-  // Check order amount thresholds
-  const orderSubtotal = order.subtotal_net;
+  // Check order amount thresholds using the customer-facing subtotal (net + VAT)
+  // so VAT-included prices match what the merchant configured
+  const orderSubtotal = order.subtotal_net + order.total_vat;
   if (
     coupon.min_order_amount !== undefined &&
     coupon.min_order_amount !== null &&

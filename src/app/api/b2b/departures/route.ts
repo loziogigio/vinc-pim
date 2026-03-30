@@ -40,8 +40,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
+    const ocCruiseIdParam = searchParams.get("oc_cruise_id");
     const filters: DepartureListFilters = {
       product_entity_code: searchParams.get("product_entity_code") || undefined,
+      oc_cruise_id: ocCruiseIdParam ? parseInt(ocCruiseIdParam) : undefined,
       status: (searchParams.get("status") as DepartureListFilters["status"]) || undefined,
       date_from: searchParams.get("date_from") || undefined,
       date_to: searchParams.get("date_to") || undefined,

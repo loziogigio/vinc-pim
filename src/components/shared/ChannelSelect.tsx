@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface ChannelOption {
   code: string;
@@ -15,7 +16,7 @@ interface ChannelSelectProps {
   disabled?: boolean;
   required?: boolean;
   className?: string;
-  /** Label shown above the select. Defaults to "Canale". */
+  /** Label shown above the select. Defaults to the translated "Channel" label. */
   label?: string;
   /** Show the label element. Defaults to true. */
   showLabel?: boolean;
@@ -35,9 +36,11 @@ export function ChannelSelect({
   disabled = false,
   required = false,
   className = "",
-  label = "Canale",
+  label,
   showLabel = true,
 }: ChannelSelectProps) {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t("components.channelSelect.label");
   const [channels, setChannels] = useState<ChannelOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -76,14 +79,14 @@ export function ChannelSelect({
     <div>
       {showLabel && (
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          {label}
+          {resolvedLabel}
           {required && <span className="text-rose-500 ml-1">*</span>}
         </label>
       )}
       {isLoading ? (
         <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-400">
           <Loader2 className="w-4 h-4 animate-spin" />
-          Caricamento canali...
+          {t("components.channelSelect.loading")}
         </div>
       ) : (
         <select
@@ -94,9 +97,9 @@ export function ChannelSelect({
           className={selectClass}
         >
           {channels.length === 0 ? (
-            <option value="">Nessun canale disponibile</option>
+            <option value="">{t("components.channelSelect.noChannels")}</option>
           ) : (
-            !value && <option value="">-- Seleziona canale --</option>
+            !value && <option value="">{t("components.channelSelect.selectChannel")}</option>
           )}
           {channels.map((ch) => (
             <option key={ch.code} value={ch.code}>

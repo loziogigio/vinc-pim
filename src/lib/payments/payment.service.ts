@@ -47,17 +47,14 @@ export async function processPayment(
 ): Promise<PaymentResult> {
   const { tenantId, providerName, paymentType } = options;
 
-  // 1. Check idempotency
+  // 1. Check idempotency — status-aware handler
   if (params.idempotency_key) {
-    const existing = await findByIdempotencyKey(tenantDb, params.idempotency_key);
-    if (existing) {
-      return {
-        success: existing.status === "completed",
-        transaction_id: existing.transaction_id,
-        provider_payment_id: existing.provider_payment_id,
-        status: existing.status,
-      };
-    }
+    const idempotencyResult = await handleIdempotency(
+      tenantDb,
+      params.idempotency_key
+    );
+    if (idempotencyResult) return idempotencyResult;
+    // null = proceed to create new payment (key was cleared or didn't exist)
   }
 
   // 2. Get provider
@@ -66,8 +63,10 @@ export async function processPayment(
     return { success: false, error: `Unknown provider: ${providerName}` };
   }
 
-  // 3. Get tenant config for this provider
-  const tenantConfig = await getProviderConfig(tenantDb, tenantId, providerName);
+  // 3. Get tenant config for this provider (manual provider needs no config)
+  const tenantConfig = providerName === "manual"
+    ? {}
+    : await getProviderConfig(tenantDb, tenantId, providerName);
   if (!tenantConfig) {
     return { success: false, error: `Provider ${providerName} not configured for tenant` };
   }
@@ -128,6 +127,10 @@ export async function processPayment(
         transaction.status
       )
     );
+
+    // Store redirect data for idempotent "processing" lookups
+    if (result.redirect_url) transaction.redirect_url = result.redirect_url;
+    if (result.client_secret) transaction.client_secret = result.client_secret;
 
     if (!result.success) {
       transaction.failure_reason = result.error;
@@ -227,12 +230,13 @@ export async function chargeRecurring(
 // ============================================
 
 /**
- * Refund a transaction (full or partial).
+ * Refund a transaction (full or partial) with idempotency support.
  */
 export async function refundTransaction(
   tenantDb: mongoose.Connection,
   transactionId: string,
-  amount?: number
+  amount?: number,
+  idempotencyKey?: string
 ): Promise<RefundResult> {
   const registry = getModelRegistry(tenantDb);
   const PaymentTransaction = registry.PaymentTransaction;
@@ -242,6 +246,32 @@ export async function refundTransaction(
   });
   if (!transaction) {
     return { success: false, error: "Transaction not found" };
+  }
+
+  // Idempotency: check if a refund with this key already succeeded
+  if (idempotencyKey) {
+    const existingRefund = transaction.events.find(
+      (e: IPaymentEvent) =>
+        e.event_type === "payment.refunded" &&
+        e.metadata?.idempotency_key === idempotencyKey
+    );
+    if (existingRefund) {
+      return {
+        success: true,
+        idempotent: true,
+        refund_id: existingRefund.metadata?.refund_id as string | undefined,
+        amount: existingRefund.metadata?.refund_amount as number | undefined,
+      };
+    }
+  }
+
+  // Already fully refunded — no-op success
+  if (transaction.status === "refunded") {
+    return {
+      success: true,
+      idempotent: true,
+      amount: transaction.gross_amount,
+    };
   }
 
   const provider = getProvider(transaction.provider);
@@ -271,6 +301,8 @@ export async function refundTransaction(
     transaction.events.push(
       createEvent("payment.refunded", transaction.status, {
         refund_amount: amount || transaction.gross_amount,
+        refund_id: result.refund_id,
+        ...(idempotencyKey && { idempotency_key: idempotencyKey }),
       })
     );
     await transaction.save();
@@ -429,13 +461,77 @@ function createEvent(
   };
 }
 
-async function findByIdempotencyKey(
+/**
+ * Status-aware idempotency handler.
+ *
+ * Returns a PaymentResult if the caller should stop (idempotent hit),
+ * or null if the caller should proceed to create a new payment
+ * (key didn't exist, or was cleared from a failed/cancelled transaction).
+ */
+async function handleIdempotency(
   tenantDb: mongoose.Connection,
   key: string
-): Promise<IPaymentTransaction | null> {
+): Promise<PaymentResult | null> {
   const registry = getModelRegistry(tenantDb);
   const PaymentTransaction = registry.PaymentTransaction;
-  return PaymentTransaction.findOne({ idempotency_key: key }).lean();
+
+  const existing = await PaymentTransaction.findOne({ idempotency_key: key }).lean() as IPaymentTransaction | null;
+  if (!existing) return null;
+
+  const TERMINAL_SUCCESS = ["completed", "authorized", "captured", "refunded", "partial_refund"];
+  const RETRYABLE = ["failed", "cancelled"];
+
+  // Terminal success states — return idempotent success
+  if (TERMINAL_SUCCESS.includes(existing.status)) {
+    return {
+      success: true,
+      idempotent: true,
+      transaction_id: existing.transaction_id,
+      payment_number: existing.payment_number,
+      provider_payment_id: existing.provider_payment_id,
+      status: existing.status,
+    };
+  }
+
+  // In-flight states (processing, pending) — return existing redirect data
+  if (!RETRYABLE.includes(existing.status)) {
+    return {
+      success: true,
+      idempotent: true,
+      transaction_id: existing.transaction_id,
+      payment_number: existing.payment_number,
+      provider_payment_id: existing.provider_payment_id,
+      redirect_url: existing.redirect_url,
+      client_secret: existing.client_secret,
+      status: existing.status,
+    };
+  }
+
+  // Failed/cancelled — atomically clear idempotency_key so a new payment can reuse it.
+  // The sparse unique index allows null, so the old record stays as audit evidence.
+  const cleared = await PaymentTransaction.findOneAndUpdate(
+    { idempotency_key: key, status: { $in: RETRYABLE } },
+    {
+      $set: { idempotency_key: null },
+      $push: {
+        events: createEvent("payment.idempotency_cleared", existing.status, {
+          reason: "Retryable status — key released for new attempt",
+        }),
+      },
+    }
+  );
+
+  if (!cleared) {
+    // Race: another request already cleared the key or status changed.
+    // Re-check — the winning request may have created a new transaction.
+    const recheckExisting = await PaymentTransaction.findOne({ idempotency_key: key }).lean() as IPaymentTransaction | null;
+    if (recheckExisting) {
+      return handleIdempotency(tenantDb, key);
+    }
+  }
+
+  // Key cleared (or was already gone) — proceed to create new payment
+  return null;
 }
 
 export async function getProviderConfig(

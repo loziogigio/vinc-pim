@@ -37,9 +37,9 @@ interface SendNotificationPayload {
 
 // Known variables for each trigger type
 const TRIGGER_VARIABLES: Record<string, string[]> = {
-  registration_request_admin: ["customer_name", "company_name", "email", "approval_url"],
-  registration_request_customer: ["customer_name", "company_name"],
-  welcome: ["customer_name", "company_name", "username", "password", "login_url", "shop_name"],
+  registration_request_admin: ["customer_name", "customer_company", "email", "approval_url"],
+  registration_request_customer: ["customer_name", "customer_company"],
+  welcome: ["customer_name", "customer_company", "username", "password", "login_url", "shop_name"],
   forgot_password: ["customer_name", "temporary_password", "login_url", "shop_name"],
   reset_password: ["customer_name", "reset_date", "ip_address", "login_url", "support_email", "shop_name"],
   order_confirmation: ["customer_name", "order_number", "order_date", "order_total", "items_list", "shipping_address", "order_url"],

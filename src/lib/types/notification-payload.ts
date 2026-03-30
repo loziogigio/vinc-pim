@@ -200,6 +200,7 @@ export const TRIGGER_CATEGORY_MAP: Record<NotificationTrigger, NotificationCateg
   back_in_stock: "product",
   // Order
   order_confirmation: "order",
+  order_processing: "order",
   order_shipped: "order",
   order_delivered: "order",
   order_cancelled: "order",

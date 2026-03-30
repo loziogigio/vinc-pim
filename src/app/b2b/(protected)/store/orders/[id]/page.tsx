@@ -51,6 +51,7 @@ import {
   Tag,
   MessageSquare,
   Ticket,
+  ChevronDown,
 } from "lucide-react";
 
 // Import lifecycle components
@@ -72,6 +73,138 @@ interface PaginationMeta {
 
 interface OrderDetailPageProps {
   params: Promise<{ id: string }>;
+}
+
+// ─── ERP Data Accordion Card ─────────────────────────────────────
+function ErpDataCard({ order }: { order: any }) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const erpData = order.erp_data || {};
+  const windmillJobs = erpData.windmill_jobs || [];
+
+  // Separate primitives from nested objects/arrays
+  const primitives: [string, unknown][] = [];
+  const sections: [string, unknown][] = [];
+
+  for (const [key, value] of Object.entries(erpData)) {
+    if (key === "windmill_jobs") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    if (value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0) continue;
+
+    if (value && typeof value === "object") {
+      sections.push([key, value]);
+    } else {
+      primitives.push([key, value]);
+    }
+  }
+
+  return (
+    <div className="rounded-lg bg-card shadow-sm border border-border">
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold text-foreground">ERP Data</h2>
+          {order.erp_sync_status && (
+            <span className={`ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+              order.erp_sync_status === "synced" ? "bg-emerald-100 text-emerald-700" :
+              order.erp_sync_status === "pending" ? "bg-amber-100 text-amber-700" :
+              "bg-red-100 text-red-700"
+            }`}>{order.erp_sync_status}</span>
+          )}
+        </div>
+      </div>
+      <div className="p-4 space-y-1">
+        {/* Processing status */}
+        {order.processing_status && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Processing</span>
+            <span className={`font-medium ${
+              order.processing_status === "completed" ? "text-emerald-600" :
+              order.processing_status === "failed" ? "text-red-600" : "text-amber-600"
+            }`}>{order.processing_status}</span>
+          </div>
+        )}
+
+        {/* Primitive fields */}
+        {primitives.map(([key, value]) => (
+          <div key={key} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
+            <span className="font-mono text-xs">{String(value)}</span>
+          </div>
+        ))}
+
+        {/* Accordion sections for nested objects */}
+        {sections.map(([key, value]) => (
+          <div key={key} className="border-t border-border/50 pt-1 mt-1">
+            <button
+              className="flex items-center justify-between w-full text-sm py-1 hover:bg-muted/50 rounded px-1 -mx-1"
+              onClick={() => toggle(key)}
+            >
+              <span className="font-medium text-muted-foreground">{key.replace(/_/g, " ")}</span>
+              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${openSections[key] ? "rotate-180" : ""}`} />
+            </button>
+            {openSections[key] && (
+              <div className="pl-3 space-y-0.5 pb-1">
+                {Array.isArray(value)
+                  ? (value as any[]).map((item, i) => (
+                      <div key={i} className="text-xs font-mono text-muted-foreground">
+                        {typeof item === "object" ? JSON.stringify(item) : String(item)}
+                      </div>
+                    ))
+                  : Object.entries(value as Record<string, unknown>).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                        <span className="font-mono text-xs">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                      </div>
+                    ))
+                }
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Windmill Jobs */}
+        {windmillJobs.length > 0 && (
+          <div className="border-t border-border/50 pt-1 mt-1">
+            <button
+              className="flex items-center justify-between w-full text-sm py-1 hover:bg-muted/50 rounded px-1 -mx-1"
+              onClick={() => toggle("_windmill_jobs")}
+            >
+              <span className="font-medium text-muted-foreground">windmill jobs ({windmillJobs.length})</span>
+              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${openSections["_windmill_jobs"] ? "rotate-180" : ""}`} />
+            </button>
+            {openSections["_windmill_jobs"] && (
+              <div className="pl-3 space-y-1 pb-1">
+                {windmillJobs.map((job: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground text-xs">{job.phase}/{job.script}</span>
+                    <code
+                      className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded cursor-pointer hover:bg-muted/80 select-all"
+                      title="Click to copy"
+                      onClick={() => navigator.clipboard.writeText(job.job_id)}
+                    >{job.job_id}</code>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Processing Errors */}
+        {order.processing_errors?.length > 0 && (
+          <div className="border-t border-border pt-2 mt-2">
+            <p className="text-xs font-semibold text-red-600 mb-1">Processing Errors</p>
+            {order.processing_errors.map((err: any, i: number) => (
+              <p key={i} className="text-xs text-red-500">
+                {typeof err === "string" ? err : err.message}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function OrderDetailPage({ params }: OrderDetailPageProps) {
@@ -123,6 +256,21 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     ];
     return merged.map((t: any) => t.full_tag);
   }, [customer, shippingAddress]);
+
+  // Price formatting: unit prices use order.price_decimals, totals use 2
+  const pd = order?.price_decimals ?? 2;
+  const fmtUnit = useMemo(() => new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: order?.currency || "EUR",
+    minimumFractionDigits: pd,
+    maximumFractionDigits: pd,
+  }), [order?.currency, pd]);
+  const fmtTotal = useMemo(() => new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: order?.currency || "EUR",
+    minimumFractionDigits: pd,
+    maximumFractionDigits: pd,
+  }), [order?.currency, pd]);
 
   // Delete confirmation dialog state
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
@@ -457,11 +605,29 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               <h1 className="text-2xl font-bold text-foreground font-mono">
                 {order.order_id}
               </h1>
-              {order.order_number && (
-                <p className="text-sm text-muted-foreground">
-                  OR/{order.order_number}/{order.year}
-                </p>
-              )}
+              <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
+                {order.order_number && (
+                  <span>OR/{order.order_number}/{order.year}</span>
+                )}
+                {order.cart_number && (
+                  <span>Cart #{order.cart_number}</span>
+                )}
+                {order.customer_code && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-xs font-mono">
+                    {order.customer_code}
+                  </span>
+                )}
+                {order.shipping_address_code && order.shipping_address_code !== order.customer_code && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-xs font-mono">
+                    {order.shipping_address_code}
+                  </span>
+                )}
+                {order.channel && order.channel !== "default" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-xs font-medium">
+                    {order.channel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -679,7 +845,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             </div>
                             {editingLine.listPrice > editingLine.unitPrice && (
                               <span className="text-xs text-muted-foreground line-through">
-                                {t("pages.store.orderDetail.listPrice")}: €{editingLine.listPrice.toFixed(2)}
+                                {t("pages.store.orderDetail.listPrice")}: {fmtUnit.format(editingLine.listPrice)}
                               </span>
                             )}
                           </div>
@@ -688,10 +854,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           <div className="flex flex-col items-end gap-1 min-w-[100px]">
                             <span className="text-xs text-muted-foreground">{t("pages.store.orderDetail.lineTotal")}</span>
                             <span className="font-bold text-foreground">
-                              {new Intl.NumberFormat("it-IT", {
-                                style: "currency",
-                                currency: order.currency || "EUR",
-                              }).format(editingLine.unitPrice * editingLine.packSize * editingLine.quantity)}
+                              {fmtTotal.format(editingLine.unitPrice * editingLine.packSize * editingLine.quantity)}
                             </span>
                             {editingLine.packSize > 1 && (
                               <span className="text-xs text-muted-foreground">
@@ -831,7 +994,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               )}
                             </span>
                           )}
-                          {/* Promotion */}
+                          {/* Promotion Badge */}
                           {item.promo_code && (
                             <span
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-medium"
@@ -846,15 +1009,49 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               )}
                               {item.promo_discount_amt && !item.promo_discount_pct && (
                                 <span className="text-rose-600">
-                                  (-{new Intl.NumberFormat("it-IT", {
-                                    style: "currency",
-                                    currency: order.currency || "EUR",
-                                  }).format(Math.abs(item.promo_discount_amt))})
+                                  (-{fmtUnit.format(Math.abs(item.promo_discount_amt))})
                                 </span>
                               )}
                             </span>
                           )}
                         </div>
+
+                        {/* Promo Goal Progress */}
+                        {item.promo_code && (() => {
+                          const pp = (order as any).promo_progress?.find(
+                            (p: any) => p.promo_code === item.promo_code
+                          );
+                          if (!pp) return null;
+                          return (
+                            <div className="mt-1 flex items-center gap-3 text-xs flex-wrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                {pp.goal_type === "value" ? "Value goal" : "Qty goal"}:{" "}
+                                <span className="font-medium text-foreground">
+                                  {pp.goal_type === "value" ? fmtTotal.format(pp.goal_value) : `${pp.goal_value} pcs`}
+                                </span>
+                              </span>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium ${
+                                pp.reached ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                              }`}>
+                                {pp.reached
+                                  ? `✓ Reached (${pp.goal_type === "value" ? fmtTotal.format(pp.current_value) : pp.current_value + " pcs"})`
+                                  : pp.goal_type === "value"
+                                    ? `Missing ${fmtTotal.format(pp.remaining)} — current ${fmtTotal.format(pp.current_value)}`
+                                    : `Missing ${pp.remaining} pcs — current ${pp.current_value} pcs`
+                                }
+                              </span>
+                              {pp.reward_type && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-700">
+                                  Reward: {pp.reward_type === "extra_discount" ? "Extra discount"
+                                    : pp.reward_type === "fixed_price" ? "Fixed price"
+                                    : pp.reward_type === "gift"
+                                      ? `Gift${pp.reward_gift_code ? ` (${pp.reward_gift_code} ×${pp.reward_gift_quantity || 1})` : ""}`
+                                      : pp.reward_type}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Price Details */}
                         <div className="mt-2 flex items-center gap-4 text-sm flex-wrap">
@@ -863,10 +1060,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             <div className="text-xs">
                               <span className="text-muted-foreground">Retail: </span>
                               <span className="line-through text-muted-foreground">
-                                {new Intl.NumberFormat("it-IT", {
-                                  style: "currency",
-                                  currency: order.currency || "EUR",
-                                }).format(item.retail_price)}
+                                {fmtUnit.format(item.retail_price)}
                               </span>
                             </div>
                           )}
@@ -875,10 +1069,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             <div className="text-xs">
                               <span className="text-muted-foreground">List: </span>
                               <span className="line-through text-muted-foreground">
-                                {new Intl.NumberFormat("it-IT", {
-                                  style: "currency",
-                                  currency: order.currency || "EUR",
-                                }).format(item.list_price)}
+                                {fmtUnit.format(item.list_price)}
                               </span>
                             </div>
                           )}
@@ -886,10 +1077,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           <div className="flex items-center gap-1">
                             <span className="text-muted-foreground">{item.vat_included ? "Gross: " : "Net: "}</span>
                             <span className="font-semibold text-foreground">
-                              {new Intl.NumberFormat("it-IT", {
-                                style: "currency",
-                                currency: order.currency || "EUR",
-                              }).format(item.unit_price)}
+                              {fmtUnit.format(item.unit_price)}
                             </span>
                             {isDraft && !editingLine && (
                               <button
@@ -901,33 +1089,36 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               </button>
                             )}
                           </div>
-                          {/* Discount Badge - calculated from highest reference price */}
+                          {/* Discount Badge - show individual tiers if available */}
                           {(() => {
                             const refPrice = item.retail_price || item.list_price;
-                            const discountPct = refPrice > item.unit_price
-                              ? Math.round((1 - item.unit_price / refPrice) * 100)
-                              : 0;
                             const savings = refPrice - item.unit_price;
-                            return discountPct > 0 ? (
+                            const tiers = item.discounts?.filter((d: { value: number }) => d.value !== 0) || [];
+                            if (tiers.length === 0 && savings <= 0) return null;
+                            return (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-medium">
-                                -{discountPct}%
-                                <span className="text-emerald-600 font-normal">
-                                  (save {new Intl.NumberFormat("it-IT", {
-                                    style: "currency",
-                                    currency: order.currency || "EUR",
-                                  }).format(savings)})
-                                </span>
+                                {tiers.length > 0
+                                  ? tiers.map((d: { value: number }, i: number) => (
+                                      <span key={i}>{d.value}%</span>
+                                    ))
+                                  : (() => {
+                                      const pct = Math.round((1 - item.unit_price / refPrice) * 100);
+                                      return pct > 0 ? <span>-{pct}%</span> : null;
+                                    })()
+                                }
+                                {savings > 0 && (
+                                  <span className="text-emerald-600 font-normal">
+                                    (save {fmtUnit.format(savings)})
+                                  </span>
+                                )}
                               </span>
-                            ) : null;
+                            );
                           })()}
                           {/* Price per smallest unit (per piece) */}
                           {item.pack_size && item.pack_size > 1 && (
                             <div className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                               <span className="font-medium">
-                                {new Intl.NumberFormat("it-IT", {
-                                  style: "currency",
-                                  currency: order.currency || "EUR",
-                                }).format(item.unit_price / item.pack_size)}
+                                {fmtUnit.format(item.unit_price / item.pack_size)}
                               </span>
                               <span className="text-amber-600">/{item.quantity_unit || "pz"}</span>
                             </div>
@@ -950,17 +1141,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Line Total */}
                         <div className="text-right">
                           <div className="font-semibold text-foreground">
-                            {new Intl.NumberFormat("it-IT", {
-                              style: "currency",
-                              currency: order.currency || "EUR",
-                            }).format(item.line_total)}
+                            {fmtTotal.format(item.line_total)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             Net:{" "}
-                            {new Intl.NumberFormat("it-IT", {
-                              style: "currency",
-                              currency: order.currency || "EUR",
-                            }).format(item.line_net)}
+                            {fmtTotal.format(item.line_net)}
                           </div>
                         </div>
 
@@ -1103,6 +1288,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             onDeliveryChange={() => fetchOrder(false)}
           />
 
+          {/* ERP Data Card */}
+          {((order as any).erp_data || (order as any).erp_sync_status || (order as any).processing_status) && (
+            <ErpDataCard order={order as any} />
+          )}
+
           {/* Coupon Card */}
           <CouponCard
             order={order}
@@ -1162,10 +1352,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("pages.store.orderDetail.subtotal")} (Gross)</span>
                 <span className="font-medium">
-                  {new Intl.NumberFormat("it-IT", {
-                    style: "currency",
-                    currency: order.currency || "EUR",
-                  }).format(order.subtotal_gross)}
+                  {fmtTotal.format(order.subtotal_gross)}
                 </span>
               </div>
               {/* Coupon discount (shown separately) */}
@@ -1178,10 +1365,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t("pages.store.orderDetail.discount")}</span>
                         <span className="font-medium text-emerald-600">
-                          -{new Intl.NumberFormat("it-IT", {
-                            style: "currency",
-                            currency: order.currency || "EUR",
-                          }).format(otherDiscount)}
+                          -{fmtTotal.format(otherDiscount)}
                         </span>
                       </div>
                     )}
@@ -1191,10 +1375,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         Coupon {order.coupon_code}
                       </span>
                       <span className="font-medium text-emerald-600">
-                        -{new Intl.NumberFormat("it-IT", {
-                          style: "currency",
-                          currency: order.currency || "EUR",
-                        }).format(Math.abs(cpnDisc.value))}
+                        -{fmtTotal.format(Math.abs(cpnDisc.value))}
                       </span>
                     </div>
                   </>
@@ -1205,39 +1386,27 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
                   <span className="font-medium text-emerald-600">
-                    -{new Intl.NumberFormat("it-IT", {
-                      style: "currency",
-                      currency: order.currency || "EUR",
-                    }).format(order.total_discount)}
+                    -{fmtTotal.format(order.total_discount)}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("pages.store.orderDetail.subtotal")} (Net)</span>
                 <span className="font-medium">
-                  {new Intl.NumberFormat("it-IT", {
-                    style: "currency",
-                    currency: order.currency || "EUR",
-                  }).format(order.subtotal_net)}
+                  {fmtTotal.format(order.subtotal_net)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">VAT</span>
                 <span className="font-medium">
-                  {new Intl.NumberFormat("it-IT", {
-                    style: "currency",
-                    currency: order.currency || "EUR",
-                  }).format(order.total_vat)}
+                  {fmtTotal.format(order.total_vat)}
                 </span>
               </div>
               {order.shipping_cost > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t("pages.store.orderDetail.shippingCost")}</span>
                   <span className="font-medium">
-                    {new Intl.NumberFormat("it-IT", {
-                      style: "currency",
-                      currency: order.currency || "EUR",
-                    }).format(order.shipping_cost)}
+                    {fmtTotal.format(order.shipping_cost)}
                   </span>
                 </div>
               )}
@@ -1245,10 +1414,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 <div className="flex justify-between">
                   <span className="font-semibold text-foreground">{t("pages.store.orderDetail.orderTotal")}</span>
                   <span className="font-bold text-lg text-foreground">
-                    {new Intl.NumberFormat("it-IT", {
-                      style: "currency",
-                      currency: order.currency || "EUR",
-                    }).format(order.order_total)}
+                    {fmtTotal.format(order.order_total)}
                   </span>
                 </div>
               </div>

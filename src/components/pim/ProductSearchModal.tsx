@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Search, X, Check, Package, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Package } from "lucide-react";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { FullScreenModal } from "@/components/shared/FullScreenModal";
+import { ProductFilterSection, type ProductFilterState, EMPTY_FILTERS } from "@/components/pim/ProductFilterSection";
 
 type Product = {
   entity_code: string;
@@ -14,17 +16,7 @@ type Product = {
   category?: { name?: Record<string, string> };
 };
 
-type FilterState = {
-  search: string;
-  status: string;
-  entity_code: string;
-  sku: string;
-  sku_match: "exact" | "starts" | "includes" | "ends";
-  parent_sku: string;
-  parent_sku_match: "exact" | "starts" | "includes" | "ends";
-  brand: string;
-  category: string;
-};
+type FilterState = ProductFilterState;
 
 interface ProductSearchModalProps {
   isOpen: boolean;
@@ -56,43 +48,21 @@ export function ProductSearchModal({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectingAll, setSelectingAll] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    status: "",
-    entity_code: "",
-    sku: "",
-    sku_match: "exact",
-    parent_sku: "",
-    parent_sku_match: "exact",
-    brand: "",
-    category: "",
-  });
+  const [filters, setFilters] = useState<FilterState>({ ...EMPTY_FILTERS });
 
   const excludeSet = new Set(excludeEntityCodes);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setFilters({
-        search: "",
-        status: "",
-        entity_code: "",
-        sku: "",
-        sku_match: "exact",
-        parent_sku: "",
-        parent_sku_match: "exact",
-        brand: "",
-        category: "",
-      });
+      setFilters({ ...EMPTY_FILTERS });
       setProducts([]);
       setSelected(new Set());
       setPage(1);
       setTotalProducts(0);
-      setShowAdvancedFilters(false);
     }
   }, [isOpen]);
 
@@ -104,6 +74,10 @@ export function ProductSearchModal({
 
     if (filters.search.trim()) params.set("search", filters.search.trim());
     if (filters.status) params.set("status", filters.status);
+    if (filters.product_kind) params.set("product_kind", filters.product_kind);
+    if (filters.date_from) params.set("date_from", filters.date_from);
+    if (filters.date_to) params.set("date_to", filters.date_to);
+    if (filters.batch_id) params.set("batch_id", filters.batch_id);
     if (filters.entity_code) params.set("entity_code", filters.entity_code);
     if (filters.sku) {
       params.set("sku", filters.sku);
@@ -115,13 +89,20 @@ export function ProductSearchModal({
     }
     if (filters.brand) params.set("brand", filters.brand);
     if (filters.category) params.set("category", filters.category);
+    if (filters.product_type) params.set("product_type", filters.product_type);
+    if (filters.price_min) params.set("price_min", filters.price_min);
+    if (filters.price_max) params.set("price_max", filters.price_max);
+    if (filters.score_min) params.set("score_min", filters.score_min);
+    if (filters.score_max) params.set("score_max", filters.score_max);
 
     return params;
   }, [filters]);
 
   // Check if any filter is active
-  const hasActiveFilters = filters.search.length >= 2 || filters.status || filters.entity_code ||
-    filters.sku || filters.parent_sku || filters.brand || filters.category;
+  const hasActiveFilters = filters.search.length >= 2 || filters.status || filters.product_kind ||
+    filters.date_from || filters.date_to || filters.batch_id || filters.entity_code ||
+    filters.sku || filters.parent_sku || filters.brand || filters.category ||
+    filters.product_type || filters.price_min || filters.price_max || filters.score_min || filters.score_max;
 
   // Search products
   const searchProducts = useCallback(async (pageNum: number = 1) => {
@@ -271,162 +252,64 @@ export function ProductSearchModal({
     searchProducts(nextPage);
   };
 
-  if (!isOpen) return null;
-
   const hasMore = products.length < totalProducts;
   const selectableProducts = products.filter(p => !excludeSet.has(p.entity_code));
   const selectableCount = selectableProducts.length;
   const notVisibleCount = totalProducts - products.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-5xl rounded-xl border border-border bg-card shadow-xl h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
+    <FullScreenModal
+      open={isOpen}
+      onClose={onClose}
+      title={title}
+      maxWidth="max-w-[1280px]"
+      actions={
+        <>
+          <span className="text-sm text-muted-foreground mr-2">
+            {selected.size} product(s) selected
+          </span>
+          {selected.size > 0 && (
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-sm text-muted-foreground hover:text-foreground transition mr-2"
+            >
+              Clear
+            </button>
+          )}
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-muted transition"
+            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition text-sm"
           >
-            <X className="h-5 w-5" />
+            Cancel
           </button>
-        </div>
+          <button
+            onClick={handleConfirm}
+            disabled={selected.size === 0}
+            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            {selectButtonText} {selected.size > 0 ? `(${selected.size})` : ""}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {/* Description */}
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
 
         {/* Search & Filters */}
-        <div className="px-6 py-4 border-b border-border space-y-3">
-          {/* Main Search */}
-          <div className="flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <input
-                value={filters.search}
-                onChange={(e) => updateFilters({ search: e.target.value })}
-                onKeyDown={handleKeyDown}
-                placeholder="Search products by name, entity code, or SKU..."
-                className="w-full pl-12 pr-4 py-3 rounded-lg border border-border bg-background focus:border-primary focus:outline-none text-base"
-                autoFocus
-              />
-            </div>
-            {/* Status Filter */}
-            <select
-              value={filters.status}
-              onChange={(e) => updateFilters({ status: e.target.value })}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-            >
-              <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-
-          {/* Advanced Filters Toggle */}
-          <button
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="flex items-center gap-2 text-sm text-primary hover:underline"
-          >
-            <Filter className="h-4 w-4" />
-            Advanced Filters
-            {showAdvancedFilters ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
-
-          {/* Advanced Filters */}
-          {showAdvancedFilters && (
-            <div className="p-4 border border-border rounded-lg bg-muted/30">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Entity Code</label>
-                  <input
-                    type="text"
-                    placeholder="Filter by entity code"
-                    value={filters.entity_code}
-                    onChange={(e) => updateFilters({ entity_code: e.target.value })}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">SKU</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={filters.sku_match}
-                      onChange={(e) => updateFilters({ sku_match: e.target.value as FilterState["sku_match"] })}
-                      className="rounded border border-border bg-background px-2 py-2 text-xs"
-                    >
-                      <option value="exact">Exact</option>
-                      <option value="starts">Starts with</option>
-                      <option value="includes">Includes</option>
-                      <option value="ends">Ends with</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Filter by SKU"
-                      value={filters.sku}
-                      onChange={(e) => updateFilters({ sku: e.target.value })}
-                      className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Parent SKU</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={filters.parent_sku_match}
-                      onChange={(e) => updateFilters({ parent_sku_match: e.target.value as FilterState["parent_sku_match"] })}
-                      className="rounded border border-border bg-background px-2 py-2 text-xs"
-                    >
-                      <option value="exact">Exact</option>
-                      <option value="starts">Starts with</option>
-                      <option value="includes">Includes</option>
-                      <option value="ends">Ends with</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Filter by parent SKU"
-                      value={filters.parent_sku}
-                      onChange={(e) => updateFilters({ parent_sku: e.target.value })}
-                      className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Brand</label>
-                  <input
-                    type="text"
-                    placeholder="Filter by brand"
-                    value={filters.brand}
-                    onChange={(e) => updateFilters({ brand: e.target.value })}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Category</label>
-                  <input
-                    type="text"
-                    placeholder="Filter by category"
-                    value={filters.category}
-                    onChange={(e) => updateFilters({ category: e.target.value })}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Type at least 2 characters to search, or use advanced filters
-          </p>
-        </div>
+        <ProductFilterSection
+          filters={filters}
+          onFiltersChange={updateFilters}
+          onKeyDown={handleKeyDown}
+          autoFocusSearch
+          showHint
+        />
 
         {/* Results Header with Select All */}
         {products.length > 0 && multiSelect && (
-          <div className="px-6 py-2 border-b border-border bg-muted/20 flex items-center justify-between">
+          <div className="py-2 px-4 border border-border rounded-lg bg-muted/20 flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
               Showing {products.length} of {totalProducts} products
               {selectableCount < products.length && (
@@ -459,7 +342,7 @@ export function ProductSearchModal({
         )}
 
         {/* Results */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="rounded-lg border border-border">
           {loading && products.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -542,7 +425,7 @@ export function ProductSearchModal({
 
               {/* Load More */}
               {hasMore && (
-                <div className="flex justify-center pb-4">
+                <div className="flex justify-center py-4 border-t border-border">
                   <button
                     onClick={loadMore}
                     disabled={loading}
@@ -555,39 +438,7 @@ export function ProductSearchModal({
             </>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-border px-6 py-4 bg-muted/30">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-foreground">
-              {selected.size} product(s) selected
-            </span>
-            {selected.size > 0 && (
-              <button
-                onClick={() => setSelected(new Set())}
-                className="text-sm text-muted-foreground hover:text-foreground transition"
-              >
-                Clear selection
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={selected.size === 0}
-              className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {selectButtonText} {selected.size > 0 ? `(${selected.size})` : ""}
-            </button>
-          </div>
-        </div>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }

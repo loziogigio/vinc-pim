@@ -17,7 +17,7 @@ import { sendPush, isWebPushEnabled } from "@/lib/push";
 import { sendFCM, isFCMEnabled } from "@/lib/fcm";
 import type { SendFCMResult } from "@/lib/fcm/types";
 import { createInAppNotification } from "./in-app.service";
-import { getStorefrontPrimaryDomain } from "@/lib/services/b2c-storefront.service";
+import type { IB2CStorefront } from "@/lib/db/models/b2c-storefront";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import type { NotificationTrigger } from "@/lib/db/models/notification-template";
 import type { PushPreferences, SendPushResult } from "@/lib/push/types";
@@ -311,43 +311,65 @@ export async function sendNotification(
 }
 
 /**
- * Resolve the storefront base URL for email links.
+ * Resolve the storefront base URL and branding for email links.
  *
- * Priority:
+ * Priority for loginUrl:
  * 1. Explicit login_url passed by caller
  * 2. Storefront primary domain (from b2cstorefronts collection)
  * 3. HomeSettings branding.shopUrl (legacy fallback)
+ *
+ * Priority for shopName/logo/primaryColor:
+ * 1. Storefront branding (if channel resolves to a storefront)
+ * 2. HomeSettings branding (legacy fallback)
  */
 async function resolveLoginUrl(
   tenantDb: string,
   explicitUrl?: string,
   channel?: string
-): Promise<{ loginUrl: string; shopName: string }> {
-  const { HomeSettings } = await connectWithModels(tenantDb);
+): Promise<{ loginUrl: string; shopName: string; logo: string; primaryColor: string }> {
+  const { HomeSettings, B2CStorefront } = await connectWithModels(tenantDb);
   const settings = await HomeSettings.findOne({}).lean();
-  const branding = (settings as { branding?: { title?: string; shopUrl?: string } })?.branding;
-  const shopName = branding?.title || "VINC B2B";
+  const homeBranding = (settings as { branding?: { title?: string; shopUrl?: string; logo?: string; primaryColor?: string } })?.branding;
 
-  if (explicitUrl) return { loginUrl: explicitUrl, shopName };
+  // Defaults from HomeSettings
+  let shopName = homeBranding?.title || "VINC B2B";
+  let logo = homeBranding?.logo || "";
+  let primaryColor = homeBranding?.primaryColor || "";
+
+  // Try to resolve storefront by channel for branding + domain
+  const channelCode = channel || DEFAULT_CHANNEL;
+  const storefront = await B2CStorefront.findOne({
+    channel: channelCode,
+    status: "active",
+  }).lean() as IB2CStorefront | null;
+
+  if (storefront?.branding) {
+    if (storefront.branding.title) shopName = storefront.branding.title;
+    if (storefront.branding.logo_url) logo = storefront.branding.logo_url;
+    if (storefront.branding.primary_color) primaryColor = storefront.branding.primary_color;
+  }
+
+  if (explicitUrl) return { loginUrl: explicitUrl, shopName, logo, primaryColor };
 
   // Try storefront primary domain
-  const storefrontDomain = await getStorefrontPrimaryDomain(
-    tenantDb,
-    channel || DEFAULT_CHANNEL
-  );
-  if (storefrontDomain) {
-    const base = storefrontDomain.endsWith("/") ? storefrontDomain.slice(0, -1) : storefrontDomain;
-    return { loginUrl: `${base}/login`, shopName };
+  if (storefront?.domains?.length) {
+    const primary = storefront.domains.find((d: { is_primary?: boolean }) => d.is_primary);
+    const domain = primary?.domain || storefront.domains[0]?.domain;
+    if (domain) {
+      const url = domain.startsWith("http") ? domain : `https://${domain}`;
+      const base = url.endsWith("/") ? url.slice(0, -1) : url;
+      return { loginUrl: `${base}/login`, shopName, logo, primaryColor };
+    }
   }
 
   // Legacy fallback
-  const fallback = branding?.shopUrl;
+  const fallback = homeBranding?.shopUrl;
   if (fallback) {
     const base = fallback.endsWith("/") ? fallback.slice(0, -1) : fallback;
-    return { loginUrl: `${base}/login`, shopName };
+    return { loginUrl: `${base}/login`, shopName, logo, primaryColor };
   }
 
-  return { loginUrl: "", shopName };
+  return { loginUrl: "", shopName, logo, primaryColor };
 }
 
 /**
@@ -365,7 +387,7 @@ export async function sendForgotPasswordNotification(
     channel?: string;
   }
 ): Promise<SendNotificationResult> {
-  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
+  const { loginUrl, shopName, logo, primaryColor } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
 
   return sendNotification({
     tenantDb,
@@ -376,6 +398,8 @@ export async function sendForgotPasswordNotification(
       temporary_password: variables.temporary_password,
       login_url: loginUrl,
       shop_name: shopName,
+      ...(logo && { logo }),
+      ...(primaryColor && { primary_color: primaryColor }),
     },
   });
 }
@@ -397,7 +421,7 @@ export async function sendWelcomeNotification(
     channel?: string;
   }
 ): Promise<SendNotificationResult> {
-  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
+  const { loginUrl, shopName, logo, primaryColor } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
 
   return sendNotification({
     tenantDb,
@@ -405,11 +429,13 @@ export async function sendWelcomeNotification(
     to,
     variables: {
       customer_name: variables.customer_name,
-      company_name: variables.company_name,
+      customer_company: variables.company_name,
       username: variables.username,
       password: variables.password,
       login_url: loginUrl,
       shop_name: shopName,
+      ...(logo && { logo }),
+      ...(primaryColor && { primary_color: primaryColor }),
     },
   });
 }
@@ -429,7 +455,7 @@ export async function sendSelfRegistrationWelcome(
     channel?: string;
   }
 ): Promise<SendNotificationResult> {
-  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
+  const { loginUrl, shopName, logo, primaryColor } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
 
   return sendNotification({
     tenantDb,
@@ -437,9 +463,11 @@ export async function sendSelfRegistrationWelcome(
     to,
     variables: {
       customer_name: variables.customer_name,
-      company_name: variables.company_name || "",
+      customer_company: variables.company_name || "",
       login_url: loginUrl,
       shop_name: shopName,
+      ...(logo && { logo }),
+      ...(primaryColor && { primary_color: primaryColor }),
     },
   });
 }
@@ -461,7 +489,7 @@ export async function sendPasswordResetConfirmation(
     channel?: string;
   }
 ): Promise<SendNotificationResult> {
-  const { loginUrl, shopName } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
+  const { loginUrl, shopName, logo, primaryColor } = await resolveLoginUrl(tenantDb, variables.login_url, variables.channel);
 
   const { HomeSettings } = await connectWithModels(tenantDb);
   const settings = await HomeSettings.findOne({}).lean();
@@ -479,6 +507,8 @@ export async function sendPasswordResetConfirmation(
       login_url: loginUrl,
       support_email: supportEmail,
       shop_name: shopName,
+      ...(logo && { logo }),
+      ...(primaryColor && { primary_color: primaryColor }),
     },
   });
 }

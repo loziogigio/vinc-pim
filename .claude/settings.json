@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r Worker\\\\\\(/home/jire87/software/www-website/www-data/vendereincloud-app/vinc-commerce-suite/src/lib/queue --include=*.ts -A 5)",
+      "Bash(npm list:*)"
+    ]
+  }
+}

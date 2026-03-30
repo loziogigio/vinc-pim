@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { Search, Filter, ExternalLink, Loader2, Package } from "lucide-react";
 import { FACET_FIELDS_CONFIG } from "@/lib/search/facet-config";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const PREVIEW_LIMIT = 6;
 
@@ -68,21 +69,55 @@ function getFilterLabel(key: string): string {
     return facetConfig.label;
   }
 
-  // Common field mappings
+  // Return the key for dynamic resolution via t() at render time
+  // The labels will be resolved by the component using t()
   const labelMap: Record<string, string> = {
-    brand_id: "Marca",
-    category_id: "Categoria",
-    product_type_id: "Tipo Prodotto",
-    product_type_code: "Tipo Prodotto",
-    collection_ids: "Collezione",
-    stock_status: "Disponibilità",
-    has_active_promo: "In Promozione",
-    tag_groups: "Caratteristiche",
-    price_min: "Prezzo Min",
-    price_max: "Prezzo Max",
+    brand_id: "brand_id",
+    category_id: "category_id",
+    product_type_id: "product_type_id",
+    product_type_code: "product_type_code",
+    collection_ids: "collection_ids",
+    stock_status: "stock_status",
+    has_active_promo: "has_active_promo",
+    tag_groups: "tag_groups",
+    price_min: "price_min",
+    price_max: "price_max",
   };
 
   return labelMap[normalizedKey] || normalizedKey;
+}
+
+/**
+ * Get translated label for a filter field using t()
+ */
+function getTranslatedFilterLabel(key: string, t: (key: string) => string): string {
+  const normalizedKey = key.replace(/^filters-/, "");
+
+  const labelKeyMap: Record<string, string> = {
+    brand_id: "pages.notifications.campaigns.searchUrlInput.labelBrand",
+    category_id: "pages.notifications.campaigns.searchUrlInput.labelCategory",
+    product_type_id: "pages.notifications.campaigns.searchUrlInput.labelProductType",
+    product_type_code: "pages.notifications.campaigns.searchUrlInput.labelProductType",
+    collection_ids: "pages.notifications.campaigns.searchUrlInput.labelCollection",
+    stock_status: "pages.notifications.campaigns.searchUrlInput.labelAvailability",
+    has_active_promo: "pages.notifications.campaigns.searchUrlInput.labelPromo",
+    tag_groups: "pages.notifications.campaigns.searchUrlInput.labelFeatures",
+    price_min: "pages.notifications.campaigns.searchUrlInput.labelMinPrice",
+    price_max: "pages.notifications.campaigns.searchUrlInput.labelMaxPrice",
+  };
+
+  // Check facet config for label first
+  const facetConfig = FACET_FIELDS_CONFIG[normalizedKey];
+  if (facetConfig?.label) {
+    return facetConfig.label;
+  }
+
+  const translationKey = labelKeyMap[normalizedKey];
+  if (translationKey) {
+    return t(translationKey);
+  }
+
+  return normalizedKey;
 }
 
 /**
@@ -229,6 +264,7 @@ export function SearchUrlInput({
   disabled = false,
   showPreview = true,
 }: SearchUrlInputProps) {
+  const { t } = useTranslation();
   const parsed = useMemo(() => parseSearchUrl(value), [value]);
 
   // Preview state
@@ -280,14 +316,14 @@ export function SearchUrlInput({
     if (!showPreview) return null;
 
     if (!parsed || (!parsed.keyword && parsed.filters.length === 0)) {
-      return <PreviewPlaceholder message="Inserisci una query per visualizzare l'anteprima dei prodotti." />;
+      return <PreviewPlaceholder message={t("pages.notifications.campaigns.searchUrlInput.enterQueryPlaceholder")} />;
     }
 
     if (previewLoading) {
       return (
         <div className="flex items-center justify-center py-4 text-xs text-slate-500">
           <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          Caricamento anteprima...
+          {t("pages.notifications.campaigns.searchUrlInput.loadingPreview")}
         </div>
       );
     }
@@ -297,7 +333,7 @@ export function SearchUrlInput({
     }
 
     if (!previewProducts.length) {
-      return <PreviewPlaceholder message="Nessun prodotto trovato per questa ricerca." />;
+      return <PreviewPlaceholder message={t("pages.notifications.campaigns.searchUrlInput.noProductsFound")} />;
     }
 
     return (
@@ -361,7 +397,7 @@ export function SearchUrlInput({
           {/* Keyword */}
           {parsed.keyword && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600 uppercase">Keyword:</span>
+              <span className="text-xs font-semibold text-slate-600 uppercase">{t("pages.notifications.campaigns.searchUrlInput.keyword")}</span>
               <span className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
                 <Search className="w-3 h-3 mr-1" />
                 {parsed.keyword}
@@ -374,7 +410,7 @@ export function SearchUrlInput({
             <div className="space-y-1.5">
               <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 uppercase">
                 <Filter className="w-3 h-3" />
-                Filtri:
+                {t("pages.notifications.campaigns.searchUrlInput.filtersLabel")}
               </div>
               <div className="flex flex-wrap gap-2">
                 {parsed.filters.map(({ key, label, values }) => (
@@ -382,7 +418,7 @@ export function SearchUrlInput({
                     key={key}
                     className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs"
                   >
-                    <span className="font-semibold text-slate-500 uppercase text-[10px]">{label}</span>
+                    <span className="font-semibold text-slate-500 uppercase text-[10px]">{getTranslatedFilterLabel(key, t)}</span>
                     <span className="text-slate-700">
                       {values.length > 2 ? `${values.slice(0, 2).join(", ")} +${values.length - 2}` : values.join(", ")}
                     </span>
@@ -397,7 +433,7 @@ export function SearchUrlInput({
       {/* Product Preview */}
       {showPreview && (
         <div>
-          <p className="text-xs font-medium text-slate-600 mb-1.5">Anteprima</p>
+          <p className="text-xs font-medium text-slate-600 mb-1.5">{t("pages.notifications.campaigns.searchUrlInput.previewLabel")}</p>
           {previewContent}
         </div>
       )}
@@ -405,7 +441,7 @@ export function SearchUrlInput({
       {/* URL Format Help */}
       {!parsed && value && (
         <p className="text-xs text-amber-600">
-          Formato non riconosciuto. Usa: <code className="bg-amber-50 px-1 py-0.5 rounded">shop?text=keyword&amp;filters-brand_id=004</code>
+          {t("pages.notifications.campaigns.searchUrlInput.unrecognizedFormat", { example: "shop?text=keyword&filters-brand_id=004" })}
         </p>
       )}
     </div>

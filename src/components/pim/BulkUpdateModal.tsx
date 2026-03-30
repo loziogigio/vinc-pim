@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, EyeOff, Eye } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type BulkUpdateModalProps = {
   isOpen: boolean;
@@ -12,6 +13,7 @@ type BulkUpdateModalProps = {
 
 export type BulkUpdateData = {
   status?: "draft" | "published" | "archived";
+  not_visible?: boolean;
   brand?: string;
   category?: string;
   currency?: string;
@@ -23,6 +25,7 @@ export function BulkUpdateModal({
   selectedCount,
   onUpdate,
 }: BulkUpdateModalProps) {
+  const { t } = useTranslation();
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
   const [values, setValues] = useState<BulkUpdateData>({});
   const [isUpdating, setIsUpdating] = useState(false);
@@ -49,21 +52,23 @@ export function BulkUpdateModal({
 
   const handleUpdate = async () => {
     if (selectedFields.size === 0) {
-      alert("Please select at least one field to update");
+      alert(t("pages.pim.bulkUpdateModal.selectAtLeastOne"));
       return;
     }
 
     // Filter values to only include selected fields
+    const booleanFields = new Set(["not_visible"]);
     const updates: BulkUpdateData = {};
     selectedFields.forEach((field) => {
       const value = values[field as keyof BulkUpdateData];
-      if (value) {
-        updates[field as keyof BulkUpdateData] = value as any;
+      // Boolean fields are always valid when selected; string fields need a truthy value
+      if (booleanFields.has(field) || value) {
+        (updates as Record<string, unknown>)[field] = value;
       }
     });
 
     if (Object.keys(updates).length === 0) {
-      alert("Please provide values for the selected fields");
+      alert(t("pages.pim.bulkUpdate.provideValues"));
       return;
     }
 
@@ -88,10 +93,10 @@ export function BulkUpdateModal({
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
             <h2 className="text-xl font-semibold text-foreground">
-              Bulk Update Products
+              {t("pages.pim.bulkUpdate.title")}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Update {selectedCount} selected product{selectedCount !== 1 ? "s" : ""}
+              {t("pages.pim.bulkUpdate.subtitle", { count: String(selectedCount) })}
             </p>
           </div>
           <button
@@ -105,8 +110,7 @@ export function BulkUpdateModal({
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1">
           <p className="text-sm text-muted-foreground mb-4">
-            Select the fields you want to update and provide new values. The changes
-            will be applied to all selected products.
+            {t("pages.pim.bulkUpdate.description")}
           </p>
 
           <div className="space-y-4">
@@ -124,7 +128,7 @@ export function BulkUpdateModal({
                   htmlFor="field-status"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Status
+                  {t("pages.pim.bulkUpdateModal.statusLabel")}
                 </label>
               </div>
               {selectedFields.has("status") && (
@@ -135,11 +139,58 @@ export function BulkUpdateModal({
                   }
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="">Select status...</option>
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
+                  <option value="">{t("pages.pim.bulkUpdateModal.selectStatus")}</option>
+                  <option value="draft">{t("pages.pim.bulkUpdateModal.draft")}</option>
+                  <option value="published">{t("pages.pim.bulkUpdateModal.published")}</option>
+                  <option value="archived">{t("pages.pim.bulkUpdateModal.archived")}</option>
                 </select>
+              )}
+            </div>
+
+            {/* Not Visible Field */}
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <input
+                  type="checkbox"
+                  id="field-not_visible"
+                  checked={selectedFields.has("not_visible")}
+                  onChange={() => toggleField("not_visible")}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                />
+                <label
+                  htmlFor="field-not_visible"
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  {t("pages.pim.bulkUpdate.visibility")}
+                </label>
+              </div>
+              {selectedFields.has("not_visible") && (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setValues({ ...values, not_visible: false })}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition ${
+                      values.not_visible === false || values.not_visible === undefined
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Eye className="h-4 w-4" />
+                    {t("pages.pim.bulkUpdate.visible")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setValues({ ...values, not_visible: true })}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition ${
+                      values.not_visible === true
+                        ? "border-red-500 bg-red-50 text-red-700"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <EyeOff className="h-4 w-4" />
+                    {t("pages.pim.bulkUpdate.notVisible")}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -157,13 +208,13 @@ export function BulkUpdateModal({
                   htmlFor="field-brand"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Brand Name
+                  {t("pages.pim.bulkUpdateModal.brandNameLabel")}
                 </label>
               </div>
               {selectedFields.has("brand") && (
                 <input
                   type="text"
-                  placeholder="Enter brand name"
+                  placeholder={t("pages.pim.bulkUpdateModal.enterBrandName")}
                   value={values.brand || ""}
                   onChange={(e) =>
                     setValues({ ...values, brand: e.target.value })
@@ -187,13 +238,13 @@ export function BulkUpdateModal({
                   htmlFor="field-category"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Category Name
+                  {t("pages.pim.bulkUpdateModal.categoryNameLabel")}
                 </label>
               </div>
               {selectedFields.has("category") && (
                 <input
                   type="text"
-                  placeholder="Enter category name"
+                  placeholder={t("pages.pim.bulkUpdateModal.enterCategoryName")}
                   value={values.category || ""}
                   onChange={(e) =>
                     setValues({ ...values, category: e.target.value })
@@ -217,13 +268,13 @@ export function BulkUpdateModal({
                   htmlFor="field-currency"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Currency
+                  {t("pages.pim.bulkUpdateModal.currencyLabel")}
                 </label>
               </div>
               {selectedFields.has("currency") && (
                 <input
                   type="text"
-                  placeholder="e.g. USD, EUR"
+                  placeholder={t("pages.pim.bulkUpdateModal.currencyPlaceholder")}
                   value={values.currency || ""}
                   onChange={(e) =>
                     setValues({ ...values, currency: e.target.value.toUpperCase() })
@@ -243,14 +294,14 @@ export function BulkUpdateModal({
             disabled={isUpdating}
             className="px-4 py-2 rounded-md border border-border hover:bg-muted text-sm font-medium transition disabled:opacity-50"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleUpdate}
             disabled={isUpdating || selectedFields.size === 0}
             className="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 text-sm font-medium transition disabled:opacity-50"
           >
-            {isUpdating ? "Updating..." : "Update Products"}
+            {isUpdating ? t("pages.pim.bulkUpdate.updating") : t("pages.pim.bulkUpdate.updateButton")}
           </button>
         </div>
       </div>

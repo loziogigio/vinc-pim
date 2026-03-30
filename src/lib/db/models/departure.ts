@@ -54,6 +54,8 @@ export interface IDeparture extends Document {
   hold_ttl_ms: number;
   /** Embedded resources with capacity counters */
   resources: IDepartureResource[];
+  /** Extensible metadata (cruise itinerary, ports, etc.) */
+  metadata?: Record<string, unknown>;
   created_at: Date;
   updated_at: Date;
 }
@@ -97,6 +99,7 @@ export const DepartureSchema = new Schema<IDeparture>(
     booking_cutoff_at: { type: Date },
     hold_ttl_ms: { type: Number, default: HOLD_TTL_MS },
     resources: [DepartureResourceSchema],
+    metadata: { type: Schema.Types.Mixed },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

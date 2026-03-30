@@ -81,7 +81,7 @@ export default function TagDetailPage() {
       setTag(data.tag);
     } catch (error) {
       console.error("Failed to fetch tag:", error);
-      toast.error("Failed to load tag details");
+      toast.error(t("pages.pim.tags.loadingDetails"));
     } finally {
       setLoading(false);
     }
@@ -104,7 +104,7 @@ export default function TagDetailPage() {
       setTotalProducts(data.pagination.total);
     } catch (error) {
       console.error("Failed to fetch products:", error);
-      toast.error("Failed to load products");
+      toast.error(t("pages.pim.tags.loadProductsFailed"));
     } finally {
       setProductsLoading(false);
     }
@@ -126,7 +126,7 @@ export default function TagDetailPage() {
       setAvailableProducts(filtered);
     } catch (error) {
       console.error("Failed to fetch products:", error);
-      toast.error("Failed to fetch products list");
+      toast.error(t("pages.pim.tags.fetchProductsFailed"));
     }
   }
 
@@ -181,12 +181,12 @@ export default function TagDetailPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to associate products");
+        toast.error(error.error || t("pages.pim.tags.associateFailed"));
         return;
       }
 
       const data = await res.json();
-      toast.success(data.message || "Products tagged successfully");
+      toast.success(data.message || t("pages.pim.tags.taggedSuccess"));
 
       fetchProducts();
       fetchTag();
@@ -194,17 +194,17 @@ export default function TagDetailPage() {
       setAvailableSelected(new Set<string>());
     } catch (error) {
       console.error("Failed to associate products:", error);
-      toast.error("Failed to associate products");
+      toast.error(t("pages.pim.tags.associateFailed"));
     }
   }
 
   async function handleBulkDisassociate() {
     if (selectedProducts.size === 0) {
-      toast.warning("Please select products to remove");
+      toast.warning(t("pages.pim.tags.selectToRemove"));
       return;
     }
 
-    if (!confirm(`Remove ${selectedProducts.size} product(s) from this tag?`)) {
+    if (!confirm(t("pages.pim.tags.removeConfirm", { count: selectedProducts.size }))) {
       return;
     }
 
@@ -220,12 +220,12 @@ export default function TagDetailPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || "Failed to remove products");
+        toast.error(error.error || t("pages.pim.tags.removeFailed"));
         return;
       }
 
       const data = await res.json();
-      toast.success(data.message || "Products removed successfully");
+      toast.success(data.message || t("pages.pim.tags.removedSuccess"));
 
       setSelectedProducts(new Set<string>());
       setSelectAll(false);
@@ -233,14 +233,14 @@ export default function TagDetailPage() {
       fetchTag();
     } catch (error) {
       console.error("Failed to remove products:", error);
-      toast.error("Failed to remove products");
+      toast.error(t("pages.pim.tags.removeFailed"));
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground">
-        Loading tag details…
+        {t("pages.pim.tags.loadingDetails")}
       </div>
     );
   }
@@ -248,9 +248,9 @@ export default function TagDetailPage() {
   if (!tag) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 text-center min-h-[60vh] text-muted-foreground">
-        <p>Tag not found.</p>
+        <p>{t("pages.pim.tags.notFound")}</p>
         <Link href="/b2b/pim/tags" className="text-primary hover:underline">
-          Back to tags
+          {t("pages.pim.tags.backToTags")}
         </Link>
       </div>
     );
@@ -280,7 +280,7 @@ export default function TagDetailPage() {
                 <h1 className="text-3xl font-bold text-foreground">{tag.name}</h1>
                 {!tag.is_active && (
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    Inactive
+                    {t("common.inactive")}
                   </span>
                 )}
                 {tag.color && (
@@ -298,9 +298,9 @@ export default function TagDetailPage() {
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{tag.description}</p>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span>{tag.product_count} product(s)</span>
-                <span>Display order: {tag.display_order}</span>
-                <span>Updated: {new Date(tag.updated_at).toLocaleString()}</span>
+                <span>{t("pages.pim.tags.productCount", { count: tag.product_count })}</span>
+                <span>{t("pages.pim.tags.displayOrderLabel", { order: tag.display_order })}</span>
+                <span>{t("pages.pim.tags.updatedLabel", { date: new Date(tag.updated_at).toLocaleString() })}</span>
               </div>
             </div>
           </div>
@@ -318,7 +318,7 @@ export default function TagDetailPage() {
                   setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="Search tagged products..."
+                placeholder={t("pages.pim.tags.searchTaggedProducts")}
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -350,7 +350,7 @@ export default function TagDetailPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.common.associatedProducts")}</h2>
               <p className="text-sm text-muted-foreground">
-                Showing {products.length} of {totalProducts} products
+                {t("pages.pim.tags.showingProducts", { shown: products.length, total: totalProducts })}
               </p>
             </div>
             {products.length > 0 && (
@@ -358,18 +358,18 @@ export default function TagDetailPage() {
                 onClick={handleSelectAll}
                 className="text-sm text-primary hover:underline"
               >
-                {selectAll ? "Deselect all" : "Select all"}
+                {selectAll ? t("pages.pim.tags.deselectAll") : t("pages.pim.tags.selectAll")}
               </button>
             )}
           </div>
 
           {productsLoading ? (
             <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-              Loading products…
+              {t("pages.pim.tags.loadingProducts")}
             </div>
           ) : products.length === 0 ? (
             <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-              No products currently use this tag.
+              {t("pages.pim.tags.noProductsInTag")}
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -406,7 +406,7 @@ export default function TagDetailPage() {
                         </span>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        SKU: {product.sku} • Qty: {product.quantity}
+                        SKU: {product.sku} &bull; Qty: {product.quantity}
                       </div>
                     </div>
                     <button
@@ -414,7 +414,7 @@ export default function TagDetailPage() {
                       className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                       type="button"
                     >
-                      View
+                      {t("common.view")}
                       <ExternalLink className="h-4 w-4" />
                     </button>
                   </label>
@@ -426,7 +426,7 @@ export default function TagDetailPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border px-6 py-4 text-sm">
               <div>
-                Page {page} of {totalPages}
+                {t("common.page")} {page} {t("common.of")} {totalPages}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -434,14 +434,14 @@ export default function TagDetailPage() {
                   disabled={page === 1}
                   className="rounded-md border border-border px-3 py-1 hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Previous
+                  {t("common.previous")}
                 </button>
                 <button
                   onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={page === totalPages}
                   className="rounded-md border border-border px-3 py-1 hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Next
+                  {t("common.next")}
                 </button>
               </div>
             </div>
@@ -454,9 +454,11 @@ export default function TagDetailPage() {
           <div className="w-full max-w-3xl rounded-xl border border-border bg-card shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Add products to tag</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {t("pages.pim.tags.addProductsToTag")}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Select products to associate with {tag.name}.
+                  {t("pages.pim.tags.addProductsDescription", { name: tag.name })}
                 </p>
               </div>
               <button
@@ -477,7 +479,7 @@ export default function TagDetailPage() {
                 <input
                   value={availableSearch}
                   onChange={(event) => setAvailableSearch(event.target.value)}
-                  placeholder="Search products..."
+                  placeholder={t("pages.pim.tags.searchProducts")}
                   className="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-background text-sm focus:border-primary focus:outline-none"
                 />
               </div>
@@ -485,7 +487,7 @@ export default function TagDetailPage() {
               <div className="max-h-80 overflow-y-auto rounded-lg border border-border">
                 {availableProducts.length === 0 ? (
                   <div className="p-6 text-center text-sm text-muted-foreground">
-                    No products available. Adjust your search or import more products first.
+                    {t("pages.pim.tags.noAvailableProducts")}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -535,7 +537,7 @@ export default function TagDetailPage() {
                 }}
                 className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => handleBulkAssociate(Array.from(availableSelected))}
@@ -543,7 +545,7 @@ export default function TagDetailPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
-                Add {availableSelected.size || ""} product(s)
+                {t("pages.pim.tags.addCount", { count: availableSelected.size || 0 })}
               </button>
             </div>
           </div>

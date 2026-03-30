@@ -6,6 +6,7 @@ import { DOCUMENT_TYPE_LABELS } from "@/lib/constants/document";
 import type { DocumentType, DocumentStatus } from "@/lib/constants/document";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import type { Document } from "@/lib/types/document";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Props {
   doc: Document;
@@ -20,13 +21,14 @@ export function DocumentHeader({
   onBack,
   onUpdateNumber,
 }: Props) {
+  const { t } = useTranslation();
   const [editingNumber, setEditingNumber] = useState(false);
   const [editNumberValue, setEditNumberValue] = useState("");
 
   const handleConfirmNumber = async () => {
     const num = parseInt(editNumberValue);
     if (isNaN(num) || num < 1) {
-      alert("Il numero deve essere un intero positivo");
+      alert(t("pages.documents.detail.header.invalidNumber"));
       return;
     }
     await onUpdateNumber(num);
@@ -61,7 +63,7 @@ export function DocumentHeader({
                 onClick={handleConfirmNumber}
                 disabled={actionLoading === "update-number"}
                 className="p-1.5 rounded-lg text-green-600 hover:bg-green-50"
-                title="Conferma"
+                title={t("pages.documents.detail.header.confirmTitle")}
               >
                 {actionLoading === "update-number" ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -72,7 +74,7 @@ export function DocumentHeader({
               <button
                 onClick={() => setEditingNumber(false)}
                 className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
-                title="Annulla"
+                title={t("pages.documents.detail.header.cancelTitle")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -81,7 +83,7 @@ export function DocumentHeader({
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-[#5e5873]">
                 {doc.document_number || (
-                  <span className="text-muted-foreground italic">Bozza</span>
+                  <span className="text-muted-foreground italic">{t("pages.documents.detail.header.draft")}</span>
                 )}
               </h1>
               {doc.status === "finalized" && (
@@ -93,7 +95,7 @@ export function DocumentHeader({
                     setEditingNumber(true);
                   }}
                   className="p-1 rounded hover:bg-[#f8f8f8] text-muted-foreground hover:text-[#5e5873]"
-                  title="Modifica numero"
+                  title={t("pages.documents.detail.header.editNumberTitle")}
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
@@ -104,8 +106,7 @@ export function DocumentHeader({
         </div>
         {editingNumber && (
           <p className="text-xs text-amber-600 mt-1">
-            Attenzione: modificare il numero potrebbe creare buchi nella
-            numerazione. Il contatore verrà aggiornato automaticamente.
+            {t("pages.documents.detail.header.numberWarning")}
           </p>
         )}
         <p className="text-sm text-muted-foreground mt-0.5">

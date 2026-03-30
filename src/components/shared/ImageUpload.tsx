@@ -3,6 +3,7 @@
 import { useState, useRef, DragEvent } from "react";
 import { Upload, Image as ImageIcon, X, Link as LinkIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface ImageUploadProps {
   value: string;
@@ -12,6 +13,7 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ value, onChange, label, disabled }: ImageUploadProps) {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -51,13 +53,13 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
   const handleFileUpload = async (file: File) => {
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toast.error(t("pages.pim.imageUpload.selectImageFile"));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be less than 5MB");
+      toast.error(t("pages.pim.imageUpload.imageTooLarge"));
       return;
     }
 
@@ -78,10 +80,10 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
 
       const data = await response.json();
       onChange(data.url);
-      toast.success("Image uploaded successfully");
+      toast.success(t("pages.pim.imageUpload.uploadSuccess"));
     } catch (error) {
       console.error("Image upload error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload image");
+      toast.error(error instanceof Error ? error.message : t("pages.pim.imageUpload.uploadError"));
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -96,7 +98,7 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
       onChange(urlInput.trim());
       setUrlInput("");
       setShowUrlInput(false);
-      toast.success("Image URL added");
+      toast.success(t("pages.pim.imageUpload.urlAdded"));
     }
   };
 
@@ -142,10 +144,10 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
               )}
             </div>
             <h3 className="mb-1 text-sm font-semibold">
-              {isUploading ? "Uploading..." : "Upload Image"}
+              {isUploading ? t("pages.pim.imageUpload.uploading") : t("pages.pim.imageUpload.uploadImage")}
             </h3>
             <p className="mb-3 text-xs text-muted-foreground">
-              Drag and drop your image here, or
+              {t("pages.pim.imageUpload.dragAndDrop")}
             </p>
             <div className="flex items-center justify-center gap-2">
               <button
@@ -155,7 +157,7 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
                 className="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
               >
                 <Upload className="inline h-3 w-3 mr-1" />
-                Browse
+                {t("pages.pim.imageUpload.browse")}
               </button>
               <span className="text-xs text-muted-foreground">or</span>
               <button
@@ -165,11 +167,11 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
                 className="px-3 py-1.5 text-xs border border-border rounded hover:bg-muted transition disabled:opacity-50"
               >
                 <LinkIcon className="inline h-3 w-3 mr-1" />
-                Enter URL
+                {t("pages.pim.imageUpload.enterUrl")}
               </button>
             </div>
             <p className="mt-3 text-[11px] text-muted-foreground">
-              PNG, JPG, GIF up to 5MB
+              {t("pages.pim.imageUpload.sizeLimit")}
             </p>
           </div>
         </div>
@@ -188,7 +190,7 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
             onClick={handleRemove}
             disabled={disabled}
             className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition disabled:opacity-50"
-            title="Remove image"
+            title={t("pages.pim.imageUpload.removeImage")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -218,7 +220,7 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
             disabled={!urlInput.trim() || disabled}
             className="px-3 py-1.5 text-sm bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
           >
-            Add
+            {t("pages.pim.imageUpload.add")}
           </button>
           <button
             type="button"
@@ -229,13 +231,13 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
             disabled={disabled}
             className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       )}
 
       <p className="text-xs text-muted-foreground">
-        Upload an image file or enter a URL
+        {t("pages.pim.imageUpload.uploadOrUrl")}
       </p>
     </div>
   );

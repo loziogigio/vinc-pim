@@ -41,7 +41,7 @@ export async function GET(
     // Get all products for this brand (no wholesaler_id - database provides isolation)
     const products = await PIMProductModel.find({
       isCurrent: true,
-      "brand.id": id,
+      "brand.brand_id": id,
     })
       .select("entity_code sku name")
       .lean() as any[];

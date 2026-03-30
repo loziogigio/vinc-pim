@@ -207,7 +207,7 @@ export default function ImportJobDetailPage() {
   if (!job) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Job not found</p>
+        <p className="text-muted-foreground">{t("pages.pim.jobs.notFound")}</p>
       </div>
     );
   }
@@ -255,27 +255,27 @@ export default function ImportJobDetailPage() {
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Database className="h-4 w-4" />
-              Source ID
+              {t("pages.pim.jobs.sourceIdLabel")}
             </div>
             <div className="font-medium">{job.source_id}</div>
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Package className="h-4 w-4" />
-              Total Rows
+              {t("pages.pim.jobs.totalRowsLabel")}
             </div>
             <div className="font-medium">{job.total_rows}</div>
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <CheckCircle2 className="h-4 w-4" />
-              Successful
+              {t("pages.pim.jobs.successfulLabel")}
             </div>
             {job.batch_id ? (
               <Link
                 href={`/b2b/pim/products?batch_id=${job.batch_id}`}
                 className="font-medium text-emerald-600 hover:underline cursor-pointer"
-                title="View all products from this batch"
+                title={t("pages.pim.jobs.viewAllProductsFromBatch")}
               >
                 {job.successful_rows}
               </Link>
@@ -286,20 +286,20 @@ export default function ImportJobDetailPage() {
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <XCircle className="h-4 w-4" />
-              Failed
+              {t("pages.pim.jobs.failedCountLabel")}
             </div>
             <div className="font-medium text-red-600">{job.failed_rows}</div>
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <FileText className="h-4 w-4" />
-              Auto-published
+              {t("pages.pim.jobs.autoPublishedLabel")}
             </div>
             {job.batch_id ? (
               <Link
                 href={`/b2b/pim/products?batch_id=${job.batch_id}&status=published`}
                 className="font-medium text-blue-600 hover:underline cursor-pointer"
-                title="View published products from this batch"
+                title={t("pages.pim.jobs.viewPublishedFromBatch")}
               >
                 {job.auto_published_count}
               </Link>
@@ -310,14 +310,14 @@ export default function ImportJobDetailPage() {
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Timer className="h-4 w-4" />
-              Duration
+              {t("pages.pim.jobs.durationLabel")}
             </div>
             <div className="font-medium">{formatDuration(job.duration_seconds)}</div>
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Calendar className="h-4 w-4" />
-              Started
+              {t("pages.pim.jobs.startedLabel")}
             </div>
             <div className="font-medium text-xs">{formatDate(job.created_at)}</div>
           </div>
@@ -325,7 +325,7 @@ export default function ImportJobDetailPage() {
             <div>
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <Calendar className="h-4 w-4" />
-                Completed
+                {t("pages.pim.jobs.completedAtLabel")}
               </div>
               <div className="font-medium text-xs">{formatDate(job.completed_at)}</div>
             </div>
@@ -339,7 +339,7 @@ export default function ImportJobDetailPage() {
               <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-red-900 mb-3">
-                  {job.import_errors.length} errors occurred:
+                  {t("pages.pim.jobs.errorsOccurred", { count: job.import_errors.length })}
                 </p>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {job.import_errors.map((error, idx) => (
@@ -367,7 +367,7 @@ export default function ImportJobDetailPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by entity code, SKU, or name..."
+              placeholder={t("pages.pim.jobs.detailSearchPlaceholder")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -384,9 +384,9 @@ export default function ImportJobDetailPage() {
             }}
             className="px-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="">All Statuses</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
+            <option value="">{t("pages.pim.jobs.allStatusesOption")}</option>
+            <option value="published">{t("pages.pim.jobs.publishedOption")}</option>
+            <option value="draft">{t("pages.pim.jobs.draftOption")}</option>
           </select>
         </div>
         <div className="flex items-center justify-between mt-3">
@@ -401,22 +401,22 @@ export default function ImportJobDetailPage() {
                 }`}
               >
                 {showOnlyFailed ? (
-                  <>Show All ({pagination.total})</>
+                  <>{t("pages.pim.jobs.showAll", { count: pagination.total })}</>
                 ) : (
-                  <>Show Failed Only ({job.failed_rows})</>
+                  <>{t("pages.pim.jobs.showFailedOnly", { count: job.failed_rows })}</>
                 )}
               </button>
             )}
             <div className="text-sm text-muted-foreground">
               {showOnlyFailed ? (
-                <>Showing all {job?.failed_rows || 0} failed items</>
+                <>{t("pages.pim.jobs.showingAllFailed", { count: job?.failed_rows || 0 })}</>
               ) : (
-                <>Showing {products.length} of {pagination.total} items (page {pagination.page} of {pagination.totalPages})</>
+                <>{t("pages.pim.jobs.showingItems", { shown: products.length, total: pagination.total, page: pagination.page, pages: pagination.totalPages })}</>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Per page:</span>
+            <span className="text-sm text-muted-foreground">{t("pages.pim.jobs.perPage")}</span>
             <select
               value={pagination.limit}
               onChange={(e) => {
@@ -439,8 +439,8 @@ export default function ImportJobDetailPage() {
           job.import_errors.length === 0 ? (
             <div className="rounded-lg bg-card p-12 shadow-sm text-center">
               <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No failed items</h3>
-              <p className="text-sm text-muted-foreground">All items imported successfully!</p>
+              <h3 className="text-lg font-semibold mb-2">{t("pages.pim.jobs.noFailedItems")}</h3>
+              <p className="text-sm text-muted-foreground">{t("pages.pim.jobs.allImportedSuccessfully")}</p>
             </div>
           ) : (
             job.import_errors.map((error, idx) => {
@@ -469,17 +469,17 @@ export default function ImportJobDetailPage() {
                       <div className="flex items-start justify-between mb-1">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-red-900 truncate">
-                            Row {error.row} - Import Failed
+                            {t("pages.pim.jobs.rowImportFailed", { row: error.row })}
                           </h3>
                           <div className="flex items-center gap-3 text-xs text-red-700 mt-1">
-                            <span>Entity: {error.entity_code || 'N/A'}</span>
+                            <span>{t("pages.pim.jobs.entityLabel")} {error.entity_code || 'N/A'}</span>
                           </div>
                           <p className="text-sm text-red-700 mt-2 font-medium">
                             {error.error}
                           </p>
                         </div>
                         <span className="px-2 py-1 rounded text-xs font-medium bg-red-200 text-red-800 whitespace-nowrap">
-                          FAILED
+                          {t("pages.pim.jobs.failedBadge")}
                         </span>
                       </div>
                     </div>
@@ -489,19 +489,19 @@ export default function ImportJobDetailPage() {
                     <div className="px-4 pb-4 border-t border-red-200">
                       <div className="mt-4 space-y-4">
                         <div>
-                          <h4 className="text-sm font-semibold mb-2 text-red-900">Error Details</h4>
+                          <h4 className="text-sm font-semibold mb-2 text-red-900">{t("pages.pim.jobs.errorDetails")}</h4>
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
-                              <span className="text-muted-foreground">Row Number:</span>
+                              <span className="text-muted-foreground">{t("pages.pim.jobs.rowNumber")}:</span>
                               <div className="font-medium">{error.row}</div>
                             </div>
                             <div>
-                              <span className="text-muted-foreground">Entity Code:</span>
-                              <div className="font-medium">{error.entity_code || 'Not available'}</div>
+                              <span className="text-muted-foreground">{t("pages.pim.jobs.entityCode")}:</span>
+                              <div className="font-medium">{error.entity_code || t("pages.pim.jobs.entityCodeNA")}</div>
                             </div>
                           </div>
                           <div className="mt-3">
-                            <span className="text-muted-foreground text-sm">Error Message:</span>
+                            <span className="text-muted-foreground text-sm">{t("pages.pim.jobs.errorMessage")}:</span>
                             <div className="mt-1 p-3 bg-red-100 rounded border border-red-200 text-sm text-red-800">
                               {error.error}
                             </div>
@@ -511,14 +511,14 @@ export default function ImportJobDetailPage() {
                         {/* Raw Data Section */}
                         {error.raw_data && (
                           <div>
-                            <h4 className="text-sm font-semibold mb-2 text-red-900">Data Sent from API</h4>
+                            <h4 className="text-sm font-semibold mb-2 text-red-900">{t("pages.pim.jobs.dataSentFromApi")}</h4>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               {Object.entries(error.raw_data).map(([key, value]) => (
                                 <div key={key}>
                                   <span className="text-muted-foreground">{key}:</span>
                                   <div className="font-medium break-all">
                                     {value === null || value === undefined || value === ''
-                                      ? <span className="text-red-600 italic">empty/missing</span>
+                                      ? <span className="text-red-600 italic">{t("pages.pim.jobs.emptyMissing")}</span>
                                       : typeof value === 'object'
                                       ? JSON.stringify(value)
                                       : String(value)
@@ -529,7 +529,7 @@ export default function ImportJobDetailPage() {
                             </div>
                             <details className="mt-3">
                               <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                                View raw JSON
+                                {t("pages.pim.jobs.viewRawJson")}
                               </summary>
                               <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-300 max-h-64 overflow-auto">
                                 <pre className="text-xs font-mono whitespace-pre-wrap">
@@ -549,11 +549,11 @@ export default function ImportJobDetailPage() {
         ) : products.length === 0 ? (
           <div className="rounded-lg bg-card p-12 shadow-sm text-center">
             <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No items found</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("pages.pim.jobs.noItemsFound")}</h3>
             <p className="text-sm text-muted-foreground">
               {search || statusFilter
-                ? "Try adjusting your search or filters"
-                : "No items were imported for this job"}
+                ? t("pages.pim.jobs.adjustSearchOrFilters")
+                : t("pages.pim.jobs.noItemsImported")}
             </p>
           </div>
         ) : (
@@ -594,17 +594,17 @@ export default function ImportJobDetailPage() {
                           {getLocalizedString(product.name, product.entity_code)}
                         </h3>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span>Entity: {product.entity_code}</span>
+                          <span>{t("pages.pim.jobs.entityLabel")} {product.entity_code}</span>
                           {product.sku && (
                             <>
                               <span>•</span>
-                              <span>SKU: {product.sku}</span>
+                              <span>{t("pages.pim.jobs.skuLabel")}: {product.sku}</span>
                             </>
                           )}
                           {product.completeness_score !== undefined && (
                             <>
                               <span>•</span>
-                              <span>Completeness: {product.completeness_score}%</span>
+                              <span>{t("pages.pim.jobs.completenessLabel")}: {product.completeness_score}%</span>
                             </>
                           )}
                         </div>
@@ -626,22 +626,22 @@ export default function ImportJobDetailPage() {
                     <div className="mt-4 space-y-4">
                       {/* Basic Info */}
                       <div>
-                        <h4 className="text-sm font-semibold mb-2">Basic Information</h4>
+                        <h4 className="text-sm font-semibold mb-2">{t("pages.pim.jobs.basicInformation")}</h4>
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           <div>
-                            <span className="text-muted-foreground">Entity Code:</span>
+                            <span className="text-muted-foreground">{t("pages.pim.jobs.entityCodeLabel")}:</span>
                             <div className="font-medium">{product.entity_code}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">SKU:</span>
+                            <span className="text-muted-foreground">{t("pages.pim.jobs.skuLabel")}:</span>
                             <div className="font-medium">{product.sku || "—"}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Name:</span>
+                            <span className="text-muted-foreground">{t("pages.pim.jobs.nameLabel")}:</span>
                             <div className="font-medium">{getLocalizedString(product.name)}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Quantity:</span>
+                            <span className="text-muted-foreground">{t("pages.pim.jobs.quantityLabel")}:</span>
                             <div className="font-medium">{product.quantity || "—"}</div>
                           </div>
                         </div>
@@ -650,7 +650,7 @@ export default function ImportJobDetailPage() {
                       {/* Description */}
                       {product.long_description && (
                         <div>
-                          <h4 className="text-sm font-semibold mb-2">Description</h4>
+                          <h4 className="text-sm font-semibold mb-2">{t("pages.pim.jobs.descriptionLabel")}</h4>
                           <p className="text-sm text-muted-foreground">
                             {getLocalizedString(product.long_description, "")}
                           </p>
@@ -659,16 +659,16 @@ export default function ImportJobDetailPage() {
 
                       {/* Import Metadata */}
                       <div>
-                        <h4 className="text-sm font-semibold mb-2">Import Details</h4>
+                        <h4 className="text-sm font-semibold mb-2">{t("pages.pim.jobs.importDetails")}</h4>
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           {product.source && (
                             <>
                               <div>
-                                <span className="text-muted-foreground">Source ID:</span>
+                                <span className="text-muted-foreground">{t("pages.pim.jobs.sourceIdField")}:</span>
                                 <div className="font-medium">{product.source.source_id}</div>
                               </div>
                               <div>
-                                <span className="text-muted-foreground">Import Date:</span>
+                                <span className="text-muted-foreground">{t("pages.pim.jobs.importDateLabel")}:</span>
                                 <div className="font-medium">
                                   {formatDate(product.source.import_date)}
                                 </div>
@@ -676,11 +676,11 @@ export default function ImportJobDetailPage() {
                             </>
                           )}
                           <div>
-                            <span className="text-muted-foreground">Created:</span>
+                            <span className="text-muted-foreground">{t("pages.pim.jobs.createdLabel")}:</span>
                             <div className="font-medium">{formatDate(product.created_at)}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Updated:</span>
+                            <span className="text-muted-foreground">{t("pages.pim.jobs.updatedLabel")}:</span>
                             <div className="font-medium">{formatDate(product.updated_at)}</div>
                           </div>
                         </div>
@@ -688,7 +688,7 @@ export default function ImportJobDetailPage() {
 
                       {/* Raw Data */}
                       <div>
-                        <h4 className="text-sm font-semibold mb-2">Raw Data (JSON)</h4>
+                        <h4 className="text-sm font-semibold mb-2">{t("pages.pim.jobs.rawDataJson")}</h4>
                         <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-64 overflow-y-auto">
                           {JSON.stringify(product, null, 2)}
                         </pre>
@@ -706,7 +706,7 @@ export default function ImportJobDetailPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between rounded-lg bg-card p-4 shadow-sm">
           <div className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages}
+            {t("common.page")} {pagination.page} {t("common.of")} {pagination.totalPages}
           </div>
           <div className="flex gap-2">
             <button
@@ -714,14 +714,14 @@ export default function ImportJobDetailPage() {
               disabled={pagination.page === 1}
               className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Previous
+              {t("common.previous")}
             </button>
             <button
               onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
               disabled={pagination.page === pagination.totalPages}
               className="px-4 py-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {t("common.next")}
             </button>
           </div>
         </div>

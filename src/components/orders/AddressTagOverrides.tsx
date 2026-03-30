@@ -6,6 +6,7 @@ import {
   TAG_PREFIX_LABELS,
   type TagPrefix,
 } from "@/lib/constants/customer-tag";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TagRef {
   tag_id: string;
@@ -35,6 +36,7 @@ interface AddressTagOverridesProps {
 }
 
 export function AddressTagOverrides({ customerId, addressId }: AddressTagOverridesProps) {
+  const { t } = useTranslation();
   const [customerTags, setCustomerTags] = useState<TagRef[]>([]);
   const [addressOverrides, setAddressOverrides] = useState<TagRef[]>([]);
   const [effectiveTags, setEffectiveTags] = useState<EffectiveTag[]>([]);
@@ -141,7 +143,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition"
       >
         <Tag className="h-3 w-3" />
-        <span>Tag Overrides</span>
+        <span>{t("pages.store.addressTagOverrides.tagOverrides")}</span>
         {overrideCount > 0 && (
           <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">
             {overrideCount}
@@ -153,9 +155,9 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
       {expanded && (
         <div className="mt-2 pl-4 border-l-2 border-border space-y-2">
           {isLoading ? (
-            <p className="text-xs text-muted-foreground">Loading...</p>
+            <p className="text-xs text-muted-foreground">{t("pages.store.addressTagOverrides.loading")}</p>
           ) : effectiveTags.length === 0 && allTags.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No tag categories defined</p>
+            <p className="text-xs text-muted-foreground italic">{t("pages.store.addressTagOverrides.noTagCategoriesDefined")}</p>
           ) : (
             <>
               {/* Show effective tags grouped by prefix */}
@@ -183,22 +185,22 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                           </span>
                           {isOverridden ? (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700">
-                              override
+                              {t("pages.store.addressTagOverrides.override")}
                             </span>
                           ) : (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-slate-100 text-slate-500">
-                              inherited
+                              {t("pages.store.addressTagOverrides.inherited")}
                             </span>
                           )}
                           {isOverridden && customerTag && (
                             <span className="text-[10px] text-muted-foreground">
-                              <ArrowRight className="h-2.5 w-2.5 inline" /> was: {customerTag.code}
+                              <ArrowRight className="h-2.5 w-2.5 inline" /> {t("pages.store.addressTagOverrides.was")} {customerTag.code}
                             </span>
                           )}
                         </div>
                       ) : (
                         <p className="text-[10px] text-muted-foreground italic mt-0.5">
-                          Not assigned
+                          {t("pages.store.addressTagOverrides.notAssigned")}
                         </p>
                       )}
                     </div>
@@ -209,7 +211,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                           onClick={() => removeOverride(override.full_tag)}
                           disabled={saving}
                           className="p-0.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                          title="Remove override (revert to customer default)"
+                          title={t("pages.store.addressTagOverrides.removeOverrideTitle")}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -222,7 +224,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                           }
                           disabled={saving}
                           className="p-0.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 transition disabled:opacity-50"
-                          title="Override tag for this address"
+                          title={t("pages.store.addressTagOverrides.overrideTagTitle")}
                         >
                           {override ? (
                             <ChevronDown className="h-3 w-3" />
@@ -235,7 +237,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                           <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-30">
                             <div className="p-2 border-b border-border">
                               <p className="text-[10px] font-medium text-muted-foreground">
-                                Override: {getPrefixLabel(prefix)}
+                                {t("pages.store.addressTagOverrides.overrideLabel", { label: getPrefixLabel(prefix) })}
                               </p>
                             </div>
                             <div className="max-h-36 overflow-y-auto">

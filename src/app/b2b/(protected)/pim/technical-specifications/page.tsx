@@ -51,14 +51,14 @@ export default function TechnicalSpecificationsPage() {
       }
     } catch (error) {
       console.error("Error fetching technical specifications:", error);
-      toast.error("Failed to load technical specifications");
+      toast.error(t("pages.pim.technicalSpecs.loadFailed"));
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleDelete(spec: TechnicalSpecification) {
-    if (!confirm(`Are you sure you want to delete "${spec.label}"?`)) {
+    if (!confirm(t("pages.pim.technicalSpecs.deleteConfirm", { label: spec.label }))) {
       return;
     }
 
@@ -68,15 +68,15 @@ export default function TechnicalSpecificationsPage() {
       });
 
       if (res.ok) {
-        toast.success("Technical specification deleted successfully");
+        toast.success(t("pages.pim.technicalSpecs.deleteSuccess"));
         fetchTechnicalSpecifications();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to delete technical specification");
+        toast.error(error.error || t("pages.pim.technicalSpecs.deleteFailed"));
       }
     } catch (error) {
       console.error("Error deleting technical specification:", error);
-      toast.error("Failed to delete technical specification");
+      toast.error(t("pages.pim.technicalSpecs.deleteFailed"));
     }
   }
 
@@ -90,11 +90,11 @@ export default function TechnicalSpecificationsPage() {
   });
 
   const typeLabels: Record<string, string> = {
-    text: "Text",
-    number: "Number",
-    select: "Select",
-    multiselect: "Multi-select",
-    boolean: "Boolean",
+    text: t("pages.pim.technicalSpecs.typeText"),
+    number: t("pages.pim.technicalSpecs.typeNumber"),
+    select: t("pages.pim.technicalSpecs.typeSelect"),
+    multiselect: t("pages.pim.technicalSpecs.typeMultiselect"),
+    boolean: t("pages.pim.technicalSpecs.typeBoolean"),
   };
 
   const typeColors: Record<string, string> = {
@@ -233,7 +233,7 @@ export default function TechnicalSpecificationsPage() {
                           <span className="font-medium text-foreground">{spec.label}</span>
                           {spec.default_required && (
                             <span className="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700">
-                              Required
+                              {t("pages.pim.technicalSpecs.requiredBadge")}
                             </span>
                           )}
                         </div>
@@ -258,7 +258,9 @@ export default function TechnicalSpecificationsPage() {
                       <td className="px-4 py-3 text-center">
                         {spec.options && spec.options.length > 0 ? (
                           <span className="text-sm text-muted-foreground">
-                            {spec.options.length} option{spec.options.length !== 1 ? "s" : ""}
+                            {spec.options.length === 1
+                              ? t("pages.pim.technicalSpecs.optionsCount", { count: spec.options.length })
+                              : t("pages.pim.technicalSpecs.optionsCountPlural", { count: spec.options.length })}
                           </span>
                         ) : (
                           <span className="text-sm text-muted-foreground/50">—</span>
@@ -281,7 +283,7 @@ export default function TechnicalSpecificationsPage() {
                             type="button"
                             onClick={() => setEditingSpec(spec)}
                             className="p-2 rounded border border-border hover:bg-muted transition"
-                            title="Edit"
+                            title={t("pages.pim.technicalSpecs.editTitle")}
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
@@ -289,7 +291,7 @@ export default function TechnicalSpecificationsPage() {
                             type="button"
                             onClick={() => handleDelete(spec)}
                             className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
-                            title="Delete"
+                            title={t("pages.pim.technicalSpecs.deleteTitle")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -388,15 +390,15 @@ function TechnicalSpecificationModal({
       });
 
       if (res.ok) {
-        toast.success(specification ? "Specification updated successfully" : "Specification created successfully");
+        toast.success(specification ? t("pages.pim.technicalSpecs.saveSuccess") : t("pages.pim.technicalSpecs.createSuccess"));
         onSuccess();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to save specification");
+        toast.error(error.error || t("pages.pim.technicalSpecs.saveFailed"));
       }
     } catch (error) {
       console.error("Error saving specification:", error);
-      toast.error("Failed to save specification");
+      toast.error(t("pages.pim.technicalSpecs.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -461,11 +463,11 @@ function TechnicalSpecificationModal({
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as "text" | "number" | "select" | "multiselect" | "boolean" })}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="text">Text</option>
-                  <option value="number">Number</option>
-                  <option value="select">Select</option>
-                  <option value="multiselect">Multi-select</option>
-                  <option value="boolean">Boolean</option>
+                  <option value="text">{t("pages.pim.technicalSpecs.typeText")}</option>
+                  <option value="number">{t("pages.pim.technicalSpecs.typeNumber")}</option>
+                  <option value="select">{t("pages.pim.technicalSpecs.typeSelect")}</option>
+                  <option value="multiselect">{t("pages.pim.technicalSpecs.typeMultiselect")}</option>
+                  <option value="boolean">{t("pages.pim.technicalSpecs.typeBoolean")}</option>
                 </select>
               </div>
               <div>

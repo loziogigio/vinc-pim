@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   Truck,
   Package,
@@ -22,6 +23,7 @@ interface DeliveryCardProps {
 }
 
 export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editData, setEditData] = useState({
@@ -82,16 +84,16 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
       });
 
       if (res.ok) {
-        toast.success("Delivery info updated");
+        toast.success(t("pages.store.deliveryCard.deliveryUpdated"));
         setIsEditing(false);
         onDeliveryChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to update delivery info");
+        toast.error(error.error || t("pages.store.deliveryCard.failedToUpdate"));
       }
     } catch (err) {
       console.error("Error updating delivery:", err);
-      toast.error("Failed to update delivery info");
+      toast.error(t("pages.store.deliveryCard.failedToUpdate"));
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +110,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
               <Truck className="h-5 w-5 text-purple-500" />
             )}
             <h2 className="font-semibold text-foreground">
-              {isDelivered ? "Delivery" : "Shipping"}
+              {isDelivered ? t("pages.store.deliveryCard.titleDelivery") : t("pages.store.deliveryCard.titleShipping")}
             </h2>
           </div>
           <span
@@ -121,12 +123,12 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
             {isDelivered ? (
               <>
                 <CheckCircle className="h-3 w-3" />
-                Delivered
+                {t("pages.store.deliveryCard.statusDelivered")}
               </>
             ) : (
               <>
                 <Truck className="h-3 w-3" />
-                In Transit
+                {t("pages.store.deliveryCard.statusInTransit")}
               </>
             )}
           </span>
@@ -137,10 +139,10 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
           // Edit Form
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-muted-foreground">Carrier</label>
+              <label className="text-xs text-muted-foreground">{t("pages.store.deliveryCard.carrier")}</label>
               <input
                 type="text"
-                placeholder="e.g., DHL, FedEx, UPS"
+                placeholder={t("pages.store.deliveryCard.carrierPlaceholder")}
                 value={editData.carrier}
                 onChange={(e) =>
                   setEditData({ ...editData, carrier: e.target.value })
@@ -151,11 +153,11 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
 
             <div>
               <label className="text-xs text-muted-foreground">
-                Tracking Number
+                {t("pages.store.deliveryCard.trackingNumber")}
               </label>
               <input
                 type="text"
-                placeholder="e.g., 1234567890"
+                placeholder={t("pages.store.deliveryCard.trackingNumberPlaceholder")}
                 value={editData.tracking_number}
                 onChange={(e) =>
                   setEditData({ ...editData, tracking_number: e.target.value })
@@ -166,7 +168,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
 
             <div>
               <label className="text-xs text-muted-foreground">
-                Tracking URL
+                {t("pages.store.deliveryCard.trackingUrl")}
               </label>
               <input
                 type="url"
@@ -178,7 +180,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
                 className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Lascia vuoto per usare il link automatico dal corriere
+                {t("pages.store.deliveryCard.trackingUrlHint")}
               </p>
             </div>
 
@@ -193,7 +195,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Save
+                {t("common.save")}
               </button>
               <button
                 onClick={() => {
@@ -215,14 +217,14 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
           <div className="space-y-3">
             {delivery?.carrier && (
               <div>
-                <p className="text-xs text-muted-foreground">Carrier</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.deliveryCard.carrier")}</p>
                 <p className="text-sm font-medium">{delivery.carrier}</p>
               </div>
             )}
 
             {delivery?.tracking_number && (
               <div>
-                <p className="text-xs text-muted-foreground">Tracking Number</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.deliveryCard.trackingNumber")}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-mono font-medium">
                     {delivery.tracking_number}
@@ -243,7 +245,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
 
             {delivery?.tracking_url && (
               <div>
-                <p className="text-xs text-muted-foreground">Tracking URL</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.deliveryCard.trackingUrl")}</p>
                 <a
                   href={delivery.tracking_url}
                   target="_blank"
@@ -258,7 +260,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
 
             {delivery?.shipped_at && (
               <div>
-                <p className="text-xs text-muted-foreground">Shipped At</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.deliveryCard.shippedAt")}</p>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-muted-foreground" />
                   {new Date(delivery.shipped_at).toLocaleDateString("it-IT", {
@@ -274,7 +276,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
 
             {delivery?.delivered_at && (
               <div>
-                <p className="text-xs text-muted-foreground">Delivered At</p>
+                <p className="text-xs text-muted-foreground">{t("pages.store.deliveryCard.deliveredAt")}</p>
                 <p className="text-sm font-medium flex items-center gap-1 text-emerald-600">
                   <CheckCircle className="h-3 w-3" />
                   {new Date(delivery.delivered_at).toLocaleDateString("it-IT", {
@@ -290,7 +292,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
 
             {(!delivery?.carrier || !delivery?.tracking_number) && !isDelivered && (
               <p className="text-xs text-muted-foreground italic">
-                No tracking information available
+                {t("pages.store.deliveryCard.noTracking")}
               </p>
             )}
 
@@ -300,7 +302,7 @@ export function DeliveryCard({ order, onDeliveryChange }: DeliveryCardProps) {
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
               >
                 <Edit className="h-4 w-4" />
-                {delivery?.tracking_number ? "Edit" : "Add"} Tracking Info
+                {delivery?.tracking_number ? t("pages.store.deliveryCard.editTracking") : t("pages.store.deliveryCard.addTracking")}
               </button>
             )}
           </div>

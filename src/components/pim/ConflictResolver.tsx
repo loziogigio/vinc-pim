@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { getFieldDisplayName } from "@/lib/pim/conflict-resolver";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface ConflictData {
   field: string;
@@ -24,6 +25,7 @@ export function ConflictResolver({
   onResolve,
   onDismiss,
 }: ConflictResolverProps) {
+  const { t } = useTranslation();
   const [resolutions, setResolutions] = useState<Record<string, "manual" | "api">>({});
   const [resolving, setResolving] = useState(false);
 
@@ -33,7 +35,7 @@ export function ConflictResolver({
       await onResolve(resolutions);
     } catch (error) {
       console.error("Failed to resolve conflicts:", error);
-      alert("Failed to resolve conflicts. Please try again.");
+      alert(t("pages.pim.conflictResolver.resolveError"));
     } finally {
       setResolving(false);
     }
@@ -50,11 +52,10 @@ export function ConflictResolver({
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900">
-            Update Conflicts Detected
+            {t("pages.pim.conflictResolver.title")}
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            This product has manual changes that conflict with incoming API updates.
-            Choose which values to keep for each field.
+            {t("pages.pim.conflictResolver.description")}
           </p>
         </div>
         {onDismiss && (
@@ -71,7 +72,7 @@ export function ConflictResolver({
       {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
         <p className="text-sm text-blue-800">
-          <strong>Tip:</strong> Your manual edits are protected. Select which value to keep for each field below.
+          <strong>Tip:</strong> {t("pages.pim.conflictResolver.tip")}
         </p>
       </div>
 
@@ -88,7 +89,7 @@ export function ConflictResolver({
                 {getFieldDisplayName(conflict.field)}
               </h4>
               <p className="text-xs text-gray-500">
-                Conflict detected on {new Date(conflict.detected_at).toLocaleString()}
+                {t("pages.pim.conflictResolver.detectedOn", { date: new Date(conflict.detected_at).toLocaleString() })}
               </p>
             </div>
 
@@ -111,7 +112,7 @@ export function ConflictResolver({
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-gray-700">
-                    Your Manual Edit
+                    {t("pages.pim.conflictResolver.yourEdit")}
                   </span>
                   {resolutions[conflict.field] === "manual" && (
                     <Check className="h-4 w-4 text-green-600" />
@@ -139,7 +140,7 @@ export function ConflictResolver({
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-gray-700">
-                    API Update
+                    {t("pages.pim.conflictResolver.apiUpdate")}
                   </span>
                   {resolutions[conflict.field] === "api" && (
                     <Check className="h-4 w-4 text-blue-600" />
@@ -159,11 +160,11 @@ export function ConflictResolver({
         <p className="text-sm text-gray-600">
           {allResolved ? (
             <span className="text-green-600 font-medium">
-              All conflicts resolved! Click save to apply changes.
+              {t("pages.pim.conflictResolver.allResolved")}
             </span>
           ) : (
             <span>
-              Please select a value for all {conflicts.length} conflicting fields
+              {t("pages.pim.conflictResolver.selectValues", { count: String(conflicts.length) })}
             </span>
           )}
         </p>
@@ -175,7 +176,7 @@ export function ConflictResolver({
               disabled={resolving}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           )}
           <button
@@ -184,7 +185,7 @@ export function ConflictResolver({
             disabled={!allResolved || resolving}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {resolving ? "Saving..." : "Save Resolutions"}
+            {resolving ? t("pages.pim.conflictResolver.saving") : t("pages.pim.conflictResolver.saveResolutions")}
           </button>
         </div>
       </div>

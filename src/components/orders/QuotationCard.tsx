@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   FileText,
   Calendar,
@@ -24,6 +25,7 @@ interface QuotationCardProps {
 }
 
 export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) {
+  const { t } = useTranslation();
   const [showRevisions, setShowRevisions] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
@@ -66,15 +68,15 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
 
       if (res.ok) {
         const data = await res.json();
-        toast.success(data.message || `Quotation ${action} successful`);
+        toast.success(data.message || t("pages.store.quotationCard.actionSuccess", { action }));
         onQuotationChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || `Failed to ${action} quotation`);
+        toast.error(error.error || t("pages.store.quotationCard.actionFailed", { action }));
       }
     } catch (err) {
       console.error(`Error ${action} quotation:`, err);
-      toast.error(`Failed to ${action} quotation`);
+      toast.error(t("pages.store.quotationCard.actionFailed", { action }));
     } finally {
       setIsLoading(null);
     }
@@ -96,7 +98,7 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
     switch (quotation.quotation_status) {
       case "draft":
         actions.push({
-          label: "Send Quotation",
+          label: t("pages.store.quotationCard.sendQuotation"),
           action: "send",
           icon: Send,
           variant: "primary",
@@ -106,13 +108,13 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
       case "sent":
       case "revised":
         actions.push({
-          label: "Accept",
+          label: t("pages.store.quotationCard.accept"),
           action: "accept",
           icon: CheckCircle,
           variant: "primary",
         });
         actions.push({
-          label: "Reject",
+          label: t("pages.store.quotationCard.reject"),
           action: "reject",
           icon: XCircle,
           variant: "danger",
@@ -121,13 +123,13 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
 
       case "counter_offer":
         actions.push({
-          label: "Revise & Send",
+          label: t("pages.store.quotationCard.reviseAndSend"),
           action: "revise",
           icon: RefreshCw,
           variant: "primary",
         });
         actions.push({
-          label: "Reject",
+          label: t("pages.store.quotationCard.reject"),
           action: "reject",
           icon: XCircle,
           variant: "danger",
@@ -153,7 +155,7 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-indigo-500" />
-            <h2 className="font-semibold text-foreground">Quotation</h2>
+            <h2 className="font-semibold text-foreground">{t("pages.store.quotationCard.title")}</h2>
           </div>
           <span
             className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
@@ -167,18 +169,18 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
         {/* Quotation Details */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Quotation #</span>
+            <span className="text-muted-foreground">{t("pages.store.quotationCard.quotationNumber")}</span>
             <span className="font-mono font-medium">
               {quotation.quotation_number}
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Revision</span>
-            <span className="font-medium">Rev {quotation.current_revision}</span>
+            <span className="text-muted-foreground">{t("pages.store.quotationCard.revision")}</span>
+            <span className="font-medium">{t("pages.store.quotationCard.revisionLabel", { rev: quotation.current_revision })}</span>
           </div>
           {quotation.valid_until && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Valid Until</span>
+              <span className="text-muted-foreground">{t("pages.store.quotationCard.validUntil")}</span>
               <span
                 className={`font-medium ${isExpired ? "text-red-600" : ""}`}
               >
@@ -192,7 +194,7 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Last Actor</span>
+            <span className="text-muted-foreground">{t("pages.store.quotationCard.lastActor")}</span>
             <span className="font-medium capitalize">
               {quotation.last_actor || "—"}
             </span>
@@ -202,12 +204,12 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
         {/* Totals */}
         <div className="pt-3 border-t border-border space-y-1">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal (Net)</span>
+            <span className="text-muted-foreground">{t("pages.store.quotationCard.subtotalNet")}</span>
             <span className="font-medium">{formatCurrency(order.subtotal_net)}</span>
           </div>
           {order.cart_discounts && order.cart_discounts.length > 0 && (
             <div className="flex justify-between text-sm text-emerald-600">
-              <span>Cart Discounts</span>
+              <span>{t("pages.store.quotationCard.cartDiscounts")}</span>
               <span>
                 -
                 {formatCurrency(
@@ -217,7 +219,7 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
             </div>
           )}
           <div className="flex justify-between text-sm font-semibold">
-            <span>Total</span>
+            <span>{t("pages.store.quotationCard.total")}</span>
             <span>{formatCurrency(order.order_total)}</span>
           </div>
         </div>
@@ -234,8 +236,9 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
               ) : (
                 <ChevronDown className="h-3 w-3" />
               )}
-              View {quotation.revisions.length} revision
-              {quotation.revisions.length !== 1 ? "s" : ""}
+              {quotation.revisions.length === 1
+                ? t("pages.store.quotationCard.viewRevisions", { count: quotation.revisions.length })
+                : t("pages.store.quotationCard.viewRevisions_plural", { count: quotation.revisions.length })}
             </button>
 
             {showRevisions && (

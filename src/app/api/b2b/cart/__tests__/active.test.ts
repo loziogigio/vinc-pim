@@ -41,15 +41,33 @@ vi.mock("nanoid", () => ({
 
 // Mock OrderModel
 const mockOrderFindOne = vi.fn();
+const mockOrderFindOneAndUpdate = vi.fn();
 const mockOrderCreate = vi.fn();
 const mockOrderCountDocuments = vi.fn();
 
 vi.mock("@/lib/db/models/order", () => ({
   OrderModel: {
     findOne: (...args: unknown[]) => mockOrderFindOne(...args),
+    findOneAndUpdate: (...args: unknown[]) => mockOrderFindOneAndUpdate(...args),
     create: (...args: unknown[]) => mockOrderCreate(...args),
     countDocuments: (...args: unknown[]) => mockOrderCountDocuments(...args),
   },
+}));
+
+// Mock windmill-proxy.service (used by cart creation for ERP hooks)
+vi.mock("@/lib/services/windmill-proxy.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/windmill-proxy.service")>();
+  return {
+    ...actual,
+    runOnHook: vi.fn().mockResolvedValue(undefined),
+    runAfterHook: vi.fn().mockResolvedValue(undefined),
+    mergeOrderErpData: vi.fn(),
+  };
+});
+
+// Mock tag-pricing.service
+vi.mock("@/lib/services/tag-pricing.service", () => ({
+  resolveEffectiveTags: vi.fn().mockReturnValue([]),
 }));
 
 // Mock counter for cart_number
@@ -120,7 +138,7 @@ describe("POST /api/b2b/cart/active", () => {
         status: "draft",
       };
 
-      mockOrderFindOne.mockResolvedValue(existingCart);
+      mockOrderFindOneAndUpdate.mockResolvedValue(existingCart);
 
       const req = createMockRequest({
         customer_code: "CUST-001",
@@ -135,18 +153,24 @@ describe("POST /api/b2b/cart/active", () => {
       expect(data.cart_id).toBe("existing-cart-123");
       expect(data.order_id).toBe("existing-cart-123");
 
-      // Verify the lookup query (includes tenant_id)
-      expect(mockOrderFindOne).toHaveBeenCalledWith({
-        tenant_id: "test-tenant",
-        customer_code: "CUST-001",
-        shipping_address_code: "ADDR-001",
-        is_current: true,
-      });
+      // Verify the lookup query (includes tenant_id, status, and atomic update)
+      expect(mockOrderFindOneAndUpdate).toHaveBeenCalledWith(
+        {
+          tenant_id: "test-tenant",
+          customer_code: "CUST-001",
+          shipping_address_code: "ADDR-001",
+          status: "draft",
+          is_current: true,
+        },
+        { $set: { last_accessed_at: expect.any(Date) } },
+        { new: true },
+      );
     });
   });
 
   describe("New Cart Creation", () => {
     it("should create new cart when no existing cart found", async () => {
+      mockOrderFindOneAndUpdate.mockResolvedValue(null);
       mockOrderFindOne.mockResolvedValue(null);
       mockFindOrCreateCustomer.mockResolvedValue({
         customer: {
@@ -160,7 +184,8 @@ describe("POST /api/b2b/cart/active", () => {
       });
       mockOrderCountDocuments.mockResolvedValue(0);
 
-      const newCart = {
+      const newCartData = {
+        _id: "mock-id-123",
         order_id: "xxxxxxxxxxxx",
         customer_id: "cust-new-123",
         customer_code: "CUST-001",
@@ -168,7 +193,9 @@ describe("POST /api/b2b/cart/active", () => {
         shipping_address_code: "ADDR-001",
         is_current: true,
         status: "draft",
+        channel: "default",
       };
+      const newCart = { ...newCartData, toObject: () => newCartData };
       mockOrderCreate.mockResolvedValue(newCart);
 
       const req = createMockRequest({
@@ -199,7 +226,7 @@ describe("POST /api/b2b/cart/active", () => {
     });
 
     it("should return error if customer not found and no details provided", async () => {
-      mockOrderFindOne.mockResolvedValue(null);
+      mockOrderFindOneAndUpdate.mockResolvedValue(null);
       mockFindOrCreateCustomer.mockRejectedValue(new Error("Customer not found"));
 
       const req = createMockRequest({
@@ -214,7 +241,7 @@ describe("POST /api/b2b/cart/active", () => {
     });
 
     it("should return error if address not found and no details provided", async () => {
-      mockOrderFindOne.mockResolvedValue(null);
+      mockOrderFindOneAndUpdate.mockResolvedValue(null);
       mockFindOrCreateCustomer.mockResolvedValue({
         customer: {
           customer_id: "cust-123",
@@ -240,6 +267,7 @@ describe("POST /api/b2b/cart/active", () => {
 
   describe("Customer/Address Lookup-or-Create", () => {
     it("should create customer with provided details", async () => {
+      mockOrderFindOneAndUpdate.mockResolvedValue(null);
       mockOrderFindOne.mockResolvedValue(null);
       mockFindOrCreateCustomer.mockResolvedValue({
         customer: {
@@ -252,10 +280,8 @@ describe("POST /api/b2b/cart/active", () => {
         isNew: true,
       });
       mockOrderCountDocuments.mockResolvedValue(0);
-      mockOrderCreate.mockResolvedValue({
-        order_id: "new-cart-123",
-        is_current: true,
-      });
+      const cartData = { _id: "mock-id-789", order_id: "new-cart-123", is_current: true, channel: "default" };
+      mockOrderCreate.mockResolvedValue({ ...cartData, toObject: () => cartData });
 
       const req = createMockRequest({
         customer_code: "CUST-001",
@@ -290,6 +316,7 @@ describe("POST /api/b2b/cart/active", () => {
         addresses: [], // No matching address
         save: vi.fn(),
       };
+      mockOrderFindOneAndUpdate.mockResolvedValue(null);
       mockOrderFindOne.mockResolvedValue(null);
       mockFindOrCreateCustomer.mockResolvedValue({
         customer: mockCustomer,
@@ -300,10 +327,8 @@ describe("POST /api/b2b/cart/active", () => {
         address_id: "addr-new-123",
         external_code: "ADDR-001",
       });
-      mockOrderCreate.mockResolvedValue({
-        order_id: "new-cart-123",
-        is_current: true,
-      });
+      const addrCartData = { _id: "mock-id-addr", order_id: "new-cart-123", is_current: true, channel: "default" };
+      mockOrderCreate.mockResolvedValue({ ...addrCartData, toObject: () => addrCartData });
 
       const req = createMockRequest({
         customer_code: "CUST-001",
@@ -336,6 +361,7 @@ describe("POST /api/b2b/cart/active", () => {
 
   describe("Response Format", () => {
     it("should return correct response structure for new cart", async () => {
+      mockOrderFindOneAndUpdate.mockResolvedValue(null);
       mockOrderFindOne.mockResolvedValue(null);
       mockFindOrCreateCustomer.mockResolvedValue({
         customer: {
@@ -346,7 +372,8 @@ describe("POST /api/b2b/cart/active", () => {
         isNew: false,
       });
       mockOrderCountDocuments.mockResolvedValue(0);
-      mockOrderCreate.mockResolvedValue({
+      const newCartData = {
+        _id: "mock-id-456",
         order_id: "new-cart-123",
         customer_id: "cust-123",
         customer_code: "CUST-001",
@@ -354,8 +381,10 @@ describe("POST /api/b2b/cart/active", () => {
         shipping_address_code: "ADDR-001",
         is_current: true,
         status: "draft",
+        channel: "default",
         items: [],
-      });
+      };
+      mockOrderCreate.mockResolvedValue({ ...newCartData, toObject: () => newCartData });
 
       const req = createMockRequest({
         customer_code: "CUST-001",
@@ -394,7 +423,7 @@ describe("POST /api/b2b/cart/active", () => {
         status: "draft",
         items: [{ entity_code: "PROD-001" }],
       };
-      mockOrderFindOne.mockResolvedValue(existingCart);
+      mockOrderFindOneAndUpdate.mockResolvedValue(existingCart);
 
       const req = createMockRequest({
         customer_code: "CUST-001",

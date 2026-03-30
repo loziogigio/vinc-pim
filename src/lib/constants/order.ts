@@ -14,9 +14,11 @@ export const ORDER_STATUSES = [
   "quotation", // Under negotiation
   "pending", // Submitted, awaiting confirmation
   "confirmed", // Sales Order - locked
+  "preparing", // Warehouse picking/packing
   "shipped", // In delivery
   "delivered", // Completed
   "cancelled", // Cancelled at any stage
+  "deleted", // Soft-deleted (empty carts, abandoned)
 ] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -26,9 +28,11 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   quotation: "Preventivo",
   pending: "In Attesa",
   confirmed: "Confermato",
+  preparing: "In Preparazione",
   shipped: "Spedito",
   delivered: "Consegnato",
   cancelled: "Annullato",
+  deleted: "Eliminato",
 };
 
 // ============================================
@@ -168,8 +172,13 @@ export const STATUS_TRANSITIONS: Record<
     cancelled: ["sales", "admin", "system"], // + auto-cancel on payment failure
   },
   confirmed: {
-    shipped: ["warehouse", "admin"], // Mark as shipped
+    preparing: ["warehouse", "admin", "system"], // Start picking/packing
+    shipped: ["warehouse", "admin"], // Direct ship (skip preparing)
     cancelled: ["admin"], // Only admin can cancel confirmed
+  },
+  preparing: {
+    shipped: ["warehouse", "admin"], // Hand off to carrier
+    cancelled: ["admin"], // Exceptional cancellation
   },
   shipped: {
     delivered: ["warehouse", "admin", "system"],
@@ -180,6 +189,9 @@ export const STATUS_TRANSITIONS: Record<
   },
   cancelled: {
     draft: ["admin"], // Reactivate as draft (exceptional)
+  },
+  deleted: {
+    // Terminal state - no transitions
   },
 };
 

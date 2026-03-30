@@ -10,6 +10,7 @@ import {
   CreditCard,
   RefreshCw,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 // ============================================
 // TYPES
@@ -33,6 +34,7 @@ interface ConnectStatus {
 // ============================================
 
 export default function StripeConnectOnboarding() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const connectAction = searchParams.get("connect");
 
@@ -52,14 +54,14 @@ export default function StripeConnectOnboarding() {
       if (data.success) {
         setStatus(data.data);
       } else {
-        setError(data.error || "Errore nel caricamento dello stato");
+        setError(data.error || t("pages.payments.stripeConnect.errorLoadingStatus"));
       }
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.stripeConnect.networkError"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchStatus();
@@ -94,10 +96,10 @@ export default function StripeConnectOnboarding() {
       } else if (data.success && data.data.already_onboarded) {
         await fetchStatus();
       } else {
-        setError(data.error || "Errore durante l'onboarding");
+        setError(data.error || t("pages.payments.stripeConnect.errorOnboarding"));
       }
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.stripeConnect.networkError"));
     } finally {
       setIsActioning(false);
     }
@@ -114,10 +116,10 @@ export default function StripeConnectOnboarding() {
       if (data.success && data.data.onboarding_url) {
         window.location.href = data.data.onboarding_url;
       } else {
-        setError(data.error || "Errore nel refresh del link");
+        setError(data.error || t("pages.payments.stripeConnect.errorRefreshLink"));
       }
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.stripeConnect.networkError"));
     } finally {
       setIsActioning(false);
     }
@@ -134,10 +136,10 @@ export default function StripeConnectOnboarding() {
       if (data.success && data.data.dashboard_url) {
         window.open(data.data.dashboard_url, "_blank");
       } else {
-        setError(data.error || "Errore nell'apertura della dashboard");
+        setError(data.error || t("pages.payments.stripeConnect.errorOpeningDashboard"));
       }
     } catch {
-      setError("Errore di rete");
+      setError(t("pages.payments.stripeConnect.networkError"));
     } finally {
       setIsActioning(false);
     }
@@ -153,7 +155,7 @@ export default function StripeConnectOnboarding() {
         <div className="flex items-center gap-3">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            Caricamento stato Stripe Connect...
+            {t("pages.payments.stripeConnect.loadingStatus")}
           </span>
         </div>
       </div>
@@ -171,7 +173,7 @@ export default function StripeConnectOnboarding() {
           <div>
             <h3 className="font-semibold text-[#5e5873]">Stripe Connect</h3>
             <p className="text-xs text-muted-foreground">
-              Collegamento Express Account
+              {t("pages.payments.stripeConnect.expressAccount")}
             </p>
           </div>
         </div>
@@ -189,17 +191,15 @@ export default function StripeConnectOnboarding() {
         {(!status || !status.connected) && (
           <div className="space-y-4">
             <p className="text-sm text-[#5e5873]">
-              Collega il tuo account Stripe per ricevere pagamenti direttamente
-              sul tuo conto bancario. Stripe gestisce la verifica dell&apos;identità
-              e la conformità KYC.
+              {t("pages.payments.stripeConnect.notConnected.description")}
             </p>
             <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 space-y-1">
-              <p className="font-medium">Cosa succede:</p>
+              <p className="font-medium">{t("pages.payments.stripeConnect.notConnected.whatHappens")}</p>
               <ol className="list-decimal list-inside space-y-0.5">
-                <li>Verrai reindirizzato su Stripe</li>
-                <li>Inserisci i dati aziendali e il conto bancario</li>
-                <li>Stripe verifica l&apos;identità</li>
-                <li>Inizi a ricevere pagamenti</li>
+                <li>{t("pages.payments.stripeConnect.notConnected.step1")}</li>
+                <li>{t("pages.payments.stripeConnect.notConnected.step2")}</li>
+                <li>{t("pages.payments.stripeConnect.notConnected.step3")}</li>
+                <li>{t("pages.payments.stripeConnect.notConnected.step4")}</li>
               </ol>
             </div>
             <button
@@ -212,7 +212,7 @@ export default function StripeConnectOnboarding() {
               ) : (
                 <ExternalLink className="w-4 h-4" />
               )}
-              Connetti con Stripe
+              {t("pages.payments.stripeConnect.notConnected.connectButton")}
             </button>
           </div>
         )}
@@ -224,18 +224,17 @@ export default function StripeConnectOnboarding() {
               <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-amber-800">
-                  Onboarding in corso
+                  {t("pages.payments.stripeConnect.pending.title")}
                 </p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Completa la registrazione su Stripe per iniziare a ricevere
-                  pagamenti.
+                  {t("pages.payments.stripeConnect.pending.description")}
                 </p>
               </div>
             </div>
 
             <div className="text-xs text-muted-foreground space-y-1">
               <p>
-                <span className="font-medium">Account ID:</span>{" "}
+                <span className="font-medium">{t("pages.payments.stripeConnect.active.accountIdLabel")}:</span>{" "}
                 <code className="bg-gray-100 px-1.5 py-0.5 rounded">
                   {status.account_id}
                 </code>
@@ -253,14 +252,14 @@ export default function StripeConnectOnboarding() {
                 ) : (
                   <ExternalLink className="w-4 h-4" />
                 )}
-                Riprendi Onboarding
+                {t("pages.payments.stripeConnect.pending.resumeButton")}
               </button>
               <button
                 onClick={fetchStatus}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-[#ebe9f1] hover:bg-gray-50 transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                Verifica Stato
+                {t("pages.payments.stripeConnect.pending.checkStatusButton")}
               </button>
             </div>
           </div>
@@ -273,28 +272,30 @@ export default function StripeConnectOnboarding() {
               <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-orange-800">
-                  Verifica richiesta
+                  {t("pages.payments.stripeConnect.restricted.title")}
                 </p>
                 <p className="text-xs text-orange-700 mt-1">
                   {status.requirements_pending
-                    ? `${status.requirements_pending} requisiti da completare.`
-                    : "Completa la verifica per abilitare i pagamenti."}
+                    ? t("pages.payments.stripeConnect.restricted.requirementsPending", { count: String(status.requirements_pending) })
+                    : t("pages.payments.stripeConnect.restricted.completeVerification")}
                   {status.current_deadline &&
-                    ` Scadenza: ${new Date(status.current_deadline).toLocaleDateString("it-IT")}`}
+                    ` ${t("pages.payments.stripeConnect.restricted.deadline", { date: new Date(status.current_deadline).toLocaleDateString() })}`}
                 </p>
               </div>
             </div>
 
             <div className="text-xs text-muted-foreground space-y-1">
               <p>
-                <span className="font-medium">Account ID:</span>{" "}
+                <span className="font-medium">{t("pages.payments.stripeConnect.active.accountIdLabel")}:</span>{" "}
                 <code className="bg-gray-100 px-1.5 py-0.5 rounded">
                   {status.account_id}
                 </code>
               </p>
               <p>
-                <span className="font-medium">Pagamenti:</span>{" "}
-                {status.charges_enabled ? "Abilitati" : "Disabilitati"}
+                <span className="font-medium">{t("pages.payments.stripeConnect.restricted.paymentsLabel")}</span>{" "}
+                {status.charges_enabled
+                  ? t("pages.payments.stripeConnect.restricted.enabled")
+                  : t("pages.payments.stripeConnect.restricted.disabled")}
               </p>
             </div>
 
@@ -309,14 +310,14 @@ export default function StripeConnectOnboarding() {
                 ) : (
                   <ExternalLink className="w-4 h-4" />
                 )}
-                Completa Verifica
+                {t("pages.payments.stripeConnect.restricted.completeButton")}
               </button>
               <button
                 onClick={fetchStatus}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-[#ebe9f1] hover:bg-gray-50 transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                Aggiorna
+                {t("pages.payments.stripeConnect.restricted.refreshButton")}
               </button>
             </div>
           </div>
@@ -329,41 +330,43 @@ export default function StripeConnectOnboarding() {
               <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-green-800">
-                  Account collegato e attivo
+                  {t("pages.payments.stripeConnect.active.title")}
                 </p>
                 <p className="text-xs text-green-700 mt-1">
-                  I pagamenti vengono automaticamente trasferiti al tuo conto.
+                  {t("pages.payments.stripeConnect.active.description")}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Account ID</p>
+                <p className="text-xs text-muted-foreground">{t("pages.payments.stripeConnect.active.accountIdLabel")}</p>
                 <code className="text-sm font-medium text-[#5e5873]">
                   {status.account_id}
                 </code>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Collegato il</p>
+                <p className="text-xs text-muted-foreground">{t("pages.payments.stripeConnect.active.connectedOnLabel")}</p>
                 <p className="text-sm font-medium text-[#5e5873]">
                   {status.onboarded_at
-                    ? new Date(status.onboarded_at).toLocaleDateString("it-IT")
+                    ? new Date(status.onboarded_at).toLocaleDateString()
                     : "—"}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Pagamenti</p>
-                <p className="text-sm font-medium text-green-600">Abilitati</p>
+                <p className="text-xs text-muted-foreground">{t("pages.payments.stripeConnect.active.paymentsLabel")}</p>
+                <p className="text-sm font-medium text-green-600">{t("pages.payments.stripeConnect.active.enabled")}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Payouts</p>
+                <p className="text-xs text-muted-foreground">{t("pages.payments.stripeConnect.active.payoutsLabel")}</p>
                 <p
                   className={`text-sm font-medium ${
                     status.payouts_enabled ? "text-green-600" : "text-amber-600"
                   }`}
                 >
-                  {status.payouts_enabled ? "Abilitati" : "In attesa"}
+                  {status.payouts_enabled
+                    ? t("pages.payments.stripeConnect.active.enabled")
+                    : t("pages.payments.stripeConnect.active.pending")}
                 </p>
               </div>
             </div>
@@ -378,7 +381,7 @@ export default function StripeConnectOnboarding() {
               ) : (
                 <ExternalLink className="w-4 h-4" />
               )}
-              Apri Dashboard Stripe
+              {t("pages.payments.stripeConnect.active.dashboardButton")}
             </button>
           </div>
         )}

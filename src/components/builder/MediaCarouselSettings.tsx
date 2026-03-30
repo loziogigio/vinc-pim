@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, MoveUp, MoveDown, Upload } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface MediaItem {
   id: string;
@@ -117,6 +118,7 @@ function ImageUploadField({
 }
 
 export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarouselSettingsProps) {
+  const { t } = useTranslation();
   // Use ref to avoid onSave in useEffect dependency array (prevents infinite loop)
   const onSaveRef = useRef(onSave);
   useEffect(() => {
@@ -271,7 +273,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
     <div className="space-y-6">
       {/* Variant Selection */}
       <div>
-        <Label className="text-base font-semibold">Carousel Type</Label>
+        <Label className="text-base font-semibold">{t("components.builder.mediaCarousel.carouselType")}</Label>
         <div className="mt-2 flex gap-4">
           <label className="flex items-center gap-2">
             <input
@@ -280,7 +282,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               onChange={() => setVariant("promo")}
               className="h-4 w-4"
             />
-            <span className="text-sm">Promo Banner</span>
+            <span className="text-sm">{t("components.builder.mediaCarousel.variantPromoBanner")}</span>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -289,7 +291,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               onChange={() => setVariant("brand")}
               className="h-4 w-4"
             />
-            <span className="text-sm">Brand Logos</span>
+            <span className="text-sm">{t("components.builder.mediaCarousel.variantBrandLogos")}</span>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -298,7 +300,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               onChange={() => setVariant("flyer")}
               className="h-4 w-4"
             />
-            <span className="text-sm">Flyers/Catalogs</span>
+            <span className="text-sm">{t("components.builder.mediaCarousel.variantFlyersCatalogs")}</span>
           </label>
         </div>
       </div>
@@ -306,17 +308,17 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
       {/* Items Management */}
       <div>
         <div className="mb-3">
-          <Label className="text-base font-semibold">Media Items</Label>
+          <Label className="text-base font-semibold">{t("components.builder.mediaCarousel.mediaItems")}</Label>
         </div>
 
         <div className="space-y-4">
           {items.length === 0 ? (
-            <p className="text-sm text-gray-500">No items added yet. Click &quot;Add Item&quot; to get started.</p>
+            <p className="text-sm text-gray-500">{t("components.builder.mediaCarousel.noItemsYet")}</p>
           ) : (
             items.map((item, index) => (
               <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-medium">Item {index + 1}</span>
+                  <span className="text-sm font-medium">{t("components.builder.mediaCarousel.itemNumber", { number: String(index + 1) })}</span>
                   <div className="flex gap-1">
                     <Button
                       type="button"
@@ -351,7 +353,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                 <div className="space-y-3">
                   {/* Media Type */}
                   <div>
-                    <Label className="text-xs">Media Type</Label>
+                    <Label className="text-xs">{t("components.builder.mediaCarousel.mediaType")}</Label>
                     <div className="mt-1 flex gap-4">
                       <label className="flex items-center gap-2">
                         <input
@@ -360,7 +362,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                           onChange={() => updateItem(index, "mediaType", "image")}
                           className="h-4 w-4"
                         />
-                        <span className="text-sm">Image</span>
+                        <span className="text-sm">{t("components.builder.mediaCarousel.mediaTypeImage")}</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <input
@@ -369,7 +371,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                           onChange={() => updateItem(index, "mediaType", "video")}
                           className="h-4 w-4"
                         />
-                        <span className="text-sm">Video</span>
+                        <span className="text-sm">{t("components.builder.mediaCarousel.mediaTypeVideo")}</span>
                       </label>
                     </div>
                   </div>
@@ -378,7 +380,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                     <>
                       {/* Desktop Image */}
                       <ImageUploadField
-                        label="Desktop Image URL"
+                        label={t("components.builder.mediaCarousel.desktopImageUrl")}
                         value={item.imageDesktop?.url || ""}
                         onChange={(url) =>
                           updateItem(index, "imageDesktop", {
@@ -391,7 +393,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
                       {/* Mobile Image */}
                       <ImageUploadField
-                        label="Mobile Image URL (optional)"
+                        label={t("components.builder.mediaCarousel.mobileImageUrl")}
                         value={item.imageMobile?.url || ""}
                         onChange={(url) =>
                           updateItem(index, "imageMobile", {
@@ -404,7 +406,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
                       {/* Alt Text */}
                       <div>
-                        <Label className="text-xs">Alt Text</Label>
+                        <Label className="text-xs">{t("components.builder.mediaCarousel.altText")}</Label>
                         <Input
                           type="text"
                           value={item.imageDesktop?.alt || ""}
@@ -418,7 +420,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                               alt: e.target.value
                             });
                           }}
-                          placeholder="Describe the image"
+                          placeholder={t("components.builder.mediaCarousel.altTextPlaceholder")}
                           className="mt-1"
                         />
                       </div>
@@ -426,7 +428,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                   ) : (
                     /* Video URL */
                     <div>
-                      <Label className="text-xs">Video URL (YouTube/Vimeo embed)</Label>
+                      <Label className="text-xs">{t("components.builder.mediaCarousel.videoUrl")}</Label>
                       <Input
                         type="text"
                         value={item.videoUrl || ""}
@@ -439,7 +441,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
                   {/* Link */}
                   <div>
-                    <Label className="text-xs">Link URL (optional)</Label>
+                    <Label className="text-xs">{t("components.builder.mediaCarousel.linkUrl")}</Label>
                     <Input
                       type="text"
                       value={item.link?.url || ""}
@@ -466,19 +468,19 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
                         className="h-4 w-4 rounded border-gray-300"
                       />
                       <Label htmlFor={`openInNewTab-${index}`} className="cursor-pointer text-xs">
-                        Open in new tab
+                        {t("components.builder.mediaCarousel.openInNewTab")}
                       </Label>
                     </div>
                   </div>
 
                   {/* Title */}
                   <div>
-                    <Label className="text-xs">Title (optional)</Label>
+                    <Label className="text-xs">{t("components.builder.mediaCarousel.itemTitle")}</Label>
                     <Input
                       type="text"
                       value={item.title || ""}
                       onChange={(e) => updateItem(index, "title", e.target.value)}
-                      placeholder="Item title"
+                      placeholder={t("components.builder.mediaCarousel.itemTitlePlaceholder")}
                       className="mt-1"
                     />
                   </div>
@@ -489,13 +491,13 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
         </div>
 
         <Button type="button" onClick={addItem} size="sm" variant="outline" className="mt-4">
-          <Plus className="mr-1 h-4 w-4" /> Add Item
+          <Plus className="mr-1 h-4 w-4" /> {t("components.builder.mediaCarousel.addItem")}
         </Button>
       </div>
 
       {/* Breakpoint Mode */}
       <div>
-        <Label className="text-base font-semibold">Responsive Settings</Label>
+        <Label className="text-base font-semibold">{t("components.builder.mediaCarousel.responsiveSettings")}</Label>
         <div className="mt-2 flex gap-4">
           <label className="flex items-center gap-2">
             <input
@@ -504,7 +506,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               onChange={() => setBreakpointMode("simplified")}
               className="h-4 w-4"
             />
-            <span className="text-sm">Simplified</span>
+            <span className="text-sm">{t("components.builder.mediaCarousel.breakpointSimplified")}</span>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -513,7 +515,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               onChange={() => setBreakpointMode("advanced")}
               className="h-4 w-4"
             />
-            <span className="text-sm">Advanced (JSON)</span>
+            <span className="text-sm">{t("components.builder.mediaCarousel.breakpointAdvanced")}</span>
           </label>
         </div>
       </div>
@@ -522,7 +524,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
       {breakpointMode === "simplified" && (
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <Label className="text-xs">Desktop (≥1024px)</Label>
+            <Label className="text-xs">{t("components.builder.mediaCarousel.breakpointDesktop")}</Label>
             <Input
               type="number"
               step="0.5"
@@ -532,7 +534,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
             />
           </div>
           <div>
-            <Label className="text-xs">Tablet (≥768px)</Label>
+            <Label className="text-xs">{t("components.builder.mediaCarousel.breakpointTablet")}</Label>
             <Input
               type="number"
               step="0.5"
@@ -542,7 +544,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
             />
           </div>
           <div>
-            <Label className="text-xs">Mobile (&lt;768px)</Label>
+            <Label className="text-xs">{t("components.builder.mediaCarousel.breakpointMobile")}</Label>
             <Input
               type="number"
               step="0.5"
@@ -557,7 +559,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
   {/* Advanced Breakpoints */}
   {breakpointMode === "advanced" && (
     <div>
-          <Label className="text-xs">Breakpoints JSON (Swiper.js format)</Label>
+          <Label className="text-xs">{t("components.builder.mediaCarousel.breakpointsJson")}</Label>
           <textarea
             value={breakpointsJSON}
             onChange={(e) => setBreakpointsJSON(e.target.value)}
@@ -578,14 +580,14 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
       onClick={() => setShowStyling((prev) => !prev)}
       className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700"
     >
-      <span>Card styling</span>
-      <span className="text-xs text-slate-400">{showStyling ? "Hide" : "Show"}</span>
+      <span>{t("components.builder.mediaCarousel.cardStyling")}</span>
+      <span className="text-xs text-slate-400">{showStyling ? t("components.builder.mediaCarousel.hide") : t("components.builder.mediaCarousel.show")}</span>
     </button>
     {showStyling ? (
       <div className="space-y-4 border-t border-slate-200 px-4 py-4">
         <div>
           <Label className="text-xs font-medium text-slate-700">
-            Border width: {cardStyle.borderWidth}px
+            {t("components.builder.mediaCarousel.borderWidth")}: {cardStyle.borderWidth}px
           </Label>
           <input
             type="range"
@@ -599,7 +601,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs font-medium text-slate-700">Border color</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.borderColor")}</Label>
             <div className="mt-1 flex items-center gap-2">
               <input
                 type="color"
@@ -615,7 +617,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
             </div>
           </div>
           <div>
-            <Label className="text-xs font-medium text-slate-700">Background color</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.backgroundColor")}</Label>
             <div className="mt-1 flex items-center gap-2">
               <input
                 type="color"
@@ -634,7 +636,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs font-medium text-slate-700">Border style</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.borderStyle")}</Label>
             <select
               value={cardStyle.borderStyle}
               onChange={(event) =>
@@ -642,14 +644,14 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               }
               className="mt-1 h-9 w-full rounded border border-slate-200 bg-white px-3 text-xs text-slate-700"
             >
-              <option value="solid">Solid</option>
-              <option value="dashed">Dashed</option>
-              <option value="dotted">Dotted</option>
-              <option value="none">None</option>
+              <option value="solid">{t("components.builder.mediaCarousel.borderStyleSolid")}</option>
+              <option value="dashed">{t("components.builder.mediaCarousel.borderStyleDashed")}</option>
+              <option value="dotted">{t("components.builder.mediaCarousel.borderStyleDotted")}</option>
+              <option value="none">{t("common.none")}</option>
             </select>
           </div>
           <div>
-            <Label className="text-xs font-medium text-slate-700">Corner roundness</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.cornerRoundness")}</Label>
             <select
               value={cardStyle.borderRadius}
               onChange={(event) =>
@@ -657,20 +659,20 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               }
               className="mt-1 h-9 w-full rounded border border-slate-200 bg-white px-3 text-xs text-slate-700"
             >
-              <option value="none">Square</option>
-              <option value="sm">Slightly rounded</option>
-              <option value="md">Moderately rounded</option>
-              <option value="lg">Very rounded</option>
-              <option value="xl">Extra rounded</option>
-              <option value="2xl">Super rounded</option>
-              <option value="full">Fully rounded</option>
+              <option value="none">{t("components.builder.mediaCarousel.radiusSquare")}</option>
+              <option value="sm">{t("components.builder.mediaCarousel.radiusSlightly")}</option>
+              <option value="md">{t("components.builder.mediaCarousel.radiusModerately")}</option>
+              <option value="lg">{t("components.builder.mediaCarousel.radiusVery")}</option>
+              <option value="xl">{t("components.builder.mediaCarousel.radiusExtra")}</option>
+              <option value="2xl">{t("components.builder.mediaCarousel.radiusSuper")}</option>
+              <option value="full">{t("components.builder.mediaCarousel.radiusFull")}</option>
             </select>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs font-medium text-slate-700">Shadow size</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.shadowSize")}</Label>
             <select
               value={cardStyle.shadowSize}
               onChange={(event) =>
@@ -678,16 +680,16 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               }
               className="mt-1 h-9 w-full rounded border border-slate-200 bg-white px-3 text-xs text-slate-700"
             >
-              <option value="none">No shadow</option>
-              <option value="sm">Small shadow</option>
-              <option value="md">Medium shadow</option>
-              <option value="lg">Large shadow</option>
-              <option value="xl">Extra large</option>
-              <option value="2xl">Huge shadow</option>
+              <option value="none">{t("components.builder.mediaCarousel.shadowNone")}</option>
+              <option value="sm">{t("components.builder.mediaCarousel.shadowSmall")}</option>
+              <option value="md">{t("components.builder.mediaCarousel.shadowMedium")}</option>
+              <option value="lg">{t("components.builder.mediaCarousel.shadowLarge")}</option>
+              <option value="xl">{t("components.builder.mediaCarousel.shadowExtraLarge")}</option>
+              <option value="2xl">{t("components.builder.mediaCarousel.shadowHuge")}</option>
             </select>
           </div>
           <div>
-            <Label className="text-xs font-medium text-slate-700">Shadow color</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.shadowColor")}</Label>
             <Input
               value={cardStyle.shadowColor}
               onChange={(event) => updateCardStyleField("shadowColor", event.target.value)}
@@ -697,7 +699,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-slate-700">Hover effect</Label>
+          <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.hoverEffect")}</Label>
           <select
             value={cardStyle.hoverEffect}
             onChange={(event) =>
@@ -705,19 +707,19 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
             }
             className="h-9 w-full rounded border border-slate-200 bg-white px-3 text-xs text-slate-700"
           >
-            <option value="none">None</option>
-            <option value="lift">Lift up</option>
-            <option value="shadow">Add shadow</option>
-            <option value="scale">Grow slightly</option>
-            <option value="border">Highlight border</option>
-            <option value="glow">Glow effect</option>
+            <option value="none">{t("common.none")}</option>
+            <option value="lift">{t("components.builder.mediaCarousel.hoverLift")}</option>
+            <option value="shadow">{t("components.builder.mediaCarousel.hoverShadow")}</option>
+            <option value="scale">{t("components.builder.mediaCarousel.hoverScale")}</option>
+            <option value="border">{t("components.builder.mediaCarousel.hoverBorder")}</option>
+            <option value="glow">{t("components.builder.mediaCarousel.hoverGlow")}</option>
           </select>
         </div>
 
         {cardStyle.hoverEffect === "scale" ? (
           <div>
             <Label className="text-xs font-medium text-slate-700">
-              Hover scale: {(cardStyle.hoverScale ?? 1.02).toFixed(2)}×
+              {t("components.builder.mediaCarousel.hoverScaleLabel")}: {(cardStyle.hoverScale ?? 1.02).toFixed(2)}×
             </Label>
             <input
               type="range"
@@ -733,7 +735,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
         {["shadow", "glow"].includes(cardStyle.hoverEffect) ? (
           <div>
-            <Label className="text-xs font-medium text-slate-700">Hover shadow size</Label>
+            <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.hoverShadowSize")}</Label>
             <select
               value={cardStyle.hoverShadowSize ?? "lg"}
               onChange={(event) =>
@@ -741,17 +743,17 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               }
               className="mt-1 h-9 w-full rounded border border-slate-200 bg-white px-3 text-xs text-slate-700"
             >
-              <option value="sm">Small</option>
-              <option value="md">Medium</option>
-              <option value="lg">Large</option>
-              <option value="xl">Extra large</option>
-              <option value="2xl">Huge</option>
+              <option value="sm">{t("components.builder.mediaCarousel.shadowSmall")}</option>
+              <option value="md">{t("components.builder.mediaCarousel.shadowMedium")}</option>
+              <option value="lg">{t("components.builder.mediaCarousel.shadowLarge")}</option>
+              <option value="xl">{t("components.builder.mediaCarousel.shadowExtraLarge")}</option>
+              <option value="2xl">{t("components.builder.mediaCarousel.shadowHuge")}</option>
             </select>
           </div>
         ) : null}
 
         <div>
-          <Label className="text-xs font-medium text-slate-700">Hover background</Label>
+          <Label className="text-xs font-medium text-slate-700">{t("components.builder.mediaCarousel.hoverBackground")}</Label>
           <div className="mt-1 flex items-center gap-2">
             <input
               type="color"
@@ -761,7 +763,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
             />
             <Input
               value={cardStyle.hoverBackgroundColor || ""}
-              placeholder="Optional hex color"
+              placeholder={t("components.builder.mediaCarousel.optionalHexColor")}
               onChange={(event) => updateCardStyleField("hoverBackgroundColor", event.target.value)}
               className="flex-1"
             />
@@ -773,7 +775,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
 
   {/* Carousel Options */}
   <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-    <Label className="text-sm font-semibold text-slate-700">Carousel options</Label>
+    <Label className="text-sm font-semibold text-slate-700">{t("components.builder.mediaCarousel.carouselOptions")}</Label>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
@@ -781,7 +783,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               checked={autoplay}
               onChange={(e) => setAutoplay(e.target.checked)}
             />
-            Autoplay
+            {t("components.builder.mediaCarousel.autoplay")}
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
@@ -789,7 +791,7 @@ export function MediaCarouselSettings({ blockId, config, onSave }: MediaCarousel
               checked={loop}
               onChange={(e) => setLoop(e.target.checked)}
             />
-            Loop slides
+            {t("components.builder.mediaCarousel.loopSlides")}
           </label>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { safeRegexQuery } from "@/lib/security";
+import { buildProductSearchConditions } from "@/lib/search/product-search";
 
 // GET /api/b2b/pim/tags/[id]/products - Get products linked to tag
 export async function GET(
@@ -41,12 +41,7 @@ export async function GET(
     };
 
     if (search) {
-      const safeSearch = safeRegexQuery(search);
-      query.$or = [
-        { name: safeSearch },
-        { sku: safeSearch },
-        { entity_code: safeSearch },
-      ];
+      query.$or = await buildProductSearchConditions(search, tenantDb);
     }
 
     const [products, total] = await Promise.all([

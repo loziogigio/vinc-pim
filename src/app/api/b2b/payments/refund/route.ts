@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const body = await req.json();
-    const { transaction_id, amount } = body;
+    const { transaction_id, amount, idempotency_key } = body;
 
     if (!transaction_id) {
       return NextResponse.json(
@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
     const dbName = `vinc-${auth.tenantId}`;
     const connection = await getPooledConnection(dbName);
 
-    const result = await refundTransaction(connection, transaction_id, amount);
+    // Auto-generate idempotency key if not provided
+    const refundKey = idempotency_key || `refund_${transaction_id}_${amount || "full"}`;
+
+    const result = await refundTransaction(connection, transaction_id, amount, refundKey);
 
     if (!result.success) {
       return NextResponse.json(
@@ -50,6 +53,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      idempotent: result.idempotent,
       refund_id: result.refund_id,
       amount: result.amount,
     });

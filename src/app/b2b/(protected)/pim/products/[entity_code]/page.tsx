@@ -657,19 +657,19 @@ export default function ProductDetailPage({
         setHasChanges(false);
 
         // Show success message
-        toast.success("Product updated successfully!", {
-          description: `${getMultilingualText(data.product.name, defaultLanguageCode, "Product")} has been saved.`,
+        toast.success(t("pages.pim.productDetail.productUpdatedSuccess"), {
+          description: t("pages.pim.productDetail.productSavedDesc", { name: getMultilingualText(data.product.name, defaultLanguageCode, "Product") }),
         });
       } else {
         const error = await res.json();
-        toast.error("Failed to save product", {
-          description: error.error || "Unknown error occurred",
+        toast.error(t("pages.pim.productDetail.failedToSaveProduct"), {
+          description: error.error || t("pages.pim.productDetail.unknownError"),
         });
       }
     } catch (error) {
       console.error("Error saving product:", error);
-      toast.error("Failed to save product", {
-        description: "Please check your connection and try again.",
+      toast.error(t("pages.pim.productDetail.failedToSaveProduct"), {
+        description: t("pages.pim.productDetail.connectionError"),
       });
     } finally {
       setIsSaving(false);
@@ -704,15 +704,15 @@ export default function ProductDetailPage({
       if (res.ok) {
         const data = await res.json();
         setProductWithIds(data.product);
-        toast.success(editingPackaging ? "Packaging option updated" : "Packaging option added");
+        toast.success(editingPackaging ? t("pages.pim.productDetail.packagingOptionUpdated") : t("pages.pim.productDetail.packagingOptionAdded"));
         setPackagingModalOpen(false);
         setEditingPackaging(null);
         setDuplicatingPackaging(null);
       } else {
-        toast.error("Failed to save packaging option");
+        toast.error(t("pages.pim.productDetail.failedToSavePackaging"));
       }
     } catch {
-      toast.error("Failed to save packaging option");
+      toast.error(t("pages.pim.productDetail.failedToSavePackaging"));
     }
   }
 
@@ -786,14 +786,14 @@ export default function ProductDetailPage({
       if (res.ok) {
         const data = await res.json();
         setProductWithIds(data.product);
-        toast.success(editingPromotion.promotion ? "Promotion updated" : "Promotion added");
+        toast.success(editingPromotion.promotion ? t("pages.pim.productDetail.promotionUpdated") : t("pages.pim.productDetail.promotionAdded"));
         setPromotionModalOpen(false);
         setEditingPromotion({ promotion: null, packagingPkgIds: [] });
       } else {
-        toast.error("Failed to save promotion");
+        toast.error(t("pages.pim.productDetail.failedToSavePromotion"));
       }
     } catch {
-      toast.error("Failed to save promotion");
+      toast.error(t("pages.pim.productDetail.failedToSavePromotion"));
     }
   }
 
@@ -808,13 +808,13 @@ export default function ProductDetailPage({
         const data = await res.json();
         setProductWithIds(data.product);
         setFormData((prev) => ({ ...prev, status: "published" }));
-        toast.success("Product published!");
+        toast.success(t("pages.pim.productDetail.productPublished"));
       } else {
         const error = await res.json();
-        toast.error("Failed to publish", { description: error.error });
+        toast.error(t("pages.pim.productDetail.failedToPublish"), { description: error.error });
       }
     } catch (error) {
-      toast.error("Failed to publish product");
+      toast.error(t("pages.pim.productDetail.failedToPublishProduct"));
     } finally {
       setIsPublishing(false);
     }
@@ -831,13 +831,13 @@ export default function ProductDetailPage({
         const data = await res.json();
         setProductWithIds(data.product);
         setFormData((prev) => ({ ...prev, status: "draft" }));
-        toast.success("Product unpublished");
+        toast.success(t("pages.pim.productDetail.productUnpublished"));
       } else {
         const error = await res.json();
-        toast.error("Failed to unpublish", { description: error.error });
+        toast.error(t("pages.pim.productDetail.failedToUnpublish"), { description: error.error });
       }
     } catch (error) {
-      toast.error("Failed to unpublish product");
+      toast.error(t("pages.pim.productDetail.failedToUnpublishProduct"));
     } finally {
       setIsPublishing(false);
     }
@@ -845,9 +845,7 @@ export default function ProductDetailPage({
 
   async function handleDelete() {
     if (!product) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to delete this product?\n\nThis action cannot be undone.`
-    );
+    const confirmed = window.confirm(t("pages.pim.productDetail.confirmDelete"));
     if (!confirmed) return;
     setIsDeleting(true);
     try {
@@ -855,14 +853,14 @@ export default function ProductDetailPage({
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Product deleted");
+        toast.success(t("pages.pim.productDetail.productDeleted"));
         router.push(`${tenantPrefix}/b2b/pim/products`);
       } else {
         const error = await res.json();
-        toast.error("Failed to delete", { description: error.error });
+        toast.error(t("pages.pim.productDetail.failedToDelete"), { description: error.error });
       }
     } catch (error) {
-      toast.error("Failed to delete product");
+      toast.error(t("pages.pim.productDetail.failedToDeleteProduct"));
     } finally {
       setIsDeleting(false);
     }
@@ -891,8 +889,8 @@ export default function ProductDetailPage({
           });
 
           // Show success notification
-          toast.success("Images uploaded successfully!", {
-            description: `${data.uploaded} image(s) added`,
+          toast.success(t("pages.pim.productDetail.imagesUploadedSuccess"), {
+            description: t("pages.pim.productDetail.imagesUploadedDesc", { count: String(data.uploaded) }),
           });
         }
       } else {
@@ -922,7 +920,7 @@ export default function ProductDetailPage({
         });
 
         // Show success notification
-        toast.success("Image deleted successfully!");
+        toast.success(t("pages.pim.productDetail.imageDeletedSuccess"));
       }
     } else {
       const error = await res.json();
@@ -979,8 +977,8 @@ export default function ProductDetailPage({
         }));
 
         // Show success notification
-        toast.success("Primary image updated!", {
-          description: "Image moved to first position",
+        toast.success(t("pages.pim.productDetail.primaryImageUpdated"), {
+          description: t("pages.pim.productDetail.primaryImageDesc"),
         });
 
         console.log("State updated with new primary:", cdn_key);
@@ -988,8 +986,8 @@ export default function ProductDetailPage({
     } else {
       const error = await res.json();
       console.error("Failed to set primary:", error);
-      toast.error("Failed to set primary image", {
-        description: error.error || "Please try again",
+      toast.error(t("pages.pim.productDetail.failedToSetPrimary"), {
+        description: error.error || t("pages.pim.productDetail.failedToSetPrimaryDesc"),
       });
       throw new Error(error.error || "Failed to set primary image");
     }
@@ -1150,8 +1148,8 @@ export default function ProductDetailPage({
 
       if (res.ok) {
         const data = await res.json();
-        toast.success("Synced to Search Engine!", {
-          description: "Product updated in search index",
+        toast.success(t("pages.pim.productDetail.syncedToSearchEngine"), {
+          description: t("pages.pim.productDetail.syncedToSearchDesc"),
         });
 
         // Update only the sync timestamp without refreshing entire page
@@ -1167,14 +1165,14 @@ export default function ProductDetailPage({
         });
       } else {
         const error = await res.json();
-        toast.error("Failed to sync to Search Engine", {
-          description: error.message || "Unknown error occurred",
+        toast.error(t("pages.pim.productDetail.failedToSync"), {
+          description: error.message || t("pages.pim.productDetail.unknownError"),
         });
       }
     } catch (error) {
       console.error("Error syncing to Search Engine:", error);
-      toast.error("Failed to sync to Search Engine", {
-        description: "Please check your connection and try again.",
+      toast.error(t("pages.pim.productDetail.failedToSync"), {
+        description: t("pages.pim.productDetail.connectionError"),
       });
     } finally {
       setIsSyncing(false);
@@ -1209,7 +1207,7 @@ export default function ProductDetailPage({
           items={[
             { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
             { label: t("pages.pim.products.title"), href: "/b2b/pim/products" },
-            { label: "Loading..." },
+            { label: t("pages.pim.productDetail.loading") },
           ]}
         />
         <div className="rounded-lg bg-card p-8 shadow-sm">
@@ -1230,21 +1228,21 @@ export default function ProductDetailPage({
           items={[
             { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
             { label: t("pages.pim.products.title"), href: "/b2b/pim/products" },
-            { label: "Not Found" },
+            { label: t("pages.pim.productDetail.notFound") },
           ]}
         />
         <div className="rounded-lg bg-card p-8 shadow-sm text-center">
           <Package className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Product Not Found</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">{t("pages.pim.productDetail.productNotFound")}</h2>
           <p className="text-muted-foreground mb-4">
-            The product you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.
+            {t("pages.pim.productDetail.productNotFoundDesc")}
           </p>
           <Link
             href={`${tenantPrefix}/b2b/pim/products`}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Products
+            {t("pages.pim.productDetail.backToProducts")}
           </Link>
         </div>
       </div>
@@ -1256,8 +1254,8 @@ export default function ProductDetailPage({
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
-          { label: "Product Information Management", href: "/b2b/pim" },
-          { label: "Products", href: "/b2b/pim/products" },
+          { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
+          { label: t("pages.pim.products.title"), href: "/b2b/pim/products" },
           { label: getMultilingualText(product.name, defaultLanguageCode, "Product") },
         ]}
       />
@@ -1294,12 +1292,12 @@ export default function ProductDetailPage({
             {showPreview ? (
               <>
                 <EyeOff className="h-4 w-4" />
-                Hide Preview
+                {t("pages.pim.productDetail.hidePreview")}
               </>
             ) : (
               <>
                 <Eye className="h-4 w-4" />
-                Show Preview
+                {t("pages.pim.productDetail.showPreview")}
               </>
             )}
           </button>
@@ -1307,7 +1305,7 @@ export default function ProductDetailPage({
             onClick={handleSave}
             disabled={!hasChanges || isSaving || isOldVersion}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
-            title={isOldVersion ? "Cannot save changes to old versions" : ""}
+            title={isOldVersion ? t("pages.pim.productDetail.cannotSaveOldVersion") : ""}
           >
             <Save className="h-4 w-4" />
             {isSaving
@@ -1326,28 +1324,28 @@ export default function ProductDetailPage({
               onClick={handleUnpublish}
               disabled={isOldVersion || isPublishing}
               className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
-              title="Unpublish product"
+              title={t("pages.pim.productDetail.unpublishTitle")}
             >
               {isPublishing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <GlobeLock className="h-4 w-4" />
               )}
-              {isPublishing ? "Unpublishing..." : "Unpublish"}
+              {isPublishing ? t("pages.pim.productDetail.unpublishing") : t("pages.pim.productDetail.unpublish")}
             </button>
           ) : (
             <button
               onClick={handlePublish}
               disabled={isOldVersion || isPublishing}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
-              title="Publish product"
+              title={t("pages.pim.productDetail.publishTitle")}
             >
               {isPublishing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Globe className="h-4 w-4" />
               )}
-              {isPublishing ? "Publishing..." : "Publish"}
+              {isPublishing ? t("pages.pim.productDetail.publishing") : t("pages.pim.productDetail.publish")}
             </button>
           )}
 
@@ -1356,14 +1354,14 @@ export default function ProductDetailPage({
             onClick={handleDelete}
             disabled={isOldVersion || isDeleting}
             className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
-            title="Delete product"
+            title={t("pages.pim.productDetail.deleteTitle")}
           >
             {isDeleting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? t("pages.pim.productDetail.deleting") : t("pages.pim.productDetail.deleteButton")}
           </button>
         </div>
       </div>
@@ -1376,10 +1374,10 @@ export default function ProductDetailPage({
               <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
               <div>
                 <h3 className="font-semibold text-amber-900">
-                  Viewing Old Version (v{versionParam})
+                  {t("pages.pim.productDetail.viewingOldVersion", { version: versionParam })}
                 </h3>
                 <p className="text-sm text-amber-700 mt-0.5">
-                  This is not the current version. Changes cannot be saved to old versions.
+                  {t("pages.pim.productDetail.oldVersionDesc")}
                 </p>
               </div>
             </div>
@@ -1388,7 +1386,7 @@ export default function ProductDetailPage({
               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium transition whitespace-nowrap"
             >
               <ArrowLeft className="h-4 w-4" />
-              Return to Current (v{currentVersionNumber})
+              {t("pages.pim.productDetail.returnToCurrent", { version: String(currentVersionNumber) })}
             </Link>
           </div>
         </div>
@@ -1419,13 +1417,13 @@ export default function ProductDetailPage({
                 {product.completeness_score}
               </div>
               <div>
-                <div className="text-sm font-semibold text-foreground">Completeness Score</div>
+                <div className="text-sm font-semibold text-foreground">{t("pages.pim.productDetail.completenessScore")}</div>
                 <div className="text-xs text-muted-foreground">
                   {product.completeness_score >= 80
-                    ? "Excellent quality"
+                    ? t("pages.pim.productDetail.excellent")
                     : product.completeness_score >= 50
-                      ? "Good, needs improvement"
-                      : "Needs attention"}
+                      ? t("pages.pim.productDetail.good")
+                      : t("pages.pim.productDetail.needsAttention")}
                 </div>
               </div>
             </div>
@@ -1449,7 +1447,7 @@ export default function ProductDetailPage({
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Status:</span>
+              <span className="text-xs text-muted-foreground">{t("pages.pim.productDetail.status")}:</span>
               <span
                 className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${product.status === "published"
                     ? "bg-emerald-100 text-emerald-700"
@@ -1469,7 +1467,7 @@ export default function ProductDetailPage({
                   title="Sync to search engine"
                 >
                   <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
-                  {isSyncing ? "Syncing..." : "Sync to Search Engine"}
+                  {isSyncing ? t("pages.pim.productDetail.syncing") : t("pages.pim.productDetail.syncToSearchEngine")}
                 </button>
               )}
             </div>
@@ -1499,22 +1497,22 @@ export default function ProductDetailPage({
                         }`}>
                         {isSynced && <CheckCircle2 className="h-3 w-3" />}
                         {needsSync && <AlertTriangle className="h-3 w-3" />}
-                        {isSynced && "Search index up to date"}
-                        {needsSync && "Changes not synced"}
-                        {neverSynced && "Not synced to search"}
+                        {isSynced && t("pages.pim.productDetail.searchIndexUpToDate")}
+                        {needsSync && t("pages.pim.productDetail.changesNotSynced")}
+                        {neverSynced && t("pages.pim.productDetail.notSyncedToSearch")}
                       </div>
 
                       {/* Timestamp Details */}
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         {updatedAt && (
                           <div className="flex flex-col">
-                            <span className="text-muted-foreground font-medium">DB Updated</span>
+                            <span className="text-muted-foreground font-medium">{t("pages.pim.productDetail.dbUpdated")}</span>
                             <span className="text-foreground">{updatedAt.toLocaleString()}</span>
                           </div>
                         )}
                         {syncedAt && (
                           <div className="flex flex-col">
-                            <span className="text-muted-foreground font-medium">Search Synced</span>
+                            <span className="text-muted-foreground font-medium">{t("pages.pim.productDetail.searchSynced")}</span>
                             <span className="text-foreground">{syncedAt.toLocaleString()}</span>
                           </div>
                         )}
@@ -1534,9 +1532,9 @@ export default function ProductDetailPage({
         <div className="lg:col-span-1">
           <div className="rounded-lg bg-card p-4 shadow-sm sticky top-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Product Image</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("pages.pim.productDetail.productImage")}</h3>
               <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
-                PRIMARY
+                {t("pages.pim.productDetail.primary")}
               </span>
             </div>
             <div className="aspect-square rounded-lg overflow-hidden bg-muted ring-2 ring-yellow-400 ring-offset-2">
@@ -1559,7 +1557,7 @@ export default function ProductDetailPage({
               )}
             </div>
             <div className="mt-3 text-xs text-muted-foreground">
-              Last updated: {new Date(product.updated_at).toLocaleDateString()}
+              {t("pages.pim.productDetail.lastUpdated", { date: new Date(product.updated_at).toLocaleDateString() })}
             </div>
           </div>
         </div>
@@ -1572,7 +1570,7 @@ export default function ProductDetailPage({
           </div>
           {(product.parent_entity_code || product.is_parent || (product.variations_entity_code?.length ?? 0) > 0) && (
             <div className="rounded-lg bg-card p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Variant Information</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.variantInformation")}</h3>
               <div className="space-y-3">
                 {/* Parent/Child Status */}
                 <div className="flex items-center gap-2">
@@ -1582,14 +1580,14 @@ export default function ProductDetailPage({
                         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                         : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
                     }`}>
-                    {product.is_parent ? "Parent Product" : product.parent_entity_code ? "Child Variant" : "Single Product"}
+                    {product.is_parent ? t("pages.pim.productDetail.parentProduct") : product.parent_entity_code ? t("pages.pim.productDetail.childVariant") : t("pages.pim.productDetail.singleProduct")}
                   </span>
                   {product.include_faceting !== undefined && (
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.include_faceting
                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                         : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
                       }`}>
-                      {product.include_faceting ? "In Facets" : "Excluded from Facets"}
+                      {product.include_faceting ? t("pages.pim.productDetail.inFacets") : t("pages.pim.productDetail.excludedFromFacets")}
                     </span>
                   )}
                 </div>
@@ -1597,7 +1595,7 @@ export default function ProductDetailPage({
                 {/* Parent Reference */}
                 {product.parent_entity_code && (
                   <div className="p-3 bg-muted/50 rounded-lg border">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">Parent Product</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">{t("pages.pim.productDetail.parentProduct")}</div>
                     <div className="flex items-center gap-2">
                       <Link
                         href={`${tenantPrefix}/b2b/pim/products/${product.parent_entity_code}`}
@@ -1616,7 +1614,7 @@ export default function ProductDetailPage({
                 {(product.variations_entity_code?.length ?? 0) > 0 && (
                   <div className="p-3 bg-muted/50 rounded-lg border">
                     <div className="text-xs font-medium text-muted-foreground mb-2">
-                      Child Variants ({product.variations_entity_code.length})
+                      {t("pages.pim.productDetail.childVariants")} ({product.variations_entity_code.length})
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {product.variations_entity_code.map((code, idx) => (
@@ -1638,7 +1636,7 @@ export default function ProductDetailPage({
                 {/* Share with Variants - only for parents */}
                 {(product.is_parent || (product.variations_entity_code?.length ?? 0) > 0) && (
                   <div className="mt-4 pt-4 border-t border-border space-y-3">
-                    <p className="text-sm font-medium text-foreground">Share with Variants</p>
+                    <p className="text-sm font-medium text-foreground">{t("pages.pim.productDetail.shareWithVariants")}</p>
 
                     {/* Share Images */}
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -1655,17 +1653,17 @@ export default function ProductDetailPage({
                             });
                             if (res.ok) {
                               setProduct({ ...product, share_images_with_variants: newValue });
-                              toast.success(newValue ? "Images will be shared with variants" : "Images sharing disabled");
+                              toast.success(newValue ? t("pages.pim.productDetail.imagesSharedEnabled") : t("pages.pim.productDetail.imagesSharingDisabled"));
                             }
                           } catch (error) {
-                            toast.error("Failed to update setting");
+                            toast.error(t("pages.pim.productDetail.failedToUpdateSetting"));
                           }
                         }}
                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                       />
                       <div>
-                        <span className="text-sm text-foreground">Product Images</span>
-                        <p className="text-xs text-muted-foreground">Append parent&apos;s images to all variants</p>
+                        <span className="text-sm text-foreground">{t("pages.pim.productDetail.productImages")}</span>
+                        <p className="text-xs text-muted-foreground">{t("pages.pim.productDetail.productImagesDesc")}</p>
                       </div>
                     </label>
 
@@ -1684,17 +1682,17 @@ export default function ProductDetailPage({
                             });
                             if (res.ok) {
                               setProduct({ ...product, share_media_with_variants: newValue });
-                              toast.success(newValue ? "Media will be shared with variants" : "Media sharing disabled");
+                              toast.success(newValue ? t("pages.pim.productDetail.mediaSharedEnabled") : t("pages.pim.productDetail.mediaSharingDisabled"));
                             }
                           } catch (error) {
-                            toast.error("Failed to update setting");
+                            toast.error(t("pages.pim.productDetail.failedToUpdateSetting"));
                           }
                         }}
                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                       />
                       <div>
-                        <span className="text-sm text-foreground">Additional Media</span>
-                        <p className="text-xs text-muted-foreground">Append parent&apos;s documents, videos, 3D models to all variants</p>
+                        <span className="text-sm text-foreground">{t("pages.pim.productDetail.additionalMedia")}</span>
+                        <p className="text-xs text-muted-foreground">{t("pages.pim.productDetail.additionalMediaDesc")}</p>
                       </div>
                     </label>
                   </div>
@@ -1706,7 +1704,7 @@ export default function ProductDetailPage({
           {/* Pricing & Packaging - Always show to allow adding packaging options */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-foreground mb-4">
-                Pricing & Packaging
+                {t("pages.pim.productDetail.pricingAndPackaging")}
               </h3>
               <div className="space-y-6">
                 {/* Product Pricing - Show default packaging pricing, fallback to product.pricing */}
@@ -1723,12 +1721,12 @@ export default function ProductDetailPage({
                   return (
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                        Product Pricing {defaultPkg && <span className="text-xs font-normal">({defaultPkg.code})</span>}
+                        {t("pages.pim.productDetail.productPricing")} {defaultPkg && <span className="text-xs font-normal">({defaultPkg.code})</span>}
                       </h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                         {displayPricing.list !== undefined && (
                           <div className="p-3 bg-muted/50 rounded-lg border">
-                            <div className="text-xs text-muted-foreground mb-1">List Price</div>
+                            <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.listPrice")}</div>
                             <div className="text-lg font-semibold text-foreground">
                               {currency === "EUR" ? "€" : currency}{displayPricing.list?.toFixed(2)}
                             </div>
@@ -1736,7 +1734,7 @@ export default function ProductDetailPage({
                         )}
                         {displayPricing.retail !== undefined && (
                           <div className="p-3 bg-muted/50 rounded-lg border">
-                            <div className="text-xs text-muted-foreground mb-1">Retail (MSRP)</div>
+                            <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.retailMsrp")}</div>
                             <div className="text-lg font-semibold text-foreground">
                               {currency === "EUR" ? "€" : currency}{displayPricing.retail?.toFixed(2)}
                             </div>
@@ -1744,26 +1742,26 @@ export default function ProductDetailPage({
                         )}
                         {displayPricing.sale !== undefined && (
                           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                            <div className="text-xs text-emerald-700 dark:text-emerald-400 mb-1">Sale Price</div>
+                            <div className="text-xs text-emerald-700 dark:text-emerald-400 mb-1">{t("pages.pim.productDetail.salePrice")}</div>
                             <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
                               {currency === "EUR" ? "€" : currency}{displayPricing.sale?.toFixed(2)}
                             </div>
                           </div>
                         )}
                         <div className="p-3 bg-muted/50 rounded-lg border">
-                          <div className="text-xs text-muted-foreground mb-1">Currency</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.currency")}</div>
                           <div className="text-lg font-semibold text-foreground">{currency}</div>
                         </div>
                         {vatRate !== undefined && (
                           <div className="p-3 bg-muted/50 rounded-lg border">
-                            <div className="text-xs text-muted-foreground mb-1">VAT Rate</div>
+                            <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.vatRate")}</div>
                             <div className="text-lg font-semibold text-foreground">{vatRate}%</div>
                           </div>
                         )}
                         <div className="p-3 bg-muted/50 rounded-lg border">
-                          <div className="text-xs text-muted-foreground mb-1">VAT in Price</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.vatInPrice")}</div>
                           <div className={`text-lg font-semibold ${vatIncluded ? "text-emerald-600" : "text-foreground"}`}>
-                            {vatIncluded ? "Included" : "Excluded"}
+                            {vatIncluded ? t("pages.pim.productDetail.vatIncluded") : t("pages.pim.productDetail.vatExcluded")}
                           </div>
                         </div>
                       </div>
@@ -1852,11 +1850,11 @@ export default function ProductDetailPage({
                                     <button
                                       onClick={async () => {
                                         if (!packagingInfoForm.code || !packagingInfoForm.qty || !packagingInfoForm.uom) {
-                                          toast.error("Code, qty and uom are required");
+                                          toast.error(t("pages.pim.productDetail.codeQtyUomRequired"));
                                           return;
                                         }
                                         const qty = parseFloat(packagingInfoForm.qty);
-                                        if (isNaN(qty)) { toast.error("Invalid qty"); return; }
+                                        if (isNaN(qty)) { toast.error(t("pages.pim.productDetail.invalidQty")); return; }
                                         const current = [...(product.packaging_info || [])];
                                         // Enforce uniqueness — only one default, one smallest
                                         if (packagingInfoForm.is_default) {
@@ -1885,9 +1883,9 @@ export default function ProductDetailPage({
                                           const data = await res.json();
                                           setProduct((p: any) => ({ ...p, packaging_info: data.product.packaging_info, packaging_options: data.product.packaging_options }));
                                           setEditingPackagingInfoIdx(null);
-                                          toast.success("Packaging info saved");
+                                          toast.success(t("pages.pim.productDetail.packagingInfoSaved"));
                                         } else {
-                                          toast.error("Failed to save packaging info");
+                                          toast.error(t("pages.pim.productDetail.failedToSavePackagingInfo"));
                                         }
                                       }}
                                       className="px-2 py-1 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition"
@@ -1937,7 +1935,7 @@ export default function ProductDetailPage({
                                     </button>
                                     <button
                                       onClick={async () => {
-                                        if (!confirm(`Delete packaging info "${pi.code}"?`)) return;
+                                        if (!confirm(t("pages.pim.productDetail.confirmDeletePackagingInfo", { code: pi.code }))) return;
                                         const updated = (product.packaging_info || []).filter((_, i) => i !== idx);
                                         const syncedOptions = syncPackagingFlags(product.packaging_options || [], updated);
                                         const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
@@ -1948,9 +1946,9 @@ export default function ProductDetailPage({
                                         if (res.ok) {
                                           const data = await res.json();
                                           setProduct((p: any) => ({ ...p, packaging_info: data.product.packaging_info, packaging_options: data.product.packaging_options }));
-                                          toast.success(`Packaging info "${pi.code}" deleted`);
+                                          toast.success(t("pages.pim.productDetail.packagingInfoDeleted", { code: pi.code }));
                                         } else {
-                                          toast.error("Failed to delete packaging info");
+                                          toast.error(t("pages.pim.productDetail.failedToDeletePackagingInfo"));
                                         }
                                       }}
                                       className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
@@ -2013,11 +2011,11 @@ export default function ProductDetailPage({
                                   <button
                                     onClick={async () => {
                                       if (!packagingInfoForm.code || !packagingInfoForm.qty || !packagingInfoForm.uom) {
-                                        toast.error("Code, qty and uom are required");
+                                        toast.error(t("pages.pim.productDetail.codeQtyUomRequired"));
                                         return;
                                       }
                                       const qty = parseFloat(packagingInfoForm.qty);
-                                      if (isNaN(qty)) { toast.error("Invalid qty"); return; }
+                                      if (isNaN(qty)) { toast.error(t("pages.pim.productDetail.invalidQty")); return; }
                                       const existing = [...(product.packaging_info || [])];
                                       // Enforce uniqueness — only one default, one smallest
                                       if (packagingInfoForm.is_default) {
@@ -2050,9 +2048,9 @@ export default function ProductDetailPage({
                                         const data = await res.json();
                                         setProduct((p: any) => ({ ...p, packaging_info: data.product.packaging_info, packaging_options: data.product.packaging_options }));
                                         setEditingPackagingInfoIdx(null);
-                                        toast.success("Packaging info added");
+                                        toast.success(t("pages.pim.productDetail.packagingInfoAdded"));
                                       } else {
-                                        toast.error("Failed to add packaging info");
+                                        toast.error(t("pages.pim.productDetail.failedToAddPackagingInfo"));
                                       }
                                     }}
                                     className="px-2 py-1 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition"
@@ -2205,9 +2203,9 @@ export default function ProductDetailPage({
                                         headers: { "Content-Type": "application/json" },
                                         body: JSON.stringify({ packaging_options: updatedOptions }),
                                       });
-                                      toast.success(`${pkg.code} is now ${newValue ? "sellable" : "not sellable"}`);
+                                      toast.success(newValue ? t("pages.pim.productDetail.isSellableNow", { code: pkg.code }) : t("pages.pim.productDetail.isNotSellableNow", { code: pkg.code }));
                                     } catch {
-                                      toast.error("Failed to update packaging option");
+                                      toast.error(t("pages.pim.productDetail.failedToUpdatePackaging"));
                                     }
                                   }}
                                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
@@ -2239,7 +2237,7 @@ export default function ProductDetailPage({
                                   </button>
                                   <button
                                     onClick={async () => {
-                                      if (!confirm(`Delete packaging option "${pkg.code}"?`)) return;
+                                      if (!confirm(t("pages.pim.productDetail.confirmDeletePackaging", { code: pkg.code }))) return;
                                       const updatedOptions = product.packaging_options!.filter((_, i) => i !== idx);
                                       try {
                                         const res = await fetch(`/api/b2b/pim/products/${entity_code}`, {
@@ -2250,12 +2248,12 @@ export default function ProductDetailPage({
                                         if (res.ok) {
                                           const data = await res.json();
                                           setProductWithIds(data.product);
-                                          toast.success(`Packaging option "${pkg.code}" deleted`);
+                                          toast.success(t("pages.pim.productDetail.packagingOptionDeleted", { code: pkg.code }));
                                         } else {
-                                          toast.error("Failed to delete packaging option");
+                                          toast.error(t("pages.pim.productDetail.failedToDeletePackaging"));
                                         }
                                       } catch {
-                                        toast.error("Failed to delete packaging option");
+                                        toast.error(t("pages.pim.productDetail.failedToDeletePackaging"));
                                       }
                                     }}
                                     className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
@@ -2320,7 +2318,7 @@ export default function ProductDetailPage({
                               <tr key={`promo-${promo.promo_row ?? idx}`} className="border-b border-border/50">
                                 <td className="py-2 px-3 text-foreground">
                                   {isAllSellable ? (
-                                    <span className="text-xs text-muted-foreground italic">All sellable</span>
+                                    <span className="text-xs text-muted-foreground italic">{t("pages.pim.productDetail.allSellable")}</span>
                                   ) : (
                                     <div className="flex flex-wrap gap-1">
                                       {targetPkgs.map((pkg) => {
@@ -2398,7 +2396,7 @@ export default function ProductDetailPage({
                                     </button>
                                     <button
                                       onClick={async () => {
-                                        if (!confirm(`Delete promotion "${promo.promo_code}" (row ${promo.promo_row})?`)) return;
+                                        if (!confirm(t("pages.pim.productDetail.confirmDeletePromotion", { code: promo.promo_code, row: String(promo.promo_row) }))) return;
                                         const updatedPromos = (product.promotions || []).filter(
                                           (p) => p.promo_row !== promo.promo_row
                                         );
@@ -2412,12 +2410,12 @@ export default function ProductDetailPage({
                                           if (res.ok) {
                                             const data = await res.json();
                                             setProductWithIds(data.product);
-                                            toast.success(`Promotion "${promo.promo_code}" deleted`);
+                                            toast.success(t("pages.pim.productDetail.promotionDeleted", { code: promo.promo_code }));
                                           } else {
-                                            toast.error("Failed to delete promotion");
+                                            toast.error(t("pages.pim.productDetail.failedToDeletePromotion"));
                                           }
                                         } catch {
-                                          toast.error("Failed to delete promotion");
+                                          toast.error(t("pages.pim.productDetail.failedToDeletePromotion"));
                                         }
                                       }}
                                       className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
@@ -2441,13 +2439,13 @@ export default function ProductDetailPage({
 
           {/* Basic Information */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Basic Information</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.basicInformation")}</h3>
             <div className="space-y-4">
               <MultilingualInput
-                label="Product Name"
+                label={t("pages.pim.productDetail.productName")}
                 value={formData.name}
                 onChange={(value) => handleInputChange("name", value)}
-                placeholder="Enter product name"
+                placeholder={t("pages.pim.productDetail.enterProductName")}
                 required={true}
                 variant="reference"
                 showReference={true}
@@ -2455,33 +2453,33 @@ export default function ProductDetailPage({
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Model
+                  {t("pages.pim.productDetail.model")}
                 </label>
                 <input
                   type="text"
                   value={formData.product_model}
                   onChange={(e) => handleInputChange("product_model", e.target.value)}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Enter product model"
+                  placeholder={t("pages.pim.productDetail.enterProductModel")}
                 />
               </div>
               {/* Variant Information */}
 
 
               <MultilingualInput
-                label="Short Description"
+                label={t("pages.pim.productDetail.shortDescription")}
                 value={formData.short_description}
                 onChange={(value) => handleInputChange("short_description", value)}
-                placeholder="Brief product description"
+                placeholder={t("pages.pim.productDetail.briefProductDescription")}
                 variant="reference"
                 showReference={true}
               />
 
               <MultilingualTextarea
-                label="Description"
+                label={t("pages.pim.productDetail.description")}
                 value={formData.description}
                 onChange={(value) => handleInputChange("description", value)}
-                placeholder="Detailed product description"
+                placeholder={t("pages.pim.productDetail.detailedProductDescription")}
                 rows={8}
                 variant="reference"
                 showReference={true}
@@ -2492,11 +2490,11 @@ export default function ProductDetailPage({
 
           {/* Inventory */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Inventory</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.inventory")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Stock Quantity
+                  {t("pages.pim.productDetail.stockQuantity")}
                 </label>
                 <input
                   type="number"
@@ -2509,16 +2507,16 @@ export default function ProductDetailPage({
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Status
+                  {t("pages.pim.productDetail.status")}
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => handleInputChange("status", e.target.value as "draft" | "published" | "archived")}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
+                  <option value="draft">{t("pages.pim.productDetail.draft")}</option>
+                  <option value="published">{t("pages.pim.productDetail.published")}</option>
+                  <option value="archived">{t("pages.pim.productDetail.archived")}</option>
                 </select>
               </div>
             </div>
@@ -2527,7 +2525,7 @@ export default function ProductDetailPage({
           {/* Product Type */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Product Type</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.productType")}</h3>
               {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_technical_specifications && productType.inherited_technical_specifications.length > 0)) && (
                 <button
                   onClick={() => setShowProductTypeJSON(!showProductTypeJSON)}
@@ -2541,7 +2539,7 @@ export default function ProductDetailPage({
             </div>
             {productType && ((productType.hierarchy && productType.hierarchy.length > 0) || (productType.inherited_technical_specifications && productType.inherited_technical_specifications.length > 0)) && showProductTypeJSON ? (
               <div className="p-3 bg-muted/50 rounded border">
-                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">{t("pages.pim.productDetail.selfContainedData")}</div>
                 <pre className="text-xs overflow-auto max-h-64">
                   {JSON.stringify(productType, null, 2)}
                 </pre>
@@ -2568,9 +2566,9 @@ export default function ProductDetailPage({
           {/* Technical Specifications - Only shown when product type is selected */}
           {productType && productType.technical_specifications && productType.technical_specifications.length > 0 && (
             <div className="rounded-lg bg-card p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Technical Specifications</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.technicalSpecifications")}</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Complete the technical specifications for this product type
+                {t("pages.pim.productDetail.technicalSpecsDesc")}
               </p>
               <FeaturesForm
                 features={productType.technical_specifications}
@@ -2584,7 +2582,7 @@ export default function ProductDetailPage({
           {/* Category */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Category</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.category")}</h3>
               {category && (category as any).hierarchy && (category as any).hierarchy.length > 0 && (
                 <button
                   onClick={() => setShowCategoryJSON(!showCategoryJSON)}
@@ -2598,7 +2596,7 @@ export default function ProductDetailPage({
             </div>
             {category && (category as any).hierarchy && (category as any).hierarchy.length > 0 && showCategoryJSON ? (
               <div className="p-3 bg-muted/50 rounded border">
-                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">{t("pages.pim.productDetail.selfContainedData")}</div>
                 <pre className="text-xs overflow-auto max-h-64">
                   {JSON.stringify(category, null, 2)}
                 </pre>
@@ -2624,7 +2622,7 @@ export default function ProductDetailPage({
           {/* Collections */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Collections</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.collections")}</h3>
               {collections && collections.length > 0 && collections.some((c: any) => c.hierarchy && c.hierarchy.length > 0) && (
                 <button
                   onClick={() => setShowCollectionsJSON(!showCollectionsJSON)}
@@ -2638,7 +2636,7 @@ export default function ProductDetailPage({
             </div>
             {collections && collections.length > 0 && collections.some((c: any) => c.hierarchy && c.hierarchy.length > 0) && showCollectionsJSON ? (
               <div className="p-3 bg-muted/50 rounded border">
-                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">{t("pages.pim.productDetail.selfContainedData")}</div>
                 <pre className="text-xs overflow-auto max-h-64">
                   {JSON.stringify(collections, null, 2)}
                 </pre>
@@ -2655,7 +2653,7 @@ export default function ProductDetailPage({
           {/* Brand */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Brand</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.brand")}</h3>
               {brand && (brand as any).hierarchy && (brand as any).hierarchy.length > 0 && (
                 <button
                   onClick={() => setShowBrandJSON(!showBrandJSON)}
@@ -2669,7 +2667,7 @@ export default function ProductDetailPage({
             </div>
             {brand && (brand as any).hierarchy && (brand as any).hierarchy.length > 0 && showBrandJSON ? (
               <div className="p-3 bg-muted/50 rounded border">
-                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">{t("pages.pim.productDetail.selfContainedData")}</div>
                 <pre className="text-xs overflow-auto max-h-64">
                   {JSON.stringify(brand, null, 2)}
                 </pre>
@@ -2684,7 +2682,7 @@ export default function ProductDetailPage({
 
           {/* Custom Attributes */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Custom Attributes</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.customAttributes")}</h3>
             <AttributesEditor
               value={customAttributes}
               onChange={setCustomAttributes}
@@ -2695,7 +2693,7 @@ export default function ProductDetailPage({
           {/* Tags */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Tags</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.tags")}</h3>
               {tagRefs && tagRefs.length > 0 && tagRefs.some((t: any) => t.tag_group_data && Object.keys(t.tag_group_data).length > 0) && (
                 <button
                   onClick={() => setShowTagsJSON(!showTagsJSON)}
@@ -2709,7 +2707,7 @@ export default function ProductDetailPage({
             </div>
             {tagRefs && tagRefs.length > 0 && tagRefs.some((t: any) => t.tag_group_data && Object.keys(t.tag_group_data).length > 0) && showTagsJSON ? (
               <div className="p-3 bg-muted/50 rounded border">
-                <div className="text-xs font-medium text-muted-foreground mb-2">Self-Contained Data:</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">{t("pages.pim.productDetail.selfContainedData")}</div>
                 <pre className="text-xs overflow-auto max-h-64">
                   {JSON.stringify(tagRefs, null, 2)}
                 </pre>
@@ -2721,9 +2719,9 @@ export default function ProductDetailPage({
 
           {/* Synonym Dictionaries */}
           <div className="rounded-lg bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Synonym Dictionaries</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.synonymDictionaries")}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Associate this product with synonym dictionaries to improve search results
+              {t("pages.pim.productDetail.synonymDictionariesDesc")}
             </p>
             <SynonymDictionarySelector
               value={synonymKeys}
@@ -2769,10 +2767,10 @@ export default function ProductDetailPage({
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
                 <div>
                   <div className="text-sm font-semibold text-amber-900">
-                    You have unsaved changes
+                    {t("pages.pim.productDetail.unsavedChanges")}
                   </div>
                   <div className="text-xs text-amber-700">
-                    Save your changes before leaving this page
+                    {t("pages.pim.productDetail.saveBeforeLeaving")}
                   </div>
                 </div>
               </div>
@@ -2781,7 +2779,7 @@ export default function ProductDetailPage({
                   onClick={handleDiscard}
                   className="px-4 py-2 bg-white border border-border rounded-md hover:bg-gray-50 text-sm font-medium transition"
                 >
-                  Discard
+                  {t("pages.pim.productDetail.discard")}
                 </button>
                 <button
                   onClick={handleSave}
@@ -2789,7 +2787,7 @@ export default function ProductDetailPage({
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
                 >
                   <Save className="h-4 w-4" />
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {isSaving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
                 </button>
               </div>
             </div>
@@ -2802,7 +2800,7 @@ export default function ProductDetailPage({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-foreground">Product Preview</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.productPreview")}</h3>
               <button
                 onClick={() => setShowPreview(false)}
                 className="text-muted-foreground hover:text-foreground transition"

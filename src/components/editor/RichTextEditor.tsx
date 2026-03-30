@@ -30,6 +30,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface RichTextEditorProps {
   content: string;
@@ -46,6 +47,7 @@ export function RichTextEditor({
   disabled = false,
   minHeight = "200px",
 }: RichTextEditorProps) {
+  const { t } = useTranslation();
   const [isHtmlMode, setIsHtmlMode] = useState(false);
   const [htmlContent, setHtmlContent] = useState(content);
   const [isUploading, setIsUploading] = useState(false);
@@ -119,13 +121,13 @@ export function RichTextEditor({
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toast.error(t("components.richTextEditor.selectImageFile"));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be less than 5MB");
+      toast.error(t("components.richTextEditor.imageTooLarge"));
       return;
     }
 
@@ -152,10 +154,10 @@ export function RichTextEditor({
         width: "500px",
         align: "center"
       }).run();
-      toast.success("Image uploaded successfully");
+      toast.success(t("components.richTextEditor.imageUploadedSuccess"));
     } catch (error) {
       console.error("Image upload error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload image");
+      toast.error(error instanceof Error ? error.message : t("components.richTextEditor.imageUploadFailed"));
     } finally {
       setIsUploading(false);
       // Reset file input

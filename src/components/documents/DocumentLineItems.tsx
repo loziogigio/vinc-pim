@@ -8,6 +8,7 @@ import {
   parseDecimalValue,
   toDecimalInputValue,
 } from "@/lib/utils/decimal-input";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Props {
   items: DocumentLineItem[];
@@ -30,6 +31,8 @@ export function DocumentLineItems({
   onUpdateItem,
   onRemoveItem,
 }: Props) {
+  const { t } = useTranslation();
+
   // Local string state for decimal inputs keyed by `${index}_${field}`
   const [inputs, setInputs] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -58,43 +61,43 @@ export function DocumentLineItems({
   return (
     <div className="bg-white rounded-lg border border-[#ebe9f1]">
       <div className="p-4 border-b border-[#ebe9f1] flex items-center justify-between">
-        <h2 className="font-semibold text-[#5e5873]">Righe Documento</h2>
+        <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.detail.lineItems.title")}</h2>
         {isDraft && (
           <button
             onClick={onAddItem}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#009688] text-white rounded-lg hover:bg-[#00796b] transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            Aggiungi Riga
+            {t("pages.documents.detail.lineItems.addLine")}
           </button>
         )}
       </div>
 
       {items.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground text-sm">
-          Nessuna riga.
+          {t("pages.documents.detail.lineItems.noLines")}
         </div>
       ) : (
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
               <th className="text-left px-3 py-2 font-medium text-[#5e5873]">
-                Descrizione
+                {t("pages.documents.detail.lineItems.description")}
               </th>
               <th className="text-center px-3 py-2 font-medium text-[#5e5873] w-20">
-                Qtà
+                {t("pages.documents.detail.lineItems.qty")}
               </th>
               <th className="text-right px-3 py-2 font-medium text-[#5e5873] w-28">
-                Prezzo Unit.
+                {t("pages.documents.detail.lineItems.unitPrice")}
               </th>
               <th className="text-center px-3 py-2 font-medium text-[#5e5873] w-24">
-                IVA %
+                {t("pages.documents.detail.lineItems.vatPercent")}
               </th>
               <th className="text-center px-3 py-2 font-medium text-[#5e5873] w-20">
-                Sconto %
+                {t("pages.documents.detail.lineItems.discountPercent")}
               </th>
               <th className="text-right px-3 py-2 font-medium text-[#5e5873] w-28">
-                Totale
+                {t("pages.documents.detail.lineItems.total")}
               </th>
               {isDraft && <th className="w-10"></th>}
             </tr>
@@ -113,7 +116,7 @@ export function DocumentLineItems({
                       onChange={(e) =>
                         onUpdateItem(idx, "description", e.target.value)
                       }
-                      placeholder="Descrizione..."
+                      placeholder={t("pages.documents.detail.lineItems.descriptionPlaceholder")}
                       className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm"
                     />
                   ) : (
@@ -202,7 +205,7 @@ export function DocumentLineItems({
         <div className="flex justify-end p-4 border-t border-[#ebe9f1]">
           <div className="w-72 space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Imponibile</span>
+              <span className="text-muted-foreground">{t("pages.documents.detail.lineItems.subtotal")}</span>
               <span>
                 {formatCurrency(totals.subtotal_net, currency)}
               </span>
@@ -211,14 +214,14 @@ export function DocumentLineItems({
               (v: { rate: number; vat: number }) => (
                 <div key={v.rate} className="flex justify-between">
                   <span className="text-muted-foreground">
-                    IVA {v.rate}%
+                    {t("pages.documents.detail.lineItems.vatAmount", { rate: String(v.rate) })}
                   </span>
                   <span>{formatCurrency(v.vat, currency)}</span>
                 </div>
               ),
             )}
             <div className="flex justify-between font-bold text-base border-t border-[#ebe9f1] pt-2 mt-2">
-              <span>Totale</span>
+              <span>{t("pages.documents.detail.lineItems.total")}</span>
               <span>
                 {formatCurrency(totals.total, currency)}
               </span>

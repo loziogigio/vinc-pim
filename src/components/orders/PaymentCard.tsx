@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { Order, PaymentRecord } from "@/lib/types/order";
 import {
   normalizeDecimalInput,
@@ -41,12 +42,13 @@ const MANUAL_PAYMENT_METHODS = [
   "other",
 ] as const;
 
-const PAYMENT_METHOD_IT: Record<string, string> = {
-  bank_transfer: "Bonifico Bancario",
-  credit_card: "Carta di Credito",
-  cash: "Contanti",
-  check: "Assegno",
-  other: "Altro",
+// Payment method translation keys (mapped in locale files under paymentCard.paymentMethods)
+const PAYMENT_METHOD_KEYS: Record<string, string> = {
+  bank_transfer: "bank_transfer",
+  credit_card: "credit_card",
+  cash: "cash",
+  check: "check",
+  other: "other",
 };
 
 // Maps manual recording methods to canonical payment methods (from shipping restrictions)
@@ -85,6 +87,7 @@ interface EditingPayment {
 }
 
 export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantPrefix =
     pathname?.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
@@ -240,7 +243,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
   const handleAddPayment = async () => {
     const parsedAmount = parseDecimalValue(newPayment.amount);
     if (!parsedAmount || parsedAmount <= 0) {
-      toast.error("Inserisci un importo valido");
+      toast.error(t("pages.store.paymentCard.invalidAmount"));
       return;
     }
 
@@ -260,17 +263,17 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       });
 
       if (res.ok) {
-        toast.success("Pagamento registrato");
+        toast.success(t("pages.store.paymentCard.paymentRecorded"));
         setShowAddPayment(false);
         setNewPayment({ amount: "", method: allowedMethods[0] || "bank_transfer", reference: "", notes: "", confirmed: false, recorded_at: "" });
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Errore nella registrazione del pagamento");
+        toast.error(error.error || t("pages.store.paymentCard.errorRecordingPayment"));
       }
     } catch (err) {
       console.error("Error recording payment:", err);
-      toast.error("Errore nella registrazione del pagamento");
+      toast.error(t("pages.store.paymentCard.errorRecordingPayment"));
     } finally {
       setIsLoading(false);
     }
@@ -286,15 +289,15 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       );
 
       if (res.ok) {
-        toast.success("Pagamento eliminato");
+        toast.success(t("pages.store.paymentCard.paymentDeleted"));
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Errore nell'eliminazione del pagamento");
+        toast.error(error.error || t("pages.store.paymentCard.errorDeletingPayment"));
       }
     } catch (err) {
       console.error("Error deleting payment:", err);
-      toast.error("Errore nell'eliminazione del pagamento");
+      toast.error(t("pages.store.paymentCard.errorDeletingPayment"));
     } finally {
       setDeletingPaymentId(null);
     }
@@ -319,7 +322,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
     const parsedAmount = parseDecimalValue(editingPayment.amount);
     if (!parsedAmount || parsedAmount <= 0) {
-      toast.error("Inserisci un importo valido");
+      toast.error(t("pages.store.paymentCard.invalidAmount"));
       return;
     }
 
@@ -340,16 +343,16 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       });
 
       if (res.ok) {
-        toast.success("Pagamento aggiornato");
+        toast.success(t("pages.store.paymentCard.paymentUpdated"));
         setEditingPayment(null);
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Errore nell'aggiornamento del pagamento");
+        toast.error(error.error || t("pages.store.paymentCard.errorUpdatingPayment"));
       }
     } catch (err) {
       console.error("Error updating payment:", err);
-      toast.error("Errore nell'aggiornamento del pagamento");
+      toast.error(t("pages.store.paymentCard.errorUpdatingPayment"));
     } finally {
       setIsLoading(false);
     }
@@ -369,15 +372,15 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       });
 
       if (res.ok) {
-        toast.success(p.confirmed ? "Pagamento non confermato" : "Pagamento confermato");
+        toast.success(p.confirmed ? t("pages.store.paymentCard.paymentUnconfirmed") : t("pages.store.paymentCard.paymentConfirmed"));
         onPaymentChange?.();
       } else {
         const error = await res.json();
-        toast.error(error.error || "Errore nell'aggiornamento del pagamento");
+        toast.error(error.error || t("pages.store.paymentCard.errorUpdatingPayment"));
       }
     } catch (err) {
       console.error("Error updating payment:", err);
-      toast.error("Errore nell'aggiornamento del pagamento");
+      toast.error(t("pages.store.paymentCard.errorUpdatingPayment"));
     } finally {
       setIsLoading(false);
     }
@@ -387,7 +390,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
   const handleGeneratePaymentLink = async () => {
     // Block only if there's nothing left to pay (gateway-aware)
     if (trueRemaining <= 0) {
-      toast.error("L'ordine è già stato pagato.");
+      toast.error(t("pages.store.paymentCard.orderAlreadyPaid"));
       return;
     }
 
@@ -407,11 +410,11 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       : trueRemaining;
 
     if (!parsedAmount || parsedAmount <= 0) {
-      toast.error("Inserisci un importo valido.");
+      toast.error(t("pages.store.paymentCard.invalidAmountDot"));
       return;
     }
     if (parsedAmount > trueRemaining) {
-      toast.error(`L'importo non può superare il rimanente (${formatCurrency(trueRemaining)}).`);
+      toast.error(t("pages.store.paymentCard.amountExceedsRemaining", { amount: formatCurrency(trueRemaining) }));
       return;
     }
 
@@ -463,13 +466,13 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       const data = await res.json();
       if (data.success && data.redirect_url) {
         setPaymentLink(data.redirect_url);
-        toast.success("Link di pagamento generato");
+        toast.success(t("pages.store.paymentCard.paymentLinkGenerated"));
         fetchGatewayTransactions(); // refresh list
       } else {
-        toast.error(data.error || "Errore nella generazione del link");
+        toast.error(data.error || t("pages.store.paymentCard.errorGeneratingLink"));
       }
     } catch {
-      toast.error("Errore di rete");
+      toast.error(t("pages.store.paymentCard.networkError"));
     } finally {
       setIsGeneratingLink(false);
     }
@@ -481,7 +484,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-500" />
-            <h2 className="font-semibold text-foreground">Pagamento</h2>
+            <h2 className="font-semibold text-foreground">{t("pages.store.paymentCard.title")}</h2>
           </div>
           <span
             className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
@@ -495,26 +498,26 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         {/* Payment Summary */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Importo Dovuto</span>
+            <span className="text-muted-foreground">{t("pages.store.paymentCard.amountDue")}</span>
             <span className="font-medium">{formatCurrency(amountDue)}</span>
           </div>
           {pendingAmount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">In Sospeso</span>
+              <span className="text-muted-foreground">{t("pages.store.paymentCard.pending")}</span>
               <span className="font-medium text-amber-600">
                 {formatCurrency(pendingAmount)}
               </span>
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Importo Pagato</span>
+            <span className="text-muted-foreground">{t("pages.store.paymentCard.amountPaid")}</span>
             <span className="font-medium text-emerald-600">
               {formatCurrency(effectiveConfirmed)}
             </span>
           </div>
           {remainingAfterConfirmed > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Rimanente</span>
+              <span className="text-muted-foreground">{t("pages.store.paymentCard.remaining")}</span>
               <span className="font-semibold text-amber-600">
                 {formatCurrency(remainingAfterConfirmed)}
               </span>
@@ -537,7 +540,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
             />
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            {progressPct.toFixed(0)}% pagato
+            {t("pages.store.paymentCard.percentPaid", { percent: progressPct.toFixed(0) })}
           </p>
         </div>
 
@@ -553,7 +556,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               ) : (
                 <ChevronDown className="h-3 w-3" />
               )}
-              {gatewayTransactions.length} transazion{gatewayTransactions.length !== 1 ? "i" : "e"} gateway
+              {t("pages.store.paymentCard.gatewayTransactions", { count: gatewayTransactions.length })}
             </button>
 
             {showGateway && (
@@ -583,7 +586,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               ) : (
                 <ChevronDown className="h-3 w-3" />
               )}
-              {payments.length} pagament{payments.length !== 1 ? "i" : "o"} registrat{payments.length !== 1 ? "i" : "o"}
+              {t("pages.store.paymentCard.paymentsRecorded", { count: payments.length })}
             </button>
 
             {showPayments && (
@@ -600,7 +603,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                       {editingPayment?.payment_id === p.payment_id ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium">Modifica Pagamento</span>
+                            <span className="font-medium">{t("pages.store.paymentCard.editPayment")}</span>
                             <button
                               onClick={() => setEditingPayment(null)}
                               className="p-1 hover:bg-muted rounded"
@@ -611,7 +614,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-xs text-muted-foreground">Importo</label>
+                              <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.amount")}</label>
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -625,7 +628,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-muted-foreground">Metodo</label>
+                              <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.method")}</label>
                               <select
                                 value={editingPayment.method}
                                 onChange={(e) =>
@@ -635,7 +638,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               >
                                 {getAllowedManualMethods(order.allowed_payment_methods).map((m) => (
                                   <option key={m} value={m}>
-                                    {PAYMENT_METHOD_IT[m]}
+                                    {t(`pages.store.paymentCard.paymentMethods.${m}`)}
                                   </option>
                                 ))}
                               </select>
@@ -643,7 +646,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                           </div>
 
                           <div>
-                            <label className="text-xs text-muted-foreground">Data e Ora</label>
+                            <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.dateTime")}</label>
                             <input
                               type="datetime-local"
                               value={editingPayment.recorded_at}
@@ -655,27 +658,27 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                           </div>
 
                           <div>
-                            <label className="text-xs text-muted-foreground">Riferimento</label>
+                            <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.reference")}</label>
                             <input
                               type="text"
                               value={editingPayment.reference}
                               onChange={(e) =>
                                 setEditingPayment({ ...editingPayment, reference: e.target.value })
                               }
-                              placeholder="ID transazione..."
+                              placeholder={t("pages.store.paymentCard.referencePlaceholder")}
                               className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20"
                             />
                           </div>
 
                           <div>
-                            <label className="text-xs text-muted-foreground">Note</label>
+                            <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.notesLabel")}</label>
                             <input
                               type="text"
                               value={editingPayment.notes}
                               onChange={(e) =>
                                 setEditingPayment({ ...editingPayment, notes: e.target.value })
                               }
-                              placeholder="Note..."
+                              placeholder={t("pages.store.paymentCard.notesPlaceholder")}
                               className="w-full mt-1 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/20"
                             />
                           </div>
@@ -691,7 +694,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                               className="h-3 w-3 rounded border-border"
                             />
                             <label htmlFor={`edit-confirmed-${p.payment_id}`} className="text-xs text-muted-foreground">
-                              Pagamento confermato
+                              {t("pages.store.paymentCard.paymentConfirmed")}
                             </label>
                           </div>
 
@@ -705,7 +708,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                             ) : (
                               <Check className="h-3 w-3" />
                             )}
-                            Salva Modifiche
+                            {t("pages.store.paymentCard.saveChanges")}
                           </button>
                         </div>
                       ) : (
@@ -718,30 +721,30 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                           <div className="flex justify-between mb-1">
                             <div className="flex items-center gap-2">
                               <span className={`font-medium ${isRefundedGateway ? "line-through text-muted-foreground" : ""}`}>
-                                {PAYMENT_METHOD_IT[p.method] || p.method.replace(/_/g, " ")}
+                                {t(`pages.store.paymentCard.paymentMethods.${p.method}`) || p.method.replace(/_/g, " ")}
                               </span>
                               {isRefundedGateway ? (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
                                   <XCircle className="h-2.5 w-2.5" />
-                                  Rimborsato
+                                  {t("pages.store.paymentCard.refunded")}
                                 </span>
                               ) : p.confirmed ? (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200"
                                   onClick={() => handleToggleConfirmed(p)}
-                                  title="Clicca per segnare come non confermato"
+                                  title={t("pages.store.paymentCard.clickToUnconfirm")}
                                 >
                                   <CheckCircle className="h-2.5 w-2.5" />
-                                  Confermato
+                                  {t("pages.store.paymentCard.confirmed")}
                                 </span>
                               ) : (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200"
                                   onClick={() => handleToggleConfirmed(p)}
-                                  title="Clicca per confermare il pagamento"
+                                  title={t("pages.store.paymentCard.clickToConfirm")}
                                 >
                                   <Clock className="h-2.5 w-2.5" />
-                                  In Sospeso
+                                  {t("pages.store.paymentCard.pendingStatus")}
                                 </span>
                               )}
                             </div>
@@ -754,7 +757,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                   <button
                                     onClick={() => startEditPayment(p)}
                                     className="p-1 rounded hover:bg-blue-100 text-blue-500"
-                                    title="Modifica pagamento"
+                                    title={t("pages.store.paymentCard.editPaymentTitle")}
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>
@@ -768,7 +771,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                     }
                                     disabled={deletingPaymentId === p.payment_id}
                                     className="p-1 rounded hover:bg-red-100 text-red-500 disabled:opacity-50"
-                                    title="Elimina pagamento"
+                                    title={t("pages.store.paymentCard.deletePaymentTitle")}
                                   >
                                     {deletingPaymentId === p.payment_id ? (
                                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -791,7 +794,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 minute: "2-digit",
                               })}
                             </span>
-                            {p.reference && <span>Rif: {p.reference}</span>}
+                            {p.reference && <span>{t("pages.store.paymentCard.ref")} {p.reference}</span>}
                           </div>
                           {p.notes && (
                             <div className="mt-1 text-muted-foreground italic">
@@ -812,7 +815,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         {showAddPayment ? (
           <div className="pt-3 border-t border-border space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Registra Pagamento</h3>
+              <h3 className="text-sm font-medium">{t("pages.store.paymentCard.recordPayment")}</h3>
               <button
                 onClick={() => setShowAddPayment(false)}
                 className="p-1 hover:bg-muted rounded"
@@ -823,7 +826,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
             <div className="space-y-2">
               <div>
-                <label className="text-xs text-muted-foreground">Importo</label>
+                <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.amount")}</label>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -839,7 +842,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground">Metodo</label>
+                <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.method")}</label>
                 <select
                   value={newPayment.method}
                   onChange={(e) =>
@@ -849,7 +852,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                 >
                   {getAllowedManualMethods(order.allowed_payment_methods).map((m) => (
                     <option key={m} value={m}>
-                      {PAYMENT_METHOD_IT[m]}
+                      {t(`pages.store.paymentCard.paymentMethods.${m}`)}
                     </option>
                   ))}
                 </select>
@@ -857,11 +860,11 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
               <div>
                 <label className="text-xs text-muted-foreground">
-                  Riferimento (opzionale)
+                  {t("pages.store.paymentCard.referenceOptional")}
                 </label>
                 <input
                   type="text"
-                  placeholder="ID transazione, numero assegno..."
+                  placeholder={t("pages.store.paymentCard.referencePlaceholder")}
                   value={newPayment.reference}
                   onChange={(e) =>
                     setNewPayment({ ...newPayment, reference: e.target.value })
@@ -871,7 +874,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground">Data e Ora</label>
+                <label className="text-xs text-muted-foreground">{t("pages.store.paymentCard.dateTime")}</label>
                 <input
                   type="datetime-local"
                   value={newPayment.recorded_at}
@@ -893,7 +896,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   className="h-4 w-4 rounded border-border"
                 />
                 <label htmlFor="new-payment-confirmed" className="text-sm text-muted-foreground">
-                  Pagamento confermato
+                  {t("pages.store.paymentCard.paymentConfirmed")}
                 </label>
               </div>
 
@@ -907,7 +910,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                Registra Pagamento
+                {t("pages.store.paymentCard.recordPayment")}
               </button>
             </div>
           </div>
@@ -925,7 +928,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
               >
                 <Plus className="h-4 w-4" />
-                Registra Pagamento
+                {t("pages.store.paymentCard.recordPayment")}
               </button>
 
               {/* Payment link section — only if there's a true remaining after gateway */}
@@ -936,7 +939,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                     <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
                       <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                       <span>
-                        {formatCurrency(gatewayProcessingAmount)} in transazioni gateway in elaborazione.
+                        {t("pages.store.paymentCard.processingGatewayWarning", { amount: formatCurrency(gatewayProcessingAmount) })}
                       </span>
                     </div>
                   )}
@@ -945,14 +948,14 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   {storefronts.length > 0 && (
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">
-                        Destinazione dopo il pagamento
+                        {t("pages.store.paymentCard.destinationAfterPayment")}
                       </label>
                       <select
                         value={selectedDestination}
                         onChange={(e) => setSelectedDestination(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
                       >
-                        <option value="generic">Pagina generica (VINC Commerce)</option>
+                        <option value="generic">{t("pages.store.paymentCard.genericPage")}</option>
                         {storefronts.map((sf) => (
                           <option key={sf.slug} value={sf.slug}>
                             {sf.branding?.title || sf.name} ({(typeof sf.domains[0] === "string" ? sf.domains[0] : sf.domains[0]?.domain)?.replace(/^https?:\/\//, "")})
@@ -965,7 +968,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   {/* Payment link amount */}
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">
-                      Importo link di pagamento
+                      {t("pages.store.paymentCard.paymentLinkAmount")}
                     </label>
                     <input
                       type="text"
@@ -992,13 +995,13 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                     ) : (
                       <CreditCard className="h-4 w-4" />
                     )}
-                    Genera Link Pagamento PayPal
+                    {t("pages.store.paymentCard.generatePaypalLink")}
                   </button>
                 </>
               ) : (
                 <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
                   <CheckCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                  <span>Pagamento completato tramite gateway.</span>
+                  <span>{t("pages.store.paymentCard.paymentCompletedViaGateway")}</span>
                 </div>
               )}
             </div>
@@ -1008,7 +1011,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
         {/* Payment Link Display */}
         {paymentLink && (
           <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 space-y-2">
-            <p className="text-xs font-medium text-blue-800">Link di pagamento generato:</p>
+            <p className="text-xs font-medium text-blue-800">{t("pages.store.paymentCard.paymentLinkGenLabel")}</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1019,11 +1022,11 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(paymentLink);
-                  toast.success("Link copiato!");
+                  toast.success(t("pages.store.paymentCard.linkCopied"));
                 }}
                 className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 transition whitespace-nowrap"
               >
-                Copia
+                {t("pages.store.paymentCard.copy")}
               </button>
             </div>
             <a
@@ -1032,7 +1035,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
             >
-              Apri in PayPal <ArrowRight className="h-3 w-3" />
+              {t("pages.store.paymentCard.openInPaypal")} <ArrowRight className="h-3 w-3" />
             </a>
           </div>
         )}
@@ -1041,10 +1044,10 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       {/* Delete Payment Confirmation */}
       <ConfirmDialog
         open={deleteConfirmDialog.open}
-        title="Elimina Pagamento"
-        message={`Sei sicuro di voler eliminare questo pagamento di ${formatCurrency(deleteConfirmDialog.amount)}? I totali verranno aggiornati.`}
-        confirmText="Elimina"
-        cancelText="Annulla"
+        title={t("pages.store.paymentCard.deletePaymentConfirmTitle")}
+        message={t("pages.store.paymentCard.deletePaymentConfirmMsg", { amount: formatCurrency(deleteConfirmDialog.amount) })}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         onConfirm={() => {
           setDeleteConfirmDialog({ open: false, paymentId: "", amount: 0 });
@@ -1058,10 +1061,10 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
       {/* Confirm generating link when gateway transactions are processing */}
       <ConfirmDialog
         open={processingConfirmOpen}
-        title="Transazioni in Elaborazione"
-        message={`Ci sono transazioni gateway in elaborazione per ${formatCurrency(gatewayProcessingAmount)}. Vuoi comunque generare un nuovo link di pagamento?`}
-        confirmText="Genera Link"
-        cancelText="Annulla"
+        title={t("pages.store.paymentCard.processingTransactionsTitle")}
+        message={t("pages.store.paymentCard.processingTransactionsMsg", { amount: formatCurrency(gatewayProcessingAmount) })}
+        confirmText={t("pages.store.paymentCard.generateLink")}
+        cancelText={t("common.cancel")}
         variant="warning"
         onConfirm={() => {
           setProcessingConfirmOpen(false);

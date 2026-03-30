@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Truck, Loader2, AlertCircle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { ShippingMethodOption } from "@/lib/types/shipping";
 import {
   PAYMENT_METHOD_LABELS,
@@ -35,6 +36,7 @@ export function ShippingMethodSelector({
   currentShippingMethod,
   onApplied,
 }: ShippingMethodSelectorProps) {
+  const { t } = useTranslation();
   const [zoneName, setZoneName] = useState<string | null>(null);
   const [options, setOptions] = useState<ShippingMethodOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +184,7 @@ export function ShippingMethodSelector({
                 {isApplying ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                 ) : opt.is_free ? (
-                  <span className="text-xs font-semibold text-emerald-600">Free</span>
+                  <span className="text-xs font-semibold text-emerald-600">{t("components.shippingMethodSelector.free")}</span>
                 ) : (
                   <span className="text-xs font-semibold">
                     {formatCurrency(opt.computed_cost, currency)}

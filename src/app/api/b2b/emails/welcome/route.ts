@@ -2,22 +2,29 @@
  * B2B Welcome Email API
  * POST /api/b2b/emails/welcome
  *
- * Sends welcome email with login credentials to new B2B customer (S2S)
+ * Sends welcome email with login credentials to new B2B customer.
+ * Uses the notification template system for tracking and consistent branding.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { sendWelcomeEmail } from "@/lib/email/b2b-emails";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { sendWelcomeNotification } from "@/lib/notifications/send.service";
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
+
+    const { tenantDb } = auth;
+    const body = await req.json();
     const {
       toEmail,
       ragioneSociale,
       username,
       password,
       contactName,
-      loginUrl
+      loginUrl,
+      channel,
     } = body;
 
     // Validate required fields
@@ -28,22 +35,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await sendWelcomeEmail(
-      {
-        ragioneSociale,
-        username,
-        password,
-        contactName
-      },
-      toEmail,
-      loginUrl
-    );
+    const result = await sendWelcomeNotification(tenantDb, toEmail, {
+      customer_name: contactName || ragioneSociale,
+      company_name: ragioneSociale,
+      username,
+      password,
+      login_url: loginUrl,
+      channel,
+    });
 
     if (result.success) {
       return NextResponse.json({
         success: true,
         messageId: result.messageId,
-        message: `Welcome email sent to ${toEmail}`
+        message: `Welcome email sent to ${toEmail}`,
       });
     } else {
       return NextResponse.json(

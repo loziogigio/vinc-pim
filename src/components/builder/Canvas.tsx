@@ -12,6 +12,7 @@ import { PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { usePageBuilderStore, type DeviceMode } from "@/lib/store/pageBuilderStore";
 import { BlockWrapper } from "@/components/builder/BlockWrapper";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CanvasProps {
   onOpenSettings: () => void;
@@ -34,6 +35,7 @@ export const Canvas = ({
   onSelectTab,
   device
 }: CanvasProps) => {
+  const { t } = useTranslation();
   const blocks = usePageBuilderStore((state) => state.blocks);
   const reorderBlocks = usePageBuilderStore((state) => state.reorderBlocks);
   const pageDetails = usePageBuilderStore((state) => state.pageDetails);
@@ -72,7 +74,7 @@ export const Canvas = ({
           type="button"
           onClick={onToggleVisibility}
           className="flex h-10 w-10 items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white text-[#6f6b7b] transition hover:bg-[#fafafc] hover:text-[#009688]"
-          aria-label="Show block builder"
+          aria-label={t("components.builder.canvas.showBlockBuilder")}
         >
           <PanelRightOpen className="h-4 w-4" />
         </button>
@@ -83,7 +85,7 @@ export const Canvas = ({
   // Admin mode variables
   const builderTabActive = isAdminMode ? (isSplitView || activeTab === "builder") : true;
   const previewTabActive = isAdminMode ? (!isSplitView && activeTab === "preview") : false;
-  const deviceLabel = device === "tablet" ? "Tablet" : device === "mobile" ? "Mobile" : "Desktop";
+  const deviceLabel = device === "tablet" ? t("components.builder.canvas.deviceTablet") : device === "mobile" ? t("components.builder.canvas.deviceMobile") : t("components.builder.canvas.deviceDesktop");
 
   return (
     <div className="flex h-full flex-col bg-[#e8eaed]">
@@ -100,7 +102,7 @@ export const Canvas = ({
                 : "border-transparent bg-transparent text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
             )}
           >
-            Builder
+            {t("components.builder.canvas.tabBuilder")}
           </button>
           <button
             type="button"
@@ -112,7 +114,7 @@ export const Canvas = ({
                 : "border-transparent bg-transparent text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
             )}
           >
-            {isSplitView ? `Preview · ${deviceLabel}` : "Preview"}
+            {isSplitView ? `${t("components.builder.canvas.tabPreview")} · ${deviceLabel}` : t("components.builder.canvas.tabPreview")}
           </button>
         </div>
       )}
@@ -121,16 +123,16 @@ export const Canvas = ({
       {isB2BMode && (
         <div className="flex items-center justify-between gap-3 px-4 pt-3">
           <div className="flex items-center gap-2">
-            <span className="text-[0.9rem] font-semibold text-[#514c68]">Block Builder</span>
+            <span className="text-[0.9rem] font-semibold text-[#514c68]">{t("components.builder.canvas.blockBuilder")}</span>
             <span className="rounded-[12px] bg-white px-2 py-[0.15rem] text-[0.7rem] font-semibold text-[#6f6885] shadow-sm">
-              {blocks.length} {blocks.length === 1 ? "block" : "blocks"}
+              {blocks.length} {blocks.length === 1 ? t("components.builder.canvas.block") : t("components.builder.canvas.blocks")}
             </span>
           </div>
           <button
             type="button"
             onClick={onToggleVisibility}
             className="flex h-8 w-8 items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white text-[#6f6b7b] transition hover:bg-[#fafafc] hover:text-[#009688]"
-            aria-label="Hide block builder"
+            aria-label={t("components.builder.canvas.hideBlockBuilder")}
           >
             <PanelRightClose className="h-4 w-4" />
           </button>
@@ -148,7 +150,7 @@ export const Canvas = ({
                   <div className="rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/50 p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                      <h4 className="text-xs font-bold text-blue-700">Sidebar</h4>
+                      <h4 className="text-xs font-bold text-blue-700">{t("components.builder.canvas.zoneSidebar")}</h4>
                       <span className="text-xs text-blue-600">({zone1Blocks.length})</span>
                     </div>
                     <SortableContext items={zone1Blocks.map((block) => block.id)} strategy={verticalListSortingStrategy}>
@@ -162,7 +164,7 @@ export const Canvas = ({
                           />
                         ))}
                         {zone1Blocks.length === 0 && (
-                          <p className="py-3 text-center text-xs italic text-blue-400">No blocks in this zone</p>
+                          <p className="py-3 text-center text-xs italic text-blue-400">{t("components.builder.canvas.noBlocksInZone")}</p>
                         )}
                       </div>
                     </SortableContext>
@@ -172,7 +174,7 @@ export const Canvas = ({
                   <div className="rounded-lg border-2 border-dashed border-green-300 bg-green-50/50 p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <h4 className="text-xs font-bold text-green-700">After Gallery</h4>
+                      <h4 className="text-xs font-bold text-green-700">{t("components.builder.canvas.zoneAfterGallery")}</h4>
                       <span className="text-xs text-green-600">({zone2Blocks.length})</span>
                     </div>
                     <SortableContext items={zone2Blocks.map((block) => block.id)} strategy={verticalListSortingStrategy}>
@@ -186,7 +188,7 @@ export const Canvas = ({
                           />
                         ))}
                         {zone2Blocks.length === 0 && (
-                          <p className="py-3 text-center text-xs italic text-green-400">No blocks in this zone</p>
+                          <p className="py-3 text-center text-xs italic text-green-400">{t("components.builder.canvas.noBlocksInZone")}</p>
                         )}
                       </div>
                     </SortableContext>
@@ -196,7 +198,7 @@ export const Canvas = ({
                   <div className="rounded-lg border-2 border-dashed border-purple-300 bg-purple-50/50 p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-                      <h4 className="text-xs font-bold text-purple-700">New Tab</h4>
+                      <h4 className="text-xs font-bold text-purple-700">{t("components.builder.canvas.zoneNewTab")}</h4>
                       <span className="text-xs text-purple-600">({zone3Blocks.length})</span>
                     </div>
                     <SortableContext items={zone3Blocks.map((block) => block.id)} strategy={verticalListSortingStrategy}>
@@ -210,7 +212,7 @@ export const Canvas = ({
                           />
                         ))}
                         {zone3Blocks.length === 0 && (
-                          <p className="py-3 text-center text-xs italic text-purple-400">No blocks in this zone</p>
+                          <p className="py-3 text-center text-xs italic text-purple-400">{t("components.builder.canvas.noBlocksInZone")}</p>
                         )}
                       </div>
                     </SortableContext>
@@ -220,7 +222,7 @@ export const Canvas = ({
                   <div className="rounded-lg border-2 border-dashed border-orange-300 bg-orange-50/50 p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-orange-500"></div>
-                      <h4 className="text-xs font-bold text-orange-700">Bottom Section</h4>
+                      <h4 className="text-xs font-bold text-orange-700">{t("components.builder.canvas.zoneBottomSection")}</h4>
                       <span className="text-xs text-orange-600">({zone4Blocks.length})</span>
                     </div>
                     <SortableContext items={zone4Blocks.map((block) => block.id)} strategy={verticalListSortingStrategy}>
@@ -234,7 +236,7 @@ export const Canvas = ({
                           />
                         ))}
                         {zone4Blocks.length === 0 && (
-                          <p className="py-3 text-center text-xs italic text-orange-400">No blocks in this zone</p>
+                          <p className="py-3 text-center text-xs italic text-orange-400">{t("components.builder.canvas.noBlocksInZone")}</p>
                         )}
                       </div>
                     </SortableContext>
@@ -245,9 +247,9 @@ export const Canvas = ({
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#e8eaed]">
                         <Plus className="h-8 w-8 text-[#b9b9c3]" />
                       </div>
-                      <h3 className="text-[16px] font-semibold text-[#5e5873]">Start building</h3>
+                      <h3 className="text-[16px] font-semibold text-[#5e5873]">{t("components.builder.canvas.startBuilding")}</h3>
                       <p className="mt-2 text-[14px] leading-relaxed text-[#b9b9c3]">
-                        Add blocks from the left sidebar to customize this product page.
+                        {t("components.builder.canvas.startBuildingProductHint")}
                       </p>
                     </div>
                   )}
@@ -270,9 +272,9 @@ export const Canvas = ({
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#e8eaed]">
                           <Plus className="h-8 w-8 text-[#b9b9c3]" />
                         </div>
-                        <h3 className="text-[16px] font-semibold text-[#5e5873]">Start building</h3>
+                        <h3 className="text-[16px] font-semibold text-[#5e5873]">{t("components.builder.canvas.startBuilding")}</h3>
                         <p className="mt-2 text-[14px] leading-relaxed text-[#b9b9c3]">
-                          Add blocks from the left sidebar to design your storefront.
+                          {t("components.builder.canvas.startBuildingStorefrontHint")}
                         </p>
                       </div>
                     )}

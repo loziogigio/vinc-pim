@@ -72,10 +72,10 @@ export function extractCompanyInfo(settings: HomeSettings | null): CompanyInfo {
   const ci = settings.company_info || {};
   const br = settings.branding || {};
 
-  // Build contact info string
+  // Build contact info string (no emojis — the email footer template adds its own)
   const contactParts: string[] = [];
-  if (ci.phone) contactParts.push(`📞 ${ci.phone}`);
-  if (ci.email) contactParts.push(`✉️ ${ci.email}`);
+  if (ci.phone) contactParts.push(ci.phone);
+  if (ci.email) contactParts.push(ci.email);
 
   // Build address string
   const addressParts = [ci.address_line1, ci.address_line2].filter(Boolean);

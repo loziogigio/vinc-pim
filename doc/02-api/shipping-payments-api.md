@@ -801,7 +801,7 @@ Each provider has its own config shape stored in `TenantPaymentConfig.providers`
 |----------|-----------|
 | Stripe | `account_id`, `account_status`, `charges_enabled`, `payouts_enabled` |
 | Mangopay | `user_id`, `wallet_id`, `bank_account_id`, `kyc_level`, `status` |
-| PayPal | `merchant_id`, `enabled` |
+| PayPal | `client_id`, `client_secret`, `merchant_id`, `webhook_id`, `environment`, `enabled` — See [PayPal Configuration](./paypal-configuration.md) |
 | Nexi | `api_key`, `terminal_id`, `environment`, `moto_enabled`, `recurring_enabled` |
 | Axerve | `shop_login`, `api_key`, `environment`, `moto_profile`, `recurring_enabled` |
 | Satispay | `key_id`, `enabled` |

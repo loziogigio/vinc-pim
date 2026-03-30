@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Users, Building2, User, Download, Upload, Tag, FileText, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { BrowseUsersTab, ImportUsersTab, TagsTab, type SelectedUser, type ApiUser } from "./user-selector";
 
 export type { SelectedUser, UserType } from "./user-selector";
@@ -15,6 +16,7 @@ interface UserSelectorProps {
 }
 
 export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ModalTab>("browse");
   const [isExporting, setIsExporting] = useState(false);
@@ -80,9 +82,9 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
       {value.length > 0 && (
         <div className="mb-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-700">{value.length} destinatari selezionati</span>
+            <span className="text-sm font-medium text-slate-700">{t("pages.notifications.campaigns.userSelector.recipientsSelected", { count: value.length })}</span>
             <button type="button" onClick={() => onChange([])} disabled={disabled} className="text-xs text-rose-600 hover:text-rose-700 disabled:opacity-50">
-              Rimuovi tutti
+              {t("pages.notifications.campaigns.userSelector.removeAll")}
             </button>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -108,7 +110,7 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
                 </button>
               </span>
             ))}
-            {value.length > 5 && <span className="px-2 py-1 text-xs text-slate-500">+{value.length - 5} altri</span>}
+            {value.length > 5 && <span className="px-2 py-1 text-xs text-slate-500">{t("pages.notifications.campaigns.userSelector.others", { count: value.length - 5 })}</span>}
           </div>
         </div>
       )}
@@ -121,7 +123,7 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
         className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-slate-300 hover:border-primary hover:bg-primary/5 transition disabled:opacity-50"
       >
         <Users className="w-4 h-4" />
-        <span className="text-sm">{value.length > 0 ? "Modifica destinatari" : "Seleziona destinatari"}</span>
+        <span className="text-sm">{value.length > 0 ? t("pages.notifications.campaigns.userSelector.editRecipients") : t("pages.notifications.campaigns.userSelector.selectRecipients")}</span>
       </button>
 
       {/* Modal */}
@@ -132,8 +134,8 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
             <div className="px-6 py-4 border-b border-slate-200">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Seleziona Destinatari</h3>
-                  <p className="text-sm text-slate-500 mt-1">{value.length} selezionati</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{t("pages.notifications.campaigns.userSelector.selectRecipientsTitle")}</h3>
+                  <p className="text-sm text-slate-500 mt-1">{t("pages.notifications.campaigns.userSelector.selected", { count: value.length })}</p>
                 </div>
                 <button onClick={() => setIsOpen(false)} className="p-1 rounded hover:bg-slate-100">
                   <X className="w-5 h-5" />
@@ -143,10 +145,10 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
               {/* Tabs */}
               <div className="flex gap-1 border-b border-slate-100 -mx-6 px-6">
                 {[
-                  { id: "browse" as ModalTab, label: "Sfoglia", icon: Users },
-                  { id: "import" as ModalTab, label: "Importa", icon: Upload },
-                  { id: "tags" as ModalTab, label: "Tag", icon: Tag },
-                  { id: "export" as ModalTab, label: "Esporta", icon: Download },
+                  { id: "browse" as ModalTab, label: t("pages.notifications.campaigns.userSelector.browseTab"), icon: Users },
+                  { id: "import" as ModalTab, label: t("pages.notifications.campaigns.userSelector.importTab"), icon: Upload },
+                  { id: "tags" as ModalTab, label: t("pages.notifications.campaigns.userSelector.tagsTab"), icon: Tag },
+                  { id: "export" as ModalTab, label: t("pages.notifications.campaigns.userSelector.exportTab"), icon: Download },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -179,7 +181,7 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
                     {value.length > 0 ? (
                       <>
                         <p className="text-sm text-slate-600 mb-4">
-                          Esporta {value.length} destinatar{value.length !== 1 ? "i" : "io"} selezionat{value.length !== 1 ? "i" : "o"} in formato CSV.
+                          {t("pages.notifications.campaigns.userSelector.exportDescription", { count: value.length })}
                         </p>
                         <button
                           onClick={handleExport}
@@ -187,11 +189,11 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
                           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
                         >
                           {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                          Scarica CSV
+                          {t("pages.notifications.campaigns.userSelector.downloadCsv")}
                         </button>
                       </>
                     ) : (
-                      <p className="text-sm text-slate-500">Seleziona almeno un destinatario per esportare.</p>
+                      <p className="text-sm text-slate-500">{t("pages.notifications.campaigns.userSelector.exportNoSelection")}</p>
                     )}
                   </div>
                 </div>
@@ -201,10 +203,12 @@ export function UserSelector({ value, onChange, disabled }: UserSelectorProps) {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
               <p className="text-sm text-slate-500">
-                {value.length} destinatar{value.length !== 1 ? "i" : "io"} selezionat{value.length !== 1 ? "i" : "o"}
+                {value.length !== 1
+                  ? t("pages.notifications.campaigns.userSelector.recipientsPlural", { count: value.length })
+                  : t("pages.notifications.campaigns.userSelector.recipientsSingular", { count: value.length })}
               </p>
               <button onClick={() => setIsOpen(false)} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-                Fatto
+                {t("pages.notifications.campaigns.userSelector.done")}
               </button>
             </div>
           </div>

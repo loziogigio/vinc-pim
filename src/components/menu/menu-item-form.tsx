@@ -9,6 +9,7 @@ import { ProductSearchPreview, SearchPreviewProduct } from "@/components/shared/
 import { ImageUpload } from "./ImageUpload";
 import { FullScreenModal } from "@/components/shared/FullScreenModal";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface MenuItemFormProps {
   location: MenuLocation;
@@ -20,6 +21,7 @@ interface MenuItemFormProps {
 }
 
 export function MenuItemForm({ location, channel, channelName, item, parentItem, onClose }: MenuItemFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     type: item?.type || "collection",
     reference_id: item?.reference_id || "",
@@ -82,19 +84,19 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
     try {
       // Validate label for types that have no entity to derive a name from
       if (labelRequired && !formData.label.trim()) {
-        toast.error("Label is required for this type");
+        toast.error(t("components.menuItemForm.labelRequired"));
         setLoading(false);
         return;
       }
 
       // Validate
       if ((formData.type === "url" || formData.type === "page") && !formData.url) {
-        toast.error("URL is required");
+        toast.error(t("components.menuItemForm.urlRequired"));
         setLoading(false);
         return;
       }
       if (formData.type === "search" && !formData.url) {
-        toast.error("Search query is required");
+        toast.error(t("components.menuItemForm.searchQueryRequired"));
         setLoading(false);
         return;
       }
@@ -103,7 +105,7 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
         !["url", "search", "divider", "text", "page"].includes(formData.type) &&
         !formData.reference_id
       ) {
-        toast.error("Please select an item");
+        toast.error(t("components.menuItemForm.selectItemRequired"));
         setLoading(false);
         return;
       }

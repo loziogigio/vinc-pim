@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, Moon, Sun, ShoppingCart, ChevronLeft, ChevronRight, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,7 @@ const useTheme = () => {
 };
 
 export const SiteHeader = () => {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isDark, toggle, initialized } = useTheme();
@@ -151,11 +153,11 @@ export const SiteHeader = () => {
           </Button>
           <div className="flex items-center gap-2">
             <Store className="text-primary" />
-            <span className="text-lg font-semibold">VIC Store</span>
+            <span className="text-lg font-semibold">{t("components.siteHeader.storeName")}</span>
           </div>
           <div className="hidden flex-1 items-center gap-2 md:flex">
             <div className="relative w-full">
-              <Input placeholder="Search products…" className="rounded-xl pl-9" />
+              <Input placeholder={t("components.siteHeader.searchPlaceholder")} className="rounded-xl pl-9" />
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">

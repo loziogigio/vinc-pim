@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -150,6 +151,7 @@ export function AddItemsModal({
   onItemsAdded,
   effectiveTags = [],
 }: AddItemsModalProps) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b/);
   const tenantPrefix = tenantMatch ? `/${tenantMatch[1]}` : "";
@@ -796,19 +798,19 @@ export function AddItemsModal({
       // Show success message
       if (addedCount > 0 || updatedCount > 0) {
         const messages: string[] = [];
-        if (addedCount > 0) messages.push(`Added ${addedCount}`);
-        if (updatedCount > 0) messages.push(`Updated ${updatedCount}`);
-        toast.success(`${messages.join(", ")} item${addedCount + updatedCount !== 1 ? "s" : ""}`);
+        if (addedCount > 0) messages.push(t("pages.store.addItemsModal.addedCount", { count: String(addedCount) }));
+        if (updatedCount > 0) messages.push(t("pages.store.addItemsModal.updatedCount", { count: String(updatedCount) }));
+        toast.success(t("pages.store.addItemsModal.itemsProcessed", { messages: messages.join(", "), plural: addedCount + updatedCount !== 1 ? "s" : "" }));
         onItemsAdded?.();
         onClose();
       }
 
       if (errorCount > 0) {
-        toast.error(`Failed to process ${errorCount} item${errorCount !== 1 ? "s" : ""}`);
+        toast.error(t("pages.store.addItemsModal.failedToProcess", { count: String(errorCount), plural: errorCount !== 1 ? "s" : "" }));
       }
     } catch (error) {
       console.error("Error processing items:", error);
-      toast.error("Failed to add items to order");
+      toast.error(t("pages.store.addItemsModal.failedToAddItems"));
     } finally {
       setIsAdding(false);
     }
@@ -829,10 +831,10 @@ export function AddItemsModal({
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              Add Items to Order
+              {t("pages.store.addItemsModal.title")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Search and select products to add
+              {t("pages.store.addItemsModal.subtitle")}
             </p>
           </div>
           <button
@@ -853,7 +855,7 @@ export function AddItemsModal({
                 value={filters.search}
                 onChange={(e) => updateFilters({ search: e.target.value })}
                 onKeyDown={handleKeyDown}
-                placeholder="Search products by name, entity code, or SKU..."
+                placeholder={t("pages.store.addItemsModal.searchPlaceholder")}
                 className="w-full pl-12 pr-4 py-3 rounded-lg border border-border bg-background focus:border-primary focus:outline-none text-base"
                 autoFocus
               />
@@ -864,10 +866,10 @@ export function AddItemsModal({
               onChange={(e) => updateFilters({ status: e.target.value })}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="archived">Archived</option>
+              <option value="">{t("pages.store.addItemsModal.allStatus")}</option>
+              <option value="draft">{t("pages.store.addItemsModal.draft")}</option>
+              <option value="published">{t("pages.store.addItemsModal.published")}</option>
+              <option value="archived">{t("pages.store.addItemsModal.archived")}</option>
             </select>
           </div>
 
@@ -877,7 +879,7 @@ export function AddItemsModal({
             className="flex items-center gap-2 text-sm text-primary hover:underline"
           >
             <Filter className="h-4 w-4" />
-            Advanced Filters
+            {t("pages.store.addItemsModal.advancedFilters")}
             {showAdvancedFilters ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -891,11 +893,11 @@ export function AddItemsModal({
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">
-                    Entity Code
+                    {t("pages.store.addItemsModal.entityCode")}
                   </label>
                   <input
                     type="text"
-                    placeholder="Filter by entity code"
+                    placeholder={t("pages.store.addItemsModal.filterByEntityCode")}
                     value={filters.entity_code}
                     onChange={(e) => updateFilters({ entity_code: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -903,7 +905,7 @@ export function AddItemsModal({
                 </div>
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">
-                    SKU
+                    {t("pages.store.addItemsModal.sku")}
                   </label>
                   <div className="flex gap-2">
                     <select
@@ -915,14 +917,14 @@ export function AddItemsModal({
                       }
                       className="rounded border border-border bg-background px-2 py-2 text-xs"
                     >
-                      <option value="exact">Exact</option>
-                      <option value="starts">Starts with</option>
-                      <option value="includes">Includes</option>
-                      <option value="ends">Ends with</option>
+                      <option value="exact">{t("pages.store.addItemsModal.exact")}</option>
+                      <option value="starts">{t("pages.store.addItemsModal.startsWith")}</option>
+                      <option value="includes">{t("pages.store.addItemsModal.includes")}</option>
+                      <option value="ends">{t("pages.store.addItemsModal.endsWith")}</option>
                     </select>
                     <input
                       type="text"
-                      placeholder="Filter by SKU"
+                      placeholder={t("pages.store.addItemsModal.filterBySku")}
                       value={filters.sku}
                       onChange={(e) => updateFilters({ sku: e.target.value })}
                       className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -931,7 +933,7 @@ export function AddItemsModal({
                 </div>
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">
-                    Parent SKU
+                    {t("pages.store.addItemsModal.parentSku")}
                   </label>
                   <div className="flex gap-2">
                     <select
@@ -943,14 +945,14 @@ export function AddItemsModal({
                       }
                       className="rounded border border-border bg-background px-2 py-2 text-xs"
                     >
-                      <option value="exact">Exact</option>
-                      <option value="starts">Starts with</option>
-                      <option value="includes">Includes</option>
-                      <option value="ends">Ends with</option>
+                      <option value="exact">{t("pages.store.addItemsModal.exact")}</option>
+                      <option value="starts">{t("pages.store.addItemsModal.startsWith")}</option>
+                      <option value="includes">{t("pages.store.addItemsModal.includes")}</option>
+                      <option value="ends">{t("pages.store.addItemsModal.endsWith")}</option>
                     </select>
                     <input
                       type="text"
-                      placeholder="Filter by parent SKU"
+                      placeholder={t("pages.store.addItemsModal.filterByParentSku")}
                       value={filters.parent_sku}
                       onChange={(e) => updateFilters({ parent_sku: e.target.value })}
                       className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -959,11 +961,11 @@ export function AddItemsModal({
                 </div>
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">
-                    Brand
+                    {t("pages.store.addItemsModal.brandLabel")}
                   </label>
                   <input
                     type="text"
-                    placeholder="Filter by brand"
+                    placeholder={t("pages.store.addItemsModal.filterByBrand")}
                     value={filters.brand}
                     onChange={(e) => updateFilters({ brand: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -971,11 +973,11 @@ export function AddItemsModal({
                 </div>
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">
-                    Category
+                    {t("pages.store.addItemsModal.categoryLabel")}
                   </label>
                   <input
                     type="text"
-                    placeholder="Filter by category"
+                    placeholder={t("pages.store.addItemsModal.filterByCategory")}
                     value={filters.category}
                     onChange={(e) => updateFilters({ category: e.target.value })}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -986,7 +988,7 @@ export function AddItemsModal({
           )}
 
           <p className="text-xs text-muted-foreground">
-            Type at least 2 characters to search, or use advanced filters.
+            {t("pages.store.addItemsModal.searchHint")}
           </p>
         </div>
 
@@ -998,10 +1000,10 @@ export function AddItemsModal({
               <span className="text-sm text-muted-foreground">
                 {totalProducts > 0 ? (
                   <>
-                    Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalProducts)} of {totalProducts}
+                    {t("pages.store.addItemsModal.showing", { from: String(((currentPage - 1) * pageSize) + 1), to: String(Math.min(currentPage * pageSize, totalProducts)), total: String(totalProducts) })}
                   </>
                 ) : (
-                  "No results"
+                  t("pages.store.addItemsModal.noResults")
                 )}
               </span>
               {selectedItems.size > 0 && (
@@ -1023,12 +1025,12 @@ export function AddItemsModal({
                   {allExpanded ? (
                     <>
                       <ChevronUp className="h-3.5 w-3.5" />
-                      Collapse All
+                      {t("pages.store.addItemsModal.collapseAll")}
                     </>
                   ) : (
                     <>
                       <ChevronDown className="h-3.5 w-3.5" />
-                      Expand All
+                      {t("pages.store.addItemsModal.expandAll")}
                     </>
                   )}
                 </button>
@@ -1036,7 +1038,7 @@ export function AddItemsModal({
 
               {/* Page Size Selector */}
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Show:</span>
+                <span className="text-sm text-muted-foreground">{t("pages.store.addItemsModal.show")}</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
@@ -1085,7 +1087,7 @@ export function AddItemsModal({
               <div className="text-center">
                 <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
                 <span className="text-sm text-muted-foreground">
-                  Searching products...
+                  {t("pages.store.addItemsModal.searchingProducts")}
                 </span>
               </div>
             </div>
@@ -1093,12 +1095,12 @@ export function AddItemsModal({
             <div className="flex flex-col items-center justify-center h-64 text-center px-6">
               <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-base font-medium text-foreground mb-1">
-                {hasActiveFilters ? "No products found" : "Search for products"}
+                {hasActiveFilters ? t("pages.store.addItemsModal.noProductsFound") : t("pages.store.addItemsModal.searchForProducts")}
               </h3>
               <p className="text-sm text-muted-foreground max-w-md">
                 {hasActiveFilters
-                  ? "Try different search terms or filters."
-                  : "Enter a product name, entity code, or SKU to find products."}
+                  ? t("pages.store.addItemsModal.tryDifferentFilters")
+                  : t("pages.store.addItemsModal.enterProductToFind")}
               </p>
             </div>
           ) : (
@@ -1149,7 +1151,7 @@ export function AddItemsModal({
                           <div className="text-xs text-muted-foreground">
                             <span className="font-mono">{product.sku}</span>
                             <span className="ml-2 text-muted-foreground/70">
-                              • {expandedRows.length} packaging options
+                              • {t("pages.store.addItemsModal.packagingOptions", { count: String(expandedRows.length) })}
                             </span>
                           </div>
                         </div>
@@ -1262,7 +1264,7 @@ export function AddItemsModal({
                               )}
                               {isInCart && !isSelected && (
                                 <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
-                                  In cart ({cartQuantity})
+                                  {t("pages.store.addItemsModal.inCart", { qty: String(cartQuantity) })}
                                 </span>
                               )}
                               </div>
@@ -1453,24 +1455,24 @@ export function AddItemsModal({
             <span className="text-sm font-medium text-foreground">
               {selectedItems.size > 0 ? (
                 <>
-                  {newItemsCount > 0 && <span className="text-primary">{newItemsCount} new</span>}
+                  {newItemsCount > 0 && <span className="text-primary">{t("pages.store.addItemsModal.newItems", { count: String(newItemsCount) })}</span>}
                   {newItemsCount > 0 && updateItemsCount > 0 && ", "}
-                  {updateItemsCount > 0 && <span className="text-emerald-600">{updateItemsCount} update{updateItemsCount !== 1 ? "s" : ""}</span>}
+                  {updateItemsCount > 0 && <span className="text-emerald-600">{t("pages.store.addItemsModal.updates", { count: String(updateItemsCount), plural: updateItemsCount !== 1 ? "s" : "" })}</span>}
                 </>
               ) : (
-                "No items selected"
+                t("pages.store.addItemsModal.noItemsSelected")
               )}
             </span>
             {selectedItems.size > 0 && (
               <>
                 <span className="text-sm font-semibold text-primary">
-                  Total: {formatCurrency(selectedTotal)}
+                  {t("pages.store.addItemsModal.total", { amount: formatCurrency(selectedTotal) })}
                 </span>
                 <button
                   onClick={() => setSelectedItems(new Map())}
                   className="text-sm text-muted-foreground hover:text-foreground transition"
                 >
-                  Clear selection
+                  {t("pages.store.addItemsModal.clearSelection")}
                 </button>
               </>
             )}
@@ -1480,7 +1482,7 @@ export function AddItemsModal({
               onClick={onClose}
               className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleAddItems}
@@ -1494,7 +1496,7 @@ export function AddItemsModal({
               ) : (
                 <ShoppingCart className="h-4 w-4" />
               )}
-              {hasUpdates && newItemsCount === 0 ? "Update Cart" : hasUpdates ? "Add & Update" : "Add to Order"}
+              {hasUpdates && newItemsCount === 0 ? t("pages.store.addItemsModal.updateCart") : hasUpdates ? t("pages.store.addItemsModal.addAndUpdate") : t("pages.store.addItemsModal.addToOrder")}
               {selectedItems.size > 0 && ` (${selectedItems.size})`}
             </button>
           </div>

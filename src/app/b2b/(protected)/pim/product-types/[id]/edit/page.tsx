@@ -93,13 +93,13 @@ export default function EditProductTypePage() {
           });
           setSelectedSpecifications(selected);
         } else {
-          toast.error("Product type not found");
+          toast.error(t("pages.pim.productTypes.notFound"));
           router.push("/b2b/pim/product-types");
         }
       }
     } catch (error) {
       console.error("Error fetching product type:", error);
-      toast.error("Failed to load product type");
+      toast.error(t("pages.pim.productTypes.loadFailed"));
     }
   }
 
@@ -113,7 +113,7 @@ export default function EditProductTypePage() {
       }
     } catch (error) {
       console.error("Error fetching technical specifications:", error);
-      toast.error("Failed to load technical specifications");
+      toast.error(t("pages.pim.productTypes.loadSpecsFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -157,7 +157,7 @@ export default function EditProductTypePage() {
     e.preventDefault();
 
     if (selectedSpecifications.size === 0) {
-      toast.error("Please select at least one technical specification");
+      toast.error(t("pages.pim.productTypes.selectAtLeastOne"));
       return;
     }
 
@@ -181,15 +181,15 @@ export default function EditProductTypePage() {
       });
 
       if (res.ok) {
-        toast.success("Product type updated successfully");
+        toast.success(t("pages.pim.productTypes.updateSuccess"));
         router.push("/b2b/pim/product-types");
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to update product type");
+        toast.error(error.error || t("pages.pim.productTypes.updateFailed"));
       }
     } catch (error) {
       console.error("Error updating product type:", error);
-      toast.error("Failed to update product type");
+      toast.error(t("pages.pim.productTypes.updateFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -203,11 +203,11 @@ export default function EditProductTypePage() {
   }, {} as Record<string, TechnicalSpecification[]>);
 
   const typeLabels: Record<string, string> = {
-    text: "Text",
-    number: "Number",
-    select: "Select",
-    multiselect: "Multi-select",
-    boolean: "Boolean",
+    text: t("pages.pim.productTypes.specTypeText"),
+    number: t("pages.pim.productTypes.specTypeNumber"),
+    select: t("pages.pim.productTypes.specTypeSelect"),
+    multiselect: t("pages.pim.productTypes.specTypeMultiselect"),
+    boolean: t("pages.pim.productTypes.specTypeBoolean"),
   };
 
   if (isLoading) {
@@ -267,7 +267,7 @@ export default function EditProductTypePage() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Code (ERP)
+                {t("pages.pim.productTypes.codeErp")}
               </label>
               <input
                 type="text"
@@ -279,7 +279,7 @@ export default function EditProductTypePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Name <span className="text-red-500">*</span>
+                {t("pages.pim.productTypes.nameLabel")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -299,7 +299,7 @@ export default function EditProductTypePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Slug <span className="text-red-500">*</span>
+                {t("pages.pim.productTypes.slugFormLabel")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -314,7 +314,7 @@ export default function EditProductTypePage() {
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Description
+              {t("pages.pim.productTypes.descriptionLabel")}
             </label>
             <textarea
               value={formData.description}
@@ -328,7 +328,7 @@ export default function EditProductTypePage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="w-full">
               <label className="block text-sm font-medium text-foreground mb-1">
-                Display Order
+                {t("pages.pim.productTypes.displayOrderLabel")}
               </label>
               <input
                 type="number"
@@ -345,7 +345,7 @@ export default function EditProductTypePage() {
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                   className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-foreground">Active (available for products)</span>
+                <span className="text-sm text-foreground">{t("pages.pim.productTypes.activeForProducts")}</span>
               </label>
             </div>
           </div>
@@ -356,14 +356,14 @@ export default function EditProductTypePage() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.productTypes.selectTechnicalSpecs")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose which specifications apply to this product type. Selected: {selectedSpecifications.size}
+              {t("pages.pim.productTypes.selectedCount", { count: selectedSpecifications.size })}
             </p>
           </div>
 
           {availableSpecifications.length === 0 ? (
             <div className="p-8 text-center border border-dashed border-border rounded-lg">
               <p className="text-sm text-muted-foreground">
-                No technical specifications available. Please create specifications first in the Technical Specifications page.
+                {t("pages.pim.productTypes.noSpecsAvailable")}
               </p>
             </div>
           ) : (
@@ -371,7 +371,7 @@ export default function EditProductTypePage() {
               {Object.entries(groupedSpecifications).map(([type, specs]) => (
                 <div key={type} className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                    {typeLabels[type]} Specifications
+                    {t("pages.pim.productTypes.specGroupHeader", { type: typeLabels[type] })}
                   </h3>
                   <div className="space-y-2">
                     {specs.map((spec) => {
@@ -405,14 +405,13 @@ export default function EditProductTypePage() {
                                 )}
                                 {spec.default_required && (
                                   <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">
-                                    Required by default
+                                    {t("pages.pim.productTypes.requiredByDefaultBadge")}
                                   </span>
                                 )}
                               </div>
                               {spec.options && spec.options.length > 0 && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Options: {spec.options.slice(0, 3).join(", ")}
-                                  {spec.options.length > 3 && ` +${spec.options.length - 3} more`}
+                                  {t("pages.pim.productTypes.optionsPreview", { options: spec.options.slice(0, 3).join(", ") + (spec.options.length > 3 ? ` +${spec.options.length - 3} more` : "") })}
                                 </p>
                               )}
 
@@ -430,10 +429,10 @@ export default function EditProductTypePage() {
                                       }
                                       className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <span className="text-sm text-foreground">Required for this product type</span>
+                                    <span className="text-sm text-foreground">{t("pages.pim.productTypes.requiredForThisType")}</span>
                                   </label>
                                   <div className="flex items-center gap-2">
-                                    <label className="text-sm text-foreground">Display Order:</label>
+                                    <label className="text-sm text-foreground">{t("pages.pim.productTypes.displayOrderInline")}</label>
                                     <input
                                       type="number"
                                       value={selectedData.display_order}
@@ -466,7 +465,7 @@ export default function EditProductTypePage() {
             onClick={() => router.push("/b2b/pim/product-types")}
             className="px-4 py-2 rounded border border-border hover:bg-muted transition"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="submit"

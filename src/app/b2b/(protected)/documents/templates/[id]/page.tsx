@@ -841,6 +841,8 @@ function HeaderFooterConfig({
 // ============================================
 
 function HeaderPreview({ config }: { config: TemplateHeaderConfig }) {
+  const { t } = useTranslation();
+  const invoiceLabel = t("pages.documents.templateEditor.invoiceLabel");
   if (config.style === "minimal") {
     return (
       <div className="text-[10px]">
@@ -855,7 +857,7 @@ function HeaderPreview({ config }: { config: TemplateHeaderConfig }) {
         {config.show_logo && <div className="w-6 h-3 bg-gray-300 rounded mx-auto mb-1" />}
         <div className="font-bold">Azienda S.r.l.</div>
         {config.show_company_info && <div className="text-gray-400">Via Roma 1, Milano</div>}
-        <div className="mt-1 font-semibold">FATTURA INV-2026-001</div>
+        <div className="mt-1 font-semibold">{invoiceLabel} INV-2026-001</div>
       </div>
     );
   }
@@ -866,7 +868,7 @@ function HeaderPreview({ config }: { config: TemplateHeaderConfig }) {
           {config.show_logo && <div className="w-4 h-2 bg-white/30 rounded" />}
           <span className="font-bold">Azienda S.r.l.</span>
         </div>
-        <span className="font-semibold">FATTURA</span>
+        <span className="font-semibold">{invoiceLabel}</span>
       </div>
     );
   }
@@ -879,7 +881,7 @@ function HeaderPreview({ config }: { config: TemplateHeaderConfig }) {
         {config.show_company_info && <div className="text-gray-400">Via Roma 1 · P.IVA 01234...</div>}
       </div>
       <div className="text-right" style={{ order: config.logo_position === "right" ? 1 : 2 }}>
-        <div className="font-bold text-[11px]">FATTURA</div>
+        <div className="font-bold text-[11px]">{invoiceLabel}</div>
         <div className="text-gray-400">INV-2026-001</div>
       </div>
     </div>
