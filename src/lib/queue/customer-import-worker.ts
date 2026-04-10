@@ -475,6 +475,9 @@ export const customerImportWorker = new Worker(
       port: REDIS_PORT,
     },
     concurrency: 2,
+    lockDuration: 300_000, // 5 min — bulk customer imports with addresses/tags
+    stalledInterval: 150_000,
+    maxStalledCount: 0, // Data-mutating — fail immediately on stall
   },
 );
 

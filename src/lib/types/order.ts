@@ -118,6 +118,9 @@ export interface LineItem {
   brand?: string;
   category?: string;
 
+  // Note
+  note?: string; // Optional free-text note for this line item
+
   // ERP
   erp_line_number?: number; // ERP-assigned row ID (e.g., 10, 20, 30...)
   erp_data?: Record<string, unknown>;
@@ -523,6 +526,9 @@ export interface AddItemRequest {
   brand?: string;
   category?: string;
 
+  // Optional note
+  note?: string;
+
   // Optional tracking
   added_from?: string;
   added_via?: string;
@@ -536,7 +542,7 @@ export interface AddItemRequest {
   discount_chain?: DiscountStep[]; // Full discount chain with type, value, source, order
 
   // Promo goal (threshold-based promos)
-  promo_goal_type?: "value" | "quantity";
+  promo_goal_type?: "value" | "quantity" | "line_count";
   promo_goal_value?: number;
   promo_goal_label?: string;
   promo_start_date?: string;

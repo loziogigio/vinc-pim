@@ -19,6 +19,7 @@ import type {
   BeforeHookResult,
   OnHookResponse,
   OnHookResult,
+  HookMode,
 } from "@/lib/types/windmill-proxy";
 
 // ─── SETTINGS CACHE ───────────────────────────────────────────────
@@ -50,6 +51,14 @@ export async function getProxySettings(
 /** Invalidate the settings cache for a tenant (call after settings update). */
 export function invalidateProxyCache(tenantDb: string): void {
   settingsCache.delete(tenantDb);
+}
+
+// ─── HOOK MODE RESOLUTION (backward compat) ─────────────────────
+
+/** Resolve mode from new `mode` field or legacy `blocking` boolean. */
+function resolveMode(hook: OperationHookConfig): HookMode {
+  if (hook.mode) return hook.mode;
+  return hook.blocking ? "blocking" : "async";
 }
 
 // ─── HOOK LOOKUP ──────────────────────────────────────────────────
@@ -258,11 +267,12 @@ export async function runBeforeHookWithAsyncFallback(
  */
 export async function runOnHook(ctx: HookContext): Promise<OnHookResult> {
   const settings = await getProxySettings(ctx.tenantDb);
-  if (!settings) return { hooked: false, success: true, blocking: false };
+  if (!settings) return { hooked: false, success: true, mode: "async" };
 
   const hook = findHook(settings, ctx.channel, ctx.operation, "on");
-  if (!hook) return { hooked: false, success: true, blocking: false };
+  if (!hook) return { hooked: false, success: true, mode: "async" };
 
+  const mode = resolveMode(hook);
   const timeout = hook.timeout_ms ?? settings.timeout_ms;
   const payload = buildPayload(ctx, "on");
   const ws = workspace(settings);
@@ -277,7 +287,7 @@ export async function runOnHook(ctx: HookContext): Promise<OnHookResult> {
       hooked: true,
       success: res.success !== false,
       response: res,
-      blocking: hook.blocking,
+      mode,
     };
   } catch (err) {
     const timedOut = err instanceof WindmillError && err.status === 504;
@@ -288,7 +298,7 @@ export async function runOnHook(ctx: HookContext): Promise<OnHookResult> {
       success: false,
       timedOut,
       error: timedOut ? "ERP sync timed out" : (err as Error).message,
-      blocking: hook.blocking,
+      mode,
     };
   }
 }
@@ -307,12 +317,12 @@ export async function runOnHook(ctx: HookContext): Promise<OnHookResult> {
 export async function runOnHookWithAsyncFallback(
   ctx: HookContext,
   syncTimeoutMs = 10_000,
-): Promise<OnHookResult & { async?: boolean; jobId?: string }> {
+): Promise<OnHookResult> {
   const settings = await getProxySettings(ctx.tenantDb);
-  if (!settings) return { hooked: false, success: true, blocking: false };
+  if (!settings) return { hooked: false, success: true, mode: "async" };
 
   const hook = findHook(settings, ctx.channel, ctx.operation, "on");
-  if (!hook) return { hooked: false, success: true, blocking: false };
+  if (!hook) return { hooked: false, success: true, mode: "async" };
 
   const timeout = hook.timeout_ms ?? syncTimeoutMs;
   const payload = buildPayload(ctx, "on");
@@ -329,7 +339,7 @@ export async function runOnHookWithAsyncFallback(
       hooked: true,
       success: res.success !== false,
       response: res,
-      blocking: hook.blocking,
+      mode: "blocking_with_fallback",
       async: false,
     };
   } catch (err) {
@@ -344,7 +354,7 @@ export async function runOnHookWithAsyncFallback(
         return {
           hooked: true,
           success: true,
-          blocking: false,
+          mode: "blocking_with_fallback",
           async: true,
           jobId,
         };
@@ -354,7 +364,7 @@ export async function runOnHookWithAsyncFallback(
           hooked: true,
           success: false,
           error: "ERP sync failed (async fallback)",
-          blocking: hook.blocking,
+          mode: "blocking_with_fallback",
         };
       }
     }
@@ -366,7 +376,7 @@ export async function runOnHookWithAsyncFallback(
       success: false,
       timedOut: false,
       error: (err as Error).message,
-      blocking: hook.blocking,
+      mode: "blocking_with_fallback",
     };
   }
 }
@@ -408,18 +418,62 @@ export async function pushWindmillJobRef(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   OrderModel: any,
   orderId: string,
-  ref: { job_id: string; script: string; phase: string; operation: string },
+  ref: {
+    job_id: string;
+    script: string;
+    phase: string;
+    operation: string;
+    status?: "queued" | "completed" | "failed";
+    error?: string;
+    duration_ms?: number;
+    mode?: "sync" | "async";
+  },
 ): Promise<void> {
+  const now = new Date().toISOString();
   await OrderModel.updateOne(
     { order_id: orderId },
     {
       $push: {
         "erp_data.windmill_jobs": {
           ...ref,
-          timestamp: new Date().toISOString(),
+          timestamp: now,
+          ...(ref.status === "completed" || ref.status === "failed"
+            ? { completed_at: now }
+            : {}),
         },
       },
     },
+  );
+}
+
+/**
+ * Update the status of an existing Windmill job reference by job_id.
+ * Uses MongoDB positional operator to update the matching array element.
+ */
+export async function updateWindmillJobStatus(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  OrderModel: any,
+  orderId: string,
+  jobId: string,
+  update: {
+    status: "completed" | "failed";
+    error?: string;
+    duration_ms?: number;
+  },
+): Promise<void> {
+  const $set: Record<string, unknown> = {
+    "erp_data.windmill_jobs.$.status": update.status,
+    "erp_data.windmill_jobs.$.completed_at": new Date().toISOString(),
+  };
+  if (update.duration_ms !== undefined) {
+    $set["erp_data.windmill_jobs.$.duration_ms"] = update.duration_ms;
+  }
+  if (update.error) {
+    $set["erp_data.windmill_jobs.$.error"] = update.error;
+  }
+  await OrderModel.updateOne(
+    { order_id: orderId, "erp_data.windmill_jobs.job_id": jobId },
+    { $set },
   );
 }
 
@@ -457,6 +511,68 @@ export async function runOnHookAsync(
     console.error(`[windmill-proxy] async on ${ctx.operation} failed:`, err);
     return { hooked: false };
   }
+}
+
+// ─── ON PHASE — AUTO (respects hook mode setting) ───────────────
+
+/**
+ * Unified on-hook runner that respects the hook's `mode` setting:
+ * - "async" → fire-and-forget (runOnHookAsync)
+ * - "blocking" → wait for result (runOnHook)
+ * - "blocking_with_fallback" → try sync, fallback to async on timeout
+ */
+export async function runOnHookAuto(
+  ctx: HookContext,
+): Promise<OnHookResult> {
+  const settings = await getProxySettings(ctx.tenantDb);
+  if (!settings) return { hooked: false, success: true, mode: "async" };
+
+  const hook = findHook(settings, ctx.channel, ctx.operation, "on");
+  if (!hook) return { hooked: false, success: true, mode: "async" };
+
+  const mode = resolveMode(hook);
+
+  if (mode === "async") {
+    const result = await runOnHookAsync(ctx);
+    return { hooked: result.hooked, success: true, mode: "async", async: true, jobId: result.jobId };
+  }
+  if (mode === "blocking_with_fallback") {
+    return runOnHookWithAsyncFallback(ctx);
+  }
+  // "blocking" — sync, wait for ERP response
+  return runOnHook(ctx);
+}
+
+/**
+ * runOnHookAuto + merge ERP data + fire after hook.
+ * When `orderId` is provided, pushes a job ref with status tracking for sync results.
+ */
+export async function runOnMergeAfterAuto(
+  ctx: HookContext,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  OrderModel: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orderDbId: any,
+  opts?: { orderId?: string },
+): Promise<OnHookResult> {
+  const on = await runOnHookAuto(ctx);
+  if (on.hooked && !on.async && on.success && on.response?.data) {
+    await mergeOrderErpData(OrderModel, orderDbId, on.response);
+  }
+  // Push job ref with status for sync results
+  if (on.hooked && !on.async && opts?.orderId) {
+    await pushWindmillJobRef(OrderModel, opts.orderId, {
+      job_id: `sync-${crypto.randomUUID()}`,
+      script: `on_${ctx.operation.replace(".", "_")}`,
+      phase: "on",
+      operation: ctx.operation,
+      status: on.success ? "completed" : "failed",
+      error: on.success ? undefined : (on.error || on.response?.error),
+      mode: "sync",
+    });
+  }
+  runAfterHook(ctx);
+  return on;
 }
 
 /**
@@ -581,7 +697,15 @@ export function windmillResponseFragment(
     windmill: {
       channel,
       ...(before?.hooked ? { before: { allowed: before.allowed } } : {}),
-      ...(on?.hooked ? { on: { synced: on.success, timed_out: on.timedOut } } : {}),
+      ...(on?.hooked ? {
+        on: {
+          mode: on.mode,
+          synced: on.success,
+          timed_out: on.timedOut,
+          ...(on.async ? { async: true } : {}),
+          ...(on.jobId ? { jobId: on.jobId } : {}),
+        },
+      } : {}),
     },
   };
 }
@@ -634,4 +758,34 @@ export async function mergeOrderErpData(
       );
     }
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = response.data as Record<string, any>;
+
+  // New gift items from ERP (omaggio rows added by RisolviAnomalie)
+  // Only push genuinely new items — check entity_code doesn't already exist as a gift
+  if (data.new_items?.length) {
+    const order = await OrderModel.findById(orderId, { items: 1 }).lean();
+    const existingGiftCodes = new Set(
+      (order?.items || [])
+        .filter((i: any) => i.is_gift_line)
+        .map((i: any) => i.entity_code)
+    );
+    const trulyNew = (data.new_items as Array<Record<string, unknown>>).filter(
+      (item) => !existingGiftCodes.has(item.entity_code as string)
+    );
+    if (trulyNew.length > 0) {
+      await OrderModel.updateOne(
+        { _id: orderId },
+        { $push: { items: { $each: trulyNew } } },
+      );
+    }
+  }
+
+  // NOTE: updated_items and removed_erp_lines are intentionally NOT applied.
+  // The ERP may renumber rows after RisolviAnomalie, making erp_line-based
+  // matching unreliable. VINC is authoritative for its own items — the ERP
+  // is only authoritative for adding NEW gift rows (omaggio).
+  // Price/qty corrections from the ERP are informational (stored in erp_data)
+  // and the final truth is established at order confirmation via on-order-submit.
 }

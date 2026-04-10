@@ -21,7 +21,7 @@ import {
   buildHookCtxFromOrder,
   updateCtxFromOrder,
   runBeforeHook,
-  runOnHookWithAsyncFallback,
+  runOnHookAuto,
   runAfterHook,
   mergeOrderErpData,
 } from "@/lib/services/windmill-proxy.service";
@@ -74,10 +74,15 @@ export async function POST(
 
     const before = await runBeforeHook(hookCtx);
     if (before.hooked && !before.allowed) {
+      // Persist ERP data even on rejection — erp_cart_id and erp_line_numbers
+      // must survive so the next attempt reuses the same ERP cart/rows
+      if (before.modified_data) {
+        await mergeOrderErpData(Order, (order as any)._id, { success: true, data: before.modified_data });
+      }
       return NextResponse.json(
         {
           error: before.message || "Operation rejected by ERP",
-          windmill: { phase: "before", blocked: true },
+          windmill: { phase: "before", blocked: true, modified_data: before.modified_data },
         },
         { status: 422 },
       );
@@ -92,7 +97,7 @@ export async function POST(
     updateCtxFromOrder(hookCtx, result.order);
 
     // ── ON HOOK: ERP export with async fallback (autofix in requestData) ──
-    const on = await runOnHookWithAsyncFallback(hookCtx);
+    const on = await runOnHookAuto(hookCtx);
 
     if (on.hooked && on.async && on.jobId) {
       // Async path

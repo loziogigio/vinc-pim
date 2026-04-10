@@ -10,6 +10,7 @@ const it = {
     create: "Crea",
     add: "Aggiungi",
     remove: "Rimuovi",
+    gift: "Omaggio",
     close: "Chiudi",
     confirm: "Conferma",
     back: "Indietro",
@@ -120,6 +121,7 @@ const it = {
     fullWidthLayout: "Layout a larghezza piena",
     switchToCompact: "Passa al layout compatto",
     switchToFullWidth: "Passa al layout a larghezza piena",
+    noApps: "Nessuna app disponibile",
   },
   apps: {
     home: { name: "Home", description: "Dashboard principale" },
@@ -342,6 +344,10 @@ const it = {
         exportSelected: "Esporta selezionati",
         bulkUpdate: "Aggiornamento massivo",
         clearSelection: "Cancella selezione",
+        selectAllMatching: "Seleziona tutti i {{total}} prodotti corrispondenti",
+        allMatchingSelected: "Tutti i {{total}} prodotti corrispondenti selezionati",
+        allOnPageSelected: "Tutti i {{count}} di questa pagina selezionati.",
+        bulkUpdateFilterWarning: "Questo aggiornerà tutti i prodotti corrispondenti ai filtri attuali. Questa azione non può essere facilmente annullata.",
         colProduct: "Prodotto",
         colParentSku: "SKU genitore",
         colQuality: "Qualit\u00e0",
@@ -367,6 +373,11 @@ const it = {
         provideValues: "Fornisci i valori per i campi selezionati",
         updating: "Aggiornamento...",
         updateButton: "Aggiorna Prodotti",
+        deleteProducts: "Elimina prodotti...",
+        deleteWarning: "Questo eliminerà permanentemente {{count}} prodotti e tutte le loro versioni. Questa azione non può essere annullata.",
+        deleteConfirmPrompt: "Digita DELETE per confermare:",
+        deleting: "Eliminazione...",
+        deleteButton: "Elimina {{count}} prodotti",
       },
       bulkUpdateModal: {
         selectAtLeastOne: "Seleziona almeno un campo da aggiornare",
@@ -1620,6 +1631,15 @@ const it = {
         ordersWillAppear: "Gli ordini appariranno qui una volta creati",
         items: "articoli",
         item: "articolo",
+        filterLabel: "Filtro",
+        filterAll: "Tutti",
+        allChannels: "Tutti i canali",
+        avgOrderValue: "Valore medio ordine",
+        ordersToday: "Ordini oggi",
+        thisWeek: "Questa settimana",
+        thisMonth: "Questo mese",
+        conversionRate: "Tasso di conversione",
+        conversion: "convertiti",
       },
       // ── Lista Ordini ──
       ordersList: {
@@ -1752,6 +1772,8 @@ const it = {
         orderType: "Tipo Ordine",
         priceList: "Listino Prezzi",
         source: "Origine",
+        lineNote: "Nota",
+        notePlaceholder: "Aggiungi una nota per questo articolo...",
       },
       // ── Payment Card ──
       paymentCard: {
@@ -4205,6 +4227,9 @@ const it = {
         windmillPassword: "Password Windmill",
         addSSOUser: "Aggiungi Utente SSO",
         noSSOUsers: "Nessun utente SSO configurato. Aggiungi una mappatura per abilitare il single sign-on.",
+        modeAsync: "Asincrono",
+        modeBlocking: "Bloccante",
+        modeFallback: "Bloccante + Fallback",
         openingWindmill: "Apertura...",
         openWindmill: "Apri Windmill",
         domains: {
@@ -4972,5 +4997,8 @@ const it = {
     },
   },
 } as const;
+
+// homeSettings lives under components but is referenced as pages.homeSettings in the UI
+(it.pages as any).homeSettings = it.components.homeSettings;
 
 export default it;

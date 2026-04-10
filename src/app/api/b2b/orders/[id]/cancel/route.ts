@@ -11,7 +11,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { cancelOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import type { UserRole } from "@/lib/constants/order";
-import { buildHookCtxFromOrder, runOnMergeAfter, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtxFromOrder, runOnMergeAfterAuto, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 interface RequestBody {
   reason?: string;
@@ -48,7 +48,7 @@ export async function POST(
     const hookCtx = buildHookCtxFromOrder(dbName, auth.tenantId, "order.cancel", result.order, {
       requestData: body as Record<string, unknown>,
     });
-    const on = await runOnMergeAfter(hookCtx, connection.model("Order"), (result.order as any)?._id);
+    const on = await runOnMergeAfterAuto(hookCtx, connection.model("Order"), (result.order as any)?._id, { orderId });
 
     void dispatchTrigger(dbName, "order_cancelled", { type: "order", order: result.order! });
 

@@ -14,7 +14,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { getPooledConnection } from "@/lib/db/connection";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { windmillGetJobResult } from "@/lib/services/windmill-client";
-import { getProxySettings, mergeOrderErpData, runOnHookWithAsyncFallback, runAfterHook, pushWindmillJobRef } from "@/lib/services/windmill-proxy.service";
+import { getProxySettings, mergeOrderErpData, runOnHookAuto, runAfterHook, pushWindmillJobRef, updateWindmillJobStatus } from "@/lib/services/windmill-proxy.service";
 import { submitOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { isDeferredPaymentMethod } from "@/lib/constants/payment";
@@ -72,6 +72,11 @@ export async function GET(
     const startedAt = order.processing_started_at ? new Date(order.processing_started_at).getTime() : 0;
     if (startedAt && Date.now() - startedAt > STALE_JOB_TIMEOUT_MS) {
       // Auto-fail stale job
+      await updateWindmillJobStatus(Order, orderId, order.processing_job_id, {
+        status: "failed",
+        error: "ERP processing timed out",
+        duration_ms: Date.now() - startedAt,
+      });
       const updated = await Order.findOneAndUpdate(
         { order_id: orderId, processing_status: "processing" },
         {
@@ -127,6 +132,12 @@ export async function GET(
       const allowed = result?.allowed !== false;
 
       if (allowed) {
+        // Mark before-hook job as completed
+        const elapsed = startedAt ? Date.now() - startedAt : undefined;
+        await updateWindmillJobStatus(Order, orderId, order.processing_job_id, {
+          status: "completed", duration_ms: elapsed,
+        });
+
         // ERP validation passed — merge before-hook data, then auto-submit (on-hook)
         if (result?.modified_data) {
           await mergeOrderErpData(Order, (order as any)._id, {
@@ -167,7 +178,7 @@ export async function GET(
             order: refreshedOrder ? refreshedOrder.toObject() : {},
           };
 
-          const on = await runOnHookWithAsyncFallback(hookCtx);
+          const on = await runOnHookAuto(hookCtx);
 
           if (on.hooked && on.async && on.jobId) {
             // On-hook went async — keep processing
@@ -177,6 +188,7 @@ export async function GET(
             );
             await pushWindmillJobRef(Order, orderId, {
               job_id: on.jobId, script: "on_order_submit", phase: "on", operation: "order.submit",
+              status: "queued", mode: "async",
             });
             return NextResponse.json({
               processing: true, processing_status: "processing", processing_phase: "on",
@@ -186,6 +198,17 @@ export async function GET(
 
           if (on.hooked && on.success && on.response?.data) {
             await mergeOrderErpData(Order, (refreshedOrder as any)?._id, on.response);
+          }
+
+          // Push sync on-hook result
+          if (on.hooked && !on.async) {
+            await pushWindmillJobRef(Order, orderId, {
+              job_id: `sync-${crypto.randomUUID()}`,
+              script: "on_order_submit", phase: "on", operation: "order.submit",
+              status: on.success ? "completed" : "failed",
+              error: on.success ? undefined : (on.error || on.response?.error),
+              mode: "sync",
+            });
           }
 
           // Fully completed — clear processing state
@@ -225,6 +248,14 @@ export async function GET(
           });
         }
       } else {
+        // Mark before-hook job as failed (rejected by ERP)
+        const elapsed = startedAt ? Date.now() - startedAt : undefined;
+        await updateWindmillJobStatus(Order, orderId, order.processing_job_id, {
+          status: "failed",
+          error: result?.message || "ERP validation rejected",
+          duration_ms: elapsed,
+        });
+
         // ERP rejected — merge data (anomalies, erp_cart_id, etc.) and mark failed
         if (result?.modified_data) {
           await mergeOrderErpData(Order, (order as any)._id, {
@@ -266,6 +297,14 @@ export async function GET(
     // ── ON phase async completion (existing logic) ──
     const result = jobResult.result;
     const jobSuccess = result?.success !== false;
+    const jobElapsed = startedAt ? Date.now() - startedAt : undefined;
+
+    // Update windmill job status
+    await updateWindmillJobStatus(Order, orderId, order.processing_job_id, {
+      status: jobSuccess ? "completed" : "failed",
+      error: jobSuccess ? undefined : (result?.error || result?.message || "ERP processing failed"),
+      duration_ms: jobElapsed,
+    });
 
     if (jobSuccess) {
       const updated = await Order.findOneAndUpdate(

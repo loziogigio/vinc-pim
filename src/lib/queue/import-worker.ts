@@ -777,6 +777,25 @@ async function processImport(job: Job<ImportJobData>) {
             delete safeProductData.attributes;
           }
 
+          // Merge media: preserve manually-added types (3d-model, video)
+          // that imports don't provide, instead of replacing the entire array
+          if (safeProductData.media) {
+            const importedMedia: any[] = safeProductData.media;
+            const existingMedia: any[] = latestProduct.media || [];
+            const importedTypes = new Set(importedMedia.map((m: any) => m.type));
+            const preserved = existingMedia.filter(
+              (m: any) => !importedTypes.has(m.type)
+            );
+            const maxPos = importedMedia.reduce(
+              (max: number, m: any) => Math.max(max, m.position ?? 0), -1
+            );
+            preserved.forEach((m: any, i: number) => {
+              m.position = maxPos + 1 + i;
+            });
+            updateDoc.media = [...importedMedia, ...preserved];
+            delete safeProductData.media;
+          }
+
           // Copy other fields directly
           for (const [key, value] of Object.entries(safeProductData)) {
             if (value !== undefined) {
@@ -1021,10 +1040,14 @@ console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
  * Process bulk update job
  */
 async function processBulkUpdate(job: Job<any>) {
-  const { job_id, product_ids, updates, tenant_id } = job.data;
+  const { job_id, product_ids, filters, updates, tenant_id } = job.data;
+  const UPDATE_BATCH_SIZE = 5000;
+  const SYNC_BATCH_SIZE = 50;
 
-  console.log(`\n🔄 Processing bulk update job: ${job_id}`);
-  console.log(`   Products: ${product_ids.length}`);
+  const mode = filters ? "filter" : "ids";
+  console.log(`\n🔄 Processing bulk update job: ${job_id} (mode: ${mode})`);
+  if (product_ids) console.log(`   Products: ${product_ids.length}`);
+  if (filters) console.log(`   Filters:`, JSON.stringify(filters));
   console.log(`   Updates:`, updates);
   if (tenant_id) {
     console.log(`   Tenant: ${tenant_id}`);
@@ -1078,16 +1101,91 @@ async function processBulkUpdate(job: Job<any>) {
       updateDoc.not_visible = !!updates.not_visible;
     }
 
-    // Execute bulk update
-    const result = await PIMProductModel.updateMany(
-      {
-        _id: { $in: product_ids },
-        isCurrent: true,
-      },
-      {
-        $set: updateDoc,
+    // Resolve target product IDs — either from explicit list or filter query
+    let targetIds: string[];
+    if (filters) {
+      const { buildProductListQuery } = await import("../pim/product-query-builder");
+      const query = await buildProductListQuery(filters, tenantDb);
+      const docs = await PIMProductModel.find(query).select('_id').lean();
+      targetIds = docs.map((d: any) => d._id.toString());
+      console.log(`   Filter resolved to ${targetIds.length} products`);
+
+      // Update total_rows now that we know the actual count
+      await ImportJobModel.findOneAndUpdate(
+        { job_id },
+        { $set: { total_rows: targetIds.length } }
+      );
+    } else {
+      targetIds = product_ids;
+    }
+
+    await job.updateProgress(5); // Signal: resolved targets, starting operation
+
+    const isDelete = updates._delete === true;
+    let totalMatched = 0;
+    let totalModified = 0;
+    const totalProducts = targetIds.length;
+
+    if (isDelete) {
+      // ========== BULK DELETE ==========
+      console.log(`🗑️ Bulk delete mode — deleting ${totalProducts} products`);
+
+      // Collect entity_codes before deletion (needed for Solr cleanup)
+      const allEntityCodes: string[] = [];
+      for (let i = 0; i < totalProducts; i += UPDATE_BATCH_SIZE) {
+        const batch = targetIds.slice(i, i + UPDATE_BATCH_SIZE);
+        const docs = await PIMProductModel.find({ _id: { $in: batch } })
+          .select('entity_code')
+          .lean();
+        allEntityCodes.push(...docs.map((d: any) => d.entity_code).filter(Boolean));
       }
-    );
+
+      // Delete all versions (not just isCurrent) by entity_code
+      const uniqueCodes = [...new Set(allEntityCodes)];
+      for (let i = 0; i < uniqueCodes.length; i += UPDATE_BATCH_SIZE) {
+        const batch = uniqueCodes.slice(i, i + UPDATE_BATCH_SIZE);
+        const result = await PIMProductModel.deleteMany({ entity_code: { $in: batch } });
+        totalMatched += batch.length;
+        totalModified += result.deletedCount;
+
+        const progress = 5 + Math.round(((i + batch.length) / uniqueCodes.length) * 75);
+        await job.updateProgress(progress);
+        console.log(`   Delete batch ${Math.floor(i / UPDATE_BATCH_SIZE) + 1}: deleted ${result.deletedCount}`);
+      }
+
+      // Queue Solr deletes
+      if (uniqueCodes.length > 0 && process.env.SOLR_ENABLED === 'true') {
+        for (let i = 0; i < uniqueCodes.length; i += SYNC_BATCH_SIZE) {
+          const batchCodes = uniqueCodes.slice(i, i + SYNC_BATCH_SIZE);
+          const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
+          await syncQueue.add('bulk-sync-batch', {
+            product_id: `bulk-delete-${job_id}-${batchNumber}`,
+            product_ids: batchCodes,
+            operation: 'delete',
+            channels: ['solr'],
+            tenant_id: effectiveTenantId,
+            priority: 'high',
+          }, { priority: 1 });
+        }
+        console.log(`📤 Queued Solr delete for ${uniqueCodes.length} products`);
+      }
+    } else {
+      // ========== BULK UPDATE ==========
+      for (let i = 0; i < totalProducts; i += UPDATE_BATCH_SIZE) {
+        const batch = targetIds.slice(i, i + UPDATE_BATCH_SIZE);
+        const result = await PIMProductModel.updateMany(
+          { _id: { $in: batch }, isCurrent: true },
+          { $set: updateDoc }
+        );
+        totalMatched += result.matchedCount;
+        totalModified += result.modifiedCount;
+
+        // Progress: 5-80% range for the update phase
+        const progress = 5 + Math.round(((i + batch.length) / totalProducts) * 75);
+        await job.updateProgress(progress);
+        console.log(`   Batch ${Math.floor(i / UPDATE_BATCH_SIZE) + 1}: updated ${result.modifiedCount}/${result.matchedCount}`);
+      }
+    }
 
     // Calculate duration
     const durationSeconds = Math.round((Date.now() - new Date(job.timestamp || Date.now()).getTime()) / 1000);
@@ -1100,20 +1198,22 @@ async function processBulkUpdate(job: Job<any>) {
           status: "completed",
           completed_at: new Date(),
           duration_seconds: durationSeconds,
-          processed_rows: result.matchedCount,
-          successful_rows: result.modifiedCount,
-          failed_rows: result.matchedCount - result.modifiedCount,
+          processed_rows: totalMatched,
+          successful_rows: totalModified,
+          failed_rows: isDelete ? 0 : totalMatched - totalModified,
         },
       }
     );
 
-    console.log(`✓ Bulk update completed:`);
-    console.log(`   Matched: ${result.matchedCount}`);
-    console.log(`   Modified: ${result.modifiedCount}`);
+    console.log(`✓ Bulk ${isDelete ? "delete" : "update"} completed:`);
+    console.log(`   ${isDelete ? "Products" : "Matched"}: ${totalMatched}`);
+    console.log(`   ${isDelete ? "Deleted" : "Modified"}: ${totalModified}`);
     console.log(`   Duration: ${durationSeconds}s`);
 
-    // ========== QUEUE SOLR SYNC FOR BULK UPDATE ==========
-    if (result.modifiedCount > 0 && process.env.SOLR_ENABLED === 'true') {
+    await job.updateProgress(85); // Update done, starting Solr sync
+
+    // ========== QUEUE SOLR SYNC FOR BULK UPDATE (skip for deletes — handled above) ==========
+    if (!isDelete && totalModified > 0 && process.env.SOLR_ENABLED === 'true') {
       try {
         // Get default language with searchEnabled
         const defaultLanguage = await LanguageModel.findOne({
@@ -1123,23 +1223,25 @@ async function processBulkUpdate(job: Job<any>) {
         });
 
         if (defaultLanguage) {
-          // Fetch entity_codes for updated products
-          const updatedProducts = await PIMProductModel.find({
-            _id: { $in: product_ids },
-            isCurrent: true,
-          }).select('entity_code').lean();
+          // Fetch entity_codes for updated products (in batches to avoid memory issues)
+          const allEntityCodes: string[] = [];
+          for (let i = 0; i < totalProducts; i += UPDATE_BATCH_SIZE) {
+            const batch = targetIds.slice(i, i + UPDATE_BATCH_SIZE);
+            const docs = await PIMProductModel.find({
+              _id: { $in: batch },
+              isCurrent: true,
+            }).select('entity_code').lean();
+            const codes = docs.map((p: any) => p.entity_code).filter(Boolean);
+            allEntityCodes.push(...codes);
+          }
 
-          const entityCodes = updatedProducts.map((p: any) => p.entity_code).filter(Boolean);
+          if (allEntityCodes.length > 0) {
+            console.log(`\n📤 Queuing Solr sync for ${allEntityCodes.length} bulk-updated products`);
 
-          if (entityCodes.length > 0) {
-            console.log(`\n📤 Queuing Solr sync for ${entityCodes.length} bulk-updated products`);
+            const batchCount = Math.ceil(allEntityCodes.length / SYNC_BATCH_SIZE);
 
-            // Batch the products (50 per batch)
-            const SYNC_BATCH_SIZE = 50;
-            const batchCount = Math.ceil(entityCodes.length / SYNC_BATCH_SIZE);
-
-            for (let i = 0; i < entityCodes.length; i += SYNC_BATCH_SIZE) {
-              const batchIds = entityCodes.slice(i, i + SYNC_BATCH_SIZE);
+            for (let i = 0; i < allEntityCodes.length; i += SYNC_BATCH_SIZE) {
+              const batchIds = allEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
               const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
 
               await syncQueue.add('bulk-sync-batch', {
@@ -1147,11 +1249,17 @@ async function processBulkUpdate(job: Job<any>) {
                 product_ids: batchIds,
                 operation: 'bulk-sync',
                 channels: ['solr'],
-                tenant_id: process.env.VINC_TENANT_ID || 'default',
+                tenant_id: effectiveTenantId,
                 priority: 'high',
               }, {
                 priority: 1,
               });
+
+              // Progress: 85-100% range for Solr sync queueing
+              if (batchNumber % 10 === 0 || batchNumber === batchCount) {
+                const syncProgress = 85 + Math.round((batchNumber / batchCount) * 15);
+                await job.updateProgress(syncProgress);
+              }
 
               console.log(`   ✓ Queued batch ${batchNumber}/${batchCount} (${batchIds.length} products)`);
             }
@@ -1167,7 +1275,8 @@ async function processBulkUpdate(job: Job<any>) {
       }
     }
 
-    return { matched: result.matchedCount, modified: result.modifiedCount };
+    await job.updateProgress(100);
+    return { matched: totalMatched, modified: totalModified };
   } catch (error: any) {
     // Mark job as failed
     await ImportJobModel.findOneAndUpdate(
@@ -1202,6 +1311,9 @@ export const importWorker = new Worker("import-queue", processJob, {
     port: REDIS_PORT,
   },
   concurrency: WORKER_CONCURRENCY, // Process N imports simultaneously
+  lockDuration: 600_000, // 10 min — long imports/bulk updates; renewed by job.updateProgress()
+  stalledInterval: 300_000, // Check stalled every 5 min (half of lockDuration)
+  maxStalledCount: 0, // Fail immediately on stall — data-mutating jobs must not be retried blindly
   limiter: {
     max: RATE_LIMIT_MAX, // Maximum jobs per duration
     duration: RATE_LIMIT_DURATION, // Time window in milliseconds

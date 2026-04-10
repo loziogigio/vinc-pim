@@ -332,6 +332,9 @@ export function createLineItem(
     brand: body.brand,
     category: body.category,
 
+    // Note
+    note: body.note,
+
     // Tracking
     added_at: now,
     updated_at: now,
@@ -376,6 +379,7 @@ interface UpdateItemInput {
   packaging_label?: string;
   pack_size?: number;
   list_price?: number;
+  note?: string;
 }
 
 /**
@@ -390,7 +394,7 @@ export function batchUpdateItems(
   const results: BatchItemResult[] = [];
 
   for (const update of updates) {
-    const { line_number, quantity, unit_price, packaging_code, packaging_label, pack_size, list_price } = update;
+    const { line_number, quantity, unit_price, packaging_code, packaging_label, pack_size, list_price, note } = update;
 
     if (line_number === undefined) {
       results.push({
@@ -424,6 +428,9 @@ export function batchUpdateItems(
     }
     if (list_price !== undefined && list_price >= 0) {
       item.list_price = list_price;
+    }
+    if (note !== undefined) {
+      item.note = note;
     }
 
     // Validate and update quantity if provided
@@ -475,6 +482,21 @@ export function batchUpdateItems(
   }
 
   return results;
+}
+
+/**
+ * Collect line numbers of gift items linked to a promo code.
+ * Used for cascade-deleting gift items when a promo parent is removed.
+ */
+export function collectGiftLineNumbers(
+  order: IOrder,
+  promoCode: string
+): number[] {
+  return order.items
+    .filter(
+      (i: ILineItem) => i.is_gift_line && i.promo_code === promoCode
+    )
+    .map((i: ILineItem) => i.line_number);
 }
 
 /**
@@ -544,11 +566,14 @@ function recalculatePromoProgress(order: IOrder): void {
       };
     }
     const p = map[key];
+    // Skip gift items — they don't contribute to promo goals
+    if (item.is_gift_line) continue;
     p.item_count += 1;
     if (p.goal_type === "value") {
       p.current_value += (item.unit_price || 0) * (item.quantity || 0);
-    } else {
-      // Count unique rows (distinct articles), not quantity
+    } else if (p.goal_type === "quantity") {
+      p.current_value += item.quantity || 0;
+    } else if (p.goal_type === "line_count") {
       p.current_value += 1;
     }
   }
@@ -563,9 +588,90 @@ function recalculatePromoProgress(order: IOrder): void {
   order.promo_progress = progress.length > 0 ? progress : undefined;
 }
 
+/**
+ * Enforce gift items based on promo progress.
+ * - If promo goal is reached and no gift item exists → add it
+ * - If promo goal is reached and gift exists but qty changed → update it
+ * - If promo goal is NOT reached and gift item exists → remove it
+ *
+ * Gift quantity scales with how many times the goal is reached:
+ *   e.g. goal=24, current=48 → multiplier=2 → gift_qty = 2 × base_reward_qty
+ *
+ * Returns true if items were added, removed, or updated (totals need recalc).
+ */
+function enforcePromoGifts(order: IOrder): boolean {
+  if (!order.promo_progress?.length) return false;
+
+  let changed = false;
+
+  for (const pp of order.promo_progress) {
+    if (pp.reward_type !== "gift" || !pp.reward_gift_code) continue;
+
+    const existingGift = order.items.find(
+      (i: ILineItem) => i.is_gift_line && i.promo_code === pp.promo_code
+    );
+
+    if (pp.reached) {
+      // Scale gift quantity: how many times the threshold is met
+      const baseQty = pp.reward_gift_quantity || 1;
+      const multiplier = pp.goal_value > 0
+        ? Math.floor(pp.current_value / pp.goal_value)
+        : 1;
+      const expectedGiftQty = baseQty * multiplier;
+
+      if (!existingGift) {
+        // Add gift item
+        const maxLine = order.items.reduce(
+          (max: number, i: ILineItem) => Math.max(max, i.line_number || 0), 0
+        );
+        const giftItem = {
+          line_number: maxLine + 10,
+          entity_code: pp.reward_gift_code,
+          sku: pp.reward_gift_code,
+          name: `Omaggio ${pp.reward_gift_code}`,
+          quantity: expectedGiftQty,
+          list_price: 0,
+          unit_price: 0,
+          vat_rate: 0,
+          vat_included: false,
+          line_gross: 0,
+          line_net: 0,
+          line_vat: 0,
+          line_total: 0,
+          is_gift_line: true,
+          promo_code: pp.promo_code,
+          gift_with_purchase: pp.promo_code,
+          added_at: new Date(),
+          updated_at: new Date(),
+        } as unknown as ILineItem;
+        order.items.push(giftItem);
+        changed = true;
+      } else if (existingGift.quantity !== expectedGiftQty) {
+        // Update gift quantity (parent qty changed → gift scales)
+        existingGift.quantity = expectedGiftQty;
+        existingGift.updated_at = new Date();
+        changed = true;
+      }
+    } else if (existingGift) {
+      // Remove gift items — promo goal no longer reached
+      const before = order.items.length;
+      order.items = order.items.filter(
+        (i: ILineItem) => !(i.is_gift_line && i.promo_code === pp.promo_code)
+      ) as typeof order.items;
+      if (order.items.length !== before) changed = true;
+    }
+  }
+
+  return changed;
+}
+
 export async function saveOrder(order: IOrder): Promise<void> {
   recalculateOrderTotals(order);
   recalculatePromoProgress(order);
+  if (enforcePromoGifts(order)) {
+    // Gift items changed — recalculate totals again
+    recalculateOrderTotals(order);
+  }
   await order.save();
 }
 

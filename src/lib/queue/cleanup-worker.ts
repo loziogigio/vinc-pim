@@ -128,6 +128,9 @@ export const cleanupWorker = new Worker("cleanup-queue", processCleanupJob, {
     port: REDIS_PORT,
   },
   concurrency: WORKER_CONCURRENCY,
+  lockDuration: 300_000, // 5 min — scans all FCM tokens per tenant
+  stalledInterval: 150_000,
+  maxStalledCount: 1, // Cleanup is idempotent — safe to retry once
 });
 
 // ============================================

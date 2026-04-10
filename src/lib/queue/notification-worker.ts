@@ -227,6 +227,9 @@ export const notificationWorker = new Worker(
       port: REDIS_PORT,
     },
     concurrency: WORKER_CONCURRENCY,
+    lockDuration: 120_000, // 2 min — campaign sending with external API calls
+    stalledInterval: 60_000,
+    maxStalledCount: 1, // Notifications are idempotent (deduped by campaign status)
   }
 );
 

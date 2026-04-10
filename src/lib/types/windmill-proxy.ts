@@ -87,13 +87,16 @@ export interface ChannelHookConfig {
   hooks: OperationHookConfig[];
 }
 
+export type HookMode = "async" | "blocking" | "blocking_with_fallback";
+
 /** One hook = operation + phase + Windmill script. */
 export interface OperationHookConfig {
   operation: HookOperation;
   phase: HookPhase;
   script_path: string; // Windmill script/flow path (e.g., "f/erp/before_confirm")
   enabled: boolean;
-  blocking: boolean; // before: rejection blocks operation. on: failure rolls back. after: ignored.
+  blocking?: boolean; // DEPRECATED — use `mode` instead. Kept for backward compat.
+  mode?: HookMode; // async = fire-and-forget. blocking = wait. blocking_with_fallback = try sync, fallback to async on timeout.
   timeout_ms?: number; // per-hook override
 }
 
@@ -155,6 +158,25 @@ export interface OnHookResponse {
 /** "after" hook — fire-and-forget, no required shape. */
 export type AfterHookResponse = Record<string, unknown>;
 
+// ─── WINDMILL JOB REFERENCE (stored in erp_data.windmill_jobs[]) ──
+
+export type WindmillJobStatus = "queued" | "completed" | "failed";
+
+/** A reference to a Windmill job execution, stored per-order. */
+export interface WindmillJobRef {
+  job_id: string;
+  script: string;
+  phase: HookPhase;
+  operation: string;
+  timestamp: string;
+  // Enhanced tracking (all optional for backward compat with existing jobs)
+  status?: WindmillJobStatus;
+  completed_at?: string;
+  duration_ms?: number;
+  error?: string;
+  mode?: "sync" | "async";
+}
+
 // ─── HOOK RESULTS (returned to callers) ───────────────────────────
 
 export interface BeforeHookResult {
@@ -173,5 +195,7 @@ export interface OnHookResult {
   response?: OnHookResponse;
   timedOut?: boolean;
   error?: string;
-  blocking: boolean;
+  mode: HookMode;
+  async?: boolean;
+  jobId?: string;
 }

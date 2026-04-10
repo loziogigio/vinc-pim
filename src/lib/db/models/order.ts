@@ -85,6 +85,9 @@ export interface ILineItem {
   brand?: string;
   category?: string;
 
+  // Note
+  note?: string;
+
   // Tracking
   added_at: Date;
   updated_at: Date;
@@ -125,7 +128,7 @@ export interface ILineItem {
 export interface IPromoProgress {
   promo_code: string;
   promo_label?: string;
-  goal_type: "value" | "quantity";
+  goal_type: "value" | "quantity" | "line_count";
   goal_value: number;
   current_value: number;
   remaining: number;
@@ -749,6 +752,9 @@ const LineItemSchema = new Schema<ILineItem>(
     brand: { type: String },
     category: { type: String },
 
+    // Note
+    note: { type: String },
+
     // Tracking
     added_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
@@ -769,7 +775,7 @@ const LineItemSchema = new Schema<ILineItem>(
     }],
 
     // Promo goal (for threshold-based promos)
-    promo_goal_type: { type: String, enum: ["value", "quantity"] },
+    promo_goal_type: { type: String, enum: ["value", "quantity", "line_count"] },
     promo_goal_value: { type: Number },
     promo_goal_label: { type: String },
     promo_start_date: { type: String },
@@ -984,7 +990,7 @@ const OrderSchema = new Schema<IOrder>(
     promo_progress: [{
       promo_code: { type: String, required: true },
       promo_label: { type: String },
-      goal_type: { type: String, enum: ["value", "quantity"], required: true },
+      goal_type: { type: String, enum: ["value", "quantity", "line_count"], required: true },
       goal_value: { type: Number, required: true },
       current_value: { type: Number, default: 0 },
       remaining: { type: Number, default: 0 },

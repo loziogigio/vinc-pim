@@ -9,7 +9,7 @@ import {
   hasCustomerAccess,
 } from "@/lib/auth/portal-user-token";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
-import { buildHookCtxFromOrder, runOnHook, runOnMergeAfter, mergeOrderErpData } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtxFromOrder, runOnHookAuto, mergeOrderErpData, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -167,7 +167,7 @@ export async function GET(
 
     // ── ON HOOK: enrich with ERP data (prices, stock) ──
     const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, tenantId, "cart.get", order);
-    const on = await runOnHook(hookCtx);
+    const on = await runOnHookAuto(hookCtx);
     if (on.hooked && on.success && on.response?.data) {
       await mergeOrderErpData(OrderModel, (order as any)._id, on.response);
     }
@@ -190,7 +190,7 @@ export async function GET(
         totalItemsCount,
         hasSearch: !!search,
       },
-      ...(on.hooked ? { windmill: { channel, on: { synced: on.success, timed_out: on.timedOut } } } : {}),
+      ...windmillResponseFragment(hookCtx.channel, null, on),
     });
   } catch (error) {
     console.error("Error fetching order:", error);
@@ -409,9 +409,9 @@ export async function DELETE(
       );
     }
 
-    // ── HOOKS: sync deletion to ERP + fire-and-forget ──
+    // ── HOOKS: sync deletion to ERP (blocking if configured) ──
     const delCtx = buildHookCtxFromOrder(auth.tenantDb!, tenantId, "cart.delete", order);
-    await runOnMergeAfter(delCtx, OrderModel, (order as any)._id);
+    const delOn = await runOnHookAuto(delCtx);
 
     await OrderModel.updateOne(
       { order_id, tenant_id: tenantId },
@@ -421,7 +421,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: "Order deleted successfully",
-      ...(delOn.hooked ? { windmill: { channel: delChannel, on: { synced: delOn.success, timed_out: delOn.timedOut } } } : {}),
+      ...windmillResponseFragment(delCtx.channel, null, delOn),
     });
   } catch (error) {
     console.error("Error deleting order:", error);

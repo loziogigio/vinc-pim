@@ -20,7 +20,9 @@ import {
   Package,
   Plus,
   Trash2,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -44,6 +46,7 @@ type OrderStats = {
   quotation: number;
   pending: number;
   confirmed: number;
+  preparing: number;
   shipped: number;
   delivered: number;
   cancelled: number;
@@ -114,6 +117,7 @@ export default function OrdersListPage() {
     quotation: 0,
     pending: 0,
     confirmed: 0,
+    preparing: 0,
     shipped: 0,
     delivered: 0,
     cancelled: 0,
@@ -145,6 +149,26 @@ export default function OrdersListPage() {
   const clearSelection = () => {
     setSelectedOrders(new Set());
   };
+
+  async function duplicateOrder(orderId: string) {
+    try {
+      const res = await fetch(`/api/b2b/orders/${orderId}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ include_discounts: false, clear_notes: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to duplicate");
+        return;
+      }
+      toast.success(t("common.duplicate") + " ✓");
+      fetchOrders();
+    } catch (err) {
+      console.error("Duplicate error:", err);
+      toast.error("Failed to duplicate");
+    }
+  }
 
   async function deleteOrder(orderId: string) {
     if (!confirm(t("pages.store.ordersList.confirmDeleteCart"))) return;
@@ -240,6 +264,7 @@ export default function OrdersListPage() {
           quotation: 0,
           pending: 0,
           confirmed: 0,
+          preparing: 0,
           shipped: 0,
           delivered: 0,
           cancelled: 0,
@@ -342,15 +367,17 @@ export default function OrdersListPage() {
           </div>
         </button>
         <button
-          onClick={() => updateFilters({ status: "quotation" })}
+          onClick={() => updateFilters({ status: "quotation,pending,confirmed,preparing,shipped,delivered" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "quotation" ? "border-indigo-400 bg-indigo-50" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "quotation,pending,confirmed,preparing,shipped,delivered" ? "border-indigo-400 bg-indigo-50" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <FileText className="h-4 w-4 text-indigo-600" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.quotation}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.quotes")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.quotation + stats.pending + stats.confirmed + (stats.preparing || 0) + stats.shipped + stats.delivered}
+            </div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.active")}</div>
           </div>
         </button>
         <button
@@ -922,6 +949,15 @@ export default function OrdersListPage() {
                               <Eye className="h-3 w-3" />
                               {t("common.view")}
                             </Link>
+                            {order.status !== "cancelled" && (
+                              <button
+                                onClick={() => duplicateOrder(order.order_id)}
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                title={t("common.duplicate")}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            )}
                             {order.status === "draft" && (
                               <button
                                 onClick={() => deleteOrder(order.order_id)}

@@ -425,6 +425,9 @@ export const syncWorker = new Worker('sync-queue', processSyncJob, {
     port: REDIS_PORT,
   },
   concurrency: WORKER_CONCURRENCY,
+  lockDuration: 300_000, // 5 min — bulk index and marketplace API calls can be slow
+  stalledInterval: 150_000, // Check stalled every 2.5 min
+  maxStalledCount: 1, // Sync is idempotent — safe to retry once on stall
   limiter: {
     max: RATE_LIMIT_MAX,
     duration: RATE_LIMIT_DURATION,

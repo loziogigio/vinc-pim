@@ -6,7 +6,7 @@
  * Client component that handles the login form submission.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Eye, EyeOff, AlertCircle, Building2, Lock } from "lucide-react";
@@ -15,6 +15,8 @@ interface LoginFormProps {
   clientId?: string;
   tenantId?: string;
   tenantName?: string;
+  tenantLogo?: string | null;
+  primaryColor?: string;
   redirectUri?: string;
   state?: string;
   prompt?: string;
@@ -32,6 +34,8 @@ export function LoginForm({
   clientId,
   tenantId: initialTenantId,
   tenantName,
+  tenantLogo,
+  primaryColor,
   redirectUri,
   state,
   prompt,
@@ -51,8 +55,59 @@ export function LoginForm({
   // Tenant is locked when provided via URL
   const isTenantLocked = !!initialTenantId;
 
+  // Accent color from branding
+  const accentColor = primaryColor || "#6366f1";
+
   // Determine if this is an OAuth flow
   const isOAuthFlow = !!clientId && !!redirectUri;
+
+  // Silent SSO: if user has an active session, auto-generate code and redirect
+  useEffect(() => {
+    if (!isOAuthFlow) return;
+
+    let cancelled = false;
+
+    async function tryAutoLogin() {
+      try {
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = await sessionRes.json();
+
+        if (cancelled || !sessionData.authenticated) return;
+
+        // Generate auth code from existing session
+        const authorizeRes = await fetch("/api/auth/authorize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            tenant_id: sessionData.tenant_id,
+            state,
+            code_challenge: codeChallenge,
+            code_challenge_method: codeChallengeMethod,
+          }),
+        });
+
+        const authorizeData = await authorizeRes.json();
+
+        if (cancelled || !authorizeRes.ok || !authorizeData.code) return;
+
+        // Redirect with the code (same as normal OAuth flow)
+        setIsRedirecting(true);
+        const url = new URL(authorizeData.redirect_uri);
+        url.searchParams.set("code", authorizeData.code);
+        if (authorizeData.state) {
+          url.searchParams.set("state", authorizeData.state);
+        }
+        window.location.href = url.toString();
+      } catch {
+        // Silent fail — show login form as usual
+      }
+    }
+
+    tryAutoLogin();
+    return () => { cancelled = true; };
+  }, [isOAuthFlow, clientId, redirectUri, state, codeChallenge, codeChallengeMethod]);
 
   // Build forgot password URL with preserved params
   const forgotPasswordUrl = useMemo(() => {
@@ -177,14 +232,9 @@ export function LoginForm({
             <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
               <Building2 className="h-4 w-4 text-indigo-600" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
-                {tenantName || initialTenantId}
-              </p>
-              {tenantName && (
-                <p className="text-xs text-slate-500">{initialTenantId}</p>
-              )}
-            </div>
+            <p className="flex-1 text-sm font-medium text-slate-900 truncate">
+              {tenantName || initialTenantId}
+            </p>
             <Lock className="w-4 h-4 text-slate-400" />
           </div>
         </div>
@@ -244,7 +294,8 @@ export function LoginForm({
           </label>
           <Link
             href={forgotPasswordUrl}
-            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            className="text-sm font-medium"
+            style={{ color: accentColor }}
           >
             Password dimenticata?
           </Link>
@@ -278,7 +329,19 @@ export function LoginForm({
       <button
         type="submit"
         disabled={isLoading || isRedirecting}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        style={{
+          backgroundColor: accentColor,
+          "--tw-ring-color": accentColor,
+        } as React.CSSProperties}
+        onMouseEnter={(e) => {
+          if (!isLoading && !isRedirecting) {
+            e.currentTarget.style.filter = "brightness(0.9)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.filter = "";
+        }}
       >
         {isRedirecting ? (
           <>

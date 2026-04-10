@@ -23,7 +23,7 @@ import {
   buildHookCtxFromOrder,
   updateCtxFromOrder,
   runBeforeHookWithAsyncFallback,
-  runOnHookWithAsyncFallback,
+  runOnHookAuto,
   runAfterHook,
   mergeOrderErpData,
   pushWindmillJobRef,
@@ -119,6 +119,7 @@ export async function POST(
       );
       await pushWindmillJobRef(Order, orderId, {
         job_id: before.jobId, script: "before_order_submit", phase: "before", operation: "order.submit",
+        status: "queued", mode: "async",
       });
 
       return NextResponse.json(
@@ -133,7 +134,23 @@ export async function POST(
       );
     }
 
+    // Push sync before-hook result (allowed or rejected)
+    if (before.hooked && !before.async) {
+      await pushWindmillJobRef(Order, orderId, {
+        job_id: `sync-${crypto.randomUUID()}`,
+        script: "before_order_submit", phase: "before", operation: "order.submit",
+        status: before.allowed ? "completed" : "failed",
+        error: before.allowed ? undefined : (before.message || "Operation rejected by ERP"),
+        mode: "sync",
+      });
+    }
+
     if (before.hooked && !before.allowed) {
+      // Persist ERP data even on rejection — erp_cart_id and erp_line_numbers
+      // must survive so the next submit reuses the same ERP cart/rows
+      if (before.modified_data) {
+        await mergeOrderErpData(Order, order._id, { success: true, data: before.modified_data });
+      }
       // Release the submitting lock so user can retry
       await Order.updateOne({ order_id: orderId }, { $set: { submitting: false } });
       return NextResponse.json(
@@ -166,7 +183,7 @@ export async function POST(
     updateCtxFromOrder(hookCtx, result.order);
 
     // ── ON HOOK: ERP export with async fallback ──
-    const on = await runOnHookWithAsyncFallback(hookCtx);
+    const on = await runOnHookAuto(hookCtx);
 
     if (on.hooked && on.async && on.jobId) {
       // Async path — ERP processing exceeded sync timeout
@@ -183,6 +200,7 @@ export async function POST(
       );
       await pushWindmillJobRef(Order, orderId, {
         job_id: on.jobId, script: "on_order_submit", phase: "on", operation: "order.submit",
+        status: "queued", mode: "async",
       });
 
       void dispatchTrigger(dbName, "order_processing", {
@@ -210,6 +228,17 @@ export async function POST(
       // Sync path — ERP completed within timeout, merge data
       const OrderModel = connection.model("Order");
       await mergeOrderErpData(OrderModel, (result.order as any)?._id, on.response);
+    }
+
+    // Push sync on-hook result
+    if (on.hooked && !on.async) {
+      await pushWindmillJobRef(Order, orderId, {
+        job_id: `sync-${crypto.randomUUID()}`,
+        script: "on_order_submit", phase: "on", operation: "order.submit",
+        status: on.success ? "completed" : "failed",
+        error: on.success ? undefined : (on.error || on.response?.error),
+        mode: "sync",
+      });
     }
 
     // Standard notification (same as before for tenants without hooks)

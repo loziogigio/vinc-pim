@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { safeRegexQuery, safeRegexQueryWithMatchMode, sanitizeMongoQuery, type MatchMode } from "@/lib/security";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
-import { buildProductSearchConditions } from "@/lib/search/product-search";
+import { buildProductListQuery, type ProductFilterParams } from "@/lib/pim/product-query-builder";
+import type { MatchMode } from "@/lib/security";
 import crypto from "crypto";
 
 /**
@@ -66,115 +66,31 @@ export async function GET(req: NextRequest) {
     const productType = searchParams.get("product_type");
     const productKind = searchParams.get("product_kind");
 
-    // Build query
-    const query: any = {
-      // No wholesaler_id - database provides isolation
-      isCurrent: true,
+    // Build query using shared query builder
+    const filterParams: ProductFilterParams = {
+      search: search || undefined,
+      status: status || undefined,
+      source_id: sourceId || undefined,
+      batch_id: batchId || undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      entity_code: entityCode || undefined,
+      sku: sku || undefined,
+      sku_match: sku ? skuMatch : undefined,
+      parent_sku: parentSku || undefined,
+      parent_sku_match: parentSku ? parentSkuMatch : undefined,
+      brand: brand || undefined,
+      category: category || undefined,
+      product_type: productType || undefined,
+      exclude_product_type: excludeProductType || undefined,
+      product_kind: productKind || undefined,
+      price_min: priceMin || undefined,
+      price_max: priceMax || undefined,
+      score_min: scoreMin || undefined,
+      score_max: scoreMax || undefined,
     };
 
-    if (status) query.status = sanitizeMongoQuery(status);
-    if (productKind) query.product_kind = sanitizeMongoQuery(productKind);
-
-    // Exclude products already associated with a specific product type
-    if (excludeProductType) {
-      query.$and = query.$and || [];
-      query.$and.push({
-        $or: [
-          { "product_type.product_type_id": { $ne: excludeProductType } },
-          { "product_type.product_type_id": { $exists: false } },
-          { product_type: { $exists: false } },
-        ],
-      });
-    }
-    if (sourceId) query["source.source_id"] = sanitizeMongoQuery(sourceId);
-    if (batchId) {
-      // Support partial matching for batch ID (sanitized)
-      query["source.batch_id"] = safeRegexQuery(batchId);
-    }
-
-    // Search by name (all languages), SKU, entity_code, parent identifiers
-    if (search) {
-      query.$or = await buildProductSearchConditions(search, tenantDb);
-    }
-
-    // Date range filter
-    if (dateFrom || dateTo) {
-      query.updated_at = {};
-      if (dateFrom) {
-        query.updated_at.$gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        // Include the entire end date
-        const endDate = new Date(dateTo);
-        endDate.setHours(23, 59, 59, 999);
-        query.updated_at.$lte = endDate;
-      }
-    }
-
-    // Advanced filters (all sanitized to prevent NoSQL injection)
-    if (entityCode) {
-      query.entity_code = safeRegexQuery(entityCode);
-    }
-    if (sku) {
-      // Use match mode for SKU (handles special chars like *, /, ,, +, &, $)
-      query.sku = safeRegexQueryWithMatchMode(sku, skuMatch);
-    }
-    if (parentSku) {
-      // Use match mode for parent_sku (handles special chars like *, /, ,, +, &, $)
-      query.parent_sku = safeRegexQueryWithMatchMode(parentSku, parentSkuMatch);
-    }
-    if (brand) {
-      const brandRegex = safeRegexQuery(brand);
-      query.$and = query.$and || [];
-      query.$and.push({
-        "brand.label": brandRegex,
-      });
-    }
-    if (category) {
-      const catRegex = safeRegexQuery(category);
-      query.$and = query.$and || [];
-      query.$and.push({
-        $or: [
-          { "category.name.it": catRegex },
-          { "category.name.en": catRegex },
-          { "category.name": catRegex },
-        ],
-      });
-    }
-    if (productType) {
-      // product_type.name is multilingual — search across all language values
-      const ptRegex = safeRegexQuery(productType);
-      query.$and = query.$and || [];
-      query.$and.push({
-        $or: [
-          { "product_type.name.it": ptRegex },
-          { "product_type.name.en": ptRegex },
-          { "product_type.name": ptRegex },
-        ],
-      });
-    }
-
-    // Price range filter
-    if (priceMin || priceMax) {
-      query.price = {};
-      if (priceMin) {
-        query.price.$gte = parseFloat(priceMin);
-      }
-      if (priceMax) {
-        query.price.$lte = parseFloat(priceMax);
-      }
-    }
-
-    // Completeness score range filter
-    if (scoreMin || scoreMax) {
-      query.completeness_score = {};
-      if (scoreMin) {
-        query.completeness_score.$gte = parseInt(scoreMin);
-      }
-      if (scoreMax) {
-        query.completeness_score.$lte = parseInt(scoreMax);
-      }
-    }
+    const query = await buildProductListQuery(filterParams, tenantDb);
 
     // Build sort
     let sort: any = {};

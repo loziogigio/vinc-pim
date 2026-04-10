@@ -71,6 +71,14 @@ export async function validateRedirectUriForTenant(
       return true;
     }
 
+    // 2. Allow any vendereincloud.it domain (first-party)
+    if (
+      redirectUrl.hostname === "vendereincloud.it" ||
+      redirectUrl.hostname.endsWith(".vendereincloud.it")
+    ) {
+      return true;
+    }
+
     // 2. Check tenant domains from AdminTenant
     const TenantModel = await getTenantModel();
     const tenant = await TenantModel.findByTenantId(tenantId);
@@ -179,8 +187,14 @@ export async function validateClientForTenant(
 
   if (!client) return null;
 
-  // Validate redirect URI against tenant configuration
-  // Pass allow_reseller_domains flag from client config
+  // 1. Check against the client's registered redirect_uris
+  if (client.redirect_uris?.length > 0) {
+    if (client.redirect_uris.includes(redirectUri)) {
+      return client;
+    }
+  }
+
+  // 2. Fallback: validate against tenant-configured domains
   const isValidUri = await validateRedirectUriForTenant(redirectUri, tenantId, {
     allowResellerDomains: client.allow_reseller_domains,
   });

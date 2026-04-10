@@ -109,6 +109,7 @@ export default function ProductsListPage() {
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
   const [productTypeSuggestions, setProductTypeSuggestions] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [pagination, setPagination] = useState({
@@ -144,6 +145,7 @@ export default function ProductsListPage() {
 
   // Selection handlers
   const toggleSelectProduct = (productId: string) => {
+    setSelectAllMatching(false);
     setSelectedProducts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(productId)) {
@@ -159,6 +161,7 @@ export default function ProductsListPage() {
     if (selectedProducts.size === products.length) {
       // Deselect all
       setSelectedProducts(new Set());
+      setSelectAllMatching(false);
     } else {
       // Select all products on current page
       setSelectedProducts(new Set(products.map((p) => p._id)));
@@ -167,6 +170,7 @@ export default function ProductsListPage() {
 
   const clearSelection = () => {
     setSelectedProducts(new Set());
+    setSelectAllMatching(false);
   };
 
   const exportSelectedProducts = async () => {
@@ -203,15 +207,25 @@ export default function ProductsListPage() {
     }
   };
 
+  const buildFiltersPayload = () => {
+    const payload: Record<string, string> = {};
+    for (const [key, value] of Object.entries(filters)) {
+      if (value && key !== "sort") payload[key] = value;
+    }
+    return payload;
+  };
+
   const handleBulkUpdate = async (updates: BulkUpdateData) => {
     try {
-      const productIds = Array.from(selectedProducts);
+      const body = selectAllMatching
+        ? { filters: buildFiltersPayload(), updates }
+        : { product_ids: Array.from(selectedProducts), updates };
       const res = await fetch("/api/b2b/pim/products/bulk-update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ product_ids: productIds, updates }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
@@ -875,13 +889,17 @@ export default function ProductsListPage() {
       </div>
 
       {/* Selection Actions Toolbar */}
-      {selectedProducts.size > 0 && (
-        <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 shadow-sm">
+      {(selectedProducts.size > 0 || selectAllMatching) && (
+        <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 shadow-sm space-y-2">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium text-foreground">
-                <span className="font-bold">{selectedProducts.size}</span> product
-                {selectedProducts.size !== 1 ? "s" : ""} selected
+                {selectAllMatching ? (
+                  <>{t("pages.pim.products.allMatchingSelected", { total: pagination.total.toLocaleString() })}</>
+                ) : (
+                  <><span className="font-bold">{selectedProducts.size}</span> product
+                  {selectedProducts.size !== 1 ? "s" : ""} selected</>
+                )}
               </div>
               <button
                 onClick={clearSelection}
@@ -891,13 +909,15 @@ export default function ProductsListPage() {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={exportSelectedProducts}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
-              >
-                <Download className="h-4 w-4" />
-                {t("pages.pim.products.exportSelected")}
-              </button>
+              {!selectAllMatching && (
+                <button
+                  onClick={exportSelectedProducts}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
+                >
+                  <Download className="h-4 w-4" />
+                  {t("pages.pim.products.exportSelected")}
+                </button>
+              )}
               <button
                 onClick={() => setShowBulkUpdateModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 text-sm font-medium transition"
@@ -907,6 +927,18 @@ export default function ProductsListPage() {
               </button>
             </div>
           </div>
+          {/* Gmail-style "Select all matching" banner */}
+          {isAllSelected && !selectAllMatching && pagination.total > products.length && (
+            <div className="text-sm text-center text-muted-foreground">
+              {t("pages.pim.products.allOnPageSelected", { count: products.length })}{" "}
+              <button
+                onClick={() => setSelectAllMatching(true)}
+                className="text-primary font-medium hover:underline"
+              >
+                {t("pages.pim.products.selectAllMatching", { total: pagination.total.toLocaleString() })}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1147,7 +1179,8 @@ export default function ProductsListPage() {
       <BulkUpdateModal
         isOpen={showBulkUpdateModal}
         onClose={() => setShowBulkUpdateModal(false)}
-        selectedCount={selectedProducts.size}
+        selectedCount={selectAllMatching ? pagination.total : selectedProducts.size}
+        isFilterMode={selectAllMatching}
         onUpdate={handleBulkUpdate}
       />
 

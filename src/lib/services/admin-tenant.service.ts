@@ -644,7 +644,9 @@ export async function updateTenant(
     | "require_login"
     | "home_settings_customer_id"
     | "builder_url"
+    | "b2b_theme"
     | "vetrina"
+    | "enabled_apps"
   >>
 ): Promise<ITenantDocument> {
   const TenantModel = await getTenantModel();
@@ -667,7 +669,9 @@ export async function updateTenant(
   if (updates.require_login !== undefined) tenant.require_login = updates.require_login;
   if (updates.home_settings_customer_id !== undefined) tenant.home_settings_customer_id = updates.home_settings_customer_id;
   if (updates.builder_url !== undefined) tenant.builder_url = updates.builder_url;
+  if (updates.b2b_theme !== undefined) tenant.b2b_theme = updates.b2b_theme;
   if (updates.vetrina !== undefined) tenant.vetrina = updates.vetrina;
+  if (updates.enabled_apps !== undefined) tenant.enabled_apps = updates.enabled_apps;
 
   await tenant.save();
 

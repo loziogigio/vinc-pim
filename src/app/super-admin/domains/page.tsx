@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
+  Layers,
 } from "lucide-react";
 
 interface DomainEntry {
@@ -259,6 +260,13 @@ export default function DomainsPage() {
               >
                 <Globe className="h-4 w-4" />
                 Domains
+              </Link>
+              <Link
+                href="/super-admin/platform-apps"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+              >
+                <Layers className="h-4 w-4" />
+                Platform Apps
               </Link>
             </nav>
           </div>

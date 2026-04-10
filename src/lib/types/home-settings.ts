@@ -371,6 +371,7 @@ export interface CategoryMenuWidgetConfig {
   menuId?: string;
   label?: string;
   icon?: string;
+  channel?: string;
 }
 
 export interface ButtonWidgetConfig {

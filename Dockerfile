@@ -8,7 +8,7 @@ FROM ${NODE_IMAGE} AS base
 WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+RUN npm install -g pnpm@${PNPM_VERSION}
 
 # Install dependencies (cached by lockfile)
 FROM base AS deps

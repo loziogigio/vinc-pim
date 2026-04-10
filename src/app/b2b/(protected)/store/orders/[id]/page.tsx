@@ -23,6 +23,7 @@ interface EditingLineState {
   unitPriceInput: string; // String for input field to allow decimal typing
   listPrice: number;
   minOrderQuantity: number;
+  note: string;
 }
 import {
   ShoppingCart,
@@ -52,6 +53,8 @@ import {
   MessageSquare,
   Ticket,
   ChevronDown,
+  Copy,
+  Gift,
 } from "lucide-react";
 
 // Import lifecycle components
@@ -148,14 +151,41 @@ function ErpDataCard({ order }: { order: any }) {
               <div className="pl-3 space-y-0.5 pb-1">
                 {Array.isArray(value)
                   ? (value as any[]).map((item, i) => (
-                      <div key={i} className="text-xs font-mono text-muted-foreground">
-                        {typeof item === "object" ? JSON.stringify(item) : String(item)}
+                      <div key={i}>
+                        {typeof item === "object" && item !== null ? (
+                          <div className="rounded border border-border/50 bg-muted/30 p-2 mb-1 space-y-0.5">
+                            {Object.entries(item).map(([k, v]) => (
+                              <div key={k} className="flex justify-between text-xs gap-2">
+                                <span className="text-muted-foreground shrink-0">{k.replace(/_/g, " ")}</span>
+                                <span className="font-mono text-right truncate" title={String(v)}>{String(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs font-mono text-muted-foreground">{String(item)}</div>
+                        )}
                       </div>
                     ))
                   : Object.entries(value as Record<string, unknown>).map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{k.replace(/_/g, " ")}</span>
-                        <span className="font-mono text-xs">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                      <div key={k}>
+                        {typeof v === "object" && v !== null ? (
+                          <div className="border-t border-border/50 pt-1 mt-1">
+                            <p className="text-xs font-medium text-muted-foreground mb-0.5">{k.replace(/_/g, " ")}</p>
+                            <div className="rounded border border-border/50 bg-muted/30 p-2 space-y-0.5">
+                              {Object.entries(v as Record<string, unknown>).map(([k2, v2]) => (
+                                <div key={k2} className="flex justify-between text-xs gap-2">
+                                  <span className="text-muted-foreground shrink-0">{k2.replace(/_/g, " ")}</span>
+                                  <span className="font-mono text-right truncate" title={String(v2)}>{String(v2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                            <span className="font-mono text-xs">{String(v)}</span>
+                          </div>
+                        )}
                       </div>
                     ))
                 }
@@ -175,17 +205,71 @@ function ErpDataCard({ order }: { order: any }) {
               <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${openSections["_windmill_jobs"] ? "rotate-180" : ""}`} />
             </button>
             {openSections["_windmill_jobs"] && (
-              <div className="pl-3 space-y-1 pb-1">
-                {windmillJobs.map((job: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground text-xs">{job.phase}/{job.script}</span>
-                    <code
-                      className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded cursor-pointer hover:bg-muted/80 select-all"
-                      title="Click to copy"
-                      onClick={() => navigator.clipboard.writeText(job.job_id)}
-                    >{job.job_id}</code>
-                  </div>
-                ))}
+              <div className="space-y-1.5 pb-1 pt-1">
+                {windmillJobs.map((job: any, i: number) => {
+                  const status = job.status || "unknown";
+                  const dotColor =
+                    status === "completed" ? "bg-emerald-500" :
+                    status === "failed" ? "bg-red-500" :
+                    status === "queued" ? "bg-amber-500" :
+                    "bg-gray-400";
+                  const statusColor =
+                    status === "completed" ? "text-emerald-600" :
+                    status === "failed" ? "text-red-600" :
+                    status === "queued" ? "text-amber-600" :
+                    "text-muted-foreground";
+
+                  return (
+                    <div key={i} className="rounded border border-border/50 bg-muted/30 p-2 space-y-1">
+                      {/* Row 1: status dot + phase/script + mode + timestamp */}
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                          <span className="font-medium">{job.phase}/{job.script}</span>
+                          {job.mode && (
+                            <span className="text-muted-foreground/60">({job.mode})</span>
+                          )}
+                        </div>
+                        <span className="text-muted-foreground text-[10px]">
+                          {job.timestamp ? new Date(job.timestamp).toLocaleTimeString() : ""}
+                        </span>
+                      </div>
+                      {/* Row 2: operation + job_id */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{job.operation}</span>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors"
+                          title="Click to copy"
+                          onClick={() => {
+                            navigator.clipboard.writeText(job.job_id);
+                            const el = document.getElementById(`job-copied-${i}`);
+                            if (el) { el.classList.remove("hidden"); setTimeout(() => el.classList.add("hidden"), 1500); }
+                          }}
+                        >
+                          {job.job_id.length > 16 ? `${job.job_id.slice(0, 8)}…${job.job_id.slice(-4)}` : job.job_id}
+                          <Copy className="h-2.5 w-2.5" />
+                        </button>
+                        <span id={`job-copied-${i}`} className="hidden text-[10px] text-emerald-600">copied!</span>
+                      </div>
+                      {/* Row 3: status + duration */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={`font-medium ${statusColor}`}>{status}</span>
+                        {job.duration_ms != null && (
+                          <span className="text-muted-foreground">
+                            {job.duration_ms < 1000
+                              ? `${job.duration_ms}ms`
+                              : `${(job.duration_ms / 1000).toFixed(1)}s`}
+                          </span>
+                        )}
+                      </div>
+                      {/* Row 4: error message */}
+                      {job.error && (
+                        <p className="text-xs text-red-500 bg-red-50 rounded px-1.5 py-1 mt-0.5">{job.error}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -359,6 +443,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       unitPriceInput: String(item.unit_price),
       listPrice: item.list_price,
       minOrderQuantity: item.pack_size || 1, // Can't order partial boxes
+      note: item.note || "",
     });
   }
 
@@ -419,6 +504,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             line_number: editingLine.lineNumber,
             quantity: editingLine.quantity,
             unit_price: editingLine.unitPrice,
+            note: editingLine.note,
           }],
         }),
       });
@@ -886,13 +972,25 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             </button>
                           </div>
                         </div>
+                        {/* Note Input */}
+                        <div className="mt-2 flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <input
+                            type="text"
+                            value={editingLine.note}
+                            onChange={(e) => setEditingLine({ ...editingLine, note: e.target.value })}
+                            placeholder={t("pages.store.orderDetail.notePlaceholder")}
+                            disabled={isSaving}
+                            className="flex-1 px-3 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                          />
+                        </div>
                       </div>
                     );
                   }
 
                   // Normal display mode
                   return (
-                  <div key={item.line_number} className={`p-4 ${selectedForDelete.has(item.line_number) ? "bg-red-50" : ""}`}>
+                  <div key={item.line_number} className={`p-4 ${selectedForDelete.has(item.line_number) ? "bg-red-50" : item.is_gift_line ? "bg-emerald-50/50 border-l-4 border-emerald-400" : ""}`}>
                     <div className="flex items-start gap-4">
                       {/* Checkbox for delete (only for draft) */}
                       {isDraft && !editingLine && (
@@ -924,7 +1022,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
                       {/* Product Details */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground line-clamp-2">
+                        <h3 className="font-medium text-foreground line-clamp-2 flex items-center gap-2">
                           {(!item.product_source || item.product_source === "pim") ? (
                             <Link
                               href={`${tenantPrefix}/b2b/pim/products/${item.entity_code}`}
@@ -934,6 +1032,12 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             </Link>
                           ) : (
                             item.name
+                          )}
+                          {item.is_gift_line && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wide shrink-0">
+                              <Gift className="h-3 w-3" />
+                              {t("common.gift") || "Omaggio"}
+                            </span>
                           )}
                         </h3>
                         <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
@@ -1015,6 +1119,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             </span>
                           )}
                         </div>
+
+                        {/* Line Note */}
+                        {item.note && (
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <MessageSquare className="h-3 w-3 flex-shrink-0" />
+                            <span>{item.note}</span>
+                          </div>
+                        )}
 
                         {/* Promo Goal Progress */}
                         {item.promo_code && (() => {
@@ -1140,13 +1252,21 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
                         {/* Line Total */}
                         <div className="text-right">
-                          <div className="font-semibold text-foreground">
-                            {fmtTotal.format(item.line_total)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Net:{" "}
-                            {fmtTotal.format(item.line_net)}
-                          </div>
+                          {item.is_gift_line ? (
+                            <div className="font-bold text-emerald-600 uppercase text-sm">
+                              {t("common.gift") || "Omaggio"}
+                            </div>
+                          ) : (
+                            <>
+                              <div className="font-semibold text-foreground">
+                                {fmtTotal.format(item.line_total)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Net:{" "}
+                                {fmtTotal.format(item.line_net)}
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         {/* Remove Button */}

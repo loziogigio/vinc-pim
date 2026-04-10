@@ -70,6 +70,9 @@ export const bookingExpiryWorker = new Worker(
       port: REDIS_PORT,
     },
     concurrency: 5,
+    lockDuration: 60_000, // 1 min — quick DB update to expire booking
+    stalledInterval: 30_000,
+    maxStalledCount: 1, // Expiry is idempotent — safe to retry once
   }
 );
 

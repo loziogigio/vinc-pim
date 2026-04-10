@@ -35,9 +35,6 @@ import {
   Upload,
   X,
   Save,
-  AlertCircle,
-  ExternalLink,
-  CheckCircle2,
   Share2,
   Facebook,
   Instagram,
@@ -50,6 +47,8 @@ import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
 import { cn } from "@/components/ui/utils";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { SectionCard } from "./section-card";
+import { MenuWidgetConfig } from "@/components/shared/MenuWidgetConfig";
+import { ButtonWidgetConfig, type ButtonWidgetConfigData } from "@/components/shared/ButtonWidgetConfig";
 import type { HeaderConfig } from "./types";
 import type {
   HeaderRow,
@@ -183,117 +182,6 @@ const SOCIAL_PLATFORMS = [
   { value: "tiktok", label: "TikTok", icon: Share2 },
   { value: "pinterest", label: "Pinterest", icon: Share2 },
 ];
-
-// ============================================
-// Menu Widget Config (fetches menu status for channel)
-// ============================================
-
-function MenuWidgetConfig({
-  channel,
-  config,
-  onConfigChange,
-}: {
-  channel?: string;
-  config: { label?: string };
-  onConfigChange: (updates: Record<string, unknown>) => void;
-}) {
-  const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!channel) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    fetch(`/api/b2b/menu?location=header&channel=${encodeURIComponent(channel)}`)
-      .then((res) => res.ok ? res.json() : { menuItems: [] })
-      .then((data) => setMenuItems(data.menuItems || []))
-      .catch(() => setMenuItems([]))
-      .finally(() => setLoading(false));
-  }, [channel]);
-
-  const rootItems = menuItems.filter((item) => !item.parent_id);
-  const hasMenu = rootItems.length > 0;
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs font-medium text-slate-600">Label</label>
-        <input
-          type="text"
-          value={config.label || ""}
-          onChange={(e) => onConfigChange({ label: e.target.value })}
-          placeholder="Menu"
-          className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
-        />
-      </div>
-
-      {/* Menu status for channel */}
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-medium text-slate-600">Linked Menu</span>
-          {channel && (
-            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
-              {channel}
-            </span>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="flex items-center gap-2 py-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-            <span className="text-xs text-slate-500">Loading...</span>
-          </div>
-        ) : !channel ? (
-          <div className="flex items-center gap-2 py-2 text-amber-600">
-            <AlertCircle className="h-3.5 w-3.5" />
-            <span className="text-xs">No channel assigned to this storefront</span>
-          </div>
-        ) : hasMenu ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 py-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="text-xs text-slate-700">
-                {rootItems.length} root item{rootItems.length !== 1 ? "s" : ""} ({menuItems.length} total)
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {rootItems.slice(0, 8).map((item) => (
-                <span key={item.menu_item_id} className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600 border border-slate-200">
-                  {item.label || item.reference_id || item.type}
-                </span>
-              ))}
-              {rootItems.length > 8 && (
-                <span className="text-[11px] text-slate-400">+{rootItems.length - 8} more</span>
-              )}
-            </div>
-            <Link
-              href={`/b2b/pim/menu-settings?channel=${encodeURIComponent(channel)}`}
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
-            >
-              Edit menu <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 py-1 text-amber-600">
-              <AlertCircle className="h-3.5 w-3.5" />
-              <span className="text-xs">No menu configured for this channel</span>
-            </div>
-            <Link
-              href={`/b2b/pim/menu-settings?channel=${encodeURIComponent(channel)}`}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="h-3 w-3" />
-              Create Menu
-            </Link>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ============================================
 // Widget Adder
@@ -463,53 +351,12 @@ function WidgetConfigPanel({
         </div>
 
         {/* Button widget config */}
-        {widget.type === "button" && (() => {
-          const config = (widget.config || {}) as { label?: string; url?: string; target?: string; variant?: string; backgroundColor?: string; textColor?: string };
-          return (
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-slate-600">Label</label>
-                <input type="text" value={config.label || ""} onChange={(e) => updateWidgetConfig({ label: e.target.value })} placeholder="Button text" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">URL</label>
-                <input type="text" value={config.url || ""} onChange={(e) => updateWidgetConfig({ url: e.target.value })} placeholder="/path or https://..." className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">Open In</label>
-                <select value={config.target || "_self"} onChange={(e) => updateWidgetConfig({ target: e.target.value })} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none">
-                  <option value="_self">Same Tab</option>
-                  <option value="_blank">New Tab</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">Variant</label>
-                <select value={config.variant || "primary"} onChange={(e) => updateWidgetConfig({ variant: e.target.value })} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none">
-                  <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
-                  <option value="outline">Outline</option>
-                  <option value="ghost">Ghost</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-600">Background</label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <input type="color" value={config.backgroundColor || "#009688"} onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })} className="h-8 w-10 cursor-pointer rounded border border-slate-200" />
-                    <input type="text" value={config.backgroundColor || ""} onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })} placeholder="#009688" className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-600">Text Color</label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <input type="color" value={config.textColor || "#ffffff"} onChange={(e) => updateWidgetConfig({ textColor: e.target.value })} className="h-8 w-10 cursor-pointer rounded border border-slate-200" />
-                    <input type="text" value={config.textColor || ""} onChange={(e) => updateWidgetConfig({ textColor: e.target.value })} placeholder="#ffffff" className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:border-[#009688] focus:outline-none" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {widget.type === "button" && (
+          <ButtonWidgetConfig
+            config={(widget.config || {}) as ButtonWidgetConfigData}
+            onConfigChange={updateWidgetConfig}
+          />
+        )}
 
         {/* Search bar config */}
         {widget.type === "search-bar" && (() => {
@@ -536,8 +383,7 @@ function WidgetConfigPanel({
         {/* Menu config */}
         {widget.type === "category-menu" && (
           <MenuWidgetConfig
-            channel={channel}
-            config={(widget.config || {}) as { label?: string }}
+            config={(widget.config || {}) as { label?: string; channel?: string }}
             onConfigChange={updateWidgetConfig}
           />
         )}

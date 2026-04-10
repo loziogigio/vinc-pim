@@ -100,7 +100,9 @@ export interface ITenant {
   require_login?: boolean;
   home_settings_customer_id?: string;
   builder_url?: string;
+  b2b_theme?: string;
   vetrina?: ITenantVetrina;
+  enabled_apps?: string[];
 }
 
 export interface ITenantDocument extends ITenant, Document {}
@@ -234,7 +236,16 @@ const TenantSchema = new Schema<ITenantDocument>(
       type: String,
       trim: true,
     },
+    b2b_theme: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
     vetrina: TenantVetrinaSchema,
+    enabled_apps: {
+      type: [String],
+      default: undefined,
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

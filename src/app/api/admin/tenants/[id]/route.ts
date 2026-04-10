@@ -92,7 +92,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       require_login,
       home_settings_customer_id,
       builder_url,
+      b2b_theme,
       vetrina,
+      enabled_apps,
     } = body;
 
     // Handle status changes with special functions
@@ -125,7 +127,22 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     if (require_login !== undefined) updates.require_login = require_login;
     if (home_settings_customer_id !== undefined) updates.home_settings_customer_id = home_settings_customer_id;
     if (builder_url !== undefined) updates.builder_url = builder_url;
+    if (b2b_theme !== undefined) updates.b2b_theme = b2b_theme;
     if (vetrina !== undefined) updates.vetrina = vetrina;
+    if (enabled_apps !== undefined) {
+      const { getPlatformAppModel } = await import("@/lib/db/models/admin-platform-app");
+      const PlatformApp = await getPlatformAppModel();
+      const activeApps = await PlatformApp.find({ is_active: true }).select("app_id").lean();
+      const validIds = new Set(activeApps.map((a) => a.app_id));
+
+      // Fallback: if DB has no apps yet, accept static IDs for backward compat
+      if (validIds.size === 0) {
+        const { PLATFORM_APP_IDS } = await import("@/config/platform-apps.config");
+        PLATFORM_APP_IDS.forEach((id) => validIds.add(id));
+      }
+
+      updates.enabled_apps = (enabled_apps as string[]).filter((id: string) => validIds.has(id));
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(

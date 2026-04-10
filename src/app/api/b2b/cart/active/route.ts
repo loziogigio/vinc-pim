@@ -12,7 +12,7 @@ import {
 } from "@/lib/services/customer.service";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import { resolveEffectiveTags } from "@/lib/services/tag-pricing.service";
-import { buildHookCtxFromOrder, runOnHookAsync, collectOnHookJob, runAfterHook } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtxFromOrder, runOnHookAuto, collectOnHookJob, runAfterHook } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -170,8 +170,9 @@ export async function POST(req: NextRequest) {
             const hookCtx = buildHookCtxFromOrder(auth.tenantDb!, tenant_id, "cart.create", existingCart, {
               addressCode: body.address_code,
             });
-            const { hooked, jobId } = await runOnHookAsync(hookCtx);
-            if (hooked && jobId) {
+            const hookResult = await runOnHookAuto(hookCtx);
+            if (hookResult.hooked && hookResult.jobId) {
+              const jobId = hookResult.jobId;
               await OrderModel.updateOne(
                 { _id: existingCart._id },
                 { $set: { "erp_data.delivery_job_id": jobId } },
@@ -406,7 +407,8 @@ export async function POST(req: NextRequest) {
 
     let cartToReturn = newCart;
     try {
-      const { hooked, jobId } = await runOnHookAsync(hookCtx);
+      const createResult = await runOnHookAuto(hookCtx);
+      const { hooked, jobId } = createResult;
       if (hooked && jobId) {
         // Quick poll: the job typically finishes in ~300ms.
         // Wait briefly then check — avoids an extra round-trip for most carts.

@@ -286,6 +286,18 @@ export async function POST(req: NextRequest) {
 
     // 8. Handle OAuth flow vs direct token
     if (response_type === "code" && client_id && redirect_uri) {
+      const vincProfile = {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role,
+        status: profile.status,
+        supplier_id: profile.supplier_id,
+        supplier_name: profile.supplier_name,
+        customers: profile.customers,
+        has_password: profile.has_password,
+      };
+
       const code = await createAuthCode({
         client_id,
         tenant_id,
@@ -296,24 +308,39 @@ export async function POST(req: NextRequest) {
         state,
         code_challenge,
         code_challenge_method,
-        vinc_profile: {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          role: profile.role,
-          status: profile.status,
-          supplier_id: profile.supplier_id,
-          supplier_name: profile.supplier_name,
-          customers: profile.customers,
-          has_password: profile.has_password,
-        },
+        vinc_profile: vincProfile,
       });
 
-      return NextResponse.json({
+      // Create SSO session for silent cross-app login
+      const clientApp: ClientApp =
+        (client_id as ClientApp) || "vinc-commerce-suite";
+      const { session } = await createSession({
+        tenant_id,
+        user_id: profile.id,
+        user_email: profile.email,
+        user_role: profile.role,
+        company_name: companyName,
+        vinc_profile: vincProfile,
+        client_app: clientApp,
+        ip_address: ip,
+        user_agent: userAgent,
+        accept_language: acceptLanguage,
+      });
+
+      // Set sso_sid cookie so subsequent OAuth flows can skip the login form
+      const response = NextResponse.json({
         redirect_uri,
         code,
         state,
       });
+      response.cookies.set("sso_sid", session.session_id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+      return response;
     } else {
       // Direct: Create session and return tokens
       const clientApp: ClientApp =
@@ -331,7 +358,7 @@ export async function POST(req: NextRequest) {
         accept_language: acceptLanguage,
       });
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         ...tokens,
         user: {
           id: profile.id,
@@ -346,6 +373,14 @@ export async function POST(req: NextRequest) {
         tenant_id,
         session_id: session.session_id,
       });
+      response.cookies.set("sso_sid", session.session_id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24,
+      });
+      return response;
     }
   } catch (error) {
     console.error("Login error:", error);

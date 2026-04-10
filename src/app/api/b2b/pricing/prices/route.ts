@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { resolvePrices } from "@/lib/pricing/pricing.service";
-import { runBeforeHook, runOnHook, runAfterHook } from "@/lib/services/windmill-proxy.service";
+import { runBeforeHook, runOnHookAuto, runAfterHook } from "@/lib/services/windmill-proxy.service";
 import type { HookContext } from "@/lib/types/windmill-proxy";
 
 export async function POST(req: NextRequest) {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── ON HOOK: if configured, Windmill IS the pricing provider ──
-    const on = await runOnHook(hookCtx);
+    const on = await runOnHookAuto(hookCtx);
     if (on.hooked && on.success && on.response?.data) {
       // Windmill returned prices — use them directly
       runAfterHook(hookCtx);

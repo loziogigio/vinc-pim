@@ -19,6 +19,7 @@ import { Suspense } from "react";
 import { LoginForm } from "./LoginForm";
 import { Loader2 } from "lucide-react";
 import { getHomeSettings } from "@/lib/db/home-settings";
+import { getTenantModel } from "@/lib/db/models/admin-tenant";
 
 // Force dynamic rendering since this page uses searchParams
 export const dynamic = "force-dynamic";
@@ -51,20 +52,26 @@ interface PageProps {
  */
 async function getTenantBranding(tenantId: string): Promise<TenantBranding | null> {
   try {
+    // Fetch home settings branding and admin tenant name in parallel
     const tenantDb = `vinc-${tenantId}`;
-    const settings = await getHomeSettings(tenantDb);
+    const [settings, adminTenant] = await Promise.all([
+      getHomeSettings(tenantDb).catch(() => null),
+      getTenantModel().then(m => m.findByTenantId(tenantId)).catch(() => null),
+    ]);
 
-    if (!settings || !settings.branding) {
-      return null;
-    }
+    const branding = settings?.branding;
+    const adminName = adminTenant?.name;
+
+    // Use branding title, fall back to admin tenant name, then tenant_id
+    const title = branding?.title || adminName || tenantId;
 
     return {
-      title: settings.branding.title || tenantId,
-      logo: settings.branding.logo || null,
-      favicon: settings.branding.favicon || null,
-      primaryColor: settings.branding.primaryColor || "#6366f1",
-      shopUrl: settings.branding.shopUrl || null,
-      websiteUrl: settings.branding.websiteUrl || null,
+      title,
+      logo: branding?.logo || null,
+      favicon: branding?.favicon || null,
+      primaryColor: branding?.primaryColor || "#6366f1",
+      shopUrl: branding?.shopUrl || null,
+      websiteUrl: branding?.websiteUrl || null,
     };
   } catch (error) {
     console.error("Error fetching tenant branding:", error);
@@ -90,6 +97,9 @@ export default async function LoginPage({ searchParams }: PageProps) {
   // Fetch tenant branding if tenant_id is provided
   const branding = tenant_id ? await getTenantBranding(tenant_id) : null;
 
+  // Use branding primaryColor for accent theming
+  const accentColor = branding?.primaryColor || "#6366f1";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -100,11 +110,14 @@ export default async function LoginPage({ searchParams }: PageProps) {
               <img
                 src={branding.logo}
                 alt={branding.title}
-                className="h-16 max-w-[200px] mx-auto object-contain"
+                className="h-20 max-w-[280px] mx-auto object-contain"
               />
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4">
+            <div
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+              style={{ backgroundColor: accentColor }}
+            >
               <span className="text-3xl font-bold text-white">V</span>
             </div>
           )}
@@ -112,21 +125,6 @@ export default async function LoginPage({ searchParams }: PageProps) {
             {branding?.title || "VINC Commerce Suite"}
           </h1>
           <p className="text-slate-500 mt-1">Accedi al tuo account</p>
-
-          {/* Website Link */}
-          {branding?.websiteUrl && (
-            <a
-              href={branding.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 mt-2"
-            >
-              Visita il sito web
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          )}
         </div>
 
         {/* Login Card */}
@@ -141,11 +139,11 @@ export default async function LoginPage({ searchParams }: PageProps) {
             </div>
           )}
 
-          {/* Client Info */}
-          {client_id && client_id !== "vinc-commerce-suite" && (
+          {/* Client Info - only show for non-B2B OAuth clients */}
+          {client_id && client_id !== "vinc-commerce-suite" && client_id !== "vinc-b2b" && (
             <div className="mb-6 p-4 bg-slate-50 rounded-lg">
               <p className="text-sm text-slate-600">
-                <span className="font-medium">{getClientName(client_id)}</span> richiede l'accesso
+                Accesso tramite <span className="font-medium">{getClientName(client_id)}</span>
               </p>
             </div>
           )}
@@ -162,6 +160,8 @@ export default async function LoginPage({ searchParams }: PageProps) {
               clientId={client_id}
               tenantId={tenant_id}
               tenantName={branding?.title}
+              tenantLogo={branding?.logo}
+              primaryColor={branding?.primaryColor}
               redirectUri={redirect_uri}
               state={state}
               prompt={prompt}
@@ -172,7 +172,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8">
+        <div className="flex flex-col items-center gap-2 mt-8">
           <p className="text-sm text-slate-500">
             © {new Date().getFullYear()} Vendereincloud. Tutti i diritti riservati.
           </p>
@@ -181,12 +181,28 @@ export default async function LoginPage({ searchParams }: PageProps) {
           {branding?.shopUrl && (
             <a
               href={branding.shopUrl}
-              className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mt-2"
+              className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               Torna al negozio
+            </a>
+          )}
+
+          {/* Website Link */}
+          {branding?.websiteUrl && (
+            <a
+              href={branding.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium"
+              style={{ color: accentColor }}
+            >
+              Vai al sito istituzionale
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
             </a>
           )}
         </div>

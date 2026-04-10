@@ -10,6 +10,7 @@ const sk = {
     create: "Vytvori\u0165",
     add: "Prida\u0165",
     remove: "Odstr\u00e1ni\u0165",
+    gift: "Dar\u010dek",
     close: "Zatvori\u0165",
     confirm: "Potvrdi\u0165",
     back: "Sp\u00e4\u0165",
@@ -120,6 +121,7 @@ const sk = {
     fullWidthLayout: "Rozlo\u017eenie na cel\u00fa \u0161\u00edrku",
     switchToCompact: "Prepn\u00fa\u0165 na kompaktn\u00e9 rozlo\u017eenie",
     switchToFullWidth: "Prepn\u00fa\u0165 na rozlo\u017eenie na cel\u00fa \u0161\u00edrku",
+    noApps: "\u017diadne aplik\u00e1cie k dispoz\u00edcii",
   },
   apps: {
     home: { name: "Domov", description: "Hlavn\u00fd dashboard" },
@@ -342,6 +344,10 @@ const sk = {
         exportSelected: "Exportova\u0165 vybran\u00e9",
         bulkUpdate: "Hromadn\u00e1 aktualiz\u00e1cia",
         clearSelection: "Zru\u0161i\u0165 v\u00fdber",
+        selectAllMatching: "Vybrať všetkých {{total}} zodpovedajúcich produktov",
+        allMatchingSelected: "Všetkých {{total}} zodpovedajúcich produktov vybraných",
+        allOnPageSelected: "Všetkých {{count}} na tejto stránke vybraných.",
+        bulkUpdateFilterWarning: "Toto aktualizuje všetky produkty zodpovedajúce vašim aktuálnym filtrom. Túto akciu nie je možné jednoducho vrátiť.",
         colProduct: "Produkt",
         colParentSku: "Rodi\u010dovsk\u00e9 SKU",
         colQuality: "Kvalita",
@@ -367,6 +373,11 @@ const sk = {
         provideValues: "Zadajte hodnoty pre vybrané polia",
         updating: "Aktualizácia...",
         updateButton: "Aktualizovať produkty",
+        deleteProducts: "Odstrániť produkty...",
+        deleteWarning: "Toto natrvalo odstráni {{count}} produktov a všetky ich verzie. Túto akciu nie je možné vrátiť.",
+        deleteConfirmPrompt: "Napíšte DELETE pre potvrdenie:",
+        deleting: "Odstraňovanie...",
+        deleteButton: "Odstrániť {{count}} produktov",
       },
       bulkUpdateModal: {
         selectAtLeastOne: "Vyberte aspoň jedno pole na aktualizáciu",
@@ -1596,6 +1607,15 @@ const sk = {
         ordersWillAppear: "Objednávky sa zobrazia po vytvorení",
         items: "položiek",
         item: "položka",
+        filterLabel: "Filter",
+        filterAll: "Všetky",
+        allChannels: "Všetky kanály",
+        avgOrderValue: "Priemerná hodnota objednávky",
+        ordersToday: "Objednávky dnes",
+        thisWeek: "Tento týždeň",
+        thisMonth: "Tento mesiac",
+        conversionRate: "Miera konverzie",
+        conversion: "konvertovaných",
       },
       // ── Zoznam objednávok ──
       ordersList: {
@@ -1728,6 +1748,8 @@ const sk = {
         orderType: "Typ objednávky",
         priceList: "Cenník",
         source: "Zdroj",
+        lineNote: "Poznámka",
+        notePlaceholder: "Pridať poznámku k tejto položke...",
       },
       // ── Payment Card ──
       paymentCard: {
@@ -4181,6 +4203,9 @@ const sk = {
         windmillPassword: "Windmill Heslo",
         addSSOUser: "Pridať SSO používateľa",
         noSSOUsers: "Žiadni SSO používatelia. Pridajte mapovanie na aktiváciu single sign-on.",
+        modeAsync: "Asynchrónny",
+        modeBlocking: "Blokujúci",
+        modeFallback: "Blokujúci + Fallback",
         openingWindmill: "Otváram...",
         openWindmill: "Otvoriť Windmill",
         domains: {
@@ -4948,5 +4973,8 @@ const sk = {
     },
   },
 } as const;
+
+// homeSettings lives under components but is referenced as pages.homeSettings in the UI
+(sk.pages as any).homeSettings = sk.components.homeSettings;
 
 export default sk;

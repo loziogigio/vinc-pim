@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import PlatformAppsCard from "./components/platform-apps-card";
 
 interface RateLimitSettings {
   enabled: boolean;
@@ -57,9 +58,11 @@ interface Tenant {
   require_login?: boolean;
   home_settings_customer_id?: string;
   builder_url?: string;
+  b2b_theme?: string;
   vetrina?: {
     is_listed: boolean;
   };
+  enabled_apps?: string[];
 }
 
 export default function TenantDetailPage() {
@@ -96,6 +99,7 @@ export default function TenantDetailPage() {
   const [requireLogin, setRequireLogin] = useState(false);
   const [homeSettingsCustomerId, setHomeSettingsCustomerId] = useState("");
   const [builderUrl, setBuilderUrl] = useState("");
+  const [b2bTheme, setB2bTheme] = useState("default");
   const [vetrinaListed, setVetrinaListed] = useState(false);
   const [multiTenantLoading, setMultiTenantLoading] = useState(false);
 
@@ -188,6 +192,7 @@ export default function TenantDetailPage() {
         require_login: requireLogin,
         home_settings_customer_id: homeSettingsCustomerId,
         builder_url: builderUrl,
+        b2b_theme: b2bTheme,
         vetrina: { is_listed: vetrinaListed },
       };
 
@@ -265,6 +270,7 @@ export default function TenantDetailPage() {
       if (data.tenant.require_login) setRequireLogin(data.tenant.require_login);
       if (data.tenant.home_settings_customer_id) setHomeSettingsCustomerId(data.tenant.home_settings_customer_id);
       if (data.tenant.builder_url) setBuilderUrl(data.tenant.builder_url);
+      if (data.tenant.b2b_theme) setB2bTheme(data.tenant.b2b_theme);
       if (data.tenant.vetrina?.is_listed) setVetrinaListed(data.tenant.vetrina.is_listed);
     } catch {
       setError("Network error");
@@ -639,6 +645,20 @@ export default function TenantDetailPage() {
               </button>
             </div>
 
+            {/* B2B Theme */}
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">B2B Storefront Theme</label>
+              <select
+                value={b2bTheme}
+                onChange={(e) => setB2bTheme(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none"
+              >
+                <option value="default">Default</option>
+                <option value="time">Time</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Controls the B2B storefront look & feel for this tenant</p>
+            </div>
+
             {/* Vetrina Listing Toggle */}
             <div className="flex items-center justify-between">
               <div>
@@ -671,6 +691,15 @@ export default function TenantDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Platform Applications Card */}
+        <PlatformAppsCard
+          tenantId={tenantId}
+          enabledApps={tenant.enabled_apps}
+          onSaved={(apps) =>
+            setTenant((prev) => (prev ? { ...prev, enabled_apps: apps } : prev))
+          }
+        />
 
         {/* API Usage Card */}
         <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">

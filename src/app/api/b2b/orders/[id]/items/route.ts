@@ -9,6 +9,7 @@ import {
   createLineItem,
   batchUpdateItems,
   batchRemoveItems,
+  collectGiftLineNumbers,
   parseLineNumbers,
   saveOrder,
 } from "@/lib/services/order.service";
@@ -21,7 +22,7 @@ import {
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import { connectWithModels } from "@/lib/db/connection";
 import { resolveVatIncluded } from "@/lib/utils/packaging";
-import { buildHookCtxFromOrder, runBeforeHook, runOnMergeAfter, updateCtxFromOrder, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtxFromOrder, runBeforeHook, runOnMergeAfterAuto, updateCtxFromOrder, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate and get tenant ID
@@ -184,7 +185,7 @@ export async function POST(
 
     // ── ON + AFTER HOOKS ──
     updateCtxFromOrder(hookCtx, order);
-    const on = await runOnMergeAfter(hookCtx, order.constructor, order._id);
+    const on = await runOnMergeAfterAuto(hookCtx, order.constructor, order._id, { orderId: order.order_id });
 
     return NextResponse.json({
       success: true,
@@ -266,7 +267,7 @@ export async function PATCH(
 
     // ── ON + AFTER HOOKS ──
     updateCtxFromOrder(updCtx, order);
-    const updOn = await runOnMergeAfter(updCtx, order.constructor, order._id);
+    const updOn = await runOnMergeAfterAuto(updCtx, order.constructor, order._id);
 
     return NextResponse.json({
       success: true,
@@ -330,8 +331,19 @@ export async function DELETE(
       );
     }
 
-    // Batch remove items
-    const results = batchRemoveItems(order, lineNumbers);
+    // Cascade: collect gift items linked to promo parents being removed
+    const allLineNumbers = new Set(lineNumbers);
+    for (const ln of lineNumbers) {
+      const item = order.items.find((i) => i.line_number === ln);
+      if (item?.promo_code && !item.is_gift_line) {
+        for (const giftLn of collectGiftLineNumbers(order, item.promo_code)) {
+          allLineNumbers.add(giftLn);
+        }
+      }
+    }
+
+    // Batch remove items (including cascaded gift items)
+    const results = batchRemoveItems(order, [...allLineNumbers]);
 
     // Save with recalculated totals
     await saveOrder(order);
@@ -340,7 +352,7 @@ export async function DELETE(
     const rmCtx = buildHookCtxFromOrder(auth.tenantDb!, auth.tenantId!, "item.remove", order, {
       requestData: body as Record<string, unknown>,
     });
-    const rmOn = await runOnMergeAfter(rmCtx, order.constructor, order._id);
+    const rmOn = await runOnMergeAfterAuto(rmCtx, order.constructor, order._id);
 
     return NextResponse.json({
       success: true,

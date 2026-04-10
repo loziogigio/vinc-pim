@@ -47,7 +47,8 @@ import {
   Bell,
   History,
   LayoutGrid,
-  Store
+  Store,
+  Share2
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,8 @@ import { cn } from "@/components/ui/utils";
 import ProductCardPreview, { type PreviewVariant } from "@/components/home-settings/ProductCardPreview";
 import type { CompanyBranding, ProductCardStyle, CDNCredentials, SMTPSettings, GraphSettings, EmailTransport, CompanyContactInfo, HeaderConfig, HeaderRow, HeaderBlock, HeaderWidget, RowLayout, HeaderWidgetType, BlockAlignment, MetaTags, RadioStation, ImageVersionsSettings } from "@/lib/types/home-settings";
 import ImageVersionsSection from "@/components/home-settings/ImageVersionsSection";
+import { MenuWidgetConfig } from "@/components/shared/MenuWidgetConfig";
+import { ButtonWidgetConfig, type ButtonWidgetConfigData } from "@/components/shared/ButtonWidgetConfig";
 import { LAYOUT_WIDTHS, LAYOUT_BLOCK_COUNT, HEADER_WIDGET_LIBRARY } from "@/lib/types/home-settings";
 import { useImageUpload, type UploadState } from "@/hooks/useImageUpload";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -204,17 +207,13 @@ const DEFAULT_HEADER_CONFIG: HeaderConfig = {
           id: "left",
           alignment: "left",
           widgets: [
-            { id: "categories", type: "category-menu", config: { label: "Categorie" } },
-            { id: "promo-btn", type: "button", config: { label: "Promozioni", url: "/promotions", variant: "primary" } },
-            { id: "new-btn", type: "button", config: { label: "Nuovi arrivi", url: "/new-arrivals", variant: "secondary" } }
+            { id: "categories", type: "category-menu", config: { label: "Categorie" } }
           ]
         },
         {
           id: "right",
           alignment: "right",
           widgets: [
-            { id: "orders-btn", type: "button", config: { label: "i miei ordini", url: "/orders", variant: "outline" } },
-            { id: "docs-btn", type: "button", config: { label: "i miei documenti", url: "/documents", variant: "outline" } },
             { id: "delivery", type: "company-info", config: { showDeliveryAddress: true } }
           ]
         }
@@ -3392,6 +3391,7 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "reminders": History,
   "app-launcher": LayoutGrid,
   "button": Square,
+  "social-links": Share2,
   "spacer": Space,
   "divider": Minus,
 };
@@ -4306,26 +4306,25 @@ function HeaderForm({ headerConfig, headerConfigDraft, branding, onDraftChange, 
                           if (widget.type === "button") {
                             const label = (config.label as string) || "Button";
                             const variant = (config.variant as string) || "outline";
-                            const backgroundColor = (config.backgroundColor as string) || "#009f7f";
-                            const textColor = (config.textColor as string) || "#ffffff";
+                            const backgroundColor = config.backgroundColor as string | undefined;
+                            const textColor = config.textColor as string | undefined;
+                            const hasCustomColors = backgroundColor || textColor;
                             return (
                               <button
                                 key={widget.id}
                                 type="button"
                                 className={cn(
                                   "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                                  variant === "primary" && "text-white",
-                                  variant === "secondary" && "bg-slate-100 text-slate-700",
-                                  variant === "outline" && "border border-slate-200 text-slate-700",
-                                  variant === "ghost" && "text-slate-700 hover:bg-slate-100"
+                                  !hasCustomColors && variant === "primary" && "text-white",
+                                  !hasCustomColors && variant === "secondary" && "bg-slate-100 text-slate-700",
+                                  !hasCustomColors && variant === "outline" && "border border-slate-200 text-slate-700",
+                                  !hasCustomColors && variant === "ghost" && "text-slate-700 hover:bg-slate-100"
                                 )}
-                                style={
-                                  variant === "primary"
-                                    ? { backgroundColor: branding.primaryColor }
-                                    : variant === "custom"
-                                    ? { backgroundColor, color: textColor }
-                                    : undefined
-                                }
+                                style={{
+                                  ...(backgroundColor ? { backgroundColor } : variant === "primary" ? { backgroundColor: branding.primaryColor } : {}),
+                                  ...(textColor ? { color: textColor } : {}),
+                                  ...(!hasCustomColors && variant === "outline" ? {} : {}),
+                                }}
                               >
                                 {label}
                               </button>
@@ -4605,98 +4604,12 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
         </div>
 
         {/* Widget-specific configuration */}
-        {widget.type === "button" && (() => {
-          const config = (widget.config || {}) as { label?: string; url?: string; target?: string; variant?: string; backgroundColor?: string; textColor?: string };
-          return (
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.label")}</label>
-                <input
-                  type="text"
-                  value={config.label || ""}
-                  onChange={(e) => updateWidgetConfig({ label: e.target.value })}
-                  placeholder={t("pages.homeSettings.widgets.buttonText")}
-                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.url")}</label>
-                <input
-                  type="text"
-                  value={config.url || ""}
-                  onChange={(e) => updateWidgetConfig({ url: e.target.value })}
-                  placeholder="https://example.com or /path"
-                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.openIn")}</label>
-                <select
-                  value={config.target || "_self"}
-                  onChange={(e) => updateWidgetConfig({ target: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="_self">{t("pages.homeSettings.widgets.sameTab")}</option>
-                  <option value="_blank">{t("pages.homeSettings.widgets.newTab")}</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.variant")}</label>
-                <select
-                  value={config.variant || "primary"}
-                  onChange={(e) => updateWidgetConfig({ variant: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="primary">{t("pages.homeSettings.widgets.variantPrimary")}</option>
-                  <option value="secondary">{t("pages.homeSettings.widgets.variantSecondary")}</option>
-                  <option value="outline">{t("pages.homeSettings.widgets.variantOutline")}</option>
-                  <option value="ghost">{t("pages.homeSettings.widgets.variantGhost")}</option>
-                  <option value="custom">{t("pages.homeSettings.widgets.variantCustom")}</option>
-                </select>
-              </div>
-              {config.variant === "custom" && (
-                <>
-                  <div>
-                    <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.branding.backgroundColor")}</label>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={config.backgroundColor || "#009f7f"}
-                        onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })}
-                        className="h-8 w-10 cursor-pointer rounded border border-slate-200"
-                      />
-                      <input
-                        type="text"
-                        value={config.backgroundColor || "#009f7f"}
-                        onChange={(e) => updateWidgetConfig({ backgroundColor: e.target.value })}
-                        placeholder="#009f7f"
-                        className="flex-1 rounded-md border border-slate-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.branding.textColor")}</label>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={config.textColor || "#ffffff"}
-                        onChange={(e) => updateWidgetConfig({ textColor: e.target.value })}
-                        className="h-8 w-10 cursor-pointer rounded border border-slate-200"
-                      />
-                      <input
-                        type="text"
-                        value={config.textColor || "#ffffff"}
-                        onChange={(e) => updateWidgetConfig({ textColor: e.target.value })}
-                        placeholder="#ffffff"
-                        className="flex-1 rounded-md border border-slate-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })()}
+        {widget.type === "button" && (
+          <ButtonWidgetConfig
+            config={(widget.config || {}) as ButtonWidgetConfigData}
+            onConfigChange={updateWidgetConfig}
+          />
+        )}
 
         {widget.type === "search-bar" && (() => {
           const config = (widget.config || {}) as { placeholder?: string; width?: string };
@@ -4729,23 +4642,12 @@ function WidgetConfigPanel({ headerConfig, selectedWidget, onUpdate, onClose }: 
           );
         })()}
 
-        {widget.type === "category-menu" && (() => {
-          const config = (widget.config || {}) as { label?: string };
-          return (
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-slate-600">{t("pages.homeSettings.widgets.label")}</label>
-                <input
-                  type="text"
-                  value={config.label || ""}
-                  onChange={(e) => updateWidgetConfig({ label: e.target.value })}
-                  placeholder="Categories"
-                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-          );
-        })()}
+        {widget.type === "category-menu" && (
+          <MenuWidgetConfig
+            config={(widget.config || {}) as { label?: string; channel?: string }}
+            onConfigChange={updateWidgetConfig}
+          />
+        )}
 
         {widget.type === "radio-widget" && (() => {
           const config = (widget.config || {}) as { enabled?: boolean; headerIcon?: string; stations?: RadioStation[] };

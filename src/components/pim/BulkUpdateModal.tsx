@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X, EyeOff, Eye } from "lucide-react";
+import { X, EyeOff, Eye, Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type BulkUpdateModalProps = {
   isOpen: boolean;
   onClose: () => void;
   selectedCount: number;
+  isFilterMode?: boolean;
   onUpdate: (updates: BulkUpdateData) => Promise<void>;
 };
 
@@ -17,18 +18,22 @@ export type BulkUpdateData = {
   brand?: string;
   category?: string;
   currency?: string;
+  _delete?: true;
 };
 
 export function BulkUpdateModal({
   isOpen,
   onClose,
   selectedCount,
+  isFilterMode,
   onUpdate,
 }: BulkUpdateModalProps) {
   const { t } = useTranslation();
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
   const [values, setValues] = useState<BulkUpdateData>({});
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   if (!isOpen) return null;
 
@@ -51,6 +56,23 @@ export function BulkUpdateModal({
   };
 
   const handleUpdate = async () => {
+    // Delete mode
+    if (isDeleteMode) {
+      if (deleteConfirmText !== "DELETE") return;
+      setIsUpdating(true);
+      try {
+        await onUpdate({ _delete: true });
+        setIsDeleteMode(false);
+        setDeleteConfirmText("");
+        onClose();
+      } catch (error) {
+        console.error("Bulk delete error:", error);
+      } finally {
+        setIsUpdating(false);
+      }
+      return;
+    }
+
     if (selectedFields.size === 0) {
       alert(t("pages.pim.bulkUpdateModal.selectAtLeastOne"));
       return;
@@ -96,7 +118,7 @@ export function BulkUpdateModal({
               {t("pages.pim.bulkUpdate.title")}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {t("pages.pim.bulkUpdate.subtitle", { count: String(selectedCount) })}
+              {t("pages.pim.bulkUpdate.subtitle", { count: selectedCount.toLocaleString() })}
             </p>
           </div>
           <button
@@ -106,6 +128,13 @@ export function BulkUpdateModal({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Filter mode warning */}
+        {isFilterMode && selectedCount > 100 && (
+          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+            {t("pages.pim.products.bulkUpdateFilterWarning")}
+          </div>
+        )}
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1">
@@ -284,6 +313,49 @@ export function BulkUpdateModal({
                 />
               )}
             </div>
+            {/* Delete Section */}
+            <div className="border-t border-border pt-4 mt-4">
+              {!isDeleteMode ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteMode(true);
+                    setSelectedFields(new Set());
+                    setValues({});
+                  }}
+                  className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {t("pages.pim.bulkUpdate.deleteProducts")}
+                </button>
+              ) : (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
+                  <p className="text-sm font-medium text-red-800">
+                    {t("pages.pim.bulkUpdate.deleteWarning", { count: selectedCount.toLocaleString() })}
+                  </p>
+                  <p className="text-sm text-red-700">
+                    {t("pages.pim.bulkUpdate.deleteConfirmPrompt")}
+                  </p>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full rounded border border-red-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDeleteMode(false);
+                      setDeleteConfirmText("");
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground underline"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -296,13 +368,23 @@ export function BulkUpdateModal({
           >
             {t("common.cancel")}
           </button>
-          <button
-            onClick={handleUpdate}
-            disabled={isUpdating || selectedFields.size === 0}
-            className="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 text-sm font-medium transition disabled:opacity-50"
-          >
-            {isUpdating ? t("pages.pim.bulkUpdate.updating") : t("pages.pim.bulkUpdate.updateButton")}
-          </button>
+          {isDeleteMode ? (
+            <button
+              onClick={handleUpdate}
+              disabled={isUpdating || deleteConfirmText !== "DELETE"}
+              className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm font-medium transition disabled:opacity-50"
+            >
+              {isUpdating ? t("pages.pim.bulkUpdate.deleting") : t("pages.pim.bulkUpdate.deleteButton", { count: selectedCount.toLocaleString() })}
+            </button>
+          ) : (
+            <button
+              onClick={handleUpdate}
+              disabled={isUpdating || selectedFields.size === 0}
+              className="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 text-sm font-medium transition disabled:opacity-50"
+            >
+              {isUpdating ? t("pages.pim.bulkUpdate.updating") : t("pages.pim.bulkUpdate.updateButton")}
+            </button>
+          )}
         </div>
       </div>
     </div>

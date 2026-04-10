@@ -16,7 +16,7 @@ import {
   findOrCreateCustomer,
   findOrCreateAddress,
 } from "@/lib/services/customer.service";
-import { buildHookCtx, runBeforeHook, updateCtxFromOrder, runOnMergeAfter } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtx, runBeforeHook, updateCtxFromOrder, runOnMergeAfterAuto } from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate request via session or API key
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, pending: 0, confirmed: 0, shipped: 0, cancelled: 0, total: 0, totalValue: 0 },
+          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
         });
       }
       query.customer_id = (cust as any).customer_id;
@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
             success: true,
             orders: [],
             pagination: { page, limit, total: 0, pages: 0 },
-            stats: { draft: 0, pending: 0, confirmed: 0, shipped: 0, cancelled: 0, total: 0, totalValue: 0 },
+            stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
           });
         }
       }
@@ -205,7 +205,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, pending: 0, confirmed: 0, shipped: 0, cancelled: 0, total: 0, totalValue: 0 },
+          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
         });
       }
     }
@@ -224,9 +224,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Build base query without status for stats aggregation
+    // Build base query without status for stats aggregation (exclude deleted)
     const baseQuery = { ...query };
     delete baseQuery.status;
+    baseQuery.status = { $ne: "deleted" };
+
+    // Compute date boundaries for time-period metrics
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(now);
+    const dow = weekStart.getDay();
+    weekStart.setDate(weekStart.getDate() - (dow === 0 ? 6 : dow - 1));
+    weekStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Execute queries in parallel: orders, count, and stats
     const [orders, total, statsAgg] = await Promise.all([
@@ -236,37 +247,120 @@ export async function GET(req: NextRequest) {
         .limit(limit)
         .lean(),
       OrderModel.countDocuments(query),
-      // Aggregate stats for the filtered dataset (without status filter)
+      // Aggregate stats with $facet: status breakdown + time periods
       OrderModel.aggregate([
         { $match: baseQuery },
         {
-          $group: {
-            _id: "$status",
-            count: { $sum: 1 },
-            value: { $sum: "$order_total" },
+          $facet: {
+            byStatus: [
+              {
+                $group: {
+                  _id: "$status",
+                  count: { $sum: 1 },
+                  value: { $sum: "$order_total" },
+                },
+              },
+            ],
+            timePeriods: [
+              {
+                $group: {
+                  _id: null,
+                  today: {
+                    $sum: { $cond: [{ $gte: ["$created_at", todayStart] }, 1, 0] },
+                  },
+                  thisWeek: {
+                    $sum: { $cond: [{ $gte: ["$created_at", weekStart] }, 1, 0] },
+                  },
+                  thisMonth: {
+                    $sum: { $cond: [{ $gte: ["$created_at", monthStart] }, 1, 0] },
+                  },
+                  nonDraftValue: {
+                    $sum: {
+                      $cond: [
+                        { $in: ["$status", ["pending", "confirmed", "preparing", "shipped", "delivered"]] },
+                        "$order_total",
+                        0,
+                      ],
+                    },
+                  },
+                  nonDraftCount: {
+                    $sum: {
+                      $cond: [
+                        { $in: ["$status", ["pending", "confirmed", "preparing", "shipped", "delivered"]] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
           },
         },
       ]),
     ]);
 
-    // Calculate stats from aggregation
-    const stats = {
+    // Calculate stats from $facet aggregation
+    const facetResult = statsAgg[0] || { byStatus: [], timePeriods: [] };
+    const byStatus = facetResult.byStatus || [];
+    const tp = facetResult.timePeriods?.[0] || {};
+
+    const stats: Record<string, unknown> = {
       draft: 0,
+      quotation: 0,
       pending: 0,
       confirmed: 0,
+      preparing: 0,
       shipped: 0,
+      delivered: 0,
       cancelled: 0,
       total: 0,
       totalValue: 0,
+      valueByStatus: {
+        draft: 0, quotation: 0, pending: 0, confirmed: 0,
+        preparing: 0, shipped: 0, delivered: 0, cancelled: 0,
+      },
+      timePeriods: {
+        today: tp.today || 0,
+        thisWeek: tp.thisWeek || 0,
+        thisMonth: tp.thisMonth || 0,
+      },
+      avgOrderValue:
+        tp.nonDraftCount > 0
+          ? Math.round((tp.nonDraftValue / tp.nonDraftCount) * 100) / 100
+          : 0,
+      conversion: {
+        totalDrafts: 0,
+        submittedOrders: 0,
+        conversionRate: 0,
+      },
     };
 
-    statsAgg.forEach((s: { _id: string; count: number; value: number }) => {
-      if (s._id in stats) {
-        stats[s._id as keyof typeof stats] = s.count;
+    const statusCounts = stats as Record<string, number>;
+    const valueByStatus = stats.valueByStatus as Record<string, number>;
+    const conversion = stats.conversion as { totalDrafts: number; submittedOrders: number; conversionRate: number };
+
+    byStatus.forEach((s: { _id: string; count: number; value: number }) => {
+      if (s._id in statusCounts && s._id !== "total" && s._id !== "totalValue") {
+        statusCounts[s._id] = s.count;
       }
-      stats.total += s.count;
-      stats.totalValue += s.value || 0;
+      if (s._id in valueByStatus) {
+        valueByStatus[s._id] = s.value || 0;
+      }
+      statusCounts.total = (statusCounts.total || 0) + s.count;
+      statusCounts.totalValue = (statusCounts.totalValue || 0) + (s.value || 0);
+
+      if (s._id === "draft") {
+        conversion.totalDrafts = s.count;
+      } else if (["pending", "confirmed", "preparing", "shipped", "delivered"].includes(s._id)) {
+        conversion.submittedOrders += s.count;
+      }
     });
+
+    const convTotal = conversion.totalDrafts + conversion.submittedOrders;
+    conversion.conversionRate = convTotal > 0
+      ? Math.round((conversion.submittedOrders / convTotal) * 1000) / 10
+      : 0;
 
     // Fetch customer details for all orders (within tenant)
     const customerIds = [...new Set(orders.map((o) => o.customer_id).filter(Boolean))];
@@ -563,7 +657,7 @@ export async function POST(req: NextRequest) {
 
     // ── ON + AFTER HOOKS ──
     updateCtxFromOrder(hookCtx, order);
-    const on = await runOnMergeAfter(hookCtx, OrderModel, order._id);
+    const on = await runOnMergeAfterAuto(hookCtx, OrderModel, order._id, { orderId: order.order_id });
 
     return NextResponse.json(
       {

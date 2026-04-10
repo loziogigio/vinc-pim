@@ -15,6 +15,7 @@ import {
   X,
   Info,
   Globe,
+  Layers,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -203,6 +204,13 @@ export default function OAuthClientsPage() {
                 <Globe className="h-4 w-4" />
                 Domains
               </Link>
+              <Link
+                href="/super-admin/platform-apps"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+              >
+                <Layers className="h-4 w-4" />
+                Platform Apps
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -269,7 +277,7 @@ export default function OAuthClientsPage() {
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
-                    Deep Links
+                    Redirect URIs
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Status
@@ -310,7 +318,7 @@ export default function OAuthClientsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {client.type === "mobile" && client.redirect_uris?.length ? (
+                      {client.redirect_uris?.length ? (
                         <div className="space-y-1 max-w-[250px]">
                           {client.redirect_uris.slice(0, 2).map((uri, i) => (
                             <div
@@ -328,9 +336,7 @@ export default function OAuthClientsPage() {
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-500">
-                          {client.type === "web" ? "Uses tenant domains" : "-"}
-                        </span>
+                        <span className="text-xs text-slate-500">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -657,36 +663,23 @@ function EditClientModal({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const isMobile = client.type === "mobile";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const redirectUris = isMobile
-      ? formData.redirect_uris
-          .split("\n")
-          .map((u) => u.trim())
-          .filter(Boolean)
-      : undefined;
-
-    if (isMobile && (!redirectUris || redirectUris.length === 0)) {
-      setError("Mobile apps require at least one deep link URI");
-      setLoading(false);
-      return;
-    }
+    const redirectUris = formData.redirect_uris
+      .split("\n")
+      .map((u) => u.trim())
+      .filter(Boolean);
 
     try {
       const body: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,
         is_active: formData.is_active,
+        redirect_uris: redirectUris,
       };
-
-      if (isMobile) {
-        body.redirect_uris = redirectUris;
-      }
 
       const res = await fetch(`/api/admin/oauth-clients/${client.client_id}`, {
         method: "PUT",
@@ -742,32 +735,21 @@ function EditClientModal({
             />
           </div>
 
-          {isMobile && (
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Deep Link URIs (one per line)
-              </label>
-              <textarea
-                value={formData.redirect_uris}
-                onChange={(e) => setFormData({ ...formData, redirect_uris: e.target.value })}
-                required
-                rows={3}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Custom URL schemes for mobile app callbacks
-              </p>
-            </div>
-          )}
-
-          {!isMobile && (
-            <div className="bg-slate-700/50 rounded-lg p-3">
-              <p className="text-xs text-slate-400">
-                <strong>Note:</strong> Web applications use tenant-configured domains for redirect URI validation.
-                Configure domains in the tenant settings.
-              </p>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Redirect URIs (one per line)
+            </label>
+            <textarea
+              value={formData.redirect_uris}
+              onChange={(e) => setFormData({ ...formData, redirect_uris: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              placeholder="https://app.example.com/api/auth/callback"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Static callback URLs. Web apps also validate against tenant-configured domains dynamically.
+            </p>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">

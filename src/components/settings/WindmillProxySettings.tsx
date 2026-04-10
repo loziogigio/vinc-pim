@@ -226,7 +226,7 @@ export function WindmillProxySettings({ filterDomain }: WindmillProxySettingsPro
           phase,
           script_path: `f/${folderStatus?.name || "erp"}/${channels[channelIdx]?.channel || "default"}/${phase}_${op.replace(".", "_")}`,
           enabled: true,
-          blocking: phase === "on",
+          mode: "async",
         });
       }
 
@@ -509,7 +509,7 @@ export function WindmillProxySettings({ filterDomain }: WindmillProxySettingsPro
                         </div>
 
                         {/* Operations list */}
-                        <div className="border border-border rounded-b-md divide-y divide-border overflow-hidden">
+                        <div className="border border-border rounded-b-md divide-y divide-border">
                           {domainOps.map((op) => {
                             const phaseHooks = HOOK_PHASES.map(phase => ({
                               phase,
@@ -571,44 +571,40 @@ export function WindmillProxySettings({ filterDomain }: WindmillProxySettingsPro
                                       .map(({ phase, hook }) => (
                                         <div
                                           key={phase}
-                                          className="flex items-center gap-2 rounded-md bg-card border border-border px-2.5 py-1.5"
+                                          className="rounded-md bg-card border border-border px-2.5 py-2.5 space-y-2"
                                         >
-                                          <span className="text-[10px] font-semibold text-primary uppercase w-11 shrink-0">
-                                            {phase}
-                                          </span>
-                                          <Input
-                                            type="text"
-                                            value={hook!.script_path}
-                                            onChange={(e) =>
-                                              updateHook(activeChannel, op, phase as HookPhase, {
-                                                script_path: e.target.value,
-                                              })
-                                            }
-                                            className="text-[11px] h-7 flex-1 font-mono"
-                                            placeholder={`f/${folderStatus?.name || "tenant"}/${currentChannel?.channel || "ch"}/${phase}_${op.replace(".", "_")}`}
-                                          />
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-semibold text-primary uppercase w-11 shrink-0">
+                                              {phase}
+                                            </span>
+                                            <Input
+                                              type="text"
+                                              value={hook!.script_path}
+                                              onChange={(e) =>
+                                                updateHook(activeChannel, op, phase as HookPhase, {
+                                                  script_path: e.target.value,
+                                                })
+                                              }
+                                              className="text-[11px] h-7 flex-1 min-w-0 font-mono"
+                                              placeholder={`f/${folderStatus?.name || "tenant"}/${currentChannel?.channel || "ch"}/${phase}_${op.replace(".", "_")}`}
+                                            />
+                                          </div>
                                           {phase !== "after" && (
-                                            <label className="flex items-center gap-1.5 text-[10px] cursor-pointer select-none shrink-0">
-                                              <input
-                                                type="checkbox"
-                                                checked={hook!.blocking}
+                                            <div className="flex justify-end">
+                                              <select
+                                                value={hook!.mode ?? (hook!.blocking ? "blocking" : "async")}
                                                 onChange={(e) =>
                                                   updateHook(activeChannel, op, phase as HookPhase, {
-                                                    blocking: e.target.checked,
+                                                    mode: e.target.value as "async" | "blocking" | "blocking_with_fallback",
                                                   })
                                                 }
-                                                className="h-3.5 w-3.5 rounded border-border"
-                                              />
-                                              <span
-                                                className={
-                                                  hook!.blocking
-                                                    ? "text-amber-600 font-semibold"
-                                                    : "text-muted-foreground"
-                                                }
+                                                className="text-xs h-8 px-2 rounded border border-border bg-background text-foreground cursor-pointer"
                                               >
-                                                {t("pages.settings.windmill.blocking")}
-                                              </span>
-                                            </label>
+                                                <option value="async">{t("pages.settings.windmill.modeAsync")}</option>
+                                                <option value="blocking">{t("pages.settings.windmill.modeBlocking")}</option>
+                                                <option value="blocking_with_fallback">{t("pages.settings.windmill.modeFallback")}</option>
+                                              </select>
+                                            </div>
                                           )}
                                         </div>
                                       ))}

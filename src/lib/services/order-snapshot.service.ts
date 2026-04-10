@@ -38,10 +38,14 @@ export function addressToSnapshot(address: IAddress): IAddressSnapshot {
 export function customerToBuyerSnapshot(
   customer: ICustomer
 ): IBuyerSnapshot {
+  // B2B company customers may lack personal names — fall back to company_name
+  const firstName = customer.first_name || customer.company_name || "-";
+  const lastName = customer.last_name || customer.company_name || "-";
+
   return {
     email: customer.email,
-    first_name: customer.first_name || "",
-    last_name: customer.last_name || "",
+    first_name: firstName,
+    last_name: lastName,
     phone: customer.phone || undefined,
     customer_type: customer.customer_type as IBuyerSnapshot["customer_type"],
     company_name: customer.company_name || undefined,
