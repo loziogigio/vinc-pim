@@ -65,7 +65,8 @@ COPY --from=build /app/vite.config.ts ./vite.config.ts
 
 # Run as non-root user for security
 RUN addgroup -S worker && adduser -S worker -G worker \
-    && chown -R worker:worker /app
+    && chown -R worker:worker /app \
+    && chown -R worker:worker /pnpm
 USER worker
 
 # All secrets (VINC_MONGO_URL, REDIS_HOST, etc.) injected at runtime via docker-compose
