@@ -196,7 +196,6 @@ const CampaignSchema = new Schema<ICampaignDocument>(
     slug: {
       type: String,
       required: true,
-      index: true,
     },
     status: {
       type: String,

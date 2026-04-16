@@ -429,6 +429,8 @@ export type ProductDetailZone = "zone1" | "zone2" | "zone3" | "zone4";
 // Block layout: full-width (edge-to-edge) or container (max-width centered)
 export type BlockLayout = "full-width" | "container";
 
+export type TitleAlignment = "left" | "center" | "right";
+
 export interface PageBlock<TConfig extends BlockConfig = BlockConfig> {
   id: string;
   type: string;
@@ -442,6 +444,10 @@ export interface PageBlock<TConfig extends BlockConfig = BlockConfig> {
   // Tab label for zone3 (new tab placement)
   tabLabel?: string;
   tabIcon?: string;
+  // Whether to show the section title (defaults to true for backward compatibility)
+  showTitle?: boolean;
+  // Title text alignment
+  titleAlignment?: TitleAlignment;
 }
 
 export interface PageSEOSettings {

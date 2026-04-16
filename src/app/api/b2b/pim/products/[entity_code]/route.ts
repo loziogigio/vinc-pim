@@ -520,7 +520,7 @@ export async function DELETE(
     const adapterConfigs = loadAdapterConfigs();
     if (adapterConfigs.solr?.enabled) {
       try {
-        const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+        const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
         const result = await solrAdapter.deleteProduct(entity_code);
         solrDeleted = result.success;
         console.log(`🔍 Solr delete result for ${entity_code}:`, result);

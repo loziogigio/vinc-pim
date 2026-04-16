@@ -19,7 +19,7 @@ const clamp = (value: number, min: number, max: number) => {
 };
 
 export function ProductCarouselSettings({ config, onSave }: ProductCarouselSettingsProps) {
-  const [title, setTitle] = useState<string>(config.title || "Featured Products");
+  const [title, setTitle] = useState<string>(config.title || "");
   const [searchQuery, setSearchQuery] = useState<string>(config.searchQuery || "");
   const [limit, setLimit] = useState<number>(config.limit || 12);
   const [dataSource, setDataSource] = useState<DataSource>(config.dataSource || "search");
@@ -64,7 +64,7 @@ export function ProductCarouselSettings({ config, onSave }: ProductCarouselSetti
     if (!isInitialized) return;
 
     const payload: any = {
-      title: title.trim() || 'Featured Products',
+      title: title.trim(),
       searchQuery: searchQuery.trim(),
       limit: clamp(limit, 1, 50),
       dataSource,

@@ -1,0 +1,29 @@
+- generic [ref=e3]:
+  - button "Change language" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+    - generic [ref=e11]: en
+  - generic [ref=e12]:
+    - img "VINC Logo" [ref=e14]
+    - heading "Welcome to VendereInCloud - CommerceSuite" [level=1] [ref=e15]
+    - paragraph [ref=e16]: Sign in to continue
+  - generic [ref=e17]:
+    - generic [ref=e18]:
+      - text: Tenant ID
+      - generic [ref=e19]:
+        - img [ref=e20]
+        - textbox "Tenant ID" [ref=e24]:
+          - /placeholder: Enter your tenant ID (e.g., acme-corp)
+    - generic [ref=e25]:
+      - text: Username or Email
+      - generic [ref=e26]:
+        - img [ref=e27]
+        - textbox "Username or Email" [ref=e30]:
+          - /placeholder: Enter your username or email
+    - generic [ref=e31]:
+      - text: Password
+      - generic [ref=e32]:
+        - img [ref=e33]
+        - textbox "Password" [ref=e36]:
+          - /placeholder: Enter your password
+    - button "Sign In" [ref=e37] [cursor=pointer]
+  - paragraph [ref=e39]: Need access? Contact your account manager

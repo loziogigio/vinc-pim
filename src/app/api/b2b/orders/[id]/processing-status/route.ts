@@ -14,7 +14,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { getPooledConnection } from "@/lib/db/connection";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { windmillGetJobResult } from "@/lib/services/windmill-client";
-import { getProxySettings, mergeOrderErpData, runOnHookAuto, runAfterHook, pushWindmillJobRef, updateWindmillJobStatus } from "@/lib/services/windmill-proxy.service";
+import { getProxySettings, mergeOrderErpData, runOnHookAuto, pushWindmillJobRef, updateWindmillJobStatus } from "@/lib/services/windmill-proxy.service";
 import { submitOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { isDeferredPaymentMethod } from "@/lib/constants/payment";
@@ -218,7 +218,7 @@ export async function GET(
               $unset: { processing_phase: "", processing_job_id: "" } },
           );
 
-          runAfterHook(hookCtx);
+          // Note: order.submit after-hook already fired by submitOrder service above.
 
           // Dispatch notification
           const paymentMethod = submitResult.order?.payment?.payment_method;

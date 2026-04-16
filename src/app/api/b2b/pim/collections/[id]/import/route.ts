@@ -288,7 +288,7 @@ async function processCollectionImportJob(
         isCurrent: true,
       }).lean();
 
-      const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+      const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
 
       for (const product of products) {
         try {

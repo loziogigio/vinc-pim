@@ -11,7 +11,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { confirmOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import type { UserRole } from "@/lib/constants/order";
-import { buildHookCtx, runBeforeHook, updateCtxFromOrder, runOnMergeAfterAuto, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtx, runBeforeHook, updateCtxFromOrder, runOnMergeAuto, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 export async function POST(
   req: NextRequest,
@@ -43,7 +43,7 @@ export async function POST(
 
     // ── ON + AFTER HOOKS ──
     updateCtxFromOrder(hookCtx, result.order);
-    const on = await runOnMergeAfterAuto(hookCtx, connection.model("Order"), (result.order as any)?._id, { orderId });
+    const on = await runOnMergeAuto(hookCtx, connection.model("Order"), (result.order as any)?._id, { orderId });
 
     void dispatchTrigger(dbName, "order_confirmation", {
       type: "order", order: result.order!, portalUserId: auth.userId || undefined,

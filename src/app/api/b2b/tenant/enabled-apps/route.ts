@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
       `[enabled-apps] tenant=${auth.tenantId} enabled_apps=${JSON.stringify(tenant.enabled_apps)} dbApps=${dbApps.length}`
     );
 
-    // Build tenant branding from home settings
-    const tenant_branding = {
+    // Build tenant branding + domains
+    const tenantBranding = {
       company_name:
         homeSettings?.company_info?.legal_name ||
         homeSettings?.branding?.title ||
@@ -60,6 +60,27 @@ export async function GET(req: NextRequest) {
       logo: homeSettings?.branding?.logo || "",
       favicon: homeSettings?.branding?.favicon || "",
     };
+
+    const tenantDomains = (tenant.domains || [])
+      .filter((d: { is_active?: boolean }) => d.is_active !== false)
+      .map((d: { hostname: string; protocol?: string; is_primary?: boolean }) => ({
+        hostname: d.hostname,
+        url: `${d.protocol || "https"}://${d.hostname}`,
+        is_primary: !!d.is_primary,
+      }));
+
+    // Main tenant entry (always first in the array)
+    const mainTenant = {
+      tenant_id: auth.tenantId,
+      client_id: "vinc-b2b",
+      name: tenant.name || "",
+      is_current: true,
+      branding: tenantBranding,
+      domains: tenantDomains,
+    };
+
+    // TODO: add additional tenants the user has access to
+    const tenants = [mainTenant];
 
     if (dbApps.length > 0) {
       // Dynamic path: filter by tenant's enabled_apps
@@ -71,17 +92,12 @@ export async function GET(req: NextRequest) {
 
       const sorted = sortWithB2BFirst(filtered);
 
-      // Build tenant domains list (for dynamic redirect resolution)
-      const tenant_domains = (tenant.domains || [])
-        .filter((d: { is_active?: boolean }) => d.is_active !== false)
-        .map((d: { hostname: string; protocol?: string; is_primary?: boolean }) => ({
-          hostname: d.hostname,
-          url: `${d.protocol || "https"}://${d.hostname}`,
-          is_primary: !!d.is_primary,
-        }));
-
       return NextResponse.json({
         success: true,
+        tenants,
+        // Backward compat aliases
+        tenant_branding: tenantBranding,
+        tenant_domains: tenantDomains,
         enabled_apps: sorted.map((a) => ({
           app_id: a.app_id,
           name: a.name,
@@ -92,8 +108,6 @@ export async function GET(req: NextRequest) {
           redirect_uris: clientRedirectMap.get(a.app_id) || [],
         })),
         enabled_app_ids: sorted.map((a) => a.app_id),
-        tenant_branding,
-        tenant_domains,
       });
     }
 
@@ -102,9 +116,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      tenants,
+      tenant_branding: tenantBranding,
+      tenant_domains: tenantDomains,
       enabled_apps,
       enabled_app_ids: enabled_apps,
-      tenant_branding,
     });
   } catch (error) {
     console.error("[enabled-apps] Error:", error);

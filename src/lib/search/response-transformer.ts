@@ -698,6 +698,9 @@ export function transformDocument(
     attributes,
     technical_specifications,
 
+    // Boolean attribute flags (Solr dynamic fields)
+    attribute_is_new_b: getBooleanValue(doc.attribute_is_new_b),
+
     // Promotions & Packaging
     has_active_promo: getBooleanValue(doc.has_active_promo),
     promo_codes: doc.promo_codes,

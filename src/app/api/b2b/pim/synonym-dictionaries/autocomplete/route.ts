@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { safeRegexQuery } from "@/lib/security";
 
 // GET /api/b2b/pim/synonym-dictionaries/autocomplete - Autocomplete search
 export async function GET(req: NextRequest) {
+  const auth = await requireTenantAuth(req);
+  if (!auth.success) return auth.response;
+  const { tenantDb } = auth;
   try {
-    const session = await getB2BSession();
-    if (!session?.isLoggedIn || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const tenantDb = `vinc-${session.tenantId}`;
     const { SynonymDictionary: SynonymDictionaryModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);

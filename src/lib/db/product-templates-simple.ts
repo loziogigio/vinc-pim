@@ -161,6 +161,17 @@ export async function saveTemplateDraft(input: {
       sanitized.tabIcon = block.tabIcon;
     }
 
+    // Preserve title display properties
+    if (block.layout) {
+      sanitized.layout = block.layout;
+    }
+    if (block.showTitle !== undefined) {
+      sanitized.showTitle = block.showTitle;
+    }
+    if (block.titleAlignment) {
+      sanitized.titleAlignment = block.titleAlignment;
+    }
+
     return sanitized;
   });
 

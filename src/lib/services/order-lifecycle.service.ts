@@ -38,10 +38,17 @@ import type {
 } from "@/lib/constants/order";
 import { getModelRegistry } from "@/lib/db/model-registry";
 import { confirmCouponUsage } from "@/lib/services/coupon.service";
+import { saveOrder } from "@/lib/services/order.service";
 import { getNextOrderNumber } from "@/lib/db/models/counter";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { createOrderNoteSubmission } from "@/lib/services/order-note.service";
 import { populateOrderSnapshots } from "@/lib/services/order-snapshot.service";
+import {
+  emitStatusChangeAfterHook,
+  tenantIdFromDbName,
+  buildHookCtxFromOrder,
+  runOnHookAuto,
+} from "@/lib/services/windmill-proxy.service";
 
 // ============================================
 // TYPES
@@ -210,7 +217,8 @@ export async function submitOrder(
 
   // Auto-confirm for deferred payment methods (bank_transfer, cash_on_delivery)
   const paymentMethod = order.payment?.payment_method;
-  if (isDeferredPaymentMethod(paymentMethod)) {
+  const autoConfirm = isDeferredPaymentMethod(paymentMethod);
+  if (autoConfirm) {
     // Initialize payment data if not present
     if (!order.payment) {
       order.payment = {
@@ -242,6 +250,16 @@ export async function submitOrder(
       order.customer_id,
       cpnDisc ? Math.abs(cpnDisc.value) : undefined
     );
+  }
+
+  // Emit after-hooks. Always fire draft→pending (order.submit); if we
+  // cascaded to confirmed in the same save, also fire pending→confirmed
+  // (order.confirm) so both hooks run.
+  const dbName = tenantDb.name;
+  const tenantId = tenantIdFromDbName(dbName);
+  emitStatusChangeAfterHook(dbName, tenantId, order, { from: "draft", to: "pending" });
+  if (autoConfirm) {
+    emitStatusChangeAfterHook(dbName, tenantId, order, { from: "pending", to: "confirmed" });
   }
 
   return { success: true, order };
@@ -283,6 +301,8 @@ export async function confirmOrder(
     };
   }
 
+  const previousStatus = order.status;
+
   // Ensure snapshots are populated (may have been skipped if order
   // went draft → quotation → confirmed, bypassing submitOrder)
   await populateOrderSnapshots(tenantDb, order);
@@ -315,6 +335,56 @@ export async function confirmOrder(
   order.is_current = false;
 
   await order.save();
+
+  const dbName = tenantDb.name;
+  emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
+    from: previousStatus,
+    to: "confirmed",
+  });
+
+  return { success: true, order };
+}
+
+/**
+ * Start preparing order (confirmed → preparing)
+ */
+export async function prepareOrder(
+  tenantDb: mongoose.Connection,
+  orderId: string,
+  userId: string,
+  userRole: UserRole
+): Promise<TransitionResult> {
+  const registry = getModelRegistry(tenantDb);
+  const Order = registry.Order;
+
+  const order = await Order.findOne({ order_id: orderId });
+  if (!order) {
+    return { success: false, error: "Order not found" };
+  }
+
+  if (order.status === "preparing") {
+    return { success: true, order };
+  }
+
+  if (!canTransition(order.status as OrderStatus, "preparing", userRole)) {
+    return {
+      success: false,
+      error: `Cannot transition from ${order.status} to preparing`,
+    };
+  }
+
+  const previousStatus = order.status;
+  order.status = "preparing";
+  order.preparing_at = new Date();
+
+  await order.save();
+
+  const dbName = tenantDb.name;
+  emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
+    from: previousStatus,
+    to: "preparing",
+  });
+
   return { success: true, order };
 }
 
@@ -362,6 +432,7 @@ export async function deliverOrder(
     };
   }
 
+  const previousStatus = order.status;
   order.status = "delivered";
   order.delivered_at = new Date();
   if (order.delivery) {
@@ -369,6 +440,13 @@ export async function deliverOrder(
   }
 
   await order.save();
+
+  const dbName = tenantDb.name;
+  emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
+    from: previousStatus,
+    to: "delivered",
+  });
+
   return { success: true, order };
 }
 
@@ -401,6 +479,7 @@ export async function cancelOrder(
     };
   }
 
+  const previousStatus = order.status;
   order.status = "cancelled";
   order.cancelled_at = new Date();
   order.cancelled_by = userId;
@@ -408,6 +487,13 @@ export async function cancelOrder(
   order.is_current = false;
 
   await order.save();
+
+  const dbName = tenantDb.name;
+  emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
+    from: previousStatus,
+    to: "cancelled",
+  });
+
   return { success: true, order };
 }
 
@@ -1189,6 +1275,7 @@ export async function duplicateOrder(
     is_current: true,
 
     tenant_id: sourceOrder.tenant_id,
+    channel: sourceOrder.channel,
     customer_id: sourceOrder.customer_id,
     customer_code: sourceOrder.customer_code,
     shipping_address_id: sourceOrder.shipping_address_id,
@@ -1234,9 +1321,6 @@ export async function duplicateOrder(
     duplicated_at: new Date(),
   });
 
-  // Recalculate totals
-  recalculateOrderTotals(newOrder);
-
   // Clear is_current from any existing drafts for this customer+address
   await Order.updateMany(
     {
@@ -1248,7 +1332,34 @@ export async function duplicateOrder(
     { is_current: false }
   );
 
-  await newOrder.save();
+  // Use saveOrder() so totals, promo_progress, and promo gifts are rebuilt
+  // from the copied line items (instead of a bare newOrder.save()).
+  await saveOrder(newOrder);
+
+  // Fire delivery-info ERP hook fire-and-forget so the duplicated cart has
+  // erp_data.delivery_info ready by the time the storefront opens it.
+  // Mirrors the legacy-cart fallback in src/app/api/b2b/cart/active/route.ts.
+  void (async () => {
+    try {
+      const dbName = tenantDb.name;
+      const hookCtx = buildHookCtxFromOrder(
+        dbName,
+        sourceOrder.tenant_id,
+        "cart.create",
+        newOrder,
+        { addressCode: sourceOrder.shipping_address_code },
+      );
+      const hookResult = await runOnHookAuto(hookCtx);
+      if (hookResult.hooked && hookResult.jobId) {
+        await Order.updateOne(
+          { _id: newOrder._id },
+          { $set: { "erp_data.delivery_job_id": hookResult.jobId } },
+        );
+      }
+    } catch (err) {
+      console.error("[duplicateOrder] delivery hook fire failed:", err);
+    }
+  })();
 
   // Track duplication on source
   sourceOrder.duplications = sourceOrder.duplications || [];
@@ -1543,6 +1654,7 @@ async function transitionStatusWithDelivery(
     };
   }
 
+  const previousStatus = order.status;
   order.status = toStatus;
 
   if (toStatus === "shipped") {
@@ -1564,5 +1676,12 @@ async function transitionStatusWithDelivery(
   }
 
   await order.save();
+
+  const dbName = tenantDb.name;
+  emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
+    from: previousStatus,
+    to: toStatus,
+  });
+
   return { success: true, order };
 }

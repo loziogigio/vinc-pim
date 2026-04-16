@@ -69,7 +69,6 @@ const AssociationJobSchema = new Schema<IAssociationJob>(
       type: String,
       enum: ["pending", "processing", "completed", "failed", "cancelled"],
       default: "pending",
-      index: true,
     },
 
     total_items: { type: Number, default: 0 },

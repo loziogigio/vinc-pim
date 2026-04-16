@@ -147,7 +147,13 @@ export const saveProductTemplate = async (input: {
     type: block.type,
     order: index,
     config: block.config || {},
-    metadata: block.metadata || {}
+    metadata: block.metadata || {},
+    ...(block.layout && { layout: block.layout }),
+    ...(block.zone && { zone: block.zone }),
+    ...(block.tabLabel && { tabLabel: block.tabLabel }),
+    ...(block.tabIcon && { tabIcon: block.tabIcon }),
+    ...(block.showTitle !== undefined && { showTitle: block.showTitle }),
+    ...(block.titleAlignment && { titleAlignment: block.titleAlignment }),
   }));
 
   // Create new version

@@ -61,6 +61,11 @@ export function StatusActionsCard({
       color: "text-emerald-600",
       bgColor: "bg-emerald-100",
     },
+    preparing: {
+      icon: Package,
+      color: "text-amber-600",
+      bgColor: "bg-amber-100",
+    },
     shipped: {
       icon: Truck,
       color: "text-purple-600",
@@ -128,6 +133,16 @@ export function StatusActionsCard({
         break;
 
       case "confirmed":
+        actions.push({
+          label: t("pages.store.statusActionsCard.markAsPreparing"),
+          action: "prepare",
+          icon: Package,
+          variant: "primary",
+          endpoint: `/api/b2b/orders/${order.order_id}/prepare`,
+        });
+        break;
+
+      case "preparing":
         actions.push({
           label: t("pages.store.statusActionsCard.markAsShipped"),
           action: "ship",
@@ -208,10 +223,11 @@ export function StatusActionsCard({
 
   // Status timeline — labels are not rendered in the UI (only step index/checkmark shown)
   const statusTimeline = [
-    { status: "draft", label: "draft" },
+    { status: "draft", label: "draft", optional: true },
     { status: "quotation", label: "quotation", optional: true },
-    { status: "pending", label: "pending", optional: true },
+    { status: "pending", label: "pending" },
     { status: "confirmed", label: "confirmed" },
+    { status: "preparing", label: "preparing" },
     { status: "shipped", label: "shipped" },
     { status: "delivered", label: "delivered" },
   ];

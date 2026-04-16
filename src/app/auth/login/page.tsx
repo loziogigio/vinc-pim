@@ -121,10 +121,10 @@ export default async function LoginPage({ searchParams }: PageProps) {
               <span className="text-3xl font-bold text-white">V</span>
             </div>
           )}
+          <p className="text-sm text-slate-400 mb-1">Accedi tramite</p>
           <h1 className="text-2xl font-bold text-slate-900">
-            {branding?.title || "VINC Commerce Suite"}
+            {branding?.title || "VendereInCloud"}
           </h1>
-          <p className="text-slate-500 mt-1">Accedi al tuo account</p>
         </div>
 
         {/* Login Card */}

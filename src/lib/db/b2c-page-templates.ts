@@ -155,7 +155,12 @@ export async function saveB2CPageTemplateDraft(
     order: index,
     config: block.config || {},
     metadata: block.metadata || {},
-    layout: block.layout,
+    ...(block.layout && { layout: block.layout }),
+    ...(block.zone && { zone: block.zone }),
+    ...(block.tabLabel && { tabLabel: block.tabLabel }),
+    ...(block.tabIcon && { tabIcon: block.tabIcon }),
+    ...(block.showTitle !== undefined && { showTitle: block.showTitle }),
+    ...(block.titleAlignment && { titleAlignment: block.titleAlignment }),
   }));
 
   const doc = await Model.findOne({ templateId });

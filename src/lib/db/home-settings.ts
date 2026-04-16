@@ -32,7 +32,8 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   hoverScale: 1.02,
   hoverShadowSize: "lg",
   backgroundColor: "#ffffff",
-  hoverBackgroundColor: undefined
+  hoverBackgroundColor: undefined,
+  priceDecimals: 2
 };
 
 /**

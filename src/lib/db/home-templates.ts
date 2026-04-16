@@ -263,6 +263,9 @@ export async function saveHomeTemplateDraft(input: {
     ...(block.layout && { layout: block.layout }),
     ...(block.zone && { zone: block.zone }),
     ...(block.tabLabel && { tabLabel: block.tabLabel }),
+    ...(block.tabIcon && { tabIcon: block.tabIcon }),
+    ...(block.showTitle !== undefined && { showTitle: block.showTitle }),
+    ...(block.titleAlignment && { titleAlignment: block.titleAlignment }),
   }));
 
   // Find current version

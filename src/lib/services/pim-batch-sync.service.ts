@@ -54,6 +54,9 @@ export interface BatchSyncParams {
   rebuild_embeddings: boolean;
   batch_size: number;
   dry_run: boolean;
+  /** When set, the service reuses this log row instead of creating one. */
+  pre_created_job_id?: string;
+  pre_created_log_id?: string;
 }
 
 export interface CleanupResult {
@@ -115,6 +118,57 @@ const MISSING_FIELD_CHECKS: Record<RequiredField, FieldChecker> = {
 // MAIN SERVICE
 // ============================================
 
+/**
+ * Pre-create a batch sync log row and return its job_id + _id.
+ * Used by the API route to return a job_id immediately (202 Accepted)
+ * before kicking off the long-running work via executeBatchSync.
+ */
+export async function createBatchSyncLog(
+  params: BatchSyncParams
+): Promise<{ job_id: string; log_id: string }> {
+  const { BatchSyncLog } = await connectWithModels(params.tenantDb);
+  const jobId = `bs_${crypto.randomBytes(8).toString("hex")}`;
+  const log = await BatchSyncLog.create({
+    job_id: jobId,
+    status: "running",
+    params: {
+      cleanup_mode: params.cleanup_mode,
+      cleanup_min_score: params.cleanup_min_score,
+      cleanup_required_fields: params.cleanup_required_fields,
+      resync: params.resync,
+      resync_min_score: params.resync_min_score,
+      recalculate_scores: params.recalculate_scores,
+      rebuild_embeddings: params.rebuild_embeddings,
+      batch_size: params.batch_size,
+    },
+    started_by: params.startedBy,
+  });
+  return { job_id: jobId, log_id: String(log._id) };
+}
+
+/**
+ * Flip any BatchSyncLog rows stuck in "running" for longer than the
+ * threshold to "failed". Called from the history GET handler so every
+ * page load self-heals orphaned rows from server restarts.
+ */
+export async function sweepStaleRunning(
+  tenantDb: string,
+  thresholdMinutes = 30
+): Promise<number> {
+  const { BatchSyncLog } = await connectWithModels(tenantDb);
+  const cutoff = new Date(Date.now() - thresholdMinutes * 60_000);
+  const res = await BatchSyncLog.updateMany(
+    { status: "running", updated_at: { $lt: cutoff } },
+    {
+      $set: {
+        status: "failed",
+        error_message: "Job timed out or server restarted",
+      },
+    }
+  );
+  return res.modifiedCount ?? 0;
+}
+
 export async function executeBatchSync(
   params: BatchSyncParams
 ): Promise<BatchSyncResult> {
@@ -123,16 +177,17 @@ export async function executeBatchSync(
   }
 
   const configs = loadAdapterConfigs(params.tenantId);
-  const adapter = new SolrAdapter(configs.solr);
+  const adapter = new SolrAdapter(configs.solr, params.tenantDb);
   await adapter.initialize();
 
   const { PIMProduct, BatchSyncLog } = await connectWithModels(params.tenantDb);
 
-  // Create log entry (skip for dry runs)
-  let logId: string | undefined;
-  const jobId = `bs_${crypto.randomBytes(8).toString("hex")}`;
+  // Reuse a pre-created log if the caller already created one (async path),
+  // otherwise create it here (dry-run preview or legacy callers).
+  let logId: string | undefined = params.pre_created_log_id;
+  let jobId: string = params.pre_created_job_id ?? `bs_${crypto.randomBytes(8).toString("hex")}`;
 
-  if (!params.dry_run) {
+  if (!params.dry_run && !logId) {
     const log = await BatchSyncLog.create({
       job_id: jobId,
       status: "running",
@@ -148,8 +203,10 @@ export async function executeBatchSync(
       },
       started_by: params.startedBy,
     });
-    logId = log._id;
+    logId = String(log._id);
   }
+
+  const startedAt = Date.now();
 
   try {
     // Phase 1: Cleanup
@@ -164,7 +221,6 @@ export async function executeBatchSync(
       resyncResult = await performResync(adapter, PIMProduct, params);
     }
 
-    // Update log on success
     if (logId) {
       await BatchSyncLog.updateOne(
         { _id: logId },
@@ -173,7 +229,7 @@ export async function executeBatchSync(
             status: "completed",
             cleanup_result: cleanupResult,
             resync_result: resyncResult,
-            duration_ms: Date.now() - Date.now(), // will be set by route
+            duration_ms: Date.now() - startedAt,
           },
         }
       );
@@ -186,7 +242,6 @@ export async function executeBatchSync(
       resync: resyncResult,
     };
   } catch (error: any) {
-    // Update log on failure
     if (logId) {
       await BatchSyncLog.updateOne(
         { _id: logId },
@@ -194,6 +249,7 @@ export async function executeBatchSync(
           $set: {
             status: "failed",
             error_message: error.message,
+            duration_ms: Date.now() - startedAt,
           },
         }
       );

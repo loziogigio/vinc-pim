@@ -58,6 +58,26 @@ function applyDefaultLanguageToData(data: any, languageCodes: string[]): void {
 }
 
 /**
+ * Merge media arrays by type.
+ * For each media type present in incoming: replace all existing items of that type.
+ * For types NOT in incoming: keep existing items untouched.
+ * Recalculates positions after merge.
+ */
+function mergeMediaByType(existingMedia: any[], incomingMedia: any[]): any[] {
+  // Group incoming media by type
+  const incomingTypes = new Set(incomingMedia.map((m: any) => m.type));
+
+  // Keep existing items whose type is NOT in the incoming data
+  const preserved = existingMedia.filter((m: any) => !incomingTypes.has(m.type));
+
+  // Combine: preserved existing + all incoming
+  const merged = [...preserved, ...incomingMedia];
+
+  // Recalculate positions
+  return merged.map((item, index) => ({ ...item, position: index }));
+}
+
+/**
  * Deep merge two objects, with source values overriding target values
  * Arrays are replaced, not merged
  */
@@ -324,8 +344,34 @@ export async function POST(req: NextRequest) {
             }
 
             // Deep merge: existing data + incoming data (incoming wins)
-            finalProductData = deepMerge(existingData, mappedData);
-            console.log(`   ℹ️ Partial merge: keeping existing data, adding/updating incoming fields`);
+            // Temporarily remove images/media from both sides — handle them separately
+            const existingImages = existingData.images || [];
+            const existingMediaArr = existingData.media || [];
+            const incomingImages = mappedData.images;
+            const incomingMediaArr = mappedData.media;
+            delete existingData.images;
+            delete existingData.media;
+            const mappedDataForMerge = { ...mappedData };
+            delete mappedDataForMerge.images;
+            delete mappedDataForMerge.media;
+
+            finalProductData = deepMerge(existingData, mappedDataForMerge);
+
+            // images: if incoming has images, replace all. Otherwise keep existing.
+            if (incomingImages && incomingImages.length > 0) {
+              finalProductData.images = incomingImages;
+            } else {
+              finalProductData.images = existingImages;
+            }
+
+            // media: merge by type — replace only same-type items, preserve others
+            if (incomingMediaArr && incomingMediaArr.length > 0) {
+              finalProductData.media = mergeMediaByType(existingMediaArr, incomingMediaArr);
+            } else {
+              finalProductData.media = existingMediaArr;
+            }
+
+            console.log(`   ℹ️ Partial merge: keeping existing data, media merged by type`);
           }
 
           // Also apply locked fields protection

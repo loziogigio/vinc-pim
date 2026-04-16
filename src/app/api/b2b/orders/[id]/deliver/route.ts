@@ -11,7 +11,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { deliverOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import type { UserRole } from "@/lib/constants/order";
-import { buildHookCtxFromOrder, runOnMergeAfterAuto, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
+import { buildHookCtxFromOrder, runOnMergeAuto, windmillResponseFragment } from "@/lib/services/windmill-proxy.service";
 
 export async function POST(
   req: NextRequest,
@@ -39,7 +39,7 @@ export async function POST(
 
     // ── HOOKS: on (sync to ERP) + after (fire-and-forget) ──
     const hookCtx = buildHookCtxFromOrder(dbName, auth.tenantId, "order.deliver", result.order);
-    const on = await runOnMergeAfterAuto(hookCtx, connection.model("Order"), (result.order as any)?._id, { orderId });
+    const on = await runOnMergeAuto(hookCtx, connection.model("Order"), (result.order as any)?._id, { orderId });
 
     void dispatchTrigger(dbName, "order_delivered", { type: "order", order: result.order! });
 

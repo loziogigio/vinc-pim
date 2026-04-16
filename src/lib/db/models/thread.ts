@@ -98,7 +98,7 @@ const ThreadMessageSchema = new Schema<IThreadMessage>(
     },
 
     // Replies (nested comments)
-    parent_id: { type: String, index: true },
+    parent_id: { type: String },
     replies_count: { type: Number, default: 0 },
     depth: { type: Number, default: 0, max: MAX_REPLY_DEPTH },
 

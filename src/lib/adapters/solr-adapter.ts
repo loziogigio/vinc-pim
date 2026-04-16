@@ -5,7 +5,7 @@
 
 import { MarketplaceAdapter } from './marketplace-adapter';
 import { IPIMProduct as PIMProduct } from '../db/models/pim-product';
-import { SynonymDictionaryModel } from '../db/models/synonym-dictionary';
+import { connectWithModels } from '../db/connection';
 import {
   ValidationResult,
   SyncResult,
@@ -153,12 +153,14 @@ export class SolrAdapter extends MarketplaceAdapter {
 
   private solrUrl: string;
   private solrCore: string;
+  private tenantDb?: string;
 
-  constructor(config: any) {
+  constructor(config: any, tenantDb?: string) {
     super(config);
     // Config comes from loadAdapterConfigs() - single source of truth
     this.solrUrl = config.custom_config?.solr_url;
     this.solrCore = config.custom_config?.solr_core;
+    this.tenantDb = tenantDb;
   }
 
   async initialize(): Promise<void> {
@@ -1031,20 +1033,21 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
 
       // Synonym terms for search enhancement (per language)
-      if (product.synonym_keys && product.synonym_keys.length > 0) {
+      const synKeys = product.synonym_keys;
+      if (synKeys && synKeys.length > 0 && this.tenantDb) {
         try {
-          const dictionaries = await SynonymDictionaryModel.find({
-            key: { $in: product.synonym_keys },
+          const { SynonymDictionary } = await connectWithModels(this.tenantDb);
+          const dictionaries = await SynonymDictionary.find({
+            key: { $in: synKeys },
             locale: l,
             is_active: true,
           }).select('terms').lean();
 
-          const allTerms = dictionaries.flatMap((d: any) => d.terms || []);
+          const allTerms = [...new Set(dictionaries.flatMap((d: any) => d.terms || []))];
           if (allTerms.length > 0) {
-            doc[`synonym_terms_text_${l}`] = [...new Set(allTerms)]; // Deduplicate
+            doc[`synonym_terms_text_${l}`] = allTerms.join(' ');
           }
         } catch (error) {
-          // Log but don't fail the indexing if synonym lookup fails
           console.warn(`Failed to fetch synonym terms for locale ${l}:`, error);
         }
       }
@@ -1116,6 +1119,15 @@ export class SolrAdapter extends MarketplaceAdapter {
       // Transform to Solr document
       const doc = await this.transformProduct(product, options);
 
+      // Extract synonym fields for atomic update (full doc replace drops them)
+      const synonymFields: Record<string, string> = {};
+      for (const key of Object.keys(doc)) {
+        if (key.startsWith('synonym_terms_text_')) {
+          synonymFields[key] = doc[key];
+          delete doc[key];
+        }
+      }
+
       // Send to Solr (use array format for Solr 9)
       const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
       const response = await fetch(updateUrl, {
@@ -1129,6 +1141,19 @@ export class SolrAdapter extends MarketplaceAdapter {
       if (!response.ok) {
         const error = await response.text();
         throw new Error(`Solr indexing failed: ${response.status} - ${error}`);
+      }
+
+      // Apply synonym terms as atomic update after main doc is indexed
+      if (Object.keys(synonymFields).length > 0) {
+        const atomicUpdate: Record<string, any> = { id: doc.id };
+        for (const [field, value] of Object.entries(synonymFields)) {
+          atomicUpdate[field] = { set: value };
+        }
+        await fetch(updateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([atomicUpdate]),
+        });
       }
 
       this.log(`✓ Indexed product: ${product.entity_code}${langInfo}`);

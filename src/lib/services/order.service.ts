@@ -542,7 +542,7 @@ export function batchRemoveItems(
  * Recalculate promo progress from line items.
  * Aggregates per promo_code, computing current value/quantity toward goal.
  */
-function recalculatePromoProgress(order: IOrder): void {
+export function recalculatePromoProgress(order: IOrder): void {
   const map: Record<string, IPromoProgress> = {};
 
   for (const item of order.items) {

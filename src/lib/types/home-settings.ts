@@ -16,6 +16,7 @@ export interface ProductCardStyle {
   hoverShadowSize?: ProductCardHoverShadowSize;
   backgroundColor: string;
   hoverBackgroundColor?: string;
+  priceDecimals?: number;
 }
 
 // Media card style (for banners, carousels, etc.) - uses same structure as ProductCardStyle

@@ -2,7 +2,27 @@
   "permissions": {
     "allow": [
       "Bash(grep -r Worker\\\\\\(/home/jire87/software/www-website/www-data/vendereincloud-app/vinc-commerce-suite/src/lib/queue --include=*.ts -A 5)",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(wmill --version)",
+      "Bash(wmill version:*)",
+      "Bash(rm _tmp-reset-mongo.mts)",
+      "Bash(rm _tmp-reset-mysql.mts)",
+      "Bash(rm _tmp-reset.mts)",
+      "Bash(rm _tmp-reset-sql.mts)",
+      "Bash(rm _tmp-wipe-mongo.mts)",
+      "Bash(rm _tmp-wipe-mysql.mts)",
+      "Bash(rm _tmp-wipe.mts)",
+      "Bash(rm _tmp-mongo.mts)",
+      "Bash(rm _tmp-mysql.mts)",
+      "Bash(mv _tmp-o.mts /home/jire87/software/www-website/www-data/vendereincloud-app/doc/export/time-to-pim/_tmp-o.mts)",
+      "Bash(rm _tmp-o.mts)",
+      "Bash(cp /tmp/on-order-submit-online.ts /home/jire87/software/www-website/www-data/vendereincloud-app/doc/windmill/dfl-it/on-order-submit.ts)",
+      "Bash(cp /tmp/before-order-submit-online.ts /home/jire87/software/www-website/www-data/vendereincloud-app/doc/windmill/dfl-it/before-order-submit.ts)",
+      "Bash(rm /tmp/on-order-submit-online.ts /tmp/before-order-submit-online.ts)"
+    ],
+    "additionalDirectories": [
+      "/home/jire87/software/www-website/www-data/vendereincloud-app/doc/export/time-to-pim",
+      "/home/jire87/software/www-website/www-data/vendereincloud-app/vinc-commerce-suite/src/app/api/b2b/pim/synonym-dictionaries/[id]/products"
     ]
   }
 }

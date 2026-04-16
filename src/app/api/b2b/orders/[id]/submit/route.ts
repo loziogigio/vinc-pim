@@ -24,7 +24,6 @@ import {
   updateCtxFromOrder,
   runBeforeHookWithAsyncFallback,
   runOnHookAuto,
-  runAfterHook,
   mergeOrderErpData,
   pushWindmillJobRef,
 } from "@/lib/services/windmill-proxy.service";
@@ -209,9 +208,6 @@ export async function POST(
         portalUserId: auth.userId || undefined,
       });
 
-      // Fire-and-forget after hook
-      runAfterHook(hookCtx);
-
       return NextResponse.json(
         {
           success: true,
@@ -254,9 +250,6 @@ export async function POST(
         void createOrderNoteSubmission(dbName, result.order);
       }
     }
-
-    // Fire-and-forget after hook
-    runAfterHook(hookCtx);
 
     return NextResponse.json({
       success: true,

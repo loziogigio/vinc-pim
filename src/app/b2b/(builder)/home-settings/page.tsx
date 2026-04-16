@@ -92,7 +92,8 @@ const DEFAULT_CARD_STYLE: ProductCardStyle = {
   hoverScale: 1.02,
   hoverShadowSize: "lg",
   backgroundColor: "#ffffff",
-  hoverBackgroundColor: undefined
+  hoverBackgroundColor: undefined,
+  priceDecimals: 2
 };
 
 const CARD_VARIANTS: Array<{ value: PreviewVariant; labelKey: string; helperKey: string }> = [
@@ -1562,6 +1563,27 @@ function CardStyleForm({
         />
       </div>
 
+      <div className="space-y-3">
+        <label className="text-sm font-medium text-slate-600">
+          {t("pages.homeSettings.product.priceDecimals")}: {cardStyle.priceDecimals ?? 2}
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={0}
+            max={4}
+            step={1}
+            value={cardStyle.priceDecimals ?? 2}
+            onChange={(event) => onStyleChange("priceDecimals", Number(event.target.value))}
+            className="w-full"
+          />
+          <span className="min-w-[3rem] rounded-md border border-slate-200 bg-white px-2 py-1 text-center text-sm font-mono text-slate-700">
+            {(99.99).toFixed(cardStyle.priceDecimals ?? 2)}
+          </span>
+        </div>
+        <p className="text-xs text-slate-500">{t("pages.homeSettings.product.priceDecimalsHelper")}</p>
+      </div>
+
       <div>
         <Button
           type="button"
@@ -1579,6 +1601,7 @@ function CardStyleForm({
             onStyleChange("hoverShadowSize", DEFAULT_CARD_STYLE.hoverShadowSize);
             onStyleChange("backgroundColor", DEFAULT_CARD_STYLE.backgroundColor);
             onStyleChange("hoverBackgroundColor", DEFAULT_CARD_STYLE.hoverBackgroundColor);
+            onStyleChange("priceDecimals", DEFAULT_CARD_STYLE.priceDecimals);
           }}
         >
           {t("pages.homeSettings.product.resetDefaults")}

@@ -7,9 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import {
+  createBatchSyncLog,
   executeBatchSync,
+  sweepStaleRunning,
   VALID_CLEANUP_MODES,
   VALID_REQUIRED_FIELDS,
+  type BatchSyncParams,
   type CleanupMode,
   type RequiredField,
 } from "@/lib/services/pim-batch-sync.service";
@@ -71,9 +74,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const startTime = Date.now();
-
-    const result = await executeBatchSync({
+    const baseParams: BatchSyncParams = {
       tenantId: auth.tenantId,
       tenantDb: auth.tenantDb,
       startedBy: auth.userId || auth.authMethod,
@@ -86,24 +87,47 @@ export async function POST(req: NextRequest) {
       rebuild_embeddings: body.rebuild_embeddings ?? false,
       batch_size: batchSize,
       dry_run: dryRun,
-    });
+    };
 
-    const durationMs = Date.now() - startTime;
-
-    // Update log with actual duration
-    if (!dryRun && result.job_id) {
-      const { BatchSyncLog } = await connectWithModels(auth.tenantDb);
-      await BatchSyncLog.updateOne(
-        { job_id: result.job_id },
-        { $set: { duration_ms: durationMs } }
-      );
+    // Dry runs stay synchronous — they're fast (score queries, no Solr writes)
+    // and the UI needs the preview counts in the response.
+    if (dryRun) {
+      const startTime = Date.now();
+      const result = await executeBatchSync(baseParams);
+      return NextResponse.json({
+        success: true,
+        ...result,
+        duration_ms: Date.now() - startTime,
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      ...result,
-      duration_ms: durationMs,
+    // Real runs go async: pre-create the log, return 202 with the job_id,
+    // then fire the service without awaiting. The reverse proxy can't time
+    // out because the HTTP response has already been sent. The service
+    // writes its own "completed"/"failed" state to BatchSyncLog, which the
+    // UI polls via the history endpoint.
+    const { job_id, log_id } = await createBatchSyncLog(baseParams);
+
+    void executeBatchSync({
+      ...baseParams,
+      pre_created_job_id: job_id,
+      pre_created_log_id: log_id,
+    }).catch((err) => {
+      // The service already writes "failed" to the log inside its own
+      // try/catch. This catch is the last-resort safety net for errors
+      // that bypass it (e.g. thrown before the try block).
+      console.error("[batch-sync] background job crashed:", err);
     });
+
+    return NextResponse.json(
+      {
+        success: true,
+        job_id,
+        status: "running",
+        dry_run: false,
+      },
+      { status: 202 }
+    );
   } catch (error: any) {
     console.error("Error in batch sync:", error);
     return NextResponse.json(
@@ -117,6 +141,12 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await requireTenantAuth(req);
     if (!auth.success) return auth.response;
+
+    // Self-heal: flip any "running" rows stuck >30min to "failed". Handles
+    // orphans left behind when the Next.js server restarts mid-job.
+    await sweepStaleRunning(auth.tenantDb, 30).catch((err) => {
+      console.error("[batch-sync] sweepStaleRunning failed:", err);
+    });
 
     const { BatchSyncLog } = await connectWithModels(auth.tenantDb);
 

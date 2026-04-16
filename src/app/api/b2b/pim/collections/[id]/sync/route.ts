@@ -75,7 +75,7 @@ export async function POST(
     }
 
     // Sync to Solr
-    const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+    const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
     let syncedCount = 0;
     const errors: string[] = [];
 

@@ -407,6 +407,7 @@ const HomeSettingsSchema = new Schema(
             script_path: { type: String, required: true },
             enabled: { type: Boolean, default: true },
             blocking: { type: Boolean, default: false },
+            mode: { type: String, enum: ["async", "blocking", "blocking_with_fallback"] },
             timeout_ms: { type: Number },
           }],
         }],

@@ -105,7 +105,6 @@ const SSOSessionSchema = new Schema<ISSOSessionDocument>(
     session_id: {
       type: String,
       required: true,
-      unique: true,
     },
     tenant_id: {
       type: String,

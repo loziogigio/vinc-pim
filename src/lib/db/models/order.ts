@@ -400,6 +400,7 @@ export interface IOrder extends Document {
   created_at: Date;
   updated_at: Date;
   confirmed_at?: Date;
+  preparing_at?: Date;
 
   // Tracking
   session_id: string;
@@ -937,6 +938,7 @@ const OrderSchema = new Schema<IOrder>(
 
     // Timestamps (handled by mongoose)
     confirmed_at: { type: Date },
+    preparing_at: { type: Date },
 
     // Tracking
     session_id: { type: String, required: true },

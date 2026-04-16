@@ -173,6 +173,9 @@ export interface SolrProduct {
   /** Flat array of spec values for text matching (e.g., ["5.8", "Altezza 5.8", "5.8 CM"]) */
   spec_values?: string[];
 
+  // Boolean attribute flags (from Solr dynamic fields)
+  attribute_is_new_b?: boolean;
+
   // Promotions
   has_active_promo?: boolean;
   promo_codes?: string[];
@@ -581,6 +584,9 @@ export interface SolrRawDocument {
   // Tags
   tag_groups?: string[];
   tag_categories?: string[];
+
+  // Boolean attribute flags (Solr dynamic fields)
+  attribute_is_new_b?: boolean;
 
   // Promotions
   promo_codes?: string[];

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const solrEnabled = adapterConfigs.solr?.enabled;
     let solrAdapter: SolrAdapter | null = null;
     if (solrEnabled) {
-      solrAdapter = new SolrAdapter(adapterConfigs.solr);
+      solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
     }
 
     // Get all ProductTypes

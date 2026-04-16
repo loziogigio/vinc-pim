@@ -203,7 +203,7 @@ export default function ResellerCustomersPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        href={`/b2b/customers/${customer.customer_id}`}
+                        href={`/b2b/store/customers/${customer.customer_id}`}
                         className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                       >
                         {t("common.view")}

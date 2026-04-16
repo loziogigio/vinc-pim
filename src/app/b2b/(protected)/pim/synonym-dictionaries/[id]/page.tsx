@@ -79,6 +79,9 @@ export default function SynonymDictionaryDetailPage() {
       }
 
       toast.success(t("pages.pim.synonyms.saveSuccess"));
+      if (productCount > 0) {
+        toast.info(t("pages.pim.synonyms.syncingToSearch"));
+      }
       fetchDictionary();
     } catch (error) {
       console.error("Failed to save terms:", error);

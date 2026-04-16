@@ -643,6 +643,158 @@ export async function getBooking(
 }
 
 /**
+ * Get aggregated booking and departure stats for the dashboard.
+ */
+export async function getBookingStats(
+  tenantDb: string,
+  tenantId: string
+): Promise<ServiceResult<{
+  departures: { total: number; by_status: Record<string, number> };
+  bookings: { total: number; by_status: Record<string, number> };
+  revenue: { confirmed_total: number; currency: string };
+  pending_count: number;
+  upcoming_count: number;
+}>> {
+  const { Departure, Booking } = await connectWithModels(tenantDb);
+
+  const [depStatusAgg, bookStatusAgg, revenueAgg, pendingCount, upcomingCount] =
+    await Promise.all([
+      Departure.aggregate([
+        { $match: { tenant_id: tenantId } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      Booking.aggregate([
+        { $match: { tenant_id: tenantId } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      Booking.aggregate([
+        { $match: { tenant_id: tenantId, status: "confirmed" } },
+        { $group: { _id: null, total: { $sum: "$total_price" } } },
+      ]),
+      Booking.countDocuments({ tenant_id: tenantId, status: "held" }),
+      Departure.countDocuments({
+        tenant_id: tenantId,
+        status: "active",
+        starts_at: { $gte: new Date() },
+      }),
+    ]);
+
+  const depByStatus: Record<string, number> = {};
+  let depTotal = 0;
+  for (const row of depStatusAgg) {
+    depByStatus[row._id] = row.count;
+    depTotal += row.count;
+  }
+
+  const bookByStatus: Record<string, number> = {};
+  let bookTotal = 0;
+  for (const row of bookStatusAgg) {
+    bookByStatus[row._id] = row.count;
+    bookTotal += row.count;
+  }
+
+  return {
+    success: true,
+    data: {
+      departures: { total: depTotal, by_status: depByStatus },
+      bookings: { total: bookTotal, by_status: bookByStatus },
+      revenue: {
+        confirmed_total: revenueAgg[0]?.total ?? 0,
+        currency: "EUR",
+      },
+      pending_count: pendingCount,
+      upcoming_count: upcomingCount,
+    },
+  };
+}
+
+/**
+ * Check in a confirmed booking.
+ */
+export async function checkInBooking(
+  tenantDb: string,
+  tenantId: string,
+  bookingId: string
+): Promise<ServiceResult<IBooking>> {
+  const { Booking } = await connectWithModels(tenantDb);
+
+  const booking = await Booking.findOne({
+    booking_id: bookingId,
+    tenant_id: tenantId,
+  }).lean<IBooking>();
+
+  if (!booking) {
+    return { success: false, error: "Booking not found", status: 404 };
+  }
+
+  if (booking.status !== "confirmed") {
+    return {
+      success: false,
+      error: `Cannot check in booking with status '${booking.status}'`,
+      status: 400,
+    };
+  }
+
+  const updated = await Booking.findOneAndUpdate(
+    { booking_id: bookingId, tenant_id: tenantId },
+    { $set: { status: "checked_in" } },
+    { new: true }
+  ).lean<IBooking>();
+
+  return { success: true, data: updated! };
+}
+
+/**
+ * Mark a confirmed booking as no-show and return capacity.
+ */
+export async function noShowBooking(
+  tenantDb: string,
+  tenantId: string,
+  bookingId: string
+): Promise<ServiceResult<IBooking>> {
+  const { Departure, Booking } = await connectWithModels(tenantDb);
+
+  const booking = await Booking.findOne({
+    booking_id: bookingId,
+    tenant_id: tenantId,
+  }).lean<IBooking>();
+
+  if (!booking) {
+    return { success: false, error: "Booking not found", status: 404 };
+  }
+
+  if (booking.status !== "confirmed") {
+    return {
+      success: false,
+      error: `Cannot mark no-show for booking with status '${booking.status}'`,
+      status: 400,
+    };
+  }
+
+  // Return booked capacity to available
+  await Departure.findOneAndUpdate(
+    {
+      departure_id: booking.departure_id,
+      "resources.resource_id": booking.resource_id,
+    },
+    {
+      $inc: {
+        "resources.$.booked": -booking.quantity,
+        "resources.$.available": booking.quantity,
+      },
+    }
+  );
+
+  const updated = await Booking.findOneAndUpdate(
+    { booking_id: bookingId, tenant_id: tenantId },
+    { $set: { status: "no_show" } },
+    { new: true }
+  ).lean<IBooking>();
+
+  return { success: true, data: updated! };
+}
+
+/**
  * List bookings with pagination and filters.
  */
 export async function listBookings(

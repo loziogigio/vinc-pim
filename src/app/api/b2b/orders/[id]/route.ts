@@ -92,7 +92,7 @@ export async function GET(
 
     // Pagination params
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "20")));
     const search = searchParams.get("search")?.toLowerCase() || "";
 
     // Fetch order (with tenant filter for security)
@@ -236,7 +236,7 @@ export async function PATCH(
     const body = await req.json();
 
     // Fields that bypass the draft-only restriction
-    const anyStatusFields = ["erp_cart_id", "erp_order_id", "erp_sync_status", "erp_data", "erp_items", "processing_status", "processing_phase", "processing_job_id"];
+    const anyStatusFields = ["erp_cart_id", "erp_order_id", "erp_sync_status", "erp_data", "erp_items", "windmill_job", "processing_status", "processing_phase", "processing_job_id"];
     const bodyKeys = Object.keys(body);
     const isErpOnly = bodyKeys.every(k => anyStatusFields.includes(k));
 
@@ -262,6 +262,7 @@ export async function PATCH(
       "po_reference",
       "cost_center",
       "notes",
+      "cart_name",
     ];
 
     // Build update object
@@ -328,10 +329,21 @@ export async function PATCH(
       }
     }
 
+    // windmill_job: append one or more entries to erp_data.windmill_jobs.
+    // External hooks (e.g. after_order_confirm) use this to accumulate a
+    // history of runs on the order instead of overwriting prior entries.
+    // To replace the whole array, send erp_data: { windmill_jobs: [...] }.
+    const pushDoc: Record<string, unknown> = {};
+    if (body.windmill_job) {
+      const entries = Array.isArray(body.windmill_job) ? body.windmill_job : [body.windmill_job];
+      pushDoc["erp_data.windmill_jobs"] = { $each: entries };
+    }
+
     // Update the order (with tenant filter for security)
     const updateOp: Record<string, unknown> = {};
     if (Object.keys(updateDoc).length) updateOp.$set = updateDoc;
     if (Object.keys(unsetDoc).length) updateOp.$unset = unsetDoc;
+    if (Object.keys(pushDoc).length) updateOp.$push = pushDoc;
 
     if (Object.keys(updateOp).length) {
       await OrderModel.updateOne({ order_id, tenant_id: tenantId }, updateOp);

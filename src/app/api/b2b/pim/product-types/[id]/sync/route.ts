@@ -63,7 +63,7 @@ export async function POST(
       // Fetch updated products for Solr indexing
       const products = await PIMProductModel.find(query).lean();
 
-      const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+      const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
 
       for (const product of products) {
         try {

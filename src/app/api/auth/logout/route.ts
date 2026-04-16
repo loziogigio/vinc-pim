@@ -107,7 +107,14 @@ export async function POST(req: NextRequest) {
       response.redirect_uri = redirect_uri;
     }
 
-    return NextResponse.json(response);
+    const res = NextResponse.json(response);
+    // Clear the SSO session cookie so silent login won't auto-authenticate
+    res.cookies.set("sso_sid", "", {
+      httpOnly: true,
+      path: "/",
+      maxAge: 0,
+    });
+    return res;
   } catch (error) {
     console.error("Logout error:", error);
     return NextResponse.json(
@@ -136,10 +143,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Redirect to the specified URI or return success
+  // Clear SSO session cookie
+  const clearCookie = {
+    httpOnly: true,
+    path: "/",
+    maxAge: 0,
+  } as const;
+
   if (redirectUri) {
-    return NextResponse.redirect(redirectUri);
+    const res = NextResponse.redirect(redirectUri);
+    res.cookies.set("sso_sid", "", clearCookie);
+    return res;
   }
 
-  return NextResponse.json({ success: true });
+  const res = NextResponse.json({ success: true });
+  res.cookies.set("sso_sid", "", clearCookie);
+  return res;
 }

@@ -576,6 +576,36 @@ export async function runOnMergeAfterAuto(
 }
 
 /**
+ * runOnHookAuto + merge ERP data. Does NOT fire the after hook —
+ * use when the after phase is emitted by the service layer on status change.
+ */
+export async function runOnMergeAuto(
+  ctx: HookContext,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  OrderModel: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orderDbId: any,
+  opts?: { orderId?: string },
+): Promise<OnHookResult> {
+  const on = await runOnHookAuto(ctx);
+  if (on.hooked && !on.async && on.success && on.response?.data) {
+    await mergeOrderErpData(OrderModel, orderDbId, on.response);
+  }
+  if (on.hooked && !on.async && opts?.orderId) {
+    await pushWindmillJobRef(OrderModel, opts.orderId, {
+      job_id: `sync-${crypto.randomUUID()}`,
+      script: `on_${ctx.operation.replace(".", "_")}`,
+      phase: "on",
+      operation: ctx.operation,
+      status: on.success ? "completed" : "failed",
+      error: on.success ? undefined : (on.error || on.response?.error),
+      mode: "sync",
+    });
+  }
+  return on;
+}
+
+/**
  * Check if an async on-hook job has completed. If so, merge the result.
  * Returns the merged response or null if not yet completed / not hooked.
  */
@@ -763,16 +793,19 @@ export async function mergeOrderErpData(
   const data = response.data as Record<string, any>;
 
   // New gift items from ERP (omaggio rows added by RisolviAnomalie)
-  // Only push genuinely new items — check entity_code doesn't already exist as a gift
+  // Only push genuinely new items — check entity_code OR promo_code doesn't already exist as a gift
+  // (VINC gifts may use a different article code than the ERP, e.g. VERNELSUPREME vs 519458)
   if (data.new_items?.length) {
     const order = await OrderModel.findById(orderId, { items: 1 }).lean();
-    const existingGiftCodes = new Set(
-      (order?.items || [])
-        .filter((i: any) => i.is_gift_line)
-        .map((i: any) => i.entity_code)
+    const existingGifts = (order?.items || []).filter((i: any) => i.is_gift_line);
+    const existingGiftCodes = new Set(existingGifts.map((i: any) => i.entity_code));
+    const existingGiftPromos = new Set(
+      existingGifts.map((i: any) => i.promo_code || i.gift_with_purchase).filter(Boolean)
     );
     const trulyNew = (data.new_items as Array<Record<string, unknown>>).filter(
-      (item) => !existingGiftCodes.has(item.entity_code as string)
+      (item) =>
+        !existingGiftCodes.has(item.entity_code as string) &&
+        (!item.promo_code || !existingGiftPromos.has(item.promo_code as string))
     );
     if (trulyNew.length > 0) {
       await OrderModel.updateOne(
@@ -788,4 +821,85 @@ export async function mergeOrderErpData(
   // is only authoritative for adding NEW gift rows (omaggio).
   // Price/qty corrections from the ERP are informational (stored in erp_data)
   // and the final truth is established at order confirmation via on-order-submit.
+}
+
+// ─── STATUS TRANSITION → HOOK EMITTER ────────────────────────────
+//
+// Called from the service layer whenever order.status changes, so the
+// correct order.* after-hook fires regardless of which route / code path
+// performed the transition. Before/on phases remain in route handlers.
+
+const STATUS_TO_OPERATION: Record<string, Record<string, HookOperation>> = {
+  draft: {
+    pending: "order.submit",
+    confirmed: "order.confirm",
+  },
+  pending: {
+    confirmed: "order.confirm",
+  },
+  quotation: {
+    confirmed: "order.confirm",
+  },
+  confirmed: {
+    preparing: "order.preparing",
+    shipped: "order.ship",
+  },
+  preparing: {
+    shipped: "order.ship",
+  },
+  shipped: {
+    delivered: "order.deliver",
+  },
+};
+
+/**
+ * Map an order.status transition to the canonical HookOperation.
+ * Returns null for no-op, unmapped transitions, or reverts.
+ * `* → cancelled` always maps to `order.cancel` regardless of source.
+ */
+export function operationForTransition(
+  from: string | undefined,
+  to: string,
+): HookOperation | null {
+  if (!to || from === to) return null;
+  if (to === "cancelled") return "order.cancel";
+  if (!from) return null;
+  return STATUS_TO_OPERATION[from]?.[to] ?? null;
+}
+
+/**
+ * Fire-and-forget after-hook for an order status transition. Computes the
+ * operation from the from→to pair, builds the hook context from the saved
+ * order, and dispatches to runAfterHook. No-op when the transition doesn't
+ * map to any hook operation.
+ *
+ * Services call this exactly once per transition step after `.save()`
+ * succeeds. For cascading transitions (e.g. submitOrder goes draft→pending→
+ * confirmed in one save), call once per step so every hook fires.
+ *
+ * Note: `to` is passed explicitly rather than read from `order.status`, so
+ * cascades can emit for intermediate steps after the order has already been
+ * persisted at the final state.
+ */
+export function emitStatusChangeAfterHook(
+  tenantDb: string,
+  tenantId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: any,
+  transition: { from: string | undefined; to: string },
+  opts?: { addressCode?: string; requestData?: Record<string, unknown> },
+): void {
+  const operation = operationForTransition(transition.from, transition.to);
+  if (!operation) return;
+  const plain = typeof order?.toObject === "function" ? order.toObject() : order;
+  const ctx = buildHookCtxFromOrder(tenantDb, tenantId, operation, plain, opts);
+  runAfterHook(ctx);
+}
+
+/**
+ * Derive tenantId from a tenant db name (vinc-${tenantId} convention).
+ * Centralized so services can emit hooks without taking tenantId as a param.
+ */
+export function tenantIdFromDbName(dbName: string): string {
+  return dbName.startsWith("vinc-") ? dbName.slice(5) : dbName;
 }

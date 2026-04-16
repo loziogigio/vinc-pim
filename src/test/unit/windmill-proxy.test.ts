@@ -36,6 +36,9 @@ import {
   runOnHook,
   runAfterHook,
   mergeOrderErpData,
+  operationForTransition,
+  emitStatusChangeAfterHook,
+  tenantIdFromDbName,
 } from "@/lib/services/windmill-proxy.service";
 import { windmillRun, windmillRunAsync, WindmillError } from "@/lib/services/windmill-client";
 import { getHomeSettings } from "@/lib/db/home-settings";
@@ -826,5 +829,172 @@ describe("unit: mergeOrderErpData", () => {
     await mergeOrderErpData(OrderModel, "order-id", { success: true });
 
     expect(mockUpdateOne).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Status Transition Emitter
+// ═══════════════════════════════════════════════════════════════════
+
+describe("operationForTransition", () => {
+  it("maps draft → pending to order.submit", () => {
+    expect(operationForTransition("draft", "pending")).toBe("order.submit");
+  });
+
+  it("maps draft → confirmed (cascade) to order.confirm", () => {
+    expect(operationForTransition("draft", "confirmed")).toBe("order.confirm");
+  });
+
+  it("maps pending → confirmed to order.confirm", () => {
+    expect(operationForTransition("pending", "confirmed")).toBe("order.confirm");
+  });
+
+  it("maps quotation → confirmed to order.confirm", () => {
+    expect(operationForTransition("quotation", "confirmed")).toBe("order.confirm");
+  });
+
+  it("maps confirmed → preparing to order.preparing", () => {
+    expect(operationForTransition("confirmed", "preparing")).toBe("order.preparing");
+  });
+
+  it("maps confirmed → shipped to order.ship (skipping preparing)", () => {
+    expect(operationForTransition("confirmed", "shipped")).toBe("order.ship");
+  });
+
+  it("maps preparing → shipped to order.ship", () => {
+    expect(operationForTransition("preparing", "shipped")).toBe("order.ship");
+  });
+
+  it("maps shipped → delivered to order.deliver", () => {
+    expect(operationForTransition("shipped", "delivered")).toBe("order.deliver");
+  });
+
+  it("always maps any → cancelled to order.cancel", () => {
+    expect(operationForTransition("draft", "cancelled")).toBe("order.cancel");
+    expect(operationForTransition("pending", "cancelled")).toBe("order.cancel");
+    expect(operationForTransition("confirmed", "cancelled")).toBe("order.cancel");
+    expect(operationForTransition("shipped", "cancelled")).toBe("order.cancel");
+  });
+
+  it("returns null for no-op (from === to)", () => {
+    expect(operationForTransition("confirmed", "confirmed")).toBeNull();
+    expect(operationForTransition("draft", "draft")).toBeNull();
+  });
+
+  it("returns null for unmapped transitions (reverts, quotation, deleted)", () => {
+    expect(operationForTransition("confirmed", "draft")).toBeNull();
+    expect(operationForTransition("draft", "quotation")).toBeNull();
+    expect(operationForTransition("draft", "deleted")).toBeNull();
+    expect(operationForTransition("cancelled", "draft")).toBeNull();
+  });
+
+  it("returns null when from is undefined (unless target is cancelled)", () => {
+    expect(operationForTransition(undefined, "confirmed")).toBeNull();
+    expect(operationForTransition(undefined, "cancelled")).toBe("order.cancel");
+  });
+});
+
+describe("emitStatusChangeAfterHook", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(windmillRunAsync).mockResolvedValue("job-id");
+  });
+
+  it("fires the after hook when the transition is mapped", async () => {
+    const { getHomeSettings } = await import("@/lib/db/home-settings");
+    vi.mocked(getHomeSettings).mockResolvedValue({
+      windmill_proxy: {
+        enabled: true,
+        workspace_name: "test",
+        timeout_ms: 5000,
+        channels: [
+          {
+            channel: "b2c",
+            enabled: true,
+            hooks: [
+              {
+                operation: "order.confirm",
+                phase: "after",
+                script_path: "f/test/after_confirm",
+                enabled: true,
+              },
+            ],
+          },
+        ],
+      },
+    } as any);
+
+    invalidateProxyCache("vinc-test-it");
+
+    emitStatusChangeAfterHook(
+      "vinc-test-it",
+      "test-it",
+      { order_id: "abc", channel: "b2c", customer_code: "CUST" },
+      { from: "pending", to: "confirmed" },
+    );
+
+    // runAfterHook is fire-and-forget — give the promise chain a turn
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(vi.mocked(windmillRunAsync)).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(windmillRunAsync).mock.calls[0];
+    expect(call[1]).toBe("f/test/after_confirm");
+  });
+
+  it("is a no-op for a no-op transition", async () => {
+    const { getHomeSettings } = await import("@/lib/db/home-settings");
+    vi.mocked(getHomeSettings).mockResolvedValue({
+      windmill_proxy: {
+        enabled: true,
+        channels: [{ channel: "b2c", enabled: true, hooks: [] }],
+      },
+    } as any);
+
+    invalidateProxyCache("vinc-test-it");
+
+    emitStatusChangeAfterHook(
+      "vinc-test-it",
+      "test-it",
+      { order_id: "abc", channel: "b2c" },
+      { from: "confirmed", to: "confirmed" },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(vi.mocked(windmillRunAsync)).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op for an unmapped transition", async () => {
+    const { getHomeSettings } = await import("@/lib/db/home-settings");
+    vi.mocked(getHomeSettings).mockResolvedValue({
+      windmill_proxy: {
+        enabled: true,
+        channels: [{ channel: "b2c", enabled: true, hooks: [] }],
+      },
+    } as any);
+
+    invalidateProxyCache("vinc-test-it");
+
+    emitStatusChangeAfterHook(
+      "vinc-test-it",
+      "test-it",
+      { order_id: "abc", channel: "b2c" },
+      { from: "confirmed", to: "draft" },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(vi.mocked(windmillRunAsync)).not.toHaveBeenCalled();
+  });
+});
+
+describe("tenantIdFromDbName", () => {
+  it("strips the vinc- prefix", () => {
+    expect(tenantIdFromDbName("vinc-simani-it")).toBe("simani-it");
+    expect(tenantIdFromDbName("vinc-dfl-it")).toBe("dfl-it");
+  });
+
+  it("returns the name unchanged when no prefix", () => {
+    expect(tenantIdFromDbName("simani-it")).toBe("simani-it");
   });
 });

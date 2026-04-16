@@ -13,10 +13,14 @@ const FALLBACK_IMAGE = "/placeholder-product.svg";
 const shadowBadge =
   "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide";
 
-const numberFormatter = new Intl.NumberFormat("it-IT", {
-  style: "currency",
-  currency: "EUR"
-});
+function createNumberFormatter(decimals: number) {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+}
 
 export type PreviewVariant = "b2b" | "horizontal";
 
@@ -88,8 +92,10 @@ export function ProductCardPreview({
     color: secondaryColor
   };
 
-  const price = numberFormatter.format(SAMPLE_PRODUCT.salePrice);
-  const listPrice = numberFormatter.format(SAMPLE_PRODUCT.price);
+  const decimals = cardStyle.priceDecimals ?? 2;
+  const formatter = useMemo(() => createNumberFormatter(decimals), [decimals]);
+  const price = formatter.format(SAMPLE_PRODUCT.salePrice);
+  const listPrice = formatter.format(SAMPLE_PRODUCT.price);
 
   const verticalCard = (
     <div className="flex flex-col h-full">

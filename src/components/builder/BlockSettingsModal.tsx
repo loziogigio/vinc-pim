@@ -18,8 +18,8 @@ import { ProductDataTableSettings } from "./ProductDataTableSettings";
 import { FormBlockSettings } from "./FormBlockSettings";
 import { ZoneSelector } from "./ZoneSelector";
 import { RichTextEditor } from "./RichTextEditor";
-import type { BlockLayout, ProductDetailZone } from "@/lib/types/blocks";
-import { Maximize, AlignCenter } from "lucide-react";
+import type { BlockLayout, ProductDetailZone, TitleAlignment } from "@/lib/types/blocks";
+import { Maximize, AlignCenter, AlignLeft, AlignRight } from "lucide-react";
 
 type DraftConfig = Record<string, unknown>;
 
@@ -84,6 +84,10 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
   const [zone, setZone] = useState<ProductDetailZone>(selectedBlock?.zone || "zone3");
   const [tabLabel, setTabLabel] = useState<string>(selectedBlock?.tabLabel || "");
 
+  // Title display controls
+  const [showTitle, setShowTitle] = useState<boolean>(selectedBlock?.showTitle ?? true);
+  const [titleAlignment, setTitleAlignment] = useState<TitleAlignment>(selectedBlock?.titleAlignment || "left");
+
   useEffect(() => {
     if (selectedBlock) {
       const cloned = cloneConfig(selectedBlock.config);
@@ -92,12 +96,16 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
       setLayout(selectedBlock.layout || "full-width");
       setZone(selectedBlock.zone || "zone3");
       setTabLabel(selectedBlock.tabLabel || "");
+      setShowTitle(selectedBlock.showTitle ?? true);
+      setTitleAlignment(selectedBlock.titleAlignment || "left");
     } else {
       setDraft(null);
       setAdvancedDraft("");
       setLayout("full-width");
       setZone("zone3");
       setTabLabel("");
+      setShowTitle(true);
+      setTitleAlignment("left");
     }
     setHasLocalChanges(false);
     setJsonError(null);
@@ -141,7 +149,9 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
               layout,
               zone,
               tabLabel:
-                zone === "zone3" && tabLabel.trim().length > 0 ? tabLabel.trim() : undefined
+                zone === "zone3" && tabLabel.trim().length > 0 ? tabLabel.trim() : undefined,
+              showTitle,
+              titleAlignment,
             }
           : block
       ),
@@ -328,6 +338,54 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
               )}
             </div>
 
+            {/* Show Title toggle + Title Alignment — shown for ALL blocks with a title */}
+            {hasTitle && (
+              <div className="pb-6 border-b border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700">Show title</label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showTitle}
+                    onClick={() => { setShowTitle(!showTitle); setHasLocalChanges(true); }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      showTitle ? "bg-orange-500" : "bg-slate-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        showTitle ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {showTitle && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Title alignment</label>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {(["left", "center", "right"] as const).map((align) => (
+                        <button
+                          key={align}
+                          type="button"
+                          onClick={() => { setTitleAlignment(align); setHasLocalChanges(true); }}
+                          className={`flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-2 text-sm transition ${
+                            titleAlignment === align
+                              ? "border-orange-500 bg-orange-50 text-orange-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {align === "left" ? <AlignLeft className="h-4 w-4" /> :
+                           align === "center" ? <AlignCenter className="h-4 w-4" /> :
+                           <AlignRight className="h-4 w-4" />}
+                          <span className="text-xs capitalize">{align}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* YouTube Block Custom UI */}
             {selectedBlock.type === "youtubeEmbed" ? (
               <YouTubeBlockSettings
@@ -445,7 +503,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
             ) : null}
 
             {/* Standard Block Fields */}
-            {hasTitle && !skipStandardTitleField ? (
+            {hasTitle && !skipStandardTitleField && showTitle ? (
               <div>
                 <label className="text-sm font-medium text-slate-700">Title</label>
                 <Input
@@ -458,7 +516,7 @@ export const BlockSettingsModal = ({ open, onClose }: BlockSettingsModalProps) =
               </div>
             ) : null}
 
-            {hasSubtitle ? (
+            {hasSubtitle && showTitle ? (
               <div>
                 <label className="text-sm font-medium text-slate-700">Subtitle</label>
                 <textarea

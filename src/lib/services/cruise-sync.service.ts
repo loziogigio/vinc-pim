@@ -7,7 +7,20 @@
  */
 
 import { connectWithModels } from "@/lib/db/connection";
-import { ocFetch } from "@/lib/services/oc-client";
+// OC API client — inline since oc-client.ts was removed (cruise-specific code moved to B2C)
+const OC_BASE_URL = process.env.AGGREGATOR_BASE_URL || "http://localhost:8000";
+
+async function ocFetch<T = unknown>(path: string, params?: Record<string, string | undefined>): Promise<T> {
+  const url = new URL(`/api/v1${path}`, OC_BASE_URL);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== "") url.searchParams.set(key, value);
+    }
+  }
+  const res = await fetch(url.toString(), { headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!res.ok) throw new Error(`OC API ${res.status}: ${path}`);
+  return (await res.json()) as T;
+}
 import {
   CDN_BASE_URL,
   CRUISE_COMPANIES,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useEffect } from "react";
@@ -161,6 +161,27 @@ export default function BatchSyncPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
+  // Running-job state (async POST path)
+  const [runningJobId, setRunningJobId] = useState<string | null>(null);
+  const [runningElapsedSec, setRunningElapsedSec] = useState(0);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopPolling() {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    return stopPolling;
+  }, []);
+
   // ============================================
   // HANDLERS
   // ============================================
@@ -212,14 +233,75 @@ export default function BatchSyncPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      // Async path: server returned 202 with a job_id. Start polling the
+      // history endpoint until the matching row flips off "running".
+      if (data.status === "running" && data.job_id) {
+        startPollingJob(data.job_id);
+        loadHistory();
+        return;
+      }
+
+      // Legacy synchronous path (shouldn't happen for real runs now, but
+      // kept as a fallback).
       setExecuteResult(data);
       loadHistory();
       loadStats();
     } catch (err: any) {
       alert(`Batch sync failed: ${err.message}`);
-    } finally {
       setIsExecuting(false);
     }
+  }
+
+  function startPollingJob(jobId: string) {
+    setRunningJobId(jobId);
+    const startedAt = Date.now();
+    setRunningElapsedSec(0);
+
+    stopPolling();
+
+    elapsedTimerRef.current = setInterval(() => {
+      setRunningElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+
+    pollTimerRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/b2b/pim/products/batch-sync?limit=10");
+        if (!res.ok) return;
+        const data = await res.json();
+        const items: HistoryItem[] = data.items ?? [];
+        setHistory(items);
+        const row = items.find((it) => it.job_id === jobId);
+        if (row && row.status !== "running") {
+          stopPolling();
+          setRunningJobId(null);
+          setIsExecuting(false);
+          setExecuteResult({
+            dry_run: false,
+            job_id: row.job_id,
+            cleanup: row.cleanup_result,
+            resync: row.resync_result
+              ? {
+                  total: row.resync_result.total,
+                  eligible: row.resync_result.total,
+                  indexed: row.resync_result.indexed,
+                  failed: row.resync_result.failed,
+                  batches_processed: 0,
+                  score_updates: row.resync_result.score_updates,
+                  errors: [],
+                }
+              : undefined,
+            duration_ms: row.duration_ms ?? 0,
+          });
+          if (row.status === "failed") {
+            alert(`Batch sync failed: ${row.error_message || "Unknown error"}`);
+          }
+          loadStats();
+        }
+      } catch {
+        // silent; keep polling
+      }
+    }, 3000);
   }
 
   async function handleCheck() {
@@ -522,6 +604,13 @@ export default function BatchSyncPage() {
                 {t("pages.pim.batchSync.runBatchSync")}
               </button>
             </div>
+            {runningJobId && (
+              <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="font-mono text-xs">{runningJobId}</span>
+                <span>· running {runningElapsedSec}s</span>
+              </div>
+            )}
           </div>
 
           {/* Preview Results */}

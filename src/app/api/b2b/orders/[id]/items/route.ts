@@ -323,10 +323,19 @@ export async function DELETE(
     const body = await req.json();
 
     // Parse line numbers (supports both formats)
-    const lineNumbers = parseLineNumbers(body);
-    if (!lineNumbers) {
+    let lineNumbers = parseLineNumbers(body);
+
+    // Fallback: resolve external_refs (entity_codes) to line_numbers
+    if (!lineNumbers && Array.isArray(body.external_refs) && body.external_refs.length > 0) {
+      const refs = new Set(body.external_refs.map(String));
+      lineNumbers = order.items
+        .filter((i: any) => refs.has(String(i.external_ref)) || refs.has(String(i.entity_code)))
+        .map((i: any) => i.line_number);
+    }
+
+    if (!lineNumbers || lineNumbers.length === 0) {
       return NextResponse.json(
-        { error: "Missing required field: items or line_numbers (array)" },
+        { error: "Missing required field: items, line_numbers, or external_refs (array)" },
         { status: 400 }
       );
     }

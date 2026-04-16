@@ -75,7 +75,7 @@ export async function POST(
 
     // Initialize Solr adapter (config from loadAdapterConfigs - single source of truth)
     const adapterConfigs = loadAdapterConfigs(tenantId);
-    const solrAdapter = new SolrAdapter(adapterConfigs.solr);
+    const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
     await solrAdapter.initialize();
 
     // Perform direct sync to Solr
