@@ -132,31 +132,17 @@ function extractVersion(userAgent: string, pattern: RegExp): string | undefined 
   return match ? match[1] : undefined;
 }
 
+import { extractClientIp } from "@/lib/utils/client-ip";
+
 /**
  * Get client IP from request headers.
+ *
+ * Delegates to the shared `extractClientIp` helper so the trust model
+ * (TRUSTED_EDGE) is consistent across SSO, rate-limit middleware, and email
+ * tracking routes.
  */
 export function getClientIP(request: Request): string {
-  const headers = request.headers;
-
-  // Check various headers (in order of trust)
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    // Take the first IP in the chain
-    return forwardedFor.split(",")[0].trim();
-  }
-
-  const realIP = headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
-  }
-
-  const cfConnectingIP = headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP;
-  }
-
-  // Fallback to unknown
-  return "unknown";
+  return extractClientIp(request);
 }
 
 /**

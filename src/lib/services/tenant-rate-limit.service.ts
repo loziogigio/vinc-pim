@@ -11,6 +11,8 @@
  */
 
 import { getRedis } from "@/lib/cache/redis-client";
+import { matchesAnyCIDR } from "@/lib/utils/cidr";
+import type { ITenantRateLimit } from "@/lib/db/models/admin-tenant";
 
 // Cache TTL for tenant settings (5 minutes)
 const SETTINGS_CACHE_TTL = 300;
@@ -19,20 +21,30 @@ const SETTINGS_CACHE_TTL = 300;
 const MINUTE_WINDOW = 60;
 const DAY_SECONDS = 86400;
 
-export interface TenantRateLimitSettings {
-  enabled: boolean;
-  requests_per_minute: number; // 0 = unlimited
-  requests_per_day: number; // 0 = unlimited
-  max_concurrent: number; // 0 = unlimited
-}
+// "unknown" IP bucket caps — clamps to a hardcoded floor so a misconfigured
+// proxy can't create one shared global escape hatch.
+const UNKNOWN_IP_MAX_PER_MINUTE = 5;
+const UNKNOWN_IP_MAX_PER_DAY = 50;
+const UNKNOWN_IP_MAX_CONCURRENT = 2;
+
+export type TenantRateLimitSettings = ITenantRateLimit;
 
 export interface RateLimitResult {
   allowed: boolean;
-  blocked_by?: "minute" | "day" | "concurrent";
+  blocked_by?:
+    | "minute"
+    | "day"
+    | "concurrent"
+    | "ip_minute"
+    | "ip_day"
+    | "ip_concurrent";
   limits: {
     minute: { current: number; limit: number; remaining: number; reset_at: number };
     day: { current: number; limit: number; remaining: number; reset_at: number };
     concurrent: { current: number; limit: number };
+    ip_minute?: { current: number; limit: number; remaining: number; reset_at: number };
+    ip_day?: { current: number; limit: number; remaining: number; reset_at: number };
+    ip_concurrent?: { current: number; limit: number };
   };
 }
 
@@ -308,4 +320,234 @@ export async function getRateLimitStatus(
       limit: settings.max_concurrent,
     },
   };
+}
+
+// ============================================================================
+// PER-IP RATE LIMITING
+// ============================================================================
+
+/**
+ * Underscore-encode an IP for safe inclusion in a Redis key. IPv6 colons collide
+ * with Redis cluster slot tags only when wrapped in `{}`; we just substitute.
+ */
+function ipToken(ip: string): string {
+  return ip.replace(/:/g, "_");
+}
+
+interface PerIpCaps {
+  per_minute: number;
+  per_day: number;
+  concurrent: number;
+}
+
+function clampForUnknown(ip: string, settings: ITenantRateLimit): PerIpCaps {
+  if (ip !== "unknown") {
+    return {
+      per_minute: settings.per_ip_requests_per_minute,
+      per_day: settings.per_ip_requests_per_day,
+      concurrent: settings.per_ip_max_concurrent,
+    };
+  }
+  const cfgMin = settings.per_ip_requests_per_minute;
+  const cfgDay = settings.per_ip_requests_per_day;
+  const cfgCon = settings.per_ip_max_concurrent;
+  return {
+    per_minute: cfgMin > 0 ? Math.min(UNKNOWN_IP_MAX_PER_MINUTE, cfgMin) : UNKNOWN_IP_MAX_PER_MINUTE,
+    per_day: cfgDay > 0 ? Math.min(UNKNOWN_IP_MAX_PER_DAY, cfgDay) : UNKNOWN_IP_MAX_PER_DAY,
+    concurrent: cfgCon > 0 ? Math.min(UNKNOWN_IP_MAX_CONCURRENT, cfgCon) : UNKNOWN_IP_MAX_CONCURRENT,
+  };
+}
+
+function emptyPerIpResult(allowed: boolean, allowlistExempt = false): RateLimitResult {
+  const exemptLimit = allowlistExempt ? -1 : 0;
+  return {
+    allowed,
+    limits: {
+      minute: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
+      day: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
+      concurrent: { current: 0, limit: 0 },
+      ip_minute: { current: 0, limit: exemptLimit, remaining: -1, reset_at: 0 },
+      ip_day: { current: 0, limit: exemptLimit, remaining: -1, reset_at: 0 },
+      ip_concurrent: { current: 0, limit: exemptLimit },
+    },
+  };
+}
+
+/**
+ * Check and consume the per-IP rate limit for a tenant.
+ *
+ * Independent of the per-API-key limiter exposed by `checkRateLimit`. Both
+ * dimensions can fire on the same request — `blocked_by` indicates which one.
+ *
+ * Returns allowed=true if the IP is in the tenant's allowlist (no counters
+ * incremented). The "unknown" IP bucket is clamped to a hardcoded floor so a
+ * misconfigured proxy can't create a shared global escape hatch.
+ */
+export async function checkPerIpRateLimit(
+  tenant_id: string,
+  settings: ITenantRateLimit | null,
+  ip: string
+): Promise<RateLimitResult> {
+  if (!settings || !settings.per_ip_enabled) {
+    return emptyPerIpResult(true);
+  }
+
+  if (matchesAnyCIDR(ip, settings.per_ip_allowlist || [])) {
+    return emptyPerIpResult(true, true);
+  }
+
+  const r = getRedis();
+  const { start: minute_start, reset_at: minute_reset } = getMinuteWindow();
+  const day_key = getDayKey();
+  const day_reset = getDayResetAt();
+  const caps = clampForUnknown(ip, settings);
+  const token = ipToken(ip);
+
+  const minute_key = `ratelimit:${tenant_id}:ip:minute:${token}:${minute_start}`;
+  const day_key_full = `ratelimit:${tenant_id}:ip:day:${token}:${day_key}`;
+  const concurrent_key = `ratelimit:${tenant_id}:ip:concurrent:${token}`;
+
+  const pipeline = r.pipeline();
+  pipeline.get(minute_key);
+  pipeline.get(day_key_full);
+  pipeline.get(concurrent_key);
+  const results = await pipeline.exec();
+
+  const minute_current = parseInt((results?.[0]?.[1] as string) || "0");
+  const day_current = parseInt((results?.[1]?.[1] as string) || "0");
+  const concurrent_current = parseInt((results?.[2]?.[1] as string) || "0");
+
+  const buildLimits = (overrides: Partial<RateLimitResult["limits"]> = {}): RateLimitResult["limits"] => ({
+    minute: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
+    day: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
+    concurrent: { current: 0, limit: 0 },
+    ip_minute: {
+      current: minute_current,
+      limit: caps.per_minute,
+      remaining: caps.per_minute > 0 ? Math.max(0, caps.per_minute - minute_current) : -1,
+      reset_at: minute_reset,
+    },
+    ip_day: {
+      current: day_current,
+      limit: caps.per_day,
+      remaining: caps.per_day > 0 ? Math.max(0, caps.per_day - day_current) : -1,
+      reset_at: day_reset,
+    },
+    ip_concurrent: { current: concurrent_current, limit: caps.concurrent },
+    ...overrides,
+  });
+
+  if (caps.per_minute > 0 && minute_current >= caps.per_minute) {
+    return { allowed: false, blocked_by: "ip_minute", limits: buildLimits() };
+  }
+  if (caps.per_day > 0 && day_current >= caps.per_day) {
+    return { allowed: false, blocked_by: "ip_day", limits: buildLimits() };
+  }
+  // ip_concurrent is report-only in v1 (see plan §5) — not enforced here.
+
+  const incrPipeline = r.pipeline();
+  if (caps.per_minute > 0) {
+    incrPipeline.incr(minute_key);
+    incrPipeline.expire(minute_key, MINUTE_WINDOW + 5);
+  }
+  if (caps.per_day > 0) {
+    incrPipeline.incr(day_key_full);
+    incrPipeline.expire(day_key_full, DAY_SECONDS + 3600);
+  }
+  await incrPipeline.exec();
+
+  return {
+    allowed: true,
+    limits: buildLimits({
+      ip_minute: {
+        current: minute_current + 1,
+        limit: caps.per_minute,
+        remaining: caps.per_minute > 0 ? Math.max(0, caps.per_minute - minute_current - 1) : -1,
+        reset_at: minute_reset,
+      },
+      ip_day: {
+        current: day_current + 1,
+        limit: caps.per_day,
+        remaining: caps.per_day > 0 ? Math.max(0, caps.per_day - day_current - 1) : -1,
+        reset_at: day_reset,
+      },
+    }),
+  };
+}
+
+/**
+ * Read-only per-IP usage status. Used by the IP usage probe in the admin UI.
+ */
+export async function getPerIpRateLimitStatus(
+  tenant_id: string,
+  settings: ITenantRateLimit | null,
+  ip: string
+): Promise<{
+  allowlisted: boolean;
+  ip_minute: { current: number; limit: number; remaining: number; reset_at: number };
+  ip_day: { current: number; limit: number; remaining: number; reset_at: number };
+  ip_concurrent: { current: number; limit: number };
+}> {
+  if (!settings || !settings.per_ip_enabled) {
+    return {
+      allowlisted: false,
+      ip_minute: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
+      ip_day: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
+      ip_concurrent: { current: 0, limit: 0 },
+    };
+  }
+
+  const allowlisted = matchesAnyCIDR(ip, settings.per_ip_allowlist || []);
+  const caps = clampForUnknown(ip, settings);
+  const r = getRedis();
+  const { start: minute_start, reset_at: minute_reset } = getMinuteWindow();
+  const day_key = getDayKey();
+  const day_reset = getDayResetAt();
+  const token = ipToken(ip);
+
+  const [minute_val, day_val, concurrent_val] = await Promise.all([
+    r.get(`ratelimit:${tenant_id}:ip:minute:${token}:${minute_start}`),
+    r.get(`ratelimit:${tenant_id}:ip:day:${token}:${day_key}`),
+    r.get(`ratelimit:${tenant_id}:ip:concurrent:${token}`),
+  ]);
+
+  const minute_current = parseInt(minute_val || "0");
+  const day_current = parseInt(day_val || "0");
+  const concurrent_current = parseInt(concurrent_val || "0");
+
+  return {
+    allowlisted,
+    ip_minute: {
+      current: minute_current,
+      limit: caps.per_minute,
+      remaining: caps.per_minute > 0 ? Math.max(0, caps.per_minute - minute_current) : -1,
+      reset_at: minute_reset,
+    },
+    ip_day: {
+      current: day_current,
+      limit: caps.per_day,
+      remaining: caps.per_day > 0 ? Math.max(0, caps.per_day - day_current) : -1,
+      reset_at: day_reset,
+    },
+    ip_concurrent: { current: concurrent_current, limit: caps.concurrent },
+  };
+}
+
+/**
+ * Increment per-IP concurrent connection counter. Caller must invoke
+ * `decrementPerIpConcurrent` when the request finishes. Currently report-only
+ * (not enforced in v1) — see plan §5.
+ */
+export async function incrementPerIpConcurrent(tenant_id: string, ip: string): Promise<number> {
+  const r = getRedis();
+  const key = `ratelimit:${tenant_id}:ip:concurrent:${ipToken(ip)}`;
+  const count = await r.incr(key);
+  await r.expire(key, 300);
+  return count;
+}
+
+export async function decrementPerIpConcurrent(tenant_id: string, ip: string): Promise<void> {
+  const r = getRedis();
+  const key = `ratelimit:${tenant_id}:ip:concurrent:${ipToken(ip)}`;
+  await r.decr(key);
 }

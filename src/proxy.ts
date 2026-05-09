@@ -1,5 +1,30 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { extractClientIp } from "@/lib/utils/client-ip";
+import { resolveTenantIdByHost } from "@/lib/tenant/host-resolver";
+import {
+  checkPerIpRateLimit,
+  getCachedTenantRateLimit,
+} from "@/lib/services/tenant-rate-limit.service";
+import { log429 } from "@/lib/services/rate-limit-logger";
+
+const RATE_LIMIT_TIMEOUT_MS = 50;
+
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
+}
 
 // Allowed CORS origins
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -155,6 +180,60 @@ export async function proxy(request: NextRequest) {
   const isAdminRoute = actualPath.startsWith("/api/admin");
 
   const corsHeaders = getCorsHeaders(request);
+
+  // ===== PER-IP RATE LIMITING =====
+  // Runs before tenant resolution / auth so abuse is capped early. Kill-switch:
+  // PER_IP_RATE_LIMIT_ENABLED=false bypasses the entire layer.
+  if (process.env.PER_IP_RATE_LIMIT_ENABLED !== "false") {
+    const rlTenantId =
+      tenantId ?? (await withTimeout(resolveTenantIdByHost(request), RATE_LIMIT_TIMEOUT_MS, null));
+    if (rlTenantId) {
+      const rlSettings = await withTimeout(
+        getCachedTenantRateLimit(rlTenantId),
+        RATE_LIMIT_TIMEOUT_MS,
+        null
+      );
+      if (rlSettings && rlSettings.per_ip_enabled) {
+        const ip = extractClientIp(request);
+        const rlResult = await withTimeout(
+          checkPerIpRateLimit(rlTenantId, rlSettings, ip),
+          RATE_LIMIT_TIMEOUT_MS,
+          null
+        );
+        if (rlResult && !rlResult.allowed) {
+          const ipMinuteReset = rlResult.limits.ip_minute?.reset_at ?? 0;
+          const ipDayReset = rlResult.limits.ip_day?.reset_at ?? 0;
+          const reset = ipMinuteReset || ipDayReset;
+          const retryAfter = Math.max(1, reset - Math.floor(Date.now() / 1000));
+          log429({
+            tenant_id: rlTenantId,
+            ip,
+            path: pathname,
+            blocked_by: rlResult.blocked_by!,
+            limits: rlResult.limits,
+          });
+          return new NextResponse(
+            JSON.stringify({
+              error: "rate_limit_exceeded",
+              blocked_by: rlResult.blocked_by,
+              retry_after: retryAfter,
+            }),
+            {
+              status: 429,
+              headers: {
+                "Content-Type": "application/json",
+                "Retry-After": String(retryAfter),
+                "X-RateLimit-Limit": String(rlResult.limits.ip_minute?.limit ?? 0),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": String(reset),
+                ...corsHeaders,
+              },
+            }
+          );
+        }
+      }
+    }
+  }
 
   // Handle CORS preflight (OPTIONS) requests for all API routes
   if (isApiRoute && request.method === "OPTIONS") {

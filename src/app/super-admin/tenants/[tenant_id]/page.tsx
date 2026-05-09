@@ -9,7 +9,23 @@ interface RateLimitSettings {
   requests_per_minute: number;
   requests_per_day: number;
   max_concurrent: number;
+  per_ip_enabled: boolean;
+  per_ip_requests_per_minute: number;
+  per_ip_requests_per_day: number;
+  per_ip_max_concurrent: number;
+  per_ip_allowlist: string[];
 }
+
+interface IpUsageResult {
+  ip: string;
+  normalized: string;
+  allowlisted: boolean;
+  ip_minute: { current: number; limit: number; remaining: number; reset_at: number };
+  ip_day: { current: number; limit: number; remaining: number; reset_at: number };
+  ip_concurrent: { current: number; limit: number };
+}
+
+const CIDR_INPUT_REGEX = /^[\da-fA-F.:]+\/\d+$/;
 
 interface TenantDomain {
   hostname: string;
@@ -79,8 +95,19 @@ export default function TenantDetailPage() {
     requests_per_minute: 0,
     requests_per_day: 0,
     max_concurrent: 0,
+    per_ip_enabled: true,
+    per_ip_requests_per_minute: 120,
+    per_ip_requests_per_day: 20000,
+    per_ip_max_concurrent: 20,
+    per_ip_allowlist: [],
   });
   const [rateLimitLoading, setRateLimitLoading] = useState(false);
+  const [allowlistText, setAllowlistText] = useState("");
+  const [allowlistError, setAllowlistError] = useState<string | null>(null);
+  const [ipProbeInput, setIpProbeInput] = useState("");
+  const [ipProbeLoading, setIpProbeLoading] = useState(false);
+  const [ipProbeResult, setIpProbeResult] = useState<IpUsageResult | null>(null);
+  const [ipProbeError, setIpProbeError] = useState<string | null>(null);
 
   // Multi-tenant config state
   const [regenerating, setRegenerating] = useState(false);
@@ -131,6 +158,7 @@ export default function TenantDetailPage() {
       .then((data) => {
         if (data.success && data.rate_limit) {
           setRateLimit(data.rate_limit);
+          setAllowlistText((data.rate_limit.per_ip_allowlist ?? []).join("\n"));
         }
       })
       .catch(() => {});
@@ -228,22 +256,68 @@ export default function TenantDetailPage() {
   const handleRateLimitSave = async () => {
     setRateLimitLoading(true);
     setActionMessage("");
+    setAllowlistError(null);
     try {
+      const cidrs = allowlistText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const invalid = cidrs.filter((c) => !CIDR_INPUT_REGEX.test(c));
+      if (invalid.length > 0) {
+        setAllowlistError(`Invalid CIDR(s): ${invalid.join(", ")}`);
+        setRateLimitLoading(false);
+        return;
+      }
+
+      const payload = { ...rateLimit, per_ip_allowlist: cidrs };
       const res = await fetch(`/api/admin/tenants/${tenantId}/rate-limit`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(rateLimit),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.invalid_cidrs?.length) {
+          setAllowlistError(`Invalid CIDR(s): ${data.invalid_cidrs.join(", ")}`);
+        }
         setActionMessage(data.error || "Failed to update rate limit");
         return;
+      }
+      if (data.rate_limit) {
+        setRateLimit(data.rate_limit);
+        setAllowlistText((data.rate_limit.per_ip_allowlist ?? []).join("\n"));
       }
       setActionMessage("Rate limit settings saved successfully");
     } catch {
       setActionMessage("Network error");
     } finally {
       setRateLimitLoading(false);
+    }
+  };
+
+  const handleIpProbe = async () => {
+    const ip = ipProbeInput.trim();
+    if (!ip) {
+      setIpProbeError("Enter an IP address");
+      return;
+    }
+    setIpProbeLoading(true);
+    setIpProbeError(null);
+    setIpProbeResult(null);
+    try {
+      const res = await fetch(
+        `/api/admin/tenants/${tenantId}/rate-limit/ip-usage?ip=${encodeURIComponent(ip)}`
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setIpProbeError(data.error || "Probe failed");
+        return;
+      }
+      setIpProbeResult(data);
+    } catch {
+      setIpProbeError("Network error");
+    } finally {
+      setIpProbeLoading(false);
     }
   };
 
@@ -731,97 +805,200 @@ export default function TenantDetailPage() {
           <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-lg font-semibold text-white">Rate Limiting</h2>
           </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-white">Enable Rate Limiting</label>
-                <p className="text-xs text-slate-400">Limit API requests for this tenant</p>
-              </div>
-              <button
-                onClick={() => setRateLimit({ ...rateLimit, enabled: !rateLimit.enabled })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  rateLimit.enabled ? "bg-blue-600" : "bg-slate-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    rateLimit.enabled ? "translate-x-6" : "translate-x-1"
+          <div className="p-6 space-y-6">
+            {/* Tenant-wide section */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                Tenant-wide
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-white">Enable Rate Limiting</label>
+                  <p className="text-xs text-slate-400">Limit API requests for this tenant (per API key)</p>
+                </div>
+                <button
+                  onClick={() => setRateLimit({ ...rateLimit, enabled: !rateLimit.enabled })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    rateLimit.enabled ? "bg-blue-600" : "bg-slate-600"
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      rateLimit.enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {rateLimit.enabled && (
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Per Minute</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={rateLimit.requests_per_minute || ""}
+                        onChange={(e) =>
+                          setRateLimit({ ...rateLimit, requests_per_minute: parseInt(e.target.value) || 0 })
+                        }
+                        placeholder="0 = unlimited"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Burst protection</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Per Day</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={rateLimit.requests_per_day || ""}
+                        onChange={(e) =>
+                          setRateLimit({ ...rateLimit, requests_per_day: parseInt(e.target.value) || 0 })
+                        }
+                        placeholder="0 = unlimited"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Daily quota</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Concurrent</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={rateLimit.max_concurrent || ""}
+                        onChange={(e) =>
+                          setRateLimit({ ...rateLimit, max_concurrent: parseInt(e.target.value) || 0 })
+                        }
+                        placeholder="0 = unlimited"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Max simultaneous</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Set any value to 0 for unlimited. Daily quota resets at midnight UTC.
+                  </p>
+                </div>
+              )}
+
+              {!rateLimit.enabled && (
+                <p className="text-sm text-slate-400">
+                  Tenant-wide rate limiting is disabled.
+                </p>
+              )}
             </div>
 
-            {rateLimit.enabled && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Requests per minute */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Per Minute
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={rateLimit.requests_per_minute || ""}
-                      onChange={(e) =>
-                        setRateLimit({
-                          ...rateLimit,
-                          requests_per_minute: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0 = unlimited"
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">Burst protection</p>
+            {/* Per-IP section */}
+            <div className="space-y-4 pt-4 border-t border-slate-700">
+              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                Per-IP
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-white">Enable Per-IP Limit</label>
+                  <p className="text-xs text-slate-400">Cap each client IP independently across all routes</p>
+                </div>
+                <button
+                  onClick={() => setRateLimit({ ...rateLimit, per_ip_enabled: !rateLimit.per_ip_enabled })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    rateLimit.per_ip_enabled ? "bg-blue-600" : "bg-slate-600"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      rateLimit.per_ip_enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {rateLimit.per_ip_enabled && (
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Per Minute</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={rateLimit.per_ip_requests_per_minute || ""}
+                        onChange={(e) =>
+                          setRateLimit({
+                            ...rateLimit,
+                            per_ip_requests_per_minute: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0 = unlimited"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Burst protection</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Per Day</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={rateLimit.per_ip_requests_per_day || ""}
+                        onChange={(e) =>
+                          setRateLimit({
+                            ...rateLimit,
+                            per_ip_requests_per_day: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0 = unlimited"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Daily quota</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Concurrent</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={rateLimit.per_ip_max_concurrent || ""}
+                        onChange={(e) =>
+                          setRateLimit({
+                            ...rateLimit,
+                            per_ip_max_concurrent: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0 = unlimited"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Report only (not enforced in v1)</p>
+                    </div>
                   </div>
 
-                  {/* Requests per day */}
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Per Day
+                      Allowlist (CIDR)
                     </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={rateLimit.requests_per_day || ""}
-                      onChange={(e) =>
-                        setRateLimit({
-                          ...rateLimit,
-                          requests_per_day: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0 = unlimited"
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <textarea
+                      rows={4}
+                      value={allowlistText}
+                      onChange={(e) => {
+                        setAllowlistText(e.target.value);
+                        setAllowlistError(null);
+                      }}
+                      placeholder={"10.0.0.0/8\n2001:db8::/32"}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="text-xs text-slate-400 mt-1">Daily quota</p>
-                  </div>
-
-                  {/* Max concurrent */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Concurrent
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={rateLimit.max_concurrent || ""}
-                      onChange={(e) =>
-                        setRateLimit({
-                          ...rateLimit,
-                          max_concurrent: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0 = unlimited"
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">Max simultaneous</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      One CIDR per line. Allowlisted IPs skip the per-IP cap (the tenant-wide cap still applies).
+                    </p>
+                    {allowlistError && (
+                      <p className="text-xs text-red-400 mt-1">{allowlistError}</p>
+                    )}
                   </div>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Set any value to 0 for unlimited. Daily quota resets at midnight UTC.
+              )}
+
+              {!rateLimit.per_ip_enabled && (
+                <p className="text-sm text-slate-400">
+                  Per-IP rate limiting is disabled.
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="pt-2">
               <button
@@ -833,11 +1010,70 @@ export default function TenantDetailPage() {
               </button>
             </div>
 
-            {!rateLimit.enabled && (
-              <p className="text-sm text-slate-400">
-                Rate limiting is disabled. API requests are not limited for this tenant.
+            {/* IP usage probe */}
+            <div className="pt-4 border-t border-slate-700 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                IP Usage Probe
+              </h3>
+              <p className="text-xs text-slate-400">
+                Check current per-IP counters for an address (read-only).
               </p>
-            )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={ipProbeInput}
+                  onChange={(e) => setIpProbeInput(e.target.value)}
+                  placeholder="1.2.3.4 or 2001:db8::1"
+                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleIpProbe}
+                  disabled={ipProbeLoading || !ipProbeInput.trim()}
+                  className="px-4 py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-50 text-white rounded-lg transition-colors"
+                >
+                  {ipProbeLoading ? "Checking..." : "Check"}
+                </button>
+              </div>
+              {ipProbeError && <p className="text-xs text-red-400">{ipProbeError}</p>}
+              {ipProbeResult && (
+                <div className="bg-slate-900 rounded p-3 text-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Normalized:</span>
+                    <span className="text-white font-mono">{ipProbeResult.normalized}</span>
+                  </div>
+                  {ipProbeResult.allowlisted ? (
+                    <p className="text-green-400 text-sm">Exempt (allowlisted)</p>
+                  ) : (
+                    <table className="w-full text-xs">
+                      <thead className="text-slate-400">
+                        <tr>
+                          <th className="text-left py-1">Window</th>
+                          <th className="text-right py-1">Current</th>
+                          <th className="text-right py-1">Limit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-white">
+                        <tr>
+                          <td>Per minute</td>
+                          <td className="text-right">{ipProbeResult.ip_minute.current}</td>
+                          <td className="text-right">{ipProbeResult.ip_minute.limit || "∞"}</td>
+                        </tr>
+                        <tr>
+                          <td>Per day</td>
+                          <td className="text-right">{ipProbeResult.ip_day.current}</td>
+                          <td className="text-right">{ipProbeResult.ip_day.limit || "∞"}</td>
+                        </tr>
+                        <tr>
+                          <td>Concurrent</td>
+                          <td className="text-right">{ipProbeResult.ip_concurrent.current}</td>
+                          <td className="text-right">{ipProbeResult.ip_concurrent.limit || "∞"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

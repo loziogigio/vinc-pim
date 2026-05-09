@@ -31,6 +31,11 @@ export interface ITenantRateLimit {
   requests_per_minute: number;
   requests_per_day: number;
   max_concurrent: number;
+  per_ip_enabled: boolean;
+  per_ip_requests_per_minute: number;
+  per_ip_requests_per_day: number;
+  per_ip_max_concurrent: number;
+  per_ip_allowlist: string[];
 }
 
 export interface ITenantSettings {
@@ -129,6 +134,11 @@ const TenantSettingsSchema = new Schema(
       requests_per_minute: { type: Number, default: 0 },
       requests_per_day: { type: Number, default: 0 },
       max_concurrent: { type: Number, default: 0 },
+      per_ip_enabled: { type: Boolean, default: true },
+      per_ip_requests_per_minute: { type: Number, default: 120 },
+      per_ip_requests_per_day: { type: Number, default: 20000 },
+      per_ip_max_concurrent: { type: Number, default: 20 },
+      per_ip_allowlist: { type: [String], default: [] },
     },
   },
   { _id: false }
