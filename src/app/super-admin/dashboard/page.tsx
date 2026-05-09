@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Key, RefreshCw, Shield, Globe, Layers } from "lucide-react";
+import { Copy, Check, Key, RefreshCw, Shield, Globe, Layers, Activity } from "lucide-react";
 import Link from "next/link";
 
 interface Tenant {
@@ -173,6 +173,15 @@ export default function SuperAdminDashboardPage() {
                 <Layers className="h-4 w-4" />
                 Platform Apps
               </Link>
+              <a
+                href="/api/admin/bull-board"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+              >
+                <Activity className="h-4 w-4" />
+                Job Queues
+              </a>
             </nav>
           </div>
           <div className="flex items-center gap-4">

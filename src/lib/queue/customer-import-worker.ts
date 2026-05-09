@@ -120,6 +120,36 @@ function deepMerge(target: any, source: any): any {
 }
 
 /**
+ * Returns the list of required address fields that are missing/empty.
+ * Schema requires non-empty street_address, city, and province.
+ */
+function getMissingAddressFields(input: CustomerImportAddress): string[] {
+  const missing: string[] = [];
+  if (!input.street_address?.trim()) missing.push("street_address");
+  if (!input.city?.trim()) missing.push("city");
+  if (!input.province?.trim()) missing.push("province");
+  return missing;
+}
+
+/**
+ * Drop addresses that would fail schema validation; log each skip.
+ * Without this, one bad address aborts the whole customer upsert.
+ */
+function filterValidAddresses(
+  addresses: CustomerImportAddress[],
+  customerCode: string,
+): CustomerImportAddress[] {
+  return addresses.filter((addr) => {
+    const missing = getMissingAddressFields(addr);
+    if (missing.length === 0) return true;
+    console.warn(
+      `   ⚠️  Skipping address for ${customerCode} (ext=${addr.external_code || "?"}): missing ${missing.join(", ")}`,
+    );
+    return false;
+  });
+}
+
+/**
  * Build an address document from import data.
  */
 function buildAddress(input: CustomerImportAddress): any {
@@ -240,7 +270,10 @@ export async function processCustomerImportData(
 
           // Replace addresses if provided
           if (customerData.addresses && customerData.addresses.length > 0) {
-            updateDoc.addresses = customerData.addresses.map(buildAddress);
+            updateDoc.addresses = filterValidAddresses(
+              customerData.addresses,
+              external_code,
+            ).map(buildAddress);
           }
 
           if (Object.keys(updateDoc).length > 0) {
@@ -285,7 +318,9 @@ export async function processCustomerImportData(
                   (a: any) => a.external_code === addrInput.external_code,
                 );
                 if (idx !== -1) {
-                  // Update existing address (merge fields)
+                  // Update existing address (merge fields).
+                  // No field validation needed — the stored doc already satisfies the schema,
+                  // so a partial merge (e.g. label-only update) cannot make it invalid.
                   const merged = deepMerge(existingAddresses[idx], addrInput);
                   merged.updated_at = new Date();
                   // Preserve address_id and tag_overrides
@@ -293,12 +328,26 @@ export async function processCustomerImportData(
                   merged.tag_overrides = existingAddresses[idx].tag_overrides || [];
                   existingAddresses[idx] = merged;
                 } else {
-                  // New address
-                  existingAddresses.push(buildAddress(addrInput));
+                  // New address — skip if required fields are missing
+                  const missing = getMissingAddressFields(addrInput);
+                  if (missing.length === 0) {
+                    existingAddresses.push(buildAddress(addrInput));
+                  } else {
+                    console.warn(
+                      `   ⚠️  Skipping address for ${external_code} (ext=${addrInput.external_code}): missing ${missing.join(", ")}`,
+                    );
+                  }
                 }
               } else {
-                // No external_code — always create new
-                existingAddresses.push(buildAddress(addrInput));
+                // No external_code — always create new, if valid
+                const missing = getMissingAddressFields(addrInput);
+                if (missing.length === 0) {
+                  existingAddresses.push(buildAddress(addrInput));
+                } else {
+                  console.warn(
+                    `   ⚠️  Skipping address for ${external_code} (no ext_code): missing ${missing.join(", ")}`,
+                  );
+                }
               }
             }
 
@@ -348,7 +397,10 @@ export async function processCustomerImportData(
         const public_code = customerData.public_code || await getNextCustomerPublicCode(tenantDb);
         const channel = customerData.channel || jobChannel || DEFAULT_CHANNEL;
 
-        const addresses = (customerData.addresses || []).map(buildAddress);
+        const addresses = filterValidAddresses(
+          customerData.addresses || [],
+          external_code,
+        ).map(buildAddress);
 
         await CustomerModel.create({
           customer_id,

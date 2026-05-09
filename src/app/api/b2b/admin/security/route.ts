@@ -24,6 +24,7 @@ export async function GET() {
       // Session limits
       max_sessions_per_user: config.max_sessions_per_user,
       session_timeout_hours: config.session_timeout_hours,
+      idle_timeout_hours: config.idle_timeout_hours,
       // Login protection
       max_login_attempts: config.max_login_attempts,
       lockout_minutes: config.lockout_minutes,
@@ -63,6 +64,7 @@ export async function PUT(req: NextRequest) {
     const allowedFields = [
       "max_sessions_per_user",
       "session_timeout_hours",
+      "idle_timeout_hours",
       "max_login_attempts",
       "lockout_minutes",
       "enable_progressive_delay",
@@ -102,6 +104,47 @@ export async function PUT(req: NextRequest) {
         );
       }
       updateData.session_timeout_hours = val;
+    }
+
+    if (updateData.idle_timeout_hours !== undefined) {
+      const val = Number(updateData.idle_timeout_hours);
+      if (isNaN(val) || val < 1 || val > 720) {
+        return NextResponse.json(
+          { error: "idle_timeout_hours deve essere tra 1 e 720 (30 giorni)" },
+          { status: 400 }
+        );
+      }
+      updateData.idle_timeout_hours = val;
+    }
+
+    // Cross-field constraint: idle_timeout_hours must be <= session_timeout_hours.
+    // Resolve effective values from the incoming patch, the stored config, or
+    // the defaults — whichever is set, in that order.
+    if (
+      updateData.idle_timeout_hours !== undefined ||
+      updateData.session_timeout_hours !== undefined
+    ) {
+      const TenantSecurityConfigForCheck = await getTenantSecurityConfigModel();
+      const existing = await TenantSecurityConfigForCheck.findByTenantId(
+        session.tenantId
+      );
+      const effectiveIdle =
+        (updateData.idle_timeout_hours as number | undefined) ??
+        existing?.idle_timeout_hours ??
+        DEFAULT_SECURITY_CONFIG.idle_timeout_hours;
+      const effectiveSession =
+        (updateData.session_timeout_hours as number | undefined) ??
+        existing?.session_timeout_hours ??
+        DEFAULT_SECURITY_CONFIG.session_timeout_hours;
+      if (effectiveIdle > effectiveSession) {
+        return NextResponse.json(
+          {
+            error:
+              "idle_timeout_hours non può essere maggiore di session_timeout_hours",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (updateData.max_login_attempts !== undefined) {
@@ -162,6 +205,7 @@ export async function PUT(req: NextRequest) {
         tenant_id: config.tenant_id,
         max_sessions_per_user: config.max_sessions_per_user,
         session_timeout_hours: config.session_timeout_hours,
+        idle_timeout_hours: config.idle_timeout_hours,
         max_login_attempts: config.max_login_attempts,
         lockout_minutes: config.lockout_minutes,
         enable_progressive_delay: config.enable_progressive_delay,

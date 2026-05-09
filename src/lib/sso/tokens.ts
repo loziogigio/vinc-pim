@@ -9,6 +9,10 @@ import { SignJWT, jwtVerify } from "jose";
 import crypto from "crypto";
 import { getSSOSessionModel } from "@/lib/db/models/sso-session";
 import { getRefreshTokenModel } from "@/lib/db/models/sso-refresh-token";
+import {
+  getTenantSecurityConfigModel,
+  DEFAULT_SECURITY_CONFIG,
+} from "@/lib/db/models/sso-tenant-security";
 
 // ============================================
 // TYPES
@@ -238,6 +242,29 @@ export async function refreshTokens(
     };
   }
 
+  // Idle timeout: if the user hasn't produced any real activity (mouse,
+  // keyboard, touch — reported via the heartbeat endpoint) within the
+  // configured idle window, refuse the refresh and revoke the session and
+  // its refresh-token family. Background auto-refresh by itself does NOT
+  // reset the idle clock — only `last_user_activity` does.
+  const TenantSecurityConfig = await getTenantSecurityConfigModel();
+  const securityConfig = await TenantSecurityConfig.findByTenantId(
+    session.tenant_id
+  );
+  const idleTimeoutHours =
+    securityConfig?.idle_timeout_hours ??
+    DEFAULT_SECURITY_CONFIG.idle_timeout_hours;
+  const idleCutoff = new Date(Date.now() - idleTimeoutHours * 60 * 60 * 1000);
+  const lastUserActivity = session.last_user_activity ?? session.created_at;
+  if (lastUserActivity < idleCutoff) {
+    await RefreshToken.revokeTokenFamily(storedToken.family_id, "idle_timeout");
+    await SSOSession.revokeSession(session.session_id, "idle_timeout");
+    return {
+      success: false,
+      error: "Session idle timeout",
+    };
+  }
+
   // Generate new token pair (rotation)
   const newAccessToken = await generateAccessToken({
     sub: session.user_id,
@@ -265,7 +292,11 @@ export async function refreshTokens(
     expires_at: expiresAt,
   });
 
-  // Update session
+  // Update session — rotate the refresh token hash. `last_activity` is the
+  // generic "session is live" timestamp (used for admin views) so we still
+  // bump it. The idle-timeout clock above uses `last_user_activity`, which
+  // ONLY the heartbeat endpoint updates — so silent refreshes alone can't
+  // keep an idle session alive.
   await SSOSession.updateOne(
     { session_id: session.session_id },
     {

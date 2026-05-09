@@ -1,0 +1,34 @@
+export const metadata = {
+  title: "Sources",
+  description:
+    "Upstream data-source connectors (suppliers, PIMs, ERPs) that feed the catalog.",
+};
+
+# Sources
+
+Sources represent upstream systems — supplier feeds, third-party PIMs,
+ERPs — whose data is mirrored into the VINC PIM on a schedule.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/sources" />
+<Endpoint method="GET" path="/api/b2b/pim/sources/:id" />
+<Endpoint method="POST" path="/api/b2b/pim/sources" />
+<Endpoint method="PATCH" path="/api/b2b/pim/sources/:id" />
+<Endpoint method="DELETE" path="/api/b2b/pim/sources/:id" />
+<Endpoint method="POST" path="/api/b2b/pim/sources/:id/pull" />
+
+## Connector kinds
+
+- <code>supplier-feed</code> — HTTP(S) pull of a CSV / XML / JSON feed on
+  a cron schedule.
+- <code>sftp</code> — file drop watched on a remote SFTP host.
+- <code>windmill</code> — custom job running on the shared Windmill workspace.
+- <code>webhook</code> — inbound push from the source system.
+
+## Notes
+
+- Each source has its own credential store; secrets are encrypted at
+  rest and never returned in API responses (only <code>***</code>).
+- Triggering <code>POST /:id/pull</code> enqueues an import job; follow
+  it through [Activity](/developers/pim/activity).

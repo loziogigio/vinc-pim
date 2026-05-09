@@ -558,15 +558,16 @@ export default function ImportJobDetailPage() {
           </div>
         ) : (
           products.map((product) => {
-            const isExpanded = expandedItems.has(product._id);
+            const itemId = product._id || product.entity_code;
+            const isExpanded = expandedItems.has(itemId);
             return (
               <div
-                key={product._id}
+                key={itemId}
                 className="rounded-lg bg-card shadow-sm border border-border"
               >
                 {/* Item Header */}
                 <button
-                  onClick={() => toggleItemExpansion(product._id)}
+                  onClick={() => toggleItemExpansion(itemId)}
                   className="w-full p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex-shrink-0 mt-1">

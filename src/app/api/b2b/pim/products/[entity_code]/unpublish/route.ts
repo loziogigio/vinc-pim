@@ -25,7 +25,7 @@ export async function POST(
 
     // Remove from Solr first (if enabled)
     let solrDeleted = false;
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(session.tenantId);
     if (adapterConfigs.solr?.enabled) {
       try {
         const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);

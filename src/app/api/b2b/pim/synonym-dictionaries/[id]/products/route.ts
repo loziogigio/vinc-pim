@@ -10,9 +10,11 @@ import { safeRegexQuery } from "@/lib/security";
  */
 async function syncProductsToSolr(
   entityCodes: string[],
-  PIMProductModel: Model<any>
+  PIMProductModel: Model<any>,
+  tenantDb: string,
+  tenantId: string
 ): Promise<{ synced: number; errors: string[] }> {
-  const adapterConfigs = loadAdapterConfigs();
+  const adapterConfigs = loadAdapterConfigs(tenantId);
   if (!adapterConfigs.solr?.enabled) {
     return { synced: 0, errors: ["Solr is not enabled"] };
   }
@@ -120,7 +122,7 @@ export async function POST(
 ) {
   const auth = await requireTenantAuth(req);
   if (!auth.success) return auth.response;
-  const { tenantDb } = auth;
+  const { tenantDb, tenantId } = auth;
   try {
     const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
@@ -165,7 +167,7 @@ export async function POST(
     // Sync affected products to Solr
     let solrSync = { synced: 0, errors: [] as string[] };
     if (result.modifiedCount > 0) {
-      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel);
+      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel, tenantDb, tenantId);
       console.log(`Synced ${solrSync.synced} products to Solr after adding to dictionary "${dictionary.key}"`);
     }
 
@@ -194,7 +196,7 @@ export async function DELETE(
 ) {
   const auth = await requireTenantAuth(req);
   if (!auth.success) return auth.response;
-  const { tenantDb } = auth;
+  const { tenantDb, tenantId } = auth;
   try {
     const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
@@ -238,7 +240,7 @@ export async function DELETE(
     // Sync affected products to Solr
     let solrSync = { synced: 0, errors: [] as string[] };
     if (result.modifiedCount > 0) {
-      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel);
+      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel, tenantDb, tenantId);
       console.log(`Synced ${solrSync.synced} products to Solr after removing from dictionary "${dictionary.key}"`);
     }
 

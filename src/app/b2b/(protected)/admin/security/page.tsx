@@ -16,6 +16,7 @@ interface SecurityConfig {
   tenant_id: string;
   max_sessions_per_user: number;
   session_timeout_hours: number;
+  idle_timeout_hours: number;
   max_login_attempts: number;
   lockout_minutes: number;
   enable_progressive_delay: boolean;
@@ -159,7 +160,7 @@ export default function SecurityPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 {t("pages.admin.security.maxSessionsPerUser")}
@@ -195,6 +196,25 @@ export default function SecurityPage() {
               />
               <p className="text-xs text-slate-500 mt-1">
                 {t("pages.admin.security.sessionTimeoutDesc")}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {t("pages.admin.security.idleTimeoutHours")}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={config.session_timeout_hours || 720}
+                value={config.idle_timeout_hours}
+                onChange={(e) =>
+                  updateConfig("idle_timeout_hours", parseInt(e.target.value) || 8)
+                }
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {t("pages.admin.security.idleTimeoutDesc")}
               </p>
             </div>
           </div>

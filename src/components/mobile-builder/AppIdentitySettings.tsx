@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/components/ui/utils";
 import type { MobileAppIdentity } from "@/lib/types/mobile-builder";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface AppIdentitySettingsProps {
   appIdentity: MobileAppIdentity;
@@ -29,6 +30,7 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -245,6 +247,36 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
           {appIdentity.access_mode === "private"
             ? "Users must log in to access the app"
             : "Anyone can browse the app without logging in"}
+        </p>
+      </div>
+
+      {/* Post-Login Landing */}
+      <div className="space-y-1.5 border-t border-slate-200 pt-4">
+        <Label className="text-xs font-semibold text-gray-700">
+          {t("pages.mobileBuilder.postLogin.sectionTitle")}
+        </Label>
+        <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+          <div className="flex items-center gap-2">
+            {appIdentity.post_login_mode === "landing" ? (
+              <Lock className="h-4 w-4 text-amber-600" />
+            ) : (
+              <Smartphone className="h-4 w-4 text-slate-500" />
+            )}
+            <span className="text-sm text-gray-700">
+              {appIdentity.post_login_mode === "landing"
+                ? t("pages.mobileBuilder.postLogin.pageLabelLanding")
+                : t("pages.mobileBuilder.postLogin.pageLabelStandard")}
+            </span>
+          </div>
+          <Switch
+            checked={appIdentity.post_login_mode === "landing"}
+            onCheckedChange={(checked) =>
+              onChange({ post_login_mode: checked ? "landing" : "standard" })
+            }
+          />
+        </div>
+        <p className="text-[11px] text-gray-400">
+          {t("pages.mobileBuilder.postLogin.helperText")}
         </p>
       </div>
     </div>

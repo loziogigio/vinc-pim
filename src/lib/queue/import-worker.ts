@@ -979,7 +979,7 @@ async function processImport(job: Job<ImportJobData>) {
               product_ids: batchIds,
               operation: 'bulk-sync',
               channels: ['solr'],
-              tenant_id: process.env.VINC_TENANT_ID || 'default',
+              tenant_id: effectiveTenantId,
               priority: 'high',
             }, {
               priority: 1, // High priority for search indexing
@@ -1040,7 +1040,7 @@ console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
  * Process bulk update job
  */
 async function processBulkUpdate(job: Job<any>) {
-  const { job_id, product_ids, filters, updates, tenant_id } = job.data;
+  const { job_id, product_ids, filters, updates, tenant_id, sales_channels } = job.data;
   const UPDATE_BATCH_SIZE = 5000;
   const SYNC_BATCH_SIZE = 50;
 
@@ -1210,10 +1210,92 @@ async function processBulkUpdate(job: Job<any>) {
     console.log(`   ${isDelete ? "Deleted" : "Modified"}: ${totalModified}`);
     console.log(`   Duration: ${durationSeconds}s`);
 
-    await job.updateProgress(85); // Update done, starting Solr sync
+    await job.updateProgress(85); // Update done, starting downstream sync
 
-    // ========== QUEUE SOLR SYNC FOR BULK UPDATE (skip for deletes — handled above) ==========
-    if (!isDelete && totalModified > 0 && process.env.SOLR_ENABLED === 'true') {
+    // Archive-like updates need to be REMOVED from search/marketplaces, not re-indexed.
+    const isArchiveLike =
+      !isDelete &&
+      (updates.status === "archived" || updates.not_visible === true);
+
+    // ========== ARCHIVE-LIKE: FAN OUT DELETE TO SALES CHANNELS ==========
+    if (isArchiveLike && totalModified > 0) {
+      try {
+        // sales_channels is resolved by the route (validated against the tenant's
+        // SalesChannel collection, defaulted to all active channels when omitted).
+        // Expand each user-facing channel to its underlying delete targets:
+        //   b2b → ["b2b", "solr"]   (b2b storefront + b2b's Solr)
+        //   b2c → ["b2c", "solr"]   (b2c storefront + b2c's Solr)
+        //   default → ["solr"]      (search-only channel)
+        //   ebay/amazon/etc. → just themselves (their adapter)
+        const requestedChannels: string[] = Array.isArray(sales_channels) ? sales_channels : [];
+        const expanded = new Set<string>();
+        for (const ch of requestedChannels) {
+          if (ch === "b2b" || ch === "b2c") {
+            expanded.add(ch);
+            expanded.add("solr");
+          } else if (ch === "default") {
+            expanded.add("solr");
+          } else {
+            expanded.add(ch);
+          }
+        }
+        const targetChannels = [...expanded];
+
+        if (targetChannels.length === 0) {
+          console.log(`⚠️ No sales channels resolved — skipping archive fan-out`);
+        } else {
+          // Fetch entity_codes for the modified rows (still isCurrent — we updated, not deleted).
+          const allEntityCodes: string[] = [];
+          for (let i = 0; i < totalProducts; i += UPDATE_BATCH_SIZE) {
+            const batch = targetIds.slice(i, i + UPDATE_BATCH_SIZE);
+            const docs = await PIMProductModel.find({
+              _id: { $in: batch },
+              isCurrent: true,
+            }).select("entity_code").lean();
+            const codes = docs.map((p: any) => p.entity_code).filter(Boolean);
+            allEntityCodes.push(...codes);
+          }
+
+          if (allEntityCodes.length > 0) {
+            console.log(
+              `\n🗑️ Queuing marketplace delete for ${allEntityCodes.length} archived products → channels: ${targetChannels.join(", ")}`
+            );
+
+            const batchCount = Math.ceil(allEntityCodes.length / SYNC_BATCH_SIZE);
+
+            for (let i = 0; i < allEntityCodes.length; i += SYNC_BATCH_SIZE) {
+              const batchIds = allEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
+              const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
+
+              await syncQueue.add(
+                "bulk-sync-batch",
+                {
+                  product_id: `bulk-archive-${job_id}-${batchNumber}`,
+                  product_ids: batchIds,
+                  operation: "delete",
+                  channels: targetChannels,
+                  tenant_id: effectiveTenantId,
+                  priority: "high",
+                },
+                { priority: 1 }
+              );
+
+              if (batchNumber % 10 === 0 || batchNumber === batchCount) {
+                const syncProgress = 85 + Math.round((batchNumber / batchCount) * 15);
+                await job.updateProgress(syncProgress);
+              }
+            }
+
+            console.log(`✅ Queued ${batchCount} marketplace delete jobs`);
+          }
+        }
+      } catch (syncError: any) {
+        console.error(`⚠️ Failed to queue marketplace delete: ${syncError.message}`);
+      }
+    }
+
+    // ========== NORMAL UPDATE: RE-INDEX TO SOLR ==========
+    if (!isDelete && !isArchiveLike && totalModified > 0 && process.env.SOLR_ENABLED === 'true') {
       try {
         // Get default language with searchEnabled
         const defaultLanguage = await LanguageModel.findOne({

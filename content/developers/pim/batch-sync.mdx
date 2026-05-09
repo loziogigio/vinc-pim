@@ -1,0 +1,35 @@
+export const metadata = {
+  title: "Batch Sync",
+  description:
+    "Resync products to the tenant's search surface and downstream channels in large, controlled batches.",
+};
+
+# Batch Sync
+
+Batch Sync reconciles the catalog against the tenant's search surface
+and any configured outbound channels (marketplaces, storefronts, ERPs).
+Use it after schema changes, search reconfigurations, or to recover
+from drift.
+
+## Endpoints
+
+<Endpoint method="POST" path="/api/b2b/pim/batch-sync/search" />
+<Endpoint method="POST" path="/api/b2b/pim/batch-sync/marketplace" />
+<Endpoint method="GET" path="/api/b2b/pim/batch-sync/status" />
+
+## Body
+
+<ParamTable
+  rows={[
+    { name: "filter", type: "object", description: "Same shape as GET /products. Defaults to all published products." },
+    { name: "concurrency", type: "integer", description: "Simultaneous worker lanes.", default: "4" },
+    { name: "chunk_size", type: "integer", description: "Products per sync batch.", default: "250" },
+    { name: "force", type: "boolean", description: "Reindex even when the document hash matches the current indexed version.", default: "false" },
+  ]}
+/>
+
+<Callout kind="warning" title="Impact">
+  A full resync for a large tenant can take tens of minutes and produces
+  significant write traffic on the search surface. Prefer a narrow{" "}
+  <code>filter</code> when you know which products drifted.
+</Callout>

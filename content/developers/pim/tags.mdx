@@ -1,0 +1,24 @@
+export const metadata = {
+  title: "Tags",
+  description:
+    "Free-form labels applied to products for filtering, curation, and merchandising.",
+};
+
+# Tags
+
+Tags are lightweight, free-form labels — use them for merchandising flags
+(“new”, “clearance”), editorial themes (“modern-kitchen”), or internal
+operational markers (“needs-photos”).
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/tags" />
+<Endpoint method="POST" path="/api/b2b/pim/tags" />
+<Endpoint method="PATCH" path="/api/b2b/pim/tags/:slug" />
+<Endpoint method="DELETE" path="/api/b2b/pim/tags/:slug" />
+
+## Notes
+
+- Tags are referenced from products by `slug`.
+- Deleting a tag that is still in use returns `409 Conflict`. Pass
+  `?cascade=true` to remove it from every product first.

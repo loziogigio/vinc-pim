@@ -42,7 +42,9 @@ export const PLATFORM_APPS: PlatformAppConfig[] = [
 export function resolveEnabledApps(
   enabled_apps?: string[]
 ): PlatformAppId[] {
-  if (!enabled_apps || enabled_apps.length === 0) {
+  // Honor explicit empty array as "none enabled". Only fall back to all when
+  // the field is missing (legacy tenants without explicit config).
+  if (!Array.isArray(enabled_apps)) {
     return [...PLATFORM_APP_IDS];
   }
   return enabled_apps.filter((id): id is PlatformAppId =>

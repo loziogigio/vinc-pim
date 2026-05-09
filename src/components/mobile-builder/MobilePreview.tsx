@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import type { MobileBlock, MobileAppIdentity } from "@/lib/types/mobile-builder";
 import { MobileMediaSliderPreview } from "./blocks/MobileMediaSliderPreview";
@@ -12,6 +12,7 @@ import { MobileCategorySliderPreview } from "./blocks/MobileCategorySliderPrevie
 import { MobileCategoryGalleryPreview } from "./blocks/MobileCategoryGalleryPreview";
 import { MobileEntitySliderPreview } from "./blocks/MobileEntitySliderPreview";
 import { MobileEntityGalleryPreview } from "./blocks/MobileEntityGalleryPreview";
+import { MobileTextPreview } from "./blocks/MobileTextPreview";
 import { cn } from "@/components/ui/utils";
 
 // Device configurations
@@ -42,6 +43,10 @@ const SCALE_FACTOR = 0.75;
 interface MobilePreviewProps {
   blocks: MobileBlock[];
   appIdentity: MobileAppIdentity;
+  /** When true, hides the app header (logo + search) and the home indicator / nav bar. */
+  lockedMode?: boolean;
+  /** Optional content rendered above the device frame (e.g. a notice banner). */
+  header?: ReactNode;
 }
 
 function renderBlock(block: MobileBlock, primaryColor: string) {
@@ -62,6 +67,8 @@ function renderBlock(block: MobileBlock, primaryColor: string) {
       return <MobileEntitySliderPreview key={block.id} block={block} primaryColor={primaryColor} />;
     case "mobile_entity_gallery":
       return <MobileEntityGalleryPreview key={block.id} block={block} primaryColor={primaryColor} />;
+    case "mobile_text":
+      return <MobileTextPreview key={block.id} block={block} />;
     default:
       return null;
   }
@@ -116,19 +123,21 @@ function AndroidStatusBar() {
   );
 }
 
-export function MobilePreview({ blocks, appIdentity }: MobilePreviewProps) {
+export function MobilePreview({
+  blocks,
+  appIdentity,
+  lockedMode = false,
+  header,
+}: MobilePreviewProps) {
   const [selectedDeviceId, setSelectedDeviceId] = useState("iphone-14");
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
 
   const device = DEVICES.find((d) => d.id === selectedDeviceId) || DEVICES[0];
   const isApple = device.brand === "apple";
 
-  // Scaled dimensions
-  const scaledWidth = device.width * SCALE_FACTOR;
-  const scaledHeight = device.height * SCALE_FACTOR;
-
   return (
     <div className="flex flex-col items-center">
+      {header}
       {/* Device selector - at top */}
       <div className="relative mb-4">
         <button
@@ -228,46 +237,50 @@ export function MobilePreview({ blocks, appIdentity }: MobilePreviewProps) {
             {isApple ? <IOSStatusBar /> : <AndroidStatusBar />}
 
             {/* App Header - Logo + Search */}
-            <div className="flex h-14 items-center gap-3 bg-white px-4 border-b border-gray-100">
-              {/* Logo from App Identity */}
-              <div className="flex-shrink-0 flex items-center">
-                {appIdentity.logo_url ? (
-                  <img
-                    src={appIdentity.logo_url}
-                    alt={appIdentity.app_name || "Logo"}
-                    style={{
-                      width: appIdentity.logo_width,
-                      height: appIdentity.logo_height ?? "auto",
-                    }}
-                    className="object-contain"
-                  />
-                ) : (
-                  <div
-                    className="flex items-center justify-center bg-gray-100 rounded text-xs text-gray-400"
-                    style={{
-                      width: appIdentity.logo_width,
-                      height: appIdentity.logo_height ?? 40,
-                    }}
-                  >
-                    {appIdentity.app_name || "Logo"}
+            {!lockedMode && (
+              <div className="flex h-14 items-center gap-3 bg-white px-4 border-b border-gray-100">
+                {/* Logo from App Identity */}
+                <div className="flex-shrink-0 flex items-center">
+                  {appIdentity.logo_url ? (
+                    <img
+                      src={appIdentity.logo_url}
+                      alt={appIdentity.app_name || "Logo"}
+                      style={{
+                        width: appIdentity.logo_width,
+                        height: appIdentity.logo_height ?? "auto",
+                      }}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center bg-gray-100 rounded text-xs text-gray-400"
+                      style={{
+                        width: appIdentity.logo_width,
+                        height: appIdentity.logo_height ?? 40,
+                      }}
+                    >
+                      {appIdentity.app_name || "Logo"}
+                    </div>
+                  )}
+                </div>
+                {/* Search bar */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2">
+                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span className="text-sm text-gray-400">Cerca prodotto...</span>
                   </div>
-                )}
-              </div>
-              {/* Search bar */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2">
-                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span className="text-sm text-gray-400">Cerca prodotto...</span>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Content area - adjust height based on status bar */}
             <div
               className="overflow-y-auto bg-gray-50"
-              style={{ height: `calc(100% - ${isApple ? "44px" : "24px"} - 56px - 34px)` }}
+              style={{
+                height: `calc(100% - ${isApple ? "44px" : "24px"} - ${lockedMode ? "0px" : "56px"} - ${lockedMode ? "0px" : "34px"})`,
+              }}
             >
               {blocks.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center text-center">
@@ -284,15 +297,16 @@ export function MobilePreview({ blocks, appIdentity }: MobilePreviewProps) {
             </div>
 
             {/* Home indicator (iOS) or Navigation bar (Android) */}
-            {isApple ? (
-              <div className="absolute bottom-2 left-1/2 h-1 w-32 -translate-x-1/2 rounded-full bg-gray-900" />
-            ) : (
-              <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-8">
-                <div className="h-4 w-4 border-2 border-gray-400 rounded-sm" />
-                <div className="h-4 w-4 rounded-full border-2 border-gray-400" />
-                <div className="h-0 w-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-gray-400" />
-              </div>
-            )}
+            {!lockedMode &&
+              (isApple ? (
+                <div className="absolute bottom-2 left-1/2 h-1 w-32 -translate-x-1/2 rounded-full bg-gray-900" />
+              ) : (
+                <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-8">
+                  <div className="h-4 w-4 border-2 border-gray-400 rounded-sm" />
+                  <div className="h-4 w-4 rounded-full border-2 border-gray-400" />
+                  <div className="h-0 w-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-gray-400" />
+                </div>
+              ))}
           </div>
         </div>
       </div>

@@ -11,7 +11,8 @@ import type { MobileBlock, MobileAppIdentity } from "@/lib/types/mobile-builder"
 // Interface for the document
 export interface IMobileHomeConfig extends Document {
   config_id: string;
-  app_identity: MobileAppIdentity;
+  /** Only persisted for `config_id === "mobile-home"`. Other configs (e.g. "post-login") store `undefined`. */
+  app_identity?: MobileAppIdentity;
   blocks: MobileBlock[];
   version: number;
   status: "draft" | "published";
@@ -34,13 +35,9 @@ const MobileHomeConfigSchema = new Schema<IMobileHomeConfig>(
     },
     app_identity: {
       type: Schema.Types.Mixed,
-      required: true,
-      default: {
-        app_name: "",
-        logo_url: "",
-        logo_width: 64,
-        primary_color: "#ec4899",
-      },
+      // Optional — only `mobile-home` configs store app_identity. Other configs (e.g. post-login)
+      // are pure block containers; making this required broke `.save()` after a hot-fix.
+      required: false,
     },
     blocks: {
       type: Schema.Types.Mixed,

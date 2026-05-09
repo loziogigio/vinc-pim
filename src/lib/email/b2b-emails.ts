@@ -173,7 +173,7 @@ export async function sendWelcomeEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const branding = await getBranding();
-    const finalLoginUrl = loginUrl || `${branding.shopUrl}/login`;
+    const finalLoginUrl = loginUrl || branding.shopUrl;
 
     const html = renderWelcomeEmail({
       branding,
@@ -220,7 +220,7 @@ export async function sendForgotPasswordEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const branding = await getBranding(options?.tenantDb);
-    const finalLoginUrl = loginUrl || `${branding.shopUrl}/login`;
+    const finalLoginUrl = loginUrl || branding.shopUrl;
 
     const html = renderForgotPasswordEmail({
       branding,
@@ -268,7 +268,7 @@ export async function sendResetPasswordEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const branding = await getBranding(options?.tenantDb);
-    const finalLoginUrl = loginUrl || `${branding.shopUrl}/login`;
+    const finalLoginUrl = loginUrl || branding.shopUrl;
 
     const html = renderResetPasswordEmail({
       branding,

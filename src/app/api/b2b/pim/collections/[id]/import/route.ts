@@ -137,7 +137,7 @@ export async function POST(
     });
 
     // Process asynchronously
-    processCollectionImportJob(tenantDb, jobId, id, entityCodes, action, session.userId, collection).catch(
+    processCollectionImportJob(tenantDb, session.tenantId, jobId, id, entityCodes, action, session.userId, collection).catch(
       (error) => {
         console.error("Background job error:", error);
       }
@@ -160,6 +160,7 @@ export async function POST(
 // Background job processor
 async function processCollectionImportJob(
   tenantDb: string,
+  tenantId: string,
   jobId: string,
   id: string,
   entityCodes: string[],
@@ -279,7 +280,7 @@ async function processCollectionImportJob(
 
     // Sync affected products to Solr
     let solrSynced = 0;
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(tenantId);
     if (adapterConfigs.solr?.enabled && successfulItems > 0) {
       console.log(`🔄 Starting Solr sync for ${entityCodes.length} products after collection import`);
 

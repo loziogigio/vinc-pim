@@ -1,0 +1,36 @@
+export const metadata = {
+  title: "Documentation",
+  description:
+    "How the in-app PIM documentation module (the internal end-user help surface) is structured.",
+};
+
+# Documentation (in-app)
+
+The **Documentazione** menu inside the PIM (the authenticated app at{" "}
+<code>/b2b/pim/documentation</code>) is separate from this public developer
+portal — it's end-user help, rendered with i18n translation keys and
+not exposed publicly.
+
+<Callout kind="tip" title="You are here">
+  This page (on <code>cs.vendereincloud.it/developers</code>) is the public
+  developer reference. The in-app Documentazione page is for tenant admins
+  navigating the UI.
+</Callout>
+
+## In-app endpoints
+
+The in-app docs module is read-only and content-driven; there is no REST
+surface to configure. Adding new sections is a code-only change:
+
+- Add the section slug to the content map in{" "}
+  <code>src/components/pim/docs/DocSectionPage.tsx</code>.
+- Add the translation keys to <code>src/lib/i18n/locales/&#123;en,it,sk&#125;.ts</code>{" "}
+  under <code>pages.pim.documentation.*</code>.
+
+## Developer docs (this portal)
+
+- Content lives in <code>content/developers/pim/*.mdx</code>.
+- The navigation order is set in{" "}
+  <code>content/developers/pim/_sections.ts</code>.
+- Every MDX file exports a <code>metadata</code> object for page title and
+  meta description.

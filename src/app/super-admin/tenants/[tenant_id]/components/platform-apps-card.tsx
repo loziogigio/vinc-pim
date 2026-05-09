@@ -34,8 +34,8 @@ export default function PlatformAppsCard({
         const fetchedApps: PlatformApp[] = data.apps || [];
         setApps(fetchedApps);
 
-        // If enabledApps is set, use it; otherwise all apps enabled by default
-        if (enabledApps && enabledApps.length > 0) {
+        // If enabledApps is explicitly set (even to []), honor it; otherwise all apps enabled by default
+        if (Array.isArray(enabledApps)) {
           setSelected(enabledApps);
         } else {
           setSelected(fetchedApps.map((a) => a.app_id));

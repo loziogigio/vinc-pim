@@ -26,6 +26,7 @@ import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { calculateUnitPrice, calculatePackagePrice, ensurePackagingIds, ensurePromoRows, syncPackagingFlags } from "@/lib/utils/packaging";
+import { normalizeDecimalInput, parseDecimalValue } from "@/lib/utils/decimal-input";
 import {
   ProductImage,
   extractAttributesForLanguage,
@@ -164,6 +165,14 @@ type FormData = {
   status: "draft" | "published" | "archived";
   brand_name: string;
   category_name: string;
+  weight: string;
+  weight_uom: string;
+  volume: string;
+  volume_uom: string;
+  dimension_height: string;
+  dimension_width: string;
+  dimension_length: string;
+  dimension_uom: string;
 };
 
 /**
@@ -260,6 +269,14 @@ export default function ProductDetailPage({
     status: "draft",
     brand_name: "",
     category_name: "",
+    weight: "",
+    weight_uom: "",
+    volume: "",
+    volume_uom: "",
+    dimension_height: "",
+    dimension_width: "",
+    dimension_length: "",
+    dimension_uom: "",
   });
 
   const [originalData, setOriginalData] = useState<FormData | null>(null);
@@ -415,6 +432,14 @@ export default function ProductDetailPage({
           status: data.product.status || "draft",
           brand_name: getMultilingualText(data.product.brand?.name, defaultLanguageCode, ""),
           category_name: getMultilingualText(data.product.category?.name, defaultLanguageCode, ""),
+          weight: data.product.weight != null ? String(data.product.weight) : "",
+          weight_uom: data.product.weight_uom || "",
+          volume: data.product.volume != null ? String(data.product.volume) : "",
+          volume_uom: data.product.volume_uom || "",
+          dimension_height: data.product.dimension_height != null ? String(data.product.dimension_height) : "",
+          dimension_width: data.product.dimension_width != null ? String(data.product.dimension_width) : "",
+          dimension_length: data.product.dimension_length != null ? String(data.product.dimension_length) : "",
+          dimension_uom: data.product.dimension_uom || "",
         };
         setFormData(initialData);
         setOriginalData(initialData);
@@ -532,6 +557,18 @@ export default function ProductDetailPage({
         updates.stock_quantity = parseInt(formData.stock_quantity);
       }
 
+      // Physical properties — send numeric values (or null to clear)
+      const weightNum = parseDecimalValue(formData.weight);
+      updates.weight = weightNum ?? null;
+      updates.weight_uom = formData.weight_uom || null;
+      const volumeNum = parseDecimalValue(formData.volume);
+      updates.volume = volumeNum ?? null;
+      updates.volume_uom = formData.volume_uom || null;
+      updates.dimension_height = parseDecimalValue(formData.dimension_height) ?? null;
+      updates.dimension_width = parseDecimalValue(formData.dimension_width) ?? null;
+      updates.dimension_length = parseDecimalValue(formData.dimension_length) ?? null;
+      updates.dimension_uom = formData.dimension_uom || null;
+
       // Add brand if changed
       if (formData.brand_name !== originalData?.brand_name) {
         updates.brand = formData.brand_name
@@ -637,6 +674,14 @@ export default function ProductDetailPage({
           status: data.product.status || "draft",
           brand_name: getMultilingualText(data.product.brand?.name, defaultLanguageCode, ""),
           category_name: getMultilingualText(data.product.category?.name, defaultLanguageCode, ""),
+          weight: data.product.weight != null ? String(data.product.weight) : "",
+          weight_uom: data.product.weight_uom || "",
+          volume: data.product.volume != null ? String(data.product.volume) : "",
+          volume_uom: data.product.volume_uom || "",
+          dimension_height: data.product.dimension_height != null ? String(data.product.dimension_height) : "",
+          dimension_width: data.product.dimension_width != null ? String(data.product.dimension_width) : "",
+          dimension_length: data.product.dimension_length != null ? String(data.product.dimension_length) : "",
+          dimension_uom: data.product.dimension_uom || "",
         };
         setFormData(savedData);
         setOriginalData(savedData);
@@ -2518,6 +2563,110 @@ export default function ProductDetailPage({
                   <option value="published">{t("pages.pim.productDetail.published")}</option>
                   <option value="archived">{t("pages.pim.productDetail.archived")}</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Physical Properties (weight, volume, dimensions) */}
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.pim.productDetail.physicalProperties")}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  {t("pages.pim.productDetail.weight")}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.weight}
+                    onChange={(e) => {
+                      const n = normalizeDecimalInput(e.target.value);
+                      if (n !== null) handleInputChange("weight", n);
+                    }}
+                    className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="0"
+                  />
+                  <input
+                    type="text"
+                    value={formData.weight_uom}
+                    onChange={(e) => handleInputChange("weight_uom", e.target.value)}
+                    className="w-20 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="KG"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  {t("pages.pim.productDetail.volume")}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.volume}
+                    onChange={(e) => {
+                      const n = normalizeDecimalInput(e.target.value);
+                      if (n !== null) handleInputChange("volume", n);
+                    }}
+                    className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="0"
+                  />
+                  <input
+                    type="text"
+                    value={formData.volume_uom}
+                    onChange={(e) => handleInputChange("volume_uom", e.target.value)}
+                    className="w-20 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="CM3"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.productDetail.dimensions")}
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.dimension_length}
+                  onChange={(e) => {
+                    const n = normalizeDecimalInput(e.target.value);
+                    if (n !== null) handleInputChange("dimension_length", n);
+                  }}
+                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder={t("pages.pim.productDetail.dimensionLength")}
+                />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.dimension_width}
+                  onChange={(e) => {
+                    const n = normalizeDecimalInput(e.target.value);
+                    if (n !== null) handleInputChange("dimension_width", n);
+                  }}
+                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder={t("pages.pim.productDetail.dimensionWidth")}
+                />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.dimension_height}
+                  onChange={(e) => {
+                    const n = normalizeDecimalInput(e.target.value);
+                    if (n !== null) handleInputChange("dimension_height", n);
+                  }}
+                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder={t("pages.pim.productDetail.dimensionHeight")}
+                />
+                <input
+                  type="text"
+                  value={formData.dimension_uom}
+                  onChange={(e) => handleInputChange("dimension_uom", e.target.value)}
+                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="CM"
+                />
               </div>
             </div>
           </div>

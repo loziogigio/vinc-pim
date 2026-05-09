@@ -306,6 +306,13 @@ export async function PATCH(
       "technical_specifications",  // Technical specs (array of { key, label, value, uom } per language)
       "dimensions",
       "weight",
+      "weight_uom",
+      "volume",
+      "volume_uom",
+      "dimension_height",
+      "dimension_width",
+      "dimension_length",
+      "dimension_uom",
       "tags",
       "synonym_keys",
       "share_images_with_variants",
@@ -504,12 +511,29 @@ export async function DELETE(
   { params }: { params: Promise<{ entity_code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authMethod = req.headers.get("x-auth-method");
+    let tenantId: string;
+    let tenantDb: string;
+
+    if (authMethod === "api-key") {
+      const apiKeyResult = await verifyAPIKeyFromRequest(req, "write");
+      if (!apiKeyResult.authenticated) {
+        return NextResponse.json(
+          { error: apiKeyResult.error || "Unauthorized" },
+          { status: apiKeyResult.statusCode || 401 }
+        );
+      }
+      tenantId = apiKeyResult.tenantId!;
+      tenantDb = apiKeyResult.tenantDb!;
+    } else {
+      const session = await getB2BSession();
+      if (!session || !session.tenantId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      tenantId = session.tenantId;
+      tenantDb = `vinc-${session.tenantId}`;
     }
 
-    const tenantDb = `vinc-${session.tenantId}`;
     const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const resolvedParams = await params;
@@ -517,7 +541,7 @@ export async function DELETE(
 
     // Remove from Solr first (if enabled)
     let solrDeleted = false;
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(tenantId);
     if (adapterConfigs.solr?.enabled) {
       try {
         const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);

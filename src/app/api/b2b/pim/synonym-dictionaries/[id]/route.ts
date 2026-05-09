@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
-import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
+import { loadAdapterConfigs } from "@/lib/adapters";
+import { syncQueue } from "@/lib/queue/queues";
 
 // GET /api/b2b/pim/synonym-dictionaries/[id] - Fetch single dictionary
 export async function GET(
@@ -52,7 +53,7 @@ export async function PATCH(
 ) {
   const auth = await requireTenantAuth(req);
   if (!auth.success) return auth.response;
-  const { tenantDb } = auth;
+  const { tenantDb, tenantId } = auth;
   try {
     const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
@@ -122,31 +123,32 @@ export async function PATCH(
     }
 
     const termsChanged = terms !== undefined;
+    const activeChanged = is_active !== undefined;
     dictionary.updated_at = new Date();
     await dictionary.save();
 
-    // Fire-and-forget: re-sync associated products to Solr when terms change
-    if (termsChanged) {
-      const adapterConfigs = loadAdapterConfigs();
+    // Enqueue worker job to re-sync associated products to Solr when terms or is_active change
+    if (termsChanged || activeChanged) {
+      const adapterConfigs = loadAdapterConfigs(tenantId);
       if (adapterConfigs.solr?.enabled) {
-        const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
-        PIMProductModel.find({ synonym_keys: dictionary.key, isCurrent: true })
-          .lean()
-          .then(async (products) => {
-            let synced = 0;
-            for (const product of products) {
-              try {
-                const result = await solrAdapter.syncProduct(product as any);
-                if (result.success) synced++;
-              } catch (err: any) {
-                console.warn(`Solr sync failed for ${product.entity_code}:`, err.message);
-              }
-            }
-            console.log(`Synonym dictionary "${dictionary.key}": synced ${synced}/${products.length} products to Solr`);
-          })
-          .catch((err) => {
-            console.error(`Failed to sync products for dictionary "${dictionary.key}":`, err);
-          });
+        const products = await PIMProductModel.find(
+          { synonym_keys: dictionary.key, isCurrent: true },
+          { entity_code: 1 }
+        ).lean();
+        const product_ids = products.map((p: any) => p.entity_code).filter(Boolean);
+        if (product_ids.length > 0) {
+          await syncQueue.add(
+            `synonym-resync-${dictionary.key}`,
+            {
+              operation: "bulk-sync",
+              product_ids,
+              tenant_id: tenantId,
+              channels: ["solr"],
+            },
+            { priority: 5, removeOnComplete: true, removeOnFail: false }
+          );
+          console.log(`Queued Solr resync for dictionary "${dictionary.key}": ${product_ids.length} products`);
+        }
       }
     }
 

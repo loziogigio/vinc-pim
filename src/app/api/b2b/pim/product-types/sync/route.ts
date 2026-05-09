@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     // Check if Solr is enabled
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(session.tenantId);
     const solrEnabled = adapterConfigs.solr?.enabled;
     let solrAdapter: SolrAdapter | null = null;
     if (solrEnabled) {

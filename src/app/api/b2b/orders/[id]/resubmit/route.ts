@@ -37,11 +37,15 @@ async function restoreFailedState(
   orderId: string,
   errors: string[],
 ): Promise<void> {
+  // Filter on `status: "draft"` so a racing/blocked before-hook can never
+  // revert an order that already transitioned past draft via a successful
+  // concurrent submit (see IR6uhtIVQE-B 2026-04-21). The atomic claim at
+  // the top of POST sets status=draft, so legitimate failure paths still
+  // match.
   await Order.updateOne(
-    { order_id: orderId },
+    { order_id: orderId, status: "draft" },
     {
       $set: {
-        status: "draft",
         processing_status: "failed",
         processing_completed_at: new Date(),
         processing_errors: errors,
@@ -64,34 +68,64 @@ export async function POST(
   const connection = await getPooledConnection(dbName);
   const { Order } = await connectWithModels(dbName);
 
+  // Atomically claim the row: transition `processing_status: "failed"` +
+  // `submitting != true` → `submitting: true` and reset the submission-state
+  // fields in a single operation. This replaces the previous non-atomic
+  // `findOne + save` which allowed a second click to run concurrently and
+  // pollute Mongo with a failed-retry merge on top of a successful submit.
+  let submitClaimed = false;
+
   try {
+    const order = await Order.findOneAndUpdate(
+      {
+        order_id: orderId,
+        processing_status: "failed",
+        submitting: { $ne: true },
+      },
+      {
+        $set: {
+          submitting: true,
+          status: "draft",
+          is_current: false, // Not editing — just resubmitting with autofix
+        },
+        $unset: {
+          processing_status: "",
+          processing_job_id: "",
+          processing_started_at: "",
+          processing_completed_at: "",
+          processing_errors: "",
+          erp_sync_status: "",
+          submitted_at: "",
+          confirmed_at: "",
+          order_number: "",
+        },
+      },
+      { new: true },
+    );
 
-    const order = await Order.findOne({ order_id: orderId });
     if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    // Only allow resubmit on failed processing orders
-    if (order.processing_status !== "failed") {
+      const exists = await Order.findOne({ order_id: orderId })
+        .select("processing_status submitting")
+        .lean();
+      if (!exists) {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      }
+      if (exists.submitting) {
+        return NextResponse.json(
+          { error: "Order is already being resubmitted" },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
-        { error: `Can only resubmit failed orders. Current processing_status: "${order.processing_status || "none"}"` },
+        {
+          error: `Can only resubmit failed orders. Current processing_status: "${exists.processing_status || "none"}"`,
+          code: "ORDER_NOT_RESUBMITTABLE",
+          processing_status: exists.processing_status || null,
+        },
         { status: 400 },
       );
     }
-
-    // Reset to draft so submitOrder() can run again
-    order.status = "draft";
-    order.is_current = false; // Not editing — just resubmitting with autofix
-    order.processing_status = undefined;
-    order.processing_job_id = undefined;
-    order.processing_started_at = undefined;
-    order.processing_completed_at = undefined;
-    order.processing_errors = undefined;
-    order.erp_sync_status = undefined;
-    order.submitted_at = undefined;
-    order.confirmed_at = undefined;
-    order.order_number = undefined;
-    await order.save();
+    submitClaimed = true;
 
     // ── BEFORE HOOK: validate with ERP (autofix flag passed through) ──
     const hookCtx = buildHookCtxFromOrder(dbName, auth.tenantId, "order.submit", order, {
@@ -135,8 +169,15 @@ export async function POST(
 
     if (before.hooked && !before.allowed) {
       // Persist ERP data even on rejection — erp_cart_id and erp_line_numbers
-      // must survive so the next attempt reuses the same ERP cart/rows
+      // must survive so the next attempt reuses the same ERP cart/rows.
+      // Defense in depth: strip erp_status from a blocked before-hook's
+      // payload so it can't clobber the on-hook's authoritative "submitted"
+      // value if a concurrent before-hook races a successful submit.
       if (before.modified_data) {
+        const erpData = before.modified_data.erp_data as Record<string, unknown> | undefined;
+        if (erpData && "erp_status" in erpData) {
+          delete erpData.erp_status;
+        }
         await mergeOrderErpData(Order, (order as any)._id, { success: true, data: before.modified_data });
       }
       // Restore failed state so the user can click resubmit again
@@ -225,5 +266,12 @@ export async function POST(
       { error: error instanceof Error ? error.message : "Failed to resubmit order" },
       { status: 500 },
     );
+  } finally {
+    // Release the submitting lock on every exit path — success, early return,
+    // async-fallback, or thrown error. Idempotent with the explicit clears
+    // inside restoreFailedState / async $set blocks above.
+    if (submitClaimed) {
+      await Order.updateOne({ order_id: orderId }, { $set: { submitting: false } }).catch(() => {});
+    }
   }
 }

@@ -20,3 +20,4 @@ export { NewOrderModal } from "./NewOrderModal";
 export { AddItemsModal } from "./AddItemsModal";
 export { OrderSnapshotCard } from "./OrderSnapshotCard";
 export { CouponCard } from "./CouponCard";
+export { OrderActivityModal } from "./OrderActivityModal";

@@ -1,0 +1,26 @@
+export const metadata = {
+  title: "Brands",
+  description: "Manufacturer / brand entities referenced by products.",
+};
+
+# Brands
+
+Brands are first-class entities with their own pages, logos, and SEO
+metadata. Every product references a brand by its `code`.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/brands" />
+<Endpoint method="GET" path="/api/b2b/pim/brands/:code" />
+<Endpoint method="POST" path="/api/b2b/pim/brands" />
+<Endpoint method="PATCH" path="/api/b2b/pim/brands/:code" />
+<Endpoint method="DELETE" path="/api/b2b/pim/brands/:code" />
+
+## Data shape
+
+- `code` — stable, URL-safe tenant-unique identifier.
+- `name` — `MultiLangString`.
+- `description` — `MultiLangString`, HTML-safe.
+- `logo` — CDN asset reference.
+- `website` — external URL displayed on the brand page.
+- `seo` — `{ title, description, og_image }` per locale.

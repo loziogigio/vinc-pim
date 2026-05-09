@@ -77,6 +77,13 @@ export interface ISSOSession {
   // Timestamps
   created_at: Date;
   last_activity: Date;
+  /**
+   * Last *user-driven* activity (mouse/keyboard/touch) reported by the
+   * storefront via the heartbeat endpoint. Distinct from `last_activity`,
+   * which is touched by silent token refreshes too. The idle-timeout check
+   * uses this field — silent refreshes alone do NOT keep a session alive.
+   */
+  last_user_activity: Date;
   expires_at: Date;
 
   // Status
@@ -94,6 +101,7 @@ export interface ISSOSessionModel extends Model<ISSOSessionDocument> {
   revokeSession(sessionId: string, reason?: string): Promise<ISSOSessionDocument | null>;
   revokeAllUserSessions(tenantId: string, userId: string, reason?: string): Promise<number>;
   updateLastActivity(sessionId: string): Promise<void>;
+  updateLastUserActivity(sessionId: string, throttleMs?: number): Promise<boolean>;
 }
 
 // ============================================
@@ -163,6 +171,10 @@ const SSOSessionSchema = new Schema<ISSOSessionDocument>(
 
     // Timestamps
     last_activity: {
+      type: Date,
+      default: Date.now,
+    },
+    last_user_activity: {
       type: Date,
       default: Date.now,
     },
@@ -273,6 +285,28 @@ SSOSessionSchema.statics.updateLastActivity = async function (
     { session_id: sessionId },
     { $set: { last_activity: new Date() } }
   );
+};
+
+/**
+ * Update last_user_activity, optionally throttled to avoid hot-path writes.
+ *
+ * Heartbeats from the client can be frequent. When `throttleMs` is provided,
+ * the update is conditional: only run if `last_user_activity` is older than
+ * `throttleMs`. Returns `true` if the document was modified.
+ */
+SSOSessionSchema.statics.updateLastUserActivity = async function (
+  sessionId: string,
+  throttleMs?: number
+): Promise<boolean> {
+  const now = new Date();
+  const filter: Record<string, unknown> = { session_id: sessionId };
+  if (typeof throttleMs === "number" && throttleMs > 0) {
+    filter.last_user_activity = { $lt: new Date(now.getTime() - throttleMs) };
+  }
+  const result = await this.updateOne(filter, {
+    $set: { last_user_activity: now },
+  });
+  return result.modifiedCount > 0;
 };
 
 // ============================================

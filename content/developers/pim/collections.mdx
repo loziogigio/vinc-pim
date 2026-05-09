@@ -1,0 +1,29 @@
+export const metadata = {
+  title: "Collections",
+  description:
+    "Curated product sets used for merchandising, campaigns, and storefront rails.",
+};
+
+# Collections
+
+Collections are flat, manually curated product sets — typically used for
+campaigns (“Spring Sale”), editorial rails (“Staff picks”), or cross-sells.
+Unlike categories, collections are not hierarchical and do not drive URL
+structure.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/collections" />
+<Endpoint method="GET" path="/api/b2b/pim/collections/:slug" />
+<Endpoint method="POST" path="/api/b2b/pim/collections" />
+<Endpoint method="PATCH" path="/api/b2b/pim/collections/:slug" />
+<Endpoint method="DELETE" path="/api/b2b/pim/collections/:slug" />
+<Endpoint method="POST" path="/api/b2b/pim/collections/:slug/products" />
+<Endpoint method="DELETE" path="/api/b2b/pim/collections/:slug/products/:entity_code" />
+
+## Notes
+
+- Products are referenced by `entity_code`. A product can belong to any
+  number of collections simultaneously.
+- Ordering within a collection is stored as an ordered array of
+  `entity_code`s; PATCH with a new order to reorder.

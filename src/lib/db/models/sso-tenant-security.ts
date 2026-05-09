@@ -17,7 +17,15 @@ export interface ITenantSecurityConfig {
 
   // Session limits
   max_sessions_per_user: number;
+  /** Absolute session lifetime from creation. */
   session_timeout_hours: number;
+  /**
+   * Idle timeout: max hours between user-driven activity events. After this
+   * window the next token refresh is rejected and the session is revoked.
+   * Background auto-refresh by itself does NOT reset this clock — only
+   * heartbeats from real user input do. Should be ≤ session_timeout_hours.
+   */
+  idle_timeout_hours: number;
 
   // Login protection
   max_login_attempts: number;
@@ -56,6 +64,7 @@ export interface ITenantSecurityConfigModel extends Model<ITenantSecurityConfigD
 export const DEFAULT_SECURITY_CONFIG: Omit<ITenantSecurityConfig, "tenant_id" | "created_at" | "updated_at"> = {
   max_sessions_per_user: 5,
   session_timeout_hours: 24,
+  idle_timeout_hours: 8,
   max_login_attempts: 5,
   lockout_minutes: 15,
   enable_progressive_delay: true,
@@ -85,6 +94,10 @@ const TenantSecurityConfigSchema = new Schema<ITenantSecurityConfigDocument>(
     session_timeout_hours: {
       type: Number,
       default: DEFAULT_SECURITY_CONFIG.session_timeout_hours,
+    },
+    idle_timeout_hours: {
+      type: Number,
+      default: DEFAULT_SECURITY_CONFIG.idle_timeout_hours,
     },
 
     // Login protection

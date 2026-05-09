@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
 
 type RemotePattern = {
   protocol: "http" | "https";
@@ -18,6 +19,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: false,
   output: 'standalone',
+  // Enable MDX as a valid page/module extension for @next/mdx
+  pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
   // Puppeteer uses native binaries — keep it as a Node.js external so the
   // standalone output includes the package rather than trying to bundle it
   serverExternalPackages: ['puppeteer', 'puppeteer-core'],
@@ -44,4 +47,24 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Turbopack (Next 16 default) requires remark/rehype plugins to be passed
+// as string names so they can be resolved by the Rust bundler.
+const withMDX = createMDX({
+  extension: /\.mdx?$/,
+  options: {
+    remarkPlugins: ['remark-gfm'],
+    rehypePlugins: [
+      'rehype-slug',
+      ['rehype-autolink-headings', { behavior: 'wrap' }],
+      [
+        'rehype-pretty-code',
+        {
+          theme: { dark: 'github-dark-dimmed', light: 'github-light' },
+          keepBackground: false,
+        },
+      ],
+    ],
+  },
+});
+
+export default withMDX(nextConfig);

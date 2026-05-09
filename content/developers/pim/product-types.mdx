@@ -1,0 +1,29 @@
+export const metadata = {
+  title: "Product Types",
+  description:
+    "Typed product schemas that drive attribute sets, validation, and UI.",
+};
+
+# Product Types
+
+A product type pins down which technical specifications are relevant for
+a given kind of product. The PIM UI renders form groups for each attached
+attribute, and bulk-publish refuses to publish products missing required
+attributes for their type.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/product-types" />
+<Endpoint method="GET" path="/api/b2b/pim/product-types/:code" />
+<Endpoint method="POST" path="/api/b2b/pim/product-types" />
+<Endpoint method="PATCH" path="/api/b2b/pim/product-types/:code" />
+<Endpoint method="DELETE" path="/api/b2b/pim/product-types/:code" />
+
+## Data shape
+
+- `code` — stable identifier, referenced from products.
+- `name` — `MultiLangString`.
+- `technical_specifications` — ordered list of `{ code, required, group? }`
+  references into [Technical Specifications](/developers/pim/technical-specifications).
+- `default_channel_overrides` — per-channel presets applied to new
+  products of this type.

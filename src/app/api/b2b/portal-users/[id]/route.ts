@@ -13,6 +13,7 @@ import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import type { IPortalUserUpdate, PortalUserSafe } from "@/lib/types/portal-user";
 import { isValidChannelCode } from "@/lib/constants/channel";
+import { sendForgotPasswordNotification } from "@/lib/notifications/send.service";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -145,7 +146,14 @@ export async function PUT(
 
     // Parse request body
     const body: IPortalUserUpdate = await req.json();
-    const { username, email, password, customer_access, is_active } = body;
+    const {
+      username,
+      email,
+      password,
+      customer_access,
+      is_active,
+      send_password_email,
+    } = body;
 
     // Build update object
     const update: Record<string, unknown> = {};
@@ -253,7 +261,40 @@ export async function PUT(
       .select("-password_hash")
       .lean();
 
-    return NextResponse.json({ portal_user: updatedUser });
+    // Optionally email the new password to the user (admin opt-in checkbox)
+    let emailSent: boolean | undefined;
+    if (
+      password !== undefined &&
+      send_password_email === true &&
+      updatedUser?.email
+    ) {
+      try {
+        const result = await sendForgotPasswordNotification(
+          auth.tenantDb!,
+          updatedUser.email,
+          {
+            customer_name: updatedUser.username,
+            temporary_password: password,
+            channel: updatedUser.channel,
+          }
+        );
+        emailSent = result.success;
+        if (!result.success) {
+          console.error(
+            "[portal-users PUT] Password email failed:",
+            result.error
+          );
+        }
+      } catch (emailError) {
+        console.error("[portal-users PUT] Password email error:", emailError);
+        emailSent = false;
+      }
+    }
+
+    return NextResponse.json({
+      portal_user: updatedUser,
+      ...(emailSent !== undefined && { email_sent: emailSent }),
+    });
   } catch (error) {
     console.error("Error updating portal user:", error);
 

@@ -1,0 +1,24 @@
+export const metadata = {
+  title: "Menu Settings",
+  description:
+    "Storefront navigation and mega-menu configuration, keyed per locale.",
+};
+
+# Menu Settings
+
+Menu settings describe the storefront navigation tree (header, mega menu,
+footer) for every locale the tenant has enabled. Changes are published
+atomically and picked up by the storefront's `/api/public/menu` endpoint.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/menu-settings" />
+<Endpoint method="PATCH" path="/api/b2b/pim/menu-settings" />
+<Endpoint method="POST" path="/api/b2b/pim/menu-settings/publish" />
+
+## Notes
+
+- A single document per tenant stores all menu trees (`header`, `mega`, `footer`).
+- Each menu item is `{ label: MultiLangString, href, icon?, children? }`.
+- The storefront reads the published snapshot; drafts are visible only
+  in the preview channel.

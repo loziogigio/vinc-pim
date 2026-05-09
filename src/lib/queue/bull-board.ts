@@ -6,16 +6,33 @@
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
-import { importQueue, analyticsQueue } from "./queues";
+import {
+  importQueue,
+  analyticsQueue,
+  syncQueue,
+  cleanupQueue,
+  notificationQueue,
+  bookingExpiryQueue,
+  paymentQueue,
+  customerImportQueue,
+  portalUserImportQueue,
+  emailQueue,
+} from "./queues";
 
-// Create Express adapter for Bull Board UI
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/api/admin/bull-board");
 
-// Create Bull Board with all queues
 createBullBoard({
   queues: [
+    new BullMQAdapter(syncQueue),
     new BullMQAdapter(importQueue),
+    new BullMQAdapter(customerImportQueue),
+    new BullMQAdapter(portalUserImportQueue),
+    new BullMQAdapter(notificationQueue),
+    new BullMQAdapter(emailQueue),
+    new BullMQAdapter(paymentQueue),
+    new BullMQAdapter(bookingExpiryQueue),
+    new BullMQAdapter(cleanupQueue),
     new BullMQAdapter(analyticsQueue),
   ],
   serverAdapter,

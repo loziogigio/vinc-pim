@@ -35,7 +35,7 @@ export async function POST(
     }
 
     // Check if Solr is enabled
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(session.tenantId);
     if (!adapterConfigs.solr?.enabled) {
       return NextResponse.json(
         { error: "Solr is not enabled" },

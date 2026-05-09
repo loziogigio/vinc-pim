@@ -48,6 +48,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Reject silent auth across tenants: the existing SSO session was issued for
+    // a specific tenant; never mint a code for a different one. The storefront
+    // login page must fall back to interactive login (which creates a fresh
+    // session bound to the requested tenant).
+    if (session.tenant_id !== tenant_id) {
+      return NextResponse.json(
+        {
+          error: "tenant_mismatch",
+          message: "Existing session belongs to a different tenant. Interactive login required.",
+        },
+        { status: 401 }
+      );
+    }
+
     // Validate client and redirect_uri
     const client = await validateClientForTenant(client_id, redirect_uri, tenant_id);
     if (!client) {

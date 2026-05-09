@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from "csv-parse/sync";
 import { readExcel } from "@/lib/utils/excel";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 
 /**
  * POST /api/b2b/pim/import/analyze
@@ -8,6 +9,9 @@ import { readExcel } from "@/lib/utils/excel";
  */
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
 

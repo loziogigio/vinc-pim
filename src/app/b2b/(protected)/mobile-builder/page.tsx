@@ -37,10 +37,17 @@ import {
   type MobileBlock,
   type MobileBlockType,
   type MobileAppIdentity,
+  type MobileConfigId,
   MOBILE_BLOCK_LIBRARY,
   DEFAULT_APP_IDENTITY,
   createDefaultBlock,
 } from "@/lib/types/mobile-builder";
+import { MOBILE_CONFIG_IDS } from "@/lib/types/mobile-builder";
+import {
+  MOBILE_CONFIG_LABEL_KEYS,
+  MOBILE_BUILDER_API,
+  isMobileHome,
+} from "@/lib/constants/mobile-builder";
 import { MobilePreview } from "@/components/mobile-builder/MobilePreview";
 import { MobileBlockSettings } from "@/components/mobile-builder/MobileBlockSettings";
 import { AppIdentitySettings } from "@/components/mobile-builder/AppIdentitySettings";
@@ -59,6 +66,11 @@ interface VersionInfo {
   updated_at?: string;
 }
 
+const TAB_CLASS = {
+  active: "bg-slate-900 text-white",
+  idle: "text-gray-600 hover:bg-gray-100",
+} as const;
+
 export default function MobileBuilderPage() {
   const { t } = useTranslation();
   const [blocks, setBlocks] = useState<MobileBlock[]>([]);
@@ -72,6 +84,7 @@ export default function MobileBuilderPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeConfigId, setActiveConfigId] = useState<MobileConfigId>("mobile-home");
   const [currentVersion, setCurrentVersion] = useState(1);
   const [versions, setVersions] = useState<VersionInfo[]>([]);
   const [showVersionDropdown, setShowVersionDropdown] = useState(false);
@@ -102,10 +115,11 @@ export default function MobileBuilderPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load versions list
   const loadVersions = useCallback(async () => {
     try {
-      const response = await fetch("/api/b2b/mobile-builder/config/versions");
+      const response = await fetch(
+        `${MOBILE_BUILDER_API.versions}?config_id=${activeConfigId}`
+      );
       if (response.ok) {
         const data = await response.json();
         setVersions(data.versions || []);
@@ -113,41 +127,39 @@ export default function MobileBuilderPage() {
     } catch (err) {
       console.error("Error loading versions:", err);
     }
-  }, []);
+  }, [activeConfigId]);
 
-  // Load config for a specific version
   const loadConfig = useCallback(async (version?: number) => {
     try {
-      const url = version
-        ? `/api/b2b/mobile-builder/config?version=${version}`
-        : "/api/b2b/mobile-builder/config";
-      const response = await fetch(url);
+      const params = new URLSearchParams({ config_id: activeConfigId });
+      if (version) params.set("version", String(version));
+      const response = await fetch(`${MOBILE_BUILDER_API.config}?${params.toString()}`);
       if (!response.ok) {
         throw new Error(t("pages.mobileBuilder.failedToLoad"));
       }
       const data = await response.json();
       if (data.config) {
         setBlocks(data.config.blocks || []);
-        setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
+        if (isMobileHome(activeConfigId)) {
+          setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
+        }
         setCurrentVersion(data.config.version || 1);
       }
     } catch (err) {
       console.error("Error loading mobile config:", err);
       setError(t("pages.mobileBuilder.failedToLoad"));
     }
-  }, []);
+  }, [activeConfigId, t]);
 
-  // Load config and versions on mount
   useEffect(() => {
     const init = async () => {
-      await loadConfig();
-      await loadVersions();
+      setIsLoading(true);
+      await Promise.all([loadConfig(), loadVersions()]);
       setIsLoading(false);
     };
     init();
   }, [loadConfig, loadVersions]);
 
-  // Create new version
   const handleCreateNewVersion = async () => {
     if (isDirty) {
       setError(t("pages.mobileBuilder.saveBeforeNewVersion"));
@@ -157,11 +169,14 @@ export default function MobileBuilderPage() {
     setIsCreatingVersion(true);
     setError(null);
     try {
-      const response = await fetch("/api/b2b/mobile-builder/config/versions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from_version: currentVersion }),
-      });
+      const response = await fetch(
+        `${MOBILE_BUILDER_API.versions}?config_id=${activeConfigId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ from_version: currentVersion }),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -170,7 +185,9 @@ export default function MobileBuilderPage() {
 
       const data = await response.json();
       setBlocks(data.config.blocks || []);
-      setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
+      if (isMobileHome(activeConfigId)) {
+        setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
+      }
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
@@ -183,16 +200,18 @@ export default function MobileBuilderPage() {
     }
   };
 
-  // Actually perform the version switch
   const performSwitchVersion = async (version: number) => {
     setShowVersionDropdown(false);
     setIsLoading(true);
     try {
-      const response = await fetch("/api/b2b/mobile-builder/config/versions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ version }),
-      });
+      const response = await fetch(
+        `${MOBILE_BUILDER_API.versions}?config_id=${activeConfigId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ version }),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -201,7 +220,9 @@ export default function MobileBuilderPage() {
 
       const data = await response.json();
       setBlocks(data.config.blocks || []);
-      setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
+      if (isMobileHome(activeConfigId)) {
+        setAppIdentity({ ...DEFAULT_APP_IDENTITY, ...data.config.app_identity });
+      }
       setCurrentVersion(data.config.version);
       setIsDirty(false);
       await loadVersions();
@@ -214,7 +235,6 @@ export default function MobileBuilderPage() {
     }
   };
 
-  // Switch to a different version (with confirmation if dirty)
   const handleSwitchVersion = (version: number) => {
     if (isDirty) {
       setConfirmDialog({
@@ -232,14 +252,12 @@ export default function MobileBuilderPage() {
     performSwitchVersion(version);
   };
 
-  // Update app identity
   const handleUpdateAppIdentity = useCallback((updates: Partial<MobileAppIdentity>) => {
     setAppIdentity((prev) => ({ ...prev, ...updates }));
     setIsDirty(true);
     setError(null);
   }, []);
 
-  // Add a new block
   const handleAddBlock = useCallback((type: MobileBlockType) => {
     const newBlock = createDefaultBlock(type, nanoid());
     setBlocks((prev) => [...prev, newBlock]);
@@ -248,7 +266,6 @@ export default function MobileBuilderPage() {
     setError(null);
   }, []);
 
-  // Delete a block
   const handleDeleteBlock = useCallback((blockId: string) => {
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
     if (selectedBlockId === blockId) {
@@ -257,7 +274,6 @@ export default function MobileBuilderPage() {
     setIsDirty(true);
   }, [selectedBlockId]);
 
-  // Update a block
   const handleUpdateBlock = useCallback((blockId: string, updates: Partial<MobileBlock>) => {
     setBlocks((prev) =>
       prev.map((b) => (b.id === blockId ? { ...b, ...updates } as MobileBlock : b))
@@ -265,7 +281,6 @@ export default function MobileBuilderPage() {
     setIsDirty(true);
   }, []);
 
-  // Handle drag end
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -279,17 +294,22 @@ export default function MobileBuilderPage() {
     }
   }, []);
 
-  // Save draft (updates current version in place)
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
     setInfo(null);
     try {
-      const response = await fetch("/api/b2b/mobile-builder/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks, app_identity: appIdentity }),
-      });
+      const response = await fetch(
+        `${MOBILE_BUILDER_API.config}?config_id=${activeConfigId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blocks,
+            app_identity: isMobileHome(activeConfigId) ? appIdentity : undefined,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -309,14 +329,14 @@ export default function MobileBuilderPage() {
     }
   };
 
-  // Actually perform publish
   const performPublish = async () => {
     setIsPublishing(true);
     setError(null);
     try {
-      const response = await fetch("/api/b2b/mobile-builder/config/publish", {
-        method: "POST",
-      });
+      const response = await fetch(
+        `${MOBILE_BUILDER_API.publish}?config_id=${activeConfigId}`,
+        { method: "POST" }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -334,7 +354,6 @@ export default function MobileBuilderPage() {
     }
   };
 
-  // Publish (with confirmation)
   const handlePublish = () => {
     setConfirmDialog({
       title: t("pages.mobileBuilder.publishVersionTitle"),
@@ -352,18 +371,24 @@ export default function MobileBuilderPage() {
   const currentVersionInfo = versions.find((v) => v.version === currentVersion);
   const isLiveVersion = currentVersionInfo?.is_current_published ?? false;
 
-  // Hot Fix: save + publish in one step (for editing the live version)
+  // Save+publish atomically: publish endpoint promotes whatever is currently the draft,
+  // so the save MUST land before publish runs.
   const handleHotfix = async () => {
     setIsSaving(true);
     setError(null);
     setInfo(null);
     try {
-      // Step 1: Save
-      const saveRes = await fetch("/api/b2b/mobile-builder/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks, app_identity: appIdentity }),
-      });
+      const saveRes = await fetch(
+        `${MOBILE_BUILDER_API.config}?config_id=${activeConfigId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blocks,
+            app_identity: isMobileHome(activeConfigId) ? appIdentity : undefined,
+          }),
+        }
+      );
       if (!saveRes.ok) {
         const data = await saveRes.json();
         throw new Error(data.error || t("pages.mobileBuilder.failedToSave"));
@@ -372,12 +397,12 @@ export default function MobileBuilderPage() {
       setCurrentVersion(saveData.config.version);
       setIsDirty(false);
 
-      // Step 2: Publish
       setIsSaving(false);
       setIsPublishing(true);
-      const pubRes = await fetch("/api/b2b/mobile-builder/config/publish", {
-        method: "POST",
-      });
+      const pubRes = await fetch(
+        `${MOBILE_BUILDER_API.publish}?config_id=${activeConfigId}`,
+        { method: "POST" }
+      );
       if (!pubRes.ok) {
         const data = await pubRes.json();
         throw new Error(data.error || t("pages.mobileBuilder.failedToPublish"));
@@ -392,6 +417,36 @@ export default function MobileBuilderPage() {
       setIsSaving(false);
       setIsPublishing(false);
     }
+  };
+
+  const performSwitchConfigTab = (nextId: MobileConfigId) => {
+    setSelectedBlockId(null);
+    setBlocks([]);
+    setIsDirty(false);
+    setError(null);
+    setInfo(null);
+    setActiveConfigId(nextId);
+  };
+
+  /** Whether the post-login landing is currently visible to mobile users. */
+  const isLandingLive = appIdentity.post_login_mode === "landing";
+
+  const handleSwitchConfigTab = (nextId: MobileConfigId) => {
+    if (nextId === activeConfigId) return;
+    if (isDirty) {
+      setConfirmDialog({
+        title: t("pages.mobileBuilder.unsavedSwitchTitle"),
+        message: t("pages.mobileBuilder.unsavedSwitchMessage"),
+        variant: "warning",
+        confirmText: t("pages.mobileBuilder.switchAnyway"),
+        onConfirm: () => {
+          setConfirmDialog(null);
+          performSwitchConfigTab(nextId);
+        },
+      });
+      return;
+    }
+    performSwitchConfigTab(nextId);
   };
 
   if (isLoading) {
@@ -493,6 +548,41 @@ export default function MobileBuilderPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Page switcher */}
+          <div className="ml-4 flex items-center gap-1 rounded-md border bg-white p-0.5">
+            {MOBILE_CONFIG_IDS.map((cfgId) => {
+              const isActive = cfgId === activeConfigId;
+              const showLiveBadge = !isMobileHome(cfgId);
+              return (
+                <button
+                  key={cfgId}
+                  type="button"
+                  onClick={() => handleSwitchConfigTab(cfgId)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded px-3 py-1 text-xs transition",
+                    isActive ? TAB_CLASS.active : TAB_CLASS.idle
+                  )}
+                >
+                  {t(MOBILE_CONFIG_LABEL_KEYS[cfgId])}
+                  {showLiveBadge && (
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                        isLandingLive
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-200 text-gray-600"
+                      )}
+                    >
+                      {isLandingLive
+                        ? t("pages.mobileBuilder.live")
+                        : t("pages.mobileBuilder.draft")}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -602,11 +692,12 @@ export default function MobileBuilderPage() {
           )}
         >
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* App Identity Section */}
-            <AppIdentitySettings
-              appIdentity={appIdentity}
-              onChange={handleUpdateAppIdentity}
-            />
+            {isMobileHome(activeConfigId) && (
+              <AppIdentitySettings
+                appIdentity={appIdentity}
+                onChange={handleUpdateAppIdentity}
+              />
+            )}
 
             {/* Block Library */}
             <div>
@@ -675,7 +766,25 @@ export default function MobileBuilderPage() {
         <section className="flex flex-1 overflow-hidden">
           {/* Phone Preview */}
           <div className="flex flex-1 items-start justify-center bg-gray-100 px-4 pt-6 pb-8 overflow-y-auto">
-            <MobilePreview blocks={blocks} appIdentity={appIdentity} />
+            <MobilePreview
+              blocks={blocks}
+              appIdentity={appIdentity}
+              lockedMode={!isMobileHome(activeConfigId)}
+              header={
+                !isMobileHome(activeConfigId) && (
+                  <div className="mb-3 space-y-2 max-w-[320px]">
+                    {!isLandingLive && (
+                      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                        {t("pages.mobileBuilder.postLogin.notLiveBanner")}
+                      </div>
+                    )}
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      {t("pages.mobileBuilder.postLogin.lockedPreviewBanner")}
+                    </div>
+                  </div>
+                )
+              }
+            />
           </div>
 
           {/* Settings Panel */}

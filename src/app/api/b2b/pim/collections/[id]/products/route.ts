@@ -148,7 +148,7 @@ export async function POST(
       );
 
       // Sync affected products to Solr
-      const adapterConfigs = loadAdapterConfigs();
+      const adapterConfigs = loadAdapterConfigs(session.tenantId);
       if (adapterConfigs.solr?.enabled) {
         const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
         const productsToSync = await PIMProductModel.find({
@@ -209,7 +209,7 @@ export async function POST(
       );
 
       // Sync affected products to Solr (will have updated/empty collection_slugs)
-      const adapterConfigs = loadAdapterConfigs();
+      const adapterConfigs = loadAdapterConfigs(session.tenantId);
       if (adapterConfigs.solr?.enabled) {
         const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
         const productsToSync = await PIMProductModel.find({

@@ -726,6 +726,16 @@ export function transformDocument(
     product_status_description: productStatusDescription,
     product_model: doc.product_model,
 
+    // Physical properties
+    weight: doc.weight,
+    weight_uom: doc.weight_uom,
+    volume: doc.volume,
+    volume_uom: doc.volume_uom,
+    dimension_height: doc.dimension_height,
+    dimension_width: doc.dimension_width,
+    dimension_length: doc.dimension_length,
+    dimension_uom: doc.dimension_uom,
+
     // Quality & Analytics
     completeness_score: doc.completeness_score,
     priority_score: doc.priority_score,

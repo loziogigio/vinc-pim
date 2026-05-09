@@ -12,7 +12,7 @@ export async function POST(
 ) {
   const auth = await requireTenantAuth(req);
   if (!auth.success) return auth.response;
-  const { tenantDb } = auth;
+  const { tenantDb, tenantId } = auth;
   try {
     const { SynonymDictionary: SynonymDictionaryModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
@@ -130,7 +130,7 @@ export async function POST(
     await AssociationJobModel.create(job);
 
     // Process the job asynchronously
-    processAssociationJob(tenantDb, jobId, id, dictionary.key, entityCodes, action).catch(err => {
+    processAssociationJob(tenantDb, tenantId, jobId, id, dictionary.key, entityCodes, action).catch(err => {
       console.error("Error processing synonym dictionary association job:", err);
     });
 
@@ -151,6 +151,7 @@ export async function POST(
 // Background job processor
 async function processAssociationJob(
   tenantDb: string,
+  tenantId: string,
   jobId: string,
   dictionaryId: string,
   dictionaryKey: string,
@@ -243,7 +244,7 @@ async function processAssociationJob(
 
     // Sync affected products to Solr
     let solrSynced = 0;
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(tenantId);
     if (adapterConfigs.solr?.enabled && successful > 0) {
       console.log(`Starting Solr sync for ${entityCodes.length} products after synonym dictionary import`);
 

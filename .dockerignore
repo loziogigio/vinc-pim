@@ -1,6 +1,7 @@
 node_modules
 .next
 .git
+.git-rewrite
 
 # All env files (secrets injected at runtime via docker-compose)
 .env*
@@ -10,6 +11,17 @@ scripts/
 doc/
 docs/
 src/test/
+
+# Dev-only artifacts
+.traefik/
+.playwright-mcp/
+bug-report/
+
+# Local developer scratchpad scripts (ad-hoc DB / ERP probes)
+_tmp-*
+_tmp-*.mts
+_tmp-*.ts
+_tmp-*.js
 
 # Logs and editor artifacts
 npm-debug.log*

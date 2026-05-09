@@ -148,6 +148,89 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
     };
   }
 
+  // Handle bulk delete operation (batch removal across channels)
+  if (operation === 'delete' && product_ids && product_ids.length > 0) {
+    console.log(`\n🗑️ Bulk deleting ${product_ids.length} products from ${channels.length} channel(s)`);
+
+    const adapters = await getAdaptersForTenant(tenant_id);
+    const results: SyncJobResult['results'] = [];
+
+    for (const channel of channels) {
+      const adapter = adapters.get(channel);
+
+      if (!adapter) {
+        console.warn(`⚠️  Adapter not found or disabled: ${channel}`);
+        results.push({
+          channel,
+          success: false,
+          status: 'error',
+          message: `Adapter not available: ${channel}`,
+        });
+        continue;
+      }
+
+      try {
+        console.log(`  → Bulk deleting from ${adapter.name}...`);
+
+        // Solr supports bulk delete-by-query in a single round trip
+        if (channel === 'solr' && 'deleteByQuery' in adapter) {
+          const idQuery = product_ids.map((id) => `"${id}"`).join(' OR ');
+          await (adapter as any).deleteByQuery(`id:(${idQuery})`);
+          console.log(`  ✓ ${adapter.name}: deleted ${product_ids.length} via deleteByQuery`);
+          results.push({
+            channel,
+            success: true,
+            status: 'active',
+            message: `Deleted ${product_ids.length} products`,
+          });
+        } else {
+          // Other adapters: one delete call per product
+          let successCount = 0;
+          const errors: string[] = [];
+          for (const id of product_ids) {
+            try {
+              const result = await adapter.deleteProduct(id);
+              if (result.success) successCount++;
+              else errors.push(`${id}: ${result.message}`);
+            } catch (error: any) {
+              errors.push(`${id}: ${error.message}`);
+            }
+          }
+          console.log(`  ✓ ${adapter.name}: ${successCount}/${product_ids.length} deleted`);
+          results.push({
+            channel,
+            success: successCount === product_ids.length,
+            status: successCount === product_ids.length ? 'active' : 'error',
+            message: `Deleted ${successCount}/${product_ids.length} products`,
+            errors: errors.length > 0 ? errors : undefined,
+          });
+        }
+      } catch (error: any) {
+        console.error(`  ✗ ${adapter.name}: ${error.message}`);
+        results.push({
+          channel,
+          success: false,
+          status: 'error',
+          message: error.message,
+          errors: [error.message],
+        });
+      }
+    }
+
+    const summary = {
+      total: results.length,
+      successful: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+    };
+
+    return {
+      product_id: `bulk-delete-${product_ids.length}`,
+      operation: 'delete',
+      results,
+      summary,
+    };
+  }
+
   // Handle bulk sync operation (batch multiple products)
   if (operation === 'bulk-sync' && product_ids && product_ids.length > 0) {
     console.log(`\n📦 Bulk syncing ${product_ids.length} products`);

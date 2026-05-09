@@ -69,6 +69,8 @@ export interface IPortalUserCreate {
   password: string;
   customer_access: ICustomerAccess[];
   channel?: string;
+  /** When true, the new user is emailed their access credentials (welcome email). */
+  send_access_email?: boolean;
 }
 
 /**
@@ -81,6 +83,8 @@ export interface IPortalUserUpdate {
   customer_access?: ICustomerAccess[];
   is_active?: boolean;
   channel?: string;
+  /** When true and `password` is set, the new password is emailed to the user. */
+  send_password_email?: boolean;
 }
 
 /**

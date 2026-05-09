@@ -23,7 +23,7 @@ async function requireAdmin(req: NextRequest): Promise<NextResponse | null> {
 // Convert Express middleware to Next.js route handler
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path?: string[] }> }
 ) {
   const denied = await requireAdmin(req);
   if (denied) return denied;
@@ -33,7 +33,7 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path?: string[] }> }
 ) {
   const denied = await requireAdmin(req);
   if (denied) return denied;
@@ -43,7 +43,7 @@ export async function POST(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path?: string[] }> }
 ) {
   const denied = await requireAdmin(req);
   if (denied) return denied;
@@ -53,7 +53,7 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path?: string[] }> }
 ) {
   const denied = await requireAdmin(req);
   if (denied) return denied;
@@ -63,10 +63,10 @@ export async function DELETE(
 
 async function handleRequest(
   req: NextRequest,
-  params: { path: string[] }
+  params: { path?: string[] }
 ) {
   // Convert Next.js request to Express-like request
-  const path = params.path ? `/${params.path.join("/")}` : "/";
+  const path = params.path && params.path.length > 0 ? `/${params.path.join("/")}` : "/";
   const url = new URL(req.url);
 
   // Create a mock Express request/response

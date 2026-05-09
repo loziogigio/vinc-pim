@@ -1,0 +1,41 @@
+export const metadata = {
+  title: "Categories",
+  description:
+    "Tree-shaped taxonomy with SEO metadata, product assignments, and i18n.",
+};
+
+# Categories
+
+Categories are the primary tree-shaped taxonomy for every tenant. Each
+category can hold products directly or roll up its descendants' products
+(depending on the `aggregate` flag).
+
+<Callout kind="info" title="Status">
+  Reference copy is being filled in. Use the endpoint list below as the
+  canonical surface; field tables land next.
+</Callout>
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/categories" />
+<Endpoint method="GET" path="/api/b2b/pim/categories/:slug" />
+<Endpoint method="POST" path="/api/b2b/pim/categories" />
+<Endpoint method="PATCH" path="/api/b2b/pim/categories/:slug" />
+<Endpoint method="DELETE" path="/api/b2b/pim/categories/:slug" />
+<Endpoint method="POST" path="/api/b2b/pim/categories/:slug/move" />
+
+## Data shape
+
+- `slug` — tenant-unique stable identifier (URL-safe).
+- `parent_slug` — null for root categories.
+- `name` — `MultiLangString`.
+- `seo` — `{ title, description, og_image }` per locale.
+- `aggregate` — whether this category rolls up descendant products for
+  storefront listings.
+
+## Notes
+
+- Moving a category via the `/move` endpoint updates the `path` of every
+  descendant in a single transaction.
+- Deleting a non-empty category returns `409 Conflict`; either move its
+  products/children first, or pass `?force=true` (soft-archive).

@@ -1149,11 +1149,18 @@ export class SolrAdapter extends MarketplaceAdapter {
         for (const [field, value] of Object.entries(synonymFields)) {
           atomicUpdate[field] = { set: value };
         }
-        await fetch(updateUrl, {
+        const atomicResponse = await fetch(updateUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify([atomicUpdate]),
         });
+        if (!atomicResponse.ok) {
+          const atomicError = await atomicResponse.text();
+          this.logError(
+            `Synonym atomic update failed for ${doc.id} (status ${atomicResponse.status}): ${atomicError}`,
+            new Error(atomicError)
+          );
+        }
       }
 
       this.log(`✓ Indexed product: ${product.entity_code}${langInfo}`);
@@ -1359,6 +1366,25 @@ export class SolrAdapter extends MarketplaceAdapter {
         products.map((p) => this.transformProduct(p, options))
       );
 
+      // Extract synonym fields per doc (full replace drops them, apply via atomic update)
+      const atomicUpdates: Record<string, any>[] = [];
+      for (const doc of docs) {
+        const synonymFields: Record<string, string> = {};
+        for (const key of Object.keys(doc)) {
+          if (key.startsWith('synonym_terms_text_')) {
+            synonymFields[key] = doc[key];
+            delete doc[key];
+          }
+        }
+        if (Object.keys(synonymFields).length > 0) {
+          const atomic: Record<string, any> = { id: doc.id };
+          for (const [field, value] of Object.entries(synonymFields)) {
+            atomic[field] = { set: value };
+          }
+          atomicUpdates.push(atomic);
+        }
+      }
+
       // Send bulk update (docs is already an array)
       const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
       const response = await fetch(updateUrl, {
@@ -1372,6 +1398,22 @@ export class SolrAdapter extends MarketplaceAdapter {
       if (!response.ok) {
         const errorBody = await response.text();
         throw new Error(`Bulk index failed: ${response.status} - ${errorBody}`);
+      }
+
+      // Apply synonym atomic updates after main docs are indexed
+      if (atomicUpdates.length > 0) {
+        const atomicResponse = await fetch(updateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(atomicUpdates),
+        });
+        if (!atomicResponse.ok) {
+          const atomicError = await atomicResponse.text();
+          this.logError(
+            `Bulk synonym atomic update failed (status ${atomicResponse.status}): ${atomicError}`,
+            new Error(atomicError)
+          );
+        }
       }
 
       results.success = products.length;

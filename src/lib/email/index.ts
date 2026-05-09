@@ -218,7 +218,7 @@ let transporter: nodemailer.Transporter | null = null;
 let transporterConfigHash: string = "";
 
 function getConfigHash(config: EmailConfig): string {
-  return `${config.host}:${config.port}:${config.user}`;
+  return `${config.host}:${config.port}:${config.secure}:${config.user}:${config.password}`;
 }
 
 function getTransporter(config: EmailConfig): nodemailer.Transporter {

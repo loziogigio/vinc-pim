@@ -10,6 +10,7 @@ import {
   History,
   ShieldCheck,
   Loader2,
+  Activity,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -119,6 +120,12 @@ export default function AdminDashboard() {
               title={t("pages.admin.dashboard.blockedIPs")}
               description={t("pages.admin.dashboard.manageBlacklist")}
               icon={Ban}
+            />
+            <QuickActionCard
+              href="/b2b/admin/queues"
+              title="Sync & Job Queues"
+              description="Monitor sync, imports, and background jobs for this tenant"
+              icon={Activity}
             />
           </div>
         </>

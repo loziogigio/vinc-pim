@@ -14,6 +14,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import type { IPortalUserCreate, PortalUserSafe } from "@/lib/types/portal-user";
 import { DEFAULT_CHANNEL, isValidChannelCode } from "@/lib/constants/channel";
 import { safeRegexQuery } from "@/lib/security";
+import { sendWelcomeNotification } from "@/lib/notifications/send.service";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -200,7 +201,8 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body: IPortalUserCreate = await req.json();
-    const { username, email, password, customer_access } = body;
+    const { username, email, password, customer_access, send_access_email } =
+      body;
 
     // Validate required fields
     if (!username || !email || !password) {
@@ -304,8 +306,42 @@ export async function POST(req: NextRequest) {
       updated_at: newUser.updated_at,
     };
 
+    // Optionally email access credentials to the new user (admin opt-in)
+    let emailSent: boolean | undefined;
+    if (send_access_email === true && newUser.email) {
+      try {
+        const result = await sendWelcomeNotification(
+          auth.tenantDb!,
+          newUser.email,
+          {
+            customer_name: newUser.username,
+            company_name: "",
+            username: newUser.username,
+            password,
+            channel: newUser.channel,
+          }
+        );
+        emailSent = result.success;
+        if (!result.success) {
+          console.error(
+            "[portal-users POST] Welcome email failed:",
+            result.error
+          );
+        }
+      } catch (emailError) {
+        console.error(
+          "[portal-users POST] Welcome email error:",
+          emailError
+        );
+        emailSent = false;
+      }
+    }
+
     return NextResponse.json(
-      { portal_user: portalUser },
+      {
+        portal_user: portalUser,
+        ...(emailSent !== undefined && { email_sent: emailSent }),
+      },
       { status: 201 }
     );
   } catch (error) {

@@ -6,7 +6,7 @@
  * - If no processing_job_id → returns { processing: false }
  * - If processing → checks Windmill job, finalizes if completed
  * - If already completed/failed → returns cached result (no Windmill call)
- * - Stale jobs (> 30 min) are auto-failed
+ * - Stale jobs (> STALE_JOB_TIMEOUT_MS / 60 min) are auto-failed
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -72,6 +72,7 @@ export async function GET(
     const startedAt = order.processing_started_at ? new Date(order.processing_started_at).getTime() : 0;
     if (startedAt && Date.now() - startedAt > STALE_JOB_TIMEOUT_MS) {
       // Auto-fail stale job
+      const timeoutMessage = `ERP processing timed out (exceeded ${STALE_JOB_TIMEOUT_MS / 60_000} minutes)`;
       await updateWindmillJobStatus(Order, orderId, order.processing_job_id, {
         status: "failed",
         error: "ERP processing timed out",
@@ -83,7 +84,7 @@ export async function GET(
           $set: {
             processing_status: "failed",
             processing_completed_at: new Date(),
-            processing_errors: ["ERP processing timed out (exceeded 30 minutes)"],
+            processing_errors: [timeoutMessage],
             erp_sync_status: "failed",
           },
         },
@@ -94,7 +95,7 @@ export async function GET(
         processing: false,
         processing_status: "failed",
         processing_completed_at: updated?.processing_completed_at,
-        processing_errors: ["ERP processing timed out (exceeded 30 minutes)"],
+        processing_errors: [timeoutMessage],
         erp_sync_status: "failed",
         status: updated?.status || order.status,
         order_id: order.order_id,

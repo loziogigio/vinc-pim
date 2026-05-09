@@ -57,7 +57,7 @@ export async function POST(
     // Re-index in Solr if enabled
     let solrSynced = 0;
     let solrErrors: string[] = [];
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(session.tenantId);
 
     if (adapterConfigs.solr?.enabled && result.matchedCount > 0) {
       // Fetch updated products for Solr indexing

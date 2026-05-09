@@ -13,7 +13,7 @@ export async function POST(
 ) {
   const auth = await requireTenantAuth(req);
   if (!auth.success) return auth.response;
-  const { tenantDb } = auth;
+  const { tenantDb, tenantId } = auth;
   try {
     const { SynonymDictionary: SynonymDictionaryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // Check if Solr is enabled
-    const adapterConfigs = loadAdapterConfigs();
+    const adapterConfigs = loadAdapterConfigs(tenantId);
     if (!adapterConfigs.solr?.enabled) {
       return NextResponse.json(
         { error: "Solr is not enabled" },

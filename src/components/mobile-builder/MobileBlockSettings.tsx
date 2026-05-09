@@ -20,6 +20,7 @@ import type {
   MobileCategoryGalleryBlock,
   MobileEntitySliderBlock,
   MobileEntityGalleryBlock,
+  MobileTextBlock,
   BlockVisibility,
 } from "@/lib/types/mobile-builder";
 import { MOBILE_BLOCK_LIBRARY } from "@/lib/types/mobile-builder";
@@ -27,6 +28,7 @@ import { MediaItemsEditor } from "./MediaItemsEditor";
 import { ProductSliderSettings, ProductGallerySettings } from "./ProductBlockSettings";
 import { CategorySliderSettings, CategoryGallerySettings } from "./CategoryBlockSettings";
 import { EntitySliderSettings, EntityGallerySettings } from "./EntityBlockSettings";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
 interface MobileBlockSettingsProps {
   block: MobileBlock;
@@ -244,6 +246,37 @@ function MediaGallerySettings({
 }
 
 // ============================================================================
+// Editorial Text Settings
+// ============================================================================
+
+function TextSettings({
+  block,
+  onUpdate,
+}: {
+  block: MobileTextBlock;
+  onUpdate: (updates: Partial<MobileTextBlock>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <VisibilitySettings
+        visibility={block.visibility || "all"}
+        onUpdate={(visibility) => onUpdate({ visibility })}
+      />
+
+      <div>
+        <Label>Content</Label>
+        <div className="mt-2">
+          <RichTextEditor
+            content={block.content}
+            onChange={(html) => onUpdate({ content: html })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -268,6 +301,8 @@ export function MobileBlockSettings({ block, onUpdate, onClose }: MobileBlockSet
         return <EntitySliderSettings block={block as MobileEntitySliderBlock} onUpdate={onUpdate as any} />;
       case "mobile_entity_gallery":
         return <EntityGallerySettings block={block as MobileEntityGalleryBlock} onUpdate={onUpdate as any} />;
+      case "mobile_text":
+        return <TextSettings block={block as MobileTextBlock} onUpdate={onUpdate as any} />;
       default:
         return <p className="text-sm text-gray-500">No settings available</p>;
     }

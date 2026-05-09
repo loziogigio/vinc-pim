@@ -1,0 +1,42 @@
+export const metadata = {
+  title: "AI Enhancement",
+  description:
+    "LLM-powered copy enrichment, translation, and media cleanup endpoints.",
+};
+
+# AI Enhancement
+
+AI Enhancement runs LLM-backed jobs over the PIM: generate descriptions,
+translate into enabled locales, suggest categories, or clean up images.
+Every operation is **asynchronous** — the API returns a `job_id` you can
+follow through [Activity](/developers/pim/activity).
+
+## Endpoints
+
+<Endpoint method="POST" path="/api/b2b/pim/ai/enrich-description" />
+<Endpoint method="POST" path="/api/b2b/pim/ai/translate" />
+<Endpoint method="POST" path="/api/b2b/pim/ai/suggest-categories" />
+<Endpoint method="POST" path="/api/b2b/pim/ai/image-enhance" />
+
+## Targeting
+
+Every AI endpoint accepts the same selector shape:
+
+<CodeBlock
+  title="Body shape"
+  code={`{
+  "filter": { "status": "draft" },          // same shape as GET /products
+  // -- or --
+  "entity_codes": ["SKU-0001", "SKU-0002"],
+  "options": {
+    "locales": ["it", "sk"],                // for translate
+    "overwrite": false                      // skip already-populated fields
+  }
+}`}
+/>
+
+<Callout kind="info" title="Cost control">
+  Tenants with an AI budget cap will receive <code>429 Too Many Requests</code>{" "}
+  once the monthly cap is exhausted. Poll{" "}
+  <code>GET /api/b2b/pim/ai/usage</code> for remaining quota.
+</Callout>

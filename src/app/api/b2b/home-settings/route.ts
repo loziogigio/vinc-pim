@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHomeSettings, upsertHomeSettings, initializeHomeSettings } from "@/lib/db/home-settings";
+import { authenticateTenant } from "@/lib/auth/tenant-auth";
 
 /**
  * GET /api/b2b/home-settings
- * Fetch the global home settings configuration
+ * Fetch the home settings configuration for the authenticated tenant.
+ * Falls back to the default DB only when no tenant context is available.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const settings = await getHomeSettings();
+    const auth = await authenticateTenant(req);
+    const tenantDb = auth.authenticated ? auth.tenantDb : undefined;
+
+    const settings = await getHomeSettings(tenantDb);
 
     if (!settings) {
       return NextResponse.json(

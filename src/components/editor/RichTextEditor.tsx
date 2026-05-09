@@ -80,7 +80,7 @@ export function RichTextEditor({
     content,
     editable: !disabled,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
+      const html = editor.isEmpty ? "" : editor.getHTML();
       setHtmlContent(html);
       onChange(html);
     },

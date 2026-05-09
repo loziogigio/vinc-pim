@@ -1,0 +1,1075 @@
+export const metadata = {
+  title: "Import",
+  description:
+    "Ingest catalogs into the PIM: upload CSV/Excel files, push JSON via the API, or queue batches for background processing.",
+};
+
+# Import
+
+The import pipeline ingests tenant catalogs into the PIM through three
+complementary channels:
+
+- **File upload** — drop a CSV or Excel file, parsed by the import worker.
+- **Direct API** — POST a JSON array and get results back in the same request.
+- **Queued API** — POST a JSON array and let a background worker apply it.
+
+All three reuse the same `ImportSource` (field mappings, locked fields,
+auto-publish rules) and produce an `ImportJob` you can poll through the
+[Jobs API](/developers/pim/activity).
+
+<Callout kind="info" title="Base path">
+  All endpoints on this page are rooted at <code>/api/b2b/pim/import</code>.
+</Callout>
+
+## Authentication
+
+Every endpoint below requires tenant authentication via
+<code>requireTenantAuth</code>. Three credentials are accepted:
+
+<ParamTable
+  caption="Accepted credentials"
+  rows={[
+    { name: "Bearer token", type: "header", description: "Authorization: Bearer <jwt> — SSO access token or portal-user token." },
+    { name: "API key", type: "header", description: "x-auth-method: api-key + x-api-key-id: ak_... + x-api-secret: sk_..." },
+    { name: "Session cookie", type: "cookie", description: "vinc_b2b_session — set by the B2B portal login flow." },
+  ]}
+/>
+
+<Callout kind="warning" title="Required scope for API keys">
+  <code>POST /api/b2b/pim/import/api</code> additionally requires the{" "}
+  <code>import</code> permission on the API key. The other endpoints accept
+  any tenant-scoped key.
+</Callout>
+
+## Endpoints
+
+<Endpoint method="POST" path="/api/b2b/pim/import" />
+<Endpoint method="GET"  path="/api/b2b/pim/import" />
+<Endpoint method="POST" path="/api/b2b/pim/import/analyze" />
+<Endpoint method="POST" path="/api/b2b/pim/import/api" />
+<Endpoint method="POST" path="/api/b2b/pim/import/queue" />
+<Endpoint method="GET"  path="/api/b2b/pim/import/queue" />
+
+## Flow overview
+
+1. **Create a source** once per feed via [POST /api/b2b/pim/sources](/developers/pim/sources).
+   The source stores `field_mappings` (source → target) and auto-publish rules.
+2. **Optionally analyze** a sample file with `POST /import/analyze` to inspect
+   headers and infer types before committing to a mapping.
+3. **Send data** through one of:
+   - `POST /import` — multipart file upload, CDN-backed, background worker.
+   - `POST /import/api` — synchronous JSON upsert, returns full results.
+   - `POST /import/queue` — asynchronous JSON upsert, returns a `job_id`.
+4. **Poll status** via [GET /api/b2b/pim/jobs/:jobId](/developers/pim/activity)
+   for counters and per-row errors.
+
+---
+
+## Analyze a file
+
+<Endpoint method="POST" path="/api/b2b/pim/import/analyze" />
+
+Parses the first rows of a CSV or Excel upload and returns inferred column
+metadata. Use this before building a field mapping on the `ImportSource`.
+
+### Constraints
+
+- Max **50 MB** per file.
+- Extensions: <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>.
+- CSV is parsed with <code>relax_quotes</code> and <code>relax_column_count</code>;
+  Excel reads the first sheet only.
+
+### Request
+
+Multipart form-data with a single field:
+
+<ParamTable
+  rows={[
+    { name: "file", type: "File", required: true, description: "The CSV or Excel file to analyze." },
+  ]}
+/>
+
+### Response
+
+<ParamTable
+  rows={[
+    { name: "fileName", type: "string", description: "Uploaded file name." },
+    { name: "fileSize", type: "integer", description: "Byte size." },
+    { name: "fileType", type: "'csv' | 'xlsx' | 'xls'", description: "Detected extension." },
+    { name: "totalRows", type: "integer", description: "Rows read from the preview window (capped at 15)." },
+    { name: "columns[]", type: "ColumnAnalysis", description: "Per-column stats: name, type, sampleValues, totalValues, uniqueCount, emptyCount." },
+    { name: "previewRows[]", type: "object", description: "First 10 rows as raw objects (header → value)." },
+  ]}
+/>
+
+### Example
+
+<CodeBlock
+  title="curl — analyze products.csv"
+  code={`curl -X POST https://your-tenant.example.com/api/b2b/pim/import/analyze \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..." \\
+  -F "file=@products.csv"`}
+/>
+
+<CodeBlock
+  title="200 OK"
+  code={`{
+  "fileName": "products.csv",
+  "fileSize": 18423,
+  "fileType": "csv",
+  "totalRows": 15,
+  "columns": [
+    {
+      "name": "sku",
+      "type": "string",
+      "sampleValues": ["SKU-0001", "SKU-0002", "SKU-0003"],
+      "totalValues": 15,
+      "uniqueCount": 15,
+      "emptyCount": 0
+    },
+    {
+      "name": "price",
+      "type": "number",
+      "sampleValues": ["12.5", "8.9", "42"],
+      "totalValues": 14,
+      "uniqueCount": 14,
+      "emptyCount": 1
+    }
+  ],
+  "previewRows": [
+    { "sku": "SKU-0001", "name": "Brass valve", "price": "12.5" },
+    { "sku": "SKU-0002", "name": "Copper elbow", "price": "8.9" }
+  ]
+}`}
+/>
+
+### CSV errors
+
+The analyzer returns user-friendly hints for common CSV problems
+(inconsistent column counts, unescaped quotes):
+
+<CodeBlock
+  title="400 Bad Request — malformed CSV"
+  code={`{
+  "error": "CSV Format Error",
+  "details": "Your CSV file has inconsistent columns at line 42. Some rows have different numbers of columns than the header row. Please check for unescaped quotes (\\") or extra commas in your data.",
+  "hint": "Common fixes: Remove special characters from field values, properly quote fields containing commas, or use Excel format instead.",
+  "technicalDetails": { "code": "CSV_INCONSISTENT_RECORD_LENGTH", "line": 42, "column": 7 }
+}`}
+/>
+
+---
+
+## Upload a file
+
+<Endpoint method="POST" path="/api/b2b/pim/import" />
+
+Streams a CSV or Excel file to CDN storage, creates an `ImportJob`, and
+enqueues it for background processing. Poll the returned job for status.
+
+### Constraints
+
+- Max **50 MB** per file.
+- Extensions: <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>.
+- The tenant must have CDN configured (see
+  [CDN config](/developers/pim/overview)). A 500 is returned otherwise.
+
+### Request
+
+Multipart form-data:
+
+<ParamTable
+  rows={[
+    { name: "file", type: "File", required: true, description: "CSV or Excel file with product rows." },
+    { name: "source_id", type: "string", required: true, description: "Existing ImportSource to apply (provides field mappings and rules)." },
+  ]}
+/>
+
+### Response
+
+Returns `202 Accepted` with the freshly created job.
+
+<ParamTable
+  rows={[
+    { name: "job.job_id", type: "string", description: "Correlation id, prefix 'import_'." },
+    { name: "job.source_id", type: "string", description: "Echoes the ImportSource applied." },
+    { name: "job.file_name", type: "string", description: "Uploaded file name." },
+    { name: "job.file_size", type: "integer", description: "Byte size." },
+    { name: "job.file_url", type: "string", description: "CDN URL of the stored file." },
+    { name: "job.status", type: "'pending'", description: "Worker transitions to 'processing' then 'completed' or 'failed'." },
+  ]}
+/>
+
+### Example
+
+<CodeBlock
+  title="curl — upload and queue"
+  code={`curl -X POST https://your-tenant.example.com/api/b2b/pim/import \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..." \\
+  -F "file=@products.xlsx" \\
+  -F "source_id=supplier-weekly-feed"`}
+/>
+
+<CodeBlock
+  title="202 Accepted"
+  code={`{
+  "job": {
+    "job_id": "import_1714142335123_a4f9k2",
+    "source_id": "supplier-weekly-feed",
+    "file_name": "products.xlsx",
+    "file_size": 842517,
+    "file_url": "https://cdn.vendereincloud.com/vinc-acme/pim-imports/products.xlsx",
+    "status": "pending",
+    "created_at": "2026-04-24T12:58:55.123Z"
+  }
+}`}
+/>
+
+Poll the job's progress at [GET /api/b2b/pim/jobs/:jobId](/developers/pim/activity).
+
+---
+
+## Direct JSON import (synchronous)
+
+<Endpoint method="POST" path="/api/b2b/pim/import/api" />
+
+Applies an array of products inline in a single request and returns the
+full result set. Ideal for ≤ 1 000 products per call; the hard limit is
+**10 000**.
+
+<Callout kind="warning" title="Requires 'import' permission">
+  API keys must have the <code>import</code> permission. Session and Bearer
+  auth work without additional scopes but still require a valid tenant.
+</Callout>
+
+### Request body
+
+<ParamTable
+  rows={[
+    { name: "source_id", type: "string", required: true, description: "ImportSource whose field_mappings and auto-publish rules are applied." },
+    { name: "products", type: "Product[]", required: true, description: "Array of product payloads. 1 ≤ length ≤ 10000." },
+    { name: "merge_mode", type: "'replace' | 'partial'", description: "'replace' (default) overwrites the product version entirely; 'partial' deep-merges incoming fields onto the existing version.", default: "'replace'" },
+    { name: "batch_id", type: "string", description: "Optional correlation id persisted on each product's source.batch_id." },
+    { name: "batch_metadata", type: "object", description: "Optional { batch_id, batch_part, batch_total_parts, batch_total_items } — stored on the product for downstream aggregation." },
+    { name: "channel_metadata", type: "object", description: "Accepted and echoed back in the debug block. Reserved for future routing; currently unused by the pipeline." },
+  ]}
+/>
+
+### Per-product fields
+
+Each entry in `products` is mapped through `source.field_mappings` first,
+then the mapped object is persisted. `entity_code` (or `sku`) is
+**required** and identifies the product across versions.
+
+<ParamTable
+  rows={[
+    { name: "entity_code", type: "string", required: true, description: "Stable tenant-scoped id. Falls back to `sku` if omitted." },
+    { name: "sku", type: "string", description: "Defaults to entity_code if omitted." },
+    { name: "name", type: "string | MultiLangString", description: "Plain strings are auto-wrapped as { <defaultLang>: value }." },
+    { name: "description", type: "string | MultiLangString", description: "Same auto-wrapping for multilingual fields." },
+    { name: "price", type: "number", description: "Numeric price; per-channel overrides handled by the PIM." },
+    { name: "images", type: "MediaRef[]", description: "Replaced wholesale when provided. Kept when omitted in partial mode." },
+    { name: "media", type: "MediaRef[]", description: "Merged by type in partial mode: incoming types replace existing items of that type; other types are preserved." },
+  ]}
+/>
+
+### Processing rules
+
+- **Versioning** — every successful upsert creates a new `PIMProduct`
+  version. The prior `isCurrent: true` row is demoted and its
+  `locked_fields` are re-applied to the incoming payload.
+- **Multilingual auto-wrap** — multilingual fields (e.g.{" "}
+  <code>name</code>, <code>description</code>, <code>slug</code>) are
+  wrapped as <code>{`{ <defaultLang>: value }`}</code> unless they already
+  look like a language-keyed object (2-letter codes matching a language
+  configured for the tenant).
+- **Auto-publish** — a version with a sufficient completeness score is
+  committed as `published` with `published_at` set. Otherwise it lands as
+  `draft`.
+- **Search sync** — when the tenant has a search-enabled default
+  language, successful entity codes are batched (50 per batch) and
+  queued for indexing into the tenant's search surface.
+
+### Response
+
+<ParamTable
+  rows={[
+    { name: "success", type: "boolean", description: "true even when some rows failed — check summary.failed." },
+    { name: "job_id", type: "string", description: "ImportJob id, prefix 'api_import_'. Persisted for audit." },
+    { name: "summary.total", type: "integer", description: "Rows attempted." },
+    { name: "summary.successful", type: "integer", description: "Rows persisted." },
+    { name: "summary.failed", type: "integer", description: "Rows rejected — see errors[]." },
+    { name: "summary.auto_published", type: "integer", description: "Rows that met auto-publish criteria." },
+    { name: "summary.duration_seconds", type: "number", description: "Server-side processing time." },
+    { name: "summary.sync_batches_queued", type: "integer", description: "Number of search-sync batches queued (50 products per batch)." },
+    { name: "errors[]", type: "{ row, entity_code, error, raw_data }", description: "First 100 failures, with the raw row that caused them." },
+    { name: "debug", type: "object", description: "Echo of batch_id, batch_metadata, channel_metadata, and the first product's source block for inspection." },
+  ]}
+/>
+
+### Example
+
+<CodeBlock
+  title="curl — synchronous import of two products"
+  code={`curl -X POST https://your-tenant.example.com/api/b2b/pim/import/api \\
+  -H "Content-Type: application/json" \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..." \\
+  -d '{
+    "source_id": "supplier-weekly-feed",
+    "merge_mode": "partial",
+    "batch_id": "weekly-2026-17",
+    "products": [
+      {
+        "entity_code": "SKU-0001",
+        "sku": "SKU-0001",
+        "name": { "en": "Brass ball valve 1/2\\"", "it": "Valvola a sfera 1/2\\"" },
+        "description": "Full-bore brass ball valve, threaded.",
+        "price": 12.5,
+        "brand": "acme",
+        "images": [
+          { "url": "https://cdn.example.com/sku-0001-front.jpg", "position": 0 }
+        ]
+      },
+      {
+        "entity_code": "SKU-0002",
+        "name": "Copper elbow 22mm",
+        "price": 3.9,
+        "brand": "acme"
+      }
+    ]
+  }'`}
+/>
+
+<CodeBlock
+  title="200 OK"
+  code={`{
+  "success": true,
+  "job_id": "api_import_1714142335123_b7x2m1",
+  "summary": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0,
+    "auto_published": 1,
+    "duration_seconds": 0.42,
+    "sync_batches_queued": 1
+  },
+  "errors": [],
+  "debug": {
+    "batch_id": "weekly-2026-17",
+    "batch_metadata": null,
+    "channel_metadata": null,
+    "first_product_source": {
+      "source_id": "supplier-weekly-feed",
+      "source_name": "Supplier weekly feed",
+      "imported_at": "2026-04-24T12:58:55.123Z",
+      "batch_id": "weekly-2026-17"
+    }
+  },
+  "message": "Imported 2 of 2 products successfully, queued 1 search-sync batches"
+}`}
+/>
+
+### Partial vs replace
+
+<CodeBlock
+  title="merge_mode: 'partial' — preserves omitted fields"
+  code={`// Existing product:
+// { entity_code: "SKU-0001", name: {...}, description: "old", price: 10, media: [{type:"image",...}] }
+
+// Incoming:
+{ "entity_code": "SKU-0001", "price": 12.5 }
+
+// Stored new version:
+// { entity_code: "SKU-0001", name: {...}, description: "old", price: 12.5, media: [{type:"image",...}] }`}
+/>
+
+<CodeBlock
+  title="merge_mode: 'replace' (default) — incoming wins entirely"
+  code={`// Same existing product, same incoming payload:
+// Stored new version:
+// { entity_code: "SKU-0001", price: 12.5 }
+// (name, description, media dropped unless re-sent — except locked_fields and auto-published flags, which are always re-applied)`}
+/>
+
+---
+
+## Queued JSON import (asynchronous)
+
+<Endpoint method="POST" path="/api/b2b/pim/import/queue" />
+
+Identical payload shape to `/import/api`, but the request returns
+immediately after queueing. A background worker applies the same rules
+asynchronously. Use this for large batches or when latency matters.
+
+### Request body
+
+<ParamTable
+  rows={[
+    { name: "source_id", type: "string", required: true, description: "ImportSource to apply." },
+    { name: "products", type: "Product[]", required: true, description: "1 ≤ length ≤ 10000." },
+    { name: "batch_metadata", type: "object", description: "Optional { batch_id, batch_part, batch_total_parts, batch_total_items }. Stored on the ImportJob and forwarded to the worker." },
+  ]}
+/>
+
+### Retry behavior
+
+- Generated job id is returned in the response.
+- Transient failures are retried automatically with exponential backoff.
+- Persistent failures land on the job as `status: "failed"` with per-row
+  errors in `import_errors`.
+
+### Example
+
+<CodeBlock
+  title="curl — queue a batch part"
+  code={`curl -X POST https://your-tenant.example.com/api/b2b/pim/import/queue \\
+  -H "Content-Type: application/json" \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..." \\
+  -d '{
+    "source_id": "supplier-weekly-feed",
+    "batch_metadata": {
+      "batch_id": "weekly-2026-17",
+      "batch_part": 1,
+      "batch_total_parts": 4,
+      "batch_total_items": 8000
+    },
+    "products": [
+      { "entity_code": "SKU-0001", "price": 12.5 },
+      { "entity_code": "SKU-0002", "price": 8.9 }
+    ]
+  }'`}
+/>
+
+<CodeBlock
+  title="200 OK"
+  code={`{
+  "success": true,
+  "job_id": "queue_import_1714142335123_m3p7q2",
+  "status": "queued",
+  "summary": {
+    "products_queued": 2,
+    "source_id": "supplier-weekly-feed",
+    "batch_metadata": {
+      "batch_id": "weekly-2026-17",
+      "batch_part": 1,
+      "batch_total_parts": 4,
+      "batch_total_items": 8000
+    }
+  },
+  "message": "Queued 2 products for import. Job ID: queue_import_1714142335123_m3p7q2"
+}`}
+/>
+
+Poll status at [GET /api/b2b/pim/jobs/:jobId](/developers/pim/activity).
+
+---
+
+## Queue status
+
+<Endpoint method="GET" path="/api/b2b/pim/import/queue" />
+
+Snapshot of the in-flight queue. Combines persisted job state (recent
+`pending` and `processing` `ImportJob`s) with live runtime counters
+when available.
+
+### Response
+
+<ParamTable
+  rows={[
+    { name: "queue_stats", type: "object | null", description: "Live counters: waiting, active, completed, failed. May be null when runtime stats are unavailable." },
+    { name: "pending_jobs[]", type: "ImportJob", description: "Up to 10 most recent pending jobs, newest first." },
+    { name: "processing_jobs[]", type: "ImportJob", description: "Up to 5 currently processing jobs." },
+  ]}
+/>
+
+### Example
+
+<CodeBlock
+  title="200 OK"
+  code={`{
+  "queue_stats": { "waiting": 2, "active": 1, "completed": 413, "failed": 6 },
+  "pending_jobs": [
+    {
+      "job_id": "queue_import_1714142335123_m3p7q2",
+      "source_id": "supplier-weekly-feed",
+      "total_rows": 2000,
+      "status": "pending",
+      "batch_id": "weekly-2026-17",
+      "batch_part": 1,
+      "batch_total_parts": 4,
+      "created_at": "2026-04-24T12:58:55.123Z"
+    }
+  ],
+  "processing_jobs": [
+    {
+      "job_id": "import_1714142000000_a4f9k2",
+      "source_id": "supplier-weekly-feed",
+      "total_rows": 1800,
+      "processed_rows": 1200,
+      "status": "processing",
+      "started_at": "2026-04-24T12:55:10.000Z"
+    }
+  ]
+}`}
+/>
+
+---
+
+## Supported entities
+
+The import worker is currently product-centric. Other entities are
+imported through their dedicated endpoints:
+
+- **products** — `/api/b2b/pim/import/*` (this page).
+- **categories** — `/api/b2b/pim/categories/:id/import`.
+- **brands** — `/api/b2b/pim/brands/:id/import`.
+- **collections** — `/api/b2b/pim/collections/:id/import`.
+- **product types** — `/api/b2b/pim/product-types/:id/import`.
+- **synonym dictionaries** — `/api/b2b/pim/synonym-dictionaries/:id/import`.
+
+See each entity's page for its specific payload.
+
+## Idempotency and retries
+
+Re-uploading the same file or re-sending the same array does **not**
+deduplicate by itself. Rows match existing products by `entity_code`
+(falling back to `sku`) and create a new version on every successful
+apply.
+
+<Callout kind="warning" title="Avoid double-applies">
+  When retrying a failed request, pass the same <code>batch_id</code> —
+  it lands on each product's <code>source.batch_id</code> and lets you
+  reconcile with upstream audit logs.
+</Callout>
+
+## Full product payload reference
+
+The block below is a single `POST /api/b2b/pim/import/api` request populating
+**every** supported product field. Copy it as a starting template and strip
+the sections you don't need.
+
+<Callout kind="info" title="Server-managed fields">
+  Do <b>not</b> send these — they are computed or overwritten by the PIM:{" "}
+  <code>version</code>, <code>isCurrent</code>, <code>isCurrentPublished</code>,{" "}
+  <code>status</code>, <code>published_at</code>, <code>source</code>,{" "}
+  <code>completeness_score</code>, <code>critical_issues</code>,{" "}
+  <code>auto_publish_eligible</code>, <code>auto_publish_reason</code>,{" "}
+  <code>analytics</code>, <code>locked_fields</code>, <code>manually_edited</code>,{" "}
+  <code>edited_by</code>, <code>edited_at</code>, <code>created_at</code>,{" "}
+  <code>updated_at</code>. Import tracking (<code>source.source_id</code>,{" "}
+  <code>source.batch_id</code>, <code>source.batch_metadata</code>) is built
+  from <code>source_id</code>, <code>batch_id</code> and{" "}
+  <code>batch_metadata</code> on the request envelope.
+</Callout>
+
+<CodeBlock
+  title="POST /api/b2b/pim/import/api — full product payload"
+  code={`{
+  "source_id": "supplier-weekly-feed",
+  "merge_mode": "replace",
+  "batch_id": "weekly-2026-17",
+  "batch_metadata": {
+    "batch_id": "weekly-2026-17",
+    "batch_part": 1,
+    "batch_total_parts": 4,
+    "batch_total_items": 8000
+  },
+  "channel_metadata": {
+    "b2b": { "tenant_id": "acme" },
+    "b2c": { "store_id": "store_main" }
+  },
+  "products": [
+    {
+      "entity_code": "SKU-0001",
+      "sku": "SKU-0001",
+
+      "name": {
+        "en": "Brass ball valve 1/2\\"",
+        "it": "Valvola a sfera in ottone 1/2\\"",
+        "de": "Messing-Kugelhahn 1/2\\"",
+        "fr": "Robinet à boisseau sphérique en laiton 1/2\\""
+      },
+      "slug": {
+        "en": "brass-ball-valve-1-2",
+        "it": "valvola-sfera-ottone-1-2",
+        "de": "messing-kugelhahn-1-2",
+        "fr": "robinet-boisseau-spherique-laiton-1-2"
+      },
+      "description": {
+        "en": "Full-bore threaded brass ball valve with PTFE seals.",
+        "it": "Valvola a sfera in ottone a passaggio totale con guarnizioni PTFE.",
+        "de": "Vollbohrungs-Messing-Kugelhahn mit PTFE-Dichtungen.",
+        "fr": "Robinet à boisseau sphérique en laiton à passage intégral."
+      },
+      "short_description": {
+        "en": "Professional 1/2\\" brass ball valve.",
+        "it": "Valvola a sfera professionale 1/2\\"."
+      },
+      "long_description": {
+        "en": "Forged brass body, chrome-plated ball, full-bore, PN40 rated, suitable for water, air and gas installations.",
+        "it": "Corpo in ottone forgiato, sfera cromata, passaggio totale, PN40, adatta per installazioni acqua, aria e gas."
+      },
+
+      "channels": ["default", "b2b", "b2c"],
+      "not_visible": false,
+      "item_creation_date": "2024-03-15T00:00:00.000Z",
+
+      "product_kind": "standard",
+      "is_parent": true,
+      "include_faceting": true,
+      "share_images_with_variants": false,
+      "share_media_with_variants": false,
+
+      "product_model": "BV-050-PTFE",
+      "ean": ["8001234567890", "8001234567891"],
+      "product_status": "active",
+      "product_status_description": {
+        "en": "Available",
+        "it": "Disponibile",
+        "de": "Verfügbar"
+      },
+      "stock_status": "in_stock",
+      "quantity": 420,
+      "sold": 37,
+      "unit": "pcs",
+
+      "weight": 0.23,
+      "weight_uom": "KG",
+      "volume": 180,
+      "volume_uom": "CM3",
+      "dimension_height": 4.2,
+      "dimension_width": 5.1,
+      "dimension_length": 7.8,
+      "dimension_uom": "CM",
+
+      "brand": {
+        "brand_id": "brand_acme",
+        "label": "Acme",
+        "slug": "acme",
+        "description": "Professional plumbing since 1921.",
+        "logo_url": "https://cdn.example.com/brands/acme.svg",
+        "website_url": "https://acme.example.com",
+        "is_active": true,
+        "product_count": 1843,
+        "display_order": 10,
+        "parent_brand_id": null,
+        "brand_family": "acme-group",
+        "level": 0,
+        "path": ["acme"],
+        "hierarchy": [
+          { "brand_id": "brand_acme", "label": "Acme", "slug": "acme", "logo_url": "https://cdn.example.com/brands/acme.svg", "level": 0 }
+        ]
+      },
+
+      "category": {
+        "category_id": "cat_plumbing_valves",
+        "name": { "en": "Ball valves", "it": "Valvole a sfera", "de": "Kugelhähne" },
+        "slug": { "en": "ball-valves", "it": "valvole-a-sfera", "de": "kugelhaehne" },
+        "details": { "en": "Shut-off valves for water, air and gas." },
+        "image": { "id": "img_cat_valves", "thumbnail": "https://cdn.example.com/cats/valves-thumb.jpg", "original": "https://cdn.example.com/cats/valves.jpg" },
+        "icon": "valve",
+        "parent_id": "cat_plumbing",
+        "level": 2,
+        "path": ["plumbing", "valves", "ball-valves"],
+        "hierarchy": [
+          { "category_id": "cat_plumbing", "name": { "en": "Plumbing", "it": "Idraulica" }, "slug": { "en": "plumbing", "it": "idraulica" }, "level": 0 },
+          { "category_id": "cat_valves", "name": { "en": "Valves", "it": "Valvole" }, "slug": { "en": "valves", "it": "valvole" }, "level": 1 }
+        ],
+        "is_active": true,
+        "display_order": 5
+      },
+
+      "channel_categories": [
+        {
+          "channel_code": "b2c",
+          "category": {
+            "category_id": "b2c_cat_diy_plumbing",
+            "name": { "en": "DIY Plumbing", "it": "Idraulica fai-da-te" },
+            "slug": { "en": "diy-plumbing", "it": "idraulica-fai-da-te" }
+          }
+        }
+      ],
+
+      "collections": [
+        {
+          "collection_id": "coll_pro_plumber",
+          "name": { "en": "Pro plumber", "it": "Idraulico professionale" },
+          "slug": { "en": "pro-plumber", "it": "idraulico-professionale" },
+          "description": "Curated tools for professionals.",
+          "is_active": true,
+          "display_order": 3,
+          "level": 0,
+          "path": ["pro-plumber"]
+        }
+      ],
+
+      "product_type": {
+        "product_type_id": "pt_valve_ball",
+        "code": "037",
+        "name": { "en": "Ball valve", "it": "Valvola a sfera" },
+        "slug": { "en": "ball-valve", "it": "valvola-a-sfera" },
+        "description": "Quarter-turn shut-off valve.",
+        "is_active": true,
+        "technical_specifications": [
+          { "technical_specification_id": "ts_body_material", "key": "body_material", "label": { "en": "Body material", "it": "Materiale corpo" }, "type": "select", "options": ["brass", "stainless_steel", "pvc"], "required": true, "display_order": 0 },
+          { "technical_specification_id": "ts_pressure", "key": "max_pressure", "label": { "en": "Max pressure", "it": "Pressione max" }, "type": "number", "unit": "bar", "required": true, "display_order": 1 }
+        ]
+      },
+
+      "attributes": {
+        "en": [
+          { "key": "color", "label": "Color", "value": "brass" },
+          { "key": "thread", "label": "Thread", "value": "1/2\\" BSP" }
+        ],
+        "it": [
+          { "key": "color", "label": "Colore", "value": "ottone" },
+          { "key": "thread", "label": "Filetto", "value": "1/2\\" BSP" }
+        ]
+      },
+
+      "marketing_features": {
+        "en": ["Full-bore design", "PN40 rated", "PTFE seals", "Lead-free brass"],
+        "it": ["Passaggio totale", "PN40", "Guarnizioni PTFE", "Ottone senza piombo"]
+      },
+
+      "technical_specifications": {
+        "en": [
+          { "key": "body_material", "label": "Body material", "value": "brass", "category": "Materials", "order": 0 },
+          { "key": "max_pressure", "label": "Max pressure", "value": 40, "uom": "bar", "category": "Performance", "order": 1 },
+          { "key": "temp_range", "label": "Temperature range", "value": "-20 to 120", "uom": "°C", "category": "Performance", "order": 2 }
+        ],
+        "it": [
+          { "key": "body_material", "label": "Materiale corpo", "value": "ottone", "category": "Materiali", "order": 0 },
+          { "key": "max_pressure", "label": "Pressione max", "value": 40, "uom": "bar", "category": "Prestazioni", "order": 1 }
+        ]
+      },
+
+      "tags": [
+        {
+          "tag_id": "tag_bestseller",
+          "name": { "en": "Bestseller", "it": "Più venduto" },
+          "slug": "bestseller",
+          "color": "#ffb400",
+          "is_active": true,
+          "display_order": 0,
+          "tag_category": "marketing",
+          "tag_group": "highlights"
+        },
+        {
+          "tag_id": "tag_eco",
+          "name": { "en": "Lead-free", "it": "Senza piombo" },
+          "slug": "lead-free",
+          "color": "#3ba55a",
+          "is_active": true,
+          "tag_category": "compliance"
+        }
+      ],
+
+      "synonym_keys": ["plumbing_valve_core", "brass_fittings"],
+
+      "meta": [
+        { "key": "supplier_part_number", "value": "ACM-BV-050" },
+        { "key": "warranty_years", "value": "5" }
+      ],
+
+      "images": [
+        {
+          "url": "https://cdn.example.com/products/sku-0001/front.jpg",
+          "cdn_key": "products/sku-0001/front.jpg",
+          "position": 0,
+          "file_name": "front.jpg",
+          "file_type": "image/jpeg",
+          "size_bytes": 184523,
+          "uploaded_at": "2026-04-01T10:12:33.000Z",
+          "uploaded_by": "supplier-weekly-feed"
+        },
+        {
+          "url": "https://cdn.example.com/products/sku-0001/side.jpg",
+          "cdn_key": "products/sku-0001/side.jpg",
+          "position": 1,
+          "file_type": "image/jpeg"
+        }
+      ],
+
+      "media": [
+        {
+          "type": "document",
+          "url": "https://cdn.example.com/products/sku-0001/manual-it.pdf",
+          "s3_key": "products/sku-0001/manual-it.pdf",
+          "label": { "en": "User manual (Italian)", "it": "Manuale d'uso" },
+          "language": "it",
+          "file_type": "application/pdf",
+          "size_bytes": 420113,
+          "position": 0,
+          "is_external_link": false
+        },
+        {
+          "type": "video",
+          "url": "https://www.youtube.com/watch?v=abc123",
+          "label": { "en": "Installation video", "it": "Video installazione" },
+          "language": "en",
+          "position": 1,
+          "is_external_link": true
+        },
+        {
+          "type": "3d-model",
+          "url": "https://cdn.example.com/products/sku-0001/model.glb",
+          "s3_key": "products/sku-0001/model.glb",
+          "label": { "en": "3D model" },
+          "file_type": "model/gltf-binary",
+          "size_bytes": 1842771,
+          "position": 2
+        }
+      ],
+
+      "pricing": {
+        "list": 9.80,
+        "retail": 12.50,
+        "sale": 10.90,
+        "currency": "EUR",
+        "vat_rate": 22,
+        "vat_included": false
+      },
+
+      "packaging_options": [
+        {
+          "pkg_id": "1",
+          "code": "PZ",
+          "label": { "en": "Piece", "it": "Pezzo" },
+          "qty": 1,
+          "uom": "PZ",
+          "is_default": true,
+          "is_smallest": true,
+          "is_sellable": true,
+          "ean": "8001234567890",
+          "position": 0,
+          "pricing": {
+            "list": 9.80,
+            "retail": 12.50,
+            "sale": 10.90,
+            "list_unit": 9.80,
+            "retail_unit": 12.50,
+            "sale_unit": 10.90,
+            "vat_included": false
+          }
+        },
+        {
+          "pkg_id": "2",
+          "code": "BOX",
+          "label": { "en": "Box of 10", "it": "Scatola da 10" },
+          "qty": 10,
+          "uom": "PZ",
+          "is_default": false,
+          "is_smallest": false,
+          "is_sellable": true,
+          "ean": "8001234567891",
+          "position": 1,
+          "pricing": {
+            "price_ref": "PZ",
+            "list_discount_pct": 5,
+            "sale_discount_pct": 10,
+            "vat_included": false
+          },
+          "promotions": [
+            {
+              "promo_code": "BOX-10",
+              "promo_row": 1,
+              "is_active": true,
+              "promo_type": "STD",
+              "calc_method": "RPNQMIN",
+              "label": { "en": "Box discount -10%", "it": "Sconto scatola -10%" },
+              "language": "en",
+              "discount_percentage": 10,
+              "is_stackable": false,
+              "priority": 5,
+              "start_date": "2026-04-01T00:00:00.000Z",
+              "end_date": "2026-06-30T23:59:59.000Z",
+              "min_quantity": 1
+            }
+          ]
+        }
+      ],
+
+      "packaging_info": [
+        { "packaging_id": "pi_pz", "code": "PZ", "description": "Single piece", "qty": 1, "uom": "PZ", "is_default": true, "is_smallest": true },
+        { "packaging_id": "pi_box", "code": "BOX", "description": "Box of 10", "qty": 10, "uom": "PZ", "is_default": false, "is_smallest": false }
+      ],
+
+      "promotions": [
+        {
+          "promo_code": "SPRING-2026",
+          "promo_row": 1,
+          "is_active": true,
+          "promo_type": "STD",
+          "calc_method": "RVMSC",
+          "label": { "en": "Spring promo -12%", "it": "Promo primavera -12%" },
+          "language": "en",
+          "discount_percentage": 12,
+          "is_stackable": true,
+          "priority": 10,
+          "start_date": "2026-04-15T00:00:00.000Z",
+          "end_date": "2026-05-15T23:59:59.000Z",
+          "min_quantity": 1,
+          "min_order_value": 50,
+          "target_pkg_ids": ["1", "2"]
+        }
+      ],
+      "promo_code": ["SPRING-2026", "BOX-10"],
+      "promo_type": ["STD"],
+      "has_active_promo": true,
+
+      "parent_sku": null,
+      "parent_entity_code": null,
+      "variants_sku": ["SKU-0001-RED", "SKU-0001-BLU"],
+      "variants_entity_code": ["SKU-0001-RED", "SKU-0001-BLU"],
+
+      "parent_product": null,
+      "sibling_variants": [],
+
+      "meta_title": {
+        "en": "Brass ball valve 1/2\\" - Acme | Your Store",
+        "it": "Valvola a sfera 1/2\\" Acme | Il Tuo Store"
+      },
+      "meta_description": {
+        "en": "Buy the Acme 1/2\\" brass ball valve online - PN40, PTFE seals, 5-year warranty.",
+        "it": "Acquista la valvola a sfera Acme 1/2\\" online - PN40, guarnizioni PTFE, garanzia 5 anni."
+      },
+
+      "auto_publish_enabled": true,
+      "min_score_threshold": 80,
+      "required_fields": ["name", "sku", "pricing.list", "images"]
+    }
+  ]
+}`}
+/>
+
+### Field groups at a glance
+
+<ParamTable
+  caption="Top-level request envelope"
+  rows={[
+    { name: "source_id", type: "string", required: true, description: "ImportSource whose field_mappings and auto-publish rules are applied." },
+    { name: "merge_mode", type: "'replace' | 'partial'", description: "See Direct JSON import.", default: "'replace'" },
+    { name: "batch_id", type: "string", description: "Persisted on each product's source.batch_id." },
+    { name: "batch_metadata", type: "object", description: "{ batch_id, batch_part, batch_total_parts, batch_total_items } — stored on source.batch_metadata." },
+    { name: "channel_metadata", type: "object", description: "Reserved. Echoed back in the debug block; not yet consumed by the pipeline." },
+    { name: "products[]", type: "Product", description: "1..10000 items." },
+  ]}
+/>
+
+<ParamTable
+  caption="Identity & localization"
+  rows={[
+    { name: "entity_code", type: "string", required: true, description: "Tenant-unique id. Falls back to sku." },
+    { name: "sku", type: "string", description: "Defaults to entity_code." },
+    { name: "name / slug / description / short_description / long_description", type: "MultilingualText", description: "{ <lang>: string } map. Plain strings are auto-wrapped as { <defaultLang>: value }." },
+    { name: "meta_title / meta_description", type: "MultilingualText", description: "SEO metadata per language." },
+    { name: "product_status_description", type: "MultilingualText", description: "Localized status label." },
+  ]}
+/>
+
+<ParamTable
+  caption="Classification"
+  rows={[
+    { name: "brand", type: "BrandEmbedded", description: "Snapshot of the brand (label, slug, logo_url, hierarchy...)." },
+    { name: "category", type: "CategoryEmbedded", description: "Primary category including path + hierarchy[] for self-containment." },
+    { name: "channel_categories[]", type: "{ channel_code, category }", description: "Per-channel category overrides." },
+    { name: "collections[]", type: "CollectionEmbedded[]", description: "Marketing collections." },
+    { name: "product_type", type: "ProductTypeEmbedded", description: "Type + its technical_specifications[] schema." },
+    { name: "tags[]", type: "TagEmbedded[]", description: "Marketing / SEO tags with groups and colors." },
+    { name: "synonym_keys[]", type: "string[]", description: "References SynonymDictionary.key for search expansion." },
+    { name: "channels[]", type: "string[]", description: "Sales channels this product is visible in. Defaults to ['default'] if omitted." },
+  ]}
+/>
+
+<ParamTable
+  caption="Content"
+  rows={[
+    { name: "images[]", type: "{ url, cdn_key, position, file_type?, size_bytes?, uploaded_at?, uploaded_by? }", description: "Gallery. images[0] is the cover." },
+    { name: "media[]", type: "{ type, url, s3_key?, label, language?, file_type?, size_bytes?, position, is_external_link? }", description: "Documents, videos (incl. YouTube/Vimeo), 3D models." },
+    { name: "attributes", type: "{ <lang>: { key, label, value }[] }", description: "Typed per-language attribute lists." },
+    { name: "marketing_features", type: "{ <lang>: string[] }", description: "Bullet-list highlights." },
+    { name: "technical_specifications", type: "{ <lang>: { key, label, value, uom?, category?, order? }[] }", description: "Spec sheet per language." },
+    { name: "meta[]", type: "{ key, value }[]", description: "Free-form key/value metadata." },
+  ]}
+/>
+
+<ParamTable
+  caption="Physical attributes"
+  rows={[
+    { name: "weight / weight_uom", type: "number / string", description: "e.g. 0.23 + 'KG'." },
+    { name: "volume / volume_uom", type: "number / string", description: "e.g. 180 + 'CM3'." },
+    { name: "dimension_height / _width / _length / _uom", type: "number / string", description: "Bounding box dimensions." },
+  ]}
+/>
+
+<ParamTable
+  caption="Inventory & stock"
+  rows={[
+    { name: "quantity", type: "number", description: "Available stock." },
+    { name: "sold", type: "number", description: "Lifetime sold counter." },
+    { name: "unit", type: "string", description: "Primary selling unit (default 'pcs')." },
+    { name: "stock_status", type: "'in_stock' | 'out_of_stock' | 'pre_order'", description: "Storefront badge." },
+    { name: "ean[]", type: "string[]", description: "EAN/GTIN barcodes." },
+    { name: "product_model", type: "string", description: "Manufacturer model code." },
+    { name: "product_status", type: "string", description: "ERP status string." },
+  ]}
+/>
+
+<ParamTable
+  caption="Pricing & promotions"
+  rows={[
+    { name: "pricing", type: "ProductPricing", description: "{ list, retail?, sale?, currency, vat_rate?, vat_included? }." },
+    { name: "packaging_options[]", type: "PackagingOption[]", description: "Sellable packagings with optional per-package pricing and embedded promotions[]. Supports reference-based pricing via price_ref + list_discount_pct / sale_discount_pct." },
+    { name: "packaging_info[]", type: "PackagingInfo[]", description: "Physical packaging reference; informational only." },
+    { name: "promotions[]", type: "Promotion[]", description: "Product-level promotions. Source of truth — computed into packagings on GET." },
+    { name: "promo_code[] / promo_type[] / has_active_promo", type: "string[] / string[] / boolean", description: "Denormalized fields used for storefront faceting and filtering." },
+  ]}
+/>
+
+<ParamTable
+  caption="Variant topology"
+  rows={[
+    { name: "is_parent", type: "boolean", description: "true for simple + parent products, false for variant children. Default: true." },
+    { name: "include_faceting", type: "boolean", description: "false for parents that only group variants. Default: true." },
+    { name: "parent_sku / parent_entity_code", type: "string", description: "Required when the product is a variant." },
+    { name: "variants_sku[] / variants_entity_code[]", type: "string[]", description: "Children of a parent product." },
+    { name: "parent_product", type: "{ entity_code, sku, name, slug, cover_image_url?, price?, brand?, category? }", description: "Self-contained parent snapshot for variant rows." },
+    { name: "sibling_variants[]", type: "{ entity_code, sku, name, variant_attributes?, cover_image_url?, price?, stock_status?, is_active? }[]", description: "Peer variants (excluding self) for storefront selectors." },
+    { name: "share_images_with_variants", type: "boolean", description: "Parent only: variants inherit parent images in search results." },
+    { name: "share_media_with_variants", type: "boolean", description: "Parent only: same for media." },
+  ]}
+/>
+
+<ParamTable
+  caption="Publishing rules"
+  rows={[
+    { name: "not_visible", type: "boolean", description: "Hide from storefront even when published." },
+    { name: "auto_publish_enabled", type: "boolean", description: "Enable auto-publish eligibility checks on this product." },
+    { name: "min_score_threshold", type: "number", description: "Completeness score required for auto-publish (default 80)." },
+    { name: "required_fields[]", type: "string[]", description: "Dotted paths that must be populated to qualify for auto-publish." },
+    { name: "item_creation_date", type: "Date (ISO string)", description: "When the item was originally inserted in the source ERP." },
+    { name: "product_kind", type: "'standard' | 'bookable' | 'service'", description: "Topology hint for downstream flows. Default: 'standard'." },
+  ]}
+/>
+
+## Errors
+
+<ParamTable
+  caption="Common error statuses"
+  rows={[
+    { name: "400", type: "ValidationError", description: "Missing file/source_id, file > 50MB, unsupported extension, empty products[] or > 10000 products." },
+    { name: "401", type: "Unauthenticated", description: "Missing or invalid credential." },
+    { name: "403", type: "Forbidden", description: "API key lacks the 'import' permission (direct JSON endpoint only)." },
+    { name: "404", type: "NotFound", description: "source_id does not resolve to an existing ImportSource for this tenant." },
+    { name: "500", type: "ServerError", description: "CDN not configured, CDN upload failed, or downstream worker error." },
+  ]}
+/>

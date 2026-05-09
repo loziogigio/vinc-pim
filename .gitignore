@@ -40,3 +40,21 @@ public/monaco-editor/
 
 # Traefik dynamic config (dev fallback)
 .traefik/
+
+# Git internal working dirs
+.git-rewrite/
+
+# MCP Playwright browser artifacts
+.playwright-mcp/
+
+# Local developer scratchpad scripts (ad-hoc DB / ERP probes)
+_tmp-*
+_tmp-*.mts
+_tmp-*.ts
+_tmp-*.js
+
+# Superpowers skill artifacts (specs / plans / iteration notes)
+docs/superpowers/
+
+# Git worktrees created by superpowers:using-git-worktrees
+.worktrees/

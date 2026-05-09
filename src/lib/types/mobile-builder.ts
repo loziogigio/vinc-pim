@@ -14,6 +14,13 @@ import type { MultiLangString } from "./pim";
 /** Whether the mobile app requires login */
 export type AppAccessMode = "public" | "private";
 
+/** Which logical builder page is being edited/served */
+export const MOBILE_CONFIG_IDS = ["mobile-home", "post-login"] as const;
+export type MobileConfigId = typeof MOBILE_CONFIG_IDS[number];
+
+/** What logged-in users see as their landing screen */
+export type PostLoginMode = "standard" | "landing";
+
 export interface MobileAppIdentity {
   app_name: string;
   logo_url: string;
@@ -21,6 +28,7 @@ export interface MobileAppIdentity {
   logo_height?: number; // px, optional (maintain aspect ratio)
   primary_color: string; // hex color for buttons (e.g., "#ec4899")
   access_mode: AppAccessMode; // "public" = no login, "private" = login required
+  post_login_mode: PostLoginMode; // "standard" = use mobile-home, "landing" = use post-login config
 }
 
 export const DEFAULT_APP_IDENTITY: MobileAppIdentity = {
@@ -29,6 +37,7 @@ export const DEFAULT_APP_IDENTITY: MobileAppIdentity = {
   logo_width: 64,
   primary_color: "#ec4899", // pink-500 default
   access_mode: "public",
+  post_login_mode: "standard",
 };
 
 // ============================================================================
@@ -44,6 +53,7 @@ export const MOBILE_BLOCK_TYPES = [
   "mobile_category_gallery",
   "mobile_entity_slider",
   "mobile_entity_gallery",
+  "mobile_text",
 ] as const;
 
 export type MobileBlockType = (typeof MOBILE_BLOCK_TYPES)[number];
@@ -293,6 +303,18 @@ export interface MobileEntityGalleryBlock {
 }
 
 // ============================================================================
+// Editorial Text Block
+// ============================================================================
+
+export interface MobileTextBlock {
+  id: string;
+  type: "mobile_text";
+  visibility: BlockVisibility;
+  /** HTML produced by the Tiptap RichTextEditor (`@/components/editor/RichTextEditor`). */
+  content: string;
+}
+
+// ============================================================================
 // Union Type for All Blocks
 // ============================================================================
 
@@ -304,7 +326,8 @@ export type MobileBlock =
   | MobileCategorySliderBlock
   | MobileCategoryGalleryBlock
   | MobileEntitySliderBlock
-  | MobileEntityGalleryBlock;
+  | MobileEntityGalleryBlock
+  | MobileTextBlock;
 
 // ============================================================================
 // Mobile Home Configuration
@@ -390,6 +413,12 @@ export const MOBILE_BLOCK_LIBRARY: MobileBlockMeta[] = [
     name: "Entity Gallery",
     description: "Grid of brands, collections, or product types",
     icon: "LayoutDashboard",
+  },
+  {
+    type: "mobile_text",
+    name: "Editorial Text",
+    description: "Rich text block for headings and editorial copy",
+    icon: "Type",
   },
 ];
 
@@ -527,6 +556,15 @@ export function createDefaultEntityGalleryBlock(id: string): MobileEntityGallery
   };
 }
 
+export function createDefaultTextBlock(id: string): MobileTextBlock {
+  return {
+    id,
+    type: "mobile_text",
+    visibility: "all",
+    content: "",
+  };
+}
+
 export function createDefaultBlock(type: MobileBlockType, id: string): MobileBlock {
   switch (type) {
     case "mobile_media_slider":
@@ -545,6 +583,8 @@ export function createDefaultBlock(type: MobileBlockType, id: string): MobileBlo
       return createDefaultEntitySliderBlock(id);
     case "mobile_entity_gallery":
       return createDefaultEntityGalleryBlock(id);
+    case "mobile_text":
+      return createDefaultTextBlock(id);
     default:
       throw new Error(`Unknown block type: ${type}`);
   }

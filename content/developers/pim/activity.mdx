@@ -1,0 +1,48 @@
+export const metadata = {
+  title: "Activity",
+  description:
+    "Background-job activity feed and the common job lifecycle for PIM operations.",
+};
+
+# Activity
+
+The **Attività** section surfaces the tenant's background-job feed:
+imports, bulk updates, AI enrichments, search reindexes, and media
+cleanups all appear here. Every long-running PIM operation returns a{" "}
+<code>job_id</code> that you can look up through this API.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/jobs" />
+<Endpoint method="GET" path="/api/b2b/pim/jobs/:job_id" />
+<Endpoint method="GET" path="/api/b2b/pim/jobs/:job_id/events" />
+<Endpoint method="POST" path="/api/b2b/pim/jobs/:job_id/cancel" />
+<Endpoint method="POST" path="/api/b2b/pim/jobs/:job_id/retry" />
+
+## Job lifecycle
+
+<ParamTable
+  caption="Job states"
+  rows={[
+    { name: "queued", type: "state", description: "Accepted but not yet picked up by a worker." },
+    { name: "processing", type: "state", description: "A worker is actively running the job." },
+    { name: "completed", type: "state", description: "Finished successfully." },
+    { name: "failed", type: "state", description: "Terminated with an error. See 'last_error'." },
+    { name: "cancelled", type: "state", description: "Cancelled by user or system." },
+  ]}
+/>
+
+## Job document
+
+<CodeBlock
+  title="GET /api/b2b/pim/jobs/:job_id"
+  code={`{
+  "job_id": "pim-bulk-publish-01H7X...",
+  "kind": "bulk-publish",
+  "state": "processing",
+  "progress": { "processed": 420, "total": 1000, "failed": 2 },
+  "started_at": "2026-04-24T09:02:11.000Z",
+  "updated_at": "2026-04-24T09:03:48.000Z",
+  "last_error": null
+}`}
+/>

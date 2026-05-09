@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, User, Building2 } from "lucide-react";
+import { ArrowUpRight, Lock, User, Building2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { UILanguageSwitcher } from "./UILanguageSwitcher";
 
@@ -66,18 +66,13 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
       <div className="flex justify-end">
         <UILanguageSwitcher />
       </div>
-      <div className="space-y-2 text-center">
-        <div className="mb-2 flex justify-center">
-          <Image
-            src="/vinc-bc.png"
-            alt="VINC Logo"
-            width={220}
-            height={220}
-            priority
-          />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight whitespace-nowrap">{t("login.welcome")}</h1>
-        <p className="text-muted-foreground">{t("login.signInToContinue")}</p>
+      <div className="space-y-1">
+        <h1 className="text-[1.625rem] font-semibold tracking-tight text-[#5e5873] dark:text-slate-100">
+          {t("login.welcomeBack")}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {t("login.signInToTenant")}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -118,7 +113,19 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">{t("login.password")}</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">{t("login.password")}</Label>
+            <Link
+              href={
+                tenant.trim()
+                  ? `/auth/forgot-password?tenant_id=${encodeURIComponent(tenant.trim())}`
+                  : "/auth/forgot-password"
+              }
+              className="text-xs font-medium text-[#009688] hover:underline dark:text-[#4dd0c8]"
+            >
+              {t("login.forgotPassword")}
+            </Link>
+          </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -145,8 +152,18 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         </Button>
       </form>
 
-      <div className="text-center text-sm text-muted-foreground">
-        <p>{t("login.needAccess")}</p>
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p className="text-center">{t("login.needAccess")}</p>
+        <div className="flex items-center justify-center gap-1 border-t border-[#ebe9f1] pt-3 text-[13px] dark:border-white/10">
+          <span>{t("login.developerDocsPrompt")}</span>
+          <Link
+            href="/developers"
+            className="inline-flex items-center gap-0.5 font-medium text-[#009688] hover:underline dark:text-[#4dd0c8]"
+          >
+            {t("login.developerDocsLink")}
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
     </div>
   );

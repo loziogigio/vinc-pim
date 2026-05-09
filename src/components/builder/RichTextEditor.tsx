@@ -70,7 +70,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Start typing.
       }
     },
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      onChange(editor.isEmpty ? "" : editor.getHTML());
     }
   });
 

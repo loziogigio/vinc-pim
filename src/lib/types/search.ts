@@ -204,6 +204,16 @@ export interface SolrProduct {
   product_status_description?: string;
   product_model?: string;
 
+  // Physical properties
+  weight?: number;
+  weight_uom?: string;
+  volume?: number;
+  volume_uom?: string;
+  dimension_height?: number;
+  dimension_width?: number;
+  dimension_length?: number;
+  dimension_uom?: string;
+
   // Quality & Analytics
   completeness_score?: number;
   priority_score?: number;
@@ -607,6 +617,16 @@ export interface SolrRawDocument {
 
   // Product model
   product_model?: string;
+
+  // Physical properties
+  weight?: number;
+  weight_uom?: string;
+  volume?: number;
+  volume_uom?: string;
+  dimension_height?: number;
+  dimension_width?: number;
+  dimension_length?: number;
+  dimension_uom?: string;
 
   // JSON stored fields (complex objects)
   category_json?: string;

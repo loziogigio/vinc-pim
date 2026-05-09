@@ -58,7 +58,8 @@ import {
 } from "lucide-react";
 
 // Import lifecycle components
-import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal, OrderSnapshotCard, CouponCard } from "@/components/orders";
+import { StatusActionsCard, QuotationCard, PaymentCard, DeliveryCard, AddItemsModal, OrderSnapshotCard, CouponCard, OrderActivityModal } from "@/components/orders";
+import { History } from "lucide-react";
 import { ThreadPanel } from "@/components/threads";
 import { ShippingMethodSelector } from "@/components/store/ShippingMethodSelector";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -326,6 +327,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   // Add items modal
   const [showAddItemsModal, setShowAddItemsModal] = useState(false);
+
+  // Activity / debug modal
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   // Effective customer tags for tag-based pricing (customer defaults + address overrides)
   const effectiveTags = useMemo(() => {
@@ -718,6 +722,21 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowActivityModal(true)}
+            className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-border bg-background hover:bg-muted transition-colors"
+            title={t("pages.store.orderActivity.buttonTitle")}
+          >
+            <History className="h-4 w-4" />
+            {t("pages.store.orderActivity.button")}
+            {(order.processing_errors?.length ?? 0) > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background"
+                aria-hidden="true"
+              />
+            )}
+          </button>
           <span
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${statusStyle.bg}`}
           >
@@ -726,6 +745,21 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           </span>
         </div>
       </div>
+
+      <OrderActivityModal
+        open={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        orderId={order.order_id}
+        subtitle={[
+          order.order_number
+            ? `OR/${order.order_number}/${order.year}`
+            : `Cart #${order.cart_number ?? ""}`.trim(),
+          order.status,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        processingStatus={order.processing_status ?? null}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Content - Items */}

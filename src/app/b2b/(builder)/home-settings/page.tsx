@@ -2830,7 +2830,7 @@ function APIKeysForm() {
                       <span>{t("pages.homeSettings.apiKeys.lastUsed")}: {formatDate(key.last_used_at)}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {key.permissions.map((perm) => (
+                      {(key.permissions ?? []).map((perm) => (
                         <span
                           key={perm}
                           className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"

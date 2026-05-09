@@ -50,6 +50,7 @@ type OrderStats = {
   shipped: number;
   delivered: number;
   cancelled: number;
+  deleted: number;
   total: number;
   totalValue: number;
 };
@@ -121,6 +122,7 @@ export default function OrdersListPage() {
     shipped: 0,
     delivered: 0,
     cancelled: 0,
+    deleted: 0,
     total: 0,
     totalValue: 0,
   });
@@ -228,6 +230,7 @@ export default function OrdersListPage() {
       params.set("page", searchParams?.get("page") || "1");
       params.set("limit", "20");
 
+      if (filters.search) params.set("search", filters.search);
       if (filters.status) params.set("status", filters.status);
       if (filters.year) params.set("year", filters.year);
       if (filters.date_from) params.set("date_from", filters.date_from);
@@ -242,18 +245,7 @@ export default function OrdersListPage() {
       const res = await fetch(`/api/b2b/orders?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        let ordersList = data.orders || [];
-
-        // Client-side search filter
-        if (filters.search) {
-          const search = filters.search.toLowerCase();
-          ordersList = ordersList.filter(
-            (o: Order) =>
-              o.order_id.toLowerCase().includes(search) ||
-              o.customer_id?.toLowerCase().includes(search) ||
-              o.po_reference?.toLowerCase().includes(search)
-          );
-        }
+        const ordersList = data.orders || [];
 
         setOrders(ordersList);
         setPagination(data.pagination || { page: 1, limit: 20, total: 0, pages: 0 });
@@ -268,6 +260,7 @@ export default function OrdersListPage() {
           shipped: 0,
           delivered: 0,
           cancelled: 0,
+          deleted: 0,
           total: data.pagination?.total || ordersList.length,
           totalValue: 0,
         };
@@ -319,9 +312,11 @@ export default function OrdersListPage() {
       quotation: { bg: "bg-indigo-100 text-indigo-700", icon: FileText },
       pending: { bg: "bg-blue-100 text-blue-700", icon: Clock },
       confirmed: { bg: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
+      preparing: { bg: "bg-orange-100 text-orange-700", icon: Package },
       shipped: { bg: "bg-purple-100 text-purple-700", icon: Truck },
       delivered: { bg: "bg-teal-100 text-teal-700", icon: Package },
       cancelled: { bg: "bg-gray-100 text-gray-700", icon: XCircle },
+      deleted: { bg: "bg-red-100 text-red-700", icon: Trash2 },
     };
     return styles[status] || { bg: "bg-gray-100 text-gray-700", icon: ShoppingCart };
   };
@@ -353,7 +348,7 @@ export default function OrdersListPage() {
       />
 
       {/* Stats Summary - Compact */}
-      <div className="grid grid-cols-4 md:grid-cols-9 gap-2">
+      <div className="grid grid-cols-4 md:grid-cols-10 gap-2">
         <button
           onClick={() => updateFilters({ status: "draft" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
@@ -438,6 +433,18 @@ export default function OrdersListPage() {
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.cancelled}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.cancelled")}</div>
+          </div>
+        </button>
+        <button
+          onClick={() => updateFilters({ status: "deleted" })}
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
+            filters.status === "deleted" ? "border-red-500 bg-red-100" : "border-border bg-card hover:bg-muted/50"
+          }`}
+        >
+          <Trash2 className="h-4 w-4 text-red-600" />
+          <div className="text-left">
+            <div className="text-lg font-bold text-foreground">{stats.deleted}</div>
+            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.deleted")}</div>
           </div>
         </button>
         <button
@@ -540,9 +547,11 @@ export default function OrdersListPage() {
             <option value="quotation">{t("pages.store.ordersList.quotation")}</option>
             <option value="pending">{t("pages.store.ordersList.pending")}</option>
             <option value="confirmed">{t("pages.store.ordersList.confirmed")}</option>
+            <option value="preparing">{t("pages.store.ordersList.preparing")}</option>
             <option value="shipped">{t("pages.store.ordersList.shipped")}</option>
             <option value="delivered">{t("pages.store.ordersList.delivered")}</option>
             <option value="cancelled">{t("pages.store.ordersList.cancelled")}</option>
+            <option value="deleted">{t("pages.store.ordersList.deleted")}</option>
           </select>
 
           {/* Year Filter */}

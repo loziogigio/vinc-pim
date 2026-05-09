@@ -44,7 +44,8 @@ export class AdapterFactory {
    */
   static create(
     adapterType: string,
-    config: MarketplaceConfig
+    config: MarketplaceConfig,
+    tenantId?: string
   ): MarketplaceAdapter {
     const AdapterClass = ADAPTER_REGISTRY[adapterType];
 
@@ -52,7 +53,8 @@ export class AdapterFactory {
       throw new Error(`Unknown adapter type: ${adapterType}`);
     }
 
-    return new AdapterClass(config);
+    const tenantDb = tenantId ? `vinc-${tenantId}` : undefined;
+    return new AdapterClass(config, tenantDb);
   }
 
   /**
@@ -67,7 +69,7 @@ export class AdapterFactory {
     const cacheKey = tenantId ? `${adapterType}-${tenantId}` : adapterType;
 
     if (!this.instances.has(cacheKey)) {
-      const adapter = this.create(adapterType, config);
+      const adapter = this.create(adapterType, config, tenantId);
       this.instances.set(cacheKey, adapter);
     }
 

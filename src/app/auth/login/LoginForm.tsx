@@ -61,9 +61,13 @@ export function LoginForm({
   // Determine if this is an OAuth flow
   const isOAuthFlow = !!clientId && !!redirectUri;
 
-  // Silent SSO: if user has an active session, auto-generate code and redirect
+  // Silent SSO: if user has an active session for THIS tenant, auto-generate a
+  // code and redirect. We only attempt silent auth when the existing session's
+  // tenant matches the storefront's requested tenant — otherwise the user would
+  // be silently logged in to the wrong tenant's data.
   useEffect(() => {
     if (!isOAuthFlow) return;
+    if (!initialTenantId) return; // no requested tenant, nothing to silently auth into
 
     let cancelled = false;
 
@@ -74,14 +78,19 @@ export function LoginForm({
 
         if (cancelled || !sessionData.authenticated) return;
 
-        // Generate auth code from existing session
+        // Cross-tenant guard: the SSO session is bound to a single tenant.
+        // Don't silently bridge it to a different storefront's tenant.
+        if (sessionData.tenant_id !== initialTenantId) return;
+
+        // Generate auth code from existing session, using the storefront's
+        // requested tenant (which we've just verified matches the session).
         const authorizeRes = await fetch("/api/auth/authorize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             client_id: clientId,
             redirect_uri: redirectUri,
-            tenant_id: sessionData.tenant_id,
+            tenant_id: initialTenantId,
             state,
             code_challenge: codeChallenge,
             code_challenge_method: codeChallengeMethod,
@@ -107,7 +116,7 @@ export function LoginForm({
 
     tryAutoLogin();
     return () => { cancelled = true; };
-  }, [isOAuthFlow, clientId, redirectUri, state, codeChallenge, codeChallengeMethod]);
+  }, [isOAuthFlow, clientId, redirectUri, state, codeChallenge, codeChallengeMethod, initialTenantId]);
 
   // Build forgot password URL with preserved params
   const forgotPasswordUrl = useMemo(() => {

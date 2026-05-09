@@ -12,6 +12,7 @@ import {
 } from "@/lib/pim/auto-publish";
 import { projectConfig, MULTILINGUAL_FIELDS } from "@/config/project.config";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { autoProvisionCatalogEntities } from "@/lib/services/pim-catalog-autoprovision.service";
 
 /**
  * Check if an object is already in multilingual format (has language keys at root level)
@@ -186,7 +187,10 @@ export async function POST(req: NextRequest) {
       ImportSource: ImportSourceModel,
       ImportJob: ImportJobModel,
       PIMProduct: PIMProductModel,
-      Language: LanguageModel
+      Language: LanguageModel,
+      Brand: BrandModel,
+      Category: CategoryModel,
+      ProductType: ProductTypeModel,
     } = await connectWithModels(tenantDb);
 
     // Fetch language codes from database for multilingual detection
@@ -271,6 +275,7 @@ export async function POST(req: NextRequest) {
     const errors: any[] = [];
     const successfulEntityCodes: string[] = []; // Track for Solr sync
     let debugProductSource: any = null; // For debugging first product
+    const catalogStats = { brandsCreated: 0, productTypesCreated: 0, categoriesCreated: 0 };
 
     for (const productData of products) {
       try {
@@ -457,6 +462,25 @@ export async function POST(req: NextRequest) {
 
         successfulEntityCodes.push(entity_code);
         successful++;
+
+        // Auto-provision standalone Brand / ProductType / Category records
+        // from the embedded data on this product (idempotent: insert-if-missing).
+        try {
+          const provStats = await autoProvisionCatalogEntities({
+            BrandModel: BrandModel as any,
+            ProductTypeModel: ProductTypeModel as any,
+            CategoryModel: CategoryModel as any,
+            brand: finalProductData.brand,
+            product_type: finalProductData.product_type,
+            channel_categories: finalProductData.channel_categories,
+          });
+          catalogStats.brandsCreated += provStats.brandsCreated;
+          catalogStats.productTypesCreated += provStats.productTypesCreated;
+          catalogStats.categoriesCreated += provStats.categoriesCreated;
+        } catch (provErr: any) {
+          // Don't fail the import if auto-provisioning the catalog hits an issue.
+          console.error(`⚠️ Catalog auto-provision failed for ${entity_code}: ${provErr.message}`);
+        }
       } catch (error: any) {
         errors.push({
           row: processed + 1,
@@ -529,7 +553,7 @@ export async function POST(req: NextRequest) {
               product_ids: batchIds,
               operation: 'bulk-sync',
               channels: ['solr'],
-              tenant_id: tenantId || 'default',
+              tenant_id: tenantId,
               priority: 'high',
             }, {
               priority: 1, // High priority for search indexing
@@ -567,6 +591,9 @@ export async function POST(req: NextRequest) {
         auto_published: autoPublished,
         duration_seconds: durationSeconds,
         sync_batches_queued: syncQueued,
+        brands_created: catalogStats.brandsCreated,
+        product_types_created: catalogStats.productTypesCreated,
+        categories_created: catalogStats.categoriesCreated,
       },
       errors: errors.slice(0, 100), // Return first 100 errors
       message: `Imported ${successful} of ${processed} products successfully${syncQueued > 0 ? `, queued ${syncQueued} Solr sync batches` : ''}`,

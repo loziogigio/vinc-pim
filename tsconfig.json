@@ -25,6 +25,9 @@
       ],
       "@config/*": [
         "./config/*"
+      ],
+      "@content/*": [
+        "./content/*"
       ]
     },
     "types": [
@@ -39,11 +42,16 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "**/*.mdx",
     "next-env.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "_tmp-*",
+    ".playwright-mcp",
+    ".git-rewrite",
+    ".traefik"
   ]
 }

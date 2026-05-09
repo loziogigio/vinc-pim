@@ -5,8 +5,9 @@
  * Routes call runBeforeHook / runOnHook / runAfterHook with a HookContext.
  */
 
-import { windmillRun, windmillRunAsync, windmillGetJobResult, WindmillError } from "./windmill-client";
+import { windmillRun, windmillRunTracked, windmillRunAsync, windmillGetJobResult, WindmillError } from "./windmill-client";
 import { getHomeSettings } from "@/lib/db/home-settings";
+import { connectWithModels } from "@/lib/db/connection";
 import type {
   WindmillProxySettings,
   ChannelHookConfig,
@@ -143,10 +144,26 @@ export async function runBeforeHook(ctx: HookContext): Promise<BeforeHookResult>
   const ws = workspace(settings);
   const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
 
+  const started = Date.now();
+  const startedIso = new Date(started).toISOString();
+
   try {
-    const res = await windmillRun<BeforeHookResponse>(
+    const { result: res, jobId } = await windmillRunTracked<BeforeHookResponse>(
       ws, hook.script_path, payload, timeout, baseUrl,
     );
+
+    const duration = Date.now() - started;
+    await trackHookInvocation(ctx, {
+      phase: "before",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: duration,
+      args: payload,
+      result: res,
+      jobId,
+    });
 
     return {
       hooked: true,
@@ -156,7 +173,21 @@ export async function runBeforeHook(ctx: HookContext): Promise<BeforeHookResult>
     };
   } catch (err) {
     const timedOut = err instanceof WindmillError && err.status === 504;
+    const jobId = (err as WindmillError & { jobId?: string }).jobId;
     console.error(`[windmill-proxy] before ${ctx.operation} failed:`, err);
+
+    await trackHookInvocation(ctx, {
+      phase: "before",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      error: timedOut ? "ERP validation timed out" : (err as Error).message,
+      status: "failed",
+      jobId,
+    });
 
     if (hook.blocking) {
       return {
@@ -199,11 +230,26 @@ export async function runBeforeHookWithAsyncFallback(
   const ws = workspace(settings);
   const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
 
+  const started = Date.now();
+  const startedIso = new Date(started).toISOString();
+
   try {
-    // Sync attempt — wait up to timeout
-    const res = await windmillRun<BeforeHookResponse>(
+    // Sync attempt — wait up to timeout (returns real Windmill job_id)
+    const { result: res, jobId } = await windmillRunTracked<BeforeHookResponse>(
       ws, hook.script_path, payload, timeout, baseUrl,
     );
+
+    await trackHookInvocation(ctx, {
+      phase: "before",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      result: res,
+      jobId,
+    });
 
     return {
       hooked: true,
@@ -215,11 +261,23 @@ export async function runBeforeHookWithAsyncFallback(
     const timedOut = err instanceof WindmillError && err.status === 504;
 
     if (timedOut) {
-      // Sync timed out — launch async job, order stays draft
+      // Sync timed out — the job is already running on Windmill (with the
+      // jobId attached to the timeout error). Fall back to async mode and
+      // reuse the same jobId so the client's polling sees the same job.
+      const existingJobId = (err as WindmillError & { jobId?: string }).jobId;
       try {
-        const jobId = await windmillRunAsync(
-          ws, hook.script_path, payload, baseUrl,
-        );
+        const jobId =
+          existingJobId ??
+          (await windmillRunAsync(ws, hook.script_path, payload, baseUrl));
+        await trackHookInvocation(ctx, {
+          phase: "before",
+          mode: "async",
+          script: hook.script_path,
+          started_at: startedIso,
+          jobId,
+          args: payload,
+          status: "queued",
+        });
         return {
           hooked: true,
           allowed: false, // block the submit — async processing in progress
@@ -230,6 +288,17 @@ export async function runBeforeHookWithAsyncFallback(
         };
       } catch (asyncErr) {
         console.error(`[windmill-proxy] before ${ctx.operation} async fallback failed:`, asyncErr);
+        await trackHookInvocation(ctx, {
+          phase: "before",
+          mode: "async",
+          script: hook.script_path,
+          started_at: startedIso,
+          completed_at: new Date().toISOString(),
+          args: payload,
+          error: (asyncErr as Error).message,
+          status: "failed",
+          jobId: existingJobId,
+        });
         return {
           hooked: true,
           allowed: false,
@@ -241,6 +310,19 @@ export async function runBeforeHookWithAsyncFallback(
 
     // Non-timeout error
     console.error(`[windmill-proxy] before ${ctx.operation} failed:`, err);
+    const errJobId = (err as WindmillError & { jobId?: string }).jobId;
+    await trackHookInvocation(ctx, {
+      phase: "before",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      error: (err as Error).message,
+      status: "failed",
+      jobId: errJobId,
+    });
 
     if (hook.blocking) {
       return {
@@ -278,10 +360,27 @@ export async function runOnHook(ctx: HookContext): Promise<OnHookResult> {
   const ws = workspace(settings);
   const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
 
+  const started = Date.now();
+  const startedIso = new Date(started).toISOString();
+
   try {
-    const res = await windmillRun<OnHookResponse>(
+    const { result: res, jobId } = await windmillRunTracked<OnHookResponse>(
       ws, hook.script_path, payload, timeout, baseUrl,
     );
+
+    await trackHookInvocation(ctx, {
+      phase: "on",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      result: res,
+      status: res.success !== false ? "completed" : "failed",
+      error: res.success === false ? res.error : undefined,
+      jobId,
+    });
 
     return {
       hooked: true,
@@ -291,7 +390,21 @@ export async function runOnHook(ctx: HookContext): Promise<OnHookResult> {
     };
   } catch (err) {
     const timedOut = err instanceof WindmillError && err.status === 504;
+    const jobId = (err as WindmillError & { jobId?: string }).jobId;
     console.error(`[windmill-proxy] on ${ctx.operation} failed:`, err);
+
+    await trackHookInvocation(ctx, {
+      phase: "on",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      error: timedOut ? "ERP sync timed out" : (err as Error).message,
+      status: "failed",
+      jobId,
+    });
 
     return {
       hooked: true,
@@ -329,11 +442,28 @@ export async function runOnHookWithAsyncFallback(
   const ws = workspace(settings);
   const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
 
+  const started = Date.now();
+  const startedIso = new Date(started).toISOString();
+
   try {
-    // Sync attempt — wait up to timeout
-    const res = await windmillRun<OnHookResponse>(
+    // Sync attempt — wait up to timeout (returns real Windmill job_id)
+    const { result: res, jobId } = await windmillRunTracked<OnHookResponse>(
       ws, hook.script_path, payload, timeout, baseUrl,
     );
+
+    await trackHookInvocation(ctx, {
+      phase: "on",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      result: res,
+      status: res.success !== false ? "completed" : "failed",
+      error: res.success === false ? res.error : undefined,
+      jobId,
+    });
 
     return {
       hooked: true,
@@ -346,11 +476,22 @@ export async function runOnHookWithAsyncFallback(
     const timedOut = err instanceof WindmillError && err.status === 504;
 
     if (timedOut) {
-      // Sync timed out — launch async job instead
+      // Sync timed out — reuse the jobId from the timeout error if present
+      // (the job is already running on Windmill from windmillRunTracked).
+      const existingJobId = (err as WindmillError & { jobId?: string }).jobId;
       try {
-        const jobId = await windmillRunAsync(
-          ws, hook.script_path, payload, baseUrl,
-        );
+        const jobId =
+          existingJobId ??
+          (await windmillRunAsync(ws, hook.script_path, payload, baseUrl));
+        await trackHookInvocation(ctx, {
+          phase: "on",
+          mode: "async",
+          script: hook.script_path,
+          started_at: startedIso,
+          jobId,
+          args: payload,
+          status: "queued",
+        });
         return {
           hooked: true,
           success: true,
@@ -360,6 +501,17 @@ export async function runOnHookWithAsyncFallback(
         };
       } catch (asyncErr) {
         console.error(`[windmill-proxy] on ${ctx.operation} async fallback failed:`, asyncErr);
+        await trackHookInvocation(ctx, {
+          phase: "on",
+          mode: "async",
+          script: hook.script_path,
+          started_at: startedIso,
+          completed_at: new Date().toISOString(),
+          args: payload,
+          error: (asyncErr as Error).message,
+          status: "failed",
+          jobId: existingJobId,
+        });
         return {
           hooked: true,
           success: false,
@@ -371,6 +523,19 @@ export async function runOnHookWithAsyncFallback(
 
     // Non-timeout error
     console.error(`[windmill-proxy] on ${ctx.operation} failed:`, err);
+    const errJobId = (err as WindmillError & { jobId?: string }).jobId;
+    await trackHookInvocation(ctx, {
+      phase: "on",
+      mode: "sync",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      args: payload,
+      error: (err as Error).message,
+      status: "failed",
+      jobId: errJobId,
+    });
     return {
       hooked: true,
       success: false,
@@ -399,9 +564,32 @@ export function runAfterHook(ctx: HookContext): void {
       const ws = workspace(settings);
       const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
 
-      windmillRunAsync(ws, hook.script_path, payload, baseUrl).catch((err) => {
-        console.error(`[windmill-proxy] after ${ctx.operation} failed:`, err);
-      });
+      const startedIso = new Date().toISOString();
+      windmillRunAsync(ws, hook.script_path, payload, baseUrl)
+        .then((jobId) => {
+          trackHookInvocation(ctx, {
+            phase: "after",
+            mode: "async",
+            script: hook.script_path,
+            started_at: startedIso,
+            jobId,
+            args: payload,
+            status: "queued",
+          }).catch(() => {});
+        })
+        .catch((err) => {
+          console.error(`[windmill-proxy] after ${ctx.operation} failed:`, err);
+          trackHookInvocation(ctx, {
+            phase: "after",
+            mode: "async",
+            script: hook.script_path,
+            started_at: startedIso,
+            completed_at: new Date().toISOString(),
+            args: payload,
+            error: (err as Error).message,
+            status: "failed",
+          }).catch(() => {});
+        });
     })
     .catch((err) => {
       console.error(`[windmill-proxy] after ${ctx.operation} settings load failed:`, err);
@@ -427,6 +615,14 @@ export async function pushWindmillJobRef(
     error?: string;
     duration_ms?: number;
     mode?: "sync" | "async";
+    /** Inline payload sent to Windmill — used for sync calls where we cannot
+     *  round-trip through the Windmill API to retrieve args later. */
+    args?: unknown;
+    /** Inline result returned by Windmill (sync) so the activity modal can
+     *  render it without a second Windmill fetch. */
+    result?: unknown;
+    started_at?: string;
+    completed_at?: string;
   },
 ): Promise<void> {
   const now = new Date().toISOString();
@@ -436,14 +632,81 @@ export async function pushWindmillJobRef(
       $push: {
         "erp_data.windmill_jobs": {
           ...ref,
-          timestamp: now,
+          timestamp: ref.started_at ?? now,
           ...(ref.status === "completed" || ref.status === "failed"
-            ? { completed_at: now }
+            ? { completed_at: ref.completed_at ?? now }
             : {}),
         },
       },
     },
   );
+}
+
+// ─── CENTRALISED HOOK INVOCATION TRACKER ────────────────────────
+//
+// Called from every runner (before/on/after, sync or async) so that a
+// job ref lands on `order.erp_data.windmill_jobs[]` for every Windmill
+// call that ran against this order — not just submits. The activity
+// modal reads this array to build the Jobs section of the timeline.
+//
+// Silent on error: if the order doesn't exist yet (e.g. pre-creation
+// hook) or the push fails, the caller's Windmill work still succeeds.
+
+interface TrackHookInvocationParams {
+  phase: "before" | "on" | "after";
+  mode: "sync" | "async";
+  script: string;
+  started_at: string;
+  completed_at?: string;
+  /** Windmill job ID — present for async calls. */
+  jobId?: string;
+  /** Payload sent to Windmill. */
+  args: unknown;
+  /** Result body from Windmill (sync only). */
+  result?: unknown;
+  /** Error message when the hook failed. */
+  error?: string;
+  /** Explicit status override. Defaults to success/failed based on `error`. */
+  status?: "queued" | "completed" | "failed";
+  duration_ms?: number;
+}
+
+async function trackHookInvocation(
+  ctx: HookContext,
+  params: TrackHookInvocationParams,
+): Promise<void> {
+  if (!ctx.orderId) return;
+  try {
+    const { Order } = await connectWithModels(ctx.tenantDb);
+    const defaultStatus: "queued" | "completed" | "failed" =
+      params.status ??
+      (params.mode === "async" && !params.completed_at
+        ? "queued"
+        : params.error
+          ? "failed"
+          : "completed");
+    await pushWindmillJobRef(Order, ctx.orderId, {
+      job_id:
+        params.jobId ||
+        `sync-${params.phase}-${ctx.operation}-${params.started_at}`,
+      script: params.script,
+      phase: params.phase,
+      operation: ctx.operation,
+      mode: params.mode,
+      status: defaultStatus,
+      error: params.error,
+      duration_ms: params.duration_ms,
+      args: params.args,
+      result: params.result,
+      started_at: params.started_at,
+      completed_at: params.completed_at,
+    });
+  } catch (err) {
+    console.error(
+      `[windmill-proxy] trackHookInvocation failed (${ctx.operation}/${params.phase}):`,
+      err,
+    );
+  }
 }
 
 /**
@@ -504,11 +767,31 @@ export async function runOnHookAsync(
   const ws = workspace(settings);
   const baseUrl = process.env.WINDMILL_BASE_URL || settings.windmill_base_url || undefined;
 
+  const startedIso = new Date().toISOString();
   try {
     const jobId = await windmillRunAsync(ws, hook.script_path, payload, baseUrl);
+    await trackHookInvocation(ctx, {
+      phase: "on",
+      mode: "async",
+      script: hook.script_path,
+      started_at: startedIso,
+      jobId,
+      args: payload,
+      status: "queued",
+    });
     return { hooked: true, jobId };
   } catch (err) {
     console.error(`[windmill-proxy] async on ${ctx.operation} failed:`, err);
+    await trackHookInvocation(ctx, {
+      phase: "on",
+      mode: "async",
+      script: hook.script_path,
+      started_at: startedIso,
+      completed_at: new Date().toISOString(),
+      args: payload,
+      error: (err as Error).message,
+      status: "failed",
+    });
     return { hooked: false };
   }
 }
@@ -553,24 +836,14 @@ export async function runOnMergeAfterAuto(
   OrderModel: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   orderDbId: any,
-  opts?: { orderId?: string },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _opts?: { orderId?: string },
 ): Promise<OnHookResult> {
   const on = await runOnHookAuto(ctx);
   if (on.hooked && !on.async && on.success && on.response?.data) {
     await mergeOrderErpData(OrderModel, orderDbId, on.response);
   }
-  // Push job ref with status for sync results
-  if (on.hooked && !on.async && opts?.orderId) {
-    await pushWindmillJobRef(OrderModel, opts.orderId, {
-      job_id: `sync-${crypto.randomUUID()}`,
-      script: `on_${ctx.operation.replace(".", "_")}`,
-      phase: "on",
-      operation: ctx.operation,
-      status: on.success ? "completed" : "failed",
-      error: on.success ? undefined : (on.error || on.response?.error),
-      mode: "sync",
-    });
-  }
+  // Job refs are now pushed by the underlying runners when ctx.orderId is set.
   runAfterHook(ctx);
   return on;
 }
@@ -585,23 +858,14 @@ export async function runOnMergeAuto(
   OrderModel: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   orderDbId: any,
-  opts?: { orderId?: string },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _opts?: { orderId?: string },
 ): Promise<OnHookResult> {
   const on = await runOnHookAuto(ctx);
   if (on.hooked && !on.async && on.success && on.response?.data) {
     await mergeOrderErpData(OrderModel, orderDbId, on.response);
   }
-  if (on.hooked && !on.async && opts?.orderId) {
-    await pushWindmillJobRef(OrderModel, opts.orderId, {
-      job_id: `sync-${crypto.randomUUID()}`,
-      script: `on_${ctx.operation.replace(".", "_")}`,
-      phase: "on",
-      operation: ctx.operation,
-      status: on.success ? "completed" : "failed",
-      error: on.success ? undefined : (on.error || on.response?.error),
-      mode: "sync",
-    });
-  }
+  // Job refs are now pushed by the underlying runners when ctx.orderId is set.
   return on;
 }
 

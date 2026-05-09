@@ -1,0 +1,44 @@
+export const metadata = {
+  title: "Technical Specifications",
+  description:
+    "Reusable attribute definitions attached to product types.",
+};
+
+# Technical Specifications
+
+Technical specifications are the atomic attribute definitions for PIM
+— they define a field's type, units, allowed values, and how the
+storefront should render them. A product type attaches a list of these
+and each product stores values keyed by the spec's `code`.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/technical-specifications" />
+<Endpoint method="GET" path="/api/b2b/pim/technical-specifications/:code" />
+<Endpoint method="POST" path="/api/b2b/pim/technical-specifications" />
+<Endpoint method="PATCH" path="/api/b2b/pim/technical-specifications/:code" />
+<Endpoint method="DELETE" path="/api/b2b/pim/technical-specifications/:code" />
+
+## Value types
+
+<ParamTable
+  caption="Supported value types"
+  rows={[
+    { name: "string", type: "scalar", description: "Short text." },
+    { name: "text", type: "scalar", description: "Multi-line text / rich text." },
+    { name: "number", type: "scalar", description: "Float with optional unit." },
+    { name: "integer", type: "scalar", description: "Whole number." },
+    { name: "boolean", type: "scalar", description: "true / false." },
+    { name: "enum", type: "scalar", description: "One value from an explicit option set." },
+    { name: "multi_enum", type: "array", description: "Zero or more values from the option set." },
+    { name: "date", type: "scalar", description: "ISO-8601 date." },
+    { name: "url", type: "scalar", description: "Validated URL." },
+    { name: "reference", type: "scalar", description: "Link to another PIM entity." },
+  ]}
+/>
+
+<Callout kind="warning" title="Breaking changes">
+  Changing a spec's <code>type</code> after products have stored values
+  for it can invalidate existing documents. The API returns{" "}
+  <code>422</code> unless you pass <code>?migrate=drop|coerce</code>.
+</Callout>

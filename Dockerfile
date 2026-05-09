@@ -8,6 +8,11 @@ FROM ${NODE_IMAGE} AS base
 WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
+# Prevent pnpm from auto-downloading the version pinned in package.json's
+# packageManager field — we install it explicitly below. Without this, pnpm
+# tries to re-fetch itself at build time to verify its integrity hash, which
+# fails inside containers without npm-registry network access.
+ENV npm_config_manage_package_manager_versions=false
 RUN npm install -g pnpm@${PNPM_VERSION}
 
 # Install dependencies (cached by lockfile)

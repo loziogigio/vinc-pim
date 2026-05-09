@@ -1,0 +1,163 @@
+export const metadata = {
+  title: "Products",
+  description:
+    "REST reference for creating, reading, updating, publishing, and bulk-managing PIM products.",
+};
+
+# Products
+
+The **products** endpoints expose full CRUD plus publish/unpublish, bulk
+operations, and export over a tenant's catalog.
+
+<Callout kind="info" title="Base path">
+  All endpoints on this page are rooted at <code>/api/b2b/pim/products</code>.
+</Callout>
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/products" />
+<Endpoint method="GET" path="/api/b2b/pim/products/:entity_code" />
+<Endpoint method="POST" path="/api/b2b/pim/products" />
+<Endpoint method="PATCH" path="/api/b2b/pim/products/:entity_code" />
+<Endpoint method="DELETE" path="/api/b2b/pim/products/:entity_code" />
+<Endpoint method="POST" path="/api/b2b/pim/products/:entity_code/publish" />
+<Endpoint method="POST" path="/api/b2b/pim/products/:entity_code/unpublish" />
+<Endpoint method="POST" path="/api/b2b/pim/products/bulk-publish" />
+<Endpoint method="POST" path="/api/b2b/pim/products/bulk-update" />
+<Endpoint method="POST" path="/api/b2b/pim/products/export" />
+
+## List products
+
+Returns a paginated list of products, filtered and sorted by query params.
+
+### Query parameters
+
+<ParamTable
+  rows={[
+    { name: "page", type: "integer", description: "1-indexed page number.", default: "1" },
+    { name: "limit", type: "integer", description: "Page size, max 100.", default: "50" },
+    { name: "search", type: "string", description: "Free-text search across name, SKU, and description." },
+    { name: "status", type: "'draft' | 'published' | 'archived'", description: "Filter by publish state." },
+    { name: "product_kind", type: "'simple' | 'parent' | 'variant'", description: "Filter by product topology." },
+    { name: "sort", type: "string", description: "Sort expression, e.g. 'name:asc' or 'updated_at:desc'." },
+    { name: "brand", type: "string", description: "Filter by brand slug." },
+    { name: "category", type: "string", description: "Filter by category slug (matches the category and its descendants)." },
+    { name: "product_type", type: "string", description: "Filter by product-type slug." },
+    { name: "sku", type: "string", description: "Exact or partial SKU match — see sku_match." },
+    { name: "sku_match", type: "'exact' | 'prefix' | 'contains'", description: "SKU match strategy.", default: "'exact'" },
+    { name: "price_min", type: "number", description: "Inclusive lower bound on list price." },
+    { name: "price_max", type: "number", description: "Inclusive upper bound on list price." },
+  ]}
+/>
+
+### Example
+
+<CodeBlock
+  title="GET /api/b2b/pim/products?status=published&limit=2"
+  code={`{
+  "products": [
+    {
+      "entity_code": "SKU-0001",
+      "name": { "en": "Brass ball valve 1/2\\"" },
+      "status": "published",
+      "brand": { "code": "acme", "name": "Acme" },
+      "price": { "list": 12.5, "currency": "EUR" },
+      "created_at": "2026-01-14T09:22:10.000Z",
+      "updated_at": "2026-03-02T15:04:01.000Z"
+    },
+    { "entity_code": "SKU-0002", "...": "..." }
+  ],
+  "pagination": { "page": 1, "limit": 2, "total": 234, "pages": 117 }
+}`}
+/>
+
+## Get a single product
+
+<Endpoint method="GET" path="/api/b2b/pim/products/:entity_code" />
+
+Returns the full product document, including all attribute groups, media
+references, and channel overrides.
+
+## Create a product
+
+<Endpoint method="POST" path="/api/b2b/pim/products" />
+
+### Body
+
+<ParamTable
+  rows={[
+    { name: "entity_code", type: "string", required: true, description: "Stable tenant-scoped identifier. Immutable after creation." },
+    { name: "name", type: "MultiLangString", required: true, description: "Localized display name, e.g. { en: 'Hose', it: 'Tubo' }." },
+    { name: "product_kind", type: "'simple' | 'parent' | 'variant'", required: true, description: "Product topology." },
+    { name: "parent_sku", type: "string", description: "Required when product_kind is 'variant'." },
+    { name: "brand", type: "string", description: "Brand slug." },
+    { name: "status", type: "'draft' | 'published' | 'archived'", description: "Initial publish state.", default: "'draft'" },
+  ]}
+/>
+
+<Callout kind="warning" title="Uniqueness">
+  <code>entity_code</code> must be unique per tenant. Creating an existing
+  one returns <code>409 Conflict</code>.
+</Callout>
+
+## Update a product
+
+<Endpoint method="PATCH" path="/api/b2b/pim/products/:entity_code" />
+
+Partial update — only the fields you send are touched. The server merges
+deeply for nested objects (e.g. `attributes`, `channel_overrides`) and
+replaces arrays whole.
+
+### Updatable field groups
+
+- **Basic:** `name`, `description`, `status`, `brand`, `categories`, `tags`.
+- **Associations:** `parent_sku`, `variants`, `collections`.
+- **Attributes:** typed `attributes.<code>` values driven by the product type.
+- **Pricing:** `price`, `tiered_prices`, `cost`, `msrp`.
+- **Media:** `images`, `videos`, `documents` (as ordered lists of CDN refs).
+- **Channels:** per-channel overrides for marketplace and storefront.
+
+## Publish / unpublish
+
+<Endpoint method="POST" path="/api/b2b/pim/products/:entity_code/publish" />
+<Endpoint method="POST" path="/api/b2b/pim/products/:entity_code/unpublish" />
+
+Publishing flips `status` to `published` and enqueues a search-index
+update job. Unpublishing reverses both.
+
+## Bulk operations
+
+<Endpoint method="POST" path="/api/b2b/pim/products/bulk-publish" />
+<Endpoint method="POST" path="/api/b2b/pim/products/bulk-update" />
+<Endpoint method="POST" path="/api/b2b/pim/products/export" />
+
+Bulk endpoints accept either an explicit array of `entity_code`s or a filter
+matching the list-endpoint query params. Every bulk call returns a
+`job_id` you can poll via [Activity](/developers/pim/activity).
+
+<CodeBlock
+  title="POST /api/b2b/pim/products/bulk-publish"
+  code={`{
+  "filter": { "status": "draft", "brand": "acme" }
+}
+
+// Response
+{
+  "success": true,
+  "job_id": "pim-bulk-publish-01H7X..."
+}`}
+/>
+
+## Errors
+
+<ParamTable
+  caption="Common error statuses"
+  rows={[
+    { name: "400", type: "ValidationError", description: "Body failed schema validation." },
+    { name: "401", type: "Unauthenticated", description: "Missing or invalid credential." },
+    { name: "403", type: "Forbidden", description: "Authenticated, but missing the required scope." },
+    { name: "404", type: "NotFound", description: "No product with that entity_code for this tenant." },
+    { name: "409", type: "Conflict", description: "entity_code already exists on create." },
+    { name: "422", type: "BusinessRule", description: "Valid payload, but rejected by a business rule (e.g. publishing a product without required attributes)." },
+  ]}
+/>

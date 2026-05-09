@@ -4,17 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
-import { ChannelSelect } from "@/components/shared/ChannelSelect";
-import type { IPortalUser, ICustomerAccess } from "@/lib/types/portal-user";
+import type { IPortalUser } from "@/lib/types/portal-user";
 import {
   Search,
   UserCog,
   ChevronLeft,
   ChevronRight,
-  X,
   Edit,
   Plus,
   Users,
+  X,
   CheckCircle,
   XCircle,
   UserCheck,
@@ -22,6 +21,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { CreatePortalUserModal } from "./CreatePortalUserModal";
 
 type PortalUserWithDetails = IPortalUser & {
   customer_count?: number;
@@ -62,17 +62,7 @@ export default function PortalUsersListPage() {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form state for create modal
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    channel: "default",
-  });
 
   useEffect(() => {
     fetchPortalUsers();
@@ -123,39 +113,6 @@ export default function PortalUsersListPage() {
     const params = new URLSearchParams(searchParams?.toString() || "");
     params.set("page", page.toString());
     router.push(`${tenantPrefix}/b2b/store/portal-users?${params.toString()}`);
-  }
-
-  async function handleCreateUser(e: React.FormEvent) {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/b2b/portal-users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          channel: formData.channel,
-          customer_access: [],
-        }),
-      });
-
-      if (res.ok) {
-        setShowCreateModal(false);
-        setFormData({ username: "", email: "", password: "", channel: "default" });
-        fetchPortalUsers();
-      } else {
-        const data = await res.json();
-        setError(data.error || t("pages.store.portalUsers.failedToCreate"));
-      }
-    } catch (err) {
-      setError(t("pages.store.portalUsers.failedToCreate"));
-    } finally {
-      setIsSubmitting(false);
-    }
   }
 
   async function handleToggleActive(user: PortalUserWithDetails) {
@@ -537,95 +494,11 @@ export default function PortalUsersListPage() {
         )}
       </div>
 
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">{t("pages.store.portalUsers.createTitle")}</h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateUser}>
-              <div className="p-4 space-y-4">
-                {error && (
-                  <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                    {error}
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    {t("pages.store.portalUsers.username")} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder={t("pages.store.portalUsers.usernamePlaceholder")}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("pages.store.portalUsers.usernameHint")}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    {t("pages.store.portalUsers.emailLabel")} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder={t("pages.store.portalUsers.emailPlaceholder")}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    {t("pages.store.portalUsers.password")} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder={t("pages.store.portalUsers.passwordPlaceholder")}
-                    required
-                    minLength={8}
-                  />
-                </div>
-                <ChannelSelect
-                  value={formData.channel}
-                  onChange={(code) => setFormData({ ...formData, channel: code })}
-                  label={t("pages.store.portalUsers.channelLabel")}
-                />
-              </div>
-              <div className="p-4 border-t border-border flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
-                >
-                  {isSubmitting ? t("pages.store.portalUsers.creating") : t("pages.store.portalUsers.createUser")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreatePortalUserModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={fetchPortalUsers}
+      />
 
     </div>
   );

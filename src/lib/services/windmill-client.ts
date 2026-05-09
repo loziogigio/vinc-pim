@@ -86,6 +86,43 @@ export async function windmillRun<T = unknown>(
 }
 
 /**
+ * Synchronous call that also returns the Windmill job_id.
+ *
+ * Implementation: POST /jobs/run (returns job_id immediately) + poll
+ * /jobs_u/completed/get_result_maybe/{id} until completion or timeout.
+ *
+ * Compared to `windmillRun` (run_wait_result), this adds one poll
+ * round-trip but gives us a trackable id — essential for the Activity
+ * modal's "Open in Windmill" deep links and debug correlation.
+ */
+export async function windmillRunTracked<T = unknown>(
+  workspace: string,
+  scriptPath: string,
+  payload: Record<string, unknown>,
+  timeoutMs = WM_DEFAULT_TIMEOUT_MS,
+  baseUrl?: string,
+): Promise<{ result: T; jobId: string }> {
+  const jobId = await windmillRunAsync(workspace, scriptPath, payload, baseUrl);
+  const deadline = Date.now() + timeoutMs;
+  let interval = 100;
+  while (Date.now() < deadline) {
+    const poll = await windmillGetJobResult<T>(workspace, jobId, baseUrl);
+    if (poll.completed) {
+      return { result: poll.result as T, jobId };
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    await new Promise((r) => setTimeout(r, Math.min(interval, remaining)));
+    interval = Math.min(interval * 2, 500);
+  }
+  // Timed out — surface as WindmillError with the jobId so callers can
+  // still attach the ref and switch to async-fallback handling.
+  const err = new WindmillError("Windmill timeout", 504);
+  (err as WindmillError & { jobId?: string }).jobId = jobId;
+  throw err;
+}
+
+/**
  * Asynchronous call — fire-and-forget, returns the job ID.
  *
  * POST /api/w/{workspace}/jobs/run/p/{scriptPath}

@@ -39,6 +39,12 @@ export async function POST(
   const dbName = `vinc-${auth.tenantId}`;
   const { Order } = await connectWithModels(dbName);
 
+  // Set once we successfully claim the row via findOneAndUpdate; the finally
+  // block uses it to guarantee `submitting: false` is cleared on every exit
+  // path (success, early return, thrown error) so a crash between claim and
+  // response can't wedge future submits behind a stuck lock.
+  let submitClaimed = false;
+
   try {
     const connection = await getPooledConnection(dbName);
 
@@ -69,8 +75,12 @@ export async function POST(
     if (body.notes !== undefined) {
       updateFields.notes = body.notes as string;
     }
-    if (body.pickup_data) {
-      updateFields.pickup_data = body.pickup_data;
+    // Capture full submit body (minus per-call flags like autofix /
+    // force_duplicate_submit) so any future fields from any frontend land in
+    // raw_data without schema changes.
+    const { autofix: _autofix, force_duplicate_submit: _force, ...rawBody } = body;
+    if (Object.keys(rawBody).length > 0) {
+      updateFields.raw_data = rawBody;
     }
 
     const order = await Order.findOneAndUpdate(
@@ -88,15 +98,23 @@ export async function POST(
         return NextResponse.json({ error: "Order is already being submitted" }, { status: 409 });
       }
       return NextResponse.json(
-        { error: `Order cannot be submitted (status: ${exists.status})` },
+        {
+          error: `Order cannot be submitted (status: ${exists.status})`,
+          code: "ORDER_NOT_DRAFT",
+          order_status: exists.status,
+        },
         { status: 400 },
       );
     }
+    submitClaimed = true;
 
     // ── BEFORE HOOK: validate with ERP (credit check, stock) ──
+    const hookRequestData: Record<string, unknown> = {};
+    if (body.autofix) hookRequestData.autofix = true;
+    if (body.force_duplicate_submit) hookRequestData.force_duplicate_submit = true;
     const hookCtx = buildHookCtxFromOrder(dbName, auth.tenantId, "order.submit", order, {
       addressCode: order.shipping_address_code,
-      requestData: body.autofix ? { autofix: true } : undefined,
+      requestData: Object.keys(hookRequestData).length > 0 ? hookRequestData : undefined,
     });
 
     const before = await runBeforeHookWithAsyncFallback(hookCtx);
@@ -146,8 +164,15 @@ export async function POST(
 
     if (before.hooked && !before.allowed) {
       // Persist ERP data even on rejection — erp_cart_id and erp_line_numbers
-      // must survive so the next submit reuses the same ERP cart/rows
+      // must survive so the next submit reuses the same ERP cart/rows.
+      // Defense in depth: strip erp_status from a blocked before-hook's
+      // payload so it can't clobber the on-hook's authoritative "submitted"
+      // value if a concurrent before-hook races a successful submit.
       if (before.modified_data) {
+        const erpData = before.modified_data.erp_data as Record<string, unknown> | undefined;
+        if (erpData && "erp_status" in erpData) {
+          delete erpData.erp_status;
+        }
         await mergeOrderErpData(Order, order._id, { success: true, data: before.modified_data });
       }
       // Release the submitting lock so user can retry
@@ -268,11 +293,15 @@ export async function POST(
     });
   } catch (error) {
     console.error("Error submitting order:", error);
-    // Release submitting lock so the order can be retried
-    await Order.updateOne({ order_id: orderId }, { $set: { submitting: false } }).catch(() => {});
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to submit order" },
       { status: 500 },
     );
+  } finally {
+    // Release the submitting lock on every exit path — success, early return,
+    // or thrown error. Idempotent with the explicit clears above.
+    if (submitClaimed) {
+      await Order.updateOne({ order_id: orderId }, { $set: { submitting: false } }).catch(() => {});
+    }
   }
 }

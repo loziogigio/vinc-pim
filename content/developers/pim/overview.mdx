@@ -1,0 +1,90 @@
+export const metadata = {
+  title: "Overview",
+  description:
+    "High-level map of the PIM subsystem: data model, persistence, search, and authentication.",
+};
+
+# Overview
+
+The **PIM** (Product Information Management) module is the canonical product
+catalog for every tenant on VINC Commerce Suite. It stores the full lifecycle
+of a product — from initial draft to published catalog entry, with all of its
+attributes, media, pricing, and channel-specific overrides.
+
+## Data model
+
+PIM entities are persisted in **tenant-scoped storage**. You never address
+storage directly — you only talk to the REST surface below. Document
+fields use `snake_case`. The top-level PIM resources are:
+
+<ParamTable
+  caption="Top-level PIM resources"
+  rows={[
+    { name: "products", type: "resource", description: "Products — the core PIM entity." },
+    { name: "categories", type: "resource", description: "Tree-shaped taxonomy." },
+    { name: "collections", type: "resource", description: "Curated product sets." },
+    { name: "brands", type: "resource", description: "Manufacturer brands." },
+    { name: "tags", type: "resource", description: "Free-form labels." },
+    { name: "product types", type: "resource", description: "Typed product schemas." },
+    { name: "technical specifications", type: "resource", description: "Reusable attribute definitions." },
+    { name: "jobs", type: "resource", description: "Background import / sync / bulk jobs." },
+  ]}
+/>
+
+## Authentication
+
+Every PIM endpoint is tenant-scoped and authenticated. Three credentials are
+accepted — the server resolves whichever is present:
+
+<ParamTable
+  rows={[
+    { name: "Session cookie", type: "browser", required: false, description: "Set by the B2B portal login flow. Used by first-party UI calls." },
+    { name: "Bearer JWT", type: "header", required: false, description: "Authorization: Bearer <token> — issued to mobile and service clients." },
+    { name: "API key", type: "header", required: false, description: "x-api-key-id / x-api-key-secret — long-lived tenant credentials." },
+  ]}
+/>
+
+<Callout kind="info" title="Scope">
+  Every credential is bound to a single tenant. You can never cross tenants
+  on a single request — the tenant is resolved from the credential itself,
+  not from a path parameter.
+</Callout>
+
+## Response envelope
+
+Every successful PIM endpoint returns a JSON object with domain-specific keys
+(e.g. `products`, `pagination`) at the top level. Errors use the conventional
+envelope:
+
+<CodeBlock
+  title="Error response (any 4xx/5xx)"
+  code={`{ "error": "Human-readable message" }`}
+/>
+
+## Pagination
+
+List endpoints paginate server-side with `page` and `limit` query params and
+echo a `pagination` object back:
+
+<CodeBlock
+  title="Example list response"
+  code={`{
+  "products": [ ... ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 234,
+    "pages": 5
+  }
+}`}
+/>
+
+## Related surfaces
+
+- **Search** — the `/api/search` endpoints serve the tenant's search
+  index, which mirrors published PIM products.
+- **Jobs** — long-running operations (imports, bulk updates, media
+  reprocessing) run asynchronously and are tracked as jobs. See
+  [Activity](/developers/pim/activity).
+- **Storefront** — published products are projected to the public
+  storefront via the `/api/public` surface.

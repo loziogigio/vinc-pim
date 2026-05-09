@@ -83,9 +83,12 @@ export async function GET(req: NextRequest) {
     const tenants = [mainTenant];
 
     if (dbApps.length > 0) {
-      // Dynamic path: filter by tenant's enabled_apps
+      // Dynamic path: filter by tenant's enabled_apps.
+      // If `enabled_apps` is explicitly set (even to []), honor it strictly —
+      // this matches the super-admin UI semantics. Only when the field is
+      // missing do we fall back to "all active apps".
       let filtered = dbApps;
-      if (tenant.enabled_apps && tenant.enabled_apps.length > 0) {
+      if (Array.isArray(tenant.enabled_apps)) {
         const enabledSet = new Set(tenant.enabled_apps);
         filtered = dbApps.filter((a) => enabledSet.has(a.app_id));
       }

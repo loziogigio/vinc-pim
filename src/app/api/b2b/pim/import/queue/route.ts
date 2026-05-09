@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { importQueue } from "@/lib/queue/queues";
 
@@ -32,12 +32,10 @@ import { importQueue } from "@/lib/queue/queues";
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { ImportSource: ImportSourceModel, ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
@@ -114,6 +112,7 @@ export async function POST(req: NextRequest) {
       {
         job_id: jobId,
         source_id: source_id,
+        tenant_id: auth.tenantId,
         // Pass products directly - import-worker.ts line 159 handles this
         products: products,
         api_config: {
@@ -146,9 +145,7 @@ export async function POST(req: NextRequest) {
       },
       message: `Queued ${products.length} products for import. Job ID: ${jobId}`,
       monitoring: {
-        job_status_endpoint: `/api/b2b/pim/import/jobs/${jobId}`,
-        redis_queue_check: "redis-cli llen bull:import-queue:wait",
-        mongodb_check: `db.importjobs.findOne({ job_id: "${jobId}" })`,
+        job_status_endpoint: `/api/b2b/pim/jobs/${jobId}`,
       },
     });
   } catch (error: any) {
@@ -166,12 +163,10 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     // Get pending and processing jobs

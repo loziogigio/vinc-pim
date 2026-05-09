@@ -1,0 +1,33 @@
+export const metadata = {
+  title: "Synonyms",
+  description:
+    "Synonym dictionaries that drive query expansion on the tenant's search surface.",
+};
+
+# Synonyms
+
+Synonym dictionaries configure the analyzer used by the tenant's
+search surface. Each dictionary maps alternate terms to a canonical
+one so searching for "faucet" finds "tap" and vice versa.
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/synonym-dictionaries" />
+<Endpoint method="GET" path="/api/b2b/pim/synonym-dictionaries/:id" />
+<Endpoint method="POST" path="/api/b2b/pim/synonym-dictionaries" />
+<Endpoint method="PATCH" path="/api/b2b/pim/synonym-dictionaries/:id" />
+<Endpoint method="DELETE" path="/api/b2b/pim/synonym-dictionaries/:id" />
+<Endpoint method="POST" path="/api/b2b/pim/synonym-dictionaries/:id/publish" />
+
+## Entry formats
+
+Two synonym formats are supported — the dictionary applies both.
+
+- **Equivalent:** `faucet, tap, spigot` — all terms are interchangeable.
+- **Explicit:** `faucet => tap, spigot` — left-hand terms expand to the
+  right-hand ones only.
+
+<Callout kind="warning" title="Publish required">
+  Saving a dictionary stages changes. They are only applied to the
+  active search analyzer after a successful <code>POST /publish</code>.
+</Callout>

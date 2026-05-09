@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { uploadToCdn } from "vinc-cdn";
 import { getCdnConfig, isCdnConfigured } from "@/lib/services/cdn-config";
@@ -10,12 +10,10 @@ import { getCdnConfig, isCdnConfigured } from "@/lib/services/cdn-config";
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { ImportSource: ImportSourceModel, ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     const formData = await req.formData();
@@ -117,7 +115,7 @@ export async function POST(req: NextRequest) {
       const queueData = {
         job_id: jobId,
         source_id: sourceId,
-        // No wholesaler_id - database provides isolation
+        tenant_id: auth.tenantId,
         file_url: fileUrl, // CDN URL only
         file_name: file.name,
       };
@@ -147,12 +145,10 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
 
-    const tenantDb = `vinc-${session.tenantId}`;
+    const { tenantDb } = auth;
     const { ImportJob: ImportJobModel } = await connectWithModels(tenantDb);
 
     const url = new URL(req.url);

@@ -34,6 +34,7 @@ interface OrderStats {
   shipped: number;
   delivered: number;
   cancelled: number;
+  deleted: number;
   total: number;
   totalValue: number;
   valueByStatus: Record<string, number>;
@@ -58,8 +59,8 @@ interface DashboardFilters {
 
 const emptyStats: OrderStats = {
   draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0,
-  shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0,
-  valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 },
+  shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0,
+  valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 },
   timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 },
   avgOrderValue: 0,
   conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 },

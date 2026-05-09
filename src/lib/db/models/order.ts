@@ -418,8 +418,18 @@ export interface IOrder extends Document {
   erp_order_id?: string;
   /** ERP-specific data from Windmill hook responses */
   erp_data?: Record<string, unknown>;
+  /** Raw source payload (auto-captured from request body — flexible bag for fields not in schema) */
+  raw_data?: Record<string, unknown>;
   /** ERP sync status for this order */
   erp_sync_status?: "not_configured" | "pending" | "synced" | "failed";
+
+  /**
+   * Concurrency guard flag set by /submit and /resubmit when they atomically
+   * claim the row via findOneAndUpdate. Prevents two parallel POSTs from
+   * both running the before/on hooks. Always cleared by a finally block on
+   * every exit path (success, early return, thrown error).
+   */
+  submitting?: boolean;
 
   // Async Processing (Windmill ERP jobs)
   processing_job_id?: string;
@@ -961,10 +971,14 @@ const OrderSchema = new Schema<IOrder>(
     erp_cart_id: { type: String },
     erp_order_id: { type: String },
     erp_data: { type: Schema.Types.Mixed },
+    raw_data: { type: Schema.Types.Mixed },
     erp_sync_status: {
       type: String,
       enum: ["not_configured", "pending", "synced", "failed"],
     },
+
+    // Concurrency guard — atomic claim flag for /submit and /resubmit
+    submitting: { type: Boolean, default: false },
 
     // Async Processing (Windmill ERP jobs)
     processing_job_id: { type: String },

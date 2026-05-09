@@ -103,6 +103,7 @@ export async function GET(req: NextRequest) {
     const channel = searchParams.get("channel"); // Sales channel filter
     const shippingAddressId = searchParams.get("shipping_address_id"); // Address filter (internal ID)
     const addressCode = searchParams.get("address_code") || searchParams.get("shipping_address_code"); // Address filter (external_code)
+    const search = searchParams.get("search")?.trim(); // Free-text search: order_id / po_reference / customer_id / cart_number / order_number
 
     // Build query - always filter by tenant
     const query: Record<string, unknown> = {
@@ -126,8 +127,6 @@ export async function GET(req: NextRequest) {
     if (status) {
       const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
       query.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
-    } else {
-      query.status = { $ne: "deleted" };
     }
 
     if (year) {
@@ -149,7 +148,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
         });
       }
       query.customer_id = (cust as any).customer_id;
@@ -167,7 +166,7 @@ export async function GET(req: NextRequest) {
             success: true,
             orders: [],
             pagination: { page, limit, total: 0, pages: 0 },
-            stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+            stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
           });
         }
       }
@@ -205,7 +204,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
         });
       }
     }
@@ -224,10 +223,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Build base query without status for stats aggregation (exclude deleted)
+    // Free-text search across multiple fields (server-side so it works across all pages)
+    if (search) {
+      const orConditions: Record<string, unknown>[] = [
+        { order_id: search },
+        { po_reference: safeRegexQuery(search) },
+        { customer_id: search },
+      ];
+      if (/^\d+$/.test(search)) {
+        const n = parseInt(search, 10);
+        orConditions.push({ cart_number: n });
+        orConditions.push({ order_number: n });
+      }
+      query.$or = orConditions;
+    }
+
+    // Build base query without status for stats aggregation (include all statuses, deleted included)
     const baseQuery = { ...query };
     delete baseQuery.status;
-    baseQuery.status = { $ne: "deleted" };
 
     // Compute date boundaries for time-period metrics
     const now = new Date();
@@ -314,11 +327,12 @@ export async function GET(req: NextRequest) {
       shipped: 0,
       delivered: 0,
       cancelled: 0,
+      deleted: 0,
       total: 0,
       totalValue: 0,
       valueByStatus: {
         draft: 0, quotation: 0, pending: 0, confirmed: 0,
-        preparing: 0, shipped: 0, delivered: 0, cancelled: 0,
+        preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0,
       },
       timePeriods: {
         today: tp.today || 0,

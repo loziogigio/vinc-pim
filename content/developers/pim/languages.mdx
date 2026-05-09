@@ -1,0 +1,24 @@
+export const metadata = {
+  title: "Languages",
+  description: "Locales the tenant's PIM content is translated into.",
+};
+
+# Languages
+
+A tenant enables locales here; every `MultiLangString` on a product,
+category, brand, etc. is keyed by one of these locale codes (ISO 639-1,
+optionally with a region subtag).
+
+## Endpoints
+
+<Endpoint method="GET" path="/api/b2b/pim/languages" />
+<Endpoint method="POST" path="/api/b2b/pim/languages" />
+<Endpoint method="PATCH" path="/api/b2b/pim/languages/:code" />
+<Endpoint method="DELETE" path="/api/b2b/pim/languages/:code" />
+
+## Notes
+
+- One language is marked `default: true`; it's the fallback when a
+  `MultiLangString` is missing a translation.
+- Enabling a language does **not** backfill translations; see
+  [AI Enhancement](/developers/pim/ai-enhancement) for bulk translation.
