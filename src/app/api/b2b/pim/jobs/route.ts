@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
-import { safeRegexQuery } from "@/lib/security";
+import { safeRegexQuery, safePagination } from "@/lib/security";
 
 /**
  * GET /api/b2b/pim/jobs
@@ -35,8 +35,7 @@ export async function GET(req: NextRequest) {
     const { ImportJob: ImportJobModel, AssociationJob: AssociationJobModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "25") || 25));
+    const { page, limit } = safePagination(searchParams, { limit: 25 });
     const status = searchParams.get("status");
     const jobType = searchParams.get("job_type"); // "import" or "association"
     const source = searchParams.get("source");
@@ -80,14 +79,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Apply pagination at the DB level on each collection separately, then merge.
+    // We over-fetch `skip + limit` per collection so the merged top page is correct
+    // even when one side has all the most recent jobs. Worst-case extra fetch on
+    // page N: 2 × N × limit docs (bounded). For page=1 limit=25 this is 50 docs total.
+    const skip = (page - 1) * limit;
+    const fetchPerCollection = skip + limit;
+
     let importJobs: any[] = [];
     let associationJobs: any[] = [];
     let totalImport = 0;
     let totalAssociation = 0;
 
-    // Fetch import jobs (if not filtering to association only)
     if (!jobType || jobType === "import") {
-      const importQuery = { ...baseQuery };
+      const importQuery: any = { ...baseQuery };
 
       if (source) {
         importQuery.source_id = safeRegexQuery(source);
@@ -106,18 +111,30 @@ export async function GET(req: NextRequest) {
         ];
       }
 
-      totalImport = await ImportJobModel.countDocuments(importQuery);
-      importJobs = await ImportJobModel.find(importQuery)
-        .sort({ created_at: -1 })
-        .lean();
+      // List preview: top 3 errors only, raw_data stripped (heaviest field).
+      // Full errors are on /api/b2b/pim/jobs/[jobId]; frontend uses failed_rows for the real count.
+      [totalImport, importJobs] = await Promise.all([
+        ImportJobModel.countDocuments(importQuery),
+        ImportJobModel.find(importQuery)
+          .select({ import_errors: { $slice: 3 } })
+          .sort({ created_at: -1 })
+          .limit(fetchPerCollection)
+          .lean(),
+      ]);
 
-      // Add job_category for frontend
-      importJobs = importJobs.map(job => ({ ...job, job_category: "import" }));
+      importJobs = importJobs.map((job: any) => ({
+        ...job,
+        job_category: "import",
+        import_errors: (job.import_errors || []).map((e: any) => ({
+          row: e.row,
+          entity_code: e.entity_code,
+          error: e.error,
+        })),
+      }));
     }
 
-    // Fetch association jobs (if not filtering to import only)
     if (!jobType || jobType === "association") {
-      const associationQuery = { ...baseQuery };
+      const associationQuery: any = { ...baseQuery };
 
       if (search) {
         const safeSearch = safeRegexQuery(search);
@@ -128,24 +145,24 @@ export async function GET(req: NextRequest) {
         ];
       }
 
-      totalAssociation = await AssociationJobModel.countDocuments(associationQuery);
-      associationJobs = await AssociationJobModel.find(associationQuery)
-        .sort({ created_at: -1 })
-        .lean();
+      [totalAssociation, associationJobs] = await Promise.all([
+        AssociationJobModel.countDocuments(associationQuery),
+        AssociationJobModel.find(associationQuery)
+          .sort({ created_at: -1 })
+          .limit(fetchPerCollection)
+          .lean(),
+      ]);
 
-      // Add job_category for frontend
-      associationJobs = associationJobs.map(job => ({ ...job, job_category: "association" }));
+      associationJobs = associationJobs.map((job) => ({ ...job, job_category: "association" }));
     }
 
-    // Merge and sort all jobs by created_at
     const allJobs = [...importJobs, ...associationJobs].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    // Apply pagination
     const total = totalImport + totalAssociation;
-    const totalPages = Math.ceil(total / limit);
-    const paginatedJobs = allJobs.slice((page - 1) * limit, page * limit);
+    const totalPages = Math.ceil(total / limit) || 1;
+    const paginatedJobs = allJobs.slice(skip, skip + limit);
 
     return NextResponse.json({
       jobs: paginatedJobs,

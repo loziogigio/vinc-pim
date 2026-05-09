@@ -97,6 +97,10 @@ const AssociationJobSchema = new Schema<IAssociationJob>(
 AssociationJobSchema.index({ status: 1 });
 AssociationJobSchema.index({ entity_type: 1, entity_id: 1 });
 
+// Indexes for the jobs list view: sort-by-created_at (with optional status filter).
+AssociationJobSchema.index({ created_at: -1 });
+AssociationJobSchema.index({ status: 1, created_at: -1 });
+
 // Export schema for model-registry
 export { AssociationJobSchema };
 

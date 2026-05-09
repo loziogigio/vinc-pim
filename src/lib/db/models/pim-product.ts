@@ -1015,6 +1015,13 @@ PIMProductSchema.index({ "source.source_id": 1, status: 1 });
 PIMProductSchema.index({ item_creation_date: -1 }); // For ERP insertion date sorting
 PIMProductSchema.index({ channels: 1, status: 1 }); // Channel + status queries
 
+// Indexes covering the dashboard stats queries — almost every count filters on
+// `isCurrent: true` (often combined with status, critical_issues, or published_at)
+// and the existing `{ entity_code: 1, isCurrent: 1 }` index can't be used because
+// `isCurrent` is the second key.
+PIMProductSchema.index({ isCurrent: 1, status: 1 });
+PIMProductSchema.index({ isCurrent: 1, published_at: -1 });
+
 export { PIMProductSchema };
 
 export const PIMProductModel =

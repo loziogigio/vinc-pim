@@ -111,12 +111,15 @@ export default function JobsPage() {
     fetchJobs();
 
     if (autoRefresh) {
-      const interval = setInterval(fetchJobs, 5000); // Refresh every 5 seconds
+      const interval = setInterval(fetchJobs, 15000);
       return () => clearInterval(interval);
     }
   }, [autoRefresh, pagination.page, pagination.limit, statusFilter, sourceFilter, batchFilter, searchQuery, createdFrom, createdTo, completedFrom, completedTo]);
 
   async function fetchJobs() {
+    // Skip polled iterations while the tab is hidden. Initial mount runs while visible.
+    if (typeof document !== "undefined" && document.hidden) return;
+
     try {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
@@ -142,12 +145,12 @@ export default function JobsPage() {
           totalPages: data.pagination?.totalPages || 1,
         }));
 
-        // Disable auto-refresh if no active jobs
+        // Auto-disable polling when nothing is in flight; the toggle re-enables it manually.
         const hasActiveJobs = data.jobs?.some(
           (job: Job) => job.status === "pending" || job.status === "processing"
         );
         if (!hasActiveJobs && autoRefresh) {
-          setIsLoading(false);
+          setAutoRefresh(false);
         }
       }
     } catch (error) {
@@ -739,27 +742,26 @@ export default function JobsPage() {
                     )}
                   </div>
 
-                  {/* Errors */}
+                  {/* Errors — list endpoint returns at most 3 errors and `failed_rows` is the real total */}
                   {job.job_category === "import" &&
-                    job.import_errors &&
-                    job.import_errors.length > 0 && (
+                    job.failed_rows > 0 && (
                       <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-red-900 mb-2">
-                              {job.import_errors.length} errors occurred:
+                              {job.failed_rows} errors occurred:
                             </p>
                             <div className="space-y-1 max-h-32 overflow-y-auto">
-                              {job.import_errors.slice(0, 5).map((error, idx) => (
+                              {(job.import_errors || []).map((error, idx) => (
                                 <p key={idx} className="text-xs text-red-700">
                                   Row {error.row}
                                   {error.entity_code && ` (${error.entity_code})`}: {error.error}
                                 </p>
                               ))}
-                              {job.import_errors.length > 5 && (
+                              {job.failed_rows > (job.import_errors?.length || 0) && (
                                 <p className="text-xs text-red-700 font-medium">
-                                  ... and {job.import_errors.length - 5} more errors
+                                  ... and {job.failed_rows - (job.import_errors?.length || 0)} more errors (open the job to see all)
                                 </p>
                               )}
                             </div>

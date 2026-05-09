@@ -3,7 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { buildProductListQuery, type ProductFilterParams } from "@/lib/pim/product-query-builder";
-import type { MatchMode } from "@/lib/security";
+import { safePagination, type MatchMode } from "@/lib/security";
 import crypto from "crypto";
 
 /**
@@ -40,8 +40,7 @@ export async function GET(req: NextRequest) {
     const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
+    const { page, limit } = safePagination(searchParams, { limit: 50 });
     const status = searchParams.get("status");
     const search = searchParams.get("search");
     const sourceId = searchParams.get("source_id");
@@ -107,39 +106,34 @@ export async function GET(req: NextRequest) {
       sort = { updated_at: -1 };
     }
 
-    // Execute query with pagination
+    // List view projection — full product is lazy-loaded by the single-product GET.
+    const listProjection = {
+      _id: 1,
+      entity_code: 1,
+      sku: 1,
+      parent_sku: 1,
+      name: 1,
+      description: 1,
+      status: 1,
+      is_parent: 1,
+      variants_entity_code: 1,
+      images: { $slice: 1 }, // only the first image (used as thumbnail)
+      source: 1,
+      completeness_score: 1,
+      critical_issues: 1,
+      has_conflict: 1,
+      updated_at: 1,
+      analytics: 1, // contains priority_score (sorting) and views_30d (column)
+    };
+
     const [products, total] = await Promise.all([
-      PIMProductModel.find(query)
+      PIMProductModel.find(query, listProjection)
         .sort(sort)
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
       PIMProductModel.countDocuments(query),
     ]);
-
-    // Embed product-level promotions into packaging options
-    // (same logic as single-product GET endpoint)
-    for (const product of products as any[]) {
-      if (product.packaging_options?.length) {
-        // Normalize pkg_id to string (lean() may return numbers)
-        for (const pkg of product.packaging_options) {
-          if (pkg.pkg_id && typeof pkg.pkg_id !== "string") {
-            pkg.pkg_id = String(pkg.pkg_id);
-          }
-        }
-        // Embed promotions per packaging
-        if (product.promotions?.length) {
-          for (const pkg of product.packaging_options) {
-            pkg.promotions = product.promotions.filter((promo: any) => {
-              if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
-                return pkg.is_sellable !== false;
-              }
-              return promo.target_pkg_ids.includes(pkg.pkg_id);
-            });
-          }
-        }
-      }
-    }
 
     return NextResponse.json({
       products,
