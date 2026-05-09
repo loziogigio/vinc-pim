@@ -44,6 +44,10 @@ export interface SendNotificationOptions {
   trigger: NotificationTrigger;
   /** Recipient email address */
   to: string;
+  /** Carbon-copy recipients (visible to all recipients in the email header) */
+  cc?: string | string[];
+  /** Blind carbon-copy recipients (hidden from primary and CC recipients) */
+  bcc?: string | string[];
   /** Template variables to replace */
   variables: Record<string, string>;
   /** Send immediately (default: true) */
@@ -96,7 +100,7 @@ export interface SendNotificationResult {
  *   to: "user@example.com",
  *   variables: {
  *     customer_name: "Mario Rossi",
- *     temporary_password: "Abc123!@#",
+ *     temporary_password: "<generated>",
  *     login_url: "https://shop.example.com/login"
  *   }
  * });
@@ -109,6 +113,8 @@ export async function sendNotification(
     tenantDb,
     trigger,
     to,
+    cc,
+    bcc,
     variables,
     immediate = true,
     replyTo,
@@ -154,6 +160,8 @@ export async function sendNotification(
     // 3. Send email (sendEmail resolves from/fromName from tenant config — SMTP or Graph)
     const result = await sendEmail({
       to,
+      cc,
+      bcc,
       subject: rendered.subject,
       html: rendered.html,
       replyTo,
@@ -351,14 +359,15 @@ async function resolveLoginUrl(
 
   if (explicitUrl) return { loginUrl: explicitUrl, shopName, logo, primaryColor };
 
-  // Try storefront primary domain
+  // Try storefront primary domain.
+  // Login is a header modal in vinc-b2b (no /login route), so link to the homepage.
   if (storefront?.domains?.length) {
     const primary = storefront.domains.find((d: { is_primary?: boolean }) => d.is_primary);
     const domain = primary?.domain || storefront.domains[0]?.domain;
     if (domain) {
       const url = domain.startsWith("http") ? domain : `https://${domain}`;
       const base = url.endsWith("/") ? url.slice(0, -1) : url;
-      return { loginUrl: `${base}/login`, shopName, logo, primaryColor };
+      return { loginUrl: base, shopName, logo, primaryColor };
     }
   }
 
@@ -366,7 +375,7 @@ async function resolveLoginUrl(
   const fallback = homeBranding?.shopUrl;
   if (fallback) {
     const base = fallback.endsWith("/") ? fallback.slice(0, -1) : fallback;
-    return { loginUrl: `${base}/login`, shopName, logo, primaryColor };
+    return { loginUrl: base, shopName, logo, primaryColor };
   }
 
   return { loginUrl: "", shopName, logo, primaryColor };

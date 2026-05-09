@@ -27,12 +27,43 @@ interface SendNotificationPayload {
   trigger: NotificationTrigger;
   /** Recipient email address */
   to: string;
+  /** Carbon-copy recipients (string or array) — visible to all recipients in the email header */
+  cc?: string | string[];
+  /** Blind carbon-copy recipients (string or array) — hidden from primary and CC */
+  bcc?: string | string[];
   /** Template variables to replace */
   variables?: Record<string, string>;
   /** Optional reply-to email */
   reply_to?: string;
   /** Portal user ID for in-app/push notifications */
   portal_user_id?: string;
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Normalize an optional `string | string[]` of email addresses into a deduped
+ * lowercase array. Returns `{ value: string[] | undefined, invalid: string[] }`.
+ * An empty/blank input yields `value: undefined` (i.e., field omitted).
+ */
+function normalizeAddressList(
+  raw: string | string[] | undefined,
+): { value: string[] | undefined; invalid: string[] } {
+  if (raw === undefined || raw === null) return { value: undefined, invalid: [] };
+  const list = Array.isArray(raw) ? raw : String(raw).split(",");
+  const cleaned: string[] = [];
+  const invalid: string[] = [];
+  const seen = new Set<string>();
+  for (const item of list) {
+    const trimmed = String(item).trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    if (EMAIL_REGEX.test(trimmed)) cleaned.push(trimmed);
+    else invalid.push(trimmed);
+  }
+  return { value: cleaned.length > 0 ? cleaned : undefined, invalid };
 }
 
 // Known variables for each trigger type
@@ -94,6 +125,8 @@ export async function GET(req: NextRequest) {
         body: {
           trigger: "order_confirmation",
           to: "customer@example.com",
+          cc: ["accounting@example.com"],
+          bcc: ["audit@example.com"],
           variables: {
             customer_name: "Mario Rossi",
             order_number: "ORD-12345",
@@ -149,11 +182,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(payload.to)) {
+    // Validate primary recipient email format
+    if (!EMAIL_REGEX.test(payload.to)) {
       return NextResponse.json(
         { error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate optional CC / BCC recipients
+    const cc = normalizeAddressList(payload.cc);
+    const bcc = normalizeAddressList(payload.bcc);
+    if (cc.invalid.length > 0 || bcc.invalid.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Invalid CC/BCC email format",
+          invalid_cc: cc.invalid,
+          invalid_bcc: bcc.invalid,
+        },
         { status: 400 }
       );
     }
@@ -163,6 +209,8 @@ export async function POST(req: NextRequest) {
       tenantDb,
       trigger: payload.trigger,
       to: payload.to,
+      cc: cc.value,
+      bcc: bcc.value,
       variables: payload.variables || {},
       replyTo: payload.reply_to,
       targetUserId: payload.portal_user_id || userId,
@@ -184,6 +232,8 @@ export async function POST(req: NextRequest) {
       success: true,
       trigger: payload.trigger,
       to: payload.to,
+      cc: cc.value,
+      bcc: bcc.value,
       email_id: result.emailId,
       message_id: result.messageId,
       in_app_id: result.inAppNotificationId,
