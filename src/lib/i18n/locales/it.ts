@@ -4439,6 +4439,14 @@ const it = {
         savedSuccessfully: "Definizione modulo salvata",
       },
     },
+    b2bSettings: {
+      title: "Impostazioni globali B2B",
+      subtitle: "Impostazioni a livello di tenant condivise da tutti i tuoi portali B2B",
+      saved: "Impostazioni salvate con successo.",
+      saveError: "Salvataggio delle impostazioni fallito.",
+      loadError: "Caricamento delle impostazioni fallito.",
+      networkError: "Errore di rete. Controlla la connessione.",
+    },
     b2bPortal: {
       list: {
         title: "Portale B2B",

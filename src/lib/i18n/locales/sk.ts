@@ -4415,6 +4415,14 @@ const sk = {
         savedSuccessfully: "Definícia formulára uložená",
       },
     },
+    b2bSettings: {
+      title: "Globálne nastavenia B2B",
+      subtitle: "Nastavenia na úrovni nájomcu zdieľané všetkými vašimi B2B portálmi",
+      saved: "Nastavenia úspešne uložené.",
+      saveError: "Uloženie nastavení zlyhalo.",
+      loadError: "Načítanie nastavení zlyhalo.",
+      networkError: "Chyba siete. Skontrolujte pripojenie.",
+    },
     b2bPortal: {
       list: {
         title: "B2B portál",

@@ -4442,6 +4442,14 @@ const en = {
         savedSuccessfully: "Form definition saved",
       },
     },
+    b2bSettings: {
+      title: "Global B2B settings",
+      subtitle: "Tenant-wide settings shared by all your B2B portals",
+      saved: "Settings saved successfully.",
+      saveError: "Failed to save settings.",
+      loadError: "Failed to load settings.",
+      networkError: "Network error. Please check your connection.",
+    },
     b2bPortal: {
       list: {
         title: "B2B Portal",
