@@ -69,6 +69,11 @@ import { B2CSitemapSchema } from "./models/b2c-sitemap";
 import { CouponSchema } from "./models/coupon";
 import { TenantPricingConfigSchema } from "./models/tenant-pricing-config";
 import { PricingRequestLogSchema } from "./models/pricing-request-log";
+import { B2BPortalSchema } from "./models/b2b-portal";
+import { B2BPageSchema } from "./models/b2b-page";
+import { B2BSitemapSchema } from "./models/b2b-sitemap";
+import { B2BFormDefinitionSchema } from "./models/b2b-form-definition";
+import { B2BFormSubmissionSchema } from "./models/b2b-form-submission";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -133,6 +138,11 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Coupon: CouponSchema,
   TenantPricingConfig: TenantPricingConfigSchema,
   PricingRequestLog: PricingRequestLogSchema,
+  B2BPortal: B2BPortalSchema,
+  B2BPage: B2BPageSchema,
+  B2BSitemap: B2BSitemapSchema,
+  B2BFormDefinition: B2BFormDefinitionSchema,
+  B2BFormSubmission: B2BFormSubmissionSchema,
 };
 
 /**
@@ -239,6 +249,11 @@ export async function getTenantModels(dbName: string) {
     Coupon: connection.models.Coupon,
     TenantPricingConfig: connection.models.TenantPricingConfig,
     PricingRequestLog: connection.models.PricingRequestLog,
+    B2BPortal: connection.models.B2BPortal,
+    B2BPage: connection.models.B2BPage,
+    B2BSitemap: connection.models.B2BSitemap,
+    B2BFormDefinition: connection.models.B2BFormDefinition,
+    B2BFormSubmission: connection.models.B2BFormSubmission,
   };
 }
 
@@ -313,6 +328,11 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Coupon: connection.models.Coupon,
     TenantPricingConfig: connection.models.TenantPricingConfig,
     PricingRequestLog: connection.models.PricingRequestLog,
+    B2BPortal: connection.models.B2BPortal,
+    B2BPage: connection.models.B2BPage,
+    B2BSitemap: connection.models.B2BSitemap,
+    B2BFormDefinition: connection.models.B2BFormDefinition,
+    B2BFormSubmission: connection.models.B2BFormSubmission,
   };
 }
 
