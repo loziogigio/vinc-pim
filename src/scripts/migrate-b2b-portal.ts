@@ -127,7 +127,7 @@ export async function migrateOneTenant(
 
   const { B2BPortal, HomeSettings, HomeTemplate } = await connectWithModels(dbName);
 
-  // Step 3 (preview): Read the b2bhomesettings document
+  // Pre-read: Load the b2bhomesettings document (needed by both dry-run and live paths)
   const settingsDoc = await HomeSettings.findOne({}).lean();
   if (!settingsDoc) {
     console.log(`[${tenantId}] skipped — no b2bhomesettings doc`);
@@ -207,15 +207,24 @@ export async function rollbackOneTenant(tenantId: string): Promise<void> {
     (tenantDoc as any).database?.mongo_db ??
     `vinc-${tenantId}`;
 
-  const { B2BPortal } = await connectWithModels(dbName);
+  const { B2BPortal, HomeTemplate } = await connectWithModels(dbName);
 
-  // Remove the "default" portal document
+  // Remove the "default" portal document (reverses step 3)
   const del = await B2BPortal.deleteOne({ slug: DEFAULT_PORTAL_SLUG });
   console.log(
     `[${tenantId}] removed ${del.deletedCount} b2bportals doc(s) with slug="${DEFAULT_PORTAL_SLUG}"`,
   );
 
-  // Clear the migration flag
+  // Un-backfill portal_slug from all b2bhometemplates docs (reverses step 4)
+  const unsetResult = await HomeTemplate.updateMany(
+    { portal_slug: DEFAULT_PORTAL_SLUG },
+    { $unset: { portal_slug: "" } },
+  );
+  console.log(
+    `[${tenantId}] unset portal_slug on ${unsetResult.modifiedCount} HomeTemplate doc(s)`,
+  );
+
+  // Clear the migration flag (reverses step 5)
   await clearTenantMigrationFlag(tenantId);
   console.log(`[${tenantId}] cleared b2b_portal_migrated_at flag`);
 

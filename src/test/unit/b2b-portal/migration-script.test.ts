@@ -164,11 +164,10 @@ describe("migrate-b2b-portal script", () => {
 
     expect(result.status).toBe("dry-run");
     expect(await B2BPortalModel.countDocuments({})).toBe(0);
-    // HomeTemplate docs remain without portal_slug set (still have default from schema)
+    // The seed inserts the HomeTemplate doc via raw insertOne (no schema defaults),
+    // so portal_slug must still be absent — dry-run must not have run updateMany
     const ht = await HomeTemplateModel.findOne({}).lean();
-    // The HomeTemplate schema defaults portal_slug to "default" on creation,
-    // but dryRun should not have run updateMany — so no explicit set
-    expect(result.status).toBe("dry-run");
+    expect(ht?.portal_slug).toBeUndefined();
   }, 30000);
 
   it("sets the b2b_portal_migrated_at flag on the admin tenant record", async () => {
@@ -189,14 +188,22 @@ describe("migrate-b2b-portal script", () => {
     expect(log?.result).toBe("success");
   }, 30000);
 
-  it("rollbackOneTenant removes the b2bportals doc and clears the flag", async () => {
+  it("rollbackOneTenant removes the b2bportals doc, clears the flag, and unsets portal_slug on templates", async () => {
     await migrateOneTenant(TENANT_ID, { dryRun: false, force: false });
+    // Confirm migration backfilled portal_slug before rolling back
+    const htAfterMigrate = await HomeTemplateModel.findOne({}).lean();
+    expect(htAfterMigrate?.portal_slug).toBe("default");
+
     await rollbackOneTenant(TENANT_ID);
 
     expect(await B2BPortalModel.countDocuments({})).toBe(0);
 
     const doc = await TenantModel.findOne({ tenant_id: TENANT_ID }).lean();
     expect(doc?.b2b_portal_migrated_at).toBeFalsy();
+
+    // Rollback must un-backfill portal_slug from HomeTemplate docs
+    const ht = await HomeTemplateModel.findOne({}).lean();
+    expect(ht?.portal_slug).toBeUndefined();
   }, 30000);
 
   it("rollbackOneTenant writes a rollback audit entry", async () => {
