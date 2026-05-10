@@ -250,24 +250,23 @@ async function getTenantRateLimitSettings(
   try {
     const TenantModel = await getTenantModel();
     const tenant = await TenantModel.findByTenantId(tenantId);
+    const rl = tenant?.settings?.rate_limit;
 
-    if (!tenant?.settings?.rate_limit) {
-      // Cache the "no limit" state
-      const noLimit: TenantRateLimitSettings = {
-        enabled: false,
-        requests_per_minute: 0,
-        requests_per_day: 0,
-        max_concurrent: 0,
-      };
-      await cacheTenantRateLimit(tenantId, noLimit);
-      return noLimit;
-    }
-
+    // Cache the COMPLETE settings, including the per_ip_* fields. The per-IP
+    // limiter in proxy.ts reads this same Redis key (tenant:ratelimit:settings:*)
+    // and skips entirely when per_ip_enabled is absent — so a partial entry here
+    // silently disables per-IP rate limiting. Missing fields fall back to the
+    // same defaults as the admin API and the Mongoose schema.
     const settings: TenantRateLimitSettings = {
-      enabled: tenant.settings.rate_limit.enabled ?? false,
-      requests_per_minute: tenant.settings.rate_limit.requests_per_minute ?? 0,
-      requests_per_day: tenant.settings.rate_limit.requests_per_day ?? 0,
-      max_concurrent: tenant.settings.rate_limit.max_concurrent ?? 0,
+      enabled: rl?.enabled ?? false,
+      requests_per_minute: rl?.requests_per_minute ?? 0,
+      requests_per_day: rl?.requests_per_day ?? 0,
+      max_concurrent: rl?.max_concurrent ?? 0,
+      per_ip_enabled: rl?.per_ip_enabled ?? true,
+      per_ip_requests_per_minute: rl?.per_ip_requests_per_minute ?? 120,
+      per_ip_requests_per_day: rl?.per_ip_requests_per_day ?? 20000,
+      per_ip_max_concurrent: rl?.per_ip_max_concurrent ?? 20,
+      per_ip_allowlist: rl?.per_ip_allowlist ?? [],
     };
 
     await cacheTenantRateLimit(tenantId, settings);
