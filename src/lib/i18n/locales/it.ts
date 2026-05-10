@@ -5276,6 +5276,22 @@ const it = {
       noteTextEnd: "). Le versioni predefinite (main, gallery) non possono essere rimosse ma le dimensioni possono essere modificate.",
     },
   },
+  errors: {
+    b2bPortal: {
+      notMigrated: "Il portale B2B non è stato migrato per questo tenant. Eseguire lo script di migrazione.",
+      notFound: "Portale non trovato.",
+      duplicateSlug: "Esiste già un portale con questo slug.",
+      invalidSlug: "Lo slug deve essere alfanumerico minuscolo con trattini.",
+      nameSlugChannelRequired: "Nome, slug e canale sono obbligatori.",
+      versionRequired: "La versione è obbligatoria.",
+      failedToLoad: "Impossibile caricare il portale.",
+      failedToUpdate: "Impossibile aggiornare il portale.",
+      failedToDelete: "Impossibile eliminare il portale.",
+      failedToLoadHomeTemplate: "Impossibile caricare il template home.",
+      failedToSaveDraft: "Impossibile salvare la bozza.",
+      failedToPublish: "Impossibile pubblicare.",
+    },
+  },
 } as const;
 
 // homeSettings lives under components but is referenced as pages.homeSettings in the UI

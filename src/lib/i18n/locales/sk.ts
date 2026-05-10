@@ -5252,6 +5252,22 @@ const sk = {
       noteTextEnd: "). Predvolené verzie (main, gallery) nie je možné odstrániť, ale ich rozmery je možné upraviť.",
     },
   },
+  errors: {
+    b2bPortal: {
+      notMigrated: "B2B portál nebol migrovaný pre tohto nájomcu. Spustite migračný skript.",
+      notFound: "Portál sa nenašiel.",
+      duplicateSlug: "Portál s týmto slug už existuje.",
+      invalidSlug: "Slug musí byť malé alfanumerické znaky s pomlčkami.",
+      nameSlugChannelRequired: "Názov, slug a kanál sú povinné.",
+      versionRequired: "Verzia je povinná.",
+      failedToLoad: "Nepodarilo sa načítať portál.",
+      failedToUpdate: "Nepodarilo sa aktualizovať portál.",
+      failedToDelete: "Nepodarilo sa odstrániť portál.",
+      failedToLoadHomeTemplate: "Nepodarilo sa načítať home template.",
+      failedToSaveDraft: "Nepodarilo sa uložiť koncept.",
+      failedToPublish: "Nepodarilo sa publikovať.",
+    },
+  },
 } as const;
 
 // homeSettings lives under components but is referenced as pages.homeSettings in the UI

@@ -5279,6 +5279,22 @@ const en = {
       noteTextEnd: "). Default versions (main, gallery) cannot be removed but their dimensions can be adjusted.",
     },
   },
+  errors: {
+    b2bPortal: {
+      notMigrated: "B2B portal has not been migrated for this tenant. Please run the migration script.",
+      notFound: "Portal not found.",
+      duplicateSlug: "A portal with this slug already exists.",
+      invalidSlug: "Slug must be lowercase alphanumeric with dashes.",
+      nameSlugChannelRequired: "Name, slug, and channel are required.",
+      versionRequired: "Version is required.",
+      failedToLoad: "Failed to load portal.",
+      failedToUpdate: "Failed to update portal.",
+      failedToDelete: "Failed to delete portal.",
+      failedToLoadHomeTemplate: "Failed to load home template.",
+      failedToSaveDraft: "Failed to save draft.",
+      failedToPublish: "Failed to publish.",
+    },
+  },
 } as const;
 
 // homeSettings lives under components but is referenced as pages.homeSettings in the UI
