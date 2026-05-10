@@ -234,6 +234,7 @@ export default function B2BPortalsPage() {
         method: "DELETE",
       });
       if (res.ok) {
+        setNotMigrated(false);
         fetchPortals();
         return;
       }
@@ -262,8 +263,9 @@ export default function B2BPortalsPage() {
         </button>
       </div>
 
-      {/* Not-migrated hint */}
-      {notMigrated && (
+      {/* Not-migrated hint (page-top) — hidden while the create dialog is open,
+          which renders its own copy of this hint. */}
+      {notMigrated && !showCreate && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
           <p className="font-medium text-amber-800">{t("errors.b2bPortal.notMigrated")}</p>
           <p className="mt-1 text-amber-700">{t("pages.b2bPortal.notMigratedHint")}</p>
