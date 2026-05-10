@@ -59,19 +59,23 @@ ENV NODE_ENV=production
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-# Copy node_modules and source files needed for workers
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=build /app/workers ./workers
-COPY --from=build /app/src ./src
-COPY --from=build /app/config ./config
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/tsconfig.json ./tsconfig.json
-COPY --from=build /app/vite.config.ts ./vite.config.ts
-
-# Run as non-root user for security
+# Create the non-root user up front so the COPYs below can write files with the
+# correct owner via --chown. A `chown -R worker:worker /app` after copying would
+# rewrite ownership of the whole node_modules tree (~150k files / 1.3 GB) into a
+# single multi-GB layer and dominate the build (~4 min on a slow disk).
 RUN addgroup -S worker && adduser -S worker -G worker \
-    && chown -R worker:worker /app \
-    && mkdir -p /pnpm && chown -R worker:worker /pnpm
+    && chown worker:worker /app \
+    && mkdir -p /pnpm && chown worker:worker /pnpm
+
+# Copy node_modules and source files needed for workers
+COPY --from=deps --chown=worker:worker /app/node_modules ./node_modules
+COPY --from=build --chown=worker:worker /app/workers ./workers
+COPY --from=build --chown=worker:worker /app/src ./src
+COPY --from=build --chown=worker:worker /app/config ./config
+COPY --from=build --chown=worker:worker /app/package.json ./package.json
+COPY --from=build --chown=worker:worker /app/tsconfig.json ./tsconfig.json
+COPY --from=build --chown=worker:worker /app/vite.config.ts ./vite.config.ts
+
 USER worker
 
 # All secrets (VINC_MONGO_URL, REDIS_HOST, etc.) injected at runtime via docker-compose
