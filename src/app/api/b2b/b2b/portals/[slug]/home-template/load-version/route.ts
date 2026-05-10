@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { loadHomeTemplateVersion } from "@/lib/services/b2b-home-template.service";
+import { isTenantMigrated } from "@/lib/services/b2b-portal-migration-flag.service";
+
+type Ctx = { params: Promise<{ slug: string }> };
+
+/**
+ * POST /api/b2b/b2b/portals/[slug]/home-template/load-version
+ * Switches the current working version to the requested version number.
+ */
+export async function POST(req: NextRequest, ctx: Ctx) {
+  try {
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
+    const { slug } = await ctx.params;
+
+    if (!(await isTenantMigrated(auth.tenantId))) {
+      return NextResponse.json(
+        { error: "B2B portal not migrated for this tenant.", code: "NOT_MIGRATED" },
+        { status: 409 },
+      );
+    }
+
+    const body = await req.json();
+    const { version } = body ?? {};
+
+    if (typeof version !== "number") {
+      return NextResponse.json({ error: "version (number) is required" }, { status: 400 });
+    }
+
+    const config = await loadHomeTemplateVersion(auth.tenantDb, slug, version);
+    return NextResponse.json(config);
+  } catch (error) {
+    console.error("[POST load-version]", error);
+    const message = error instanceof Error ? error.message : "Failed to load version";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
