@@ -1,7 +1,10 @@
 node_modules
+**/node_modules
 .next
+**/.next
 .git
 .git-rewrite
+.worktrees/
 
 # All env files (secrets injected at runtime via docker-compose)
 .env*
