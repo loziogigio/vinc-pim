@@ -24,6 +24,7 @@ import {
   CreditCard,
   DollarSign,
   Zap,
+  LayoutTemplate,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -217,6 +218,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/b2c",
     icon: Globe,
     color: "bg-pink-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "b2b-portal",
+    name: "B2B Portal",
+    description: "Design the B2B portal — branding, header, footer, home page",
+    href: "/b2b/b2b",
+    icon: LayoutTemplate,
+    color: "bg-indigo-600",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,

@@ -180,6 +180,7 @@ const en = {
     payments: { name: "Payments & Shipping", description: "Payment, gateway and shipping management" },
     admin: { name: "Admin", description: "Sessions and security" },
     b2c: { name: "B2C", description: "Storefront web builders" },
+    "b2b-portal": { name: "B2B Portal", description: "Design the B2B portal — branding, header, footer, home page" },
     bookings: { name: "Bookings", description: "Booking and departure management" },
     settings: { name: "Settings", description: "Store configuration" },
     pricing: { name: "Pricing", description: "Pricing provider management" },
@@ -329,6 +330,11 @@ const en = {
       sitemap: "Sitemap",
       pages: "Pages",
       forms: "Forms",
+    },
+    b2bPortal: {
+      title: "B2B Portal",
+      portals: "Portals",
+      settings: "Settings",
     },
     pricing: {
       title: "Pricing",

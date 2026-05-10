@@ -181,6 +181,7 @@ const sk = {
     payments: { name: "Platby a doprava", description: "Spr\u00e1va platieb, br\u00e1n a dopravy" },
     admin: { name: "Admin", description: "Sedenia a bezpe\u010dnos\u0165" },
     b2c: { name: "B2C", description: "Kon\u0161trukt\u00e9ry webov\u00e9ho obchodu" },
+    "b2b-portal": { name: "B2B port\u00e1l", description: "Navrhnite B2B port\u00e1l \u2014 branding, hlavi\u010dka, p\u00e4ta, domovsk\u00e1 str\u00e1nka" },
     bookings: { name: "Rezerv\u00e1cie", description: "Spr\u00e1va rezerv\u00e1ci\u00ed a odchodov" },
     settings: { name: "Nastavenia", description: "Konfigur\u00e1cia obchodu" },
     pricing: { name: "Pricing", description: "Spr\u00e1va poskytovate\u013eov cien" },
@@ -330,6 +331,11 @@ const sk = {
       sitemap: "Mapa str\u00e1nok",
       pages: "Str\u00e1nky",
       forms: "Formul\u00e1re",
+    },
+    b2bPortal: {
+      title: "B2B portál",
+      portals: "Portály",
+      settings: "Nastavenia",
     },
     pricing: {
       title: "Pricing",

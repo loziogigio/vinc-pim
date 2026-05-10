@@ -181,6 +181,7 @@ const it = {
     payments: { name: "Pagamenti e Spedizioni", description: "Gestione pagamenti, gateway e spedizioni" },
     admin: { name: "Admin", description: "Sessioni e sicurezza" },
     b2c: { name: "B2C", description: "Costruttori storefront web" },
+    "b2b-portal": { name: "Portale B2B", description: "Progetta il portale B2B — branding, intestazione, piè di pagina, home page" },
     bookings: { name: "Prenotazioni", description: "Gestione prenotazioni e partenze" },
     settings: { name: "Impostazioni", description: "Configurazione negozio" },
     pricing: { name: "Pricing", description: "Gestione provider prezzi" },
@@ -330,6 +331,11 @@ const it = {
       sitemap: "Mappa del sito",
       pages: "Pagine",
       forms: "Moduli",
+    },
+    b2bPortal: {
+      title: "Portale B2B",
+      portals: "Portali",
+      settings: "Impostazioni",
     },
     pricing: {
       title: "Pricing",
