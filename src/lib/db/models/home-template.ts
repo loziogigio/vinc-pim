@@ -25,6 +25,7 @@ export interface HomeTemplateVersion {
 export interface HomeTemplateDocument {
   _id: string;
   templateId: string;
+  portal_slug: string;
   name: string;
   version: number;
   blocks: any[];
@@ -56,6 +57,14 @@ const HomeTemplateSchema = new Schema(
       type: String,
       required: true,
       index: true // Not unique - multiple versions can have same templateId
+    },
+    portal_slug: {
+      type: String,
+      required: true,
+      default: "default",
+      lowercase: true,
+      trim: true,
+      index: true,
     },
     name: {
       type: String,
@@ -150,10 +159,13 @@ const HomeTemplateSchema = new Schema(
   }
 );
 
-// Compound index for efficient queries
-HomeTemplateSchema.index({ templateId: 1, version: 1 }, { unique: true });
-HomeTemplateSchema.index({ templateId: 1, isCurrent: 1 });
-HomeTemplateSchema.index({ templateId: 1, isCurrentPublished: 1 });
+// Compound indexes scoped by portal
+HomeTemplateSchema.index(
+  { portal_slug: 1, templateId: 1, version: 1 },
+  { unique: true },
+);
+HomeTemplateSchema.index({ portal_slug: 1, templateId: 1, isCurrent: 1 });
+HomeTemplateSchema.index({ portal_slug: 1, templateId: 1, isCurrentPublished: 1 });
 
 export { HomeTemplateSchema };
 
