@@ -361,7 +361,10 @@ export default function PortalDetailPage({
         )}
 
         {activeSection === "sitemap" && (
-          <SitemapSection storefrontSlug={slug} />
+          <SitemapSection
+            storefrontSlug={slug}
+            apiBasePath={`/api/b2b/b2b/portals/${slug}/sitemap`}
+          />
         )}
       </div>
     </div>

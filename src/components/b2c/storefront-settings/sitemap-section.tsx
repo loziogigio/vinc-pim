@@ -72,7 +72,20 @@ interface UrlBrowseResult {
 // COMPONENT
 // ============================================
 
-export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
+export function SitemapSection({
+  storefrontSlug,
+  apiBasePath,
+}: {
+  storefrontSlug: string;
+  /**
+   * Base path for the sitemap API. Defaults to the B2C storefront route.
+   * Pass a B2B portal route (e.g. `/api/b2b/b2b/portals/${slug}/sitemap`) to
+   * reuse this component on the B2B portal detail page. All fetches (GET, the
+   * POST actions) are built off this base.
+   */
+  apiBasePath?: string;
+}) {
+  const sitemapApi = apiBasePath ?? `/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`;
   const [data, setData] = useState<SitemapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
@@ -97,7 +110,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
   // Load sitemap data
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`);
+      const res = await fetch(sitemapApi);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -108,7 +121,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
     } finally {
       setLoading(false);
     }
-  }, [storefrontSlug, showMessage]);
+  }, [sitemapApi, showMessage]);
 
   useEffect(() => {
     fetchData();
@@ -119,7 +132,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
     async (type: string, search: string, page: number) => {
       setBrowseLoading(true);
       try {
-        const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`, {
+        const res = await fetch(sitemapApi, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -140,7 +153,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
         setBrowseLoading(false);
       }
     },
-    [storefrontSlug]
+    [sitemapApi]
   );
 
   // Load URLs when sitemap is generated
@@ -169,7 +182,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
   async function handleRegenerate() {
     setRegenerating(true);
     try {
-      const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`, {
+      const res = await fetch(sitemapApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "regenerate" }),
@@ -194,7 +207,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
   async function handleValidate() {
     setValidating(true);
     try {
-      const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`, {
+      const res = await fetch(sitemapApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "validate" }),
@@ -222,7 +235,7 @@ export function SitemapSection({ storefrontSlug }: { storefrontSlug: string }) {
   async function handleSaveRules() {
     setSavingRules(true);
     try {
-      const res = await fetch(`/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`, {
+      const res = await fetch(sitemapApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "update_robots_rules", custom_rules: customRules }),
