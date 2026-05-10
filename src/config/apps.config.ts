@@ -147,13 +147,16 @@ export const APPS: AppConfig[] = [
   },
   {
     id: "builder",
+    // Legacy home builder — superseded by the "b2b-portal" app (/b2b/b2b → portal home builder).
+    // Kept so getAppByPath("/b2b/home-builder") still resolves while the legacy page exists,
+    // but hidden from the launcher / header (Phase 2b removes the page + this entry entirely).
     name: "Builder",
     description: "Home page builder",
     href: "/b2b/home-builder",
     icon: LayoutDashboard,
     color: "bg-blue-500",
-    showInLauncher: true,
-    showInHeader: true,
+    showInLauncher: false,
+    showInHeader: false,
     hasNavigation: false,
   },
   {
