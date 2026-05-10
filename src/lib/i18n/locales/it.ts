@@ -4477,7 +4477,7 @@ const it = {
         settingsAction: "Impostazioni",
         create: "Crea",
         cancel: "Annulla",
-        portalCount: "{count} portale",
+        portalCount: "{count} portali",
         homeBuilder: "Home Builder",
       },
       detail: {
