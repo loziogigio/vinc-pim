@@ -273,8 +273,11 @@ export function getAppById(id: string): AppConfig | undefined {
  * Matches most specific path first (longer paths take priority)
  */
 export function getAppByPath(pathname: string): AppConfig | undefined {
-  // Remove tenant prefix if present (e.g., /tenant-id/b2b/pim -> /b2b/pim)
-  const normalizedPath = pathname.replace(/^\/[^/]+(?=\/b2b)/, "");
+  // Remove tenant prefix if present (e.g., /tenant-id/b2b/pim -> /b2b/pim).
+  // The leading segment is only stripped when it is NOT itself "b2b" — otherwise
+  // a path like /b2b/b2b (the b2b-portal app) would lose its first /b2b segment
+  // and incorrectly resolve to the "home" app (href "/b2b").
+  const normalizedPath = pathname.replace(/^\/(?!b2b\/)[^/]+(?=\/b2b)/, "");
 
   // Find matching apps and sort by path length (most specific first)
   const matches = APPS.filter(
