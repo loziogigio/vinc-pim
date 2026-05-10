@@ -535,4 +535,15 @@ B2CStorefrontSchema.index({ channel: 1 }, { unique: true });
 B2CStorefrontSchema.index({ "domains.domain": 1 });
 B2CStorefrontSchema.index({ status: 1 });
 
-export { B2CStorefrontSchema };
+export {
+  B2CStorefrontSchema,
+  HeaderConfigSchema,
+  B2CStorefrontFooterSchema,
+  B2CStorefrontMetaTagsSchema,
+  CustomScriptSchema,
+  B2CStorefrontSettingsSchema,
+  B2CStorefrontBrandingSchema,
+};
+
+/** Alias exported under the B2C-prefixed name used by the B2B portal model */
+export { StorefrontDomainSchema as B2CStorefrontDomainSchema };
