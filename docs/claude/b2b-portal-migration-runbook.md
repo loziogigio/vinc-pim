@@ -270,6 +270,30 @@ db.tenants.findOne({ tenant_id: "<id>" })
 
 ---
 
+## Known limitations — legacy home-page content and the new public API
+
+> **Note — legacy `templateId: "home-page"` content and the new public endpoint.**
+> The migration copies branding, header, footer, and meta fields into the new
+> `b2bportals` "default" doc and backfills `portal_slug: "default"` onto the
+> existing `b2bhometemplates` docs, but it does **not** change those docs'
+> `templateId` (which remains `"home-page"`, the value the legacy
+> `/api/home-template/*` routes use).
+>
+> The new portal builder and the new public route
+> `GET /api/b2b/b2b/public/home` work with `templateId: "home"` templates.
+> So immediately after migration, a tenant that previously used only the legacy
+> home builder will get `homeTemplate: null` from the new public `home` endpoint
+> — its existing published home page is still served by the unchanged legacy
+> paths, but is not yet visible through the new API.
+>
+> **This is expected for Phase 1 (dual-state).** When Phase 2's new B2B home
+> builder ships, it will start the tenant's `"home"`-template history fresh (or
+> import the legacy content) — that is a Phase 2 concern. Operators do **not**
+> need to do anything about this during Phase 1; the legacy storefront keeps
+> working unchanged.
+
+---
+
 ## Cutover gate for Phase 2
 
 The Phase 2 PR (new UI + legacy code cleanup) requires **all three** of the

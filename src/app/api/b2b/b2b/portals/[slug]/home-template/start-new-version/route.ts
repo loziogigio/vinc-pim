@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { startNewVersionInPortal } from "@/lib/services/b2b-home-template.service";
-import { isTenantMigrated } from "@/lib/services/b2b-portal-migration-flag.service";
+import {
+  isTenantMigrated,
+  NOT_MIGRATED_RESPONSE_BODY,
+} from "@/lib/services/b2b-portal-migration-flag.service";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -17,7 +20,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     if (!(await isTenantMigrated(auth.tenantId))) {
       return NextResponse.json(
-        { error: "B2B portal not migrated for this tenant.", code: "NOT_MIGRATED" },
+        NOT_MIGRATED_RESPONSE_BODY,
         { status: 409 },
       );
     }

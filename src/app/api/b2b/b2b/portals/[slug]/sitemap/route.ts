@@ -15,7 +15,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
-import { isTenantMigrated } from "@/lib/services/b2b-portal-migration-flag.service";
+import {
+  isTenantMigrated,
+  NOT_MIGRATED_RESPONSE_BODY,
+} from "@/lib/services/b2b-portal-migration-flag.service";
 import type { IB2BSitemap } from "@/lib/db/models/b2b-sitemap";
 
 /** Default disallow paths for B2B portal robots.txt */
@@ -48,12 +51,6 @@ const DEFAULT_ROBOTS_DISALLOW = [
   // Guest order (token-protected)
   "/public/orders/",
 ];
-
-/** Shared 409 body for unmigrated tenants on write operations. */
-const NOT_MIGRATED_BODY = {
-  error: "B2B portal not migrated for this tenant. Run scripts/migrate-b2b-portal.ts.",
-  code: "NOT_MIGRATED" as const,
-};
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -128,7 +125,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
     // Migration gate — must be checked BEFORE performing the write.
     if (!(await isTenantMigrated(tenantId))) {
-      return NextResponse.json(NOT_MIGRATED_BODY, { status: 409 });
+      return NextResponse.json(NOT_MIGRATED_RESPONSE_BODY, { status: 409 });
     }
 
     const body = await req.json();

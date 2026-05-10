@@ -12,6 +12,16 @@
 
 import { getTenantModel } from "@/lib/db/models/admin-tenant";
 
+/**
+ * Shared 409 response body for write routes when the tenant has not yet been
+ * migrated.  Import this constant instead of inlining the strings so that all
+ * routes stay in sync if the wording ever changes.
+ */
+export const NOT_MIGRATED_RESPONSE_BODY = {
+  error: "B2B portal not migrated for this tenant. Run scripts/migrate-b2b-portal.ts.",
+  code: "NOT_MIGRATED" as const,
+};
+
 export async function isTenantMigrated(tenantId: string): Promise<boolean> {
   const Tenant = await getTenantModel();
   const doc = await Tenant.findOne({ tenant_id: tenantId })

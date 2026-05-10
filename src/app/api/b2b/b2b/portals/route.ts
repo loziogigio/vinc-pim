@@ -4,6 +4,10 @@ import {
   listPortals,
   createPortal,
 } from "@/lib/services/b2b-portal.service";
+import {
+  isTenantMigrated,
+  NOT_MIGRATED_RESPONSE_BODY,
+} from "@/lib/services/b2b-portal-migration-flag.service";
 
 /**
  * GET /api/b2b/b2b/portals
@@ -37,6 +41,11 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await requireTenantAuth(req);
     if (!auth.success) return auth.response;
+
+    // Migration gate — unmigrated tenants cannot create portals.
+    if (!(await isTenantMigrated(auth.tenantId))) {
+      return NextResponse.json(NOT_MIGRATED_RESPONSE_BODY, { status: 409 });
+    }
 
     const body = await req.json();
     const { name, slug, channel, domains, settings } = body;
