@@ -108,6 +108,7 @@ export interface ITenant {
   b2b_theme?: string;
   vetrina?: ITenantVetrina;
   enabled_apps?: string[];
+  b2b_portal_migrated_at?: Date | null;
 }
 
 export interface ITenantDocument extends ITenant, Document {}
@@ -179,7 +180,7 @@ const TenantVetrinaSchema = new Schema(
   { _id: false }
 );
 
-const TenantSchema = new Schema<ITenantDocument>(
+export const TenantSchema = new Schema<ITenantDocument>(
   {
     tenant_id: {
       type: String,
@@ -255,6 +256,10 @@ const TenantSchema = new Schema<ITenantDocument>(
     enabled_apps: {
       type: [String],
       default: undefined,
+    },
+    b2b_portal_migrated_at: {
+      type: Date,
+      default: null,
     },
   },
   {
