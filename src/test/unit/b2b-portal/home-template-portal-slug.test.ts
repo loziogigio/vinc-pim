@@ -12,6 +12,7 @@ describe("HomeTemplate with portal_slug", () => {
     mongod = await MongoMemoryServer.create();
     conn = await mongoose.createConnection(mongod.getUri()).asPromise();
     HT = conn.model("HomeTemplate", HomeTemplateSchema);
+    await HT.init(); // wait for indexes to be built before any test runs
   }, 30000);
 
   beforeEach(async () => {
