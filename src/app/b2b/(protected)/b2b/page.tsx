@@ -10,8 +10,6 @@ import {
   Store,
   X,
   Globe,
-  FileText,
-  Inbox,
   Settings,
   CheckCircle,
   PauseCircle,
@@ -504,7 +502,7 @@ export default function B2BPortalsPage() {
                 <div className="border-t border-[#ebe9f1]" />
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-4 divide-x divide-[#ebe9f1]">
+                <div className="grid grid-cols-2 divide-x divide-[#ebe9f1]">
                   <Link
                     href={`${tenantPrefix}/b2b/b2b-home-builder?portal=${p.slug}`}
                     className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
@@ -512,22 +510,6 @@ export default function B2BPortalsPage() {
                   >
                     <Pencil className="h-4 w-4" />
                     <span className="text-[10px] font-medium">{t("pages.b2bPortal.list.builder")}</span>
-                  </Link>
-                  <Link
-                    href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}/pages`}
-                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
-                    title={t("pages.b2bPortal.list.pages")}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">{t("pages.b2bPortal.list.pages")}</span>
-                  </Link>
-                  <Link
-                    href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}/forms`}
-                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
-                    title={t("pages.b2bPortal.list.forms")}
-                  >
-                    <Inbox className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">{t("pages.b2bPortal.list.forms")}</span>
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}`}
