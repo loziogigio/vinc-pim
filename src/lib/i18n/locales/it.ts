@@ -4540,7 +4540,6 @@ const it = {
         },
       },
       formSubmissions: {
-        subtitle: "Gestisci le sottomissioni dei moduli per {slug} ({count} totali)",
         failedToLoad: "Caricamento sottomissioni fallito",
         deleteConfirm: "Eliminare questa sottomissione?",
         failedToDelete: "Eliminazione sottomissione fallita",

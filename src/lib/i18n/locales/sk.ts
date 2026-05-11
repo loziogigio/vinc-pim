@@ -4516,7 +4516,6 @@ const sk = {
         },
       },
       formSubmissions: {
-        subtitle: "Spravovať odoslania formulárov pre {slug} ({count} celkom)",
         failedToLoad: "Načítanie odoslaní zlyhalo",
         deleteConfirm: "Odstrániť toto odoslanie?",
         failedToDelete: "Odstránenie odoslania zlyhalo",

@@ -4543,7 +4543,6 @@ const en = {
         },
       },
       formSubmissions: {
-        subtitle: "Manage form submissions for {slug} ({count} total)",
         failedToLoad: "Failed to load form submissions",
         deleteConfirm: "Delete this submission?",
         failedToDelete: "Failed to delete submission",
