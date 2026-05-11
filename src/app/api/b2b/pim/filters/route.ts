@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { safeRegexQuery } from "@/lib/security";
+import { distinctMultilingualValues } from "@/lib/db/multilingual-aggregation";
 
 /**
  * GET /api/b2b/pim/filters
@@ -42,32 +43,14 @@ export async function GET(req: NextRequest) {
         break;
 
       case "category":
-        // category.name is MultilingualText (e.g., {it: "Cavi", en: "Cables"})
-        // Use aggregation to extract distinct string values from all languages
-        const categoryAgg = await PIMProduct.aggregate([
-          { $match: { ...query, "category.name": { $exists: true, $ne: null } } },
-          { $project: { names: { $objectToArray: "$category.name" } } },
-          { $unwind: "$names" },
-          { $match: { "names.v": { $ne: "" }, ...(search && { "names.v": safeRegexQuery(search) }) } },
-          { $group: { _id: "$names.v" } },
-          { $sort: { _id: 1 } },
-          { $limit: 10 },
-        ]);
-        results = categoryAgg.map((c: { _id: string }) => c._id).filter(Boolean);
+        // category.name is MultilingualText (e.g., {it: "Cavi", en: "Cables"}) —
+        // extract distinct string values across all languages.
+        results = await distinctMultilingualValues(PIMProduct, "category.name", query, search);
         break;
 
       case "product_type":
         // product_type.name is MultilingualText
-        const ptAgg = await PIMProduct.aggregate([
-          { $match: { ...query, "product_type.name": { $exists: true, $ne: null } } },
-          { $project: { names: { $objectToArray: "$product_type.name" } } },
-          { $unwind: "$names" },
-          { $match: { "names.v": { $ne: "" }, ...(search && { "names.v": safeRegexQuery(search) }) } },
-          { $group: { _id: "$names.v" } },
-          { $sort: { _id: 1 } },
-          { $limit: 10 },
-        ]);
-        results = ptAgg.map((p: { _id: string }) => p._id).filter(Boolean);
+        results = await distinctMultilingualValues(PIMProduct, "product_type.name", query, search);
         break;
 
       case "currency":
