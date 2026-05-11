@@ -5,6 +5,7 @@ import { resolveTenantIdByHost } from "@/lib/tenant/host-resolver";
 import {
   checkPerIpRateLimit,
   getCachedTenantRateLimit,
+  type RateLimitTier,
 } from "@/lib/services/tenant-rate-limit.service";
 import { log429 } from "@/lib/services/rate-limit-logger";
 
@@ -204,9 +205,12 @@ export async function proxy(request: NextRequest) {
         null
       );
       if (rlSettings && rlSettings.per_ip_enabled) {
+        // API-key callers get the (looser) "api" tier with its own counter;
+        // everything else (browser/session/anonymous) gets the "web" tier.
+        const tier: RateLimitTier = rlApiKey ? "api" : "web";
         const ip = extractClientIp(request);
         const rlResult = await withTimeout(
-          checkPerIpRateLimit(rlTenantId, rlSettings, ip),
+          checkPerIpRateLimit(rlTenantId, rlSettings, ip, tier),
           RATE_LIMIT_TIMEOUT_MS,
           null
         );
@@ -219,6 +223,7 @@ export async function proxy(request: NextRequest) {
             tenant_id: rlTenantId,
             ip,
             path: pathname,
+            tier,
             blocked_by: rlResult.blocked_by!,
             limits: rlResult.limits,
           });
@@ -226,6 +231,7 @@ export async function proxy(request: NextRequest) {
             JSON.stringify({
               error: "rate_limit_exceeded",
               blocked_by: rlResult.blocked_by,
+              tier,
               retry_after: retryAfter,
             }),
             {

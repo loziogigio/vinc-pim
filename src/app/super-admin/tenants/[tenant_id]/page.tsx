@@ -10,18 +10,28 @@ interface RateLimitSettings {
   requests_per_day: number;
   max_concurrent: number;
   per_ip_enabled: boolean;
+  // Web/browser tier
   per_ip_requests_per_minute: number;
   per_ip_requests_per_day: number;
+  // API-key tier
+  per_ip_api_requests_per_minute: number;
+  per_ip_api_requests_per_day: number;
+  // Shared
   per_ip_max_concurrent: number;
   per_ip_allowlist: string[];
+}
+
+interface TierUsage {
+  ip_minute: { current: number; limit: number; remaining: number; reset_at: number };
+  ip_day: { current: number; limit: number; remaining: number; reset_at: number };
 }
 
 interface IpUsageResult {
   ip: string;
   normalized: string;
   allowlisted: boolean;
-  ip_minute: { current: number; limit: number; remaining: number; reset_at: number };
-  ip_day: { current: number; limit: number; remaining: number; reset_at: number };
+  web: TierUsage;
+  api: TierUsage;
   ip_concurrent: { current: number; limit: number };
 }
 
@@ -96,8 +106,10 @@ export default function TenantDetailPage() {
     requests_per_day: 0,
     max_concurrent: 0,
     per_ip_enabled: true,
-    per_ip_requests_per_minute: 120,
-    per_ip_requests_per_day: 20000,
+    per_ip_requests_per_minute: 600,
+    per_ip_requests_per_day: 100000,
+    per_ip_api_requests_per_minute: 1000,
+    per_ip_api_requests_per_day: 300000,
     per_ip_max_concurrent: 20,
     per_ip_allowlist: [],
   });
@@ -914,44 +926,105 @@ export default function TenantDetailPage() {
               </div>
 
               {rateLimit.per_ip_enabled && (
-                <div className="space-y-4 pt-2">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Per Minute</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={rateLimit.per_ip_requests_per_minute || ""}
-                        onChange={(e) =>
-                          setRateLimit({
-                            ...rateLimit,
-                            per_ip_requests_per_minute: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        placeholder="0 = unlimited"
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <p className="text-xs text-slate-400 mt-1">Burst protection</p>
+                <div className="space-y-5 pt-2">
+                  {/* Browser / web tier */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                      Browser / web tier
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Storefront, session and anonymous traffic. A single page load fires
+                      10–20 XHRs — keep this loose.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Per Minute</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={rateLimit.per_ip_requests_per_minute || ""}
+                          onChange={(e) =>
+                            setRateLimit({
+                              ...rateLimit,
+                              per_ip_requests_per_minute: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0 = unlimited"
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Burst protection (suggested ~600)</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Per Day</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={rateLimit.per_ip_requests_per_day || ""}
+                          onChange={(e) =>
+                            setRateLimit({
+                              ...rateLimit,
+                              per_ip_requests_per_day: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0 = unlimited"
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Daily quota</p>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Per Day</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={rateLimit.per_ip_requests_per_day || ""}
-                        onChange={(e) =>
-                          setRateLimit({
-                            ...rateLimit,
-                            per_ip_requests_per_day: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        placeholder="0 = unlimited"
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <p className="text-xs text-slate-400 mt-1">Daily quota</p>
+                  </div>
+
+                  {/* API-key tier */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                      API-key tier (server-to-server)
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Callers presenting an API key (e.g. PIM import sync). Separate counter —
+                      browser traffic doesn&apos;t eat into this budget.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Per Minute</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={rateLimit.per_ip_api_requests_per_minute || ""}
+                          onChange={(e) =>
+                            setRateLimit({
+                              ...rateLimit,
+                              per_ip_api_requests_per_minute: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0 = unlimited"
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Suggested ~1000 (importer runs ~14 req/s)</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Per Day</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={rateLimit.per_ip_api_requests_per_day || ""}
+                          onChange={(e) =>
+                            setRateLimit({
+                              ...rateLimit,
+                              per_ip_api_requests_per_day: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0 = unlimited"
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Daily quota</p>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Shared */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Concurrent</label>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Concurrent (shared)</label>
                       <input
                         type="number"
                         min="0"
@@ -1047,24 +1120,34 @@ export default function TenantDetailPage() {
                     <table className="w-full text-xs">
                       <thead className="text-slate-400">
                         <tr>
-                          <th className="text-left py-1">Window</th>
+                          <th className="text-left py-1">Tier / window</th>
                           <th className="text-right py-1">Current</th>
                           <th className="text-right py-1">Limit</th>
                         </tr>
                       </thead>
                       <tbody className="text-white">
                         <tr>
-                          <td>Per minute</td>
-                          <td className="text-right">{ipProbeResult.ip_minute.current}</td>
-                          <td className="text-right">{ipProbeResult.ip_minute.limit || "∞"}</td>
+                          <td>Web · per minute</td>
+                          <td className="text-right">{ipProbeResult.web.ip_minute.current}</td>
+                          <td className="text-right">{ipProbeResult.web.ip_minute.limit || "∞"}</td>
                         </tr>
                         <tr>
-                          <td>Per day</td>
-                          <td className="text-right">{ipProbeResult.ip_day.current}</td>
-                          <td className="text-right">{ipProbeResult.ip_day.limit || "∞"}</td>
+                          <td>Web · per day</td>
+                          <td className="text-right">{ipProbeResult.web.ip_day.current}</td>
+                          <td className="text-right">{ipProbeResult.web.ip_day.limit || "∞"}</td>
                         </tr>
                         <tr>
-                          <td>Concurrent</td>
+                          <td>API · per minute</td>
+                          <td className="text-right">{ipProbeResult.api.ip_minute.current}</td>
+                          <td className="text-right">{ipProbeResult.api.ip_minute.limit || "∞"}</td>
+                        </tr>
+                        <tr>
+                          <td>API · per day</td>
+                          <td className="text-right">{ipProbeResult.api.ip_day.current}</td>
+                          <td className="text-right">{ipProbeResult.api.ip_day.limit || "∞"}</td>
+                        </tr>
+                        <tr>
+                          <td>Concurrent (shared)</td>
                           <td className="text-right">{ipProbeResult.ip_concurrent.current}</td>
                           <td className="text-right">{ipProbeResult.ip_concurrent.limit || "∞"}</td>
                         </tr>

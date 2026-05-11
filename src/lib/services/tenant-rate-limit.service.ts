@@ -334,27 +334,50 @@ function ipToken(ip: string): string {
   return ip.replace(/:/g, "_");
 }
 
+/**
+ * Per-IP rate-limit tier.
+ * - "web":  storefront / browser / session / anonymous traffic (loose cap)
+ * - "api":  server-to-server API-key callers, e.g. the PIM import sync
+ *
+ * Each tier has its own configurable cap AND its own Redis counter, so a busy
+ * browser and a busy importer never share a budget.
+ */
+export type RateLimitTier = "web" | "api";
+
 interface PerIpCaps {
   per_minute: number;
   per_day: number;
   concurrent: number;
 }
 
-function clampForUnknown(ip: string, settings: ITenantRateLimit): PerIpCaps {
-  if (ip !== "unknown") {
-    return {
-      per_minute: settings.per_ip_requests_per_minute,
-      per_day: settings.per_ip_requests_per_day,
-      concurrent: settings.per_ip_max_concurrent,
-    };
-  }
-  const cfgMin = settings.per_ip_requests_per_minute;
-  const cfgDay = settings.per_ip_requests_per_day;
-  const cfgCon = settings.per_ip_max_concurrent;
+function tierBaseCaps(settings: ITenantRateLimit, tier: RateLimitTier): PerIpCaps {
+  return tier === "api"
+    ? {
+        per_minute: settings.per_ip_api_requests_per_minute,
+        per_day: settings.per_ip_api_requests_per_day,
+        concurrent: settings.per_ip_max_concurrent, // shared
+      }
+    : {
+        per_minute: settings.per_ip_requests_per_minute,
+        per_day: settings.per_ip_requests_per_day,
+        concurrent: settings.per_ip_max_concurrent, // shared
+      };
+}
+
+/**
+ * Resolve the effective caps for an IP + tier. When the IP can't be derived
+ * ("unknown"), clamp every dimension to a hardcoded floor so a misconfigured
+ * proxy can't turn the "unknown" bucket into a shared escape hatch.
+ */
+function capsForTier(ip: string, settings: ITenantRateLimit, tier: RateLimitTier): PerIpCaps {
+  const base = tierBaseCaps(settings, tier);
+  if (ip !== "unknown") return base;
   return {
-    per_minute: cfgMin > 0 ? Math.min(UNKNOWN_IP_MAX_PER_MINUTE, cfgMin) : UNKNOWN_IP_MAX_PER_MINUTE,
-    per_day: cfgDay > 0 ? Math.min(UNKNOWN_IP_MAX_PER_DAY, cfgDay) : UNKNOWN_IP_MAX_PER_DAY,
-    concurrent: cfgCon > 0 ? Math.min(UNKNOWN_IP_MAX_CONCURRENT, cfgCon) : UNKNOWN_IP_MAX_CONCURRENT,
+    per_minute:
+      base.per_minute > 0 ? Math.min(UNKNOWN_IP_MAX_PER_MINUTE, base.per_minute) : UNKNOWN_IP_MAX_PER_MINUTE,
+    per_day: base.per_day > 0 ? Math.min(UNKNOWN_IP_MAX_PER_DAY, base.per_day) : UNKNOWN_IP_MAX_PER_DAY,
+    concurrent:
+      base.concurrent > 0 ? Math.min(UNKNOWN_IP_MAX_CONCURRENT, base.concurrent) : UNKNOWN_IP_MAX_CONCURRENT,
   };
 }
 
@@ -386,7 +409,8 @@ function emptyPerIpResult(allowed: boolean, allowlistExempt = false): RateLimitR
 export async function checkPerIpRateLimit(
   tenant_id: string,
   settings: ITenantRateLimit | null,
-  ip: string
+  ip: string,
+  tier: RateLimitTier = "web"
 ): Promise<RateLimitResult> {
   if (!settings || !settings.per_ip_enabled) {
     return emptyPerIpResult(true);
@@ -400,11 +424,12 @@ export async function checkPerIpRateLimit(
   const { start: minute_start, reset_at: minute_reset } = getMinuteWindow();
   const day_key = getDayKey();
   const day_reset = getDayResetAt();
-  const caps = clampForUnknown(ip, settings);
+  const caps = capsForTier(ip, settings, tier);
   const token = ipToken(ip);
 
-  const minute_key = `ratelimit:${tenant_id}:ip:minute:${token}:${minute_start}`;
-  const day_key_full = `ratelimit:${tenant_id}:ip:day:${token}:${day_key}`;
+  // Per-tier minute/day counters; concurrent is shared (report-only).
+  const minute_key = `ratelimit:${tenant_id}:ip:${tier}:minute:${token}:${minute_start}`;
+  const day_key_full = `ratelimit:${tenant_id}:ip:${tier}:day:${token}:${day_key}`;
   const concurrent_key = `ratelimit:${tenant_id}:ip:concurrent:${token}`;
 
   const pipeline = r.pipeline();
@@ -481,9 +506,11 @@ export async function checkPerIpRateLimit(
 export async function getPerIpRateLimitStatus(
   tenant_id: string,
   settings: ITenantRateLimit | null,
-  ip: string
+  ip: string,
+  tier: RateLimitTier = "web"
 ): Promise<{
   allowlisted: boolean;
+  tier: RateLimitTier;
   ip_minute: { current: number; limit: number; remaining: number; reset_at: number };
   ip_day: { current: number; limit: number; remaining: number; reset_at: number };
   ip_concurrent: { current: number; limit: number };
@@ -491,6 +518,7 @@ export async function getPerIpRateLimitStatus(
   if (!settings || !settings.per_ip_enabled) {
     return {
       allowlisted: false,
+      tier,
       ip_minute: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
       ip_day: { current: 0, limit: 0, remaining: -1, reset_at: 0 },
       ip_concurrent: { current: 0, limit: 0 },
@@ -498,7 +526,7 @@ export async function getPerIpRateLimitStatus(
   }
 
   const allowlisted = matchesAnyCIDR(ip, settings.per_ip_allowlist || []);
-  const caps = clampForUnknown(ip, settings);
+  const caps = capsForTier(ip, settings, tier);
   const r = getRedis();
   const { start: minute_start, reset_at: minute_reset } = getMinuteWindow();
   const day_key = getDayKey();
@@ -506,8 +534,8 @@ export async function getPerIpRateLimitStatus(
   const token = ipToken(ip);
 
   const [minute_val, day_val, concurrent_val] = await Promise.all([
-    r.get(`ratelimit:${tenant_id}:ip:minute:${token}:${minute_start}`),
-    r.get(`ratelimit:${tenant_id}:ip:day:${token}:${day_key}`),
+    r.get(`ratelimit:${tenant_id}:ip:${tier}:minute:${token}:${minute_start}`),
+    r.get(`ratelimit:${tenant_id}:ip:${tier}:day:${token}:${day_key}`),
     r.get(`ratelimit:${tenant_id}:ip:concurrent:${token}`),
   ]);
 
@@ -517,6 +545,7 @@ export async function getPerIpRateLimitStatus(
 
   return {
     allowlisted,
+    tier,
     ip_minute: {
       current: minute_current,
       limit: caps.per_minute,

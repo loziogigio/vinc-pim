@@ -5,12 +5,13 @@
  * stable JSON keys.
  */
 
-import type { RateLimitResult } from "@/lib/services/tenant-rate-limit.service";
+import type { RateLimitResult, RateLimitTier } from "@/lib/services/tenant-rate-limit.service";
 
 interface Log429Fields {
   tenant_id: string;
   ip: string;
   path: string;
+  tier: RateLimitTier;
   blocked_by: NonNullable<RateLimitResult["blocked_by"]>;
   limits: RateLimitResult["limits"];
 }
@@ -23,6 +24,7 @@ export function log429(fields: Log429Fields): void {
       tenant_id: fields.tenant_id,
       ip: fields.ip,
       path: fields.path,
+      tier: fields.tier,
       blocked_by: fields.blocked_by,
       ip_minute: fields.limits.ip_minute,
       ip_day: fields.limits.ip_day,

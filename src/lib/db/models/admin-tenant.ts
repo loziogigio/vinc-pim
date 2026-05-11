@@ -32,8 +32,13 @@ export interface ITenantRateLimit {
   requests_per_day: number;
   max_concurrent: number;
   per_ip_enabled: boolean;
+  // Web/browser tier (storefront, session, anonymous traffic)
   per_ip_requests_per_minute: number;
   per_ip_requests_per_day: number;
+  // API-key tier (server-to-server callers, e.g. PIM import sync)
+  per_ip_api_requests_per_minute: number;
+  per_ip_api_requests_per_day: number;
+  // Shared across tiers
   per_ip_max_concurrent: number;
   per_ip_allowlist: string[];
 }
@@ -136,8 +141,13 @@ const TenantSettingsSchema = new Schema(
       requests_per_day: { type: Number, default: 0 },
       max_concurrent: { type: Number, default: 0 },
       per_ip_enabled: { type: Boolean, default: true },
-      per_ip_requests_per_minute: { type: Number, default: 120 },
-      per_ip_requests_per_day: { type: Number, default: 20000 },
+      // Web/browser tier
+      per_ip_requests_per_minute: { type: Number, default: 600 },
+      per_ip_requests_per_day: { type: Number, default: 100000 },
+      // API-key tier
+      per_ip_api_requests_per_minute: { type: Number, default: 1000 },
+      per_ip_api_requests_per_day: { type: Number, default: 300000 },
+      // Shared across tiers
       per_ip_max_concurrent: { type: Number, default: 20 },
       per_ip_allowlist: { type: [String], default: [] },
     },

@@ -39,15 +39,21 @@ export async function GET(
     }
 
     const settings = tenant.settings?.rate_limit ?? null;
-    const status = await getPerIpRateLimitStatus(id, settings, normalized);
+    const [web, api] = await Promise.all([
+      getPerIpRateLimitStatus(id, settings, normalized, "web"),
+      getPerIpRateLimitStatus(id, settings, normalized, "api"),
+    ]);
 
     return NextResponse.json({
       ip: rawIp,
       normalized,
-      allowlisted: status.allowlisted,
-      ip_minute: status.ip_minute,
-      ip_day: status.ip_day,
-      ip_concurrent: status.ip_concurrent,
+      allowlisted: web.allowlisted,
+      web: { ip_minute: web.ip_minute, ip_day: web.ip_day },
+      api: { ip_minute: api.ip_minute, ip_day: api.ip_day },
+      ip_concurrent: web.ip_concurrent, // shared across tiers
+      // Back-compat: callers built against the pre-tier shape still see web counters here.
+      ip_minute: web.ip_minute,
+      ip_day: web.ip_day,
     });
   } catch (error: unknown) {
     console.error("[Admin] Error probing IP usage:", error);

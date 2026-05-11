@@ -20,8 +20,13 @@ const DEFAULT_RATE_LIMIT = {
   requests_per_day: 0,
   max_concurrent: 0,
   per_ip_enabled: true,
-  per_ip_requests_per_minute: 120,
-  per_ip_requests_per_day: 20000,
+  // Web/browser tier
+  per_ip_requests_per_minute: 600,
+  per_ip_requests_per_day: 100000,
+  // API-key tier
+  per_ip_api_requests_per_minute: 1000,
+  per_ip_api_requests_per_day: 300000,
+  // Shared
   per_ip_max_concurrent: 20,
   per_ip_allowlist: [] as string[],
 };
@@ -81,6 +86,8 @@ export async function PATCH(
       per_ip_enabled = true,
       per_ip_requests_per_minute = 0,
       per_ip_requests_per_day = 0,
+      per_ip_api_requests_per_minute = 0,
+      per_ip_api_requests_per_day = 0,
       per_ip_max_concurrent = 0,
       per_ip_allowlist = [],
     } = body;
@@ -112,6 +119,8 @@ export async function PATCH(
       validateNumber(max_concurrent, "max_concurrent"),
       validateNumber(per_ip_requests_per_minute, "per_ip_requests_per_minute"),
       validateNumber(per_ip_requests_per_day, "per_ip_requests_per_day"),
+      validateNumber(per_ip_api_requests_per_minute, "per_ip_api_requests_per_minute"),
+      validateNumber(per_ip_api_requests_per_day, "per_ip_api_requests_per_day"),
       validateNumber(per_ip_max_concurrent, "per_ip_max_concurrent"),
     ].filter(Boolean);
 
@@ -142,6 +151,8 @@ export async function PATCH(
       per_ip_enabled,
       per_ip_requests_per_minute: per_ip_enabled ? per_ip_requests_per_minute : 0,
       per_ip_requests_per_day: per_ip_enabled ? per_ip_requests_per_day : 0,
+      per_ip_api_requests_per_minute: per_ip_enabled ? per_ip_api_requests_per_minute : 0,
+      per_ip_api_requests_per_day: per_ip_enabled ? per_ip_api_requests_per_day : 0,
       per_ip_max_concurrent: per_ip_enabled ? per_ip_max_concurrent : 0,
       per_ip_allowlist: per_ip_allowlist as string[],
     };

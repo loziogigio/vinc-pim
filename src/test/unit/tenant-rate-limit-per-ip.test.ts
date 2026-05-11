@@ -93,8 +93,12 @@ const baseSettings: ITenantRateLimit = {
   requests_per_day: 0,
   max_concurrent: 0,
   per_ip_enabled: true,
+  // web tier
   per_ip_requests_per_minute: 5,
   per_ip_requests_per_day: 50,
+  // api tier (distinct values so tests can tell which tier is in play)
+  per_ip_api_requests_per_minute: 30,
+  per_ip_api_requests_per_day: 300,
   per_ip_max_concurrent: 10,
   per_ip_allowlist: [],
 };
@@ -189,5 +193,59 @@ describe("unit: tenant-rate-limit per-IP", () => {
     const status = await getPerIpRateLimitStatus("acme", settings, "7.7.7.7");
     expect(status.ip_minute.current).toBe(2);
     expect(status.ip_minute.limit).toBe(100);
+  });
+
+  // ── Tiers ──────────────────────────────────────────────────────────────
+
+  it("default tier is 'web' and uses the web caps", async () => {
+    const blocked = await (async () => {
+      // web cap = 5
+      for (let i = 0; i < 5; i++) await checkPerIpRateLimit("acme", baseSettings, "8.8.8.8");
+      return checkPerIpRateLimit("acme", baseSettings, "8.8.8.8");
+    })();
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.blocked_by).toBe("ip_minute");
+    expect(blocked.limits.ip_minute?.limit).toBe(5);
+  });
+
+  it("'api' tier uses the api caps, not the web caps", async () => {
+    // web cap is 5; api cap is 30 — 6 requests on the api tier must all pass
+    for (let i = 0; i < 6; i++) {
+      const r = await checkPerIpRateLimit("acme", baseSettings, "8.8.4.4", "api");
+      expect(r.allowed).toBe(true);
+    }
+    const status = await getPerIpRateLimitStatus("acme", baseSettings, "8.8.4.4", "api");
+    expect(status.tier).toBe("api");
+    expect(status.ip_minute.limit).toBe(30);
+    expect(status.ip_minute.current).toBe(6);
+  });
+
+  it("web and api counters are independent for the same IP", async () => {
+    const ip = "172.16.0.9";
+    // exhaust the web tier (cap 5)
+    for (let i = 0; i < 5; i++) await checkPerIpRateLimit("acme", baseSettings, ip, "web");
+    const webBlocked = await checkPerIpRateLimit("acme", baseSettings, ip, "web");
+    expect(webBlocked.allowed).toBe(false);
+    expect(webBlocked.blocked_by).toBe("ip_minute");
+    // api tier for the same IP is untouched
+    const apiOk = await checkPerIpRateLimit("acme", baseSettings, ip, "api");
+    expect(apiOk.allowed).toBe(true);
+    expect(apiOk.limits.ip_minute?.current).toBe(1);
+    // and the two use different Redis keys
+    const incrKeys = opLog.filter((o) => o.type === "incr").map((o) => o.key);
+    expect(incrKeys.some((k) => k.includes(":ip:web:minute:"))).toBe(true);
+    expect(incrKeys.some((k) => k.includes(":ip:api:minute:"))).toBe(true);
+  });
+
+  it("'unknown' IP clamp applies to the api tier too", async () => {
+    // api cap is 30 but unknown clamps to 5/min
+    for (let i = 0; i < 5; i++) {
+      const r = await checkPerIpRateLimit("acme", baseSettings, "unknown", "api");
+      expect(r.allowed).toBe(true);
+    }
+    const blocked = await checkPerIpRateLimit("acme", baseSettings, "unknown", "api");
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.blocked_by).toBe("ip_minute");
+    expect(blocked.limits.ip_minute?.limit).toBe(5);
   });
 });

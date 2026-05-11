@@ -263,8 +263,10 @@ async function getTenantRateLimitSettings(
       requests_per_day: rl?.requests_per_day ?? 0,
       max_concurrent: rl?.max_concurrent ?? 0,
       per_ip_enabled: rl?.per_ip_enabled ?? true,
-      per_ip_requests_per_minute: rl?.per_ip_requests_per_minute ?? 120,
-      per_ip_requests_per_day: rl?.per_ip_requests_per_day ?? 20000,
+      per_ip_requests_per_minute: rl?.per_ip_requests_per_minute ?? 600,
+      per_ip_requests_per_day: rl?.per_ip_requests_per_day ?? 100000,
+      per_ip_api_requests_per_minute: rl?.per_ip_api_requests_per_minute ?? 1000,
+      per_ip_api_requests_per_day: rl?.per_ip_api_requests_per_day ?? 300000,
       per_ip_max_concurrent: rl?.per_ip_max_concurrent ?? 20,
       per_ip_allowlist: rl?.per_ip_allowlist ?? [],
     };
