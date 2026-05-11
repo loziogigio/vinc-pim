@@ -49,9 +49,16 @@ const DEFAULT_CONFIG: FormBlockConfig = {
 
 interface FormDefinitionsTabProps {
   storefrontSlug: string;
+  /**
+   * Base path for the form-definitions API. Defaults to the B2C storefront route.
+   * Pass a B2B portal route (e.g. `/api/b2b/b2b/portals/${slug}/form-definitions`) to
+   * reuse this component on the B2B portal admin page. All fetches (GET list, POST
+   * create, PUT update, DELETE) are built off this base.
+   */
+  apiBase?: string;
 }
 
-export function FormDefinitionsTab({ storefrontSlug }: FormDefinitionsTabProps) {
+export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: FormDefinitionsTabProps) {
   const { t } = useTranslation();
   const [definitions, setDefinitions] = useState<FormDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +77,7 @@ export function FormDefinitionsTab({ storefrontSlug }: FormDefinitionsTabProps) 
   const [formEmails, setFormEmails] = useState<string[]>([]);
   const [formSenderCopy, setFormSenderCopy] = useState(false);
 
-  const apiBase = `/api/b2b/b2c/storefronts/${storefrontSlug}/form-definitions`;
+  const apiBase = apiBaseProp ?? `/api/b2b/b2c/storefronts/${storefrontSlug}/form-definitions`;
 
   const fetchDefinitions = useCallback(async () => {
     try {
