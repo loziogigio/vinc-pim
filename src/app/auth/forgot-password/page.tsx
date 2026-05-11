@@ -1,13 +1,28 @@
+/**
+ * Forgot Password Page
+ *
+ * Reached from the "Password dimenticata?" link on the SSO login page.
+ * Shares the same shell as /auth/login (see AuthShell) so it feels like a
+ * continuation of the login flow rather than a separate section.
+ *
+ * URL: /auth/forgot-password
+ *
+ * Query parameters (all optional, forwarded back to /auth/login):
+ * - tenant_id, client_id, redirect_uri, state
+ * - email: pre-fill the email field
+ */
+
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
-import { LoginHero } from "@/components/b2b/LoginHero";
+import { AuthShell } from "../_components/AuthShell";
+import { getTenantBranding } from "../_components/tenant-branding";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Forgot password — VendereInCloud CommerceSuite",
-  description: "Recover access to your VendereInCloud tenant.",
+  title: "Recupera password — VINC Commerce Suite",
+  description: "Recupera l'accesso al tuo account VINC Commerce Suite.",
 };
 
 interface PageProps {
@@ -24,6 +39,10 @@ export default async function ForgotPasswordPage({ searchParams }: PageProps) {
   const { tenant_id, email, redirect_uri, client_id, state } =
     await searchParams;
 
+  // Fetch tenant branding if tenant_id is provided (same as /auth/login)
+  const branding = tenant_id ? await getTenantBranding(tenant_id) : null;
+
+  // Build the back-to-login URL, preserving the OAuth params
   const loginParams = new URLSearchParams();
   if (tenant_id) loginParams.set("tenant_id", tenant_id);
   if (client_id) loginParams.set("client_id", client_id);
@@ -32,30 +51,22 @@ export default async function ForgotPasswordPage({ searchParams }: PageProps) {
   const loginUrl = `/auth/login${loginParams.toString() ? `?${loginParams.toString()}` : ""}`;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="lg:hidden">
-        <LoginHero compact />
-      </div>
-      <div className="grid lg:min-h-screen lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="hidden lg:block">
-          <LoginHero />
-        </div>
-        <div className="flex items-center justify-center px-4 py-10 sm:px-8 lg:px-10 lg:py-0">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-[#009688]" />
-              </div>
-            }
-          >
-            <ForgotPasswordForm
-              tenantId={tenant_id}
-              initialEmail={email}
-              loginUrl={loginUrl}
-            />
-          </Suspense>
-        </div>
-      </div>
-    </div>
+    <AuthShell branding={branding}>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          </div>
+        }
+      >
+        <ForgotPasswordForm
+          tenantId={tenant_id}
+          tenantName={branding?.title}
+          primaryColor={branding?.primaryColor}
+          initialEmail={email}
+          loginUrl={loginUrl}
+        />
+      </Suspense>
+    </AuthShell>
   );
 }

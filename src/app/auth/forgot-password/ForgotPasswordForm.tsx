@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * Forgot Password Form
+ *
+ * Visually mirrors the SSO LoginForm (slate inputs, accent-colored submit,
+ * locked-tenant chip) so /auth/forgot-password reads as a continuation of the
+ * login flow rather than a separate section. Submits to /api/auth/reset-password,
+ * which emails a temporary password.
+ */
+
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -8,26 +17,29 @@ import {
   Building2,
   CheckCircle,
   Loader2,
-  Mail,
+  Lock,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/lib/i18n/useTranslation";
-import { UILanguageSwitcher } from "@/components/b2b/UILanguageSwitcher";
+
+const DEFAULT_ACCENT_COLOR = "#6366f1";
 
 interface ForgotPasswordFormProps {
   tenantId?: string;
+  tenantName?: string;
+  primaryColor?: string;
   initialEmail?: string;
   loginUrl: string;
 }
 
 export function ForgotPasswordForm({
   tenantId: initialTenantId,
+  tenantName,
+  primaryColor,
   initialEmail,
   loginUrl,
 }: ForgotPasswordFormProps) {
   const { t } = useTranslation();
+
   const [email, setEmail] = useState(initialEmail || "");
   const [tenantId, setTenantId] = useState(initialTenantId || "");
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +47,7 @@ export function ForgotPasswordForm({
   const [success, setSuccess] = useState(false);
 
   const isTenantLocked = !!initialTenantId;
+  const accentColor = primaryColor || DEFAULT_ACCENT_COLOR;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -69,28 +82,31 @@ export function ForgotPasswordForm({
 
   if (success) {
     return (
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex justify-end">
-          <UILanguageSwitcher />
-        </div>
-        <div className="rounded-[0.428rem] border border-emerald-200/70 bg-emerald-50 p-6 text-center dark:border-emerald-400/30 dark:bg-emerald-500/10">
-          <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500" />
-          <h2 className="text-lg font-semibold text-emerald-800 dark:text-emerald-200">
+      <div className="space-y-5">
+        <div className="p-4 bg-green-50 border border-green-100 rounded-lg text-center">
+          <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-2" />
+          <p className="text-sm font-medium text-green-800">
             {t("forgotPassword.successTitle")}
-          </h2>
-          <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-300">
+          </p>
+          <p className="text-sm text-green-600 mt-1">
             {t("forgotPassword.successDescription", { email })}
           </p>
-          <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
+          <p className="text-sm text-green-600 mt-1">
             {t("forgotPassword.successHint")}
           </p>
         </div>
 
         <Link
           href={loginUrl}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-[#009688] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#00897b]"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white font-medium rounded-lg transition-all"
+          style={{ backgroundColor: accentColor }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.filter = "brightness(0.9)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.filter = "";
+          }}
         >
-          <Mail className="h-4 w-4" />
           {t("forgotPassword.goToLogin")}
         </Link>
       </div>
@@ -98,84 +114,125 @@ export function ForgotPasswordForm({
   }
 
   return (
-    <div className="w-full max-w-md space-y-6">
-      <div className="flex justify-end">
-        <UILanguageSwitcher />
-      </div>
-
-      <div className="space-y-1">
-        <h1 className="text-[1.625rem] font-semibold tracking-tight text-[#5e5873] dark:text-slate-100">
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">
           {t("forgotPassword.title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">
+        </h2>
+        <p className="text-sm text-slate-500 mt-1">
           {t("forgotPassword.description")}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Error Display */}
         {error && (
-          <div className="flex items-start gap-3 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <span>{error}</span>
+          <div className="p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm font-medium text-red-800">{error}</p>
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="tenant">{t("login.tenantId")}</Label>
-          <div className="relative">
-            <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="tenant"
-              type="text"
-              placeholder={t("login.tenantPlaceholder")}
-              value={tenantId}
-              onChange={(e) =>
-                setTenantId(e.target.value.toLowerCase().trim())
-              }
-              className="pl-10"
-              required
-              disabled={isLoading || isTenantLocked}
-              readOnly={isTenantLocked}
-            />
+        {/* Tenant — locked chip when provided via URL, otherwise an input */}
+        {isTenantLocked ? (
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <Building2 className="h-4 w-4 text-indigo-600" />
+              </div>
+              <p className="flex-1 text-sm font-medium text-slate-900 truncate">
+                {tenantName || initialTenantId}
+              </p>
+              <Lock className="w-4 h-4 text-slate-400" />
+            </div>
           </div>
+        ) : (
+          <div>
+            <label
+              htmlFor="tenant_id"
+              className="block text-sm font-medium text-slate-700 mb-1.5"
+            >
+              {t("login.tenantId")}
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Building2 className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                id="tenant_id"
+                value={tenantId}
+                onChange={(e) =>
+                  setTenantId(e.target.value.toLowerCase().trim())
+                }
+                placeholder={t("login.tenantPlaceholder")}
+                required
+                disabled={isLoading}
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Email */}
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-slate-700 mb-1.5"
+          >
+            {t("forgotPassword.emailLabel")}
+          </label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t("forgotPassword.emailPlaceholder")}
+            autoComplete="email"
+            required
+            disabled={isLoading}
+            className="block w-full px-3 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">{t("forgotPassword.emailLabel")}</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="email"
-              type="email"
-              placeholder={t("forgotPassword.emailPlaceholder")}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              className="pl-10"
-              required
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          style={
+            {
+              backgroundColor: accentColor,
+              "--tw-ring-color": accentColor,
+            } as React.CSSProperties
+          }
+          onMouseEnter={(e) => {
+            if (!isLoading) {
+              e.currentTarget.style.filter = "brightness(0.9)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.filter = "";
+          }}
+        >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t("forgotPassword.submitting")}
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>{t("forgotPassword.submitting")}</span>
             </>
           ) : (
-            t("forgotPassword.submit")
+            <span>{t("forgotPassword.submit")}</span>
           )}
-        </Button>
+        </button>
       </form>
 
-      <div className="border-t border-[#ebe9f1] pt-3 text-center dark:border-white/10">
+      <div className="text-center">
         <Link
           href={loginUrl}
-          className="inline-flex items-center gap-1 text-[13px] font-medium text-[#009688] hover:underline dark:text-[#4dd0c8]"
+          className="inline-flex items-center gap-1 text-sm font-medium"
+          style={{ color: accentColor }}
         >
-          <ArrowLeft className="h-3 w-3" />
+          <ArrowLeft className="h-4 w-4" />
           {t("forgotPassword.backToLogin")}
         </Link>
       </div>
