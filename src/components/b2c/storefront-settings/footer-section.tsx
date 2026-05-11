@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Plus, Trash2, Loader2, Send, Save, Upload, Code, LayoutGrid, Type, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SectionCard } from "./section-card";
 import { Field, ColorField, inputClass } from "./field-helpers";
 import type { IB2CStorefrontFooter } from "./types";
@@ -83,7 +84,7 @@ function FooterPreview({ footer }: { footer: IB2CStorefrontFooter }) {
           </p>
         )}
 
-        {!footer.copyright_text && columns.length === 0 && !footer.show_newsletter && (
+        {!footer.copyright_text && columns.length === 0 && !footer.show_newsletter && !footer.footer_html_draft && (
           <p className="text-[10px] opacity-40 text-center py-4">Footer preview will appear here</p>
         )}
       </div>
@@ -248,7 +249,9 @@ export function FooterSection({
   onSave: () => void;
 }) {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [confirmSwitchToStructured, setConfirmSwitchToStructured] = useState(false);
   const hasUnpublishedChanges = JSON.stringify(footerDraft) !== JSON.stringify(footer);
+  const isHtmlMode = footerDraft.footer_html_draft !== undefined;
 
   const handlePublish = async () => {
     setIsPublishing(true);
@@ -270,6 +273,23 @@ export function FooterSection({
   }
   function removeColumn(index: number) {
     update("columns", (footerDraft.columns || []).filter((_, i) => i !== index));
+  }
+
+  // Editor mode switching. Going from HTML → Structured discards the custom HTML,
+  // so confirm first when there is something to lose.
+  function switchToHtmlMode() {
+    update("footer_html_draft", footerDraft.footer_html_draft || footerDraft.footer_html || "");
+  }
+  function switchToStructuredMode() {
+    if (footerDraft.footer_html_draft) {
+      setConfirmSwitchToStructured(true);
+      return;
+    }
+    update("footer_html_draft", undefined);
+  }
+  function confirmSwitchToStructuredMode() {
+    setConfirmSwitchToStructured(false);
+    update("footer_html_draft", undefined);
   }
 
   return (
@@ -339,15 +359,15 @@ export function FooterSection({
                 <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
                   <button
                     type="button"
-                    onClick={() => update("footer_html_draft", undefined)}
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${!footerDraft.footer_html_draft ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    onClick={switchToStructuredMode}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${!isHtmlMode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     <LayoutGrid className="h-3 w-3" /> Structured
                   </button>
                   <button
                     type="button"
-                    onClick={() => update("footer_html_draft", footerDraft.footer_html_draft || footerDraft.footer_html || "")}
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${footerDraft.footer_html_draft ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    onClick={switchToHtmlMode}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${isHtmlMode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     <Code className="h-3 w-3" /> HTML
                   </button>
@@ -355,7 +375,7 @@ export function FooterSection({
               </div>
 
               {/* HTML Editor Mode */}
-              {footerDraft.footer_html_draft !== undefined ? (
+              {isHtmlMode ? (
                 <div className="space-y-2">
                   <p className="text-xs text-slate-500">Write custom HTML for the entire footer. This replaces the structured columns.</p>
                   <textarea
@@ -395,6 +415,17 @@ export function FooterSection({
         {/* Preview */}
         <FooterPreview footer={footerDraft} />
       </div>
+
+      <ConfirmDialog
+        open={confirmSwitchToStructured}
+        title="Discard custom HTML?"
+        message="Switching to Structured mode will remove the custom footer HTML. This can't be undone unless you cancel now."
+        confirmText="Discard HTML"
+        cancelText="Keep HTML"
+        variant="warning"
+        onConfirm={confirmSwitchToStructuredMode}
+        onCancel={() => setConfirmSwitchToStructured(false)}
+      />
     </div>
   );
 }
