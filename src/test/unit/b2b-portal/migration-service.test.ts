@@ -164,4 +164,30 @@ describe("buildPortalFromHomeSettings", () => {
     expect(portal.footer.footer_html).toBeUndefined();
     expect(portal.footer_draft).toBeUndefined();
   });
+
+  it("maps branding footer colors onto footer.bg_color / text_color", () => {
+    const portal = buildPortalFromHomeSettings(
+      {
+        branding: {
+          title: "X",
+          footerBackgroundColor: "#101820",
+          footerTextColor: "#cccccc",
+        },
+        footerHtml: "<footer>Hi</footer>",
+      } as any,
+      "X",
+    );
+    expect(portal.footer.footer_html).toBe("<footer>Hi</footer>");
+    expect(portal.footer.bg_color).toBe("#101820");
+    expect(portal.footer.text_color).toBe("#cccccc");
+  });
+
+  it("omits footer colors when branding has none", () => {
+    const portal = buildPortalFromHomeSettings(
+      { branding: { title: "X" } } as any,
+      "X",
+    );
+    expect(portal.footer.bg_color).toBeUndefined();
+    expect(portal.footer.text_color).toBeUndefined();
+  });
 });

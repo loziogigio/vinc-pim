@@ -75,14 +75,20 @@ function mapMetaTags(
 }
 
 /**
- * Map the published footer HTML string to an IB2CStorefrontFooter.
- * HomeSettings stores footer content as a raw HTML string (footerHtml),
- * while IB2CStorefrontFooter wraps it in footer_html.
- * Returns undefined when no HTML is set.
+ * Map the published footer HTML string + branding footer colors to an
+ * IB2CStorefrontFooter. HomeSettings stores footer content as a raw HTML
+ * string (footerHtml) and footer colors on branding
+ * (footerBackgroundColor / footerTextColor), while IB2CStorefrontFooter
+ * holds footer_html / bg_color / text_color.
  */
-function mapFooter(footerHtml: string | undefined): IB2CStorefrontFooter {
+function mapFooter(
+  footerHtml: string | undefined,
+  branding: HomeSettings["branding"] | undefined,
+): IB2CStorefrontFooter {
   return {
     footer_html: footerHtml,
+    ...(branding?.footerBackgroundColor ? { bg_color: branding.footerBackgroundColor } : {}),
+    ...(branding?.footerTextColor ? { text_color: branding.footerTextColor } : {}),
   };
 }
 
@@ -132,7 +138,7 @@ export function buildPortalFromHomeSettings(
     ? { ...settings.headerConfigDraft }
     : undefined;
 
-  const footer = mapFooter(settings.footerHtml);
+  const footer = mapFooter(settings.footerHtml, settings.branding);
   const footerDraft = mapFooterDraft(settings.footerHtmlDraft);
 
   return {
