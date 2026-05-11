@@ -4541,6 +4541,18 @@ const sk = {
       },
       notMigratedHint: "Spustite `scripts/migrate-b2b-portal.ts` na migráciu tohto nájomcu.",
     },
+    b2bPageBuilder: {
+      title: "Tvorca stránok B2B",
+      backToPages: "Späť na stránky",
+      missingPageParam: "Chýba parameter stránky",
+      blockBuilder: "Tvorca blokov",
+      saveDraft: "Uložiť koncept",
+      savingChanges: "Ukladanie…",
+      unsavedChanges: "Neuložené zmeny",
+      allChangesSaved: "Všetky zmeny uložené",
+      draftSaved: "Koncept uložený",
+      publishSuccess: "Stránka úspešne publikovaná!",
+    },
     settings: {
       title: "Nastavenia",
       subtitle: "Konfigurovať váš B2B katalógový systém",

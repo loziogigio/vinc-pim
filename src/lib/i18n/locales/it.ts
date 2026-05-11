@@ -4565,6 +4565,18 @@ const it = {
       },
       notMigratedHint: "Esegui `scripts/migrate-b2b-portal.ts` per migrare questo tenant.",
     },
+    b2bPageBuilder: {
+      title: "Costruttore Pagine B2B",
+      backToPages: "Torna alle Pagine",
+      missingPageParam: "Parametro pagina mancante",
+      blockBuilder: "Costruttore Blocchi",
+      saveDraft: "Salva Bozza",
+      savingChanges: "Salvataggio…",
+      unsavedChanges: "Modifiche non salvate",
+      allChangesSaved: "Tutte le modifiche salvate",
+      draftSaved: "Bozza salvata",
+      publishSuccess: "Pagina pubblicata con successo!",
+    },
     settings: {
       title: "Impostazioni",
       subtitle: "Configura il tuo sistema catalogo B2B",
