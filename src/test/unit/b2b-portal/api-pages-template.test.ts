@@ -54,10 +54,12 @@ vi.mock("@/lib/auth/tenant-auth", () => ({
 
 // Mock Redis — we don't want real connections in tests
 const mockRedisPublish = vi.fn().mockResolvedValue(1);
+const mockInvalidateB2BCache = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/lib/cache/redis-client", () => ({
   getRedis: vi.fn(() => ({
     publish: mockRedisPublish,
   })),
+  invalidateB2BCache: mockInvalidateB2BCache,
 }));
 
 // Import modules AFTER mocks are set up
@@ -136,9 +138,10 @@ beforeEach(async () => {
   const { getTenantModel } = await import("@/lib/db/models/admin-tenant");
   vi.mocked(getTenantModel).mockResolvedValue(TenantModel);
 
-  // Re-apply Redis mock after clearAllMocks
+  // Re-apply Redis mocks after clearAllMocks
   const { getRedis } = await import("@/lib/cache/redis-client");
   vi.mocked(getRedis).mockReturnValue({ publish: mockRedisPublish } as any);
+  mockInvalidateB2BCache.mockResolvedValue(undefined);
 });
 
 // ============================================
@@ -376,7 +379,7 @@ describe("POST .../template/publish", () => {
     expect(tpl.publishedAt).toBeTruthy();
   });
 
-  it("calls getRedis().publish with correct channel and payload", async () => {
+  it("invalidates the b2b cache with the page + sitemap tags", async () => {
     await markTenantMigrated(TEST_TENANT);
     const { HomeTemplate } = await connectWithModels(TEST_DB);
     await HomeTemplate.create({
@@ -398,15 +401,18 @@ describe("POST .../template/publish", () => {
     );
     await publishRoute(req, ctx);
 
-    expect(mockRedisPublish).toHaveBeenCalledWith(
-      `vinc-b2b:cache-invalidate:${PORTAL_SLUG}`,
-      `page-${PAGE_SLUG},site-config`
-    );
+    expect(mockInvalidateB2BCache).toHaveBeenCalledWith(TEST_TENANT, [
+      `page:${PAGE_SLUG}`,
+      "sitemap",
+    ]);
   });
 
-  it("still returns 200 even if Redis publish fails (non-fatal)", async () => {
+  it("still returns 200 when cache invalidation is unavailable (non-fatal)", async () => {
     await markTenantMigrated(TEST_TENANT);
-    mockRedisPublish.mockRejectedValueOnce(new Error("Redis connection refused"));
+    // invalidateB2BCache swallows its own errors; emulate that here.
+    mockInvalidateB2BCache.mockImplementationOnce(() =>
+      Promise.reject(new Error("Redis connection refused")).catch(() => undefined)
+    );
 
     const { HomeTemplate } = await connectWithModels(TEST_DB);
     await HomeTemplate.create({
@@ -427,7 +433,6 @@ describe("POST .../template/publish", () => {
       TEST_TENANT
     );
     const res = await publishRoute(req, ctx);
-    // Even if Redis fails, publish itself should succeed
     expect(res.status).toBe(200);
   });
 

@@ -5,6 +5,7 @@ import {
   isTenantMigrated,
   NOT_MIGRATED_RESPONSE_BODY,
 } from "@/lib/services/b2b-portal-migration-flag.service";
+import { invalidateB2BCache } from "@/lib/cache/redis-client";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     }
 
     const config = await unpublishVersionInPortal(auth.tenantDb, slug, version);
+    void invalidateB2BCache(auth.tenantId, "home-template");
     return NextResponse.json(config);
   } catch (error) {
     console.error("[POST unpublish-version]", error);

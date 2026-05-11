@@ -29,6 +29,7 @@ import {
   isTenantMigrated,
   NOT_MIGRATED_RESPONSE_BODY,
 } from "@/lib/services/b2b-portal-migration-flag.service";
+import { invalidateB2BCache } from "@/lib/cache/redis-client";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -85,6 +86,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (!portal) {
       return NextResponse.json({ error: "Portal not found" }, { status: 404 });
     }
+
+    // Branding/header/footer/meta/scripts all feed the b2b "home-settings" tag.
+    void invalidateB2BCache(auth.tenantId, "home-settings");
 
     return NextResponse.json({ success: true, data: portal });
   } catch (error) {

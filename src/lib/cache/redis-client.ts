@@ -61,3 +61,32 @@ export async function invalidateB2CCache(
     console.warn("[b2c-cache] Failed to invalidate:", (err as Error).message);
   }
 }
+
+/**
+ * Invalidate the vinc-b2b storefront's Next.js cache via Redis pub/sub.
+ *
+ * Publishes comma-separated cache-tag names to `vinc-b2b:cache-invalidate:{tenantId}`.
+ * The vinc-b2b instrumentation subscriber maps the names to tenant-scoped tags and
+ * calls `revalidateTag()`. One "default" portal per tenant, so the channel is keyed
+ * by tenant id, not portal slug.
+ *
+ * Known names (see vinc-b2b src/lib/cache/tags.ts):
+ *   "home-settings" (branding/header/footer/meta/scripts), "home-template",
+ *   "menu", "categories", "collections", "products", "sitemap", "page:{slug}"
+ */
+export async function invalidateB2BCache(
+  tenantId: string,
+  cacheNames: string | string[]
+): Promise<void> {
+  if (!tenantId) return;
+  const names = Array.isArray(cacheNames) ? cacheNames.join(",") : cacheNames;
+  try {
+    const receivers = await getRedis().publish(
+      `vinc-b2b:cache-invalidate:${tenantId}`,
+      names
+    );
+    console.log(`[b2b-cache] Invalidated "${names}" for tenant ${tenantId} (receivers: ${receivers})`);
+  } catch (err) {
+    console.warn("[b2b-cache] Failed to invalidate:", (err as Error).message);
+  }
+}

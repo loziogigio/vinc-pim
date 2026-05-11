@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { publishB2BPageTemplate } from "@/lib/db/b2b-page-templates";
-import { getRedis } from "@/lib/cache/redis-client";
+import { invalidateB2BCache } from "@/lib/cache/redis-client";
 import {
   isTenantMigrated,
   NOT_MIGRATED_RESPONSE_BODY,
@@ -25,15 +25,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { slug, pageSlug } = await params;
     const config = await publishB2BPageTemplate(slug, pageSlug, auth.tenantDb);
 
-    // Invalidate B2B cache
-    try {
-      await getRedis().publish(
-        `vinc-b2b:cache-invalidate:${slug}`,
-        `page-${pageSlug},site-config`
-      );
-    } catch (e) {
-      console.warn("[publish] Failed to send cache invalidation:", (e as Error).message);
-    }
+    void invalidateB2BCache(auth.tenantId, [`page:${pageSlug}`, "sitemap"]);
 
     return NextResponse.json(config);
   } catch (error) {

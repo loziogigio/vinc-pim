@@ -5,6 +5,7 @@ import {
   isTenantMigrated,
   NOT_MIGRATED_RESPONSE_BODY,
 } from "@/lib/services/b2b-portal-migration-flag.service";
+import { invalidateB2BCache } from "@/lib/cache/redis-client";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     const payload = await req.json().catch(() => ({}));
     const config = await publishCurrentInPortal(auth.tenantDb, slug, payload);
+    void invalidateB2BCache(auth.tenantId, "home-template");
     return NextResponse.json(config);
   } catch (error) {
     console.error("[POST /api/b2b/b2b/portals/[slug]/home-template/publish]", error);
