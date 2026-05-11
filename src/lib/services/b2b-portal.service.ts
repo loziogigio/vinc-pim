@@ -112,3 +112,32 @@ export async function deletePortal(dbName: string, slug: string): Promise<boolea
   const res = await B2BPortal.deleteOne({ slug });
   return res.deletedCount === 1;
 }
+
+/**
+ * Get a portal by domain (for public API lookup).
+ *
+ * Mirrors getStorefrontByDomain from b2c-storefront.service.
+ * Supports both object-format domains ({ domain: "..." }) and
+ * legacy plain-string array entries.
+ */
+export async function getPortalByDomain(
+  dbName: string,
+  domain: string,
+): Promise<IB2BPortal | null> {
+  const { B2BPortal } = await connectWithModels(dbName);
+  const normalizedDomain = domain.trim().toLowerCase();
+  const escaped = normalizedDomain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const urlRegex = new RegExp(`^https?://${escaped}(:\\d+)?/?$`, "i");
+
+  const result = await B2BPortal.collection.findOne({
+    status: "active",
+    $or: [
+      { "domains.domain": normalizedDomain },
+      { "domains.domain": { $regex: urlRegex } },
+      { domains: normalizedDomain },
+      { domains: { $regex: urlRegex } },
+    ],
+  });
+
+  return result as IB2BPortal | null;
+}
