@@ -12,6 +12,8 @@ import {
   Globe,
   Code2,
   MapPin,
+  FileText,
+  Inbox,
 } from "lucide-react";
 import { AppSidebar, NavLink, NavSection } from "@/components/navigation";
 import { cn } from "@/lib/utils";
@@ -21,8 +23,7 @@ import type { StorefrontActiveSection } from "@/components/b2c/storefront-settin
 /**
  * The 7 portal-detail sections (?section=...). Mirrors STOREFRONT_SECTIONS in
  * B2CNavigation — the B2B portal detail page reuses the same B2C section
- * components, so the section keys and labels are shared. (Pages/Forms are
- * Phase 3 and intentionally omitted.)
+ * components, so the section keys and labels are shared.
  */
 const PORTAL_SECTIONS: {
   key: StorefrontActiveSection;
@@ -105,6 +106,18 @@ export function B2BPortalNavigation() {
               active={!subPage && currentSection === item.key}
             />
           ))}
+          <PortalSectionLink
+            href={`${tenantPrefix}/b2b/b2b/portals/${portalSlug}/pages`}
+            icon={FileText}
+            label={t("nav.b2bPortal.pages")}
+            active={subPage === "pages"}
+          />
+          <PortalSectionLink
+            href={`${tenantPrefix}/b2b/b2b/portals/${portalSlug}/forms`}
+            icon={Inbox}
+            label={t("nav.b2bPortal.forms")}
+            active={subPage === "forms"}
+          />
         </NavSection>
       )}
     </AppSidebar>

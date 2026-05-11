@@ -336,6 +336,8 @@ const sk = {
       title: "B2B portál",
       portals: "Portály",
       settings: "Nastavenia",
+      pages: "Stránky",
+      forms: "Formuláre",
     },
     pricing: {
       title: "Pricing",

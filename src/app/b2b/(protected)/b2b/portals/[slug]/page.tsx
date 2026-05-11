@@ -13,7 +13,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, FileText, Inbox } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { GeneralSection, parseDomainEntry, formatDomain } from "@/components/b2c/storefront-settings/general-section";
@@ -261,6 +261,18 @@ export default function PortalDetailPage({
           <p className="text-sm text-slate-400">{t("pages.b2bPortal.detail.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href={`${tenantPrefix}/b2b/b2b/portals/${slug}/pages`}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <FileText className="h-4 w-4" /> {t("nav.b2bPortal.pages")}
+          </Link>
+          <Link
+            href={`${tenantPrefix}/b2b/b2b/portals/${slug}/forms`}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <Inbox className="h-4 w-4" /> {t("nav.b2bPortal.forms")}
+          </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2b-home-builder?portal=${slug}`}
             className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"

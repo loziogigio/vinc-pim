@@ -336,6 +336,8 @@ const it = {
       title: "Portale B2B",
       portals: "Portali",
       settings: "Impostazioni",
+      pages: "Pagine",
+      forms: "Moduli",
     },
     pricing: {
       title: "Pricing",

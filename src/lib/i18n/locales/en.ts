@@ -335,6 +335,8 @@ const en = {
       title: "B2B Portal",
       portals: "Portals",
       settings: "Settings",
+      pages: "Pages",
+      forms: "Forms",
     },
     pricing: {
       title: "Pricing",
