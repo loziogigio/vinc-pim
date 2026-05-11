@@ -184,9 +184,19 @@ export async function proxy(request: NextRequest) {
   // ===== PER-IP RATE LIMITING =====
   // Runs before tenant resolution / auth so abuse is capped early. Kill-switch:
   // PER_IP_RATE_LIMIT_ENABLED=false bypasses the entire layer.
+  //
+  // Tenant resolution order matters: API-key requests arrive on the platform
+  // host (cs.vendereincloud.it) which is not owned by any tenant, so a host
+  // lookup would return the wrong/no tenant and the per-IP cap would never
+  // fire. The API key (ak_{tenant}_…) encodes the real tenant — use it first,
+  // then any explicit path/header/query tenant, then the host as a fallback.
   if (process.env.PER_IP_RATE_LIMIT_ENABLED !== "false") {
+    const rlApiKey =
+      request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
     const rlTenantId =
-      tenantId ?? (await withTimeout(resolveTenantIdByHost(request), RATE_LIMIT_TIMEOUT_MS, null));
+      tenantId
+      ?? (rlApiKey ? extractTenantFromApiKey(rlApiKey) : null)
+      ?? (await withTimeout(resolveTenantIdByHost(request), RATE_LIMIT_TIMEOUT_MS, null));
     if (rlTenantId) {
       const rlSettings = await withTimeout(
         getCachedTenantRateLimit(rlTenantId),
