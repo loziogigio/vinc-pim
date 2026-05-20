@@ -259,3 +259,21 @@ export async function duplicateBlogContentVersion(
   await syncTranslationMeta(tenantDb, postId, locale);
   return getBlogContent(tenantDb, postId, locale);
 }
+
+/**
+ * Record a future-dated publish for a locale: marks the translation "scheduled"
+ * with scheduled_at. (Plan 3's worker performs the actual promotion when due.)
+ */
+export async function scheduleBlogContent(
+  tenantDb: string,
+  postId: string,
+  locale: string,
+  scheduledAt: Date,
+): Promise<BlogContentConfig> {
+  const { BlogPost } = await connectWithModels(tenantDb);
+  await BlogPost.updateOne(
+    { post_id: postId, "translations.locale": locale },
+    { $set: { "translations.$.scheduled_at": scheduledAt, "translations.$.status": "scheduled" } },
+  );
+  return getBlogContent(tenantDb, postId, locale);
+}
