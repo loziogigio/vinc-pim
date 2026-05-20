@@ -74,6 +74,10 @@ import { B2BPageSchema } from "./models/b2b-page";
 import { B2BSitemapSchema } from "./models/b2b-sitemap";
 import { B2BFormDefinitionSchema } from "./models/b2b-form-definition";
 import { B2BFormSubmissionSchema } from "./models/b2b-form-submission";
+import { BlogPostSchema } from "./models/blog-post";
+import { BlogPostVersionSchema } from "./models/blog-post-version";
+import { BlogCategorySchema } from "./models/blog-category";
+import { BlogTagSchema } from "./models/blog-tag";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -143,6 +147,10 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   B2BSitemap: B2BSitemapSchema,
   B2BFormDefinition: B2BFormDefinitionSchema,
   B2BFormSubmission: B2BFormSubmissionSchema,
+  BlogPost: BlogPostSchema,
+  BlogPostVersion: BlogPostVersionSchema,
+  BlogCategory: BlogCategorySchema,
+  BlogTag: BlogTagSchema,
 };
 
 /**
@@ -254,6 +262,10 @@ export async function getTenantModels(dbName: string) {
     B2BSitemap: connection.models.B2BSitemap,
     B2BFormDefinition: connection.models.B2BFormDefinition,
     B2BFormSubmission: connection.models.B2BFormSubmission,
+    BlogPost: connection.models.BlogPost,
+    BlogPostVersion: connection.models.BlogPostVersion,
+    BlogCategory: connection.models.BlogCategory,
+    BlogTag: connection.models.BlogTag,
   };
 }
 
@@ -333,6 +345,10 @@ export function getModelRegistry(connection: mongoose.Connection) {
     B2BSitemap: connection.models.B2BSitemap,
     B2BFormDefinition: connection.models.B2BFormDefinition,
     B2BFormSubmission: connection.models.B2BFormSubmission,
+    BlogPost: connection.models.BlogPost,
+    BlogPostVersion: connection.models.BlogPostVersion,
+    BlogCategory: connection.models.BlogCategory,
+    BlogTag: connection.models.BlogTag,
   };
 }
 
