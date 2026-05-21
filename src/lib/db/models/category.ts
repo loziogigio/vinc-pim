@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface ICategory extends Document {
   category_id: string;
   // wholesaler_id removed - database per wholesaler provides isolation
+  external_code?: string; // ERP / source-system identifier (e.g. ERP group code)
   name: string;
   slug: string;
   description?: string;
@@ -19,6 +20,13 @@ export interface ICategory extends Document {
 
   // Mobile Hero Image
   mobile_hero_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+
+  // Small icon/image to display next to the category label (menu-style)
+  item_icon?: {
     url: string;
     alt_text?: string;
     cdn_key?: string;
@@ -57,6 +65,11 @@ const CategorySchema = new Schema<ICategory>(
       index: true,
     },
     // wholesaler_id removed - database per wholesaler provides isolation
+    external_code: {
+      type: String,
+      trim: true,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -91,6 +104,11 @@ const CategorySchema = new Schema<ICategory>(
       cdn_key: String,
     },
     mobile_hero_image: {
+      url: String,
+      alt_text: String,
+      cdn_key: String,
+    },
+    item_icon: {
       url: String,
       alt_text: String,
       cdn_key: String,

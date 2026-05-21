@@ -9,6 +9,8 @@ import {
   ExternalLink,
   Plus,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import type { MenuDisplayMode } from "@/lib/types/home-settings";
 
 interface SalesChannel {
   code: string;
@@ -17,20 +19,24 @@ interface SalesChannel {
 }
 
 export interface MenuWidgetConfigProps {
-  config: { label?: string; channel?: string };
+  config: { label?: string; channel?: string; displayMode?: MenuDisplayMode };
   onConfigChange: (updates: Record<string, unknown>) => void;
 }
+
+const DISPLAY_MODES: MenuDisplayMode[] = ["inline", "drawer"];
 
 export function MenuWidgetConfig({
   config,
   onConfigChange,
 }: MenuWidgetConfigProps) {
+  const { t } = useTranslation();
   const [channels, setChannels] = useState<SalesChannel[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingChannels, setLoadingChannels] = useState(true);
 
   const channel = config.channel || "";
+  const displayMode: MenuDisplayMode = config.displayMode || "drawer";
 
   // Fetch available channels
   useEffect(() => {
@@ -96,6 +102,29 @@ export function MenuWidgetConfig({
           placeholder="Menu"
           className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
         />
+      </div>
+
+      {/* Display mode */}
+      <div>
+        <label className="text-xs font-medium text-slate-600">
+          {t("pages.homeSettings.widgets.displayMode")}
+        </label>
+        <div className="mt-1 inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-50">
+          {DISPLAY_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onConfigChange({ displayMode: mode })}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                displayMode === mode
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t(`pages.homeSettings.widgets.displayMode_${mode}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Menu status for channel */}

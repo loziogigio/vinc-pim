@@ -536,7 +536,37 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
         return { ...pkg, promotions: filteredPromos };
       });
 
-    return { ...product, packaging_options: filteredPackaging };
+    // Rewrite product-level `pricing` from the matched tier's packaging so the
+    // storefront's `product.pricing.list` reflects what the customer actually pays,
+    // not the universal default that the sync writes for anonymous browsers.
+    let resolvedPricing = product.pricing;
+    if (filteredPackaging.length > 0) {
+      const winner =
+        filteredPackaging.find((pkg: any) => pkg.is_default) ??
+        filteredPackaging.reduce((best: any, pkg: any) =>
+          (pkg.qty ?? Infinity) < (best.qty ?? Infinity) ? pkg : best,
+        );
+      const pp = winner?.pricing;
+      if (pp) {
+        // Prefer the package-level price (full precision); fall back to unit×qty.
+        // Then derive the unit value from list/qty so list_unit shares list's precision
+        // instead of being clipped to whatever was stored (e.g. 52.33 vs 52.3325).
+        const qty = winner?.qty && winner.qty > 0 ? winner.qty : 1;
+        const list   = pp.list   ?? (pp.list_unit   != null ? pp.list_unit   * qty : undefined);
+        const retail = pp.retail ?? (pp.retail_unit != null ? pp.retail_unit * qty : undefined);
+        const sale   = pp.sale   ?? (pp.sale_unit   != null ? pp.sale_unit   * qty : undefined);
+
+        resolvedPricing = {
+          ...(product.pricing ?? {}),
+          ...(list   != null ? { list,   list_unit:   list   / qty } : {}),
+          ...(retail != null ? { retail, retail_unit: retail / qty } : {}),
+          ...(sale   != null ? { sale,   sale_unit:   sale   / qty } : {}),
+          ...(pp.tag_filter != null ? { tag_filter: pp.tag_filter } : {}),
+        };
+      }
+    }
+
+    return { ...product, pricing: resolvedPricing, packaging_options: filteredPackaging };
   }
 
   return results.map((product: any) => {

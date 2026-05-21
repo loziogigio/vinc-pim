@@ -515,6 +515,284 @@ const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     `.trim()
   },
   {
+    template_id: "b2b_order_confirmation",
+    name: "Conferma Ordine B2B",
+    description: "Conferma ordine per clienti B2B: stile formale, riferimenti aziendali, termini di pagamento in evidenza. Non viene attivata automaticamente — disponibile per invio manuale dall'admin.",
+    trigger: "b2b_order_confirmation",
+    variables: [
+      "customer_name", "order_number", "order_date", "order_total", "order_url", "shop_name",
+      "shipping_address", "billing_address", "order_items_html", "items_count",
+      "subtotal_net", "total_discount", "total_vat", "shipping_cost", "coupon_code", "coupon_discount",
+      "payment_method", "payment_terms", "customer_notes",
+      "invoice_company_name", "invoice_vat_number", "invoice_fiscal_code", "invoice_pec", "invoice_sdi",
+      "bank_iban", "bank_beneficiary", "bank_bic_swift", "bank_name", "bank_causale",
+    ],
+    email_subject: "Conferma Ordine B2B {{order_number}} - {{shop_name}}",
+    email_html: `
+<!--
+  B2B order confirmation — formal tone, Outlook-bulletproof.
+  Same variable set as order_confirmation, restyled for business customers.
+-->
+
+<!-- Heading -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+  <tr>
+    <td style="padding: 0 0 8px 0;">
+      <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700;">Conferma Ordine</h2>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 4px 0; color: #475569; font-size: 15px;">
+      Spettabile {{customer_name}},
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 24px 0; color: #475569; font-size: 14px;">
+      confermiamo la ricezione del vostro ordine. Di seguito il riepilogo dei dati registrati nel nostro sistema.
+    </td>
+  </tr>
+</table>
+
+<!-- Order Summary Box -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#f1f5f9" style="background-color: #f1f5f9; border-left: 4px solid {{primary_color}}; padding: 16px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Riferimento Ordine:</td>
+          <td style="color: #0f172a; font-weight: 600; text-align: right; padding: 4px 0;">{{order_number}}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Data Emissione:</td>
+          <td style="color: #0f172a; text-align: right; padding: 4px 0;">{{order_date}}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Righe Ordine:</td>
+          <td style="color: #0f172a; text-align: right; padding: 4px 0;">{{items_count}}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Importo Totale:</td>
+          <td style="color: #0f172a; font-weight: 700; text-align: right; padding: 4px 0; font-size: 18px;">{{order_total}}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- Line Items Table -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 8px;">
+  <tr>
+    <td style="padding: 0 0 8px 0;">
+      <h3 style="color: #0f172a; margin: 0; font-size: 15px; font-weight: 600;">Articoli</h3>
+    </td>
+  </tr>
+</table>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 4px;">
+  <tr>
+    <td style="padding: 8px; border-bottom: 2px solid #cbd5e1;" width="52"></td>
+    <td style="padding: 8px; border-bottom: 2px solid #cbd5e1; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Articolo</td>
+    <td style="padding: 8px; border-bottom: 2px solid #cbd5e1; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; text-align: center;" width="50">Qt&agrave;</td>
+    <td style="padding: 8px; border-bottom: 2px solid #cbd5e1; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; text-align: right;" width="90">Prezzo</td>
+    <td style="padding: 8px; border-bottom: 2px solid #cbd5e1; color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; text-align: right;" width="100">Totale</td>
+  </tr>
+  {{order_items_html}}
+</table>
+
+<!-- Totals Breakdown -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td width="50%">&nbsp;</td>
+    <td width="50%">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 14px;">
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Imponibile:</td>
+          <td style="color: #0f172a; text-align: right; padding: 6px 0;">{{subtotal_net}}</td>
+        </tr>
+        {{#if coupon_code}}
+        <tr>
+          <td style="color: #059669; padding: 6px 0;">Coupon {{coupon_code}}:</td>
+          <td style="color: #059669; text-align: right; padding: 6px 0;">-{{coupon_discount}}</td>
+        </tr>
+        {{/if}}
+        {{#if total_discount}}
+        <tr>
+          <td style="color: #dc2626; padding: 6px 0;">Sconto Commerciale:</td>
+          <td style="color: #dc2626; text-align: right; padding: 6px 0;">-{{total_discount}}</td>
+        </tr>
+        {{/if}}
+        {{#if shipping_cost}}
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">Spese di Trasporto:</td>
+          <td style="color: #0f172a; text-align: right; padding: 6px 0;">{{shipping_cost}}</td>
+        </tr>
+        {{/if}}
+        {{#if total_vat}}
+        <tr>
+          <td style="color: #64748b; padding: 6px 0;">IVA:</td>
+          <td style="color: #0f172a; text-align: right; padding: 6px 0;">{{total_vat}}</td>
+        </tr>
+        {{/if}}
+        <tr>
+          <td style="color: #0f172a; font-weight: 700; padding: 8px 0; border-top: 2px solid #0f172a; font-size: 16px;">Totale Documento:</td>
+          <td style="color: #0f172a; font-weight: 700; text-align: right; padding: 8px 0; border-top: 2px solid #0f172a; font-size: 16px;">{{order_total}}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- Addresses -->
+{{#if shipping_address}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: {{#if billing_address}}8{{else}}24{{/if}}px;">
+  <tr>
+    <td bgcolor="#f8fafc" style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 14px;">
+      <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 13px; font-weight: 600;">Destinazione Merce</h4>
+      <p style="margin: 0; color: #475569; font-size: 13px; line-height: 1.5;">{{shipping_address}}</p>
+    </td>
+  </tr>
+</table>
+{{/if}}
+{{#if billing_address}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#f8fafc" style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 14px;">
+      <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 13px; font-weight: 600;">Sede di Fatturazione</h4>
+      <p style="margin: 0; color: #475569; font-size: 13px; line-height: 1.5;">{{billing_address}}</p>
+    </td>
+  </tr>
+</table>
+{{/if}}
+
+<!-- Customer Notes -->
+{{#if customer_notes}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#fffbeb" style="background-color: #fffbeb; border: 1px solid #fcd34d; padding: 14px;">
+      <h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 13px; font-weight: 600;">Note dell&#39;Ordine</h4>
+      <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.5;">{{customer_notes}}</p>
+    </td>
+  </tr>
+</table>
+{{/if}}
+
+<!-- Invoice / Business Data -->
+{{#if invoice_vat_number}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#f8fafc" style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 14px;">
+      <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 13px; font-weight: 600;">Dati Fiscali</h4>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+        {{#if invoice_company_name}}
+        <tr>
+          <td style="color: #64748b; padding: 3px 0;" width="140">Ragione Sociale:</td>
+          <td style="color: #0f172a; font-weight: 500; padding: 3px 0;">{{invoice_company_name}}</td>
+        </tr>
+        {{/if}}
+        <tr>
+          <td style="color: #64748b; padding: 3px 0;">Partita IVA:</td>
+          <td style="color: #0f172a; padding: 3px 0;">{{invoice_vat_number}}</td>
+        </tr>
+        {{#if invoice_fiscal_code}}
+        <tr>
+          <td style="color: #64748b; padding: 3px 0;">Codice Fiscale:</td>
+          <td style="color: #0f172a; padding: 3px 0;">{{invoice_fiscal_code}}</td>
+        </tr>
+        {{/if}}
+        {{#if invoice_sdi}}
+        <tr>
+          <td style="color: #64748b; padding: 3px 0;">Codice SDI:</td>
+          <td style="color: #0f172a; padding: 3px 0;">{{invoice_sdi}}</td>
+        </tr>
+        {{/if}}
+        {{#if invoice_pec}}
+        <tr>
+          <td style="color: #64748b; padding: 3px 0;">PEC:</td>
+          <td style="color: #0f172a; padding: 3px 0;">{{invoice_pec}}</td>
+        </tr>
+        {{/if}}
+      </table>
+    </td>
+  </tr>
+</table>
+{{/if}}
+
+<!-- Payment Terms (B2B emphasizes terms) -->
+{{#if payment_method}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#f0f9ff" style="background-color: #f0f9ff; border: 1px solid #bae6fd; padding: 14px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 14px;">
+        <tr>
+          <td style="color: #0c4a6e; font-weight: 600; padding: 0 0 6px 0;">Condizioni di Pagamento</td>
+        </tr>
+        <tr>
+          <td style="color: #075985;">{{payment_method}}{{#if payment_terms}} &mdash; <strong>{{payment_terms}}</strong>{{/if}}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{{/if}}
+
+<!-- Bank Transfer Details (conditional) -->
+{{#if bank_iban}}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 24px;">
+  <tr>
+    <td bgcolor="#eff6ff" style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 16px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+          <td style="padding: 0 0 10px 0;">
+            <h4 style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 600;">Coordinate Bancarie per Bonifico</h4>
+          </td>
+        </tr>
+      </table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13px;">
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;" width="140">Beneficiario:</td>
+          <td style="color: #0f172a; font-weight: 600; padding: 4px 0;">{{bank_beneficiary}}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">IBAN:</td>
+          <td style="color: #0f172a; font-weight: 600; padding: 4px 0; font-family: monospace, monospace;">{{bank_iban}}</td>
+        </tr>
+        {{#if bank_bic_swift}}
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">BIC/SWIFT:</td>
+          <td style="color: #0f172a; padding: 4px 0; font-family: monospace, monospace;">{{bank_bic_swift}}</td>
+        </tr>
+        {{/if}}
+        {{#if bank_name}}
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Istituto:</td>
+          <td style="color: #0f172a; padding: 4px 0;">{{bank_name}}</td>
+        </tr>
+        {{/if}}
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Causale:</td>
+          <td style="color: #0f172a; font-weight: 600; padding: 4px 0;">{{bank_causale}}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b; padding: 4px 0;">Importo:</td>
+          <td style="color: #0f172a; font-weight: 700; padding: 4px 0; font-size: 15px;">{{order_total}}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{{/if}}
+
+<!-- Formal closing -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+  <tr>
+    <td style="color: #475569; font-size: 13px; line-height: 1.6;">
+      Per qualsiasi necessit&agrave; relativa al presente ordine, restiamo a vostra completa disposizione.<br>
+      Cordiali saluti.
+    </td>
+  </tr>
+</table>
+    `.trim()
+  },
+  {
     template_id: "order_shipped",
     name: "Ordine Spedito",
     description: "Notifica che l'ordine è stato spedito. Include numero tracking e link per seguire la spedizione.",

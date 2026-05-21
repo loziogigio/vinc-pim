@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Package } from "lucide-react";
+import { ArrowRight, Package, Users } from "lucide-react";
 import { DocsTopNav } from "@/components/developers/docs/DocsTopNav";
 
 const SURFACES = [
@@ -9,6 +9,14 @@ const SURFACES = [
     description:
       "Products, categories, brands, imports, and everything else in the Product Information Management module.",
     icon: Package,
+    available: true,
+  },
+  {
+    href: "/developers/customers",
+    title: "Customers & Users API",
+    description:
+      "Bulk-import companies (customers) with their addresses, and the portal users who log in on their behalf.",
+    icon: Users,
     available: true,
   },
 ];

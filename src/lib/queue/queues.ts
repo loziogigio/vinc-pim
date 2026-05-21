@@ -79,6 +79,42 @@ export const cleanupQueue = new Queue("cleanup-queue", {
   },
 });
 
+// PIM version retention queue (prunes old PIMProduct versions per tenant)
+export const pimVersionCleanupQueue = new Queue("pim-version-cleanup-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 2,
+    backoff: {
+      type: "fixed",
+      delay: 60000,
+    },
+    removeOnComplete: {
+      count: 50,
+    },
+    removeOnFail: {
+      count: 100,
+    },
+  },
+});
+
+// Import-job retention queue (prunes old ImportJob/AssociationJob docs per tenant)
+export const importJobCleanupQueue = new Queue("import-job-cleanup-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 2,
+    backoff: {
+      type: "fixed",
+      delay: 60000,
+    },
+    removeOnComplete: {
+      count: 50,
+    },
+    removeOnFail: {
+      count: 100,
+    },
+  },
+});
+
 // Notification scheduler queue (processes scheduled campaigns)
 export const notificationQueue = new Queue("notification-queue", {
   connection,
@@ -193,6 +229,7 @@ export const QUEUE_NAMES = {
   ANALYTICS: "analytics-queue",
   SYNC: "sync-queue",
   CLEANUP: "cleanup-queue",
+  PIM_VERSION_CLEANUP: "pim-version-cleanup-queue",
   NOTIFICATION: "notification-queue",
   BOOKING_EXPIRY: "booking-expiry-queue",
   PAYMENT: "payment-queue",

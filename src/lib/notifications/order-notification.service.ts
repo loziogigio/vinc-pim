@@ -184,7 +184,8 @@ async function buildOrderVariables(
     || companyInfo.shop_url;
 
   switch (trigger) {
-    case "order_confirmation": {
+    case "order_confirmation":
+    case "b2b_order_confirmation": {
       const paymentMethod = order.payment?.payment_method
         || order.payment?.payments?.[0]?.method
         || "";
@@ -252,6 +253,24 @@ async function buildOrderVariables(
           vars.bank_iban = bankInfo.iban;
           vars.bank_bic_swift = bankInfo.bic_swift || "";
           vars.bank_name = bankInfo.bank_name || "";
+        }
+      }
+
+      // B2B: surface the ERP "inoltro DBMSX" id as the primary reference.
+      // Falls back through erp_order_number → erp_order_id → Vinc number.
+      if (trigger === "b2b_order_confirmation") {
+        const erpData = (order.erp_data || {}) as Record<string, unknown>;
+        const erpRef =
+          (typeof erpData.erp_inoltro_dbmsx === "string" || typeof erpData.erp_inoltro_dbmsx === "number"
+            ? String(erpData.erp_inoltro_dbmsx)
+            : "") ||
+          (typeof erpData.erp_order_number === "string" ? erpData.erp_order_number : "") ||
+          (typeof erpData.erp_order_id === "string" ? erpData.erp_order_id : "") ||
+          order.erp_order_id ||
+          "";
+        if (erpRef) {
+          vars.order_number = erpRef;
+          vars.bank_causale = `Ordine ${erpRef}`;
         }
       }
 

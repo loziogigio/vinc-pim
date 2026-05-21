@@ -22,7 +22,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
       () => {
         clearTimeout(timer);
         resolve(fallback);
-      }
+      },
     );
   });
 }
@@ -44,7 +44,9 @@ if (process.env.NODE_ENV === "development") {
 // Add NEXT_PUBLIC_CUSTOMER_WEB_URL if set
 const customerWebUrl = process.env.NEXT_PUBLIC_CUSTOMER_WEB_URL;
 if (customerWebUrl) {
-  ALLOWED_ORIGIN_PATTERNS.push(new RegExp(`^${customerWebUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+  ALLOWED_ORIGIN_PATTERNS.push(
+    new RegExp(`^${customerWebUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
+  );
 }
 
 /**
@@ -71,27 +73,30 @@ function getCorsHeaders(request: NextRequest): Record<string, string> {
     return {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
       "Access-Control-Max-Age": "86400",
-      "Vary": "Origin",
+      Vary: "Origin",
     };
   }
 
   // Check if request has API key — allow cross-origin for authenticated API clients
-  const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
+  const apiKey =
+    request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
   const apiSecret = request.headers.get("x-api-secret");
   if (apiKey && apiSecret) {
     return {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Tenant-ID, X-Requested-With, X-API-Key, X-API-Key-ID, X-API-Secret, X-Auth-Method",
       "Access-Control-Max-Age": "86400",
-      "Vary": "Origin",
+      Vary: "Origin",
     };
   }
 
   // Unknown origin without API key — block cross-origin access
-  return { "Vary": "Origin" };
+  return { Vary: "Origin" };
 }
 
 const securityHeaders: Record<string, string> = {
@@ -137,7 +142,13 @@ const extractTenantFromApiKey = (apiKey: string): string | null => {
  * Priority: API key > URL path > X-Tenant-ID header > query param
  * No fallback - tenant must be explicitly provided
  */
-const getTenantId = (request: NextRequest): { tenantId: string | null; rewritePath: string | null; isExplicit: boolean } => {
+const getTenantId = (
+  request: NextRequest,
+): {
+  tenantId: string | null;
+  rewritePath: string | null;
+  isExplicit: boolean;
+} => {
   // 1. Check URL path: /{tenant}/api/... or /{tenant}/b2b/... or /{tenant}/b2b
   const pathname = request.nextUrl.pathname;
   // Match /{tenant}/api/... or /{tenant}/b2b/... (with trailing path)
@@ -149,19 +160,31 @@ const getTenantId = (request: NextRequest): { tenantId: string | null; rewritePa
   if (match) {
     const [, tenantId, remainingPath] = match;
     // Avoid matching reserved paths
-    if (!['api', 'b2b', '_next', 'static', 'favicon.ico', 'super-admin', 'login'].includes(tenantId)) {
+    if (
+      ![
+        "api",
+        "b2b",
+        "_next",
+        "static",
+        "favicon.ico",
+        "super-admin",
+        "login",
+      ].includes(tenantId)
+    ) {
       return { tenantId, rewritePath: remainingPath, isExplicit: true };
     }
   }
 
   // 2. Check X-Tenant-ID header
   const headerTenantId = request.headers.get("x-tenant-id");
-  if (headerTenantId) return { tenantId: headerTenantId, rewritePath: null, isExplicit: true };
+  if (headerTenantId)
+    return { tenantId: headerTenantId, rewritePath: null, isExplicit: true };
 
   // 3. Check query parameter
   const url = new URL(request.url);
   const queryTenantId = url.searchParams.get("tenant");
-  if (queryTenantId) return { tenantId: queryTenantId, rewritePath: null, isExplicit: true };
+  if (queryTenantId)
+    return { tenantId: queryTenantId, rewritePath: null, isExplicit: true };
 
   // 4. No tenant found - return null (API key auth will be checked in route-specific logic)
   return { tenantId: null, rewritePath: null, isExplicit: false };
@@ -177,7 +200,8 @@ export async function proxy(request: NextRequest) {
   const actualPath = rewritePath || pathname;
   const isApiRoute = actualPath.startsWith("/api");
   const isB2BApiRoute = actualPath.startsWith("/api/b2b");
-  const isB2BPageRoute = actualPath === "/b2b" || actualPath.startsWith("/b2b/");
+  const isB2BPageRoute =
+    actualPath === "/b2b" || actualPath.startsWith("/b2b/");
   const isAdminRoute = actualPath.startsWith("/api/admin");
 
   const corsHeaders = getCorsHeaders(request);
@@ -195,14 +219,18 @@ export async function proxy(request: NextRequest) {
     const rlApiKey =
       request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
     const rlTenantId =
-      tenantId
-      ?? (rlApiKey ? extractTenantFromApiKey(rlApiKey) : null)
-      ?? (await withTimeout(resolveTenantIdByHost(request), RATE_LIMIT_TIMEOUT_MS, null));
+      tenantId ??
+      (rlApiKey ? extractTenantFromApiKey(rlApiKey) : null) ??
+      (await withTimeout(
+        resolveTenantIdByHost(request),
+        RATE_LIMIT_TIMEOUT_MS,
+        null,
+      ));
     if (rlTenantId) {
       const rlSettings = await withTimeout(
         getCachedTenantRateLimit(rlTenantId),
         RATE_LIMIT_TIMEOUT_MS,
-        null
+        null,
       );
       if (rlSettings && rlSettings.per_ip_enabled) {
         // API-key callers get the (looser) "api" tier with its own counter;
@@ -212,7 +240,7 @@ export async function proxy(request: NextRequest) {
         const rlResult = await withTimeout(
           checkPerIpRateLimit(rlTenantId, rlSettings, ip, tier),
           RATE_LIMIT_TIMEOUT_MS,
-          null
+          null,
         );
         if (rlResult && !rlResult.allowed) {
           const ipMinuteReset = rlResult.limits.ip_minute?.reset_at ?? 0;
@@ -239,12 +267,14 @@ export async function proxy(request: NextRequest) {
               headers: {
                 "Content-Type": "application/json",
                 "Retry-After": String(retryAfter),
-                "X-RateLimit-Limit": String(rlResult.limits.ip_minute?.limit ?? 0),
+                "X-RateLimit-Limit": String(
+                  rlResult.limits.ip_minute?.limit ?? 0,
+                ),
                 "X-RateLimit-Remaining": "0",
                 "X-RateLimit-Reset": String(reset),
                 ...corsHeaders,
               },
-            }
+            },
           );
         }
       }
@@ -271,7 +301,8 @@ export async function proxy(request: NextRequest) {
   if (isB2BApiRoute) {
     // Check for API key authentication (used by external clients like vinc-b2b)
     // Support both header formats: x-api-key OR x-api-key-id (for sync scripts)
-    const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
+    const apiKey =
+      request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
     const apiSecret = request.headers.get("x-api-secret");
     const requestHeaders = new Headers(request.headers);
 
@@ -285,10 +316,10 @@ export async function proxy(request: NextRequest) {
             error: "Invalid API key format",
             details: {
               code: "INVALID_API_KEY",
-              message: "API key must be in format: ak_{tenant-id}_{suffix}"
-            }
+              message: "API key must be in format: ak_{tenant-id}_{suffix}",
+            },
           },
-          { status: 401, headers: corsHeaders }
+          { status: 401, headers: corsHeaders },
         );
       }
 
@@ -313,7 +344,7 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = rewritePath;
       const response = NextResponse.rewrite(url, {
-        request: { headers: requestHeaders }
+        request: { headers: requestHeaders },
       });
       applyHeaders(response, securityHeaders);
       applyHeaders(response, corsHeaders);
@@ -347,7 +378,7 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = rewritePath;
     const response = NextResponse.rewrite(url, {
-      request: { headers: requestHeaders }
+      request: { headers: requestHeaders },
     });
 
     applyHeaders(response, securityHeaders);
@@ -360,7 +391,15 @@ export async function proxy(request: NextRequest) {
   // - Complete: customer return page after PayPal redirect (security via PayPal token)
   const isWebhookRoute = actualPath.startsWith("/api/public/payments/webhooks");
   const isPaymentCompleteRoute = actualPath === "/api/public/payments/complete";
-  if (isWebhookRoute || isPaymentCompleteRoute) {
+  // Public B2B SEO endpoints: host-based, tenant-resolved-by-domain, expose only
+  // published/non-sensitive data. Consumed by the storefront without an API key
+  // (same intent as the B2C public sitemap feed). Matched explicitly so a future
+  // route under /api/public/b2b/ isn't silently made public.
+  const isPublicB2bSeoRoute =
+    actualPath === "/api/public/b2b/resolve-product" ||
+    actualPath === "/api/public/b2b/seo-config" ||
+    actualPath === "/api/public/b2b/sitemap-data";
+  if (isWebhookRoute || isPaymentCompleteRoute || isPublicB2bSeoRoute) {
     const response = NextResponse.next();
     applyHeaders(response, securityHeaders);
     applyHeaders(response, corsHeaders);
@@ -374,7 +413,8 @@ export async function proxy(request: NextRequest) {
   if (isPublicApiRoute || isSearchRoute || isEliaRoute) {
     // Check for API key authentication
     // Support both header formats: x-api-key OR x-api-key-id (for sync scripts)
-    const apiKey = request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
+    const apiKey =
+      request.headers.get("x-api-key") || request.headers.get("x-api-key-id");
     const apiSecret = request.headers.get("x-api-secret");
     const requestHeaders = new Headers(request.headers);
 
@@ -387,10 +427,10 @@ export async function proxy(request: NextRequest) {
             error: "Invalid API key format",
             details: {
               code: "INVALID_API_KEY",
-              message: "API key must be in format: ak_{tenant-id}_{suffix}"
-            }
+              message: "API key must be in format: ak_{tenant-id}_{suffix}",
+            },
           },
-          { status: 401, headers: corsHeaders }
+          { status: 401, headers: corsHeaders },
         );
       }
 
@@ -399,7 +439,10 @@ export async function proxy(request: NextRequest) {
       requestHeaders.set("x-resolved-tenant-db", `vinc-${apiKeyTenantId}`);
       requestHeaders.set("x-auth-method", "api-key");
       requestHeaders.set("x-api-key-id", apiKey);
-    } else if (isSearchRoute && (tenantId || request.headers.get("x-tenant-id"))) {
+    } else if (
+      isSearchRoute &&
+      (tenantId || request.headers.get("x-tenant-id"))
+    ) {
       // Search routes also support session auth when tenant is provided
       // via URL path OR X-Tenant-ID header (for B2B internal calls)
       const effectiveTenantId = tenantId || request.headers.get("x-tenant-id")!;
@@ -413,10 +456,11 @@ export async function proxy(request: NextRequest) {
           error: "Authentication required",
           details: {
             code: "NO_API_KEY",
-            message: "API key and secret are required for API routes (provide X-API-Key and X-API-Secret headers)"
-          }
+            message:
+              "API key and secret are required for API routes (provide X-API-Key and X-API-Secret headers)",
+          },
         },
-        { status: 401, headers: corsHeaders }
+        { status: 401, headers: corsHeaders },
       );
     }
 
@@ -425,7 +469,7 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = rewritePath;
       const response = NextResponse.rewrite(url, {
-        request: { headers: requestHeaders }
+        request: { headers: requestHeaders },
       });
       applyHeaders(response, securityHeaders);
       applyHeaders(response, corsHeaders);
@@ -459,6 +503,6 @@ export const config = {
     "/:tenant/api/:path*",
     "/:tenant/b2b",
     "/:tenant/b2b/:path*",
-    "/b2b/:path*"
-  ]
+    "/b2b/:path*",
+  ],
 };

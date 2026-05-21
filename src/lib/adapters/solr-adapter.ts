@@ -1097,6 +1097,38 @@ export class SolrAdapter extends MarketplaceAdapter {
     return Array.from(languageSet);
   }
 
+  /**
+   * Inspect a Solr /update response. Solr 9 can return HTTP 200 with
+   * `responseHeader.status != 0` or an `error` object when a doc is rejected by
+   * the schema. Treat any of these as failure so callers don't silently mark
+   * products as synced.
+   */
+  private async assertSolrUpdateOk(
+    response: Response,
+    context: string,
+  ): Promise<void> {
+    const rawBody = await response.text();
+    if (!response.ok) {
+      throw new Error(`${context}: HTTP ${response.status} - ${rawBody.slice(0, 1000)}`);
+    }
+    let body: any;
+    try {
+      body = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      throw new Error(`${context}: malformed Solr response - ${rawBody.slice(0, 500)}`);
+    }
+    const headerStatus = body?.responseHeader?.status;
+    if (headerStatus !== undefined && headerStatus !== 0) {
+      throw new Error(
+        `${context}: Solr responseHeader.status=${headerStatus} - ${rawBody.slice(0, 1000)}`,
+      );
+    }
+    if (body?.error) {
+      const msg = body.error.msg ?? JSON.stringify(body.error).slice(0, 500);
+      throw new Error(`${context}: Solr error - ${msg}`);
+    }
+  }
+
   async syncProduct(
     product: PIMProduct,
     options?: TransformOptions
@@ -1138,10 +1170,7 @@ export class SolrAdapter extends MarketplaceAdapter {
         body: JSON.stringify([doc]), // Wrap in array for Solr 9
       });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Solr indexing failed: ${response.status} - ${error}`);
-      }
+      await this.assertSolrUpdateOk(response, `Solr indexing failed for ${product.entity_code}`);
 
       // Apply synonym terms as atomic update after main doc is indexed
       if (Object.keys(synonymFields).length > 0) {
@@ -1154,12 +1183,13 @@ export class SolrAdapter extends MarketplaceAdapter {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify([atomicUpdate]),
         });
-        if (!atomicResponse.ok) {
-          const atomicError = await atomicResponse.text();
-          this.logError(
-            `Synonym atomic update failed for ${doc.id} (status ${atomicResponse.status}): ${atomicError}`,
-            new Error(atomicError)
+        try {
+          await this.assertSolrUpdateOk(
+            atomicResponse,
+            `Synonym atomic update failed for ${doc.id}`,
           );
+        } catch (err: any) {
+          this.logError(err.message, err);
         }
       }
 
@@ -1197,10 +1227,7 @@ export class SolrAdapter extends MarketplaceAdapter {
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Solr delete failed: ${response.status} - ${error}`);
-      }
+      await this.assertSolrUpdateOk(response, `Solr delete failed for ${productId}`);
 
       return {
         success: true,
@@ -1235,9 +1262,7 @@ export class SolrAdapter extends MarketplaceAdapter {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Solr inventory update failed: ${response.status}`);
-      }
+      await this.assertSolrUpdateOk(response, `Solr inventory update failed for ${sku}`);
 
       return {
         success: true,
@@ -1270,9 +1295,7 @@ export class SolrAdapter extends MarketplaceAdapter {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Solr price update failed: ${response.status}`);
-      }
+      await this.assertSolrUpdateOk(response, `Solr price update failed for ${sku}`);
 
       return {
         success: true,
@@ -1395,10 +1418,7 @@ export class SolrAdapter extends MarketplaceAdapter {
         body: JSON.stringify(docs),
       });
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Bulk index failed: ${response.status} - ${errorBody}`);
-      }
+      await this.assertSolrUpdateOk(response, `Bulk index failed (${docs.length} docs)`);
 
       // Apply synonym atomic updates after main docs are indexed
       if (atomicUpdates.length > 0) {
@@ -1407,12 +1427,10 @@ export class SolrAdapter extends MarketplaceAdapter {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(atomicUpdates),
         });
-        if (!atomicResponse.ok) {
-          const atomicError = await atomicResponse.text();
-          this.logError(
-            `Bulk synonym atomic update failed (status ${atomicResponse.status}): ${atomicError}`,
-            new Error(atomicError)
-          );
+        try {
+          await this.assertSolrUpdateOk(atomicResponse, 'Bulk synonym atomic update failed');
+        } catch (err: any) {
+          this.logError(err.message, err);
         }
       }
 
@@ -1456,10 +1474,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       body: JSON.stringify({ delete: { query } }),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Solr deleteByQuery failed: ${response.status} - ${error}`);
-    }
+    await this.assertSolrUpdateOk(response, `Solr deleteByQuery failed: ${query}`);
 
     this.log(`Deleted by query: ${query}`);
   }

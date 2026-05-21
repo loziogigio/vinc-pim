@@ -145,22 +145,41 @@ export async function POST(
       return NextResponse.json({ error: quantityError }, { status: 400 });
     }
 
-    // Auto-resolve vat_included from PIM product if not explicitly provided
-    if (body.vat_included === undefined && body.entity_code) {
+    // Auto-resolve vat_included AND vat_rate from PIM product when the client
+    // didn't ship them (or shipped vat_rate=0). The new vinc-b2b client had a
+    // field-name bug that sent vat_rate=0 — without this fallback, every line
+    // would persist with 0 VAT and order totals would lose the VAT column.
+    if (
+      (body.vat_included === undefined ||
+        body.vat_rate === undefined ||
+        body.vat_rate === 0) &&
+      body.entity_code
+    ) {
       try {
         const { PIMProduct } = await connectWithModels(auth.tenantDb!);
         const product = await PIMProduct.findOne(
           { entity_code: body.entity_code },
-          { pricing: 1, packaging_options: 1 }
+          { pricing: 1, packaging_options: 1, vat_rate: 1 }
         ).lean();
         if (product) {
           const pkg = body.packaging_code
             ? product.packaging_options?.find((p: any) => p.code === body.packaging_code)
             : null;
-          body.vat_included = resolveVatIncluded(pkg?.pricing, product.pricing);
+          if (body.vat_included === undefined) {
+            body.vat_included = resolveVatIncluded(pkg?.pricing, product.pricing);
+          }
+          if (body.vat_rate === undefined || body.vat_rate === 0) {
+            const resolved =
+              pkg?.pricing?.vat_rate ??
+              product.pricing?.vat_rate ??
+              (product as any).vat_rate;
+            if (typeof resolved === "number" && resolved > 0) {
+              body.vat_rate = resolved;
+            }
+          }
         }
       } catch {
-        // Non-critical: fall back to false if PIM lookup fails
+        // Non-critical: fall back to whatever the body carried.
       }
     }
 

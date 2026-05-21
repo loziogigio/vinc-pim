@@ -80,10 +80,12 @@ export async function PATCH(
       parent_id,
       hero_image,
       mobile_hero_image,
+      item_icon,
       seo,
       display_order,
       is_active,
       channel_code,
+      external_code,
     } = body;
 
     const category = await CategoryModel.findOne({
@@ -119,8 +121,13 @@ export async function PATCH(
     if (name !== undefined) updateData.name = name;
     if (slug !== undefined) updateData.slug = slug;
     if (description !== undefined) updateData.description = description;
+    if (external_code !== undefined) {
+      const trimmed = typeof external_code === "string" ? external_code.trim() : "";
+      updateData.external_code = trimmed || null;
+    }
     if (hero_image !== undefined) updateData.hero_image = hero_image;
     if (mobile_hero_image !== undefined) updateData.mobile_hero_image = mobile_hero_image;
+    if (item_icon !== undefined) updateData.item_icon = item_icon;
     if (seo !== undefined) updateData.seo = seo;
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;

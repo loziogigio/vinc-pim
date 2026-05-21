@@ -27,6 +27,7 @@ interface EmbeddedChannelCategory {
   category?: {
     category_id?: string;
     code?: string;
+    external_code?: string;
     name?: unknown;
     slug?: unknown;
     level?: number;
@@ -195,6 +196,117 @@ async function ensureCategories(
       }
     }
   }
+}
+
+/**
+ * Resolve channel_categories entries that arrive with only `external_code`
+ * (no category_id). For each such entry, look up the matching Category by
+ * external_code and fill in category_id, name, slug, level, plus the full
+ * hierarchy chain (root → ... → leaf) so downstream code (auto-provision,
+ * Solr adapter, search facets) has everything it needs.
+ *
+ * Entries that already carry a category_id are passed through unchanged.
+ * Entries with no resolvable external_code are dropped.
+ */
+export async function resolveChannelCategoriesByExternalCode(
+  CategoryModel: Model<unknown>,
+  channelCategories: EmbeddedChannelCategory[] | undefined,
+): Promise<EmbeddedChannelCategory[] | undefined> {
+  if (!channelCategories?.length) return channelCategories;
+
+  // Collect external codes that need resolving
+  const externalCodes = new Set<string>();
+  for (const cc of channelCategories) {
+    const cat = cc.category;
+    if (!cat) continue;
+    if (cat.category_id) continue; // already resolved
+    if (cat.external_code) externalCodes.add(cat.external_code);
+  }
+  if (externalCodes.size === 0) return channelCategories;
+
+  // Fetch the matching leaf categories
+  const leafCats = (await CategoryModel.find({
+    external_code: { $in: Array.from(externalCodes) },
+  }).lean()) as Array<{
+    category_id: string;
+    external_code?: string;
+    name?: unknown;
+    slug?: unknown;
+    level?: number;
+    path?: string[];
+    channel_code?: string;
+    parent_id?: string | null;
+  }>;
+
+  if (leafCats.length === 0) return [];
+
+  // Fetch all ancestor categories in one query
+  const ancestorIds = new Set<string>();
+  for (const c of leafCats) {
+    for (const id of c.path || []) ancestorIds.add(id);
+  }
+  const ancestorCats = ancestorIds.size
+    ? ((await CategoryModel.find({
+        category_id: { $in: Array.from(ancestorIds) },
+      }).lean()) as Array<{
+        category_id: string;
+        name?: unknown;
+        slug?: unknown;
+        level?: number;
+        channel_code?: string;
+      }>)
+    : [];
+  const ancestorById = new Map(ancestorCats.map((a) => [a.category_id, a]));
+  const leafByExternalCode = new Map(
+    leafCats.filter((c) => c.external_code).map((c) => [c.external_code as string, c]),
+  );
+
+  // Walk the root of each chain to pick up the channel_code (only roots carry it)
+  function resolveChannelCode(leaf: typeof leafCats[number]): string | undefined {
+    if (leaf.channel_code) return leaf.channel_code;
+    const root = (leaf.path && leaf.path.length > 0)
+      ? ancestorById.get(leaf.path[0])
+      : undefined;
+    return root?.channel_code;
+  }
+
+  const resolved: EmbeddedChannelCategory[] = [];
+  for (const cc of channelCategories) {
+    const cat = cc.category;
+    if (!cat) continue;
+    if (cat.category_id) {
+      resolved.push(cc);
+      continue;
+    }
+    if (!cat.external_code) continue;
+    const leaf = leafByExternalCode.get(cat.external_code);
+    if (!leaf) continue; // no PIM category matches this code — drop the entry
+
+    const hierarchy: CategoryHierarchyNode[] = [];
+    for (const ancestorId of leaf.path || []) {
+      const a = ancestorById.get(ancestorId);
+      if (!a) continue;
+      hierarchy.push({
+        category_id: a.category_id,
+        name: a.name,
+        slug: a.slug,
+        level: a.level ?? 0,
+      });
+    }
+
+    resolved.push({
+      channel_code: cc.channel_code || resolveChannelCode(leaf),
+      category: {
+        category_id: leaf.category_id,
+        external_code: leaf.external_code,
+        name: leaf.name,
+        slug: leaf.slug,
+        level: leaf.level ?? hierarchy.length,
+        hierarchy,
+      },
+    });
+  }
+  return resolved;
 }
 
 /**

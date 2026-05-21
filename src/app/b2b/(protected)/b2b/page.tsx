@@ -13,6 +13,8 @@ import {
   Settings,
   CheckCircle,
   PauseCircle,
+  FileText,
+  Inbox,
 } from "lucide-react";
 import { ChannelSelect } from "@/components/shared/ChannelSelect";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -252,13 +254,15 @@ export default function B2BPortalsPage() {
           <h1 className="text-xl font-semibold text-[#5e5873]">{t("pages.b2bPortal.list.title")}</h1>
           <p className="text-sm text-[#b9b9c3]">{t("pages.b2bPortal.list.subtitle")}</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          {t("pages.b2bPortal.list.newPortal")}
-        </button>
+        {portals.length === 0 && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {t("pages.b2bPortal.list.newPortal")}
+          </button>
+        )}
       </div>
 
       {/* Not-migrated hint (page-top) — hidden while the create dialog is open,
@@ -502,14 +506,30 @@ export default function B2BPortalsPage() {
                 <div className="border-t border-[#ebe9f1]" />
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-2 divide-x divide-[#ebe9f1]">
+                <div className="grid grid-cols-4 divide-x divide-[#ebe9f1]">
                   <Link
-                    href={`${tenantPrefix}/b2b/b2b-home-builder?portal=${p.slug}`}
+                    href={`${tenantPrefix}/b2b/home-builder`}
                     className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
                     title={t("pages.b2bPortal.list.homeBuilder")}
                   >
                     <Pencil className="h-4 w-4" />
                     <span className="text-[10px] font-medium">{t("pages.b2bPortal.list.builder")}</span>
+                  </Link>
+                  <Link
+                    href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}/pages`}
+                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    title={t("pages.b2bPortal.list.pages")}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">{t("pages.b2bPortal.list.pages")}</span>
+                  </Link>
+                  <Link
+                    href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}/forms`}
+                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    title={t("pages.b2bPortal.list.forms")}
+                  >
+                    <Inbox className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">{t("pages.b2bPortal.list.forms")}</span>
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}`}

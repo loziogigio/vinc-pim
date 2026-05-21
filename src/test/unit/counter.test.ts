@@ -18,6 +18,8 @@ import {
   setSequenceValue,
   getNextOrderNumber,
   getNextCartNumber,
+  setCartCounter,
+  getCartCounter,
   getNextCustomerPublicCode,
 } from "@/lib/db/models/counter";
 
@@ -230,6 +232,49 @@ describe("unit: Counter Model", () => {
       expect(cart1).toBe(1);
       expect(order1).toBe(1);
       expect(cart2).toBe(2);
+    });
+  });
+
+  // ============================================
+  // setCartCounter / getCartCounter
+  // ============================================
+
+  describe("setCartCounter / getCartCounter", () => {
+    it("getCartCounter returns 0 when the counter is not set", async () => {
+      /**
+       * Test that an unset cart-number counter reads as 0.
+       */
+      // Act
+      const value = await getCartCounter("test-tenant", 2026);
+
+      // Assert
+      expect(value).toBe(0);
+    });
+
+    it("setCartCounter sets the value and getCartCounter reads it back", async () => {
+      /**
+       * Test the admin override + read-back round trip.
+       */
+      // Act
+      await setCartCounter("test-tenant", 2026, 99999);
+      const value = await getCartCounter("test-tenant", 2026);
+
+      // Assert
+      expect(value).toBe(99999);
+    });
+
+    it("next cart number continues from the value set via setCartCounter", async () => {
+      /**
+       * Test that getNextCartNumber resumes from the manually set value.
+       */
+      // Arrange
+      await setCartCounter("test-tenant", 2026, 99999);
+
+      // Act
+      const next = await getNextCartNumber("test-tenant", 2026);
+
+      // Assert
+      expect(next).toBe(100000);
     });
   });
 

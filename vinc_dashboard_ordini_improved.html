@@ -1,0 +1,213 @@
+<h2 class="sr-only">Proposed redesign of the VINC Store orders dashboard with a 6-stage order pipeline including In Preparazione, an action-required panel, KPI cards with period-over-period deltas, a revenue sparkline, and a redesigned recent orders list focused on actionable items.</h2>
+
+<div style="font-family: var(--font-sans); color: var(--color-text-primary); padding: 1rem 0;">
+
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem;">
+    <div>
+      <div style="font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px;">Dashboard › Ordini</div>
+      <div style="font-size: 22px; font-weight: 500; line-height: 1.2;">Dashboard Ordini</div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 2px;">Panoramica dei tuoi ordini e carrelli</div>
+    </div>
+    <button style="background: #1D9E75; color: white; border: none; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;"><i class="ti ti-plus" aria-hidden="true"></i> Nuovo Ordine</button>
+  </div>
+
+  <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
+    <span style="font-size: 12px; color: var(--color-text-secondary); margin-right: 4px;"><i class="ti ti-filter" aria-hidden="true"></i> Periodo</span>
+    <button style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: 999px; padding: 4px 12px; font-size: 12px;">Oggi</button>
+    <button style="background: #0F6E56; color: white; border: none; border-radius: 999px; padding: 4px 12px; font-size: 12px;">7 giorni</button>
+    <button style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: 999px; padding: 4px 12px; font-size: 12px;">30 giorni</button>
+    <button style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: 999px; padding: 4px 12px; font-size: 12px;">YTD</button>
+    <button style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: 999px; padding: 4px 12px; font-size: 12px;"><i class="ti ti-calendar" aria-hidden="true"></i> Personalizzato</button>
+    <div style="flex: 1;"></div>
+    <button style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: 999px; padding: 4px 12px; font-size: 12px;">Tutti i canali <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+  </div>
+
+  <div style="background: #FCEBEB; border: 0.5px solid #F09595; border-left: 3px solid #E24B4A; border-radius: var(--border-radius-md); padding: 12px 14px; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 10px;">
+    <i class="ti ti-alert-triangle" style="color: #A32D2D; font-size: 18px; margin-top: 1px;" aria-hidden="true"></i>
+    <div style="flex: 1; font-size: 13px; color: #501313;">
+      <div style="font-weight: 500; margin-bottom: 2px;">3 ordini richiedono attenzione</div>
+      <div style="color: #791F1F;">2 ordini confermati da oltre 48h non ancora in preparazione · 1 carrello business sopra 5.000 € abbandonato</div>
+    </div>
+    <button style="background: white; border: 0.5px solid #F09595; color: #791F1F; border-radius: var(--border-radius-md); padding: 4px 10px; font-size: 12px; font-weight: 500;">Vedi azioni →</button>
+  </div>
+
+  <div style="font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin: 1.25rem 0 8px;">Pipeline ordini</div>
+
+  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 1.5rem;">
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px; position: relative;">
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #FAEEDA; display: flex; align-items: center; justify-content: center;"><i class="ti ti-shopping-cart" style="color: #854F0B; font-size: 13px;" aria-hidden="true"></i></div>
+        <div style="font-size: 11px; color: var(--color-text-secondary);">Carrelli attivi</div>
+      </div>
+      <div style="font-size: 20px; font-weight: 500;">684</div>
+      <div style="font-size: 11px; color: var(--color-text-secondary);">159.926 €</div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #E6F1FB; display: flex; align-items: center; justify-content: center;"><i class="ti ti-clock" style="color: #185FA5; font-size: 13px;" aria-hidden="true"></i></div>
+        <div style="font-size: 11px; color: var(--color-text-secondary);">In attesa</div>
+      </div>
+      <div style="font-size: 20px; font-weight: 500;">6</div>
+      <div style="font-size: 11px; color: var(--color-text-secondary);">3.276 €</div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #E1F5EE; display: flex; align-items: center; justify-content: center;"><i class="ti ti-circle-check" style="color: #0F6E56; font-size: 13px;" aria-hidden="true"></i></div>
+        <div style="font-size: 11px; color: var(--color-text-secondary);">Confermati</div>
+      </div>
+      <div style="font-size: 20px; font-weight: 500;">12</div>
+      <div style="font-size: 11px; color: var(--color-text-secondary);">5.840 €</div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid #AFA9EC; border-radius: var(--border-radius-md); padding: 12px; position: relative;">
+      <div style="position: absolute; top: -6px; right: 8px; background: #534AB7; color: white; font-size: 9px; font-weight: 500; padding: 1px 6px; border-radius: 999px; letter-spacing: 0.04em;">NUOVO</div>
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #EEEDFE; display: flex; align-items: center; justify-content: center;"><i class="ti ti-package" style="color: #3C3489; font-size: 13px;" aria-hidden="true"></i></div>
+        <div style="font-size: 11px; color: var(--color-text-secondary);">In preparazione</div>
+      </div>
+      <div style="font-size: 20px; font-weight: 500;">8</div>
+      <div style="font-size: 11px; color: var(--color-text-secondary);">4.120 €</div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #FAECE7; display: flex; align-items: center; justify-content: center;"><i class="ti ti-truck" style="color: #993C1D; font-size: 13px;" aria-hidden="true"></i></div>
+        <div style="font-size: 11px; color: var(--color-text-secondary);">Spediti</div>
+      </div>
+      <div style="font-size: 20px; font-weight: 500;">147</div>
+      <div style="font-size: 11px; color: var(--color-text-secondary);">82.450 €</div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #F1EFE8; display: flex; align-items: center; justify-content: center;"><i class="ti ti-x" style="color: #5F5E5A; font-size: 13px;" aria-hidden="true"></i></div>
+        <div style="font-size: 11px; color: var(--color-text-secondary);">Annullati</div>
+      </div>
+      <div style="font-size: 20px; font-weight: 500;">31</div>
+      <div style="font-size: 11px; color: var(--color-text-secondary);">15.736 €</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 1.5rem;">
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div>
+          <div style="font-size: 12px; color: var(--color-text-secondary);">Fatturato ultimi 30 giorni</div>
+          <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 2px;">
+            <div style="font-size: 22px; font-weight: 500;">271.348 €</div>
+            <div style="font-size: 12px; color: #0F6E56; font-weight: 500;"><i class="ti ti-trending-up" aria-hidden="true"></i> +12,4% vs periodo precedente</div>
+          </div>
+        </div>
+      </div>
+      <svg viewBox="0 0 460 90" style="width: 100%; height: 90px; display: block;" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#1D9E75" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#1D9E75" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,60 L20,55 L40,62 L60,48 L80,52 L100,40 L120,45 L140,38 L160,42 L180,30 L200,35 L220,28 L240,32 L260,22 L280,28 L300,18 L320,24 L340,14 L360,20 L380,12 L400,18 L420,10 L440,15 L460,8 L460,90 L0,90 Z" fill="url(#g1)"/>
+        <path d="M0,60 L20,55 L40,62 L60,48 L80,52 L100,40 L120,45 L140,38 L160,42 L180,30 L200,35 L220,28 L240,32 L260,22 L280,28 L300,18 L320,24 L340,14 L360,20 L380,12 L400,18 L420,10 L440,15 L460,8" stroke="#0F6E56" stroke-width="1.5" fill="none"/>
+      </svg>
+      <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--color-text-tertiary); margin-top: 4px;">
+        <span>15 apr</span><span>22 apr</span><span>29 apr</span><span>6 mag</span><span>15 mag</span>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 12px;">
+      <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px;">
+        <div style="font-size: 12px; color: var(--color-text-secondary);">Valore medio ordine</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+          <div style="font-size: 20px; font-weight: 500;">521,57 €</div>
+          <div style="font-size: 11px; color: #A32D2D;">−3,1%</div>
+        </div>
+      </div>
+      <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px;">
+        <div style="font-size: 12px; color: var(--color-text-secondary);">Tasso di conversione</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+          <div style="font-size: 20px; font-weight: 500;">21,7%</div>
+          <div style="font-size: 11px; color: #0F6E56;">+1,8 pp</div>
+        </div>
+        <div style="font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px;">190 / 874 carrelli convertiti</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 1.5rem;">
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px;">
+      <div style="font-size: 12px; color: var(--color-text-secondary);">Ordini oggi</div>
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+        <div style="font-size: 20px; font-weight: 500;">72</div>
+        <div style="font-size: 11px; color: #0F6E56;">+8 vs ieri</div>
+      </div>
+    </div>
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px;">
+      <div style="font-size: 12px; color: var(--color-text-secondary);">Questa settimana</div>
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+        <div style="font-size: 20px; font-weight: 500;">312</div>
+        <div style="font-size: 11px; color: #0F6E56;">+14,2%</div>
+      </div>
+    </div>
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px;">
+      <div style="font-size: 12px; color: var(--color-text-secondary);">Questo mese</div>
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+        <div style="font-size: 20px; font-weight: 500;">888</div>
+        <div style="font-size: 11px; color: #A32D2D;">−2,4%</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="ti ti-bell" style="color: #185FA5; font-size: 16px;" aria-hidden="true"></i>
+        <div style="font-size: 14px; font-weight: 500;">Da gestire</div>
+        <span style="background: #E6F1FB; color: #0C447C; font-size: 11px; padding: 2px 8px; border-radius: 999px;">5</span>
+      </div>
+      <a style="font-size: 12px; color: #0F6E56;">Vedi tutti →</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 0;">
+      <div style="display: grid; grid-template-columns: 100px 1fr 110px 90px 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px;">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);">D3420L4Pw2Wg</span>
+        <span>Cascino S.r.l.</span>
+        <span style="font-size: 11px; color: #A32D2D;"><i class="ti ti-clock" aria-hidden="true"></i> attesa 52h</span>
+        <span style="font-weight: 500;">2.840,00 €</span>
+        <span style="background: #E1F5EE; color: #0F6E56; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-align: center;">Confermato</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 100px 1fr 110px 90px 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px;">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);">neXcEM-yyKc3</span>
+        <span>DFL Group</span>
+        <span style="font-size: 11px; color: #A32D2D;"><i class="ti ti-clock" aria-hidden="true"></i> attesa 49h</span>
+        <span style="font-weight: 500;">1.230,00 €</span>
+        <span style="background: #E1F5EE; color: #0F6E56; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-align: center;">Confermato</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 100px 1fr 110px 90px 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px;">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);">NU5NHO2b8dvm</span>
+        <span>Gruppo Lamura</span>
+        <span style="font-size: 11px; color: #854F0B;"><i class="ti ti-shopping-cart" aria-hidden="true"></i> carrello 3 giorni</span>
+        <span style="font-weight: 500;">5.640,00 €</span>
+        <span style="background: #FAEEDA; color: #854F0B; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-align: center;">Abbandono</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 100px 1fr 110px 90px 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px;">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);">g5vsGlrOIVMU</span>
+        <span>Hidros S.p.A.</span>
+        <span style="font-size: 11px; color: #185FA5;"><i class="ti ti-mail" aria-hidden="true"></i> nuovo ordine</span>
+        <span style="font-weight: 500;">920,00 €</span>
+        <span style="background: #E6F1FB; color: #0C447C; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-align: center;">In attesa</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 100px 1fr 110px 90px 80px; gap: 12px; align-items: center; padding: 10px 0; font-size: 13px;">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);">rIw5uwwglSGA</span>
+        <span>Vendor B2B</span>
+        <span style="font-size: 11px; color: #3C3489;"><i class="ti ti-package" aria-hidden="true"></i> pronto da 2h</span>
+        <span style="font-weight: 500;">340,00 €</span>
+        <span style="background: #EEEDFE; color: #3C3489; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-align: center;">In prep.</span>
+      </div>
+    </div>
+  </div>
+
+</div>

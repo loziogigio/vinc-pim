@@ -76,6 +76,12 @@ export interface SearchFilters {
 
   // Direct lookups
   sku?: string | string[];
+  /**
+   * Resolve a product by its (per-locale) URL slug. Peer of `sku`.
+   * Forwarded to the PIM search engine as a `slug_text_{lang}` phrase match
+   * (see query-builder MULTILINGUAL_FILTER_FIELDS / PHRASE_MATCH_FILTER_FIELDS).
+   */
+  slug?: string | string[];
   ean?: string | string[];
   entity_code?: string | string[];
 

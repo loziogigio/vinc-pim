@@ -211,6 +211,7 @@ export async function processCustomerImportData(
   let processed = 0;
   let successful = 0;
   let failed = 0;
+  let warningsCount = 0;
   const errors: { row: number; entity_code: string; error: string; raw_data?: any }[] = [];
 
   for (const customerData of customers) {
@@ -229,19 +230,17 @@ export async function processCustomerImportData(
         continue;
       }
 
-      // Validate legal info if provided
+      // Validate legal info if provided.
+      // Non-fatal: persist anyway and stash the errors on `legal_info_warnings`
+      // so the admin UI can surface "dati legali da rivedere" on the customer.
+      // This handles foreign-VAT customers (RO/BG/EL/ES…) whose formats don't
+      // match the Italian validator, plus minor ERP data-quality issues.
+      let legalInfoWarnings: string[] | undefined;
       if (customerData.legal_info) {
         const validation = validateLegalInfo(customerData.legal_info);
         if (!validation.valid) {
-          errors.push({
-            row: processed + 1,
-            entity_code: external_code,
-            error: `Invalid legal info: ${validation.errors.join(", ")}`,
-            raw_data: customerData,
-          });
-          failed++;
-          processed++;
-          continue;
+          legalInfoWarnings = validation.errors;
+          warningsCount++;
         }
       }
 
@@ -276,10 +275,18 @@ export async function processCustomerImportData(
             ).map(buildAddress);
           }
 
-          if (Object.keys(updateDoc).length > 0) {
+          // Sync legal-info warnings: set when present, unset when cleared.
+          const unsetDoc: Record<string, any> = {};
+          if (legalInfoWarnings) updateDoc.legal_info_warnings = legalInfoWarnings;
+          else                   unsetDoc.legal_info_warnings = "";
+
+          if (Object.keys(updateDoc).length > 0 || Object.keys(unsetDoc).length > 0) {
             await CustomerModel.updateOne(
               { customer_id: existing.customer_id, tenant_id },
-              { $set: updateDoc },
+              {
+                ...(Object.keys(updateDoc).length ? { $set: updateDoc } : {}),
+                ...(Object.keys(unsetDoc).length  ? { $unset: unsetDoc } : {}),
+              },
             );
           }
         } else {
@@ -354,10 +361,18 @@ export async function processCustomerImportData(
             updateFields.addresses = existingAddresses;
           }
 
-          if (Object.keys(updateFields).length > 0) {
+          // Sync legal-info warnings on the partial-merge path too.
+          const partialUnset: Record<string, any> = {};
+          if (legalInfoWarnings) updateFields.legal_info_warnings = legalInfoWarnings;
+          else                   partialUnset.legal_info_warnings = "";
+
+          if (Object.keys(updateFields).length > 0 || Object.keys(partialUnset).length > 0) {
             await CustomerModel.updateOne(
               { customer_id: existing.customer_id, tenant_id },
-              { $set: updateFields },
+              {
+                ...(Object.keys(updateFields).length ? { $set: updateFields } : {}),
+                ...(Object.keys(partialUnset).length ? { $unset: partialUnset } : {}),
+              },
             );
           }
         }
@@ -416,6 +431,7 @@ export async function processCustomerImportData(
           last_name: customerData.last_name,
           company_name: customerData.company_name,
           legal_info: customerData.legal_info,
+          ...(legalInfoWarnings ? { legal_info_warnings: legalInfoWarnings } : {}),
           tags: [],
           addresses,
         });
@@ -499,9 +515,9 @@ export async function processCustomerImportData(
     },
   );
 
-  console.log(`✅ Customer import completed: ${successful} successful, ${failed} failed (${durationSeconds.toFixed(1)}s)`);
+  console.log(`✅ Customer import completed: ${successful} successful, ${failed} failed, ${warningsCount} legal-info warnings (${durationSeconds.toFixed(1)}s)`);
 
-  return { processed, successful, failed };
+  return { processed, successful, failed, warnings: warningsCount };
 }
 
 /**

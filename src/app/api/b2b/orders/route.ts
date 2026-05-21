@@ -8,6 +8,15 @@ import {
   getAccessibleCustomerIds,
   hasCustomerAccess,
 } from "@/lib/auth/portal-user-token";
+
+// Orders that have made it past the confirmation stage. Used for "Orders today/week/month"
+// counts where drafts, pending, cancelled, and deleted should not be considered real sales.
+const CONFIRMED_AND_BEYOND = ["confirmed", "preparing", "shipped", "delivered"];
+
+// Orders that contribute to revenue / short summaries. Drafts (carts), quotations,
+// cancellations, and soft-deleted records are excluded. Pending is kept since it's a
+// real order awaiting confirmation.
+const REVENUE_STATUSES = ["pending", "confirmed", "preparing", "shipped", "delivered"];
 import { safeRegexQuery } from "@/lib/security";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import { nanoid } from "nanoid";
@@ -104,6 +113,8 @@ export async function GET(req: NextRequest) {
     const shippingAddressId = searchParams.get("shipping_address_id"); // Address filter (internal ID)
     const addressCode = searchParams.get("address_code") || searchParams.get("shipping_address_code"); // Address filter (external_code)
     const search = searchParams.get("search")?.trim(); // Free-text search: order_id / po_reference / customer_id / cart_number / order_number
+    const compare = searchParams.get("compare") === "1" || searchParams.get("compare") === "true"; // Include previous-period comparison
+    const daily = searchParams.get("daily") === "1" || searchParams.get("daily") === "true"; // Include daily revenue series
 
     // Build query - always filter by tenant
     const query: Record<string, unknown> = {
@@ -148,7 +159,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, todayValue: 0, thisWeek: 0, thisWeekValue: 0, thisMonth: 0, thisMonthValue: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
         });
       }
       query.customer_id = (cust as any).customer_id;
@@ -166,7 +177,7 @@ export async function GET(req: NextRequest) {
             success: true,
             orders: [],
             pagination: { page, limit, total: 0, pages: 0 },
-            stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+            stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, todayValue: 0, thisWeek: 0, thisWeekValue: 0, thisMonth: 0, thisMonthValue: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
           });
         }
       }
@@ -204,7 +215,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, thisWeek: 0, thisMonth: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, todayValue: 0, thisWeek: 0, thisWeekValue: 0, thisMonth: 0, thisMonthValue: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
         });
       }
     }
@@ -252,8 +263,55 @@ export async function GET(req: NextRequest) {
     weekStart.setHours(0, 0, 0, 0);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Execute queries in parallel: orders, count, and stats
-    const [orders, total, statsAgg] = await Promise.all([
+    // Optional previous-period aggregation. Built upfront so it can run in parallel with the main batch.
+    let prevAggPromise: Promise<unknown[]> = Promise.resolve([]);
+    if (compare && dateFrom && dateTo) {
+      const fromMs = new Date(dateFrom).getTime();
+      const toMs = new Date(dateTo).getTime();
+      if (!Number.isNaN(fromMs) && !Number.isNaN(toMs) && toMs >= fromMs) {
+        const spanMs = toMs - fromMs;
+        const prevFrom = new Date(fromMs - spanMs - 24 * 60 * 60 * 1000);
+        const prevTo = new Date(fromMs - 1);
+        const prevQuery: Record<string, unknown> = { ...baseQuery, created_at: { $gte: prevFrom, $lte: prevTo } };
+        prevAggPromise = OrderModel.aggregate([
+          { $match: prevQuery },
+          {
+            $group: {
+              _id: null,
+              revenueCount: {
+                $sum: { $cond: [{ $in: ["$status", REVENUE_STATUSES] }, 1, 0] },
+              },
+              revenueValue: {
+                $sum: {
+                  $cond: [{ $in: ["$status", REVENUE_STATUSES] }, "$order_total", 0],
+                },
+              },
+              drafts: {
+                $sum: { $cond: [{ $eq: ["$status", "draft"] }, 1, 0] },
+              },
+            },
+          },
+        ]);
+      }
+    }
+
+    // Optional daily-revenue series for the sparkline. Same as above — parallelizable.
+    const dailyPromise: Promise<Array<{ _id: string; value: number; count: number }>> = daily
+      ? OrderModel.aggregate([
+          { $match: { ...baseQuery, status: { $in: REVENUE_STATUSES } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+              value: { $sum: "$order_total" },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+      : Promise.resolve([]);
+
+    // Execute queries in parallel: orders page, count, primary stats, previous-period, daily series.
+    const [orders, total, statsAgg, prevAgg, dailySeries] = await Promise.all([
       OrderModel.find(query)
         .sort({ created_at: -1 })
         .skip((page - 1) * limit)
@@ -279,30 +337,97 @@ export async function GET(req: NextRequest) {
                 $group: {
                   _id: null,
                   today: {
-                    $sum: { $cond: [{ $gte: ["$created_at", todayStart] }, 1, 0] },
-                  },
-                  thisWeek: {
-                    $sum: { $cond: [{ $gte: ["$created_at", weekStart] }, 1, 0] },
-                  },
-                  thisMonth: {
-                    $sum: { $cond: [{ $gte: ["$created_at", monthStart] }, 1, 0] },
-                  },
-                  nonDraftValue: {
                     $sum: {
                       $cond: [
-                        { $in: ["$status", ["pending", "confirmed", "preparing", "shipped", "delivered"]] },
+                        {
+                          $and: [
+                            { $gte: ["$created_at", todayStart] },
+                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  todayValue: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $gte: ["$created_at", todayStart] },
+                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
+                          ],
+                        },
                         "$order_total",
                         0,
                       ],
                     },
                   },
-                  nonDraftCount: {
+                  thisWeek: {
                     $sum: {
                       $cond: [
-                        { $in: ["$status", ["pending", "confirmed", "preparing", "shipped", "delivered"]] },
+                        {
+                          $and: [
+                            { $gte: ["$created_at", weekStart] },
+                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
+                          ],
+                        },
                         1,
                         0,
                       ],
+                    },
+                  },
+                  thisWeekValue: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $gte: ["$created_at", weekStart] },
+                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
+                          ],
+                        },
+                        "$order_total",
+                        0,
+                      ],
+                    },
+                  },
+                  thisMonth: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $gte: ["$created_at", monthStart] },
+                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  thisMonthValue: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $gte: ["$created_at", monthStart] },
+                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
+                          ],
+                        },
+                        "$order_total",
+                        0,
+                      ],
+                    },
+                  },
+                  nonDraftValue: {
+                    $sum: {
+                      $cond: [{ $in: ["$status", REVENUE_STATUSES] }, "$order_total", 0],
+                    },
+                  },
+                  nonDraftCount: {
+                    $sum: {
+                      $cond: [{ $in: ["$status", REVENUE_STATUSES] }, 1, 0],
                     },
                   },
                 },
@@ -311,6 +436,8 @@ export async function GET(req: NextRequest) {
           },
         },
       ]),
+      prevAggPromise,
+      dailyPromise,
     ]);
 
     // Calculate stats from $facet aggregation
@@ -336,8 +463,11 @@ export async function GET(req: NextRequest) {
       },
       timePeriods: {
         today: tp.today || 0,
+        todayValue: tp.todayValue || 0,
         thisWeek: tp.thisWeek || 0,
+        thisWeekValue: tp.thisWeekValue || 0,
         thisMonth: tp.thisMonth || 0,
+        thisMonthValue: tp.thisMonthValue || 0,
       },
       avgOrderValue:
         tp.nonDraftCount > 0
@@ -361,12 +491,17 @@ export async function GET(req: NextRequest) {
       if (s._id in valueByStatus) {
         valueByStatus[s._id] = s.value || 0;
       }
+      // `total` keeps its "all documents in scope" meaning so filter-clear buttons stay correct.
       statusCounts.total = (statusCounts.total || 0) + s.count;
-      statusCounts.totalValue = (statusCounts.totalValue || 0) + (s.value || 0);
+      // `totalValue` is the revenue summary: drafts (carts), cancellations, and soft-deleted
+      // records do not contribute. Quotation/pending remain since they may still close.
+      if (REVENUE_STATUSES.includes(s._id)) {
+        statusCounts.totalValue = (statusCounts.totalValue || 0) + (s.value || 0);
+      }
 
       if (s._id === "draft") {
         conversion.totalDrafts = s.count;
-      } else if (["pending", "confirmed", "preparing", "shipped", "delivered"].includes(s._id)) {
+      } else if (CONFIRMED_AND_BEYOND.includes(s._id) || s._id === "pending") {
         conversion.submittedOrders += s.count;
       }
     });
@@ -375,6 +510,35 @@ export async function GET(req: NextRequest) {
     conversion.conversionRate = convTotal > 0
       ? Math.round((conversion.submittedOrders / convTotal) * 1000) / 10
       : 0;
+
+    if (Array.isArray(prevAgg) && prevAgg.length > 0) {
+      const prev = (prevAgg[0] || {}) as {
+        revenueCount?: number;
+        revenueValue?: number;
+        drafts?: number;
+      };
+      const prevAvg = (prev.revenueCount ?? 0) > 0
+        ? Math.round(((prev.revenueValue ?? 0) / (prev.revenueCount ?? 1)) * 100) / 100
+        : 0;
+      const prevConvTotal = (prev.drafts || 0) + (prev.revenueCount || 0);
+      const prevConversionRate = prevConvTotal > 0
+        ? Math.round(((prev.revenueCount || 0) / prevConvTotal) * 1000) / 10
+        : 0;
+      (stats as Record<string, unknown>).previousPeriod = {
+        total: prev.revenueCount || 0,
+        totalValue: prev.revenueValue || 0,
+        avgOrderValue: prevAvg,
+        conversionRate: prevConversionRate,
+      };
+    }
+
+    if (daily) {
+      (stats as Record<string, unknown>).revenueByDay = dailySeries.map((d) => ({
+        date: d._id,
+        value: d.value || 0,
+        count: d.count || 0,
+      }));
+    }
 
     // Fetch customer details for all orders (within tenant)
     const customerIds = [...new Set(orders.map((o) => o.customer_id).filter(Boolean))];

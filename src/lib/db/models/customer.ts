@@ -85,6 +85,10 @@ export interface ICustomer extends Document {
 
   // Legal info
   legal_info?: ILegalInfo;
+  /** Non-fatal validation issues found at import time (e.g. malformed VAT/CF
+   *  on foreign customers or partial ERP data). Populated when the import
+   *  worker downgrades a `validateLegalInfo` failure to a warning. */
+  legal_info_warnings?: string[];
 
   // Tags (default — apply unless overridden by delivery address)
   tags: ICustomerTagRef[];
@@ -184,6 +188,7 @@ const CustomerSchema = new Schema<ICustomer>(
 
     // Legal info
     legal_info: { type: LegalInfoSchema },
+    legal_info_warnings: { type: [String], default: undefined },
 
     // Tags (default — apply unless overridden by delivery address)
     tags: { type: [CustomerTagRefSchema], default: [] },

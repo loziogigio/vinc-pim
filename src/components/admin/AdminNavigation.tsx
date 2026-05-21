@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Ban,
   Radio,
+  Database,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -46,6 +47,11 @@ export function AdminNavigation() {
         href="/b2b/admin/channels"
         icon={Radio}
         label={t("nav.admin.channels")}
+      />
+      <NavLink
+        href="/b2b/admin/data-models"
+        icon={Database}
+        label={t("nav.admin.dataModels")}
       />
     </AppSidebar>
   );

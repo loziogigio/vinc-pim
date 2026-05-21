@@ -18,7 +18,8 @@
       "Bash(rm _tmp-o.mts)",
       "Bash(cp /tmp/on-order-submit-online.ts /home/jire87/software/www-website/www-data/vendereincloud-app/doc/windmill/dfl-it/on-order-submit.ts)",
       "Bash(cp /tmp/before-order-submit-online.ts /home/jire87/software/www-website/www-data/vendereincloud-app/doc/windmill/dfl-it/before-order-submit.ts)",
-      "Bash(rm /tmp/on-order-submit-online.ts /tmp/before-order-submit-online.ts)"
+      "Bash(rm /tmp/on-order-submit-online.ts /tmp/before-order-submit-online.ts)",
+      "Bash(awk '/^    admin: \\\\{/,/^    \\\\}/' /home/jire87/software/www-website/www-data/vendereincloud-app/vinc-commerce-suite/src/lib/i18n/locales/en.ts)"
     ],
     "additionalDirectories": [
       "/home/jire87/software/www-website/www-data/vendereincloud-app/doc/export/time-to-pim",

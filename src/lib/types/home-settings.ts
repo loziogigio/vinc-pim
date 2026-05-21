@@ -368,11 +368,21 @@ export interface RadioWidgetConfig {
   links?: { label: string; url: string }[];
 }
 
+export type MenuDisplayMode = "inline" | "drawer";
+
 export interface CategoryMenuWidgetConfig {
   menuId?: string;
   label?: string;
   icon?: string;
   channel?: string;
+  /**
+   * How the menu renders on the customer-facing storefront:
+   * - "inline": horizontal nav with hover/click dropdowns
+   * - "drawer": slide-out side drawer triggered by the menu button
+   * Defaults to "drawer" if unset — preserves the pre-Phase-2a behavior
+   * for tenants whose widgets were configured before this field existed.
+   */
+  displayMode?: MenuDisplayMode;
 }
 
 export interface ButtonWidgetConfig {

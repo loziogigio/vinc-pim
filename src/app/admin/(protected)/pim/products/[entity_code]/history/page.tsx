@@ -62,10 +62,12 @@ export default function ProductHistoryPage({
   async function fetchVersions() {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/admin/pim/products/${entity_code}/history`);
+      const res = await fetch(
+        `/api/admin/pim/products/${entity_code}/history?limit=200`
+      );
       if (res.ok) {
         const data = await res.json();
-        setVersions(data.versions || []);
+        setVersions(data.items || []);
       } else if (res.status === 404) {
         router.push("/admin/pim/products");
       }

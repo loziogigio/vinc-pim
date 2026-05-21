@@ -202,9 +202,15 @@ interface ProductEnrichmentData {
   share_images_with_variants?: boolean;
   share_media_with_variants?: boolean;
   packaging_options?: PackagingData[];
+  packaging_info?: any[];
   promotions?: any[];
+  pricing?: any;
   vat_rate?: number;
   channel_categories?: any[];
+  quantity?: number;
+  sold?: number;
+  stock_status?: string;
+  unit?: string;
 }
 
 /**
@@ -226,7 +232,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
 
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, promotions: 1, pricing: 1, channel_categories: 1 })
+    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, packaging_info: 1, promotions: 1, pricing: 1, channel_categories: 1, quantity: 1, sold: 1, stock_status: 1, unit: 1 })
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -241,9 +247,15 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
         share_images_with_variants: product.share_images_with_variants,
         share_media_with_variants: product.share_media_with_variants,
         packaging_options: product.packaging_options,
+        packaging_info: product.packaging_info,
         promotions: product.promotions,
+        pricing: product.pricing,
         vat_rate: product.pricing?.vat_rate,
         channel_categories: product.channel_categories,
+        quantity: product.quantity,
+        sold: product.sold,
+        stock_status: product.stock_status,
+        unit: product.unit,
       });
     }
   }
@@ -478,6 +490,75 @@ function enrichPackagingWithUnitPrices(
   });
 }
 
+/**
+ * Pick the smallest sellable packaging — the MV (minimo vendibile).
+ * Prefers packaging_info.is_smallest (source of truth), falls back to the
+ * is_smallest flag on the option, then to the first sellable entry.
+ */
+function pickSmallestSellable(
+  packagingOptions: any[],
+  packagingInfo: any[] | undefined
+): any | undefined {
+  const smallestCode = packagingInfo?.find((pi: any) => pi.is_smallest)?.code;
+  if (smallestCode) {
+    const byCode = packagingOptions.find(
+      (p: any) => p.is_sellable !== false && p.code === smallestCode
+    );
+    if (byCode) return byCode;
+  }
+  const byFlag = packagingOptions.find(
+    (p: any) => p.is_sellable !== false && p.is_smallest
+  );
+  if (byFlag) return byFlag;
+  return packagingOptions.find((p: any) => p.is_sellable !== false);
+}
+
+/**
+ * Normalize top-level pricing.list / pricing.retail to per-unit when the
+ * stored value is actually the per-MV (per-packaging) total.
+ *
+ * Bug pattern: for products sold by continuous-unit UOMs (MT/KG/LT…) the
+ * source ERP often returns the listino as the per-MV total rather than the
+ * per-base-unit price. Storefronts assume top.list is per-unit and display
+ * it directly, then multiply again by cart qty (which is in base units) —
+ * producing a doubled charge.
+ *
+ * Detection (conservative — only fires on the bug pattern):
+ *   1. Smallest sellable packaging exists with qty > 1
+ *   2. top.list ≈ packaging.list (within 1 cent)  → it's the per-MV total
+ *
+ * When detected we override top.list with the packaging's already-computed
+ * list_unit (= list / qty). Same treatment for retail. Untouched otherwise.
+ */
+export function normalizeTopLevelPricing(
+  topPricing: any,
+  enrichedPackagingOptions: any[] | undefined,
+  packagingInfo: any[] | undefined
+): any {
+  if (!topPricing || topPricing.list == null) return topPricing;
+  if (!enrichedPackagingOptions?.length) return topPricing;
+
+  const smallest = pickSmallestSellable(enrichedPackagingOptions, packagingInfo);
+  if (!smallest?.pricing) return topPricing;
+
+  const qty = Number(smallest.qty) || 1;
+  if (qty <= 1) return topPricing;
+
+  const pkgList = Number(smallest.pricing.list);
+  const pkgListUnit = Number(smallest.pricing.list_unit);
+  if (!Number.isFinite(pkgList) || !Number.isFinite(pkgListUnit)) return topPricing;
+
+  const topList = Number(topPricing.list);
+  if (Math.abs(topList - pkgList) > 0.01) return topPricing;
+
+  const pkgRetailUnit = Number(smallest.pricing.retail_unit);
+  return {
+    ...topPricing,
+    list: pkgListUnit,
+    retail: Number.isFinite(pkgRetailUnit) ? pkgRetailUnit : topPricing.retail,
+  };
+}
+
 // ============================================
 // MAIN ENRICHER
 // ============================================
@@ -670,20 +751,35 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         tags: enrichTags(result.tags, tagsMap),
         // VAT rate: MongoDB (source of truth) → Solr → default 22%
         vat_rate: productData?.vat_rate ?? result.vat_rate ?? 22,
+        // Inventory: MongoDB is source of truth; Solr is indexed periodically and can be stale
+        quantity: productData?.quantity ?? result.quantity,
+        sold: productData?.sold ?? result.sold,
+        stock_status: productData?.stock_status ?? result.stock_status,
+        unit: productData?.unit ?? result.unit,
         // Replace Solr data with MongoDB data (source of truth, localized)
         attributes: mongoAttributes || result.attributes,
         technical_specifications: mongoTechnicalSpecs || result.technical_specifications,
         images: productData?.images || result.images,
         media: mongoMedia || result.media,
-        packaging_options: enrichPackagingWithUnitPrices(
-          embedPromotionsInPackaging(
-            productData?.packaging_options || result.packaging_options,
-            productData?.promotions
-          )
-        ),
+        // Product-level pricing + informational packaging from MongoDB
+        packaging_info: productData?.packaging_info ?? (result as any).packaging_info,
+        packaging_options: undefined as any, // set below after enrichment
+        pricing: undefined as any, // set below after packaging is enriched
         // Remove gallery (doesn't exist in MongoDB schema)
         gallery: undefined,
       };
+      const enrichedPackagingOptions = enrichPackagingWithUnitPrices(
+        embedPromotionsInPackaging(
+          productData?.packaging_options || result.packaging_options,
+          productData?.promotions
+        )
+      );
+      enrichedResult.packaging_options = enrichedPackagingOptions as any;
+      enrichedResult.pricing = normalizeTopLevelPricing(
+        productData?.pricing ?? (result as any).pricing,
+        enrichedPackagingOptions,
+        enrichedResult.packaging_info as any[] | undefined,
+      );
 
       // For variants, check if parent has share_images/media_with_variants enabled
       if (result.parent_entity_code && !result.is_parent) {
@@ -809,6 +905,17 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         ?? product.has_active_promo
         ?? false;
 
+      // Enrich packaging first so we can normalize top-level pricing against
+      // the per-unit (list_unit) values computed there.
+      const enrichedPackagingOptions = enrichPackagingWithUnitPrices(
+        embedPromotionsInPackaging(
+          productData.packaging_options || product.packaging_options,
+          productData.promotions
+        )
+      );
+      const resolvedPackagingInfo =
+        productData.packaging_info ?? (product as any).packaging_info;
+
       // Merge MongoDB data into product
       return {
         ...product,
@@ -819,10 +926,21 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         short_description: getLocalizedShortDescription(productData, lang) || product.short_description,
         description: getLocalizedDescription(productData, lang) || product.description,
         slug: productData.slug || product.slug,
-        // Pricing from MongoDB
+        // Pricing from MongoDB (normalized to per-unit when the bug pattern fires)
+        pricing: normalizeTopLevelPricing(
+          productData.pricing ?? (product as any).pricing,
+          enrichedPackagingOptions,
+          resolvedPackagingInfo,
+        ),
+        packaging_info: resolvedPackagingInfo,
         vat_rate: productData.pricing?.vat_rate ?? product.vat_rate ?? 22,
         price: productData.sell_price ?? product.price,
         list_price: productData.list_price ?? product.list_price,
+        // Inventory: MongoDB is source of truth (Solr can be stale)
+        quantity: productData.quantity ?? product.quantity,
+        sold: productData.sold ?? product.sold,
+        stock_status: productData.stock_status ?? product.stock_status,
+        unit: productData.unit ?? product.unit,
         // Parent/variant info
         is_parent: productData.is_parent ?? product.is_parent,
         parent_entity_code: productData.parent_entity_code || product.parent_entity_code,
@@ -834,12 +952,7 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         // Promotions & Packaging
         has_active_promo: hasActivePromo,
         promotions: productData.promotions || product.promotions,
-        packaging_options: enrichPackagingWithUnitPrices(
-          embedPromotionsInPackaging(
-            productData.packaging_options || product.packaging_options,
-            productData.promotions
-          )
-        ),
+        packaging_options: enrichedPackagingOptions,
         // Media
         cover_image_url: productData.cover_image_url || product.cover_image_url,
         images: productData.images || product.images,

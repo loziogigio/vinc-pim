@@ -26,6 +26,12 @@ export function DocsTopNav() {
           >
             PIM
           </Link>
+          <Link
+            href="/developers/customers"
+            className="text-[#6e6b7b] transition hover:text-[#009688] dark:text-slate-300"
+          >
+            Customers &amp; Users
+          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">

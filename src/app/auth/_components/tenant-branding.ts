@@ -16,6 +16,13 @@ export interface TenantBranding {
   primaryColor: string;
   shopUrl: string | null;
   websiteUrl: string | null;
+  description: string | null;
+  legalName: string | null;
+  addressLines: string[];
+  phone: string | null;
+  email: string | null;
+  vatNumber: string | null;
+  b2bTheme: string | null;
 }
 
 /** Default accent color used when a tenant has no branding (or no tenant given). */
@@ -31,6 +38,7 @@ export async function getTenantBranding(tenantId: string): Promise<TenantBrandin
     ]);
 
     const branding = settings?.branding;
+    const companyInfo = settings?.company_info;
     const adminName = adminTenant?.name;
 
     // Use branding title, fall back to admin tenant name, then tenant_id.
@@ -43,6 +51,19 @@ export async function getTenantBranding(tenantId: string): Promise<TenantBrandin
       primaryColor: branding?.primaryColor || DEFAULT_ACCENT_COLOR,
       shopUrl: branding?.shopUrl || null,
       websiteUrl: branding?.websiteUrl || null,
+      description:
+        settings?.meta_tags?.description ||
+        settings?.meta_tags?.ogDescription ||
+        null,
+      legalName: companyInfo?.legal_name || null,
+      addressLines: [
+        companyInfo?.address_line1?.trim(),
+        companyInfo?.address_line2?.trim(),
+      ].filter((line): line is string => Boolean(line)),
+      phone: companyInfo?.phone || null,
+      email: companyInfo?.email || companyInfo?.support_email || null,
+      vatNumber: companyInfo?.vat_number || null,
+      b2bTheme: adminTenant?.b2b_theme || null,
     };
   } catch (error) {
     console.error("Error fetching tenant branding:", error);

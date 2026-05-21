@@ -64,6 +64,29 @@ export const B2BPortalSchema = new Schema(
       type: B2CStorefrontSettingsSchema,
       default: () => ({}),
     },
+    // SEO / routing config consumed by the storefront (see seo-url spec §5.2).
+    // `category_root` is a free-form map ({ default, it, en, ... }); stored as Mixed
+    // so per-locale keys don't need to be enumerated in the schema.
+    seo_config: {
+      type: new Schema(
+        {
+          category_root: { type: Schema.Types.Mixed, default: undefined },
+          robots: {
+            type: new Schema(
+              {
+                noindex: { type: Boolean, default: false },
+                allow: { type: [String], default: undefined },
+                disallow: { type: [String], default: undefined },
+              },
+              { _id: false },
+            ),
+            default: undefined,
+          },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

@@ -8,27 +8,16 @@
 
 import { getRedis } from "@/lib/cache/redis-client";
 import { getTenantModel } from "@/lib/db/models/admin-tenant";
+import { hostFromRequest, type RequestLike } from "@/lib/tenant/request-host";
 
 const HOST_CACHE_TTL = 300; // 5 minutes
 const NEGATIVE_CACHE_TTL = 60; // shorter — unknown hosts may get registered later
 const CACHE_KEY_PREFIX = "tenant:by-host:";
 const NEGATIVE_SENTINEL = "__none__";
 
-interface RequestLike {
-  headers: { get(name: string): string | null };
-  nextUrl?: { hostname?: string };
-}
-
-function hostFromRequest(req: RequestLike): string | null {
-  const explicit = req.headers.get("x-forwarded-host") || req.headers.get("host");
-  if (explicit) {
-    return explicit.split(":")[0].trim().toLowerCase();
-  }
-  if (req.nextUrl?.hostname) return req.nextUrl.hostname.toLowerCase();
-  return null;
-}
-
-export async function resolveTenantIdByHost(req: RequestLike): Promise<string | null> {
+export async function resolveTenantIdByHost(
+  req: RequestLike,
+): Promise<string | null> {
   const host = hostFromRequest(req);
   if (!host) return null;
 
@@ -46,7 +35,7 @@ export async function resolveTenantIdByHost(req: RequestLike): Promise<string | 
     await r.setex(
       cacheKey,
       tenantId ? HOST_CACHE_TTL : NEGATIVE_CACHE_TTL,
-      tenantId ?? NEGATIVE_SENTINEL
+      tenantId ?? NEGATIVE_SENTINEL,
     );
     return tenantId;
   } catch (err) {

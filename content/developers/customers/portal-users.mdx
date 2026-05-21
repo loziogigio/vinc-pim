@@ -1,0 +1,239 @@
+export const metadata = {
+  title: "Portal Users",
+  description:
+    "Bulk-import portal logins and link each user to one or more companies inside a VINC Commerce Suite tenant.",
+};
+
+# Portal Users
+
+Create or update the portal logins your B2B customers use to sign in, and
+attach each one to the companies (and addresses) it is allowed to operate on.
+The endpoint takes an array of **user** records, validates it, enqueues a
+background job, and returns a `job_id`. Users are matched on `username`, so
+re-sending the same feed updates the existing accounts.
+
+<Callout kind="info" title="Base path">
+  The endpoints on this page are rooted at <code>/api/b2b/portal-users/import</code>.
+</Callout>
+
+<Callout kind="tip" title="Run after the companies import">
+  `customer_access` entries point at a company by its `external_code` and are
+  resolved to the internal customer id server-side. Import
+  [Companies](/developers/customers/companies) first; any access entry whose
+  company can't be found is silently dropped (the user is still created).
+</Callout>
+
+## Authentication
+
+Both endpoints accept either a tenant API key or a B2B portal session cookie.
+
+<ParamTable
+  caption="Accepted credentials"
+  rows={[
+    { name: "API key", type: "headers", description: "x-auth-method: api-key + x-api-key-id: ak_... + x-api-secret: sk_... — the key must have the portal-users permission." },
+    { name: "Session cookie", type: "cookie", description: "vinc_b2b_session — set by the B2B portal login flow." },
+  ]}
+/>
+
+## Endpoints
+
+<Endpoint method="POST" path="/api/b2b/portal-users/import/api" auth="api-key" />
+<Endpoint method="GET"  path="/api/b2b/portal-users/import/api/{job_id}" auth="api-key" />
+
+---
+
+## Import portal users
+
+<Endpoint method="POST" path="/api/b2b/portal-users/import/api" auth="api-key" />
+
+Queues an array of users for upsert. Returns `202 Accepted` immediately; the
+write happens in a background worker that bcrypt-hashes any plaintext passwords.
+
+### Constraints
+
+- 1 ≤ `users.length` ≤ **5000** per request.
+- Every entry must carry a non-empty `username`.
+- Recommended batch size: **≤ 100** users per call — password hashing is the
+  bottleneck. Split larger feeds into multiple requests sharing a
+  `batch_metadata.batch_id`.
+
+### Request body
+
+<ParamTable
+  rows={[
+    { name: "users", type: "PortalUserImportItem[]", required: true, description: "Array of user payloads — see the field table below." },
+    { name: "merge_mode", type: "'replace' | 'partial'", description: "Both modes only touch the fields you send; arrays such as customer_access are replaced wholesale when present. Use 'partial' to be explicit.", default: "'replace'" },
+    { name: "channel", type: "string", description: "Default channel for users created in this batch. A per-user channel takes priority. Falls back to the tenant default channel." },
+    { name: "batch_metadata", type: "object", description: "Optional { batch_id, batch_part, batch_total_parts, batch_total_items } — persisted on the ImportJob so multi-part feeds can be correlated." },
+  ]}
+/>
+
+### PortalUserImportItem
+
+<ParamTable
+  caption="User fields"
+  rows={[
+    { name: "username", type: "string", required: true, description: "Login identifier — normally the email. Lower-cased and trimmed. Used as the upsert key." },
+    { name: "email", type: "string", required: true, description: "Contact email. Lower-cased and trimmed. Must be unique within the tenant — a clash rejects that row." },
+    { name: "password", type: "string", description: "Plaintext password; hashed with bcrypt server-side. Required when creating a new user; omit on update to keep the current password." },
+    { name: "is_active", type: "boolean", description: "Whether the account can sign in.", default: "true" },
+    { name: "channel", type: "string", description: "Channel for this user. Overrides the batch-level channel." },
+    { name: "customer_access", type: "ImportCustomerAccess[]", description: "Which companies — and which of their addresses — this user may act on. Replaced wholesale when provided. See below." },
+  ]}
+/>
+
+### ImportCustomerAccess
+
+<ParamTable
+  caption="customer_access entry"
+  rows={[
+    { name: "customer_external_code", type: "string", description: "The company's external_code (from the companies import). Resolved to the internal customer id server-side. Provide this or customer_id." },
+    { name: "customer_id", type: "string", description: "The internal customer id, if you already have it. Takes priority over customer_external_code." },
+    { name: "address_access", type: "'all' | string[]", required: true, description: "'all' to allow every address of the company, or an array of address external codes / ids to restrict access." },
+  ]}
+/>
+
+<Callout kind="warning" title="What gets dropped vs. what fails the row">
+  An access entry whose company can't be resolved is dropped — the user is
+  still saved with the remaining entries. A row <strong>is</strong> rejected
+  when: <code>username</code> or <code>email</code> is missing, a new user has
+  no <code>password</code>, or the <code>email</code> already belongs to
+  another user. Rejections appear on the job under <code>import_errors</code>;
+  they do not fail the request.
+</Callout>
+
+### Response — `202 Accepted`
+
+<ParamTable
+  rows={[
+    { name: "success", type: "boolean", description: "true when the batch was accepted and queued." },
+    { name: "job_id", type: "string", description: "ImportJob id, prefix 'pu_import_'. Poll it for progress and per-row errors." },
+    { name: "total", type: "integer", description: "Number of users queued." },
+    { name: "merge_mode", type: "'replace' | 'partial'", description: "Echo of the mode applied." },
+    { name: "message", type: "string", description: "Human-readable confirmation." },
+  ]}
+/>
+
+`400` is returned for an empty / oversized `users` array, an invalid
+`merge_mode`, or a user missing `username` (the error names the offending index).
+
+### Example
+
+<CodeBlock
+  title="curl — upsert two users"
+  code={`curl -X POST https://cs.vendereincloud.it/api/b2b/portal-users/import/api \\
+  -H "Content-Type: application/json" \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..." \\
+  -d '{
+    "merge_mode": "partial",
+    "channel": "vinc-b2b",
+    "users": [
+      {
+        "username": "info@acme.it",
+        "email": "info@acme.it",
+        "password": "S0me-Strong-Secret",
+        "is_active": true,
+        "customer_access": [
+          { "customer_external_code": "000123", "address_access": "all" },
+          { "customer_external_code": "000124", "address_access": ["000000", "000001"] }
+        ]
+      },
+      {
+        "username": "buyer@beta-impianti.it",
+        "email": "buyer@beta-impianti.it",
+        "is_active": false
+      }
+    ]
+  }'`}
+/>
+
+<CodeBlock
+  title="202 Accepted"
+  code={`{
+  "success": true,
+  "job_id": "pu_import_1714142400000_z9k1m2",
+  "total": 2,
+  "merge_mode": "partial",
+  "message": "Queued 2 portal users for import"
+}`}
+/>
+
+### Linking one user to several companies
+
+Send a single user object with multiple `customer_access` entries — or several
+objects sharing the same `email`; duplicates are de-duplicated and their
+`customer_access` lists merged before processing.
+
+<CodeBlock
+  title="One login, two companies"
+  code={`{
+  "users": [
+    {
+      "username": "agent@group.it",
+      "email": "agent@group.it",
+      "password": "init-pass",
+      "customer_access": [
+        { "customer_external_code": "000123", "address_access": "all" },
+        { "customer_external_code": "000456", "address_access": "all" }
+      ]
+    }
+  ]
+}`}
+/>
+
+---
+
+## Check job status
+
+<Endpoint method="GET" path="/api/b2b/portal-users/import/api/{job_id}" auth="api-key" />
+
+Returns the `ImportJob` created by the POST above. Poll until `status` is
+`completed` or `failed`.
+
+<ParamTable
+  rows={[
+    { name: "job.job_id", type: "string", description: "Echoes the requested id." },
+    { name: "job.status", type: "'pending' | 'processing' | 'completed' | 'failed'", description: "Lifecycle state." },
+    { name: "job.total_rows", type: "integer", description: "Users in the batch." },
+    { name: "job.processed_rows", type: "integer", description: "Users processed so far." },
+    { name: "job.successful_rows", type: "integer", description: "Users created or updated." },
+    { name: "job.failed_rows", type: "integer", description: "Users rejected — see import_errors." },
+    { name: "job.import_errors", type: "{ row, entity_code, error, raw_data }[]", description: "Per-row failures with the offending payload (first 1000)." },
+    { name: "job.batch_id / batch_part / batch_total_parts", type: "string / integer", description: "Echoed from batch_metadata when supplied." },
+    { name: "job.started_at / completed_at / duration_seconds", type: "string / number", description: "Processing timing." },
+  ]}
+/>
+
+<CodeBlock
+  title="curl — poll the job"
+  code={`curl https://cs.vendereincloud.it/api/b2b/portal-users/import/api/pu_import_1714142400000_z9k1m2 \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..."`}
+/>
+
+<CodeBlock
+  title="200 OK"
+  code={`{
+  "success": true,
+  "job": {
+    "job_id": "pu_import_1714142400000_z9k1m2",
+    "status": "completed",
+    "total_rows": 2,
+    "processed_rows": 2,
+    "successful_rows": 2,
+    "failed_rows": 0,
+    "import_errors": [],
+    "started_at": "2026-04-24T13:00:00.500Z",
+    "completed_at": "2026-04-24T13:00:01.300Z",
+    "duration_seconds": 0.8,
+    "batch_id": null,
+    "created_at": "2026-04-24T13:00:00.000Z"
+  }
+}`}
+/>
+
+A `404` means no `portal_user_import` job exists with that id for the
+authenticated tenant.

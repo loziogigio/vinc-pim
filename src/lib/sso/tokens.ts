@@ -41,6 +41,7 @@ export interface TokenPair {
 export interface RefreshResult {
   success: boolean;
   tokens?: TokenPair;
+  tenant_id?: string;
   error?: string;
 }
 
@@ -309,6 +310,7 @@ export async function refreshTokens(
 
   return {
     success: true,
+    tenant_id: session.tenant_id,
     tokens: {
       access_token: newAccessToken,
       refresh_token: newRefreshToken,

@@ -136,6 +136,7 @@ export const NOTIFICATION_TRIGGERS = [
   "reset_password",
   // Order templates (new)
   "order_confirmation",
+  "b2b_order_confirmation",
   "order_processing",
   "order_shipped",
   "order_delivered",
@@ -170,6 +171,7 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   forgot_password: "Forgot Password",
   reset_password: "Password Reset Confirmation",
   order_confirmation: "Order Confirmation",
+  b2b_order_confirmation: "B2B Order Confirmation",
   order_processing: "Order Processing (Async ERP)",
   order_shipped: "Order Shipped",
   order_delivered: "Order Delivered",

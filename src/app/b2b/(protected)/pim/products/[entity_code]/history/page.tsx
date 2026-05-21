@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -20,6 +20,8 @@ import {
   Filter,
   Search,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { VersionComparison } from "@/components/pim/VersionComparison";
 import { getLocalizedString } from "@/lib/types/pim";
@@ -53,6 +55,21 @@ type ProductVersion = {
   updated_at: string;
 };
 
+type Pagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+type StatusFilter = "all" | "draft" | "published" | "archived";
+type EditTypeFilter = "all" | "manual" | "api";
+type DateFilter = "all" | "7days" | "30days" | "custom";
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 300;
+
 export default function ProductHistoryPage({
   params,
 }: {
@@ -61,46 +78,139 @@ export default function ProductHistoryPage({
   const { entity_code } = use(params);
   const router = useRouter();
   const { t } = useTranslation();
-  const [versions, setVersions] = useState<ProductVersion[]>([]);
+
+  const [items, setItems] = useState<ProductVersion[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    limit: DEFAULT_PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
   const [isLoading, setIsLoading] = useState(true);
+
   const [selectedVersions, setSelectedVersions] = useState<number[]>([]);
   const [compareV1, setCompareV1] = useState<number | null>(null);
   const [compareV2, setCompareV2] = useState<number | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [rollingBack, setRollingBack] = useState(false);
 
-  // Filter state
+  // Filters — `searchQuery` is the live input; `debouncedSearch` is what hits the API.
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published" | "archived">("all");
-  const [editTypeFilter, setEditTypeFilter] = useState<"all" | "manual" | "api">("all");
-  const [dateFilter, setDateFilter] = useState<"all" | "7days" | "30days">("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [editTypeFilter, setEditTypeFilter] = useState<EditTypeFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Track the "current" product across all versions (not just the current page)
+  // so the header/breadcrumb keep working when the user paginates past v1.
+  const [headerProduct, setHeaderProduct] = useState<ProductVersion | null>(null);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+
+  // Debounce search input → debouncedSearch
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
+  // Whenever a filter changes, snap back to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, editTypeFilter, dateFilter, dateFrom, dateTo, perPage]);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      debouncedSearch !== "" ||
+      statusFilter !== "all" ||
+      editTypeFilter !== "all" ||
+      dateFilter !== "all" ||
+      dateFrom !== "" ||
+      dateTo !== "",
+    [debouncedSearch, statusFilter, editTypeFilter, dateFilter, dateFrom, dateTo]
+  );
+
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        debouncedSearch ? 1 : 0,
+        statusFilter !== "all" ? 1 : 0,
+        editTypeFilter !== "all" ? 1 : 0,
+        dateFilter !== "all" || dateFrom || dateTo ? 1 : 0,
+      ].reduce<number>((a, b) => a + Number(b), 0),
+    [debouncedSearch, statusFilter, editTypeFilter, dateFilter, dateFrom, dateTo]
+  );
+
+  const buildQueryString = useCallback(() => {
+    const sp = new URLSearchParams();
+    sp.set("page", String(page));
+    sp.set("limit", String(perPage));
+    if (debouncedSearch) sp.set("search", debouncedSearch);
+    if (statusFilter !== "all") sp.set("status", statusFilter);
+    if (editTypeFilter !== "all") sp.set("editType", editTypeFilter);
+    if (dateFilter !== "all" && dateFilter !== "custom") sp.set("dateRange", dateFilter);
+    if (dateFrom) sp.set("dateFrom", new Date(dateFrom).toISOString());
+    if (dateTo) sp.set("dateTo", new Date(dateTo).toISOString());
+    return sp.toString();
+  }, [page, perPage, debouncedSearch, statusFilter, editTypeFilter, dateFilter, dateFrom, dateTo]);
+
+  // Cancel in-flight requests when the query changes so the user always sees the
+  // response for the latest filter/page combination.
+  const fetchAbortRef = useRef<AbortController | null>(null);
+
+  const fetchVersions = useCallback(async () => {
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/b2b/pim/products/${entity_code}/history?${buildQueryString()}`,
+        { signal: controller.signal }
+      );
+      if (res.status === 404) {
+        router.push("/b2b/pim/products");
+        return;
+      }
+      if (!res.ok) {
+        console.error("Error fetching product history:", res.status);
+        setItems([]);
+        return;
+      }
+      const data = await res.json();
+      const nextItems: ProductVersion[] = data.items || [];
+      setItems(nextItems);
+      setPagination(
+        data.pagination || { page, limit: perPage, total: nextItems.length, totalPages: 1 }
+      );
+
+      // Cache the "current" record the first time we see it so header info
+      // survives navigating to a later page that doesn't include it.
+      const current = nextItems.find((v) => v.isCurrent);
+      if (current) setHeaderProduct(current);
+    } catch (error) {
+      if ((error as { name?: string }).name !== "AbortError") {
+        console.error("Error fetching product history:", error);
+        setItems([]);
+      }
+    } finally {
+      // If we were superseded by a newer request, leave its loading flag alone.
+      if (fetchAbortRef.current === controller) {
+        setIsLoading(false);
+      }
+    }
+  }, [entity_code, router, buildQueryString, page, perPage]);
 
   useEffect(() => {
     fetchVersions();
-  }, [entity_code]);
-
-  async function fetchVersions() {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/b2b/pim/products/${entity_code}/history`);
-      if (res.ok) {
-        const data = await res.json();
-        setVersions(data.versions || []);
-      } else if (res.status === 404) {
-        router.push("/b2b/pim/products");
-      }
-    } catch (error) {
-      console.error("Error fetching product history:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function formatDate(dateString: string) {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  }
+  }, [fetchVersions]);
 
   function formatTimeAgo(dateString: string) {
     const date = new Date(dateString);
@@ -124,7 +234,6 @@ export default function ProductHistoryPage({
       } else if (prev.length < 2) {
         return [...prev, version];
       } else {
-        // Replace the first selected version
         return [prev[1], version];
       }
     });
@@ -132,7 +241,7 @@ export default function ProductHistoryPage({
 
   function handleCompare() {
     if (selectedVersions.length === 2) {
-      const [v1, v2] = selectedVersions.sort((a, b) => a - b);
+      const [v1, v2] = [...selectedVersions].sort((a, b) => a - b);
       setCompareV1(v1);
       setCompareV2(v2);
       setShowComparison(true);
@@ -140,15 +249,14 @@ export default function ProductHistoryPage({
   }
 
   async function handleRollback(targetVersion: number) {
-    const currentVersion = versions.find((v) => v.isCurrent);
-    if (!currentVersion) return;
+    const current = headerProduct ?? items.find((v) => v.isCurrent);
+    if (!current) return;
 
     const confirmed = confirm(
       `Are you sure you want to rollback to version ${targetVersion}?\n\n` +
-        `This will create a new version (v${currentVersion.version + 1}) with the data from version ${targetVersion}.\n` +
+        `This will create a new version (v${current.version + 1}) with the data from version ${targetVersion}.\n` +
         `The current version will be preserved in history.`
     );
-
     if (!confirmed) return;
 
     setRollingBack(true);
@@ -167,7 +275,6 @@ export default function ProductHistoryPage({
       const data = await res.json();
       alert(`✅ Successfully rolled back to version ${targetVersion}!\n\nNew version: v${data.new_version}`);
 
-      // Refresh versions list
       await fetchVersions();
       router.push(`/b2b/pim/products/${entity_code}`);
     } catch (error) {
@@ -204,65 +311,18 @@ export default function ProductHistoryPage({
     }
   }
 
-  function applyFilters(versions: ProductVersion[]): ProductVersion[] {
-    return versions.filter((version) => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = getLocalizedString(version.name).toLowerCase().includes(query);
-        const matchesDescription = getLocalizedString(version.description).toLowerCase().includes(query);
-        const matchesSku = version.sku.toLowerCase().includes(query);
-        if (!matchesName && !matchesDescription && !matchesSku) {
-          return false;
-        }
-      }
-
-      // Status filter
-      if (statusFilter !== "all" && version.status !== statusFilter) {
-        return false;
-      }
-
-      // Edit type filter
-      if (editTypeFilter === "manual" && !version.manually_edited) {
-        return false;
-      }
-      if (editTypeFilter === "api" && version.manually_edited) {
-        return false;
-      }
-
-      // Date filter
-      if (dateFilter !== "all") {
-        const versionDate = new Date(version.created_at);
-        const now = new Date();
-        const daysDiff = Math.floor((now.getTime() - versionDate.getTime()) / 86400000);
-
-        if (dateFilter === "7days" && daysDiff > 7) {
-          return false;
-        }
-        if (dateFilter === "30days" && daysDiff > 30) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }
-
   function clearFilters() {
     setSearchQuery("");
+    setDebouncedSearch("");
     setStatusFilter("all");
     setEditTypeFilter("all");
     setDateFilter("all");
+    setDateFrom("");
+    setDateTo("");
   }
 
-  const filteredVersions = applyFilters(versions);
-  const hasActiveFilters =
-    searchQuery !== "" ||
-    statusFilter !== "all" ||
-    editTypeFilter !== "all" ||
-    dateFilter !== "all";
-
-  if (isLoading) {
+  // First-load skeleton (no header cache yet, still fetching).
+  if (isLoading && !headerProduct && items.length === 0) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
@@ -271,7 +331,9 @@ export default function ProductHistoryPage({
     );
   }
 
-  const currentProduct = versions.find((v) => v.isCurrent);
+  const currentProduct = headerProduct;
+  const showingFrom = items.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const showingTo = (pagination.page - 1) * pagination.limit + items.length;
 
   return (
     <div className="space-y-6">
@@ -283,8 +345,12 @@ export default function ProductHistoryPage({
             label: (() => {
               if (!currentProduct?.name) return entity_code;
               if (typeof currentProduct.name === "string") return currentProduct.name;
-              // Extract from multilingual object - prefer Italian, then English, then first available
-              return currentProduct.name.it || currentProduct.name.en || Object.values(currentProduct.name)[0] || entity_code;
+              return (
+                currentProduct.name.it ||
+                currentProduct.name.en ||
+                Object.values(currentProduct.name)[0] ||
+                entity_code
+              );
             })(),
             href: `/b2b/pim/products/${entity_code}`,
           },
@@ -304,8 +370,11 @@ export default function ProductHistoryPage({
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.history.title")}</h1>
             <p className="text-sm text-muted-foreground">
-              {getLocalizedString(currentProduct?.name)} • {filteredVersions.length} of {versions.length} version
-              {versions.length !== 1 ? "s" : ""}
+              {getLocalizedString(currentProduct?.name)} •{" "}
+              {t("pages.pim.history.countSummary", {
+                shown: String(showingTo),
+                total: String(pagination.total),
+              })}
             </p>
           </div>
         </div>
@@ -320,14 +389,9 @@ export default function ProductHistoryPage({
         >
           <Filter className="h-4 w-4" />
           {t("common.filters")}
-          {hasActiveFilters && (
+          {activeFilterCount > 0 && (
             <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
-              {[
-                searchQuery ? 1 : 0,
-                statusFilter !== "all" ? 1 : 0,
-                editTypeFilter !== "all" ? 1 : 0,
-                dateFilter !== "all" ? 1 : 0,
-              ].reduce((a, b) => a + b, 0)}
+              {activeFilterCount}
             </span>
           )}
         </button>
@@ -339,12 +403,14 @@ export default function ProductHistoryPage({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">{t("common.search")}</label>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("common.search")}
+              </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search by name, SKU, or description..."
+                  placeholder={t("pages.pim.history.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
@@ -352,12 +418,14 @@ export default function ProductHistoryPage({
               </div>
             </div>
 
-            {/* Status Filter */}
+            {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">{t("common.status")}</label>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("common.status")}
+              </label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                 className="w-full px-3 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
               >
                 <option value="all">All Statuses</option>
@@ -367,12 +435,14 @@ export default function ProductHistoryPage({
               </select>
             </div>
 
-            {/* Edit Type Filter */}
+            {/* Edit Type */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">{t("pages.pim.history.editType")}</label>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("pages.pim.history.editType")}
+              </label>
               <select
                 value={editTypeFilter}
-                onChange={(e) => setEditTypeFilter(e.target.value as any)}
+                onChange={(e) => setEditTypeFilter(e.target.value as EditTypeFilter)}
                 className="w-full px-3 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
               >
                 <option value="all">All Types</option>
@@ -382,51 +452,78 @@ export default function ProductHistoryPage({
             </div>
           </div>
 
-          {/* Date Range Filter */}
+          {/* Date Range */}
           <div className="mt-4">
-            <label className="block text-sm font-medium text-foreground mb-2">{t("pages.pim.history.dateRange")}</label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setDateFilter("all")}
-                className={`px-3 py-1 rounded text-sm font-medium transition ${
-                  dateFilter === "all"
-                    ? "bg-blue-100 text-blue-700 border border-blue-300"
-                    : "bg-background border border-border hover:bg-muted"
-                }`}
-              >
-                {t("pages.pim.history.allTime")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilter("7days")}
-                className={`px-3 py-1 rounded text-sm font-medium transition ${
-                  dateFilter === "7days"
-                    ? "bg-blue-100 text-blue-700 border border-blue-300"
-                    : "bg-background border border-border hover:bg-muted"
-                }`}
-              >
-                {t("pages.pim.history.last7Days")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilter("30days")}
-                className={`px-3 py-1 rounded text-sm font-medium transition ${
-                  dateFilter === "30days"
-                    ? "bg-blue-100 text-blue-700 border border-blue-300"
-                    : "bg-background border border-border hover:bg-muted"
-                }`}
-              >
-                {t("pages.pim.history.last30Days")}
-              </button>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              {t("pages.pim.history.dateRange")}
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  { value: "all", label: t("pages.pim.history.allTime") },
+                  { value: "7days", label: t("pages.pim.history.last7Days") },
+                  { value: "30days", label: t("pages.pim.history.last30Days") },
+                  { value: "custom", label: t("pages.pim.history.customRange") },
+                ] as { value: DateFilter; label: string }[]
+              ).map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => {
+                    setDateFilter(preset.value);
+                    if (preset.value !== "custom") {
+                      setDateFrom("");
+                      setDateTo("");
+                    }
+                  }}
+                  className={`px-3 py-1 rounded text-sm font-medium transition ${
+                    dateFilter === preset.value
+                      ? "bg-blue-100 text-blue-700 border border-blue-300"
+                      : "bg-background border border-border hover:bg-muted"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
             </div>
+
+            {dateFilter === "custom" && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    {t("pages.pim.history.dateFrom")}
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    {t("pages.pim.history.dateTo")}
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full px-3 py-2 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Clear Filters */}
           {hasActiveFilters && (
             <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Showing {filteredVersions.length} of {versions.length} versions
+                {t("pages.pim.history.countSummary", {
+                  shown: String(showingTo),
+                  total: String(pagination.total),
+                })}
               </p>
               <button
                 type="button"
@@ -459,16 +556,14 @@ export default function ProductHistoryPage({
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-foreground">{getLocalizedString(currentProduct.name)}</h3>
+                  <h3 className="font-semibold text-foreground">
+                    {getLocalizedString(currentProduct.name)}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     SKU: {currentProduct.sku} • Version {currentProduct.version}
                   </p>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                    currentProduct.status
-                  )}`}
-                >
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(currentProduct.status)}`}>
                   Current
                 </span>
               </div>
@@ -532,11 +627,19 @@ export default function ProductHistoryPage({
           </div>
         </div>
 
-        <div className="divide-y divide-border">
-          {filteredVersions.length === 0 ? (
+        <div className="divide-y divide-border relative">
+          {isLoading && (
+            <div className="absolute inset-0 bg-background/60 z-10 flex items-center justify-center pointer-events-none">
+              <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {items.length === 0 && !isLoading ? (
             <div className="p-12 text-center">
               <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">{t("pages.pim.history.noVersionsFound")}</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {t("pages.pim.history.noVersionsFound")}
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Try adjusting your filters to see more results
               </p>
@@ -551,7 +654,7 @@ export default function ProductHistoryPage({
               )}
             </div>
           ) : (
-            filteredVersions.map((version, index) => (
+            items.map((version, index) => (
               <div
                 key={version._id}
                 className={`p-4 hover:bg-muted/30 transition ${
@@ -599,7 +702,9 @@ export default function ProductHistoryPage({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-semibold text-foreground">{getLocalizedString(version.name)}</h3>
+                        <h3 className="font-semibold text-foreground">
+                          {getLocalizedString(version.name)}
+                        </h3>
                         <p className="text-xs text-muted-foreground">{version.sku}</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -614,9 +719,7 @@ export default function ProductHistoryPage({
                           </span>
                         )}
                         <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-                            version.status
-                          )}`}
+                          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(version.status)}`}
                         >
                           {version.status}
                         </span>
@@ -678,14 +781,65 @@ export default function ProductHistoryPage({
                   </div>
                 </div>
 
-                {/* Connection Line */}
-                {index < filteredVersions.length - 1 && (
+                {index < items.length - 1 && (
                   <div className="ml-5 mt-2 mb-2 h-4 border-l-2 border-dashed border-border"></div>
                 )}
               </div>
             ))
           )}
         </div>
+
+        {/* Pager */}
+        {pagination.total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border bg-muted/30 text-sm">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <span>
+                {showingFrom}–{showingTo} / {pagination.total}
+              </span>
+              <label className="flex items-center gap-2">
+                <span>{t("pages.pim.history.perPage")}:</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => setPerPage(Number(e.target.value))}
+                  className="px-2 py-1 rounded border border-border bg-background text-sm focus:border-primary focus:outline-none"
+                >
+                  {PAGE_SIZE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={pagination.page <= 1 || isLoading}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {t("common.previous")}
+              </button>
+              <span className="px-2 text-muted-foreground">
+                {t("pages.pim.history.pageOf", {
+                  page: String(pagination.page),
+                  totalPages: String(pagination.totalPages),
+                })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                disabled={pagination.page >= pagination.totalPages || isLoading}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t("common.next")}
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Version Comparison Modal */}

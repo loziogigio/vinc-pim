@@ -21,6 +21,39 @@ export type B2BPortalStatus = (typeof B2B_PORTAL_STATUSES)[number];
 
 export const DEFAULT_PORTAL_SLUG = "default";
 
+/** Default category root segment when none is configured (see seo-url spec §5.2 / D2). */
+export const DEFAULT_CATEGORY_ROOT = "categorie";
+
+/** Default robots disallow rules for a B2B portal (mirrors B2BSitemapSchema defaults). */
+export const DEFAULT_SEO_ROBOTS_DISALLOW = [
+  "/api/",
+  "/account/",
+  "/checkout/",
+  "/complete-order/",
+  "/*?preview=true",
+] as const;
+
+/**
+ * Per-tenant SEO / routing config consumed by the B2B storefront.
+ * See seo-url spec §5.2.
+ */
+export interface IB2BPortalSeoConfig {
+  /**
+   * Category URL root segment. `default` falls back to "categorie".
+   * Optional per-locale overrides (e.g. { it: "prodotti", en: "products" }).
+   */
+  category_root?: {
+    default?: string;
+    [locale: string]: string | undefined;
+  };
+  robots?: {
+    /** When true the storefront emits `Disallow: /` (de-index the whole site). */
+    noindex?: boolean;
+    allow?: string[];
+    disallow?: string[];
+  };
+}
+
 /** Root B2B portal document */
 export interface IB2BPortal {
   _id?: string;
@@ -37,6 +70,8 @@ export interface IB2BPortal {
   meta_tags: IB2CStorefrontMetaTags;
   custom_scripts: IB2CCustomScript[];
   settings: IB2CStorefrontSettings;
+  /** SEO / routing config consumed by the storefront (category root + robots). */
+  seo_config?: IB2BPortalSeoConfig;
   created_at: Date;
   updated_at: Date;
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAPIKey } from "@/lib/auth/api-key-auth";
 import { getPortalBySlug } from "@/lib/services/b2b-portal.service";
 import { connectWithModels } from "@/lib/db/connection";
+import { getHomeSettings } from "@/lib/db/home-settings";
 
 /**
  * GET /api/b2b/b2b/public/home
@@ -63,6 +64,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // `cardStyle` (and `priceDecimals` inside it) still lives on b2bhomesettings
+    // — buildPortalFromHomeSettings intentionally omits it. Read it directly
+    // and merge onto the portal so storefronts get the tenant's saved value
+    // instead of falling back to defaults.
+    const homeSettings = await getHomeSettings(tenantDb).catch(() => null);
+    const portalWithCardStyle = {
+      ...portal,
+      ...(homeSettings?.cardStyle ? { cardStyle: homeSettings.cardStyle } : {}),
+    };
+
     // 4. Get published home template for this portal
     const { HomeTemplate } = await connectWithModels(tenantDb);
     const publishedVersion = await HomeTemplate.findOne({
@@ -89,7 +100,7 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    return NextResponse.json({ portal, homeTemplate });
+    return NextResponse.json({ portal: portalWithCardStyle, homeTemplate });
   } catch (error) {
     console.error("[GET /api/b2b/b2b/public/home]", error);
     const message = error instanceof Error ? error.message : "Internal server error";

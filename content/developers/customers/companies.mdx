@@ -1,0 +1,281 @@
+export const metadata = {
+  title: "Companies",
+  description:
+    "Bulk-import companies (customers) and their delivery / billing addresses into a VINC Commerce Suite tenant.",
+};
+
+# Companies
+
+Push your customer base into a tenant in bulk. The endpoint accepts an array
+of **company** records — each with its legal data and an embedded list of
+addresses — validates the payload, enqueues a background job, and returns a
+`job_id` you can poll. Records are matched on `external_code`, so re-sending
+the same feed updates the existing companies (idempotent upsert).
+
+<Callout kind="info" title="Base path">
+  The endpoints on this page are rooted at <code>/api/b2b/customers/import</code>.
+</Callout>
+
+<Callout kind="tip" title="Import order">
+  Import companies **before** portal users. A portal user links to a company
+  by its `external_code`, which is resolved server-side — see
+  [Portal Users](/developers/customers/portal-users).
+</Callout>
+
+## Authentication
+
+Both endpoints accept either a tenant API key or a B2B portal session cookie.
+
+<ParamTable
+  caption="Accepted credentials"
+  rows={[
+    { name: "API key", type: "headers", description: "x-auth-method: api-key + x-api-key-id: ak_... + x-api-secret: sk_... — the key must have the customers permission." },
+    { name: "Session cookie", type: "cookie", description: "vinc_b2b_session — set by the B2B portal login flow." },
+  ]}
+/>
+
+## Endpoints
+
+<Endpoint method="POST" path="/api/b2b/customers/import/api" auth="api-key" />
+<Endpoint method="GET"  path="/api/b2b/customers/import/api/{job_id}" auth="api-key" />
+
+---
+
+## Import companies
+
+<Endpoint method="POST" path="/api/b2b/customers/import/api" auth="api-key" />
+
+Queues an array of companies for upsert. Returns `202 Accepted` immediately;
+the actual write happens in a background worker.
+
+### Constraints
+
+- 1 ≤ `customers.length` ≤ **5000** per request.
+- Every entry must carry a non-empty `external_code`.
+- Recommended batch size: **≤ 500** companies per call; split larger feeds
+  into multiple requests sharing a `batch_metadata.batch_id`.
+
+### Request body
+
+<ParamTable
+  rows={[
+    { name: "customers", type: "CustomerImportItem[]", required: true, description: "Array of company payloads — see the field table below." },
+    { name: "merge_mode", type: "'replace' | 'partial'", description: "'replace' overwrites every provided field (and the whole address list when addresses is sent); 'partial' deep-merges only the fields you send and matches addresses by external_code.", default: "'replace'" },
+    { name: "channel", type: "string", description: "Default sales channel for companies created in this batch. A per-company channel takes priority. Falls back to the tenant default channel." },
+    { name: "batch_metadata", type: "object", description: "Optional { batch_id, batch_part, batch_total_parts, batch_total_items } — persisted on the ImportJob so multi-part feeds can be correlated." },
+  ]}
+/>
+
+### CustomerImportItem
+
+<ParamTable
+  caption="Company fields"
+  rows={[
+    { name: "external_code", type: "string", required: true, description: "Your stable id for the company (e.g. the ERP customer code). Used as the upsert key and referenced by portal users." },
+    { name: "public_code", type: "string", description: "Human-facing customer code shown in the portal. Auto-generated on create if omitted." },
+    { name: "customer_type", type: "'business' | 'private' | 'reseller'", description: "Category of the company." },
+    { name: "channel", type: "string", description: "Sales channel for this company (e.g. vinc-b2b). Overrides the batch-level channel." },
+    { name: "company_name", type: "string", description: "Legal / trade name (ragione sociale)." },
+    { name: "first_name", type: "string", description: "Contact first name — useful for private customers." },
+    { name: "last_name", type: "string", description: "Contact last name." },
+    { name: "email", type: "string", description: "Primary email for the company." },
+    { name: "phone", type: "string", description: "Primary phone." },
+    { name: "legal_info", type: "object", description: "{ vat_number, fiscal_code, pec_email, sdi_code } — all optional, each validated when present (see below)." },
+    { name: "tags", type: "string[]", description: "Free-form labels. In partial mode tags are added (additive upsert); in replace mode they overwrite. Used for filtering, segmentation, and price-list rules." },
+    { name: "addresses", type: "CustomerImportAddress[]", description: "Embedded delivery / billing addresses — see the address field table." },
+  ]}
+/>
+
+<Callout kind="info" title="legal_info validation">
+  When a field is present it must be well-formed, otherwise the company row is
+  rejected: <code>vat_number</code> → <code>IT</code> + 11 digits;{" "}
+  <code>fiscal_code</code> → 16 chars (individuals) or 11 digits (companies);{" "}
+  <code>sdi_code</code> → 7 alphanumeric chars; <code>pec_email</code> → a
+  valid email. Omit a field rather than send an empty / unknown value.
+</Callout>
+
+### CustomerImportAddress
+
+<ParamTable
+  caption="Address fields"
+  rows={[
+    { name: "street_address", type: "string", required: true, description: "Street + number. Required for the address to be persisted." },
+    { name: "city", type: "string", required: true, description: "City. Required." },
+    { name: "province", type: "string", required: true, description: "Province / state code. Required." },
+    { name: "external_code", type: "string", description: "Your id for the address. Strongly recommended: it is the match key in partial mode and lets a portal user be scoped to specific addresses." },
+    { name: "address_type", type: "'delivery' | 'billing' | 'both'", description: "Use of the address.", default: "'delivery'" },
+    { name: "label", type: "string", description: "Display label, e.g. “Warehouse – Napoli (NA)”." },
+    { name: "recipient_name", type: "string", description: "Name the goods / invoice are addressed to." },
+    { name: "street_address_2", type: "string", description: "Second address line." },
+    { name: "postal_code", type: "string", description: "ZIP / CAP. Stored as an empty string if omitted." },
+    { name: "country", type: "string", description: "ISO 3166-1 alpha-2 country code.", default: "'IT'" },
+    { name: "phone", type: "string", description: "Address-specific phone." },
+    { name: "delivery_notes", type: "string", description: "Free-text notes for the courier." },
+    { name: "is_default", type: "boolean", description: "Marks this as the company's default address.", default: "false" },
+    { name: "tag_overrides", type: "string[]", description: "Address-level tags that override the company tags (only applied when external_code is also set)." },
+  ]}
+/>
+
+<Callout kind="warning" title="Invalid addresses are skipped, not fatal">
+  An address missing <code>street_address</code>, <code>city</code>, or{" "}
+  <code>province</code> is dropped (a warning is logged) and the company is
+  still imported. In <code>partial</code> mode an address with an{" "}
+  <code>external_code</code> that matches an existing one is merged field-by-field
+  (a label-only update is fine); an unmatched <code>external_code</code> creates
+  a new address if its required fields are present.
+</Callout>
+
+### Response — `202 Accepted`
+
+<ParamTable
+  rows={[
+    { name: "success", type: "boolean", description: "true when the batch was accepted and queued." },
+    { name: "job_id", type: "string", description: "ImportJob id, prefix 'cust_import_'. Poll it for progress and per-row errors." },
+    { name: "total", type: "integer", description: "Number of companies queued." },
+    { name: "merge_mode", type: "'replace' | 'partial'", description: "Echo of the mode applied." },
+    { name: "message", type: "string", description: "Human-readable confirmation." },
+  ]}
+/>
+
+`400` is returned for an empty / oversized `customers` array, an invalid
+`merge_mode`, or a company missing `external_code` (the error names the offending
+index). Per-row failures during processing (e.g. bad `legal_info`) do **not**
+fail the request — they surface on the job under `import_errors`.
+
+### Example
+
+<CodeBlock
+  title="curl — upsert two companies (partial mode)"
+  code={`curl -X POST https://cs.vendereincloud.it/api/b2b/customers/import/api \\
+  -H "Content-Type: application/json" \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..." \\
+  -d '{
+    "merge_mode": "partial",
+    "channel": "vinc-b2b",
+    "customers": [
+      {
+        "external_code": "000123",
+        "public_code": "000123",
+        "customer_type": "reseller",
+        "company_name": "ACME S.R.L.",
+        "email": "info@acme.it",
+        "phone": "+39 081 1234567",
+        "legal_info": {
+          "vat_number": "IT01234567890",
+          "fiscal_code": "RSSMRA80A01F839X",
+          "sdi_code": "ABCDEFG"
+        },
+        "tags": ["categoria-clienti:R1"],
+        "addresses": [
+          {
+            "external_code": "000000",
+            "address_type": "both",
+            "label": "HQ – Napoli (NA)",
+            "recipient_name": "ACME S.R.L.",
+            "street_address": "Via Roma 10",
+            "city": "Napoli",
+            "province": "NA",
+            "postal_code": "80100",
+            "country": "IT",
+            "is_default": true
+          }
+        ]
+      },
+      {
+        "external_code": "000124",
+        "customer_type": "business",
+        "company_name": "Beta Impianti S.n.c.",
+        "addresses": []
+      }
+    ]
+  }'`}
+/>
+
+<CodeBlock
+  title="202 Accepted"
+  code={`{
+  "success": true,
+  "job_id": "cust_import_1714142335123_a4f9k2",
+  "total": 2,
+  "merge_mode": "partial",
+  "message": "Queued 2 customers for import"
+}`}
+/>
+
+### partial vs replace
+
+<CodeBlock
+  title="merge_mode: 'partial' — preserves omitted fields & merges addresses by external_code"
+  code={`// Existing company:
+// { external_code: "000123", company_name: "ACME S.R.L.", email: "old@acme.it", addresses: [{ external_code: "000000", city: "Napoli", ... }] }
+
+// Incoming:
+{ "external_code": "000123", "email": "info@acme.it",
+  "addresses": [{ "external_code": "000000", "label": "HQ - Napoli (NA)" }] }
+
+// Result: email updated, address 000000 keeps its fields with the new label, every other field untouched.`}
+/>
+
+<CodeBlock
+  title="merge_mode: 'replace' (default) — provided fields win, addresses replaced wholesale"
+  code={`// Same existing company, same incoming payload:
+// email is updated; the addresses array is replaced by [{ external_code: "000000", label: "HQ - Napoli (NA)" }]
+// — and that address is dropped because it is missing street_address / city / province.`}
+/>
+
+---
+
+## Check job status
+
+<Endpoint method="GET" path="/api/b2b/customers/import/api/{job_id}" auth="api-key" />
+
+Returns the `ImportJob` created by the POST above. Poll until `status` is
+`completed` or `failed`.
+
+<ParamTable
+  rows={[
+    { name: "job.job_id", type: "string", description: "Echoes the requested id." },
+    { name: "job.status", type: "'pending' | 'processing' | 'completed' | 'failed'", description: "Lifecycle state." },
+    { name: "job.total_rows", type: "integer", description: "Companies in the batch." },
+    { name: "job.processed_rows", type: "integer", description: "Companies processed so far." },
+    { name: "job.successful_rows", type: "integer", description: "Companies upserted." },
+    { name: "job.failed_rows", type: "integer", description: "Companies rejected — see import_errors." },
+    { name: "job.import_errors", type: "{ row, entity_code, error, raw_data }[]", description: "Per-row failures with the offending payload." },
+    { name: "job.batch_id / batch_part / batch_total_parts", type: "string / integer", description: "Echoed from batch_metadata when supplied." },
+    { name: "job.started_at / completed_at / duration_seconds", type: "string / number", description: "Processing timing." },
+  ]}
+/>
+
+<CodeBlock
+  title="curl — poll the job"
+  code={`curl https://cs.vendereincloud.it/api/b2b/customers/import/api/cust_import_1714142335123_a4f9k2 \\
+  -H "x-auth-method: api-key" \\
+  -H "x-api-key-id: ak_acme_live_1234" \\
+  -H "x-api-secret: sk_live_abcdef..."`}
+/>
+
+<CodeBlock
+  title="200 OK"
+  code={`{
+  "success": true,
+  "job": {
+    "job_id": "cust_import_1714142335123_a4f9k2",
+    "status": "completed",
+    "total_rows": 2,
+    "processed_rows": 2,
+    "successful_rows": 2,
+    "failed_rows": 0,
+    "import_errors": [],
+    "started_at": "2026-04-24T12:58:55.500Z",
+    "completed_at": "2026-04-24T12:58:56.020Z",
+    "duration_seconds": 0.52,
+    "batch_id": null,
+    "created_at": "2026-04-24T12:58:55.123Z"
+  }
+}`}
+/>
+
+A `404` means no `customer_import` job exists with that id for the
+authenticated tenant.

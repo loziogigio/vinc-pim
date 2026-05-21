@@ -16,6 +16,7 @@ import type { NotificationTrigger } from "@/lib/constants/notification";
 
 const ORDER_TRIGGERS = new Set<string>([
   "order_confirmation",
+  "b2b_order_confirmation",
   "order_shipped",
   "order_delivered",
   "order_cancelled",

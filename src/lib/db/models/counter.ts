@@ -106,6 +106,43 @@ export async function getNextCartNumber(tenantDb: string, year: number): Promise
 }
 
 /**
+ * Set the cart-number counter for a given year to a specific value (admin override).
+ * The next cart created that year will receive value + 1.
+ *
+ * NOTE: setting this BELOW the highest cart_number already assigned for the year
+ * will cause duplicate cart numbers — callers must guard against that.
+ *
+ * @param tenantDb - The tenant database name (e.g., "vinc-hidros-it")
+ * @param year - The year for the cart-number sequence (e.g., 2026)
+ * @param value - The value to set (next cart gets value + 1)
+ */
+export async function setCartCounter(
+  tenantDb: string,
+  year: number,
+  value: number
+): Promise<void> {
+  const Counter = await getCounterModel(tenantDb);
+  await Counter.findOneAndUpdate(
+    { _id: `cart_number_${year}` },
+    { value },
+    { upsert: true }
+  );
+}
+
+/**
+ * Get the current cart-number counter value for a given year without incrementing.
+ *
+ * @param tenantDb - The tenant database name
+ * @param year - The year for the cart-number sequence
+ * @returns Current counter value, or 0 if not set
+ */
+export async function getCartCounter(tenantDb: string, year: number): Promise<number> {
+  const Counter = await getCounterModel(tenantDb);
+  const result = await Counter.findById(`cart_number_${year}`);
+  return result?.value ?? 0;
+}
+
+/**
  * Get a generic sequential counter value.
  * Useful for other sequences like invoice numbers, quote numbers, etc.
  *

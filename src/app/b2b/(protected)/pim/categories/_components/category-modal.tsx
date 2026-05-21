@@ -37,6 +37,7 @@ function buildPayload(formData: ReturnType<typeof getInitialFormData>, category:
     parent_id: formData.parent_id || undefined,
     display_order: formData.display_order,
     is_active: formData.is_active,
+    external_code: formData.external_code.trim(),
     ...(isRoot ? { channel_code: formData.channel_code || null } : {}),
     seo: {
       title: formData.seo_title,
@@ -52,6 +53,9 @@ function buildPayload(formData: ReturnType<typeof getInitialFormData>, category:
     mobile_hero_image: formData.mobile_hero_image_url
       ? { url: formData.mobile_hero_image_url, alt_text: formData.mobile_hero_image_alt, cdn_key: formData.mobile_hero_image_cdn_key }
       : null,
+    item_icon: formData.item_icon_url
+      ? { url: formData.item_icon_url, alt_text: formData.item_icon_alt, cdn_key: formData.item_icon_cdn_key }
+      : null,
   };
   return payload;
 }
@@ -60,6 +64,7 @@ function getInitialFormData(category: CategoryRecord | null, parentCategory: Cat
   return {
     name: category?.name || "",
     slug: category?.slug || "",
+    external_code: category?.external_code || "",
     description: category?.description || "",
     parent_id: category?.parent_id || parentCategory?.category_id || "",
     hero_image_url: category?.hero_image?.url || "",
@@ -68,6 +73,9 @@ function getInitialFormData(category: CategoryRecord | null, parentCategory: Cat
     mobile_hero_image_url: category?.mobile_hero_image?.url || "",
     mobile_hero_image_alt: category?.mobile_hero_image?.alt_text || "",
     mobile_hero_image_cdn_key: category?.mobile_hero_image?.cdn_key || "",
+    item_icon_url: category?.item_icon?.url || "",
+    item_icon_alt: category?.item_icon?.alt_text || "",
+    item_icon_cdn_key: category?.item_icon?.cdn_key || "",
     seo_title: category?.seo?.title || "",
     seo_description: category?.seo?.description || "",
     seo_keywords: category?.seo?.keywords?.join(", ") || "",
@@ -208,6 +216,23 @@ const CategoryModal = ({
           </div>
         </div>
 
+        {/* External code (ERP / source-system id) */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {t("pages.pim.categories.externalCodeLabel")}
+          </label>
+          <input
+            type="text"
+            value={formData.external_code}
+            onChange={(e) => updateField("external_code", e.target.value)}
+            className={INPUT_CLASS}
+            placeholder={t("pages.pim.categories.externalCodePlaceholder")}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("pages.pim.categories.externalCodeHelp")}
+          </p>
+        </div>
+
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.descriptionLabel")}</label>
@@ -290,6 +315,30 @@ const CategoryModal = ({
               onChange={(e) => updateField("mobile_hero_image_alt", e.target.value)}
               className={INPUT_CLASS}
               placeholder="Alt text for mobile image"
+            />
+          </div>
+        )}
+
+        {/* Category Item Icon/Image */}
+        <div>
+          <ImageUpload
+            label={t("pages.pim.categories.itemIcon")}
+            value={formData.item_icon_url}
+            onChange={(url) => setFormData((prev) => ({ ...prev, item_icon_url: url, item_icon_cdn_key: "" }))}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("pages.pim.categories.itemIconHelp")}
+          </p>
+        </div>
+        {formData.item_icon_url && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.categories.itemIconAltText")}</label>
+            <input
+              type="text"
+              value={formData.item_icon_alt}
+              onChange={(e) => updateField("item_icon_alt", e.target.value)}
+              className={INPUT_CLASS}
+              placeholder="Alt text for icon"
             />
           </div>
         )}

@@ -767,6 +767,7 @@ async function processImport(job: Job<ImportJobData>) {
             has_conflict: conflictDetection.hasConflicts,
             conflict_data: conflictDetection.conflictData,
             "source.imported_at": new Date(),
+            "source.job_id": job_id,
           };
 
           // For API imports: Replace entire attributes object (not merge)
@@ -820,6 +821,7 @@ async function processImport(job: Job<ImportJobData>) {
             source: {
               source_id: source.source_id,
               source_name: source.source_name,
+              job_id,
               ...(job.data.batch_metadata?.batch_id && { batch_id: job.data.batch_metadata.batch_id }),
               ...(job.data.batch_metadata && { batch_metadata: job.data.batch_metadata }),
               imported_at: new Date(),

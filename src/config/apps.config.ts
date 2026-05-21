@@ -25,6 +25,7 @@ import {
   DollarSign,
   Zap,
   LayoutTemplate,
+  Database,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -97,6 +98,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/correlations",
     icon: Link2,
     color: "bg-cyan-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "data-models",
+    name: "Data Models",
+    description: "Modelli dati dinamici (custom collections)",
+    href: "/b2b/admin/data-models",
+    icon: Database,
+    color: "bg-sky-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,

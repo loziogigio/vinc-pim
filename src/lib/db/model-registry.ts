@@ -78,6 +78,11 @@ import { BlogPostSchema } from "./models/blog-post";
 import { BlogPostVersionSchema } from "./models/blog-post-version";
 import { BlogCategorySchema } from "./models/blog-category";
 import { BlogTagSchema } from "./models/blog-tag";
+import {
+  DataModelDefinitionSchema,
+  type IDataModelDefinition,
+  type DataModelField,
+} from "./models/data-model-definition";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -151,6 +156,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   BlogPostVersion: BlogPostVersionSchema,
   BlogCategory: BlogCategorySchema,
   BlogTag: BlogTagSchema,
+  DataModelDefinition: DataModelDefinitionSchema,
 };
 
 /**
@@ -266,6 +272,7 @@ export async function getTenantModels(dbName: string) {
     BlogPostVersion: connection.models.BlogPostVersion,
     BlogCategory: connection.models.BlogCategory,
     BlogTag: connection.models.BlogTag,
+    DataModelDefinition: connection.models.DataModelDefinition,
   };
 }
 
@@ -349,6 +356,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     BlogPostVersion: connection.models.BlogPostVersion,
     BlogCategory: connection.models.BlogCategory,
     BlogTag: connection.models.BlogTag,
+    DataModelDefinition: connection.models.DataModelDefinition,
   };
 }
 
@@ -362,4 +370,69 @@ export function getModelRegistry(connection: mongoose.Connection) {
  */
 export async function connectWithModels(dbName: string) {
   return getTenantModels(dbName);
+}
+
+/**
+ * Resolve (and lazily register) the dynamic Mongoose model that stores records
+ * for a given DataModelDefinition. Each definition has its own physical
+ * collection `dyn_<slug>` in the tenant DB.
+ *
+ * Indexes are derived from the definition shape:
+ *   - {relation_id, channel, _id desc}     — list-by-user, newest first
+ *   - {relation_id, channel} unique        — only when cardinality === "single"
+ *   - {relation_id, channel, external_ref} unique partial — only when external_ref_field set
+ *   - {`data.<slug>`} ascending            — one per filterable: true field (top-level only)
+ */
+export async function getDataModelRecordModel(
+  dbName: string,
+  definition: Pick<
+    IDataModelDefinition,
+    "slug" | "cardinality" | "fields" | "external_ref_field"
+  >
+): Promise<mongoose.Model<mongoose.Document>> {
+  const connection = await getPooledConnection(dbName);
+  const modelName = `DynRecord_${definition.slug}`;
+  if (connection.models[modelName]) {
+    return connection.models[modelName] as mongoose.Model<mongoose.Document>;
+  }
+
+  const schema = new mongoose.Schema(
+    {
+      relation_id: { type: String, required: true },
+      channel: { type: String, required: true },
+      external_ref: { type: String },
+      data: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+      source: { type: String },
+      imported_at: { type: Date },
+    },
+    {
+      timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+      collection: `dyn_${definition.slug}`,
+      strict: false,
+    }
+  );
+
+  schema.index({ relation_id: 1, channel: 1, _id: -1 });
+
+  if (definition.cardinality === "single") {
+    schema.index({ relation_id: 1, channel: 1 }, { unique: true });
+  }
+
+  if (definition.external_ref_field) {
+    schema.index(
+      { relation_id: 1, channel: 1, external_ref: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { external_ref: { $exists: true, $type: "string" } },
+      }
+    );
+  }
+
+  for (const f of (definition.fields ?? []) as DataModelField[]) {
+    if (f.filterable) {
+      schema.index({ [`data.${f.slug}`]: 1 });
+    }
+  }
+
+  return connection.model(modelName, schema);
 }

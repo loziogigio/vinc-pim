@@ -22,6 +22,8 @@ import {
   queueCampaignSend,
 } from "../src/lib/queue/notification-worker";
 import { scheduleCleanupForAllTenants } from "../src/lib/queue/cleanup-worker";
+import { schedulePIMVersionCleanupForAllTenants } from "../src/lib/queue/pim-version-cleanup-worker";
+import { scheduleImportJobCleanupForAllTenants } from "../src/lib/queue/import-job-cleanup-worker";
 import { closeAllConnections } from "../src/lib/db/connection-pool";
 
 // Fallback polling interval (5 minutes)
@@ -76,6 +78,8 @@ async function runScheduler(): Promise<void> {
       if (shouldRunDailyCleanup()) {
         console.log("[Scheduler] Running daily cleanup...");
         await scheduleCleanupForAllTenants();
+        await schedulePIMVersionCleanupForAllTenants();
+        await scheduleImportJobCleanupForAllTenants();
       }
     } catch (error) {
       console.error("[Scheduler] Loop error:", error);
@@ -106,4 +110,10 @@ process.on("SIGTERM", async () => {
 });
 
 // Export for programmatic use
-export { schedulePollForAllTenants, scheduleCleanupForAllTenants, queueCampaignSend };
+export {
+  schedulePollForAllTenants,
+  scheduleCleanupForAllTenants,
+  schedulePIMVersionCleanupForAllTenants,
+  scheduleImportJobCleanupForAllTenants,
+  queueCampaignSend,
+};

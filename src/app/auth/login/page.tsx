@@ -19,6 +19,7 @@ import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { LoginForm } from "./LoginForm";
 import { AuthShell } from "../_components/AuthShell";
+import { getAuthClientLabel } from "../_components/client-labels";
 import { getTenantBranding } from "../_components/tenant-branding";
 
 // Force dynamic rendering since this page uses searchParams
@@ -53,9 +54,22 @@ export default async function LoginPage({ searchParams }: PageProps) {
 
   // Fetch tenant branding if tenant_id is provided
   const branding = tenant_id ? await getTenantBranding(tenant_id) : null;
+  const clientLabel = getAuthClientLabel(client_id);
+  const shellVariant =
+    (client_id === "vinc-b2b" || client_id === "vinc-vetrina") &&
+    branding?.b2bTheme === "default"
+      ? "tenant-default-theme"
+      : "default";
+  const shellAppLabel =
+    client_id === "vinc-vetrina" ? "Ufficio Digitale" : "Portale B2B";
 
   return (
-    <AuthShell branding={branding}>
+    <AuthShell
+      branding={branding}
+      variant={shellVariant}
+      titleOverride={client_id === "vinc-vetrina" ? clientLabel : null}
+      appLabel={shellVariant === "tenant-default-theme" ? shellAppLabel : null}
+    >
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg">
@@ -71,7 +85,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
         <div className="mb-6 p-4 bg-slate-50 rounded-lg">
           <p className="text-sm text-slate-600">
             Accesso tramite{" "}
-            <span className="font-medium">{getClientName(client_id)}</span>
+            <span className="font-medium">{clientLabel}</span>
           </p>
         </div>
       )}
@@ -99,19 +113,4 @@ export default async function LoginPage({ searchParams }: PageProps) {
       </Suspense>
     </AuthShell>
   );
-}
-
-/**
- * Get friendly name for OAuth client.
- */
-function getClientName(clientId: string): string {
-  const names: Record<string, string> = {
-    "vinc-b2b": "VINC B2B Portal",
-    "vinc-vetrina": "VINC Vetrina",
-    "vinc-commerce-suite": "VINC Commerce Suite",
-    "vinc-mobile": "VINC Mobile App",
-    "vinc-pim": "VINC PIM",
-  };
-
-  return names[clientId] || clientId;
 }

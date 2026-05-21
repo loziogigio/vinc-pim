@@ -5,6 +5,7 @@ import { ChevronDown, Search, X } from "lucide-react";
 
 export type CategoryRecord = {
   category_id: string;
+  external_code?: string;
   name: string;
   slug: string;
   description?: string;
@@ -19,6 +20,11 @@ export type CategoryRecord = {
     cdn_key?: string;
   };
   mobile_hero_image?: {
+    url: string;
+    alt_text?: string;
+    cdn_key?: string;
+  };
+  item_icon?: {
     url: string;
     alt_text?: string;
     cdn_key?: string;

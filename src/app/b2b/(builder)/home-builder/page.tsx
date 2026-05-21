@@ -228,22 +228,48 @@ function HomeBuilderContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPageConfig]); // Only run on mount, urlVersion is read once
 
-  // Fetch home settings to get shopUrl for LivePreview
+  // Fetch shopUrl for LivePreview. Prefer the new B2B portal's primary domain
+  // (Phase 2a: /api/b2b/b2b/portals); fall back to legacy home-settings if the
+  // tenant isn't migrated or has no portal domains configured.
   useEffect(() => {
-    const fetchSettings = async () => {
+    const normalize = (raw: string): string => {
+      const trimmed = raw.trim();
+      if (!trimmed) return "";
+      return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    };
+
+    const fromPortal = async (): Promise<string | null> => {
       try {
-        const response = await fetch("/api/b2b/home-settings");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.branding?.shopUrl) {
-            setShopUrl(data.branding.shopUrl);
-          }
-        }
-      } catch (err) {
-        console.warn("Failed to fetch home settings for shopUrl:", err);
+        const res = await fetch("/api/b2b/b2b/portals?limit=1");
+        if (!res.ok) return null;
+        const data = await res.json();
+        const portal = data.items?.[0];
+        if (!portal?.domains?.length) return null;
+        const primary = portal.domains.find(
+          (d: { domain: string; is_primary?: boolean }) => d.is_primary,
+        );
+        const pick = primary?.domain || portal.domains[0]?.domain;
+        return pick ? normalize(pick) : null;
+      } catch {
+        return null;
       }
     };
-    fetchSettings();
+
+    const fromLegacy = async (): Promise<string | null> => {
+      try {
+        const res = await fetch("/api/b2b/home-settings");
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.branding?.shopUrl || null;
+      } catch {
+        return null;
+      }
+    };
+
+    (async () => {
+      const url = (await fromPortal()) ?? (await fromLegacy());
+      if (url) setShopUrl(url);
+    })();
   }, []);
 
   useEffect(() => {

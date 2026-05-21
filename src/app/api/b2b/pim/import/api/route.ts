@@ -12,7 +12,7 @@ import {
 } from "@/lib/pim/auto-publish";
 import { projectConfig, MULTILINGUAL_FIELDS } from "@/config/project.config";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
-import { autoProvisionCatalogEntities } from "@/lib/services/pim-catalog-autoprovision.service";
+import { autoProvisionCatalogEntities, resolveChannelCategoriesByExternalCode } from "@/lib/services/pim-catalog-autoprovision.service";
 
 /**
  * Check if an object is already in multilingual format (has language keys at root level)
@@ -304,6 +304,15 @@ export async function POST(req: NextRequest) {
         // Apply default language to multilingual fields (convert plain strings to {lang: value})
         applyDefaultLanguageToData(mappedData, languageCodes);
 
+        // Resolve channel_categories that arrive with only external_code:
+        // look up the matching Category and fill in category_id/name/slug/hierarchy.
+        if (Array.isArray(mappedData.channel_categories) && mappedData.channel_categories.length) {
+          mappedData.channel_categories = await resolveChannelCategoriesByExternalCode(
+            CategoryModel as any,
+            mappedData.channel_categories,
+          );
+        }
+
         const entity_code = mappedData.entity_code || mappedData.sku;
 
         if (!entity_code) {
@@ -419,6 +428,7 @@ export async function POST(req: NextRequest) {
         const productSource: any = {
           source_id: source.source_id,
           source_name: source.source_name,
+          job_id: jobId,
           imported_at: new Date(),
         };
 

@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     const { Category: CategoryModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { name, slug, description, parent_id, hero_image, mobile_hero_image, seo, display_order, channel_code } = body;
+    const { name, slug, description, parent_id, hero_image, mobile_hero_image, item_icon, seo, display_order, channel_code, external_code } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -164,6 +164,7 @@ export async function POST(req: NextRequest) {
 
     const category = await CategoryModel.create({
       category_id: nanoid(12),
+      external_code: external_code?.trim() || undefined,
       name,
       slug,
       description,
@@ -172,6 +173,7 @@ export async function POST(req: NextRequest) {
       path,
       hero_image,
       mobile_hero_image,
+      item_icon,
       seo: seo || {},
       display_order: display_order || 0,
       is_active: true,

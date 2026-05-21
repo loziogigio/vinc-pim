@@ -74,12 +74,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Return new tokens
+    // Return new tokens. Include `tenant_id` (mirrors /api/auth/token) so
+    // clients can enforce defense-in-depth that the refresh result belongs to
+    // the tenant they expect.
     return NextResponse.json({
       access_token: result.tokens.access_token,
       token_type: result.tokens.token_type,
       expires_in: result.tokens.expires_in,
       refresh_token: result.tokens.refresh_token,
+      tenant_id: result.tenant_id,
     });
   } catch (error) {
     console.error("Token refresh error:", error);
