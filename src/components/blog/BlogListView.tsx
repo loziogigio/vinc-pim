@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Plus, Trash2, Loader2, FileText, Search, Pencil, Settings2,
+  Plus, Trash2, Loader2, FileText, Search, Settings2,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Button } from "@/components/ui/button";

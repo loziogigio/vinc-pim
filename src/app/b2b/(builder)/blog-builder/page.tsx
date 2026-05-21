@@ -44,7 +44,7 @@ function BlogBuilderContent() {
   const currentVersion = usePageBuilderStore((s) => s.currentVersion);
   const currentPublishedVersion = usePageBuilderStore((s) => s.currentPublishedVersion);
 
-  const [device, setDevice] = useState<DeviceMode>("desktop");
+  const [device] = useState<DeviceMode>("desktop");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
