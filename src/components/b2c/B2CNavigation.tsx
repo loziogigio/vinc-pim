@@ -14,6 +14,7 @@ import {
   MapPin,
   FileText,
   Inbox,
+  Newspaper,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -112,6 +113,12 @@ export function B2CNavigation() {
             icon={Inbox}
             label={t("nav.b2c.forms")}
             active={subPage === "forms"}
+          />
+          <StorefrontSectionLink
+            href={`${tenantPrefix}/b2b/b2c/storefronts/${storefrontSlug}/blog`}
+            icon={Newspaper}
+            label={t("nav.b2c.blog")}
+            active={subPage === "blog"}
           />
         </NavSection>
       )}
