@@ -26,6 +26,7 @@ import {
   Zap,
   LayoutTemplate,
   Database,
+  Newspaper,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -233,6 +234,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/b2c",
     icon: Globe,
     color: "bg-pink-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "blog",
+    name: "Blog",
+    description: "Editorial posts & content",
+    href: "/b2b/blog",
+    icon: Newspaper,
+    color: "bg-rose-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,
