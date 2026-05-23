@@ -119,6 +119,14 @@ export interface ILineItem {
 
   // ERP data (from Windmill hook responses)
   erp_data?: Record<string, unknown>;
+
+  // Resource Quotation & Booking extensions
+  resource_type?: import("@/lib/constants/booking").ResourceType;
+  source?: string;          // "msc" (external) | "internal" (bookable)
+  departure_id?: string;    // bookable lines only
+  resource_id?: string;     // bookable lines only
+  booking_id?: string;      // set when a hold is placed
+  quote_snapshot?: Record<string, unknown>; // external: { price, availability }
 }
 
 // ============================================
@@ -487,6 +495,9 @@ export interface IOrder extends Document {
   duplicated_at?: Date;
   duplications?: string[]; // order_ids of copies
 
+  // Customer-facing quotation token
+  public_token?: string;
+
   // ============================================
   // Lifecycle Timestamps
   // ============================================
@@ -803,6 +814,14 @@ const LineItemSchema = new Schema<ILineItem>(
     // ERP data (from Windmill hook responses)
     erp_line_number: { type: Number },
     erp_data: { type: Schema.Types.Mixed },
+
+    // Resource Quotation & Booking extensions
+    resource_type: { type: String, enum: ["cabin", "room", "slot", "seat", "generic"] },
+    source: { type: String },
+    departure_id: { type: String },
+    resource_id: { type: String },
+    booking_id: { type: String },
+    quote_snapshot: { type: Schema.Types.Mixed },
   },
   { _id: false }
 );
@@ -1051,6 +1070,9 @@ const OrderSchema = new Schema<IOrder>(
     duplicated_at: { type: Date },
     duplications: { type: [String], default: [] },
 
+    // Customer-facing quotation token (set when a customer-facing quotation is created)
+    public_token: { type: String },
+
     // ============================================
     // Lifecycle Timestamps
     // ============================================
@@ -1135,6 +1157,9 @@ OrderSchema.index({ submitted_at: -1 });
 OrderSchema.index({ shipped_at: -1 });
 OrderSchema.index({ delivered_at: -1 });
 OrderSchema.index({ cancelled_at: -1 });
+
+// Public token for customer-facing quotation access
+OrderSchema.index({ public_token: 1 }, { unique: true, sparse: true });
 
 // ============================================
 // HELPER METHODS
