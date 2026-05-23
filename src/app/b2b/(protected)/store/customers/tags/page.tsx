@@ -118,10 +118,10 @@ export default function CustomerTagsPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Tag className="h-6 w-6 text-emerald-600" />
+            <Tag className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
             {t("pages.store.customerTags.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -130,7 +130,7 @@ export default function CustomerTagsPage() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition"
         >
           <Plus className="h-4 w-4" />
           {t("pages.store.customerTags.createTag")}
@@ -138,7 +138,7 @@ export default function CustomerTagsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-lg bg-card shadow-sm p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("pages.store.customerTags.totalTags")}</p>
           <p className="text-2xl font-bold text-foreground mt-1">{tags.length}</p>
@@ -181,7 +181,7 @@ export default function CustomerTagsPage() {
           <p className="text-muted-foreground">{t("pages.store.customerTags.noTagsDefined")}</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="mt-3 text-sm text-emerald-600 hover:underline"
+            className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
           >
             {t("pages.store.customerTags.createFirstTag")}
           </button>
@@ -227,7 +227,7 @@ export default function CustomerTagsPage() {
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-foreground group-hover:text-emerald-600 transition">
+                        <span className="font-medium text-sm text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
                           {tag.code}
                         </span>
                         <code className="text-xs text-muted-foreground px-1.5 py-0.5 bg-muted rounded font-mono">
@@ -247,12 +247,12 @@ export default function CustomerTagsPage() {
                     <button
                       onClick={(e) => handleDeleteTag(e, tag)}
                       disabled={deletingTagId === tag.tag_id}
-                      className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                      className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
                       title={t("common.delete")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-emerald-600 transition" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition" />
                   </div>
                 </Link>
               ))}

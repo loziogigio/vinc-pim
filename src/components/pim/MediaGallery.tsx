@@ -113,13 +113,13 @@ function getMediaTypeLabel(type: MediaType): string {
 function getMediaTypeBadgeColor(type: MediaType): string {
   switch (type) {
     case "document":
-      return "bg-blue-100 text-blue-700";
+      return "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300";
     case "video":
-      return "bg-purple-100 text-purple-700";
+      return "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300";
     case "3d-model":
-      return "bg-green-100 text-green-700";
+      return "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300";
     default:
-      return "bg-gray-100 text-gray-700";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -268,7 +268,7 @@ function MediaFileItem({
     if (media.is_external_link) {
       // For external links, show a preview button that opens the link
       return (
-        <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+        <div className="mt-2 p-3 bg-muted rounded border border-border">
           <a
             href={media.url}
             target="_blank"
@@ -288,7 +288,7 @@ function MediaFileItem({
           <video
             src={media.url}
             controls
-            className="w-full max-h-64 rounded border border-gray-200"
+            className="w-full max-h-64 rounded border border-border"
           >
             Your browser does not support the video tag.
           </video>
@@ -299,7 +299,7 @@ function MediaFileItem({
     if (media.type === "3d-model") {
       if (!modelViewerLoaded) {
         return (
-          <div className="mt-2 p-4 bg-gray-50 rounded border border-gray-200 text-center text-sm text-gray-600">
+          <div className="mt-2 p-4 bg-muted rounded border border-border text-center text-sm text-muted-foreground">
             {t("pages.pim.mediaGallery.loading3dViewer")}
           </div>
         );
@@ -307,7 +307,7 @@ function MediaFileItem({
 
       if (modelLoadError) {
         return (
-          <div className="mt-2 p-4 bg-red-50 rounded border border-red-200 text-center text-sm text-red-600">
+          <div className="mt-2 p-4 bg-red-50 rounded border border-red-200 text-center text-sm text-red-600 dark:bg-red-500/15 dark:border-red-500/40 dark:text-red-300">
             {modelLoadError}
           </div>
         );
@@ -316,8 +316,8 @@ function MediaFileItem({
       return (
         <div className="mt-2 relative">
           {isModelLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded border border-gray-200 z-10">
-              <div className="text-sm text-gray-600">{t("pages.pim.mediaGallery.loading3dModel")}</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-muted rounded border border-border z-10">
+              <div className="text-sm text-muted-foreground">{t("pages.pim.mediaGallery.loading3dModel")}</div>
             </div>
           )}
           <model-viewer
@@ -344,7 +344,7 @@ function MediaFileItem({
           <div className="mt-2">
             <iframe
               src={media.url}
-              className="w-full h-96 rounded border border-gray-200"
+              className="w-full h-96 rounded border border-border"
               title={getLabelAsString(media.label) || "Document preview"}
             />
           </div>
@@ -353,8 +353,8 @@ function MediaFileItem({
 
       // For other document types, show a message
       return (
-        <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
-          <p className="text-sm text-blue-800">
+        <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200 dark:bg-blue-500/15 dark:border-blue-500/40">
+          <p className="text-sm text-blue-800 dark:text-blue-300">
             {t("pages.pim.mediaGallery.previewNotAvailable")}
           </p>
         </div>
@@ -368,7 +368,7 @@ function MediaFileItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex flex-col gap-2 p-3 bg-white border rounded-lg ${
+      className={`flex flex-col gap-2 p-3 bg-card border rounded-lg ${
         isDragging ? "shadow-lg z-50" : "shadow-sm"
       }`}
     >
@@ -376,16 +376,16 @@ function MediaFileItem({
         {/* Drag Handle */}
         {disabled ? (
           <div className="p-1 cursor-not-allowed opacity-50">
-            <GripVertical className="h-5 w-5 text-gray-400" />
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
           </div>
         ) : (
           <button
             type="button"
-            className="p-1 hover:bg-gray-100 rounded cursor-grab active:cursor-grabbing"
+            className="p-1 hover:bg-accent rounded cursor-grab active:cursor-grabbing"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-5 w-5 text-gray-400" />
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
           </button>
         )}
 
@@ -436,7 +436,7 @@ function MediaFileItem({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-foreground truncate">
                 {getLabelAsString(media.label)}
               </p>
               {onLabelUpdate && (
@@ -444,7 +444,7 @@ function MediaFileItem({
                   type="button"
                   onClick={() => setIsEditingLabel(true)}
                   disabled={disabled}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition disabled:opacity-50"
+                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition disabled:opacity-50"
                   title="Edit label"
                 >
                   <Edit2 className="h-3 w-3" />
@@ -454,7 +454,7 @@ function MediaFileItem({
           )}
 
           {/* File Info */}
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="truncate">{media.file_type}</span>
             {media.size_bytes && (
               <>
@@ -495,7 +495,7 @@ function MediaFileItem({
             <button
               type="button"
               onClick={() => setShowPreview(!showPreview)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 text-muted-foreground hover:bg-accent rounded-lg transition"
               title={showPreview ? "Hide preview" : "Show preview"}
             >
               <ChevronDown
@@ -513,7 +513,7 @@ function MediaFileItem({
                 download
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                className="p-2 text-muted-foreground hover:bg-accent rounded-lg transition"
                 title="Download"
               >
                 <Download className="h-4 w-4" />
@@ -523,7 +523,7 @@ function MediaFileItem({
                 <button
                   type="button"
                   onClick={() => setShowModal(true)}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                  className="p-2 text-muted-foreground hover:bg-accent rounded-lg transition"
                   title="View fullscreen"
                 >
                   <Maximize2 className="h-4 w-4" />
@@ -557,10 +557,10 @@ function MediaFileItem({
           <button
             type="button"
             onClick={() => setShowModal(false)}
-            className="absolute top-4 right-4 p-2 bg-white rounded-full hover:bg-gray-100 transition z-10"
+            className="absolute top-4 right-4 p-2 bg-card rounded-full hover:bg-muted transition z-10"
             title="Close preview"
           >
-            <XIcon className="h-6 w-6 text-gray-900" />
+            <XIcon className="h-6 w-6 text-foreground" />
           </button>
           <div
             className="relative w-full max-w-6xl h-[80vh]"
@@ -620,13 +620,13 @@ function AddLinkDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-card rounded-lg shadow-xl max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           {t("pages.pim.mediaGallery.addLinkTitle", { type: getMediaTypeLabel(type).slice(0, -1) })}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t("pages.pim.mediaGallery.urlLabel")}
             </label>
             <input
@@ -638,13 +638,13 @@ function AddLinkDialog({
                   ? "https://youtube.com/watch?v=... or https://cdn.example.com/video.mp4"
                   : "https://cdn.example.com/file..."
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               required
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t("pages.pim.mediaGallery.labelOptional")}
             </label>
             <input
@@ -652,14 +652,14 @@ function AddLinkDialog({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder={t("pages.pim.mediaGallery.labelPlaceholder")}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+              className="px-4 py-2 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-accent hover:text-accent-foreground transition"
             >
               {t("common.cancel")}
             </button>
@@ -822,10 +822,10 @@ export function MediaGallery({
       <div key={type} className="space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Icon className={`h-4 w-4 ${getMediaTypeBadgeColor(type).split(" ")[1]}`} />
             {typeLabel}
-            <span className="text-xs font-normal text-gray-500">({items.length})</span>
+            <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
           </h4>
           <div className="flex gap-2">
             {/* Upload Button */}
@@ -861,16 +861,16 @@ export function MediaGallery({
 
         {/* Items */}
         {items.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <Icon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-            <p className="text-sm text-gray-600 mb-1">
+          <div className="text-center py-8 bg-muted rounded-lg border-2 border-dashed border-border">
+            <Icon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground mb-1">
               {type === "document"
                 ? t("pages.pim.mediaGallery.noDocuments")
                 : type === "video"
                 ? t("pages.pim.mediaGallery.noVideos")
                 : t("pages.pim.mediaGallery.no3dModels")}
             </p>
-            <p className="text-xs text-gray-500">{t("pages.pim.mediaGallery.uploadFilesOrLinks")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.pim.mediaGallery.uploadFilesOrLinks")}</p>
           </div>
         ) : (
           <DndContext
@@ -903,7 +903,7 @@ export function MediaGallery({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">{t("pages.pim.mediaGallery.title")}</h3>
+        <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.mediaGallery.title")}</h3>
         {uploading && (
           <span className="text-sm text-blue-600">{t("pages.pim.mediaGallery.uploading")}</span>
         )}

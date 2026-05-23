@@ -195,8 +195,8 @@ export default function ProductTypesPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -212,14 +212,14 @@ export default function ProductTypesPage() {
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.productTypes.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {productTypes.length} {t("pages.pim.productTypes.totalProductTypes")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleSyncAll}
@@ -242,8 +242,8 @@ export default function ProductTypesPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
@@ -325,7 +325,7 @@ export default function ProductTypesPage() {
                           </span>
                         )}
                         {productType.is_active && (
-                          <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-medium">
+                          <span className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 px-2 py-0.5 text-xs font-medium">
                             {t("common.active")}
                           </span>
                         )}
@@ -349,7 +349,7 @@ export default function ProductTypesPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/b2b/pim/product-types/${productType.product_type_id}`}
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition"

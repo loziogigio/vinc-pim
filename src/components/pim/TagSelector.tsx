@@ -140,7 +140,7 @@ export function TagSelector({ value, onChange, disabled }: Props) {
             key={tag.id}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border",
-              tag.color ? "bg-white" : "bg-primary/10 text-primary border-primary/20",
+              tag.color ? "bg-card" : "bg-primary/10 text-primary border-primary/20",
               !tag.color && "text-primary"
             )}
             style={

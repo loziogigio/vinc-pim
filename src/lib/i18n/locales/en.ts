@@ -163,6 +163,10 @@ const en = {
     fullWidthLayout: "Full-width layout",
     switchToCompact: "Switch to compact layout",
     switchToFullWidth: "Switch to full-width layout",
+    lightMode: "Light mode",
+    darkMode: "Dark mode",
+    switchToLight: "Switch to light mode",
+    switchToDark: "Switch to dark mode",
     noApps: "No apps available",
   },
   apps: {

@@ -298,23 +298,23 @@ export function PackagingOptionModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-card shadow-2xl">
         {/* Header */}
-        <div className="flex items-center gap-4 border-b border-slate-200 p-6 sticky top-0 bg-white z-10">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
-            <Package className="h-6 w-6 text-emerald-600" />
+        <div className="flex items-center gap-4 border-b border-border p-6 sticky top-0 bg-card z-10">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
+            <Package className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-lg font-semibold text-foreground">
               {isEditMode ? "Edit Packaging Option" : defaultValues ? "Duplicate Packaging Option" : "Add Packaging Option"}
             </h3>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               {isEditMode ? `Editing ${option?.code}` : defaultValues ? `Duplicating from ${defaultValues.code}` : "Create a new packaging option"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -325,7 +325,7 @@ export function PackagingOptionModal({
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Code <span className="text-red-500">*</span>
               </label>
               <Input
@@ -337,7 +337,7 @@ export function PackagingOptionModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Label ({defaultLanguageCode.toUpperCase()}) <span className="text-red-500">*</span>
               </label>
               <Input
@@ -351,7 +351,7 @@ export function PackagingOptionModal({
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Quantity <span className="text-red-500">*</span>
               </label>
               <Input
@@ -364,7 +364,7 @@ export function PackagingOptionModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Unit of Measure <span className="text-red-500">*</span>
               </label>
               <Input
@@ -375,7 +375,7 @@ export function PackagingOptionModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 EAN Barcode
               </label>
               <Input
@@ -393,21 +393,21 @@ export function PackagingOptionModal({
                 type="checkbox"
                 checked={formData.is_sellable !== false}
                 onChange={(e) => updateField("is_sellable", e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                className="w-4 h-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
               />
-              <span className="text-sm text-slate-700">Sellable</span>
+              <span className="text-sm text-foreground">Sellable</span>
             </label>
           </div>
 
           {/* Pricing — only shown when sellable */}
           {formData.is_sellable !== false && <div className="border-t pt-4">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3">Pricing</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-3">Pricing</h4>
 
             {/* VAT Included Override */}
-            <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center justify-between mb-4 p-3 bg-muted rounded-lg border border-border">
               <div>
-                <div className="text-sm font-medium text-slate-700">VAT Included in Price</div>
-                <div className="text-xs text-slate-500">
+                <div className="text-sm font-medium text-foreground">VAT Included in Price</div>
+                <div className="text-xs text-muted-foreground">
                   Product default: {productVatIncluded ? "Included" : "Excluded"}
                   {formData.pricing?.vat_included !== undefined && " (overridden)"}
                 </div>
@@ -417,7 +417,7 @@ export function PackagingOptionModal({
                   <button
                     type="button"
                     onClick={() => updatePricing("vat_included", undefined)}
-                    className="text-xs text-slate-400 hover:text-slate-600 transition"
+                    className="text-xs text-muted-foreground hover:text-foreground transition"
                   >
                     Reset
                   </button>
@@ -429,11 +429,11 @@ export function PackagingOptionModal({
                     updatePricing("vat_included", !current);
                   }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    (formData.pricing?.vat_included ?? productVatIncluded) ? "bg-emerald-500" : "bg-slate-300"
+                    (formData.pricing?.vat_included ?? productVatIncluded) ? "bg-emerald-500" : "bg-muted-foreground/30"
                   }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-card transition-transform ${
                       (formData.pricing?.vat_included ?? productVatIncluded) ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
@@ -444,13 +444,13 @@ export function PackagingOptionModal({
             {/* Row 1: Price Reference + Retail (Unit) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Price Reference
                 </label>
                 <select
                   value={formData.pricing?.price_ref || ""}
                   onChange={(e) => updatePricing("price_ref", e.target.value || undefined)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">-- None --</option>
                   {availablePackagingCodes.map((code) => (
@@ -461,7 +461,7 @@ export function PackagingOptionModal({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Retail (Unit)
                 </label>
                 <Input
@@ -472,7 +472,7 @@ export function PackagingOptionModal({
                   placeholder="0.00"
                 />
                 {parsedQty !== 1 && formData.pricing?.retail_unit && (
-                  <p className="text-xs text-emerald-600 mt-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                     Pkg: {formatPrice(calculatePackagePrice(formData.pricing.retail_unit, parsedQty))}
                   </p>
                 )}
@@ -482,7 +482,7 @@ export function PackagingOptionModal({
             {/* Row 2: List Discount % + List (Unit) */}
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   List Discount %
                 </label>
                 <Input
@@ -494,7 +494,7 @@ export function PackagingOptionModal({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   List (Unit)
                 </label>
                 <Input
@@ -505,7 +505,7 @@ export function PackagingOptionModal({
                   placeholder="0.00"
                 />
                 {parsedQty !== 1 && formData.pricing?.list_unit && (
-                  <p className="text-xs text-emerald-600 mt-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                     Pkg: {formatPrice(calculatePackagePrice(formData.pricing.list_unit, parsedQty))}
                   </p>
                 )}
@@ -515,7 +515,7 @@ export function PackagingOptionModal({
             {/* Row 3: Sale Discount % + Sale (Unit) */}
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Sale Discount %
                 </label>
                 <Input
@@ -527,7 +527,7 @@ export function PackagingOptionModal({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Sale (Unit)
                 </label>
                 <Input
@@ -538,7 +538,7 @@ export function PackagingOptionModal({
                   placeholder="0.00"
                 />
                 {parsedQty !== 1 && formData.pricing?.sale_unit && (
-                  <p className="text-xs text-emerald-600 mt-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                     Pkg: {formatPrice(calculatePackagePrice(formData.pricing.sale_unit, parsedQty))}
                   </p>
                 )}
@@ -548,21 +548,21 @@ export function PackagingOptionModal({
 
           {/* Customer Tag Filter — only shown when sellable */}
           {formData.is_sellable !== false && <div className="border-t pt-4">
-            <h4 className="text-sm font-semibold text-slate-900 mb-1 flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
               <Tag className="h-4 w-4" />
               Customer Tags
             </h4>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Restrict this pricing to customers with specific tags. Leave empty to apply to all customers.
             </p>
 
             {tagsLoading ? (
-              <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
+              <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading tags...
               </div>
             ) : availableTags.length === 0 ? (
-              <p className="text-sm text-slate-400 py-2">No customer tags defined yet.</p>
+              <p className="text-sm text-muted-foreground py-2">No customer tags defined yet.</p>
             ) : (
               <>
                 {/* Selected tags */}
@@ -573,7 +573,7 @@ export function PackagingOptionModal({
                       return (
                         <span
                           key={fullTag}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/40"
                         >
                           {tagDef ? `${tagDef.prefix}:${tagDef.code}` : fullTag}
                           <button
@@ -602,7 +602,7 @@ export function PackagingOptionModal({
                       updatePricing("tag_filter", [...current, e.target.value]);
                     }
                   }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Add a tag filter...</option>
                   {availableTags

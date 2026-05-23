@@ -52,11 +52,11 @@ function getTypeIcon(type: string) {
 
 function getTypeBadgeStyle(type: string) {
   const styles: Record<string, string> = {
-    business: "bg-emerald-100 text-emerald-700",
-    private: "bg-purple-100 text-purple-700",
-    reseller: "bg-amber-100 text-amber-700",
+    business: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    private: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+    reseller: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   };
-  return styles[type] || "bg-gray-100 text-gray-700";
+  return styles[type] || "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400";
 }
 
 export function CustomerAccessSelector({
@@ -164,7 +164,7 @@ export function CustomerAccessSelector({
                       {getTypeIcon(customer.customer_type)}
                     </div>
                   ) : (
-                    <div className="p-1.5 rounded bg-gray-100 text-gray-700">
+                    <div className="p-1.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400">
                       <Users className="h-4 w-4" />
                     </div>
                   )}
@@ -315,7 +315,7 @@ export function CustomerAccessSelector({
                                     : prev.filter((id) => id !== addr.address_id)
                                 )
                               }
-                              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
                             />
                             <span className="min-w-0">
                               {addr.label && (

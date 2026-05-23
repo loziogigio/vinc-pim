@@ -111,9 +111,9 @@ function ErpDataCard({ order }: { order: any }) {
           <h2 className="font-semibold text-foreground">ERP Data</h2>
           {order.erp_sync_status && (
             <span className={`ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-              order.erp_sync_status === "synced" ? "bg-emerald-100 text-emerald-700" :
-              order.erp_sync_status === "pending" ? "bg-amber-100 text-amber-700" :
-              "bg-red-100 text-red-700"
+              order.erp_sync_status === "synced" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" :
+              order.erp_sync_status === "pending" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" :
+              "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
             }`}>{order.erp_sync_status}</span>
           )}
         </div>
@@ -124,8 +124,8 @@ function ErpDataCard({ order }: { order: any }) {
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Processing</span>
             <span className={`font-medium ${
-              order.processing_status === "completed" ? "text-emerald-600" :
-              order.processing_status === "failed" ? "text-red-600" : "text-amber-600"
+              order.processing_status === "completed" ? "text-emerald-600 dark:text-emerald-400" :
+              order.processing_status === "failed" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
             }`}>{order.processing_status}</span>
           </div>
         )}
@@ -215,9 +215,9 @@ function ErpDataCard({ order }: { order: any }) {
                     status === "queued" ? "bg-amber-500" :
                     "bg-gray-400";
                   const statusColor =
-                    status === "completed" ? "text-emerald-600" :
-                    status === "failed" ? "text-red-600" :
-                    status === "queued" ? "text-amber-600" :
+                    status === "completed" ? "text-emerald-600 dark:text-emerald-400" :
+                    status === "failed" ? "text-red-600 dark:text-red-400" :
+                    status === "queued" ? "text-amber-600 dark:text-amber-400" :
                     "text-muted-foreground";
 
                   return (
@@ -251,7 +251,7 @@ function ErpDataCard({ order }: { order: any }) {
                           {job.job_id.length > 16 ? `${job.job_id.slice(0, 8)}…${job.job_id.slice(-4)}` : job.job_id}
                           <Copy className="h-2.5 w-2.5" />
                         </button>
-                        <span id={`job-copied-${i}`} className="hidden text-[10px] text-emerald-600">copied!</span>
+                        <span id={`job-copied-${i}`} className="hidden text-[10px] text-emerald-600 dark:text-emerald-400">copied!</span>
                       </div>
                       {/* Row 3: status + duration */}
                       <div className="flex items-center justify-between text-xs">
@@ -266,7 +266,7 @@ function ErpDataCard({ order }: { order: any }) {
                       </div>
                       {/* Row 4: error message */}
                       {job.error && (
-                        <p className="text-xs text-red-500 bg-red-50 rounded px-1.5 py-1 mt-0.5">{job.error}</p>
+                        <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/15 rounded px-1.5 py-1 mt-0.5">{job.error}</p>
                       )}
                     </div>
                   );
@@ -629,20 +629,20 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; icon: React.ElementType }> = {
-      draft: { bg: "bg-amber-100 text-amber-700", icon: ShoppingCart },
-      pending: { bg: "bg-blue-100 text-blue-700", icon: Clock },
-      confirmed: { bg: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
-      shipped: { bg: "bg-purple-100 text-purple-700", icon: Truck },
-      cancelled: { bg: "bg-gray-100 text-gray-700", icon: XCircle },
+      draft: { bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: ShoppingCart },
+      pending: { bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", icon: Clock },
+      confirmed: { bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCircle },
+      shipped: { bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300", icon: Truck },
+      cancelled: { bg: "bg-muted text-muted-foreground", icon: XCircle },
     };
-    return styles[status] || { bg: "bg-gray-100 text-gray-700", icon: ShoppingCart };
+    return styles[status] || { bg: "bg-muted text-muted-foreground", icon: ShoppingCart };
   };
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
-        <div className="h-64 bg-gray-200 rounded animate-pulse" />
+        <div className="h-8 bg-muted rounded w-48 animate-pulse" />
+        <div className="h-64 bg-muted rounded animate-pulse" />
       </div>
     );
   }
@@ -682,8 +682,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-3">
             <Link
               href={`${tenantPrefix}/b2b/store/orders/list`}
@@ -713,7 +713,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   </span>
                 )}
                 {order.channel && order.channel !== "default" && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-xs font-medium">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 text-xs font-medium">
                     {order.channel}
                   </span>
                 )}
@@ -721,7 +721,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
           <button
             type="button"
             onClick={() => setShowActivityModal(true)}
@@ -777,7 +777,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           {/* Order Items */}
           <div className="rounded-lg bg-card shadow-sm border border-border">
             <div className="p-4 border-b border-border">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" />
                   <h2 className="font-semibold text-foreground">
@@ -897,7 +897,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           {/* Product Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 font-medium">
                                 #{editingLine.lineNumber}
                               </span>
                               <h3 className="font-semibold text-foreground truncate">{editingLine.name}</h3>
@@ -1024,7 +1024,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
                   // Normal display mode
                   return (
-                  <div key={item.line_number} className={`p-4 ${selectedForDelete.has(item.line_number) ? "bg-red-50" : item.is_gift_line ? "bg-emerald-50/50 border-l-4 border-emerald-400" : ""}`}>
+                  <div key={item.line_number} className={`p-4 ${selectedForDelete.has(item.line_number) ? "bg-red-50 dark:bg-red-500/15" : item.is_gift_line ? "bg-emerald-50/50 dark:bg-emerald-500/10 border-l-4 border-emerald-400 dark:border-emerald-500/40" : ""}`}>
                     <div className="flex items-start gap-4">
                       {/* Checkbox for delete (only for draft) */}
                       {isDraft && !editingLine && (
@@ -1068,7 +1068,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             item.name
                           )}
                           {item.is_gift_line && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wide shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 text-[10px] font-bold uppercase tracking-wide shrink-0">
                               <Gift className="h-3 w-3" />
                               {t("common.gift") || "Omaggio"}
                             </span>
@@ -1076,7 +1076,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         </h3>
                         <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                           {/* Line Number Badge */}
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                             #{item.line_number}
                           </span>
                           {(!item.product_source || item.product_source === "pim") ? (
@@ -1095,8 +1095,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             <span
                               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                 item.product_source === "external"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-gray-100 text-gray-600"
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                                  : "bg-muted text-muted-foreground"
                               }`}
                               title={item.external_ref ? `Ref: ${item.external_ref}` : undefined}
                             >
@@ -1110,7 +1110,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           )}
                           {item.product_source === "pim" && (
                             <span
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                             >
                               <Database className="h-2.5 w-2.5" />
                               PIM
@@ -1135,7 +1135,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           {/* Promotion Badge */}
                           {item.promo_code && (
                             <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-medium"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 font-medium"
                               title={item.promo_label || item.promo_code}
                             >
                               <Tag className="h-3 w-3" />
@@ -1177,7 +1177,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                                 </span>
                               </span>
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium ${
-                                pp.reached ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                                pp.reached ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
                               }`}>
                                 {pp.reached
                                   ? `✓ Reached (${pp.goal_type === "value" ? fmtTotal.format(pp.current_value) : pp.current_value + " pcs"})`
@@ -1187,7 +1187,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                                 }
                               </span>
                               {pp.reward_type && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-700">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
                                   Reward: {pp.reward_type === "extra_discount" ? "Extra discount"
                                     : pp.reward_type === "fixed_price" ? "Fixed price"
                                     : pp.reward_type === "gift"
@@ -1242,7 +1242,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             const tiers = item.discounts?.filter((d: { value: number }) => d.value !== 0) || [];
                             if (tiers.length === 0 && savings <= 0) return null;
                             return (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-medium">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 text-xs font-medium">
                                 {tiers.length > 0
                                   ? tiers.map((d: { value: number }, i: number) => (
                                       <span key={i}>{d.value}%</span>
@@ -1253,7 +1253,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                                     })()
                                 }
                                 {savings > 0 && (
-                                  <span className="text-emerald-600 font-normal">
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-normal">
                                     (save {fmtUnit.format(savings)})
                                   </span>
                                 )}
@@ -1262,11 +1262,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           })()}
                           {/* Price per smallest unit (per piece) */}
                           {item.pack_size && item.pack_size > 1 && (
-                            <div className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                            <div className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-200 dark:border-amber-500/40">
                               <span className="font-medium">
                                 {fmtUnit.format(item.unit_price / item.pack_size)}
                               </span>
-                              <span className="text-amber-600">/{item.quantity_unit || "pz"}</span>
+                              <span className="text-amber-600 dark:text-amber-400">/{item.quantity_unit || "pz"}</span>
                             </div>
                           )}
                           <div>
@@ -1287,7 +1287,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Line Total */}
                         <div className="text-right">
                           {item.is_gift_line ? (
-                            <div className="font-bold text-emerald-600 uppercase text-sm">
+                            <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase text-sm">
                               {t("common.gift") || "Omaggio"}
                             </div>
                           ) : (
@@ -1518,7 +1518,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     {otherDiscount > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t("pages.store.orderDetail.discount")}</span>
-                        <span className="font-medium text-emerald-600">
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
                           -{fmtTotal.format(otherDiscount)}
                         </span>
                       </div>

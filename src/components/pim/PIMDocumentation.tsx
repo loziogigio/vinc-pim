@@ -65,10 +65,10 @@ export function PIMDocumentation() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#5e5873]">
+        <h1 className="text-2xl font-bold text-foreground">
           {t("pages.pim.documentation.title")}
         </h1>
-        <p className="mt-1 text-sm text-[#b9b9c3]">
+        <p className="mt-1 text-sm text-muted-foreground">
           {t("pages.pim.documentation.subtitle")}
         </p>
       </div>
@@ -83,20 +83,20 @@ export function PIMDocumentation() {
               href={`${tenantPrefix}/b2b/pim/documentation/${section.slug}`}
               className={`group flex flex-col rounded-[0.428rem] border p-5 transition hover:shadow-md ${
                 section.highlight
-                  ? "border-[#009688] bg-[rgba(0,150,136,0.04)] hover:bg-[rgba(0,150,136,0.08)]"
-                  : "border-[#ebe9f1] bg-white hover:border-[#009688]"
+                  ? "border-primary bg-primary/5 hover:bg-primary/10"
+                  : "border-border bg-card hover:border-primary"
               }`}
             >
               <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[0.358rem] bg-[rgba(0,150,136,0.12)]">
-                  <Icon className="h-5 w-5 text-[#009688]" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-[0.358rem] bg-primary/10">
+                  <Icon className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-sm font-semibold text-[#5e5873] group-hover:text-[#009688]">
+                <h3 className="text-sm font-semibold text-foreground group-hover:text-primary">
                   {t(section.titleKey)}
                 </h3>
-                <ChevronRight className="ml-auto h-4 w-4 text-[#b9b9c3] transition group-hover:translate-x-0.5 group-hover:text-[#009688]" />
+                <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
-              <p className="text-xs leading-relaxed text-[#6e6b7b] line-clamp-2">
+              <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
                 {t(section.descKey)}
               </p>
             </Link>

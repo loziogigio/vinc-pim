@@ -7,28 +7,28 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 
 function CodeBlock({ code, title }: { code: string; title?: string }) {
   return (
-    <div className="rounded-[0.358rem] border border-[#ebe9f1] bg-[#f8f8f8] overflow-hidden">
+    <div className="rounded-[0.358rem] border border-border bg-muted overflow-hidden">
       {title && (
-        <div className="border-b border-[#ebe9f1] bg-[#f0f0f3] px-4 py-2 text-xs font-semibold text-[#5e5873]">{title}</div>
+        <div className="border-b border-border bg-muted px-4 py-2 text-xs font-semibold text-foreground">{title}</div>
       )}
-      <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-[#6e6b7b]"><code>{code}</code></pre>
+      <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-muted-foreground"><code>{code}</code></pre>
     </div>
   );
 }
 
 function MethodBadge({ method }: { method: string }) {
   const c: Record<string, string> = { GET: "bg-[#28c76f1a] text-[#28c76f]", POST: "bg-[#ff9f431a] text-[#ff9f43]" };
-  return <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${c[method] || "bg-gray-100"}`}>{method}</span>;
+  return <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${c[method] || "bg-muted"}`}>{method}</span>;
 }
 
 function H3({ children }: { children: React.ReactNode }) {
-  return <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#5e5873]"><ChevronRight className="h-4 w-4 text-[#009688]" />{children}</h3>;
+  return <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground"><ChevronRight className="h-4 w-4 text-primary" />{children}</h3>;
 }
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2 text-sm text-[#6e6b7b]">
-      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#009688]" />
+    <li className="flex items-start gap-2 text-sm text-muted-foreground">
+      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
       <span className="leading-relaxed">{children}</span>
     </li>
   );
@@ -36,9 +36,9 @@ function Bullet({ children }: { children: React.ReactNode }) {
 
 function ParamRow({ name, children }: { name: string; children: React.ReactNode }) {
   return (
-    <tr className="border-b border-[#ebe9f1] last:border-0">
-      <td className="px-3 py-2 font-mono text-xs font-semibold text-[#009688] whitespace-nowrap">{name}</td>
-      <td className="px-3 py-2 text-sm text-[#6e6b7b]">{children}</td>
+    <tr className="border-b border-border last:border-0">
+      <td className="px-3 py-2 font-mono text-xs font-semibold text-primary whitespace-nowrap">{name}</td>
+      <td className="px-3 py-2 text-sm text-muted-foreground">{children}</td>
     </tr>
   );
 }
@@ -48,8 +48,8 @@ function Table({ headers, children }: { headers: string[]; children: React.React
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#ebe9f1]">
-            {headers.map((h) => <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-[#5e5873]">{h}</th>)}
+          <tr className="border-b border-border">
+            {headers.map((h) => <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-foreground">{h}</th>)}
           </tr>
         </thead>
         <tbody>{children}</tbody>
@@ -120,30 +120,30 @@ export function DocSearchApi() {
   return (
     <div className="space-y-6">
       {/* Back link */}
-      <Link href={`${tenantPrefix}/b2b/pim/documentation`} className="inline-flex items-center gap-1 text-sm text-[#009688] hover:underline">
+      <Link href={`${tenantPrefix}/b2b/pim/documentation`} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
         <ArrowLeft className="h-4 w-4" />{t("pages.pim.documentation.toc")}
       </Link>
 
       {/* Header */}
-      <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[0.358rem] bg-[rgba(0,150,136,0.12)]">
-            <Globe className="h-5 w-5 text-[#009688]" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-[0.358rem] bg-primary/10">
+            <Globe className="h-5 w-5 text-primary" />
           </div>
-          <h1 className="text-lg font-semibold text-[#5e5873]">{tk("searchApiTitle")}</h1>
+          <h1 className="text-lg font-semibold text-foreground">{tk("searchApiTitle")}</h1>
         </div>
-        <p className="text-sm leading-relaxed text-[#6e6b7b]">{tk("searchApiDesc")}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{tk("searchApiDesc")}</p>
       </div>
 
       {/* Endpoints */}
       <Section title={tk("searchApiEndpoint")}>
         <div className="mb-4 space-y-2">
-          <div className="flex items-center gap-2"><MethodBadge method="POST" /><code className="text-xs font-mono text-[#5e5873]">/api/search/search</code></div>
-          <p className="pl-14 text-sm text-[#6e6b7b]">{tk("searchApiPostDesc")}</p>
-          <div className="flex items-center gap-2"><MethodBadge method="GET" /><code className="text-xs font-mono text-[#5e5873]">/api/search/search</code></div>
-          <p className="pl-14 text-sm text-[#6e6b7b]">{tk("searchApiGetDesc")}</p>
+          <div className="flex items-center gap-2"><MethodBadge method="POST" /><code className="text-xs font-mono text-foreground">/api/search/search</code></div>
+          <p className="pl-14 text-sm text-muted-foreground">{tk("searchApiPostDesc")}</p>
+          <div className="flex items-center gap-2"><MethodBadge method="GET" /><code className="text-xs font-mono text-foreground">/api/search/search</code></div>
+          <p className="pl-14 text-sm text-muted-foreground">{tk("searchApiGetDesc")}</p>
         </div>
-        <p className="text-sm text-[#6e6b7b]">{tk("searchApiAuthDesc")}</p>
+        <p className="text-sm text-muted-foreground">{tk("searchApiAuthDesc")}</p>
       </Section>
 
       {/* POST Body */}
@@ -182,7 +182,7 @@ export function DocSearchApi() {
 
       {/* GET params */}
       <Section title={tk("searchApiGetTitle")}>
-        <p className="mb-4 text-sm text-[#6e6b7b]">{tk("searchApiGetFilterPrefix")}</p>
+        <p className="mb-4 text-sm text-muted-foreground">{tk("searchApiGetFilterPrefix")}</p>
         <CodeBlock title="GET Examples" code={`# Simple text search
 GET /api/search/search?lang=it&text=trapano&rows=20
 
@@ -215,9 +215,9 @@ GET /api/search/search?lang=it&tag_filter=wholesale,premium`} />
 
       {/* URL to Search Body Transformation */}
       <Section title={tk("searchApiUrlTransformTitle")}>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiUrlTransformDesc")}</p>
-        <div className="mb-4 rounded-[0.358rem] border border-[#009688] bg-[rgba(0,150,136,0.04)] p-4">
-          <p className="mb-2 text-xs font-semibold text-[#009688]">{tk("searchApiUrlTransformFormat")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiUrlTransformDesc")}</p>
+        <div className="mb-4 rounded-[0.358rem] border border-primary bg-primary/5 p-4">
+          <p className="mb-2 text-xs font-semibold text-primary">{tk("searchApiUrlTransformFormat")}</p>
           <ul className="space-y-1.5">
             <Bullet>{tk("searchApiUrlTransformText")}</Bullet>
             <Bullet>{tk("searchApiUrlTransformFilters")}</Bullet>
@@ -328,7 +328,7 @@ keyword and active filters.`} />
 
       {/* Standard Filters */}
       <Section title={tk("searchApiStandardTitle")}>
-        <p className="mb-4 text-sm text-[#6e6b7b]">{tk("searchApiStandardDesc")}</p>
+        <p className="mb-4 text-sm text-muted-foreground">{tk("searchApiStandardDesc")}</p>
         <Table headers={["Filter Key", "Description"]}>
           {STANDARD_FILTERS.map((f) => <ParamRow key={f.key} name={f.key}>{tk(f.tk)}</ParamRow>)}
         </Table>
@@ -336,15 +336,15 @@ keyword and active filters.`} />
 
       {/* Dynamic Attribute Filters */}
       <Section title={tk("searchApiDynamicTitle")}>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiDynamicDesc")}</p>
-        <p className="mb-3 text-sm font-medium text-[#5e5873]">{tk("searchApiDynamicConvention")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiDynamicDesc")}</p>
+        <p className="mb-3 text-sm font-medium text-foreground">{tk("searchApiDynamicConvention")}</p>
         <ul className="mb-4 space-y-1.5">
-          <Bullet><code className="font-mono text-xs text-[#009688]">_s</code> — {tk("searchApiDynamicSuffix_s")}</Bullet>
-          <Bullet><code className="font-mono text-xs text-[#009688]">_ss</code> — {tk("searchApiDynamicSuffix_ss")}</Bullet>
-          <Bullet><code className="font-mono text-xs text-[#009688]">_f</code> — {tk("searchApiDynamicSuffix_f")}</Bullet>
-          <Bullet><code className="font-mono text-xs text-[#009688]">_b</code> — {tk("searchApiDynamicSuffix_b")}</Bullet>
+          <Bullet><code className="font-mono text-xs text-primary">_s</code> — {tk("searchApiDynamicSuffix_s")}</Bullet>
+          <Bullet><code className="font-mono text-xs text-primary">_ss</code> — {tk("searchApiDynamicSuffix_ss")}</Bullet>
+          <Bullet><code className="font-mono text-xs text-primary">_f</code> — {tk("searchApiDynamicSuffix_f")}</Bullet>
+          <Bullet><code className="font-mono text-xs text-primary">_b</code> — {tk("searchApiDynamicSuffix_b")}</Bullet>
         </ul>
-        <p className="mb-4 text-sm text-[#6e6b7b]">{tk("searchApiDynamicHow")}</p>
+        <p className="mb-4 text-sm text-muted-foreground">{tk("searchApiDynamicHow")}</p>
         <CodeBlock title="Dynamic Attribute Filter Examples" code={`// POST body — single value
 "filters": { "attribute_color_s": "red" }
 
@@ -365,10 +365,10 @@ filter_attribute_is_new_b=true`} />
 
       {/* Dynamic Spec Filters */}
       <Section title={tk("searchApiSpecTitle")}>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiSpecDesc")}</p>
-        <p className="mb-3 text-sm font-medium text-[#5e5873]">{tk("searchApiSpecConvention")}</p>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiSpecExamples")}</p>
-        <p className="mb-4 text-sm text-[#6e6b7b]">{tk("searchApiSpecHow")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiSpecDesc")}</p>
+        <p className="mb-3 text-sm font-medium text-foreground">{tk("searchApiSpecConvention")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiSpecExamples")}</p>
+        <p className="mb-4 text-sm text-muted-foreground">{tk("searchApiSpecHow")}</p>
         <CodeBlock title="Dynamic Spec Filter Examples" code={`// POST body
 "filters": {
   "spec_material_s": "stainless steel",
@@ -386,7 +386,7 @@ filter_spec_voltage_f=220`} />
 
       {/* Facet Fields */}
       <Section title={tk("searchApiFacetsTitle")}>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiFacetsDesc")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiFacetsDesc")}</p>
         <ul className="mb-4 space-y-1.5">
           <Bullet>{tk("searchApiFacetsDefault")}</Bullet>
           <Bullet>{tk("searchApiFacetsTypes")}</Bullet>
@@ -396,7 +396,7 @@ filter_spec_voltage_f=220`} />
 
       {/* Sort Options */}
       <Section title={tk("searchApiSortTitle")}>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiSortDesc")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiSortDesc")}</p>
         <ul className="space-y-1.5">
           {SORT_OPTIONS.map((k) => <Bullet key={k}>{tk(k)}</Bullet>)}
         </ul>
@@ -404,7 +404,7 @@ filter_spec_voltage_f=220`} />
 
       {/* Tag-Based Pricing */}
       <Section title={tk("searchApiTagsTitle")}>
-        <p className="mb-3 text-sm text-[#6e6b7b]">{tk("searchApiTagsDesc")}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{tk("searchApiTagsDesc")}</p>
         <ul className="mb-4 space-y-1.5">
           <Bullet>{tk("searchApiTagsCustomer")}</Bullet>
           <Bullet>{tk("searchApiTagsExplicit")}</Bullet>
@@ -483,7 +483,7 @@ filter_spec_voltage_f=220`} />
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+    <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <H3>{title}</H3>
       {children}
     </div>

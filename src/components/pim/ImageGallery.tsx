@@ -70,8 +70,8 @@ function SortableImageItem({
       ref={setNodeRef}
       style={style}
       className={`
-        relative bg-white border-2 rounded-lg overflow-hidden
-        ${isDragging ? "shadow-2xl z-50 border-blue-400" : "shadow-md border-gray-200"}
+        relative bg-card border-2 rounded-lg overflow-hidden
+        ${isDragging ? "shadow-2xl z-50 border-blue-400 dark:border-blue-400" : "shadow-md border-border"}
         ${isPrimary ? "ring-2 ring-yellow-400" : ""}
         ${disabled ? "opacity-60" : ""}
       `}
@@ -91,18 +91,18 @@ function SortableImageItem({
 
       {/* Drag Handle */}
       <div
-        className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 cursor-grab active:cursor-grabbing bg-white bg-opacity-90 rounded-full p-1 shadow-md"
+        className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 cursor-grab active:cursor-grabbing bg-card/90 rounded-full p-1 shadow-md"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-4 w-4 text-gray-600" />
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
 
       {/* Image Preview - Clickable */}
       <button
         type="button"
         onClick={() => onPreview(image)}
-        className="w-full aspect-square bg-gray-100 relative group"
+        className="w-full aspect-square bg-muted relative group"
       >
         <img
           src={image.url}
@@ -115,12 +115,12 @@ function SortableImageItem({
       </button>
 
       {/* Image Info Footer */}
-      <div className="p-3 bg-gray-50">
-        <p className="text-xs font-medium text-gray-900 truncate mb-1">
+      <div className="p-3 bg-muted">
+        <p className="text-xs font-medium text-foreground truncate mb-1">
           {image.file_name || "Untitled"}
         </p>
         {image.size_bytes && (
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             {formatFileSize(image.size_bytes)}
           </p>
         )}
@@ -264,7 +264,7 @@ export function ImageGallery({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
           {t("pages.pim.imageGallery.title")}
         </h3>
@@ -291,10 +291,10 @@ export function ImageGallery({
 
       {/* Gallery */}
       {images.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-600 mb-2">{t("pages.pim.imageGallery.noImages")}</p>
-          <p className="text-sm text-gray-500">
+        <div className="text-center py-12 bg-muted rounded-lg border-2 border-dashed border-border">
+          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground mb-2">{t("pages.pim.imageGallery.noImages")}</p>
+          <p className="text-sm text-muted-foreground">
             {t("pages.pim.imageGallery.uploadHint")}
           </p>
         </div>
@@ -326,10 +326,10 @@ export function ImageGallery({
       )}
 
       {/* Help Text */}
-      <div className="flex items-start gap-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <ImageIcon className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3 dark:bg-blue-500/15 dark:border-blue-500/40 dark:text-blue-300">
+        <ImageIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-blue-900 mb-1">{t("pages.pim.imageGallery.guideTitle")}</p>
+          <p className="font-medium text-blue-900 dark:text-blue-200 mb-1">{t("pages.pim.imageGallery.guideTitle")}</p>
           <ul className="space-y-1">
             <li>• <strong>{t("pages.pim.imageGallery.guidePos1")}</strong></li>
             <li>• <strong>{t("pages.pim.imageGallery.guideDrag")}</strong></li>
@@ -360,10 +360,10 @@ export function ImageGallery({
           <button
             type="button"
             onClick={() => setPreviewImage(null)}
-            className="absolute top-4 right-4 p-2 bg-white rounded-full hover:bg-gray-100 transition"
+            className="absolute top-4 right-4 p-2 bg-card rounded-full hover:bg-muted transition"
             title="Close preview"
           >
-            <X className="h-6 w-6 text-gray-900" />
+            <X className="h-6 w-6 text-foreground" />
           </button>
           <div className="max-w-7xl max-h-full" onClick={(e) => e.stopPropagation()}>
             <img

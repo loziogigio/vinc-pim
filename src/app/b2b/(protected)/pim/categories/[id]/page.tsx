@@ -116,8 +116,8 @@ export default function CategoryDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
           <Link
             href="/b2b/pim/categories"
             className="p-2 rounded-lg hover:bg-muted transition"
@@ -132,7 +132,7 @@ export default function CategoryDetailPage() {
               </h1>
               <span className={`rounded-full px-3 py-1 text-sm ${
                 category.is_active
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300"
                   : "bg-muted text-muted-foreground"
               }`}>
                 {category.is_active ? t("common.active") : t("common.inactive")}

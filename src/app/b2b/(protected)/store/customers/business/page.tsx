@@ -78,8 +78,8 @@ export default function BusinessCustomersPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600">
             <Building2 className="h-5 w-5" />
           </div>
@@ -126,6 +126,7 @@ export default function BusinessCustomersPage() {
           </div>
         ) : (
           <>
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
@@ -214,6 +215,7 @@ export default function BusinessCustomersPage() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (

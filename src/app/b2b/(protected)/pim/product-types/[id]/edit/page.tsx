@@ -213,8 +213,8 @@ export default function EditProductTypePage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -231,8 +231,8 @@ export default function EditProductTypePage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => router.push("/b2b/pim/product-types")}
@@ -264,7 +264,7 @@ export default function EditProductTypePage() {
             {t("pages.pim.productTypes.basicInformation")}
           </h2>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.pim.productTypes.codeErp")}
@@ -325,7 +325,7 @@ export default function EditProductTypePage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="w-full">
               <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.pim.productTypes.displayOrderLabel")}
@@ -343,7 +343,7 @@ export default function EditProductTypePage() {
                   type="checkbox"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-foreground">{t("pages.pim.productTypes.activeForProducts")}</span>
               </label>
@@ -392,7 +392,7 @@ export default function EditProductTypePage() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleSpecification(spec)}
-                              className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -404,7 +404,7 @@ export default function EditProductTypePage() {
                                   <span className="text-xs text-muted-foreground">({spec.unit})</span>
                                 )}
                                 {spec.default_required && (
-                                  <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">
+                                  <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
                                     {t("pages.pim.productTypes.requiredByDefaultBadge")}
                                   </span>
                                 )}
@@ -427,7 +427,7 @@ export default function EditProductTypePage() {
                                           required: e.target.checked,
                                         })
                                       }
-                                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-foreground">{t("pages.pim.productTypes.requiredForThisType")}</span>
                                   </label>
@@ -441,7 +441,7 @@ export default function EditProductTypePage() {
                                           display_order: parseInt(e.target.value),
                                         })
                                       }
-                                      className="w-20 rounded border border-border bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                                      className="w-20 rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                                     />
                                   </div>
                                 </div>

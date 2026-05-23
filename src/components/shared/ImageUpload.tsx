@@ -205,7 +205,7 @@ export function ImageUpload({ value, onChange, label, disabled }: ImageUploadPro
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="https://example.com/image.jpg"
-            className="flex-1 rounded border border-border bg-white px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+            className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();

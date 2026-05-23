@@ -44,7 +44,7 @@ export function LanguageSwitcher({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Globe className="h-4 w-4 animate-pulse" />
         <span>Loading languages...</span>
       </div>
@@ -60,32 +60,32 @@ export function LanguageSwitcher({
     return (
       <div className={cn("space-y-2", className)}>
         {showLabel && (
-          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <Globe className="h-4 w-4" />
             Language
           </label>
         )}
-        <div className="flex flex-wrap gap-1 border-b border-gray-200">
+        <div className="flex flex-wrap gap-1 border-b border-border">
           {enabledLanguages.map((lang) => (
             <button
               key={lang.code}
               onClick={() => setCurrentLanguage(lang.code)}
               className={cn(
                 "px-4 py-2 text-sm font-medium transition-colors relative",
-                "hover:text-blue-600 hover:bg-blue-50 rounded-t-md",
+                "hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-500/15 rounded-t-md",
                 currentLanguage === lang.code
-                  ? "text-blue-600 bg-white border-t-2 border-x border-blue-600"
-                  : "text-gray-600 bg-gray-50 border-t-2 border-transparent"
+                  ? "text-blue-600 bg-card border-t-2 border-x border-blue-600 dark:text-blue-400 dark:border-blue-400"
+                  : "text-muted-foreground bg-muted border-t-2 border-transparent"
               )}
             >
               <div className="flex items-center gap-2">
                 {lang.flag && <span>{lang.flag}</span>}
                 <span className="uppercase font-semibold">{lang.code}</span>
-                <span className="hidden sm:inline text-gray-500">
+                <span className="hidden sm:inline text-muted-foreground">
                   {lang.nativeName}
                 </span>
                 {currentLanguage === lang.code && (
-                  <Check className="h-3 w-3 text-blue-600" />
+                  <Check className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                 )}
               </div>
             </button>
@@ -102,8 +102,8 @@ export function LanguageSwitcher({
         <div className="flex items-center gap-2">
           {showLabel && (
             <>
-              <Globe className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Editing Language:</span>
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Editing Language:</span>
             </>
           )}
           <div className="flex items-center gap-1">
@@ -114,8 +114,8 @@ export function LanguageSwitcher({
                 className={cn(
                   "px-3 py-1.5 text-xs font-semibold rounded transition-colors",
                   currentLanguage === lang.code
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white dark:bg-blue-500"
+                    : "bg-muted text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
                 title={lang.nativeName}
               >
@@ -132,9 +132,9 @@ export function LanguageSwitcher({
             type="checkbox"
             checked={showReferenceLanguage}
             onChange={(e) => setShowReferenceLanguage(e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 border-border rounded focus:ring-blue-500"
           />
-          <span className="text-sm text-gray-700">Show reference language</span>
+          <span className="text-sm text-foreground">Show reference language</span>
         </label>
       </div>
     );
@@ -144,7 +144,7 @@ export function LanguageSwitcher({
   return (
     <div className={cn("space-y-1", className)}>
       {showLabel && (
-        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2">
           <Globe className="h-4 w-4" />
           Language
         </label>
@@ -152,7 +152,7 @@ export function LanguageSwitcher({
       <select
         value={currentLanguage}
         onChange={(e) => setCurrentLanguage(e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
       >
         {enabledLanguages.map((lang) => (
           <option key={lang.code} value={lang.code}>

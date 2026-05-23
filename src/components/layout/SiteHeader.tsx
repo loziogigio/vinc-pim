@@ -1,130 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, Moon, Sun, ShoppingCart, ChevronLeft, ChevronRight, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMockCategories } from "@/lib/data/mockCatalog";
+import { useTheme } from "@/hooks/useTheme";
 
 const categories = getMockCategories();
-
-type ThemeMode = "light" | "dark";
-
-const THEME_STORAGE_KEY = "vinc-theme";
-
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
-
-const getSystemTheme = (): ThemeMode => {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-};
-
-const getStoredTheme = (): ThemeMode | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-
-  if (stored === "light" || stored === "dark") {
-    return stored;
-  }
-
-  return null;
-};
-
-const applyThemeToDocument = (theme: ThemeMode) => {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  const root = document.documentElement;
-  root.classList.toggle("dark", theme === "dark");
-  root.setAttribute("data-theme", theme);
-  root.style.colorScheme = theme;
-};
-
-const useTheme = () => {
-  const [theme, setTheme] = useState<ThemeMode>("light");
-  const [hasStoredPreference, setHasStoredPreference] = useState(false);
-  const [initialized, setInitialized] = useState(false);
-
-  useIsomorphicLayoutEffect(() => {
-    const storedTheme = getStoredTheme();
-
-    if (storedTheme) {
-      setTheme(storedTheme);
-      setHasStoredPreference(true);
-      applyThemeToDocument(storedTheme);
-    } else {
-      const systemTheme = getSystemTheme();
-      setTheme(systemTheme);
-      applyThemeToDocument(systemTheme);
-    }
-
-    setInitialized(true);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      if (hasStoredPreference) {
-        return;
-      }
-
-      const nextTheme = event.matches ? "dark" : "light";
-      setTheme(nextTheme);
-      applyThemeToDocument(nextTheme);
-    };
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [hasStoredPreference]);
-
-  const persistTheme = (nextTheme: ThemeMode) => {
-    setTheme(nextTheme);
-    applyThemeToDocument(nextTheme);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    }
-
-    setHasStoredPreference(true);
-  };
-
-  const toggle = () => {
-    persistTheme(theme === "dark" ? "light" : "dark");
-  };
-
-  const useSystemPreference = () => {
-    const systemTheme = getSystemTheme();
-    setHasStoredPreference(false);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(THEME_STORAGE_KEY);
-    }
-
-    setTheme(systemTheme);
-    applyThemeToDocument(systemTheme);
-  };
-
-  return { theme, isDark: theme === "dark", toggle, useSystemPreference, initialized };
-};
 
 export const SiteHeader = () => {
   const { t } = useTranslation();

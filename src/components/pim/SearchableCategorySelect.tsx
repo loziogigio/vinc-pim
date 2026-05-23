@@ -141,8 +141,8 @@ export function SearchableCategorySelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-border rounded-lg shadow-lg max-h-80 overflow-hidden">
-          <div className="p-2 border-b border-border sticky top-0 bg-white">
+        <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-lg max-h-80 overflow-hidden">
+          <div className="p-2 border-b border-border sticky top-0 bg-card">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input

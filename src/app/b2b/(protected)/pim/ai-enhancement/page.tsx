@@ -10,8 +10,8 @@ export default function AIEnhancementPage() {
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
       <div className="text-center max-w-md">
         <div className="mb-6 flex justify-center">
-          <div className="rounded-full bg-amber-100 p-4">
-            <AlertCircle className="h-12 w-12 text-amber-600" />
+          <div className="rounded-full bg-amber-100 dark:bg-amber-500/15 p-4">
+            <AlertCircle className="h-12 w-12 text-amber-600 dark:text-amber-400" />
           </div>
         </div>
         <h1 className="text-2xl font-bold tracking-tight mb-3">

@@ -308,25 +308,25 @@ export default function OrdersListPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; icon: React.ElementType }> = {
-      draft: { bg: "bg-amber-100 text-amber-700", icon: ShoppingCart },
-      quotation: { bg: "bg-indigo-100 text-indigo-700", icon: FileText },
-      pending: { bg: "bg-blue-100 text-blue-700", icon: Clock },
-      confirmed: { bg: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-      preparing: { bg: "bg-orange-100 text-orange-700", icon: Package },
-      shipped: { bg: "bg-purple-100 text-purple-700", icon: Truck },
-      delivered: { bg: "bg-teal-100 text-teal-700", icon: Package },
-      cancelled: { bg: "bg-gray-100 text-gray-700", icon: XCircle },
-      deleted: { bg: "bg-red-100 text-red-700", icon: Trash2 },
+      draft: { bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: ShoppingCart },
+      quotation: { bg: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300", icon: FileText },
+      pending: { bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", icon: Clock },
+      confirmed: { bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCircle2 },
+      preparing: { bg: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", icon: Package },
+      shipped: { bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300", icon: Truck },
+      delivered: { bg: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", icon: Package },
+      cancelled: { bg: "bg-muted text-muted-foreground", icon: XCircle },
+      deleted: { bg: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300", icon: Trash2 },
     };
-    return styles[status] || { bg: "bg-gray-100 text-gray-700", icon: ShoppingCart };
+    return styles[status] || { bg: "bg-muted text-muted-foreground", icon: ShoppingCart };
   };
 
   const renderEmptyState = () => (
-    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-      <div className="text-center text-[#5e5873]">
-        <ShoppingCart className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
+    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="text-center text-foreground">
+        <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
         <p className="text-[1.05rem] font-semibold">{t("pages.store.ordersList.noOrdersFound")}</p>
-        <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">
           {filters.search || filters.status
             ? t("pages.store.ordersList.tryAdjustingFilters")
             : t("pages.store.ordersList.ordersWillAppear")}
@@ -348,14 +348,14 @@ export default function OrdersListPage() {
       />
 
       {/* Stats Summary - Compact */}
-      <div className="grid grid-cols-4 md:grid-cols-10 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-10 gap-2">
         <button
           onClick={() => updateFilters({ status: "draft" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "draft" ? "border-amber-400 bg-amber-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "draft" ? "border-amber-400 bg-amber-50 dark:bg-amber-500/15 dark:border-amber-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <ShoppingCart className="h-4 w-4 text-amber-600" />
+          <ShoppingCart className="h-4 w-4 text-amber-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.draft}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.carts")}</div>
@@ -363,11 +363,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "quotation,pending,confirmed,preparing,shipped,delivered" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "quotation,pending,confirmed,preparing,shipped,delivered" ? "border-indigo-400 bg-indigo-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "quotation,pending,confirmed,preparing,shipped,delivered" ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 dark:border-indigo-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <FileText className="h-4 w-4 text-indigo-600" />
+          <FileText className="h-4 w-4 text-indigo-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">
               {stats.quotation + stats.pending + stats.confirmed + (stats.preparing || 0) + stats.shipped + stats.delivered}
@@ -377,11 +377,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "pending" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "pending" ? "border-blue-400 bg-blue-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "pending" ? "border-blue-400 bg-blue-50 dark:bg-blue-500/15 dark:border-blue-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <Clock className="h-4 w-4 text-blue-600" />
+          <Clock className="h-4 w-4 text-blue-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.pending}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.pending")}</div>
@@ -389,11 +389,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "confirmed" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "confirmed" ? "border-emerald-400 bg-emerald-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "confirmed" ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 dark:border-emerald-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.confirmed}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.confirmed")}</div>
@@ -401,11 +401,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "shipped" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "shipped" ? "border-purple-400 bg-purple-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "shipped" ? "border-purple-400 bg-purple-50 dark:bg-purple-500/15 dark:border-purple-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <Truck className="h-4 w-4 text-purple-600" />
+          <Truck className="h-4 w-4 text-purple-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.shipped}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.shipped")}</div>
@@ -413,11 +413,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "delivered" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "delivered" ? "border-teal-400 bg-teal-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "delivered" ? "border-teal-400 bg-teal-50 dark:bg-teal-500/15 dark:border-teal-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <Package className="h-4 w-4 text-teal-600" />
+          <Package className="h-4 w-4 text-teal-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.delivered}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.delivered")}</div>
@@ -425,11 +425,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "cancelled" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "cancelled" ? "border-red-400 bg-red-50" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "cancelled" ? "border-red-400 bg-red-50 dark:bg-red-500/15 dark:border-red-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <XCircle className="h-4 w-4 text-red-500" />
+          <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.cancelled}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.cancelled")}</div>
@@ -437,11 +437,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "deleted" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
-            filters.status === "deleted" ? "border-red-500 bg-red-100" : "border-border bg-card hover:bg-muted/50"
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
+            filters.status === "deleted" ? "border-red-500 bg-red-100 dark:bg-red-500/15 dark:border-red-500/40" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <Trash2 className="h-4 w-4 text-red-600" />
+          <Trash2 className="h-4 w-4 text-red-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">{stats.deleted}</div>
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.deleted")}</div>
@@ -449,11 +449,11 @@ export default function OrdersListPage() {
         </button>
         <button
           onClick={() => updateFilters({ status: "" })}
-          className={`flex items-center gap-2 p-2.5 rounded-lg border transition ${
+          className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
             !filters.status ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/50"
           }`}
         >
-          <div className="h-4 w-4 rounded bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+          <div className="h-4 w-4 rounded bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
             #
           </div>
           <div className="text-left">
@@ -461,8 +461,8 @@ export default function OrdersListPage() {
             <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.total")}</div>
           </div>
         </button>
-        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card">
-          <div className="h-4 w-4 rounded bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-600">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card min-w-0">
+          <div className="h-4 w-4 rounded bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center text-[10px] font-bold text-emerald-600 dark:text-emerald-300 flex-shrink-0">
             €
           </div>
           <div className="text-left">
@@ -476,16 +476,16 @@ export default function OrdersListPage() {
 
       {/* Customer Filter Banner */}
       {filters.customer_id && customerName && (
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 flex items-center justify-between">
+        <div className="rounded-lg bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/40 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300">
               <ShoppingCart className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-blue-900">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                 {t("pages.store.ordersList.viewingOrdersFor")} <span className="font-bold">{customerName}</span>
               </p>
-              <p className="text-xs text-blue-600">
+              <p className="text-xs text-blue-600 dark:text-blue-300">
                 {pagination.total} {pagination.total !== 1 ? t("pages.store.ordersList.ordersFound") : t("pages.store.ordersList.orderFound")}
               </p>
             </div>
@@ -493,13 +493,13 @@ export default function OrdersListPage() {
           <div className="flex items-center gap-2">
             <Link
               href={`${tenantPrefix}/b2b/store/customers/${filters.customer_id}`}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
+              className="text-sm text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 underline"
             >
               {t("pages.store.ordersList.viewCustomer")}
             </Link>
             <button
               onClick={() => updateFilters({ customer_id: "" })}
-              className="ml-2 p-1 hover:bg-blue-100 rounded-full text-blue-600"
+              className="ml-2 p-1 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-full text-blue-600 dark:text-blue-300"
             >
               <X className="h-4 w-4" />
             </button>
@@ -507,8 +507,8 @@ export default function OrdersListPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-xl font-bold text-foreground min-w-0">
           {filters.customer_id && customerName ? `${t("pages.store.ordersList.title")}: ${customerName}` : t("pages.store.ordersList.title")}
         </h1>
         <button
@@ -582,7 +582,7 @@ export default function OrdersListPage() {
         </div>
 
         {/* Row 2: N. Carrello, Public Code, ERP Code, Active Cart, Channel, Date Range */}
-        <div className="mt-3 grid gap-3 md:grid-cols-7">
+        <div className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-7">
           {/* Cart Number */}
           <div>
             <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.cartNumber")}</label>
@@ -680,17 +680,17 @@ export default function OrdersListPage() {
               </div>
             )}
             {filters.is_current && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 rounded-full text-xs">
                 <span>{filters.is_current === "true" ? t("pages.store.ordersList.activeCart") : t("pages.store.ordersList.inactive")}</span>
-                <button onClick={() => updateFilters({ is_current: "" })} className="hover:bg-emerald-200 rounded-full">
+                <button onClick={() => updateFilters({ is_current: "" })} className="hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             {filters.channel && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 rounded-full text-xs">
                 <span>{channels.find((c) => c.code === filters.channel)?.name || filters.channel}</span>
-                <button onClick={() => updateFilters({ channel: "" })} className="hover:bg-sky-200 rounded-full">
+                <button onClick={() => updateFilters({ channel: "" })} className="hover:bg-sky-200 dark:hover:bg-sky-500/30 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -704,25 +704,25 @@ export default function OrdersListPage() {
               </div>
             )}
             {filters.cart_number && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-mono">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 rounded-full text-xs font-mono">
                 <span>CA/{filters.cart_number}</span>
-                <button onClick={() => updateFilters({ cart_number: "" })} className="hover:bg-amber-200 rounded-full">
+                <button onClick={() => updateFilters({ cart_number: "" })} className="hover:bg-amber-200 dark:hover:bg-amber-500/30 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             {filters.public_code && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-mono">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 rounded-full text-xs font-mono">
                 <span>{filters.public_code}</span>
-                <button onClick={() => updateFilters({ public_code: "" })} className="hover:bg-blue-200 rounded-full">
+                <button onClick={() => updateFilters({ public_code: "" })} className="hover:bg-blue-200 dark:hover:bg-blue-500/30 rounded-full">
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             {filters.erp_code && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-mono">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs font-mono">
                 <span>ERP: {filters.erp_code}</span>
-                <button onClick={() => updateFilters({ erp_code: "" })} className="hover:bg-gray-200 rounded-full">
+                <button onClick={() => updateFilters({ erp_code: "" })} className="hover:bg-accent rounded-full">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -778,7 +778,7 @@ export default function OrdersListPage() {
           <div className="p-8">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                <div key={i} className="h-16 bg-muted rounded"></div>
               ))}
             </div>
           </div>
@@ -798,7 +798,7 @@ export default function OrdersListPage() {
                           if (el) el.indeterminate = isSomeSelected;
                         }}
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                         title={isAllSelected ? "Deselect all" : "Select all"}
                       />
                     </th>
@@ -842,7 +842,7 @@ export default function OrdersListPage() {
                             type="checkbox"
                             checked={selectedOrders.has(order.order_id)}
                             onChange={() => toggleSelectOrder(order.order_id)}
-                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -855,7 +855,7 @@ export default function OrdersListPage() {
                             )}
                             {/* Cart Number - always shown if available (every order was a cart) */}
                             {order.cart_number && (
-                              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium text-sm">
+                              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 font-medium text-sm">
                                 CA/{order.cart_number}/{order.year}
                               </span>
                             )}
@@ -908,7 +908,7 @@ export default function OrdersListPage() {
                             }).format(order.order_total)}
                           </div>
                           {order.total_discount > 0 && (
-                            <div className="text-xs text-emerald-600">
+                            <div className="text-xs text-emerald-600 dark:text-emerald-400">
                               -{new Intl.NumberFormat("it-IT", {
                                 style: "currency",
                                 currency: order.currency || "EUR",
@@ -925,7 +925,7 @@ export default function OrdersListPage() {
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                             {(order as Order & { is_current?: boolean }).is_current && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                                 <ShoppingCart className="h-2.5 w-2.5" />
                                 {t("pages.store.ordersList.activeCart")}
                               </span>

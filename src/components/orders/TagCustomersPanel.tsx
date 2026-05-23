@@ -182,7 +182,7 @@ export function TagCustomersPanel({
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 bg-background"
           />
         </div>
       </div>
@@ -213,7 +213,7 @@ export function TagCustomersPanel({
                   <div className="min-w-0">
                     <Link
                       href={`${tenantPrefix}/b2b/store/customers/${c.customer_id}`}
-                      className="text-sm font-medium text-foreground hover:text-emerald-600 truncate block"
+                      className="text-sm font-medium text-foreground hover:text-primary truncate block"
                     >
                       {getCustomerDisplayName(c)}
                     </Link>
@@ -231,7 +231,7 @@ export function TagCustomersPanel({
                 <button
                   onClick={() => handleRemove(c.customer_id)}
                   disabled={removingId === c.customer_id}
-                  className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50 flex-shrink-0"
+                  className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50 flex-shrink-0"
                   title={`Remove tag from ${getCustomerDisplayName(c)}`}
                 >
                   {removingId === c.customer_id ? (

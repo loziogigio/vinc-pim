@@ -164,6 +164,10 @@ const it = {
     fullWidthLayout: "Layout a larghezza piena",
     switchToCompact: "Passa al layout compatto",
     switchToFullWidth: "Passa al layout a larghezza piena",
+    lightMode: "Tema chiaro",
+    darkMode: "Tema scuro",
+    switchToLight: "Passa al tema chiaro",
+    switchToDark: "Passa al tema scuro",
     noApps: "Nessuna app disponibile",
   },
   apps: {

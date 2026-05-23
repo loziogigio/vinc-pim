@@ -86,10 +86,10 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
   };
 
   return (
-    <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
+    <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-border bg-card p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
       {/* Orders Section */}
-      <div className="mb-2 pb-3 border-b border-[#ebe9f1]">
-        <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
+      <div className="mb-2 pb-3 border-b border-border">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
           <ShoppingCart className="h-4 w-4" />
           {t("nav.orders.title")}
         </h2>
@@ -105,8 +105,8 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
             className={cn(
               "flex items-center gap-3 rounded-[0.358rem] px-4 py-2.5 text-[0.875rem] font-medium transition",
               active
-                ? "bg-[rgba(0,150,136,0.12)] text-[#009688] shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
-                : "text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
+                ? "bg-primary/10 text-primary shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
@@ -116,8 +116,8 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
       })}
 
       {/* Customers Section */}
-      <div className="mt-4 pt-3 border-t border-[#ebe9f1] mb-2 pb-3 border-b">
-        <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
+      <div className="mt-4 pt-3 border-t border-border mb-2 pb-3 border-b">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
           <Users className="h-4 w-4" />
           {t("nav.customers.title")}
         </h2>
@@ -133,8 +133,8 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
             className={cn(
               "flex items-center gap-3 rounded-[0.358rem] px-4 py-2.5 text-[0.875rem] font-medium transition",
               active
-                ? "bg-[rgba(0,150,136,0.12)] text-[#009688] shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
-                : "text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
+                ? "bg-primary/10 text-primary shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
@@ -144,8 +144,8 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
       })}
 
       {/* Portal Users Section */}
-      <div className="mt-4 pt-3 border-t border-[#ebe9f1] mb-2 pb-3 border-b">
-        <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide flex items-center gap-2">
+      <div className="mt-4 pt-3 border-t border-border mb-2 pb-3 border-b">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
           <KeyRound className="h-4 w-4" />
           {t("nav.portalUsers.title")}
         </h2>
@@ -161,8 +161,8 @@ export function OrdersNavigation({ tenantId }: OrdersNavigationProps) {
             className={cn(
               "flex items-center gap-3 rounded-[0.358rem] px-4 py-2.5 text-[0.875rem] font-medium transition",
               active
-                ? "bg-[rgba(0,150,136,0.12)] text-[#009688] shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
-                : "text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
+                ? "bg-primary/10 text-primary shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />

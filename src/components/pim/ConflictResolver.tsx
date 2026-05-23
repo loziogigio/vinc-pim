@@ -44,17 +44,17 @@ export function ConflictResolver({
   const allResolved = conflicts.every((c) => c.field in resolutions);
 
   return (
-    <div className="bg-white border-2 border-orange-300 rounded-lg p-6 shadow-lg">
+    <div className="bg-card border-2 border-orange-300 dark:border-orange-500/40 rounded-lg p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
           <AlertTriangle className="h-5 w-5 text-orange-600" />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-foreground">
             {t("pages.pim.conflictResolver.title")}
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {t("pages.pim.conflictResolver.description")}
           </p>
         </div>
@@ -62,7 +62,7 @@ export function ConflictResolver({
           <button
             type="button"
             onClick={onDismiss}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -70,8 +70,8 @@ export function ConflictResolver({
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-        <p className="text-sm text-blue-800">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 dark:bg-blue-500/15 dark:border-blue-500/40">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           <strong>Tip:</strong> {t("pages.pim.conflictResolver.tip")}
         </p>
       </div>
@@ -81,14 +81,14 @@ export function ConflictResolver({
         {conflicts.map((conflict) => (
           <div
             key={conflict.field}
-            className="border rounded-lg p-4 bg-gray-50"
+            className="border rounded-lg p-4 bg-muted"
           >
             {/* Field Name */}
             <div className="mb-3">
-              <h4 className="text-sm font-semibold text-gray-900">
+              <h4 className="text-sm font-semibold text-foreground">
                 {getFieldDisplayName(conflict.field)}
               </h4>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {t("pages.pim.conflictResolver.detectedOn", { date: new Date(conflict.detected_at).toLocaleString() })}
               </p>
             </div>
@@ -106,19 +106,19 @@ export function ConflictResolver({
                   ${
                     resolutions[conflict.field] === "manual"
                       ? "border-green-500 bg-green-50"
-                      : "border-gray-300 hover:border-green-300 bg-white"
+                      : "border-border hover:border-green-300 dark:hover:border-green-500/40 bg-card"
                   }
                 `}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-gray-700">
+                  <span className="text-xs font-medium text-muted-foreground">
                     {t("pages.pim.conflictResolver.yourEdit")}
                   </span>
                   {resolutions[conflict.field] === "manual" && (
                     <Check className="h-4 w-4 text-green-600" />
                   )}
                 </div>
-                <div className="text-sm text-gray-900 break-words">
+                <div className="text-sm text-foreground break-words">
                   {formatValue(conflict.manual_value)}
                 </div>
               </button>
@@ -133,20 +133,20 @@ export function ConflictResolver({
                   p-3 rounded-lg border-2 text-left transition
                   ${
                     resolutions[conflict.field] === "api"
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-300 hover:border-blue-300 bg-white"
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
+                      : "border-border hover:border-blue-300 dark:hover:border-blue-500/40 bg-card"
                   }
                 `}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-gray-700">
+                  <span className="text-xs font-medium text-muted-foreground">
                     {t("pages.pim.conflictResolver.apiUpdate")}
                   </span>
                   {resolutions[conflict.field] === "api" && (
                     <Check className="h-4 w-4 text-blue-600" />
                   )}
                 </div>
-                <div className="text-sm text-gray-900 break-words">
+                <div className="text-sm text-foreground break-words">
                   {formatValue(conflict.api_value)}
                 </div>
               </button>
@@ -157,7 +157,7 @@ export function ConflictResolver({
 
       {/* Actions */}
       <div className="flex items-center justify-between mt-6 pt-4 border-t">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           {allResolved ? (
             <span className="text-green-600 font-medium">
               {t("pages.pim.conflictResolver.allResolved")}
@@ -174,7 +174,7 @@ export function ConflictResolver({
               type="button"
               onClick={onDismiss}
               disabled={resolving}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
             >
               {t("common.cancel")}
             </button>

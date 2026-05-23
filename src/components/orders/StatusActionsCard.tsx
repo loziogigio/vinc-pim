@@ -47,36 +47,36 @@ export function StatusActionsCard({
   > = {
     draft: {
       icon: ShoppingCart,
-      color: "text-amber-600",
-      bgColor: "bg-amber-100",
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-100 dark:bg-amber-500/15",
     },
     quotation: {
       icon: FileText,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-100",
+      color: "text-indigo-600 dark:text-indigo-400",
+      bgColor: "bg-indigo-100 dark:bg-indigo-500/15",
     },
-    pending: { icon: Clock, color: "text-blue-600", bgColor: "bg-blue-100" },
+    pending: { icon: Clock, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-500/15" },
     confirmed: {
       icon: CheckCircle,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-100",
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-100 dark:bg-emerald-500/15",
     },
     preparing: {
       icon: Package,
-      color: "text-amber-600",
-      bgColor: "bg-amber-100",
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-100 dark:bg-amber-500/15",
     },
     shipped: {
       icon: Truck,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-100 dark:bg-purple-500/15",
     },
     delivered: {
       icon: Package,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-100",
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-100 dark:bg-emerald-500/15",
     },
-    cancelled: { icon: XCircle, color: "text-gray-600", bgColor: "bg-gray-100" },
+    cancelled: { icon: XCircle, color: "text-gray-600 dark:text-gray-400", bgColor: "bg-gray-100 dark:bg-gray-500/15" },
   };
 
   const currentStatus = statusConfig[order.status] || statusConfig.draft;
@@ -365,7 +365,7 @@ export function StatusActionsCard({
                   "bg-primary text-white hover:bg-primary/90 border-primary",
                 secondary:
                   "bg-background text-foreground hover:bg-muted border-border",
-                danger: "bg-red-50 text-red-600 hover:bg-red-100 border-red-200",
+                danger: "bg-red-50 text-red-600 hover:bg-red-100 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 dark:border-red-500/30",
               };
 
               return (

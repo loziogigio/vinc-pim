@@ -197,15 +197,15 @@ export function ProductSearchPreview({
   }, [localQuery, limit, tenantId]);
 
   return (
-    <div className="space-y-4 rounded-lg border bg-slate-50 p-4">
+    <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
       <div className="flex items-center gap-2">
-        <Search className="h-4 w-4 text-slate-500" />
+        <Search className="h-4 w-4 text-muted-foreground" />
         <Label className="font-medium">Product Search</Label>
       </div>
 
       <div className="space-y-3">
         <div>
-          <Label className="text-xs text-slate-500">Search Query</Label>
+          <Label className="text-xs text-muted-foreground">Search Query</Label>
           <div className="relative">
             <Input
               value={localQuery}
@@ -214,30 +214,30 @@ export function ProductSearchPreview({
               className="pr-10"
             />
             {isSearching && (
-              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
             )}
           </div>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Paste a keyword or an advanced query (e.g.{" "}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
               shop?text=moon&amp;filters-brand_id=004
             </code>
             ).
           </p>
           {parsedSearchSummary ? (
-            <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <div className="mt-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
               {parsedSearchSummary.keyword ? (
                 <div className="mb-1">
-                  <span className="font-semibold text-slate-700">Keyword:</span>{" "}
+                  <span className="font-semibold text-foreground">Keyword:</span>{" "}
                   <span>{parsedSearchSummary.keyword}</span>
                 </div>
               ) : null}
               {parsedSearchSummary.filters.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {parsedSearchSummary.filters.map(({ key, values }) => (
-                    <div key={key} className="flex items-center gap-1 rounded bg-white px-2 py-1">
-                      <span className="text-[11px] font-semibold uppercase text-slate-500">{key}</span>
-                      <span className="text-[11px] text-slate-600">{values.join(", ")}</span>
+                    <div key={key} className="flex items-center gap-1 rounded bg-card px-2 py-1">
+                      <span className="text-[11px] font-semibold uppercase text-muted-foreground">{key}</span>
+                      <span className="text-[11px] text-foreground">{values.join(", ")}</span>
                     </div>
                   ))}
                 </div>
@@ -247,7 +247,7 @@ export function ProductSearchPreview({
         </div>
 
         <div>
-          <Label className="text-xs text-slate-500">Max Products</Label>
+          <Label className="text-xs text-muted-foreground">Max Products</Label>
           <Input
             type="number"
             min={1}
@@ -261,14 +261,14 @@ export function ProductSearchPreview({
 
         {cachedProducts && cachedProducts.length > 0 ? (
           <div className="space-y-2">
-            <Label className="text-xs text-slate-500">
+            <Label className="text-xs text-muted-foreground">
               Found {cachedProducts.length} products
             </Label>
             <div className="grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
               {cachedProducts.map((product) => (
                 <div
                   key={product.entity_code}
-                  className="flex flex-col items-center rounded border bg-white p-2"
+                  className="flex flex-col items-center rounded border border-border bg-card p-2"
                 >
                   {product.cover_image_url ? (
                     <img
@@ -277,11 +277,11 @@ export function ProductSearchPreview({
                       className="h-12 w-12 object-contain"
                     />
                   ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100">
-                      <Package className="h-6 w-6 text-slate-300" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded bg-muted">
+                      <Package className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                  <span className="mt-1 w-full truncate text-center text-[10px] text-slate-600">
+                  <span className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
                     {product.sku}
                   </span>
                 </div>
@@ -291,7 +291,7 @@ export function ProductSearchPreview({
         ) : null}
 
         {localQuery.trim() && !isSearching && cachedProducts?.length === 0 ? (
-          <p className="py-2 text-center text-xs text-slate-500">No products found</p>
+          <p className="py-2 text-center text-xs text-muted-foreground">No products found</p>
         ) : null}
       </div>
     </div>

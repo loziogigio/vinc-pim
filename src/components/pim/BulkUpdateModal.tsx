@@ -110,7 +110,7 @@ export function BulkUpdateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
@@ -131,7 +131,7 @@ export function BulkUpdateModal({
 
         {/* Filter mode warning */}
         {isFilterMode && selectedCount > 100 && (
-          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800 dark:bg-amber-500/15 dark:border-amber-500/40 dark:text-amber-300">
             {t("pages.pim.products.bulkUpdateFilterWarning")}
           </div>
         )}
@@ -151,7 +151,7 @@ export function BulkUpdateModal({
                   id="field-status"
                   checked={selectedFields.has("status")}
                   onChange={() => toggleField("status")}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                 />
                 <label
                   htmlFor="field-status"
@@ -184,7 +184,7 @@ export function BulkUpdateModal({
                   id="field-not_visible"
                   checked={selectedFields.has("not_visible")}
                   onChange={() => toggleField("not_visible")}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                 />
                 <label
                   htmlFor="field-not_visible"
@@ -200,7 +200,7 @@ export function BulkUpdateModal({
                     onClick={() => setValues({ ...values, not_visible: false })}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition ${
                       values.not_visible === false || values.not_visible === undefined
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                         : "border-border text-muted-foreground hover:bg-muted"
                     }`}
                   >
@@ -212,7 +212,7 @@ export function BulkUpdateModal({
                     onClick={() => setValues({ ...values, not_visible: true })}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition ${
                       values.not_visible === true
-                        ? "border-red-500 bg-red-50 text-red-700"
+                        ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                         : "border-border text-muted-foreground hover:bg-muted"
                     }`}
                   >
@@ -231,7 +231,7 @@ export function BulkUpdateModal({
                   id="field-brand"
                   checked={selectedFields.has("brand")}
                   onChange={() => toggleField("brand")}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                 />
                 <label
                   htmlFor="field-brand"
@@ -261,7 +261,7 @@ export function BulkUpdateModal({
                   id="field-category"
                   checked={selectedFields.has("category")}
                   onChange={() => toggleField("category")}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                 />
                 <label
                   htmlFor="field-category"
@@ -291,7 +291,7 @@ export function BulkUpdateModal({
                   id="field-currency"
                   checked={selectedFields.has("currency")}
                   onChange={() => toggleField("currency")}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                 />
                 <label
                   htmlFor="field-currency"
@@ -329,11 +329,11 @@ export function BulkUpdateModal({
                   {t("pages.pim.bulkUpdate.deleteProducts")}
                 </button>
               ) : (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
-                  <p className="text-sm font-medium text-red-800">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3 dark:bg-red-500/15 dark:border-red-500/40">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">
                     {t("pages.pim.bulkUpdate.deleteWarning", { count: selectedCount.toLocaleString() })}
                   </p>
-                  <p className="text-sm text-red-700">
+                  <p className="text-sm text-red-700 dark:text-red-300">
                     {t("pages.pim.bulkUpdate.deleteConfirmPrompt")}
                   </p>
                   <input
@@ -341,7 +341,7 @@ export function BulkUpdateModal({
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder="DELETE"
-                    className="w-full rounded border border-red-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:outline-none"
+                    className="w-full rounded border border-red-300 bg-background px-3 py-2 text-sm focus:border-red-500 focus:outline-none dark:border-red-500/40"
                   />
                   <button
                     type="button"

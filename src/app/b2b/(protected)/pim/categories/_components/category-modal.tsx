@@ -274,7 +274,7 @@ const CategoryModal = ({
                 type="checkbox"
                 checked={formData.is_active}
                 onChange={(e) => updateField("is_active", e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
               />
               {t("pages.pim.categories.activeVisible")}
             </label>

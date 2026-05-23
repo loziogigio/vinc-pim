@@ -196,7 +196,7 @@ export default function TagsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.tags.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -313,7 +313,7 @@ export default function TagsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/b2b/pim/tags/${tag.tag_id}`}
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition"
@@ -332,7 +332,7 @@ export default function TagsPage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(tag.tag_id, tag.product_count)}
-                    className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
+                    className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition"
                   >
                     <Trash2 className="h-4 w-4" />
                     {t("common.delete")}

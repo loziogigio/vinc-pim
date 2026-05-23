@@ -112,11 +112,11 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
   const hasFilters = search || dateFrom || dateTo;
 
   const renderEmptyState = () => (
-    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-      <div className="text-center text-[#5e5873]">
-        <StatusIcon className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
+    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="text-center text-foreground">
+        <StatusIcon className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
         <p className="text-[1.05rem] font-semibold">No {statusLabel.toLowerCase()} orders</p>
-        <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">{emptyMessage}</p>
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">{emptyMessage}</p>
       </div>
     </div>
   );
@@ -206,7 +206,7 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
         <div className="p-8">
           <div className="animate-pulse space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+              <div key={i} className="h-16 bg-muted rounded"></div>
             ))}
           </div>
         </div>

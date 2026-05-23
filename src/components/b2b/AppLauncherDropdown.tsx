@@ -48,7 +48,7 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-10 w-10 items-center justify-center rounded-full text-[#6e6b7b] transition hover:bg-[#f1f1f2]"
+        className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
         aria-label={t("header.apps")}
         title={t("header.apps")}
       >
@@ -56,7 +56,7 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-[300px] rounded-2xl border border-[#dadce0] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-[300px] rounded-2xl border border-border bg-popover text-popover-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
           <div className="max-h-[420px] overflow-y-auto overscroll-contain p-2">
             <div className="grid grid-cols-3 gap-0">
               {apps.map((app) => (
@@ -64,14 +64,14 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
                   key={app.id}
                   href={`${tenantPrefix}${app.href}`}
                   onClick={() => setIsOpen(false)}
-                  className="group flex flex-col items-center gap-1.5 rounded-lg p-3 transition-colors hover:bg-[#f1f3f4]"
+                  className="group flex flex-col items-center gap-1.5 rounded-lg p-3 transition-colors hover:bg-accent"
                 >
                   <div
                     className={`flex h-11 w-11 items-center justify-center rounded-full ${app.color} text-white transition-transform group-hover:scale-110`}
                   >
                     <app.icon className="h-5 w-5" />
                   </div>
-                  <span className="text-[11px] font-medium text-[#5f6368] text-center leading-tight line-clamp-2 min-h-[28px] flex items-center">
+                  <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight line-clamp-2 min-h-[28px] flex items-center">
                     {t(`apps.${app.id}.name`)}
                   </span>
                 </Link>
@@ -79,14 +79,14 @@ export function AppLauncherDropdown({ tenantId }: AppLauncherDropdownProps) {
             </div>
           </div>
 
-          <div className="border-t border-[#dadce0]">
+          <div className="border-t border-border">
             <button
               type="button"
               onClick={() => {
                 setIsOpen(false);
                 handleLogout();
               }}
-              className="flex w-full items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4]"
+              className="flex w-full items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               <LogOut className="h-4 w-4" />
               {t("common.logout")}

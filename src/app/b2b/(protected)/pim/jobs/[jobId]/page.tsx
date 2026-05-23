@@ -153,13 +153,13 @@ export default function ImportJobDetailPage() {
   function getStatusIcon(status: string) {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="h-5 w-5 text-emerald-600" />;
+        return <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />;
       case "failed":
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
       case "processing":
-        return <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-amber-600" />;
+        return <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />;
       default:
         return null;
     }
@@ -169,16 +169,16 @@ export default function ImportJobDetailPage() {
     switch (status) {
       case "completed":
       case "published":
-        return "bg-emerald-100 text-emerald-700";
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
       case "failed":
-        return "bg-red-100 text-red-700";
+        return "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300";
       case "processing":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300";
       case "pending":
       case "draft":
-        return "bg-amber-100 text-amber-700";
+        return "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300";
     }
   }
 
@@ -198,8 +198,8 @@ export default function ImportJobDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -223,8 +223,8 @@ export default function ImportJobDetailPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={() => router.push("/b2b/pim/jobs")}
             className="p-2 rounded hover:bg-muted"
@@ -251,7 +251,7 @@ export default function ImportJobDetailPage() {
       {/* Job Summary */}
       <div className="rounded-lg bg-card p-6 shadow-sm">
         <h2 className="text-lg font-semibold mb-4">{t("pages.pim.jobs.summary")}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Database className="h-4 w-4" />
@@ -274,13 +274,13 @@ export default function ImportJobDetailPage() {
             {job.batch_id ? (
               <Link
                 href={`/b2b/pim/products?batch_id=${job.batch_id}`}
-                className="font-medium text-emerald-600 hover:underline cursor-pointer"
+                className="font-medium text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                 title={t("pages.pim.jobs.viewAllProductsFromBatch")}
               >
                 {job.successful_rows}
               </Link>
             ) : (
-              <div className="font-medium text-emerald-600">{job.successful_rows}</div>
+              <div className="font-medium text-emerald-600 dark:text-emerald-400">{job.successful_rows}</div>
             )}
           </div>
           <div>
@@ -288,7 +288,7 @@ export default function ImportJobDetailPage() {
               <XCircle className="h-4 w-4" />
               {t("pages.pim.jobs.failedCountLabel")}
             </div>
-            <div className="font-medium text-red-600">{job.failed_rows}</div>
+            <div className="font-medium text-red-600 dark:text-red-400">{job.failed_rows}</div>
           </div>
           <div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
@@ -298,13 +298,13 @@ export default function ImportJobDetailPage() {
             {job.batch_id ? (
               <Link
                 href={`/b2b/pim/products?batch_id=${job.batch_id}&status=published`}
-                className="font-medium text-blue-600 hover:underline cursor-pointer"
+                className="font-medium text-primary hover:underline cursor-pointer"
                 title={t("pages.pim.jobs.viewPublishedFromBatch")}
               >
                 {job.auto_published_count}
               </Link>
             ) : (
-              <div className="font-medium text-blue-600">{job.auto_published_count}</div>
+              <div className="font-medium text-primary">{job.auto_published_count}</div>
             )}
           </div>
           <div>
@@ -334,23 +334,23 @@ export default function ImportJobDetailPage() {
 
         {/* Import Errors */}
         {job.import_errors && job.import_errors.length > 0 && (
-          <div className="mt-6 p-4 rounded-lg bg-red-50 border border-red-200">
+          <div className="mt-6 p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/30">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-900 mb-3">
+                <p className="text-sm font-medium text-red-900 dark:text-red-200 mb-3">
                   {t("pages.pim.jobs.errorsOccurred", { count: job.import_errors.length })}
                 </p>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {job.import_errors.map((error, idx) => (
-                    <div key={idx} className="p-2 bg-white rounded text-xs">
+                    <div key={idx} className="p-2 bg-card rounded text-xs">
                       <span className="font-medium">Row {error.row}</span>
                       {error.entity_code && (
                         <span className="text-muted-foreground ml-2">
                           ({error.entity_code})
                         </span>
                       )}
-                      <p className="text-red-700 mt-1">{error.error}</p>
+                      <p className="text-red-700 dark:text-red-300 mt-1">{error.error}</p>
                     </div>
                   ))}
                 </div>
@@ -362,8 +362,8 @@ export default function ImportJobDetailPage() {
 
       {/* Search and Filters */}
       <div className="rounded-lg bg-card p-4 shadow-sm">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="flex-1 min-w-0 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -389,14 +389,14 @@ export default function ImportJobDetailPage() {
             <option value="draft">{t("pages.pim.jobs.draftOption")}</option>
           </select>
         </div>
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+          <div className="flex flex-wrap items-center gap-3">
             {job && job.failed_rows > 0 && (
               <button
                 onClick={() => setShowOnlyFailed(!showOnlyFailed)}
                 className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                   showOnlyFailed
-                    ? "bg-red-100 border-red-300 text-red-700 font-medium"
+                    ? "bg-red-100 border-red-300 text-red-700 font-medium dark:bg-red-500/15 dark:border-red-500/40 dark:text-red-300"
                     : "border-border hover:bg-muted"
                 }`}
               >
@@ -438,7 +438,7 @@ export default function ImportJobDetailPage() {
           // Show only failed items
           job.import_errors.length === 0 ? (
             <div className="rounded-lg bg-card p-12 shadow-sm text-center">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600 mb-4" />
+              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600 dark:text-emerald-400 mb-4" />
               <h3 className="text-lg font-semibold mb-2">{t("pages.pim.jobs.noFailedItems")}</h3>
               <p className="text-sm text-muted-foreground">{t("pages.pim.jobs.allImportedSuccessfully")}</p>
             </div>
@@ -449,36 +449,36 @@ export default function ImportJobDetailPage() {
               return (
                 <div
                   key={itemId}
-                  className="rounded-lg bg-card shadow-sm border-2 border-red-300 bg-red-50/50"
+                  className="rounded-lg bg-red-50/50 dark:bg-red-500/5 shadow-sm border-2 border-red-300 dark:border-red-500/40"
                 >
                   <button
                     onClick={() => toggleItemExpansion(itemId)}
-                    className="w-full p-4 flex items-start gap-4 hover:bg-red-100/50 transition-colors"
+                    className="w-full p-4 flex items-start gap-4 hover:bg-red-100/50 dark:hover:bg-red-500/10 transition-colors"
                   >
                     <div className="flex-shrink-0 mt-1">
                       {isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-red-600" />
+                        <ChevronDown className="h-5 w-5 text-red-600 dark:text-red-400" />
                       ) : (
-                        <ChevronRight className="h-5 w-5 text-red-600" />
+                        <ChevronRight className="h-5 w-5 text-red-600 dark:text-red-400" />
                       )}
                     </div>
 
-                    <XCircle className="w-12 h-12 text-red-600 flex-shrink-0" />
+                    <XCircle className="w-12 h-12 text-red-600 dark:text-red-400 flex-shrink-0" />
 
                     <div className="flex-1 text-left min-w-0">
                       <div className="flex items-start justify-between mb-1">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-red-900 truncate">
+                          <h3 className="font-semibold text-red-900 dark:text-red-200 truncate">
                             {t("pages.pim.jobs.rowImportFailed", { row: error.row })}
                           </h3>
-                          <div className="flex items-center gap-3 text-xs text-red-700 mt-1">
+                          <div className="flex items-center gap-3 text-xs text-red-700 dark:text-red-300 mt-1">
                             <span>{t("pages.pim.jobs.entityLabel")} {error.entity_code || 'N/A'}</span>
                           </div>
-                          <p className="text-sm text-red-700 mt-2 font-medium">
+                          <p className="text-sm text-red-700 dark:text-red-300 mt-2 font-medium">
                             {error.error}
                           </p>
                         </div>
-                        <span className="px-2 py-1 rounded text-xs font-medium bg-red-200 text-red-800 whitespace-nowrap">
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-red-200 text-red-800 dark:bg-red-500/20 dark:text-red-300 whitespace-nowrap">
                           {t("pages.pim.jobs.failedBadge")}
                         </span>
                       </div>
@@ -486,10 +486,10 @@ export default function ImportJobDetailPage() {
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 border-t border-red-200">
+                    <div className="px-4 pb-4 border-t border-red-200 dark:border-red-500/30">
                       <div className="mt-4 space-y-4">
                         <div>
-                          <h4 className="text-sm font-semibold mb-2 text-red-900">{t("pages.pim.jobs.errorDetails")}</h4>
+                          <h4 className="text-sm font-semibold mb-2 text-red-900 dark:text-red-200">{t("pages.pim.jobs.errorDetails")}</h4>
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
                               <span className="text-muted-foreground">{t("pages.pim.jobs.rowNumber")}:</span>
@@ -502,7 +502,7 @@ export default function ImportJobDetailPage() {
                           </div>
                           <div className="mt-3">
                             <span className="text-muted-foreground text-sm">{t("pages.pim.jobs.errorMessage")}:</span>
-                            <div className="mt-1 p-3 bg-red-100 rounded border border-red-200 text-sm text-red-800">
+                            <div className="mt-1 p-3 bg-red-100 rounded border border-red-200 dark:bg-red-500/15 dark:border-red-500/30 text-sm text-red-800 dark:text-red-300">
                               {error.error}
                             </div>
                           </div>
@@ -511,14 +511,14 @@ export default function ImportJobDetailPage() {
                         {/* Raw Data Section */}
                         {error.raw_data && (
                           <div>
-                            <h4 className="text-sm font-semibold mb-2 text-red-900">{t("pages.pim.jobs.dataSentFromApi")}</h4>
+                            <h4 className="text-sm font-semibold mb-2 text-red-900 dark:text-red-200">{t("pages.pim.jobs.dataSentFromApi")}</h4>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               {Object.entries(error.raw_data).map(([key, value]) => (
                                 <div key={key}>
                                   <span className="text-muted-foreground">{key}:</span>
                                   <div className="font-medium break-all">
                                     {value === null || value === undefined || value === ''
-                                      ? <span className="text-red-600 italic">{t("pages.pim.jobs.emptyMissing")}</span>
+                                      ? <span className="text-red-600 dark:text-red-400 italic">{t("pages.pim.jobs.emptyMissing")}</span>
                                       : typeof value === 'object'
                                       ? JSON.stringify(value)
                                       : String(value)
@@ -531,7 +531,7 @@ export default function ImportJobDetailPage() {
                               <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                                 {t("pages.pim.jobs.viewRawJson")}
                               </summary>
-                              <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-300 max-h-64 overflow-auto">
+                              <div className="mt-2 p-3 bg-muted rounded border border-border max-h-64 overflow-auto">
                                 <pre className="text-xs font-mono whitespace-pre-wrap">
                                   {JSON.stringify(error.raw_data, null, 2)}
                                 </pre>
@@ -705,7 +705,7 @@ export default function ImportJobDetailPage() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-lg bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-card p-4 shadow-sm">
           <div className="text-sm text-muted-foreground">
             {t("common.page")} {pagination.page} {t("common.of")} {pagination.totalPages}
           </div>

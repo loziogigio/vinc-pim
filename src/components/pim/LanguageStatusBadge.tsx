@@ -70,15 +70,15 @@ export function LanguageStatusBadge({
   if (variant === "minimal") {
     return (
       <div className={cn("inline-flex items-center gap-1.5", sizeClasses[size], className)}>
-        {showLabel && <Languages className="h-3 w-3 text-gray-500" />}
+        {showLabel && <Languages className="h-3 w-3 text-muted-foreground" />}
         <span
           className={cn(
             "font-semibold px-2 py-0.5 rounded",
             coveragePercentage === 100
-              ? "bg-green-100 text-green-700"
+              ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300"
               : coveragePercentage >= 50
-              ? "bg-amber-100 text-amber-700"
-              : "bg-red-100 text-red-700"
+              ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+              : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
           )}
         >
           {availableCount}/{totalCount}
@@ -92,7 +92,7 @@ export function LanguageStatusBadge({
     return (
       <div className={cn("inline-flex items-center gap-1", sizeClasses[size], className)}>
         {showLabel && (
-          <span className="text-gray-500 mr-1 text-xs">
+          <span className="text-muted-foreground mr-1 text-xs">
             <Languages className="h-3 w-3" />
           </span>
         )}
@@ -102,8 +102,8 @@ export function LanguageStatusBadge({
             className={cn(
               "inline-flex items-center px-1 py-0.5 rounded border",
               isAvailable
-                ? "bg-green-50 border-green-200"
-                : "bg-gray-50 border-gray-200 opacity-50"
+                ? "bg-green-50 border-green-200 dark:bg-green-500/15 dark:border-green-500/40"
+                : "bg-muted border-border opacity-50"
             )}
             title={`${language.nativeName} (${language.code.toUpperCase()}): ${
               isAvailable ? "Available" : "Missing"
@@ -117,7 +117,7 @@ export function LanguageStatusBadge({
             {isAvailable ? (
               <Check className="h-2 w-2 text-green-600 ml-0.5" />
             ) : (
-              <X className="h-2 w-2 text-gray-400 ml-0.5" />
+              <X className="h-2 w-2 text-muted-foreground ml-0.5" />
             )}
           </span>
         ))}
@@ -129,7 +129,7 @@ export function LanguageStatusBadge({
   return (
     <div className={cn("inline-flex flex-wrap items-center gap-1", sizeClasses[size], className)}>
       {showLabel && (
-        <span className="text-gray-500 text-xs font-medium mr-1">Languages:</span>
+        <span className="text-muted-foreground text-xs font-medium mr-1">Languages:</span>
       )}
       {languageStatuses.map(({ language, isAvailable }) => (
         <span
@@ -137,8 +137,8 @@ export function LanguageStatusBadge({
           className={cn(
             "inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold uppercase",
             isAvailable
-              ? "bg-green-100 text-green-700 border border-green-200"
-              : "bg-gray-100 text-gray-400 border border-gray-200"
+              ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/40"
+              : "bg-muted text-muted-foreground border border-border"
           )}
           title={`${language.nativeName}: ${isAvailable ? "Available" : "Missing"}`}
         >

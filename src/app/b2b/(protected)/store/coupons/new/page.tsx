@@ -226,7 +226,7 @@ export default function NewCouponPage() {
       />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.store.couponNew.title")}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.store.couponNew.title")}</h1>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -236,7 +236,7 @@ export default function NewCouponPage() {
             {t("pages.store.couponNew.back")}
           </Button>
           <Button
-            className="bg-[#009688] hover:bg-[#00796b] text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -247,7 +247,7 @@ export default function NewCouponPage() {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300 p-3 text-sm">
           {error}
         </div>
       )}
@@ -255,8 +255,8 @@ export default function NewCouponPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column: Core info */}
         <div className="space-y-6">
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               {t("pages.store.couponNew.basicInfo")}
             </h2>
             <div className="space-y-4">
@@ -275,7 +275,7 @@ export default function NewCouponPage() {
                 <select
                   value={channel}
                   onChange={(e) => setChannel(e.target.value)}
-                  className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm bg-background"
                 >
                   <option value="">{t("pages.store.couponNew.selectChannel")}</option>
                   {channels.map((ch) => (
@@ -305,8 +305,8 @@ export default function NewCouponPage() {
             </div>
           </div>
 
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               {t("pages.store.couponNew.discountSection")}
             </h2>
             <div className="space-y-4">
@@ -317,7 +317,7 @@ export default function NewCouponPage() {
                   onChange={(e) =>
                     setDiscountType(e.target.value as "percentage" | "fixed")
                   }
-                  className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm bg-background"
                 >
                   <option value="percentage">{t("pages.store.couponNew.percentage")}</option>
                   <option value="fixed">{t("pages.store.couponNew.fixedValue")}</option>
@@ -359,7 +359,7 @@ export default function NewCouponPage() {
                   id="includeShipping"
                   checked={includeShipping}
                   onChange={(e) => setIncludeShipping(e.target.checked)}
-                  className="rounded border-[#ebe9f1]"
+                  className="rounded border-border"
                 />
                 <Label htmlFor="includeShipping" className="cursor-pointer">
                   {t("pages.store.couponNew.applyToShipping")}
@@ -371,7 +371,7 @@ export default function NewCouponPage() {
                   id="isCumulative"
                   checked={isCumulative}
                   onChange={(e) => setIsCumulative(e.target.checked)}
-                  className="rounded border-[#ebe9f1]"
+                  className="rounded border-border"
                 />
                 <Label htmlFor="isCumulative" className="cursor-pointer">
                   {t("pages.store.couponNew.cumulativeWithOthers")}
@@ -383,8 +383,8 @@ export default function NewCouponPage() {
 
         {/* Right column: Limits & validity */}
         <div className="space-y-6">
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               {t("pages.store.couponNew.validitySection")}
             </h2>
             <div className="space-y-4">
@@ -431,8 +431,8 @@ export default function NewCouponPage() {
             </div>
           </div>
 
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               {t("pages.store.couponNew.orderThresholds")}
             </h2>
             <div className="space-y-4">
@@ -469,17 +469,17 @@ export default function NewCouponPage() {
             </div>
           </div>
 
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4 flex items-center gap-2">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Users className="h-4 w-4" />
               {t("pages.store.couponNew.authorizedCustomers")}
             </h2>
-            <p className="text-xs text-[#b9b9c3] mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               {t("pages.store.couponNew.authorizedCustomersHint")}
             </p>
             <div className="relative">
               <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-[#b9b9c3]" />
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
                   value={customerSearch}
                   onChange={(e) => {
@@ -497,17 +497,17 @@ export default function NewCouponPage() {
                 />
               </div>
               {customerResults.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border border-[#ebe9f1] bg-white shadow-lg max-h-48 overflow-auto">
+                <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-card shadow-lg max-h-48 overflow-auto">
                   {customerResults.map((c) => (
                     <button
                       key={c.email}
                       type="button"
                       onClick={() => addCustomer(c)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-[#f8f8f8] border-b border-[#ebe9f1] last:border-0"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 border-b border-border last:border-0"
                     >
                       <span className="font-medium">{c.email}</span>
                       {c.company_name && (
-                        <span className="text-[#b9b9c3] ml-2">
+                        <span className="text-muted-foreground ml-2">
                           ({c.company_name})
                         </span>
                       )}
@@ -516,7 +516,7 @@ export default function NewCouponPage() {
                 </div>
               )}
               {isSearching && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border border-[#ebe9f1] bg-white shadow-lg p-3 text-sm text-[#b9b9c3]">
+                <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-card shadow-lg p-3 text-sm text-muted-foreground">
                   {t("pages.store.couponNew.searching")}
                 </div>
               )}
@@ -526,11 +526,11 @@ export default function NewCouponPage() {
                 {customers.map((c) => (
                   <span
                     key={c.email}
-                    className="inline-flex items-center gap-1 rounded-full bg-[#e0f2f1] px-3 py-1 text-xs text-[#00796b]"
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs text-primary"
                   >
                     {c.email}
                     {c.company_name && (
-                      <span className="text-[#b9b9c3]">
+                      <span className="text-muted-foreground">
                         ({c.company_name})
                       </span>
                     )}
@@ -547,15 +547,15 @@ export default function NewCouponPage() {
             )}
           </div>
 
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
               {t("pages.store.couponNew.internalNotes")}
             </h2>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t("pages.store.couponNew.internalNotesPlaceholder")}
-              className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm resize-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm resize-none"
               rows={3}
             />
           </div>

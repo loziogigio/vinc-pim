@@ -1050,13 +1050,13 @@ export default function OrdersOverviewPage() {
             />
           </div>
         )}
-        <div className="flex-1" />
+        <div className="hidden flex-1 sm:block" />
         {channels.length > 0 && (
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <select
               value={filters.channel}
               onChange={(e) => updateFilter({ channel: e.target.value })}
-              className="appearance-none rounded-full bg-card border border-border pl-3 pr-8 py-1 text-xs font-medium cursor-pointer hover:border-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full sm:w-auto appearance-none rounded-full bg-card border border-border pl-3 pr-8 py-1 text-xs font-medium cursor-pointer hover:border-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               <option value="">{t("pages.store.orders.allChannels")}</option>
               {channels.map((ch) => (
@@ -1207,9 +1207,9 @@ export default function OrdersOverviewPage() {
         id="da-gestire"
         className="rounded-lg bg-card border border-border shadow-sm"
       >
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <div className="flex items-center justify-between gap-2 flex-wrap p-4 border-b border-border">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bell className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
             <h2 className="text-sm font-semibold text-foreground">
               {t("pages.store.orders.toHandle")}
             </h2>
@@ -1231,6 +1231,7 @@ export default function OrdersOverviewPage() {
             <p className="text-sm">{t("pages.store.orders.noActionsNeeded")}</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <ul className="divide-y divide-border">
             {attentionRows.slice(0, 6).map(({ order, hint }) => {
               const HintIcon = hint.icon;
@@ -1275,6 +1276,7 @@ export default function OrdersOverviewPage() {
               );
             })}
           </ul>
+          </div>
         )}
       </section>
 

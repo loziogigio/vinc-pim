@@ -98,18 +98,18 @@ export default function TechnicalSpecificationsPage() {
   };
 
   const typeColors: Record<string, string> = {
-    text: "bg-blue-100 text-blue-700",
-    number: "bg-emerald-100 text-emerald-700",
-    select: "bg-purple-100 text-purple-700",
-    multiselect: "bg-indigo-100 text-indigo-700",
-    boolean: "bg-amber-100 text-amber-700",
+    text: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+    number: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    select: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+    multiselect: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+    boolean: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   };
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -125,8 +125,8 @@ export default function TechnicalSpecificationsPage() {
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.technicalSpecs.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {technicalSpecifications.length} {t("pages.pim.technicalSpecs.totalSpecifications")}
@@ -143,8 +143,8 @@ export default function TechnicalSpecificationsPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
@@ -232,7 +232,7 @@ export default function TechnicalSpecificationsPage() {
                           <Sliders className="h-5 w-5 text-primary flex-shrink-0" />
                           <span className="font-medium text-foreground">{spec.label}</span>
                           {spec.default_required && (
-                            <span className="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700">
+                            <span className="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
                               {t("pages.pim.technicalSpecs.requiredBadge")}
                             </span>
                           )}
@@ -244,7 +244,7 @@ export default function TechnicalSpecificationsPage() {
                         </code>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${typeColors[spec.type] || "bg-gray-100 text-gray-700"}`}>
+                        <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${typeColors[spec.type] || "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300"}`}>
                           {typeLabels[spec.type] || spec.type}
                         </span>
                       </td>
@@ -268,11 +268,11 @@ export default function TechnicalSpecificationsPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {spec.is_active ? (
-                          <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                          <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                             {t("common.active")}
                           </span>
                         ) : (
-                          <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300">
                             {t("common.inactive")}
                           </span>
                         )}
@@ -290,7 +290,7 @@ export default function TechnicalSpecificationsPage() {
                           <button
                             type="button"
                             onClick={() => handleDelete(spec)}
-                            className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
+                            className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:border-red-500/40 dark:hover:text-red-400 transition"
                             title={t("pages.pim.technicalSpecs.deleteTitle")}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -406,7 +406,7 @@ function TechnicalSpecificationModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           {/* Header */}
           <div className="px-6 py-4 border-b border-border">
@@ -524,7 +524,7 @@ function TechnicalSpecificationModal({
                   id="default_required"
                   checked={formData.default_required}
                   onChange={(e) => setFormData({ ...formData, default_required: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <label htmlFor="default_required" className="text-sm text-foreground">
                   {t("pages.pim.technicalSpecs.requiredByDefault")}
@@ -536,7 +536,7 @@ function TechnicalSpecificationModal({
                   id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <label htmlFor="is_active" className="text-sm text-foreground">
                   {t("pages.pim.technicalSpecs.activeForSelection")}

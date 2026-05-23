@@ -375,7 +375,7 @@ export default function ProductsListPage() {
   function renderPagination() {
     if (pagination.pages <= 1) return null;
     return (
-      <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+      <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-2 border-b border-border">
         <div className="text-sm text-muted-foreground">
           Showing {(pagination.page - 1) * pagination.limit + 1}–
           {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
@@ -427,11 +427,11 @@ export default function ProductsListPage() {
   }
 
   const renderEmptyState = () => (
-    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-      <div className="text-center text-[#5e5873]">
-        <Package className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
+    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="text-center text-foreground">
+        <Package className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
         <p className="text-[1.05rem] font-semibold">{t("pages.pim.products.noProducts")}</p>
-        <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">
           {filters.search || filters.status
             ? t("pages.pim.products.adjustFilters")
             : t("pages.pim.products.importToStart")}
@@ -450,8 +450,8 @@ export default function ProductsListPage() {
       />
 
       {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.products.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.pim.products.subtitle")} ({pagination.total} total)
@@ -735,12 +735,12 @@ export default function ProductsListPage() {
               </div>
             )}
             {filters.has_conflict && (
-              <div className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
+              <div className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 rounded-full text-sm">
                 <AlertTriangle className="h-3 w-3" />
                 <span>{filters.has_conflict === "true" ? "Needs Merge" : "No Conflicts"}</span>
                 <button
                   onClick={() => updateFilters({ has_conflict: "" })}
-                  className="hover:bg-amber-200 rounded-full p-0.5"
+                  className="hover:bg-amber-200 dark:hover:bg-amber-500/30 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -891,8 +891,8 @@ export default function ProductsListPage() {
       {/* Selection Actions Toolbar */}
       {(selectedProducts.size > 0 || selectAllMatching) && (
         <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 shadow-sm space-y-2">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3 min-w-0">
               <div className="text-sm font-medium text-foreground">
                 {selectAllMatching ? (
                   <>{t("pages.pim.products.allMatchingSelected", { total: pagination.total.toLocaleString() })}</>
@@ -912,7 +912,7 @@ export default function ProductsListPage() {
               {!selectAllMatching && (
                 <button
                   onClick={exportSelectedProducts}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
+                  className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-md hover:bg-muted text-sm font-medium transition"
                 >
                   <Download className="h-4 w-4" />
                   {t("pages.pim.products.exportSelected")}
@@ -948,7 +948,7 @@ export default function ProductsListPage() {
           <div className="p-8">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                <div key={i} className="h-16 bg-muted rounded"></div>
               ))}
             </div>
           </div>
@@ -969,7 +969,7 @@ export default function ProductsListPage() {
                           if (el) el.indeterminate = isSomeSelected;
                         }}
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                         title={isAllSelected ? "Deselect all" : "Select all"}
                       />
                     </th>
@@ -1007,7 +1007,7 @@ export default function ProductsListPage() {
                           type="checkbox"
                           checked={selectedProducts.has(product._id)}
                           onChange={() => toggleSelectProduct(product._id)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -1068,16 +1068,16 @@ export default function ProductsListPage() {
                           <div
                             className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
                               product.completeness_score >= 80
-                                ? "bg-emerald-100 text-emerald-700"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                                 : product.completeness_score >= 50
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-red-100 text-red-700"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                                : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                             }`}
                           >
                             {product.completeness_score}
                           </div>
                           {product.critical_issues.length > 0 && (
-                            <div className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded text-xs">
+                            <div className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 rounded text-xs">
                               <AlertTriangle className="h-3 w-3" />
                               {product.critical_issues.length}
                             </div>
@@ -1100,17 +1100,17 @@ export default function ProductsListPage() {
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                               product.status === "published"
-                                ? "bg-emerald-100 text-emerald-700"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                                 : product.status === "draft"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-gray-100 text-gray-700"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                                : "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300"
                             }`}
                           >
                             {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
                             {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                           </span>
                           {(product as Product & { not_visible?: boolean }).not_visible && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
                               <EyeOff className="h-2.5 w-2.5" />
                               {t("pages.pim.products.notVisible")}
                             </span>
@@ -1135,7 +1135,7 @@ export default function ProductsListPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {product.has_conflict && (
-                            <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" title="Has conflicts - needs merge" />
+                            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" title="Has conflicts - needs merge" />
                           )}
                           {product.source?.batch_id ? (
                             <button
@@ -1260,7 +1260,7 @@ function CreateProductModal({
           <h2 className="text-xl font-bold mb-4">Create New Product</h2>
 
           {error && (
-            <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
+            <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -1434,8 +1434,8 @@ function CreateProductModal({
             </div>
 
             {/* Info Box */}
-            <div className="p-3 rounded bg-blue-50 border border-blue-200">
-              <p className="text-sm text-blue-800">
+            <div className="p-3 rounded bg-blue-50 border border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
                 The product will be created as a <strong>draft</strong> with source <strong>&quot;Manual Entry&quot;</strong>.
                 You can add more details and publish it from the product detail page.
               </p>

@@ -47,10 +47,10 @@ export function RecentImportsPanel() {
     return (
       <div className="rounded-lg bg-card p-3.5 shadow-sm">
         <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-4 bg-muted rounded w-1/3"></div>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+              <div key={i} className="h-12 bg-muted rounded"></div>
             ))}
           </div>
         </div>
@@ -78,16 +78,16 @@ export function RecentImportsPanel() {
             >
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 {job.status === "completed" && (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                 )}
                 {job.status === "failed" && (
-                  <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
                 )}
                 {job.status === "processing" && (
-                  <Loader2 className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0" />
+                  <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />
                 )}
                 {job.status === "pending" && (
-                  <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                 )}
 
                 <div className="flex-1 min-w-0">

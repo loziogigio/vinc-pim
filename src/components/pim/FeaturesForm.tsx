@@ -105,7 +105,7 @@ export function FeaturesForm({ features, values, onChange, disabled }: Props) {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-foreground">Filled Features</h3>
-            <span className="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">
+            <span className="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
               {featuresWithValues.length} filled
             </span>
           </div>
@@ -133,7 +133,7 @@ export function FeaturesForm({ features, values, onChange, disabled }: Props) {
           >
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-foreground">Empty Features</h3>
-              <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+              <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">
                 {featuresWithoutValues.length} empty
               </span>
             </div>
@@ -292,7 +292,7 @@ function FeatureInput({
                       }
                     }}
                     disabled={disabled}
-                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
                   <span className="text-sm text-foreground">{option}</span>
                 </label>
@@ -315,7 +315,7 @@ function FeatureInput({
             checked={value === true}
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
-            className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+            className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
           />
           <span className="text-sm text-foreground">
             {value === true ? "Yes" : "No"}

@@ -323,8 +323,8 @@ export default function TagDetailPage() {
       />
 
       {/* Tag Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <div
             className="w-4 h-4 rounded-full"
             style={{ backgroundColor: tag.color || "#94a3b8" }}
@@ -345,7 +345,7 @@ export default function TagDetailPage() {
         </div>
         <button
           onClick={() => setShowAddCustomer((prev) => !prev)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition"
         >
           <UserPlus className="h-4 w-4" />
           {t("pages.store.tagDetail.addCustomer")}
@@ -367,7 +367,7 @@ export default function TagDetailPage() {
           onClick={() => setActiveTab("customers")}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 transition ${
             activeTab === "customers"
-              ? "border-emerald-600 text-emerald-600"
+              ? "border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -380,7 +380,7 @@ export default function TagDetailPage() {
           onClick={() => setActiveTab("addresses")}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 transition ${
             activeTab === "addresses"
-              ? "border-emerald-600 text-emerald-600"
+              ? "border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -420,6 +420,7 @@ export default function TagDetailPage() {
                   : t("pages.store.tagDetail.noCustomersAssigned")}
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -442,7 +443,7 @@ export default function TagDetailPage() {
                         <td className="px-4 py-3">
                           <Link
                             href={`${tenantPrefix}/b2b/store/customers/${c.customer_id}`}
-                            className="font-medium text-foreground hover:text-emerald-600"
+                            className="font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
                           >
                             {getCustomerDisplayName(c)}
                           </Link>
@@ -463,7 +464,7 @@ export default function TagDetailPage() {
                           <button
                             onClick={() => handleRemoveCustomer(c.customer_id)}
                             disabled={removingCustomerId === c.customer_id}
-                            className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                            className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
                             title={t("pages.store.tagDetail.removeTag")}
                           >
                             {removingCustomerId === c.customer_id ? (
@@ -478,6 +479,7 @@ export default function TagDetailPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
 
             {customerPagination.totalPages > 1 && (
@@ -517,7 +519,7 @@ export default function TagDetailPage() {
           <div className="flex justify-end">
             <button
               onClick={() => setShowAddOverride((prev) => !prev)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition"
             >
               <MapPinPlus className="h-4 w-4" />
               {t("pages.store.tagDetail.addAddressOverride")}
@@ -543,6 +545,7 @@ export default function TagDetailPage() {
                 {t("pages.store.tagDetail.noAddressOverrides")}
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -562,7 +565,7 @@ export default function TagDetailPage() {
                         <td className="px-4 py-3">
                           <Link
                             href={`${tenantPrefix}/b2b/store/customers/${a.customer_id}`}
-                            className="font-medium text-foreground hover:text-emerald-600"
+                            className="font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
                           >
                             {a.customer_name}
                           </Link>
@@ -579,7 +582,7 @@ export default function TagDetailPage() {
                               handleRemoveAddressOverride(a.customer_id, a.address_id)
                             }
                             disabled={removingAddressKey === key}
-                            className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                            className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
                             title={t("pages.store.tagDetail.removeOverride")}
                           >
                             {removingAddressKey === key ? (
@@ -594,6 +597,7 @@ export default function TagDetailPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

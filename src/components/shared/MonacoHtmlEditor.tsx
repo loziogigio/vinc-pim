@@ -36,7 +36,7 @@ export function MonacoHtmlEditor({
   );
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <Editor
         height={height}
         defaultLanguage="html"
@@ -70,8 +70,8 @@ export function MonacoHtmlEditor({
           padding: { top: 8, bottom: 8 },
         }}
         loading={
-          <div className="flex items-center justify-center h-full bg-slate-50">
-            <span className="text-slate-500 text-sm">Loading editor...</span>
+          <div className="flex items-center justify-center h-full bg-muted">
+            <span className="text-muted-foreground text-sm">Loading editor...</span>
           </div>
         }
       />

@@ -115,8 +115,8 @@ export default function SourcesPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -131,8 +131,8 @@ export default function SourcesPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.sources.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.pim.sources.subtitle")} ({total} {t("common.total").toLowerCase()})
@@ -148,8 +148,8 @@ export default function SourcesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
+      <div className="flex flex-wrap gap-3">
+        <div className="flex-1 min-w-0 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
@@ -203,8 +203,8 @@ export default function SourcesPage() {
               className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => router.push(`${tenantPrefix}/b2b/pim/sources/${source.source_id}`)}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-foreground">
                       {source.source_name}
@@ -213,12 +213,12 @@ export default function SourcesPage() {
                       {source.source_type?.toUpperCase() || source.type?.toUpperCase() || "UNKNOWN"}
                     </span>
                     {source.is_active ? (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                         <CheckCircle2 className="h-3 w-3" />
                         {t("common.active")}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300">
                         <XCircle className="h-3 w-3" />
                         {t("common.inactive")}
                       </span>
@@ -227,7 +227,7 @@ export default function SourcesPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Source ID: {source.source_id}
                   </p>
-                  <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">{t("pages.pim.sources.products")}:</span>
                       <span className="ml-2 font-medium">
@@ -275,7 +275,7 @@ export default function SourcesPage() {
                   </button>
                   <button
                     onClick={() => handleDelete(source.source_id)}
-                    className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600"
+                    className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600 dark:hover:bg-red-500/10 dark:hover:border-red-500/40 dark:text-red-400"
                     title={t("pages.pim.sources.deleteTitle")}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -289,7 +289,7 @@ export default function SourcesPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
             {t("common.page")} {currentPage} {t("common.of")} {totalPages}
           </p>

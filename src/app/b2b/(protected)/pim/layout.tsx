@@ -3,8 +3,8 @@ import { PIMNavigation } from "@/components/pim/PIMNavigation";
 
 export default function PIMLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex gap-6">
-      <aside className="sticky top-6 self-start">
+    <div className="flex flex-col gap-6 lg:flex-row">
+      <aside className="self-start lg:sticky lg:top-6">
         <PIMNavigation />
       </aside>
       <main className="flex-1 min-w-0">

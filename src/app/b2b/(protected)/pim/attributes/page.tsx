@@ -106,8 +106,8 @@ export default function AttributesSchemaMappingPage() {
       />
 
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.attributes.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.pim.attributes.subtitle")}
@@ -125,47 +125,47 @@ export default function AttributesSchemaMappingPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-[#ebe9f1]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
+        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-border">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
             <Package className="h-5 w-5" />
           </div>
           <div>
             <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.totalProducts")}</div>
             <div className="text-2xl font-semibold leading-tight">52,347</div>
-            <div className="text-xs font-medium text-emerald-600">↑ 12.5%</div>
+            <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">↑ 12.5%</div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-[#ebe9f1]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
+        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-border">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
             <CheckCircle2 className="h-5 w-5" />
           </div>
           <div>
             <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.mappedFields")}</div>
             <div className="text-2xl font-semibold leading-tight">24</div>
-            <div className="text-xs font-medium text-emerald-600">↑ 8.2%</div>
+            <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">↑ 8.2%</div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-[#ebe9f1]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-border">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
             <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.unmapped")}</div>
             <div className="text-2xl font-semibold leading-tight">6</div>
-            <div className="text-xs font-medium text-amber-600">↓ 3.1%</div>
+            <div className="text-xs font-medium text-amber-600 dark:text-amber-400">↓ 3.1%</div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-[#ebe9f1]">
+        <div className="flex items-start gap-3 rounded-lg bg-card p-4 shadow-sm border border-border">
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-sky-100 text-sky-700">
             <Database className="h-5 w-5" />
           </div>
           <div>
             <div className="text-xs text-muted-foreground">{t("pages.pim.attributes.collections")}</div>
             <div className="text-2xl font-semibold leading-tight">3</div>
-            <div className="text-xs font-medium text-emerald-600">{t("common.active")}</div>
+            <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{t("common.active")}</div>
           </div>
         </div>
       </div>
@@ -173,7 +173,7 @@ export default function AttributesSchemaMappingPage() {
       {/* Mapping workspace */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Left panel: Source */}
-        <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
+        <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-border">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <span className="text-sm font-semibold">{t("pages.pim.attributes.selectSourceCollection")}</span>
           </div>
@@ -189,7 +189,7 @@ export default function AttributesSchemaMappingPage() {
                   }`}
                 >
                   <div className="text-sm font-semibold text-foreground">{c.name}</div>
-                  <div className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 bg-emerald-100">
+                  <div className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300">
                     {t("common.active")}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">{c.records.toLocaleString()} {t("pages.pim.attributes.records")}</div>
@@ -245,7 +245,7 @@ export default function AttributesSchemaMappingPage() {
 
                 <div className="mt-2 flex flex-wrap gap-1">
                   {f.mapped ? (
-                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">✓ {t("pages.pim.attributes.mapped")}</span>
+                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✓ {t("pages.pim.attributes.mapped")}</span>
                   ) : null}
                 </div>
               </div>
@@ -254,10 +254,10 @@ export default function AttributesSchemaMappingPage() {
         </div>
 
         {/* Right panel: Target */}
-        <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
+        <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-border">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <span className="text-sm font-semibold">{t("pages.pim.attributes.targetSchema")}</span>
-            <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+            <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
               {t("pages.pim.attributes.standard")}
             </span>
           </div>
@@ -288,10 +288,10 @@ export default function AttributesSchemaMappingPage() {
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {f.required ? (
-                    <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">{t("common.required")}</span>
+                    <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">{t("common.required")}</span>
                   ) : null}
                   {f.mapped ? (
-                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">✓ {t("pages.pim.attributes.mapped")}</span>
+                    <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✓ {t("pages.pim.attributes.mapped")}</span>
                   ) : null}
                 </div>
               </div>
@@ -301,7 +301,7 @@ export default function AttributesSchemaMappingPage() {
       </div>
 
       {/* Mapping rules */}
-      <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
+      <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-border">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <div className="text-sm font-semibold">{t("pages.pim.attributes.activeMappingRules")}</div>
@@ -325,7 +325,7 @@ export default function AttributesSchemaMappingPage() {
             <div className="flex items-center gap-2 rounded-md bg-muted/30 p-3">
               <div className="flex-1 rounded-md bg-sky-100 px-3 py-2 font-mono text-sm font-medium text-sky-700">entity_code</div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700">entity_code</div>
+              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">entity_code</div>
             </div>
           </div>
 
@@ -341,7 +341,7 @@ export default function AttributesSchemaMappingPage() {
             <div className="flex items-center gap-2 rounded-md bg-muted/30 p-3">
               <div className="flex-1 rounded-md bg-sky-100 px-3 py-2 font-mono text-sm font-medium text-sky-700">sku_code</div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700">sku</div>
+              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">sku</div>
             </div>
           </div>
 
@@ -357,9 +357,9 @@ export default function AttributesSchemaMappingPage() {
             <div className="flex items-center gap-2 rounded-md bg-muted/30 p-3">
               <div className="flex-1 rounded-md bg-sky-100 px-3 py-2 font-mono text-sm font-medium text-sky-700">product_name</div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700">title</div>
+              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">title</div>
             </div>
-            <div className="mt-3 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+            <div className="mt-3 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
               ⚡ uppercase() → trim()
             </div>
           </div>
@@ -376,7 +376,7 @@ export default function AttributesSchemaMappingPage() {
             <div className="flex items-center gap-2 rounded-md bg-muted/30 p-3">
               <div className="flex-1 rounded-md bg-sky-100 px-3 py-2 font-mono text-sm font-medium text-sky-700">technical_features[]</div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700">technical_specs[]</div>
+              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">technical_specs[]</div>
             </div>
             <pre className="mt-3 overflow-x-auto rounded-md bg-[#283046] p-3 text-xs leading-5 text-[#d0d2d6]">
 {`map(item => ({
@@ -385,7 +385,7 @@ export default function AttributesSchemaMappingPage() {
   unit: item.measurement_unit || "-"
 }))`}
             </pre>
-            <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+            <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
               ⚡ {t("pages.pim.attributes.excelImportCompatible")}
             </div>
           </div>
@@ -406,7 +406,7 @@ export default function AttributesSchemaMappingPage() {
                 technical_feature_{`{index}`}_dimension
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700">technical_specs[]</div>
+              <div className="flex-1 rounded-md bg-emerald-100 px-3 py-2 font-mono text-sm font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">technical_specs[]</div>
             </div>
             <pre className="mt-3 overflow-x-auto rounded-md bg-[#283046] p-3 text-xs leading-5 text-[#d0d2d6]">
 {`// Pattern: {prefix}_{index}_{property}
@@ -430,7 +430,7 @@ return Object.values(grouped).map((item: any) => ({
   unit: item.dimension || "-"
 }));`}
             </pre>
-            <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+            <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
               ⚡ Excel Pattern: {`{prefix}_{index}_{property}`}
             </div>
           </div>
@@ -438,7 +438,7 @@ return Object.values(grouped).map((item: any) => ({
       </div>
 
       {/* Import from Excel */}
-      <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-[#ebe9f1]">
+      <div className="overflow-hidden rounded-lg bg-card shadow-sm border border-border">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <div className="text-sm font-semibold">{t("pages.pim.attributes.importFromExcel")}</div>

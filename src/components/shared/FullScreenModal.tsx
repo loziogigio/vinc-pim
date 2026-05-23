@@ -54,7 +54,7 @@ export function FullScreenModal({
       />
 
       {/* Panel — slides in from right */}
-      <div className="relative z-10 flex flex-col w-full bg-white animate-in slide-in-from-right duration-200">
+      <div className="relative z-10 flex flex-col w-full bg-card animate-in slide-in-from-right duration-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4 shrink-0">
           <div className="flex items-center gap-4">

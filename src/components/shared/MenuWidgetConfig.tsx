@@ -70,17 +70,17 @@ export function MenuWidgetConfig({
     <div className="space-y-3">
       {/* Channel selector */}
       <div>
-        <label className="text-xs font-medium text-slate-600">Channel</label>
+        <label className="text-xs font-medium text-muted-foreground">Channel</label>
         {loadingChannels ? (
           <div className="mt-1 flex items-center gap-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-            <span className="text-xs text-slate-500">Loading channels...</span>
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Loading channels...</span>
           </div>
         ) : (
           <select
             value={channel}
             onChange={(e) => onConfigChange({ channel: e.target.value })}
-            className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
             <option value="">Select a channel...</option>
             {channels.map((ch) => (
@@ -94,22 +94,22 @@ export function MenuWidgetConfig({
 
       {/* Label */}
       <div>
-        <label className="text-xs font-medium text-slate-600">Label</label>
+        <label className="text-xs font-medium text-muted-foreground">Label</label>
         <input
           type="text"
           value={config.label || ""}
           onChange={(e) => onConfigChange({ label: e.target.value })}
           placeholder="Menu"
-          className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
         />
       </div>
 
       {/* Display mode */}
       <div>
-        <label className="text-xs font-medium text-slate-600">
+        <label className="text-xs font-medium text-muted-foreground">
           {t("pages.homeSettings.widgets.displayMode")}
         </label>
-        <div className="mt-1 inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-50">
+        <div className="mt-1 inline-flex rounded-md border border-border p-0.5 bg-muted">
           {DISPLAY_MODES.map((mode) => (
             <button
               key={mode}
@@ -117,8 +117,8 @@ export function MenuWidgetConfig({
               onClick={() => onConfigChange({ displayMode: mode })}
               className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
                 displayMode === mode
-                  ? "bg-white text-slate-800 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t(`pages.homeSettings.widgets.displayMode_${mode}`)}
@@ -129,9 +129,9 @@ export function MenuWidgetConfig({
 
       {/* Menu status for channel */}
       {channel && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="rounded-lg border border-border bg-muted/50 p-3">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium text-slate-600">Linked Menu</span>
+            <span className="text-xs font-medium text-muted-foreground">Linked Menu</span>
             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
               {channel}
             </span>
@@ -139,25 +139,25 @@ export function MenuWidgetConfig({
 
           {loading ? (
             <div className="flex items-center gap-2 py-2">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-              <span className="text-xs text-slate-500">Loading...</span>
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Loading...</span>
             </div>
           ) : hasMenu ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 py-1">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                <span className="text-xs text-slate-700">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                <span className="text-xs text-foreground">
                   {rootItems.length} root item{rootItems.length !== 1 ? "s" : ""} ({menuItems.length} total)
                 </span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {rootItems.slice(0, 8).map((item) => (
-                  <span key={item.menu_item_id} className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600 border border-slate-200">
+                  <span key={item.menu_item_id} className="rounded bg-card px-2 py-0.5 text-[11px] text-muted-foreground border border-border">
                     {item.label || item.reference_id || item.type}
                   </span>
                 ))}
                 {rootItems.length > 8 && (
-                  <span className="text-[11px] text-slate-400">+{rootItems.length - 8} more</span>
+                  <span className="text-[11px] text-muted-foreground">+{rootItems.length - 8} more</span>
                 )}
               </div>
               <Link
@@ -169,7 +169,7 @@ export function MenuWidgetConfig({
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 py-1 text-amber-600">
+              <div className="flex items-center gap-2 py-1 text-amber-600 dark:text-amber-400">
                 <AlertCircle className="h-3.5 w-3.5" />
                 <span className="text-xs">No menu configured for this channel</span>
               </div>

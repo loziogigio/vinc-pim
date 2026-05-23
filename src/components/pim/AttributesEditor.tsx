@@ -259,8 +259,8 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
                   disabled={disabled}
                   className={`p-2 rounded transition ${
                     attr.hide_in_commerce
-                      ? 'text-orange-600 bg-orange-50 hover:bg-orange-100'
-                      : 'text-gray-400 hover:bg-gray-100'
+                      ? 'text-orange-600 bg-orange-50 hover:bg-orange-100 dark:bg-orange-500/15 dark:hover:bg-orange-500/25 dark:text-orange-400'
+                      : 'text-muted-foreground hover:bg-accent'
                   } disabled:opacity-50`}
                   title={attr.hide_in_commerce ? "Hidden in commerce" : "Visible in commerce"}
                 >

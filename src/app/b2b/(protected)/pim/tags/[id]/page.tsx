@@ -322,7 +322,7 @@ export default function TagDetailPage() {
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
                   setShowAddModal(true);
@@ -424,7 +424,7 @@ export default function TagDetailPage() {
           )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border px-6 py-4 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-6 py-4 text-sm">
               <div>
                 {t("common.page")} {page} {t("common.of")} {totalPages}
               </div>

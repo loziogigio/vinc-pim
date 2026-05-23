@@ -170,19 +170,19 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-2xl bg-card shadow-2xl">
         {/* Header */}
-        <div className="flex items-center gap-4 border-b border-slate-200 p-6">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
-            <Tag className="h-5 w-5 text-emerald-600" />
+        <div className="flex items-center gap-4 border-b border-border p-6">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
+            <Tag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">{t("pages.store.createTagModal.title")}</h3>
-            <p className="text-sm text-slate-500">{t("pages.store.createTagModal.subtitle")}</p>
+            <h3 className="text-lg font-semibold text-foreground">{t("pages.store.createTagModal.title")}</h3>
+            <p className="text-sm text-muted-foreground">{t("pages.store.createTagModal.subtitle")}</p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -192,7 +192,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Prefix */}
           <div ref={prefixRef}>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t("pages.store.createTagModal.prefixLabel")} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -206,18 +206,18 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
               {/* Dropdown */}
               {showPrefixDropdown && (filteredOptions.length > 0 || showCreateNew) && (
-                <div className="absolute z-20 mt-1 w-full max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                <div className="absolute z-20 mt-1 w-full max-h-48 overflow-auto rounded-lg border border-border bg-card shadow-lg">
                   {filteredOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => selectPrefix(opt.value)}
-                      className={`w-full text-left px-3 py-2 hover:bg-emerald-50 transition text-sm ${
-                        prefix === opt.value ? "bg-emerald-50 text-emerald-700" : "text-slate-700"
+                      className={`w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-500/15 transition text-sm ${
+                        prefix === opt.value ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "text-foreground"
                       }`}
                     >
                       <span className="font-medium font-mono">{opt.value}</span>
-                      <span className="text-xs text-slate-400 ml-2">
+                      <span className="text-xs text-muted-foreground ml-2">
                         {t("pages.store.createTagModal.tagCount", { count: String(opt.tagCount), plural: opt.tagCount !== 1 ? "s" : "" })}
                       </span>
                     </button>
@@ -226,7 +226,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
                     <button
                       type="button"
                       onClick={() => selectPrefix(normalizedInput)}
-                      className="w-full text-left px-3 py-2 hover:bg-emerald-50 transition text-sm border-t border-slate-100 text-emerald-600"
+                      className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-500/15 transition text-sm border-t border-border text-emerald-600 dark:text-emerald-400"
                     >
                       <Plus className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />
                       {t("pages.store.createTagModal.createNewPrefix")} <span className="font-mono font-medium">{normalizedInput}</span>
@@ -244,7 +244,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
           {/* Code */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t("pages.store.createTagModal.codeLabel")} <span className="text-red-500">*</span>
             </label>
             <Input
@@ -261,17 +261,17 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
           {/* Full tag preview */}
           {prefix && isValidPrefix(prefix) && slugifiedCode && (
-            <div className="px-3 py-2 bg-slate-50 rounded-md border border-slate-200 space-y-1">
-              <p className="text-xs text-slate-500">{t("pages.store.createTagModal.savedAs")}</p>
+            <div className="px-3 py-2 bg-muted rounded-md border border-border space-y-1">
+              <p className="text-xs text-muted-foreground">{t("pages.store.createTagModal.savedAs")}</p>
               <div className="flex items-center gap-3 text-sm font-mono">
                 <span>
-                  <span className="text-slate-400">prefix: </span>
-                  <span className="font-medium text-slate-800">{prefix}</span>
+                  <span className="text-muted-foreground">prefix: </span>
+                  <span className="font-medium text-foreground">{prefix}</span>
                 </span>
-                <span className="text-slate-300">|</span>
+                <span className="text-muted-foreground/40">|</span>
                 <span>
-                  <span className="text-slate-400">full_tag: </span>
-                  <span className="font-medium text-slate-800">{fullTag}</span>
+                  <span className="text-muted-foreground">full_tag: </span>
+                  <span className="font-medium text-foreground">{fullTag}</span>
                 </span>
               </div>
             </div>
@@ -279,7 +279,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t("pages.store.createTagModal.descriptionLabel")} <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -293,7 +293,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
 
           {/* Color */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">{t("pages.store.createTagModal.colorLabel")}</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("pages.store.createTagModal.colorLabel")}</label>
             <div className="flex gap-2 flex-wrap">
               {TAG_COLORS.map((c) => (
                 <button
@@ -301,7 +301,7 @@ export function CreateTagModal({ open, onClose, onCreated }: CreateTagModalProps
                   type="button"
                   onClick={() => setColor(c)}
                   className={`w-7 h-7 rounded-full border-2 transition ${
-                    color === c ? "border-slate-800 scale-110" : "border-transparent hover:scale-105"
+                    color === c ? "border-foreground scale-110" : "border-transparent hover:scale-105"
                   }`}
                   style={{ backgroundColor: c }}
                 />

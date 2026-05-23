@@ -188,7 +188,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                               {t("pages.store.addressTagOverrides.override")}
                             </span>
                           ) : (
-                            <span className="text-[10px] px-1 py-0.5 rounded bg-slate-100 text-slate-500">
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground">
                               {t("pages.store.addressTagOverrides.inherited")}
                             </span>
                           )}
@@ -210,7 +210,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                         <button
                           onClick={() => removeOverride(override.full_tag)}
                           disabled={saving}
-                          className="p-0.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                          className="p-0.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
                           title={t("pages.store.addressTagOverrides.removeOverrideTitle")}
                         >
                           <X className="h-3 w-3" />
@@ -223,7 +223,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                             setAssigningPrefix(assigningPrefix === prefix ? null : prefix)
                           }
                           disabled={saving}
-                          className="p-0.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 transition disabled:opacity-50"
+                          className="p-0.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/15 transition disabled:opacity-50"
                           title={t("pages.store.addressTagOverrides.overrideTagTitle")}
                         >
                           {override ? (
@@ -234,7 +234,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                         </button>
 
                         {assigningPrefix === prefix && (
-                          <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-30">
+                          <div className="absolute right-0 top-full mt-1 w-56 bg-card border border-border rounded-lg shadow-lg z-30">
                             <div className="p-2 border-b border-border">
                               <p className="text-[10px] font-medium text-muted-foreground">
                                 {t("pages.store.addressTagOverrides.overrideLabel", { label: getPrefixLabel(prefix) })}
@@ -247,7 +247,7 @@ export function AddressTagOverrides({ customerId, addressId }: AddressTagOverrid
                                   onClick={() => overrideTag(opt.full_tag)}
                                   disabled={saving}
                                   className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted/50 transition flex items-center gap-2 ${
-                                    override?.full_tag === opt.full_tag ? "bg-amber-50" : ""
+                                    override?.full_tag === opt.full_tag ? "bg-amber-50 dark:bg-amber-500/15" : ""
                                   }`}
                                 >
                                   <div

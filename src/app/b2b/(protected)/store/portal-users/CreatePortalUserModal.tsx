@@ -156,7 +156,7 @@ export function CreatePortalUserModal({ open, onClose, onCreated }: Props) {
       }
     >
       {error && (
-        <div className="mb-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+        <div className="mb-6 p-3 bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300 rounded-lg text-sm">
           {error}
         </div>
       )}
@@ -245,11 +245,11 @@ export function CreatePortalUserModal({ open, onClose, onCreated }: Props) {
                   setFormData({ ...formData, sendAccess: e.target.checked })
                 }
                 disabled={!formData.email}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary disabled:opacity-50"
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
               />
               <span>
                 <span
-                  className={!formData.email ? "text-muted-foreground" : "text-slate-600"}
+                  className={!formData.email ? "text-muted-foreground" : "text-foreground"}
                 >
                   {t("pages.store.portalUsers.sendAccessEmail")}
                 </span>

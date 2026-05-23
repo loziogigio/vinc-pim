@@ -153,11 +153,11 @@ export default function PortalUsersListPage() {
   };
 
   const renderEmptyState = () => (
-    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-      <div className="text-center text-[#5e5873]">
-        <UserCog className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
+    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="text-center text-foreground">
+        <UserCog className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
         <p className="text-[1.05rem] font-semibold">{t("pages.store.portalUsers.noPortalUsersFound")}</p>
-        <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">
           {searchFilter || statusFilter
             ? t("pages.store.portalUsers.tryAdjustingFilters")
             : t("pages.store.portalUsers.createFirstUser")}
@@ -184,8 +184,8 @@ export default function PortalUsersListPage() {
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.store.portalUsers.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.store.portalUsers.subtitle")} ({pagination.total} {t("pages.store.portalUsers.totalSuffix")})
@@ -204,7 +204,7 @@ export default function PortalUsersListPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-blue-500">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+            <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
               <UserCog className="h-5 w-5" />
             </div>
             <div>
@@ -215,7 +215,7 @@ export default function PortalUsersListPage() {
         </div>
         <div className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-emerald-500">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-emerald-100 text-emerald-600">
+            <div className="p-2 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
               <UserCheck className="h-5 w-5" />
             </div>
             <div>
@@ -226,7 +226,7 @@ export default function PortalUsersListPage() {
         </div>
         <div className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-gray-400">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-gray-100 text-gray-600">
+            <div className="p-2 rounded-full bg-muted text-muted-foreground">
               <UserX className="h-5 w-5" />
             </div>
             <div>
@@ -237,7 +237,7 @@ export default function PortalUsersListPage() {
         </div>
         <div className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-purple-500">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-purple-100 text-purple-600">
+            <div className="p-2 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
               <Users className="h-5 w-5" />
             </div>
             <div>
@@ -248,7 +248,7 @@ export default function PortalUsersListPage() {
         </div>
         <div className="rounded-lg bg-card p-4 shadow-sm border-l-4 border-l-amber-500">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-amber-100 text-amber-600">
+            <div className="p-2 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
               <KeyRound className="h-5 w-5" />
             </div>
             <div>
@@ -328,7 +328,7 @@ export default function PortalUsersListPage() {
           <div className="p-8">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                <div key={i} className="h-16 bg-muted rounded"></div>
               ))}
             </div>
           </div>
@@ -368,7 +368,7 @@ export default function PortalUsersListPage() {
                     <tr key={user.portal_user_id} className="hover:bg-muted/30 transition">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+                          <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
                             <UserCog className="h-4 w-4" />
                           </div>
                           <div>
@@ -393,8 +393,8 @@ export default function PortalUsersListPage() {
                           disabled={togglingUserId === user.portal_user_id}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                             user.is_active
-                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
                           } ${togglingUserId === user.portal_user_id ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
                           title={user.is_active ? t("pages.store.portalUsers.clickToDeactivate") : t("pages.store.portalUsers.clickToActivate")}
                         >

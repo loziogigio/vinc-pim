@@ -63,12 +63,12 @@ const TYPE_STYLES: Record<
   { bg: string; text: string; icon?: typeof Building2 }
 > = {
   business: {
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
+    bg: "bg-emerald-100 dark:bg-emerald-500/15",
+    text: "text-emerald-700 dark:text-emerald-300",
     icon: Building2,
   },
-  reseller: { bg: "bg-amber-100", text: "text-amber-700", icon: Store },
-  private: { bg: "bg-purple-100", text: "text-purple-700" },
+  reseller: { bg: "bg-amber-100 dark:bg-amber-500/15", text: "text-amber-700 dark:text-amber-300", icon: Store },
+  private: { bg: "bg-purple-100 dark:bg-purple-500/15", text: "text-purple-700 dark:text-purple-300" },
 };
 
 export function OrderSnapshotCard({
@@ -142,13 +142,13 @@ export function OrderSnapshotCard({
             </span>
           )}
           {!isOpen && channelLabel && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700 shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 shrink-0">
               <Globe className="h-3 w-3" />
               {channelLabel}
             </span>
           )}
           {!isOpen && invoiceLabel && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 shrink-0">
               <Receipt className="h-3 w-3" />
               {invoiceLabel}
             </span>
@@ -185,18 +185,18 @@ export function OrderSnapshotCard({
           {(channelLabel || order.invoice_requested !== undefined) && (
             <div className="flex flex-wrap items-center gap-2">
               {channelLabel && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
                   <Globe className="h-3 w-3" />
                   {t("pages.store.orderSnapshotCard.channel")}: {channelLabel}
                 </span>
               )}
               {order.invoice_requested ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
                   <Receipt className="h-3 w-3" />
                   {invoiceLabel}
                 </span>
               ) : order.invoice_requested === false ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-500/15 dark:text-gray-400">
                   <Receipt className="h-3 w-3" />
                   {t("pages.store.orderSnapshotCard.noInvoice")}
                 </span>
@@ -238,7 +238,7 @@ export function OrderSnapshotCard({
                 </div>
               )}
               {buyer.is_guest && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
                   {t("pages.store.orderSnapshotCard.guest")}
                 </span>
               )}

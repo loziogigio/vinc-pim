@@ -185,7 +185,7 @@ export default function BrandsPage() {
   function renderPagination() {
     if (!pagination || pagination.pages <= 1) return null;
     return (
-      <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-card shadow-sm border border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 rounded-lg bg-card shadow-sm border border-border">
         <p className="text-sm text-muted-foreground">
           {t("pages.pim.brands.showingOf", {
             from: (pagination.page - 1) * pagination.limit + 1,
@@ -250,8 +250,8 @@ export default function BrandsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold text-foreground">{t("pages.pim.brands.title")}</h1>
           <p className="text-muted-foreground mt-1">
             {t("pages.pim.brands.subtitle")}
@@ -341,6 +341,7 @@ export default function BrandsPage() {
         <>
         {renderPagination()}
         <div className="border border-border rounded-lg overflow-hidden bg-card">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
@@ -402,8 +403,8 @@ export default function BrandsPage() {
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                         brand.is_active
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                          ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-500/15 dark:text-gray-300"
                       }`}
                     >
                       {brand.is_active ? t("common.active") : t("common.inactive")}
@@ -454,6 +455,7 @@ export default function BrandsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
       {renderPagination()}

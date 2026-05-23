@@ -139,7 +139,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
           <Tag className="h-4 w-4 text-emerald-600" />
           {t("pages.store.customerTagsCard.title")}
           {customerTags.length > 0 && (
-            <span className="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">
+            <span className="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
               {customerTags.length}
             </span>
           )}
@@ -192,7 +192,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                       <button
                         onClick={() => removeTag(assigned.full_tag)}
                         disabled={saving}
-                        className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                        className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
                         title={t("pages.store.customerTagsCard.removeTagTitle")}
                       >
                         <X className="h-3.5 w-3.5" />
@@ -206,7 +206,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                           setAssigningPrefix(assigningPrefix === prefix ? null : prefix)
                         }
                         disabled={saving}
-                        className="p-1 rounded text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
+                        className="p-1 rounded text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/15 transition disabled:opacity-50"
                         title={assigned ? t("pages.store.customerTagsCard.changeTagTitle") : t("pages.store.customerTagsCard.assignTagTitle")}
                       >
                         {assigned ? (
@@ -217,7 +217,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                       </button>
 
                       {assigningPrefix === prefix && (
-                        <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-border rounded-lg shadow-lg z-20">
+                        <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border rounded-lg shadow-lg z-20">
                           <div className="p-2 border-b border-border">
                             <p className="text-xs font-medium text-muted-foreground">
                               {t("pages.store.customerTagsCard.selectLabel", { label: getPrefixLabel(prefix) })}
@@ -230,7 +230,7 @@ export function CustomerTagsCard({ customerId }: CustomerTagsCardProps) {
                                 onClick={() => assignTag(opt.full_tag)}
                                 disabled={saving}
                                 className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition flex items-center gap-2 ${
-                                  assigned?.full_tag === opt.full_tag ? "bg-emerald-50" : ""
+                                  assigned?.full_tag === opt.full_tag ? "bg-emerald-50 dark:bg-emerald-500/15" : ""
                                 }`}
                               >
                                 <div

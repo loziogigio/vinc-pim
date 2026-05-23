@@ -269,8 +269,8 @@ export default function NewProductTypePage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -287,8 +287,8 @@ export default function NewProductTypePage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => router.push("/b2b/pim/product-types")}
@@ -320,7 +320,7 @@ export default function NewProductTypePage() {
             {t("pages.pim.productTypes.basicInformation")}
           </h2>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.pim.productTypes.codeErp")}
@@ -400,7 +400,7 @@ export default function NewProductTypePage() {
 
         {/* Technical Specifications Selection */}
         <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.productTypes.selectTechnicalSpecs")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -449,7 +449,7 @@ export default function NewProductTypePage() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleSpecification(spec)}
-                              className="mt-1 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -461,7 +461,7 @@ export default function NewProductTypePage() {
                                   <span className="text-xs text-muted-foreground">({spec.unit})</span>
                                 )}
                                 {spec.default_required && (
-                                  <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">
+                                  <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
                                     {t("pages.pim.productTypes.requiredByDefaultBadge")}
                                   </span>
                                 )}
@@ -484,7 +484,7 @@ export default function NewProductTypePage() {
                                           required: e.target.checked,
                                         })
                                       }
-                                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-foreground">{t("pages.pim.productTypes.requiredForThisType")}</span>
                                   </label>
@@ -498,7 +498,7 @@ export default function NewProductTypePage() {
                                           display_order: parseInt(e.target.value),
                                         })
                                       }
-                                      className="w-20 rounded border border-border bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                                      className="w-20 rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                                     />
                                   </div>
                                 </div>
@@ -538,10 +538,10 @@ export default function NewProductTypePage() {
       {/* Create Technical Specification Dialog */}
       {showSpecDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleCreateSpecification}>
               {/* Dialog Header */}
-              <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-white">
+              <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">{t("pages.pim.productTypes.newSpecDialogTitle")}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -554,7 +554,7 @@ export default function NewProductTypePage() {
                     setShowSpecDialog(false);
                     resetSpecForm();
                   }}
-                  className="p-2 rounded hover:bg-gray-100 transition"
+                  className="p-2 rounded hover:bg-muted transition"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -563,7 +563,7 @@ export default function NewProductTypePage() {
               {/* Dialog Body */}
               <div className="p-6 space-y-4">
                 {/* Label and Key */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
                       {t("pages.pim.productTypes.specLabelField")} <span className="text-red-500">*</span>
@@ -730,7 +730,7 @@ export default function NewProductTypePage() {
                             default_required: e.target.checked,
                           })
                         }
-                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                       />
                       <span className="text-sm text-foreground">{t("pages.pim.productTypes.specRequiredByDefault")}</span>
                     </label>
@@ -739,7 +739,7 @@ export default function NewProductTypePage() {
               </div>
 
               {/* Dialog Footer */}
-              <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-gray-50">
+              <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-muted/50">
                 <button
                   type="button"
                   onClick={() => {

@@ -1257,9 +1257,9 @@ export default function ProductDetailPage({
         />
         <div className="rounded-lg bg-card p-8 shadow-sm">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
+            <div className="h-8 bg-muted rounded w-1/3"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+            <div className="h-64 bg-muted rounded"></div>
           </div>
         </div>
       </div>
@@ -1322,17 +1322,17 @@ export default function ProductDetailPage({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`${tenantPrefix}/b2b/pim/products/${entity_code}/history`}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
+            className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-md hover:bg-muted text-sm font-medium transition"
           >
             <History className="h-4 w-4" />
             {t("pages.pim.history.title")}
           </Link>
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted text-sm font-medium transition"
+            className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-md hover:bg-muted text-sm font-medium transition"
           >
             {showPreview ? (
               <>
@@ -1413,15 +1413,15 @@ export default function ProductDetailPage({
 
       {/* Old Version Warning Banner */}
       {isOldVersion && versionParam && currentVersionNumber && (
-        <div className="rounded-lg bg-amber-50 border-2 border-amber-300 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
+        <div className="rounded-lg bg-amber-50 border-2 border-amber-300 dark:bg-amber-500/10 dark:border-amber-500/40 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold text-amber-900">
+                <h3 className="font-semibold text-amber-900 dark:text-amber-200">
                   {t("pages.pim.productDetail.viewingOldVersion", { version: versionParam })}
                 </h3>
-                <p className="text-sm text-amber-700 mt-0.5">
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
                   {t("pages.pim.productDetail.oldVersionDesc")}
                 </p>
               </div>
@@ -1453,10 +1453,10 @@ export default function ProductDetailPage({
             <div className="flex items-center gap-3">
               <div
                 className={`inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${product.completeness_score >= 80
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                     : product.completeness_score >= 50
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-red-100 text-red-700"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                      : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                   }`}
               >
                 {product.completeness_score}
@@ -1474,14 +1474,14 @@ export default function ProductDetailPage({
             </div>
 
             {product.critical_issues.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
+              <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/30 rounded-md">
+                <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
                 <div className="text-sm">
-                  <span className="font-semibold text-red-900">
+                  <span className="font-semibold text-red-900 dark:text-red-200">
                     {product.critical_issues.length} Critical Issue
                     {product.critical_issues.length !== 1 ? "s" : ""}
                   </span>
-                  <div className="text-xs text-red-700 mt-0.5">
+                  <div className="text-xs text-red-700 dark:text-red-300 mt-0.5">
                     {product.critical_issues.slice(0, 2).join(", ")}
                     {product.critical_issues.length > 2 && ` +${product.critical_issues.length - 2} more`}
                   </div>
@@ -1495,10 +1495,10 @@ export default function ProductDetailPage({
               <span className="text-xs text-muted-foreground">{t("pages.pim.productDetail.status")}:</span>
               <span
                 className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${product.status === "published"
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                     : product.status === "draft"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-gray-100 text-gray-700"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                      : "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300"
                   }`}
               >
                 {product.status === "published" && <CheckCircle2 className="h-3 w-3" />}
@@ -1508,7 +1508,7 @@ export default function ProductDetailPage({
                 <button
                   onClick={handleSyncToSolr}
                   disabled={isSyncing}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   title="Sync to search engine"
                 >
                   <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
@@ -1535,10 +1535,10 @@ export default function ProductDetailPage({
                     <>
                       {/* Sync Status Badge */}
                       <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${isSynced
-                          ? "bg-green-50 text-green-700 border border-green-200"
+                          ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-500/10 dark:text-green-300 dark:border-green-500/30"
                           : needsSync
-                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                            : "bg-gray-50 text-gray-600 border border-gray-200"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30"
+                            : "bg-gray-50 text-gray-600 border border-gray-200 dark:bg-gray-500/10 dark:text-gray-300 dark:border-gray-500/30"
                         }`}>
                         {isSynced && <CheckCircle2 className="h-3 w-3" />}
                         {needsSync && <AlertTriangle className="h-3 w-3" />}
@@ -1620,17 +1620,17 @@ export default function ProductDetailPage({
                 {/* Parent/Child Status */}
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_parent
-                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300"
                       : product.parent_entity_code
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300"
                     }`}>
                     {product.is_parent ? t("pages.pim.productDetail.parentProduct") : product.parent_entity_code ? t("pages.pim.productDetail.childVariant") : t("pages.pim.productDetail.singleProduct")}
                   </span>
                   {product.include_faceting !== undefined && (
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.include_faceting
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                        : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+                        ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300"
+                        : "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300"
                       }`}>
                       {product.include_faceting ? t("pages.pim.productDetail.inFacets") : t("pages.pim.productDetail.excludedFromFacets")}
                     </span>
@@ -1704,7 +1704,7 @@ export default function ProductDetailPage({
                             toast.error(t("pages.pim.productDetail.failedToUpdateSetting"));
                           }
                         }}
-                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                        className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
                       />
                       <div>
                         <span className="text-sm text-foreground">{t("pages.pim.productDetail.productImages")}</span>
@@ -1733,7 +1733,7 @@ export default function ProductDetailPage({
                             toast.error(t("pages.pim.productDetail.failedToUpdateSetting"));
                           }
                         }}
-                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                        className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
                       />
                       <div>
                         <span className="text-sm text-foreground">{t("pages.pim.productDetail.additionalMedia")}</span>
@@ -1786,7 +1786,7 @@ export default function ProductDetailPage({
                           </div>
                         )}
                         {displayPricing.sale !== undefined && (
-                          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg border border-emerald-200 dark:border-emerald-500/30">
                             <div className="text-xs text-emerald-700 dark:text-emerald-400 mb-1">{t("pages.pim.productDetail.salePrice")}</div>
                             <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
                               {currency === "EUR" ? "€" : currency}{displayPricing.sale?.toFixed(2)}
@@ -1805,7 +1805,7 @@ export default function ProductDetailPage({
                         )}
                         <div className="p-3 bg-muted/50 rounded-lg border">
                           <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.vatInPrice")}</div>
-                          <div className={`text-lg font-semibold ${vatIncluded ? "text-emerald-600" : "text-foreground"}`}>
+                          <div className={`text-lg font-semibold ${vatIncluded ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
                             {vatIncluded ? t("pages.pim.productDetail.vatIncluded") : t("pages.pim.productDetail.vatExcluded")}
                           </div>
                         </div>
@@ -1825,7 +1825,7 @@ export default function ProductDetailPage({
                         setPackagingInfoForm({ code: "", description: "", qty: "", uom: "", is_default: false, is_smallest: false });
                         setEditingPackagingInfoIdx(-1);
                       }}
-                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/10 rounded transition"
                       disabled={editingPackagingInfoIdx !== null}
                     >
                       <Plus className="h-3.5 w-3.5" />
@@ -1849,7 +1849,7 @@ export default function ProductDetailPage({
                         <tbody>
                           {(product.packaging_info || []).map((pi, idx) =>
                             editingPackagingInfoIdx === idx ? (
-                              <tr key={pi.packaging_id || idx} className="border-b border-border/50 bg-emerald-50/30">
+                              <tr key={pi.packaging_id || idx} className="border-b border-border/50 bg-emerald-50/30 dark:bg-emerald-500/5">
                                 <td className="py-1.5 px-2">
                                   <input
                                     className="w-full px-2 py-1 text-xs border border-border rounded bg-background"
@@ -1996,7 +1996,7 @@ export default function ProductDetailPage({
                                           toast.error(t("pages.pim.productDetail.failedToDeletePackagingInfo"));
                                         }
                                       }}
-                                      className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
+                                      className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded transition"
                                       title="Delete"
                                       disabled={editingPackagingInfoIdx !== null}
                                     >
@@ -2009,7 +2009,7 @@ export default function ProductDetailPage({
                           )}
                           {/* New entry row */}
                           {editingPackagingInfoIdx === -1 && (
-                            <tr className="border-b border-border/50 bg-emerald-50/30">
+                            <tr className="border-b border-border/50 bg-emerald-50/30 dark:bg-emerald-500/5">
                               <td className="py-1.5 px-2">
                                 <input
                                   className="w-full px-2 py-1 text-xs border border-border rounded bg-background"
@@ -2130,7 +2130,7 @@ export default function ProductDetailPage({
                         setDuplicatingPackaging(null);
                         setPackagingModalOpen(true);
                       }}
-                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/10 rounded transition"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Add
@@ -2301,7 +2301,7 @@ export default function ProductDetailPage({
                                         toast.error(t("pages.pim.productDetail.failedToDeletePackaging"));
                                       }
                                     }}
-                                    className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
+                                    className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded transition"
                                     title="Delete packaging option"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -2370,7 +2370,7 @@ export default function ProductDetailPage({
                                         const tags = pkg.pricing?.tag_filter;
                                         const tagSuffix = tags && tags.length > 0 ? ` [${tags[0]}]` : "";
                                         return (
-                                          <span key={pkg.pkg_id} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 text-xs font-mono rounded">
+                                          <span key={pkg.pkg_id} className="px-1.5 py-0.5 bg-muted text-foreground text-xs font-mono rounded">
                                             {pkg.code}{tagSuffix}
                                           </span>
                                         );
@@ -2463,7 +2463,7 @@ export default function ProductDetailPage({
                                           toast.error(t("pages.pim.productDetail.failedToDeletePromotion"));
                                         }
                                       }}
-                                      className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition"
+                                      className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded transition"
                                       title="Delete promotion"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
@@ -2911,7 +2911,7 @@ export default function ProductDetailPage({
       {hasChanges && !isOldVersion && (
         <div className="fixed bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 shadow-lg z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
                 <div>
@@ -2926,7 +2926,7 @@ export default function ProductDetailPage({
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDiscard}
-                  className="px-4 py-2 bg-white border border-border rounded-md hover:bg-gray-50 text-sm font-medium transition"
+                  className="px-4 py-2 bg-card border border-border rounded-md hover:bg-muted text-sm font-medium transition"
                 >
                   {t("pages.pim.productDetail.discard")}
                 </button>
@@ -2947,8 +2947,8 @@ export default function ProductDetailPage({
       {/* Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
+          <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">{t("pages.pim.productDetail.productPreview")}</h3>
               <button
                 onClick={() => setShowPreview(false)}

@@ -130,19 +130,19 @@ export default function CustomersListPage() {
 
   const getTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      business: "bg-emerald-100 text-emerald-700",
-      private: "bg-purple-100 text-purple-700",
-      reseller: "bg-amber-100 text-amber-700",
+      business: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+      private: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+      reseller: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
     };
-    return styles[type] || "bg-gray-100 text-gray-700";
+    return styles[type] || "bg-muted text-muted-foreground";
   };
 
   const renderEmptyState = () => (
-    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-      <div className="text-center text-[#5e5873]">
-        <Users className="mx-auto h-12 w-12 text-[#b9b9c3] mb-3" />
+    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="text-center text-foreground">
+        <Users className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
         <p className="text-[1.05rem] font-semibold">{t("pages.store.customersList.noCustomersFound")}</p>
-        <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">
           {filters.search || filters.customer_type
             ? t("pages.store.customersList.tryAdjustingFilters")
             : t("pages.store.customersList.customersWillAppear")}
@@ -160,8 +160,8 @@ export default function CustomersListPage() {
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.store.customersList.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.store.customersList.subtitle")} ({pagination.total} {t("pages.store.customersList.totalSuffix")})
@@ -169,7 +169,7 @@ export default function CustomersListPage() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#00796b]"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
           {t("pages.store.customersList.newCustomer")}
@@ -268,7 +268,7 @@ export default function CustomersListPage() {
           <div className="p-8">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                <div key={i} className="h-16 bg-muted rounded"></div>
               ))}
             </div>
           </div>
@@ -346,7 +346,7 @@ export default function CustomersListPage() {
                           {customer.customer_type}
                         </span>
                         {customer.is_guest && (
-                          <span className="ml-1 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-600">
+                          <span className="ml-1 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
                             {t("pages.store.customersList.guest")}
                           </span>
                         )}

@@ -164,7 +164,7 @@ export function CollectionsSelector({ value, onChange, disabled }: Props) {
       {/* Dropdown Modal */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[600px] flex flex-col">
+          <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[600px] flex flex-col">
             {/* Header */}
             <div className="px-6 py-4 border-b border-border">
               <div className="flex items-center justify-between mb-3">
@@ -227,7 +227,7 @@ export function CollectionsSelector({ value, onChange, disabled }: Props) {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
-                              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                             />
                           </div>
                           <Layers className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />

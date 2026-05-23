@@ -84,28 +84,28 @@ export default function CustomersOverviewPage() {
       label: t("pages.store.customers.totalCustomers"),
       value: stats.total,
       icon: Users,
-      color: "text-blue-600 bg-blue-100",
+      color: "text-blue-600 bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300",
       href: `${tenantPrefix}/b2b/store/customers/list`,
     },
     {
       label: t("pages.store.customers.business"),
       value: stats.business,
       icon: Building2,
-      color: "text-emerald-600 bg-emerald-100",
+      color: "text-emerald-600 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300",
       href: `${tenantPrefix}/b2b/store/customers/business`,
     },
     {
       label: t("pages.store.customers.private"),
       value: stats.private,
       icon: User,
-      color: "text-purple-600 bg-purple-100",
+      color: "text-purple-600 bg-purple-100 dark:bg-purple-500/15 dark:text-purple-300",
       href: `${tenantPrefix}/b2b/store/customers/private`,
     },
     {
       label: t("pages.store.customers.resellers"),
       value: stats.reseller,
       icon: Store,
-      color: "text-amber-600 bg-amber-100",
+      color: "text-amber-600 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300",
       href: `${tenantPrefix}/b2b/store/customers/reseller`,
     },
   ];
@@ -114,8 +114,8 @@ export default function CustomersOverviewPage() {
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: t("pages.store.customers.title") }]} />
 
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.store.customers.overview")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.store.customers.subtitle")}
@@ -123,7 +123,7 @@ export default function CustomersOverviewPage() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#00796b]"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
         >
           <UserPlus className="h-4 w-4" />
           {t("pages.store.customers.newCustomer")}
@@ -163,7 +163,7 @@ export default function CustomersOverviewPage() {
       {/* Recent Customers */}
       <div className="rounded-lg bg-card shadow-sm">
         <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="font-semibold text-foreground">{t("pages.store.customers.recentCustomers")}</h2>
             <Link
               href={`${tenantPrefix}/b2b/store/customers/list`}
@@ -178,7 +178,7 @@ export default function CustomersOverviewPage() {
             <div className="p-8">
               <div className="animate-pulse space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  <div key={i} className="h-12 bg-muted rounded"></div>
                 ))}
               </div>
             </div>
@@ -197,10 +197,10 @@ export default function CustomersOverviewPage() {
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-full ${
                     customer.customer_type === "business"
-                      ? "bg-emerald-100 text-emerald-600"
+                      ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
                       : customer.customer_type === "private"
-                      ? "bg-purple-100 text-purple-600"
-                      : "bg-amber-100 text-amber-600"
+                      ? "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
+                      : "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
                   }`}>
                     {customer.customer_type === "business" ? (
                       <Building2 className="h-4 w-4" />
@@ -222,7 +222,7 @@ export default function CustomersOverviewPage() {
                     {customer.customer_type}
                   </span>
                   {customer.is_guest && (
-                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-600">
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
                       {t("pages.store.customers.guest")}
                     </span>
                   )}

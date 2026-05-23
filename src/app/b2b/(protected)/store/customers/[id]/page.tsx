@@ -286,11 +286,11 @@ export default function CustomerDetailPage({
 
   const getTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      business: "bg-emerald-100 text-emerald-700",
-      private: "bg-purple-100 text-purple-700",
-      reseller: "bg-amber-100 text-amber-700",
+      business: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+      private: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+      reseller: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
     };
-    return styles[type] || "bg-gray-100 text-gray-700";
+    return styles[type] || "bg-muted text-muted-foreground";
   };
 
   const getAddressIcon = (type: string) => {
@@ -308,13 +308,13 @@ export default function CustomerDetailPage({
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; icon: React.ElementType }> = {
-      draft: { bg: "bg-amber-100 text-amber-700", icon: ShoppingCart },
-      pending: { bg: "bg-blue-100 text-blue-700", icon: Clock },
-      confirmed: { bg: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-      shipped: { bg: "bg-purple-100 text-purple-700", icon: Truck },
-      cancelled: { bg: "bg-gray-100 text-gray-700", icon: XCircle },
+      draft: { bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: ShoppingCart },
+      pending: { bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", icon: Clock },
+      confirmed: { bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCircle2 },
+      shipped: { bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300", icon: Truck },
+      cancelled: { bg: "bg-muted text-muted-foreground", icon: XCircle },
     };
-    return styles[status] || { bg: "bg-gray-100 text-gray-700", icon: ShoppingCart };
+    return styles[status] || { bg: "bg-muted text-muted-foreground", icon: ShoppingCart };
   };
 
   const formatCurrency = (amount: number) => {
@@ -328,8 +328,8 @@ export default function CustomerDetailPage({
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
-          <div className="h-8 w-48 bg-gray-200 rounded mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+          <div className="h-8 w-48 bg-muted rounded mb-4"></div>
+          <div className="h-64 bg-muted rounded"></div>
         </div>
       </div>
     );
@@ -375,11 +375,11 @@ export default function CustomerDetailPage({
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-4 min-w-0">
           <Link
             href={`${tenantPrefix}/b2b/store/customers`}
-            className="p-2 rounded-lg hover:bg-muted transition"
+            className="p-2 rounded-lg hover:bg-muted transition flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Link>
@@ -402,7 +402,7 @@ export default function CustomerDetailPage({
                   {customer.customer_type}
                 </span>
                 {customer.is_guest && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
                     {t("pages.store.customerDetail.guest")}
                   </span>
                 )}
@@ -416,7 +416,7 @@ export default function CustomerDetailPage({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={openCreateOrderModal}
             className="flex items-center gap-2 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition"
@@ -430,7 +430,7 @@ export default function CustomerDetailPage({
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 dark:border-red-500/40 dark:hover:bg-red-500/15 transition"
           >
             <Trash2 className="h-4 w-4" />
             {t("pages.store.customerDetail.deleteCustomer")}
@@ -542,8 +542,8 @@ export default function CustomerDetailPage({
                       ))}
                   </div>
                 ) : (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-amber-700">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 dark:bg-amber-500/15 dark:border-amber-500/40">
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
                       {t("pages.store.customerDetail.noDeliveryAddresses")}
                     </p>
                   </div>
@@ -594,8 +594,8 @@ export default function CustomerDetailPage({
               {t("pages.store.customerDetail.deleteCustomerConfirm").split("{name}")[1]}
             </p>
             {orderStats && orderStats.order_count > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-amber-700">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 dark:bg-amber-500/15 dark:border-amber-500/40">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
                   {t("pages.store.customerDetail.deleteCustomerWarning").replace("{count}", String(orderStats.order_count))}
                 </p>
               </div>
@@ -794,10 +794,10 @@ export default function CustomerDetailPage({
                   <div className="flex items-start gap-3">
                     <div className={`p-2 rounded-lg ${
                       address.address_type === "delivery"
-                        ? "bg-blue-100 text-blue-600"
+                        ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
                         : address.address_type === "billing"
-                        ? "bg-green-100 text-green-600"
-                        : "bg-purple-100 text-purple-600"
+                        ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
+                        : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
                     }`}>
                       {getAddressIcon(address.address_type)}
                     </div>
@@ -808,10 +808,10 @@ export default function CustomerDetailPage({
                         </p>
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                           address.address_type === "delivery"
-                            ? "bg-blue-100 text-blue-600"
+                            ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
                             : address.address_type === "billing"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-purple-100 text-purple-600"
+                            ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
+                            : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
                         }`}>
                           {address.address_type}
                         </span>
@@ -858,7 +858,7 @@ export default function CustomerDetailPage({
                     <button
                       onClick={() => deleteAddress(address.address_id)}
                       disabled={deletingAddressId === address.address_id}
-                      className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                      className="p-2 text-muted-foreground hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
                       title={t("pages.store.customerDetail.deleteAddressTitle")}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -880,7 +880,7 @@ export default function CustomerDetailPage({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-lg bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+            <div className="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
               <ShoppingCart className="h-5 w-5" />
             </div>
             <div>
@@ -894,7 +894,7 @@ export default function CustomerDetailPage({
 
         <div className="rounded-lg bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600">
+            <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
               <Euro className="h-5 w-5" />
             </div>
             <div>
@@ -908,7 +908,7 @@ export default function CustomerDetailPage({
 
         <div className="rounded-lg bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+            <div className="p-2 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
               <TrendingUp className="h-5 w-5" />
             </div>
             <div>
@@ -922,7 +922,7 @@ export default function CustomerDetailPage({
 
         <div className="rounded-lg bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
+            <div className="p-2 rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
               <Calendar className="h-5 w-5" />
             </div>
             <div>
@@ -949,25 +949,25 @@ export default function CustomerDetailPage({
             {t("pages.store.customerDetail.ordersByPeriod")}
           </h2>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-border">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-x divide-border">
           <div className="p-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last30Days")}</p>
             <p className="text-2xl font-bold text-foreground">{orderStats?.orders_30d || 0}</p>
-            <p className="text-sm text-emerald-600 font-medium">
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
               {formatCurrency(orderStats?.spent_30d || 0)}
             </p>
           </div>
           <div className="p-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last60Days")}</p>
             <p className="text-2xl font-bold text-foreground">{orderStats?.orders_60d || 0}</p>
-            <p className="text-sm text-emerald-600 font-medium">
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
               {formatCurrency(orderStats?.spent_60d || 0)}
             </p>
           </div>
           <div className="p-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last90Days")}</p>
             <p className="text-2xl font-bold text-foreground">{orderStats?.orders_90d || 0}</p>
-            <p className="text-sm text-emerald-600 font-medium">
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
               {formatCurrency(orderStats?.spent_90d || 0)}
             </p>
           </div>
@@ -976,23 +976,23 @@ export default function CustomerDetailPage({
         <div className="p-4 border-t border-border">
           <p className="text-xs text-muted-foreground mb-3">{t("pages.store.customerDetail.statusBreakdown")}</p>
           <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 text-sm">
               <ShoppingCart className="h-3 w-3" />
               <span>{orderStats?.draft_count || 0} {t("pages.store.customerDetail.draft")}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 text-sm">
               <Clock className="h-3 w-3" />
               <span>{orderStats?.pending_count || 0} {t("pages.store.customerDetail.pending")}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 text-sm">
               <CheckCircle2 className="h-3 w-3" />
               <span>{orderStats?.confirmed_count || 0} {t("pages.store.customerDetail.confirmed")}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300 text-sm">
               <Truck className="h-3 w-3" />
               <span>{orderStats?.shipped_count || 0} {t("pages.store.customerDetail.shipped")}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm">
               <XCircle className="h-3 w-3" />
               <span>{orderStats?.cancelled_count || 0} {t("pages.store.customerDetail.cancelled")}</span>
             </div>
@@ -1015,10 +1015,10 @@ export default function CustomerDetailPage({
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${
                     addrStat.address_type === "delivery"
-                      ? "bg-blue-100 text-blue-600"
+                      ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
                       : addrStat.address_type === "billing"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-purple-100 text-purple-600"
+                      ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
+                      : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
                   }`}>
                     <MapPin className="h-4 w-4" />
                   </div>
@@ -1042,7 +1042,7 @@ export default function CustomerDetailPage({
                     </p>
                   </div>
                   <div className="text-right min-w-[100px]">
-                    <p className="text-sm font-bold text-emerald-600">{formatCurrency(addrStat.total_spent)}</p>
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(addrStat.total_spent)}</p>
                   </div>
                 </div>
               </div>
@@ -1053,12 +1053,12 @@ export default function CustomerDetailPage({
 
       {/* Orders Table */}
       <div className="rounded-lg bg-card shadow-sm">
-        <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-2">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" />
             {t("pages.store.customerDetail.orderHistory")} ({orders.length})
           </h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* Address Filter */}
             {customer.addresses && customer.addresses.length > 0 && (
               <select
@@ -1097,7 +1097,7 @@ export default function CustomerDetailPage({
           <div className="p-8">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                <div key={i} className="h-12 bg-muted rounded"></div>
               ))}
             </div>
           </div>

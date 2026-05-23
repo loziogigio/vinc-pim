@@ -164,6 +164,10 @@ const sk = {
     fullWidthLayout: "Rozlo\u017eenie na cel\u00fa \u0161\u00edrku",
     switchToCompact: "Prepn\u00fa\u0165 na kompaktn\u00e9 rozlo\u017eenie",
     switchToFullWidth: "Prepn\u00fa\u0165 na rozlo\u017eenie na cel\u00fa \u0161\u00edrku",
+    lightMode: "Svetl\u00fd re\u017eim",
+    darkMode: "Tmav\u00fd re\u017eim",
+    switchToLight: "Prepn\u00fa\u0165 na svetl\u00fd re\u017eim",
+    switchToDark: "Prepn\u00fa\u0165 na tmav\u00fd re\u017eim",
     noApps: "\u017diadne aplik\u00e1cie k dispoz\u00edcii",
   },
   apps: {

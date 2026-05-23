@@ -297,15 +297,15 @@ export default function CouponDetailPage() {
   };
 
   const statusColors: Record<string, string> = {
-    active: "bg-green-100 text-green-800",
-    inactive: "bg-gray-100 text-gray-600",
-    expired: "bg-red-100 text-red-700",
-    depleted: "bg-amber-100 text-amber-800",
+    active: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300",
+    inactive: "bg-muted text-muted-foreground",
+    expired: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+    depleted: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24 text-[#b9b9c3]">
+      <div className="flex items-center justify-center py-24 text-muted-foreground">
         {t("pages.store.couponDetail.loading")}
       </div>
     );
@@ -329,9 +329,9 @@ export default function CouponDetailPage() {
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold font-mono text-[#5e5873]">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-4 min-w-0">
+          <h1 className="text-2xl font-bold font-mono text-foreground truncate">
             {coupon.code}
           </h1>
           <span
@@ -346,7 +346,7 @@ export default function CouponDetailPage() {
             {t("pages.store.couponDetail.back")}
           </Button>
           <Button
-            className="bg-[#009688] hover:bg-[#00796b] text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -357,24 +357,24 @@ export default function CouponDetailPage() {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300 p-3 text-sm">
           {error}
         </div>
       )}
       {success && (
-        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">
+        <div className="rounded-md bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300 p-3 text-sm">
           {success}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#ebe9f1]">
+      <div className="flex gap-1 border-b border-border">
         <button
           onClick={() => setActiveTab("details")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === "details"
-              ? "border-[#009688] text-[#009688]"
-              : "border-transparent text-[#6e6b7b] hover:text-[#5e5873]"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           {t("pages.store.couponDetail.details")}
@@ -383,8 +383,8 @@ export default function CouponDetailPage() {
           onClick={() => setActiveTab("usage")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === "usage"
-              ? "border-[#009688] text-[#009688]"
-              : "border-transparent text-[#6e6b7b] hover:text-[#5e5873]"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           {t("pages.store.couponDetail.usageHistory")} ({coupon.usage_count})
@@ -395,8 +395,8 @@ export default function CouponDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: Core info */}
           <div className="space-y-6">
-            <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-              <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+            <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 {t("pages.store.couponDetail.information")}
               </h2>
               <div className="space-y-4">
@@ -405,7 +405,7 @@ export default function CouponDetailPage() {
                   <select
                     value={channel}
                     onChange={(e) => setChannel(e.target.value)}
-                    className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
+                    className="w-full rounded-md border border-border px-3 py-2 text-sm bg-background"
                   >
                     <option value="">{t("pages.store.couponDetail.selectChannel")}</option>
                     {channels.map((ch) => (
@@ -439,8 +439,8 @@ export default function CouponDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-              <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+            <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 {t("pages.store.couponDetail.discountSection")}
               </h2>
               <div className="space-y-4">
@@ -453,7 +453,7 @@ export default function CouponDetailPage() {
                         e.target.value as "percentage" | "fixed"
                       )
                     }
-                    className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm bg-white"
+                    className="w-full rounded-md border border-border px-3 py-2 text-sm bg-background"
                   >
                     <option value="percentage">{t("pages.store.couponDetail.percentage")}</option>
                     <option value="fixed">{t("pages.store.couponDetail.fixedValue")}</option>
@@ -497,7 +497,7 @@ export default function CouponDetailPage() {
                     id="includeShipping"
                     checked={includeShipping}
                     onChange={(e) => setIncludeShipping(e.target.checked)}
-                    className="rounded border-[#ebe9f1]"
+                    className="rounded border-border"
                   />
                   <Label htmlFor="includeShipping" className="cursor-pointer">
                     {t("pages.store.couponDetail.applyToShipping")}
@@ -509,7 +509,7 @@ export default function CouponDetailPage() {
                     id="isCumulative"
                     checked={isCumulative}
                     onChange={(e) => setIsCumulative(e.target.checked)}
-                    className="rounded border-[#ebe9f1]"
+                    className="rounded border-border"
                   />
                   <Label htmlFor="isCumulative" className="cursor-pointer">
                     {t("pages.store.couponDetail.cumulativeWithOthers")}
@@ -521,8 +521,8 @@ export default function CouponDetailPage() {
 
           {/* Right: Limits & validity */}
           <div className="space-y-6">
-            <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-              <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+            <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 {t("pages.store.couponDetail.validitySection")}
               </h2>
               <div className="space-y-4">
@@ -569,8 +569,8 @@ export default function CouponDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-              <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+            <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 {t("pages.store.couponDetail.orderThresholds")}
               </h2>
               <div className="space-y-4">
@@ -607,17 +607,17 @@ export default function CouponDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-              <h2 className="text-lg font-semibold text-[#5e5873] mb-4 flex items-center gap-2">
+            <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 {t("pages.store.couponDetail.authorizedCustomers")}
               </h2>
-              <p className="text-xs text-[#b9b9c3] mb-3">
+              <p className="text-xs text-muted-foreground mb-3">
                 {t("pages.store.couponDetail.authorizedCustomersHint")}
               </p>
               <div className="relative">
                 <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-[#b9b9c3]" />
+                  <Search className="h-4 w-4 text-muted-foreground" />
                   <Input
                     value={customerSearch}
                     onChange={(e) => {
@@ -635,17 +635,17 @@ export default function CouponDetailPage() {
                   />
                 </div>
                 {customerResults.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-md border border-[#ebe9f1] bg-white shadow-lg max-h-48 overflow-auto">
+                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-card shadow-lg max-h-48 overflow-auto">
                     {customerResults.map((c) => (
                       <button
                         key={c.email}
                         type="button"
                         onClick={() => addCustomer(c)}
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-[#f8f8f8] border-b border-[#ebe9f1] last:border-0"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 border-b border-border last:border-0"
                       >
                         <span className="font-medium">{c.email}</span>
                         {c.company_name && (
-                          <span className="text-[#b9b9c3] ml-2">
+                          <span className="text-muted-foreground ml-2">
                             ({c.company_name})
                           </span>
                         )}
@@ -654,7 +654,7 @@ export default function CouponDetailPage() {
                   </div>
                 )}
                 {isSearching && (
-                  <div className="absolute z-10 mt-1 w-full rounded-md border border-[#ebe9f1] bg-white shadow-lg p-3 text-sm text-[#b9b9c3]">
+                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-card shadow-lg p-3 text-sm text-muted-foreground">
                     {t("pages.store.couponDetail.searching")}
                   </div>
                 )}
@@ -664,11 +664,11 @@ export default function CouponDetailPage() {
                   {customers.map((c) => (
                     <span
                       key={c.email}
-                      className="inline-flex items-center gap-1 rounded-full bg-[#e0f2f1] px-3 py-1 text-xs text-[#00796b]"
+                      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs text-primary"
                     >
                       {c.email}
                       {c.company_name && (
-                        <span className="text-[#b9b9c3]">
+                        <span className="text-muted-foreground">
                           ({c.company_name})
                         </span>
                       )}
@@ -685,14 +685,14 @@ export default function CouponDetailPage() {
               )}
             </div>
 
-            <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-              <h2 className="text-lg font-semibold text-[#5e5873] mb-4">
+            <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
                 {t("pages.store.couponDetail.internalNotes")}
               </h2>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-md border border-[#ebe9f1] px-3 py-2 text-sm resize-none"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm resize-none"
                 rows={3}
               />
             </div>
@@ -701,26 +701,27 @@ export default function CouponDetailPage() {
       )}
 
       {activeTab === "usage" && (
-        <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
+        <div className="rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
           {coupon.usage_history.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-[#b9b9c3]">
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Clock className="h-12 w-12 mb-3 opacity-40" />
               <p>{t("pages.store.couponDetail.noUsageRecorded")}</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#ebe9f1] bg-[#fafafc]">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     {t("pages.store.couponDetail.orderCol")}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     {t("pages.store.couponDetail.customerCol")}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     {t("pages.store.couponDetail.discountApplied")}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#5e5873] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     {t("pages.store.couponDetail.dateCol")}
                   </th>
                 </tr>
@@ -729,24 +730,25 @@ export default function CouponDetailPage() {
                 {coupon.usage_history.map((usage, idx) => (
                   <tr
                     key={idx}
-                    className="border-b border-[#ebe9f1] hover:bg-[#fafafc]"
+                    className="border-b border-border hover:bg-muted/30"
                   >
-                    <td className="px-4 py-3 text-sm font-mono text-[#009688]">
+                    <td className="px-4 py-3 text-sm font-mono text-primary">
                       {usage.order_id}
                     </td>
-                    <td className="px-4 py-3 text-sm text-[#6e6b7b]">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {usage.customer_id || "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-[#5e5873]">
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">
                       EUR {usage.discount_amount.toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-[#6e6b7b]">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formatDateTime(usage.used_at)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

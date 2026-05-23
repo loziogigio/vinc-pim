@@ -92,8 +92,8 @@ export default function BrandDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
           <Link
             href="/b2b/pim/brands"
             className="p-2 rounded-lg hover:bg-muted transition"
@@ -116,8 +116,8 @@ export default function BrandDetailPage() {
                 <span
                   className={`rounded-full px-3 py-1 text-sm ${
                     brand.is_active
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-600"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                      : "bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300"
                   }`}
                 >
                   {brand.is_active ? t("common.active") : t("common.inactive")}

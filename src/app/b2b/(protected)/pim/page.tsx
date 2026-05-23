@@ -43,10 +43,10 @@ export default function PIMDashboard() {
   }, []);
 
   const renderEmptyState = (message: string, sub?: string) => (
-    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-      <div className="text-center text-[#5e5873]">
+    <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+      <div className="text-center text-foreground">
         <p className="text-[1.05rem] font-semibold">{message}</p>
-        {sub ? <p className="mt-1 text-[0.85rem] text-[#b9b9c3]">{sub}</p> : null}
+        {sub ? <p className="mt-1 text-[0.85rem] text-muted-foreground">{sub}</p> : null}
       </div>
     </div>
   );

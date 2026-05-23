@@ -73,13 +73,13 @@ export function LanguageCompletenessIndicator({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "complete":
-        return "text-green-600 bg-green-100";
+        return "text-green-600 bg-green-100 dark:bg-green-500/15 dark:text-green-300";
       case "partial":
-        return "text-amber-600 bg-amber-100";
+        return "text-amber-600 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300";
       case "incomplete":
-        return "text-red-600 bg-red-100";
+        return "text-red-600 bg-red-100 dark:bg-red-500/15 dark:text-red-300";
       default:
-        return "text-gray-600 bg-gray-100";
+        return "text-muted-foreground bg-muted";
     }
   };
 
@@ -133,10 +133,10 @@ export function LanguageCompletenessIndicator({
     return (
       <div className={cn("space-y-2", className)}>
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-700">Translation Status</h4>
+          <h4 className="text-sm font-medium text-foreground">Translation Status</h4>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
           >
             {isExpanded ? (
               <>
@@ -157,16 +157,16 @@ export function LanguageCompletenessIndicator({
                 <div className="flex items-center gap-2">
                   {language.flag && <span>{language.flag}</span>}
                   <span className="font-medium">{language.nativeName}</span>
-                  <span className="text-gray-500 uppercase">({language.code})</span>
+                  <span className="text-muted-foreground uppercase">({language.code})</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className={cn("font-semibold", percentage >= threshold ? "text-green-600" : "text-gray-600")}>
+                  <span className={cn("font-semibold", percentage >= threshold ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
                     {percentage}%
                   </span>
                   {getStatusIcon(status)}
                 </div>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   className={cn(
                     "h-full transition-all duration-300",
@@ -181,13 +181,13 @@ export function LanguageCompletenessIndicator({
               </div>
 
               {isExpanded && (
-                <div className="ml-4 mt-1 text-xs text-gray-600">
+                <div className="ml-4 mt-1 text-xs text-muted-foreground">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                     <div className="flex items-center gap-1">
                       {product.name?.[language.code] ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (
-                        <X className="h-3 w-3 text-gray-300" />
+                        <X className="h-3 w-3 text-muted-foreground/40" />
                       )}
                       <span>Name</span>
                     </div>
@@ -195,7 +195,7 @@ export function LanguageCompletenessIndicator({
                       {product.description?.[language.code] ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (
-                        <X className="h-3 w-3 text-gray-300" />
+                        <X className="h-3 w-3 text-muted-foreground/40" />
                       )}
                       <span>Description</span>
                     </div>
@@ -203,7 +203,7 @@ export function LanguageCompletenessIndicator({
                       {product.features?.[language.code]?.length > 0 ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (
-                        <X className="h-3 w-3 text-gray-300" />
+                        <X className="h-3 w-3 text-muted-foreground/40" />
                       )}
                       <span>Features</span>
                     </div>
@@ -211,7 +211,7 @@ export function LanguageCompletenessIndicator({
                       {product.specifications?.[language.code]?.length > 0 ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (
-                        <X className="h-3 w-3 text-gray-300" />
+                        <X className="h-3 w-3 text-muted-foreground/40" />
                       )}
                       <span>Specifications</span>
                     </div>
@@ -219,7 +219,7 @@ export function LanguageCompletenessIndicator({
                       {product.meta_title?.[language.code] ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (
-                        <X className="h-3 w-3 text-gray-300" />
+                        <X className="h-3 w-3 text-muted-foreground/40" />
                       )}
                       <span>SEO Title</span>
                     </div>
@@ -227,7 +227,7 @@ export function LanguageCompletenessIndicator({
                       {product.meta_description?.[language.code] ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (
-                        <X className="h-3 w-3 text-gray-300" />
+                        <X className="h-3 w-3 text-muted-foreground/40" />
                       )}
                       <span>SEO Description</span>
                     </div>
@@ -243,26 +243,26 @@ export function LanguageCompletenessIndicator({
 
   // Card variant - standalone card with summary
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-lg p-4 space-y-3", className)}>
-      <h4 className="text-sm font-medium text-gray-700">Translation Completeness</h4>
+    <div className={cn("bg-card border border-border rounded-lg p-4 space-y-3", className)}>
+      <h4 className="text-sm font-medium text-foreground">Translation Completeness</h4>
 
       <div className="grid grid-cols-2 gap-3">
         {languageStats.map(({ language, percentage, status }) => (
           <div
             key={language.code}
-            className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200"
+            className="flex items-center justify-between p-2 bg-muted rounded border border-border"
           >
             <div className="flex items-center gap-2">
               {language.flag && <span className="text-lg">{language.flag}</span>}
               <div>
-                <div className="text-xs font-semibold text-gray-900 uppercase">
+                <div className="text-xs font-semibold text-foreground uppercase">
                   {language.code}
                 </div>
-                <div className="text-xs text-gray-500">{language.nativeName}</div>
+                <div className="text-xs text-muted-foreground">{language.nativeName}</div>
               </div>
             </div>
             <div className="flex flex-col items-end">
-              <div className={cn("text-sm font-bold", percentage >= threshold ? "text-green-600" : "text-gray-600")}>
+              <div className={cn("text-sm font-bold", percentage >= threshold ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
                 {percentage}%
               </div>
               <div className={cn("text-xs px-1.5 py-0.5 rounded mt-1", getStatusColor(status))}>

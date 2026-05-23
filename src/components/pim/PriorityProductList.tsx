@@ -88,10 +88,10 @@ export function PriorityProductList() {
     return (
       <div className="rounded-lg bg-card p-3.5 shadow-sm">
         <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-4 bg-muted rounded w-1/3"></div>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+              <div key={i} className="h-16 bg-muted rounded"></div>
             ))}
           </div>
         </div>
@@ -163,7 +163,7 @@ export function PriorityProductList() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-xs font-mono text-muted-foreground">{product.sku}</span>
-                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium dark:bg-amber-500/15 dark:text-amber-300">
                     Priority: {product.analytics.priority_score.toFixed(1)}
                   </span>
                 </div>
@@ -176,7 +176,7 @@ export function PriorityProductList() {
               {/* Issues & Score */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 {product.critical_issues.length > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded text-xs">
+                  <div className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded text-xs dark:bg-red-500/15 dark:text-red-300">
                     <AlertTriangle className="h-3 w-3" />
                     {product.critical_issues.length}
                   </div>
@@ -185,10 +185,10 @@ export function PriorityProductList() {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
                     product.completeness_score >= 80
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                       : product.completeness_score >= 50
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-red-100 text-red-700"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                      : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                   }`}
                 >
                   {product.completeness_score}

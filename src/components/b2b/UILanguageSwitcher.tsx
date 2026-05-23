@@ -35,7 +35,7 @@ export function UILanguageSwitcher() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-[38px] items-center gap-1.5 rounded-[5px] border-0 bg-transparent px-2 text-[#6e6b7b] transition hover:bg-[#fafafc] hover:text-[#009688]"
+        className="flex h-[38px] items-center gap-1.5 rounded-[5px] border-0 bg-transparent px-2 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
         aria-label="Change language"
         title="Change language"
       >
@@ -44,7 +44,7 @@ export function UILanguageSwitcher() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-[180px] rounded-lg border border-[#dadce0] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 w-[180px] rounded-lg border border-border bg-popover text-popover-foreground shadow-[0_4px_16px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
           {UI_LOCALES.map((l) => (
             <button
               key={l.code}
@@ -52,8 +52,8 @@ export function UILanguageSwitcher() {
               onClick={() => handleSelect(l.code)}
               className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                 l.code === locale
-                  ? "bg-[#009688]/10 text-[#009688] font-medium"
-                  : "text-[#5e5873] hover:bg-[#f8f8f8]"
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
             >
               <span className="text-base">{l.flag}</span>

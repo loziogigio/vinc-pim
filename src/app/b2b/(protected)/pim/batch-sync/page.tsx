@@ -383,48 +383,48 @@ export default function BatchSyncPage() {
       {stats && (
         <div className={`rounded-[0.428rem] border p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] ${
           stats.in_sync
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-amber-200 bg-amber-50"
+            ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+            : "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10"
         }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6 flex-wrap">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-4 min-w-0">
               <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-[#6e6b7b]" />
-                <span className="text-sm text-[#6e6b7b]">MongoDB Published:</span>
-                <span className="text-sm font-semibold text-[#5e5873]">{stats.mongo_published}</span>
+                <Database className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">MongoDB Published:</span>
+                <span className="text-sm font-semibold text-foreground">{stats.mongo_published}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Server className="h-4 w-4 text-[#6e6b7b]" />
-                <span className="text-sm text-[#6e6b7b]">Solr Indexed:</span>
-                <span className="text-sm font-semibold text-[#5e5873]">{stats.solr_indexed}</span>
+                <Server className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Solr Indexed:</span>
+                <span className="text-sm font-semibold text-foreground">{stats.solr_indexed}</span>
               </div>
               {stats.stale_estimate > 0 && (
                 <div className="flex items-center gap-2">
-                  <AlertOctagon className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-700">
+                  <AlertOctagon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                     ~{stats.stale_estimate} stale in Solr
                   </span>
                 </div>
               )}
               {stats.missing_from_solr > 0 && (
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-700">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                     {stats.missing_from_solr} not indexed in Solr
                   </span>
                 </div>
               )}
               {stats.in_sync && (
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm font-medium text-emerald-700">In sync</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">In sync</span>
                 </div>
               )}
             </div>
             <button
               onClick={loadStats}
               disabled={isStatsLoading}
-              className="text-[#6e6b7b] hover:text-[#5e5873]"
+              className="text-muted-foreground hover:text-foreground"
             >
               <RefreshCw className={`h-4 w-4 ${isStatsLoading ? "animate-spin" : ""}`} />
             </button>
@@ -437,15 +437,15 @@ export default function BatchSyncPage() {
         {/* Section A: Run Batch Sync */}
         {/* ======================== */}
         <div className="space-y-6">
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h2 className="text-lg font-semibold text-[#5e5873] mb-4 flex items-center gap-2">
+          <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
               {t("pages.pim.batchSync.runBatchSync")}
             </h2>
 
             {/* Cleanup Mode */}
             <div className="mb-5">
-              <label className="block text-sm font-medium text-[#5e5873] mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 {t("pages.pim.batchSync.cleanupMode")}
               </label>
               <div className="space-y-2">
@@ -460,8 +460,8 @@ export default function BatchSyncPage() {
                     key={opt.value}
                     className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition ${
                       cleanupMode === opt.value
-                        ? "border-[#009688] bg-[rgba(0,150,136,0.04)]"
-                        : "border-[#ebe9f1] hover:border-[#d4d2dc]"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-border/80"
                     }`}
                   >
                     <input
@@ -470,11 +470,11 @@ export default function BatchSyncPage() {
                       value={opt.value}
                       checked={cleanupMode === opt.value}
                       onChange={() => setCleanupMode(opt.value)}
-                      className="mt-0.5 accent-[#009688]"
+                      className="mt-0.5 accent-primary"
                     />
                     <div>
-                      <div className="text-sm font-medium text-[#5e5873]">{opt.label}</div>
-                      <div className="text-xs text-[#b9b9c3]">{opt.desc}</div>
+                      <div className="text-sm font-medium text-foreground">{opt.label}</div>
+                      <div className="text-xs text-muted-foreground">{opt.desc}</div>
                     </div>
                   </label>
                 ))}
@@ -483,7 +483,7 @@ export default function BatchSyncPage() {
               {/* Score input for by_score mode */}
               {cleanupMode === "by_score" && (
                 <div className="mt-3 ml-8">
-                  <label className="text-sm text-[#6e6b7b]">
+                  <label className="text-sm text-muted-foreground">
                     Remove items with score below:
                   </label>
                   <input
@@ -492,7 +492,7 @@ export default function BatchSyncPage() {
                     max={100}
                     value={cleanupMinScore}
                     onChange={(e) => setCleanupMinScore(Number(e.target.value))}
-                    className="ml-2 w-20 rounded border border-[#d8d6de] px-2 py-1 text-sm"
+                    className="ml-2 w-20 rounded border border-border bg-background px-2 py-1 text-sm"
                   />
                 </div>
               )}
@@ -500,19 +500,19 @@ export default function BatchSyncPage() {
               {/* Checkboxes for by_missing_fields mode */}
               {cleanupMode === "by_missing_fields" && (
                 <div className="mt-3 ml-8 space-y-1">
-                  <label className="text-sm text-[#6e6b7b] mb-1 block">
+                  <label className="text-sm text-muted-foreground mb-1 block">
                     Remove if missing any of:
                   </label>
                   {REQUIRED_FIELD_OPTIONS.map((opt) => (
                     <label
                       key={opt.value}
-                      className="flex items-center gap-2 text-sm text-[#5e5873] cursor-pointer"
+                      className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
                     >
                       <input
                         type="checkbox"
                         checked={cleanupFields.includes(opt.value)}
                         onChange={() => toggleField(opt.value)}
-                        className="accent-[#009688]"
+                        className="accent-primary"
                       />
                       {opt.label}
                     </label>
@@ -522,16 +522,16 @@ export default function BatchSyncPage() {
             </div>
 
             {/* Resync Toggle */}
-            <div className="mb-5 border-t border-[#ebe9f1] pt-4">
+            <div className="mb-5 border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="text-sm font-medium text-[#5e5873]">{t("pages.pim.batchSync.resyncToSolr")}</label>
-                  <p className="text-xs text-[#b9b9c3]">{t("pages.pim.batchSync.resyncDescription")}</p>
+                  <label className="text-sm font-medium text-foreground">{t("pages.pim.batchSync.resyncToSolr")}</label>
+                  <p className="text-xs text-muted-foreground">{t("pages.pim.batchSync.resyncDescription")}</p>
                 </div>
                 <button
                   onClick={() => setResyncEnabled(!resyncEnabled)}
                   className={`relative w-10 h-5 rounded-full transition ${
-                    resyncEnabled ? "bg-[#009688]" : "bg-[#d8d6de]"
+                    resyncEnabled ? "bg-primary" : "bg-muted-foreground/30"
                   }`}
                 >
                   <span
@@ -545,31 +545,31 @@ export default function BatchSyncPage() {
               {resyncEnabled && (
                 <div className="mt-3 ml-2 space-y-2">
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-[#6e6b7b]">Min score:</label>
+                    <label className="text-sm text-muted-foreground">Min score:</label>
                     <input
                       type="number"
                       min={0}
                       max={100}
                       value={resyncMinScore}
                       onChange={(e) => setResyncMinScore(Number(e.target.value))}
-                      className="w-20 rounded border border-[#d8d6de] px-2 py-1 text-sm"
+                      className="w-20 rounded border border-border bg-background px-2 py-1 text-sm"
                     />
                   </div>
-                  <label className="flex items-center gap-2 text-sm text-[#5e5873] cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                       type="checkbox"
                       checked={recalcScores}
                       onChange={(e) => setRecalcScores(e.target.checked)}
-                      className="accent-[#009688]"
+                      className="accent-primary"
                     />
                     {t("pages.pim.batchSync.recalculateScores")}
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-[#5e5873] cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                       type="checkbox"
                       checked={rebuildEmbeddings}
                       onChange={(e) => setRebuildEmbeddings(e.target.checked)}
-                      className="accent-[#009688]"
+                      className="accent-primary"
                     />
                     {t("pages.pim.batchSync.rebuildEmbeddings")}
                   </label>
@@ -578,11 +578,11 @@ export default function BatchSyncPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 border-t border-[#ebe9f1] pt-4">
+            <div className="flex gap-3 border-t border-border pt-4">
               <button
                 onClick={handlePreview}
                 disabled={!isFormValid || isPreviewLoading || isExecuting}
-                className="flex items-center gap-2 rounded-md border border-[#009688] px-4 py-2 text-sm font-medium text-[#009688] hover:bg-[rgba(0,150,136,0.04)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPreviewLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -594,7 +594,7 @@ export default function BatchSyncPage() {
               <button
                 onClick={() => setShowConfirm(true)}
                 disabled={!isFormValid || isPreviewLoading || isExecuting}
-                className="flex items-center gap-2 rounded-md bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isExecuting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -605,7 +605,7 @@ export default function BatchSyncPage() {
               </button>
             </div>
             {runningJobId && (
-              <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="font-mono text-xs">{runningJobId}</span>
                 <span>· running {runningElapsedSec}s</span>
@@ -615,18 +615,18 @@ export default function BatchSyncPage() {
 
           {/* Preview Results */}
           {previewResult && (
-            <div className="rounded-[0.428rem] border border-blue-200 bg-blue-50 p-5">
-              <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+            <div className="rounded-[0.428rem] border border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10 p-5">
+              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2">
                 <Eye className="h-4 w-4" />
                 {t("pages.pim.batchSync.previewResults")}
-                <span className="text-xs font-normal text-blue-600">
+                <span className="text-xs font-normal text-blue-600 dark:text-blue-400">
                   ({previewResult.duration_ms}ms)
                 </span>
               </h3>
 
               {previewResult.cleanup && (
                 <div className="mb-3">
-                  <div className="text-sm text-blue-800">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>Cleanup ({previewResult.cleanup.mode}):</strong>{" "}
                     {previewResult.cleanup.would_remove ?? 0} items would be removed
                   </div>
@@ -635,14 +635,14 @@ export default function BatchSyncPage() {
                       <div className="mt-2 max-h-40 overflow-y-auto">
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-left text-blue-600">
+                            <tr className="text-left text-blue-600 dark:text-blue-400">
                               <th className="pb-1">Entity Code</th>
                               <th className="pb-1">Missing</th>
                             </tr>
                           </thead>
                           <tbody>
                             {previewResult.cleanup.affected_products.map((p) => (
-                              <tr key={p.entity_code} className="border-t border-blue-100">
+                              <tr key={p.entity_code} className="border-t border-blue-100 dark:border-blue-500/20">
                                 <td className="py-1 font-mono">{p.entity_code}</td>
                                 <td className="py-1">{p.missing_fields?.join(", ")}</td>
                               </tr>
@@ -656,7 +656,7 @@ export default function BatchSyncPage() {
 
               {previewResult.resync && (
                 <div>
-                  <div className="text-sm text-blue-800">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>Resync:</strong> {previewResult.resync.eligible} eligible
                     out of {previewResult.resync.total} published
                     {previewResult.resync.score_updates > 0 && (
@@ -671,7 +671,7 @@ export default function BatchSyncPage() {
                       <div className="mt-2 max-h-40 overflow-y-auto">
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-left text-blue-600">
+                            <tr className="text-left text-blue-600 dark:text-blue-400">
                               <th className="pb-1">Entity Code</th>
                               <th className="pb-1">SKU</th>
                               <th className="pb-1">Score</th>
@@ -679,7 +679,7 @@ export default function BatchSyncPage() {
                           </thead>
                           <tbody>
                             {previewResult.resync.eligible_products.map((p) => (
-                              <tr key={p.entity_code} className="border-t border-blue-100">
+                              <tr key={p.entity_code} className="border-t border-blue-100 dark:border-blue-500/20">
                                 <td className="py-1 font-mono">{p.entity_code}</td>
                                 <td className="py-1">{p.sku}</td>
                                 <td className="py-1">
@@ -698,17 +698,17 @@ export default function BatchSyncPage() {
 
           {/* Execute Results */}
           {executeResult && (
-            <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 p-5">
-              <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+            <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10 p-5">
+              <h3 className="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-3 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 {t("pages.pim.batchSync.batchSyncComplete")}
-                <span className="text-xs font-normal text-emerald-600">
+                <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
                   ({(executeResult.duration_ms / 1000).toFixed(1)}s)
                 </span>
               </h3>
 
               {executeResult.cleanup && (
-                <div className="text-sm text-emerald-800 mb-2">
+                <div className="text-sm text-emerald-800 dark:text-emerald-200 mb-2">
                   <strong>Cleanup ({executeResult.cleanup.mode}):</strong>{" "}
                   {executeResult.cleanup.removed_count === -1
                     ? "All items cleared"
@@ -720,7 +720,7 @@ export default function BatchSyncPage() {
               )}
 
               {executeResult.resync && (
-                <div className="text-sm text-emerald-800 space-y-1">
+                <div className="text-sm text-emerald-800 dark:text-emerald-200 space-y-1">
                   <div>
                     <strong>Resync:</strong> {executeResult.resync.indexed} indexed,{" "}
                     {executeResult.resync.failed} failed ({executeResult.resync.batches_processed} batches)
@@ -732,7 +732,7 @@ export default function BatchSyncPage() {
                     <div>{(executeResult.resync as any).embedding_updates} embeddings rebuilt in DB</div>
                   )}
                   {executeResult.resync.errors.length > 0 && (
-                    <div className="mt-2 text-red-700 text-xs">
+                    <div className="mt-2 text-red-700 dark:text-red-400 text-xs">
                       Errors: {executeResult.resync.errors.slice(0, 5).join("; ")}
                     </div>
                   )}
@@ -746,8 +746,8 @@ export default function BatchSyncPage() {
         {/* Section B: Fast Check */}
         {/* ======================== */}
         <div className="space-y-6">
-          <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-5 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-            <h3 className="text-sm font-semibold text-[#5e5873] mb-3 flex items-center gap-2">
+          <div className="rounded-[0.428rem] border border-border bg-card p-5 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Search className="h-4 w-4" />
               {t("pages.pim.batchSync.fastCheck")}
             </h3>
@@ -758,12 +758,12 @@ export default function BatchSyncPage() {
                 value={checkQuery}
                 onChange={(e) => setCheckQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCheck()}
-                className="flex-1 rounded border border-[#d8d6de] px-3 py-2 text-sm placeholder:text-[#b9b9c3]"
+                className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
               />
               <button
                 onClick={handleCheck}
                 disabled={isChecking || !checkQuery.trim()}
-                className="rounded bg-[#009688] px-3 py-2 text-sm text-white hover:bg-[#00796b] disabled:opacity-50"
+                className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {isChecking ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -774,7 +774,7 @@ export default function BatchSyncPage() {
             </div>
 
             {checkError && (
-              <div className="mt-3 text-sm text-red-600 flex items-center gap-1">
+              <div className="mt-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
                 <XCircle className="h-4 w-4" />
                 {checkError}
               </div>
@@ -784,10 +784,10 @@ export default function BatchSyncPage() {
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium text-[#5e5873]">
+                    <div className="text-sm font-medium text-foreground">
                       {checkResult.name}
                     </div>
-                    <div className="text-xs text-[#b9b9c3]">
+                    <div className="text-xs text-muted-foreground">
                       {checkResult.entity_code} / {checkResult.sku}
                     </div>
                   </div>
@@ -795,22 +795,22 @@ export default function BatchSyncPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded bg-[#fafafc] p-2">
-                    <div className="text-xs text-[#b9b9c3]">Score (live)</div>
+                  <div className="rounded bg-muted p-2">
+                    <div className="text-xs text-muted-foreground">Score (live)</div>
                     <ScoreBadge score={checkResult.completeness_score} />
                   </div>
-                  <div className="rounded bg-[#fafafc] p-2">
-                    <div className="text-xs text-[#b9b9c3]">In Solr</div>
+                  <div className="rounded bg-muted p-2">
+                    <div className="text-xs text-muted-foreground">In Solr</div>
                     <div className="flex items-center gap-1">
                       {checkResult.in_solr ? (
                         <>
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          <span className="text-emerald-700">Yes</span>
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-300">Yes</span>
                         </>
                       ) : (
                         <>
-                          <XCircle className="h-4 w-4 text-red-500" />
-                          <span className="text-red-700">No</span>
+                          <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
+                          <span className="text-red-700 dark:text-red-300">No</span>
                         </>
                       )}
                     </div>
@@ -827,8 +827,8 @@ export default function BatchSyncPage() {
                       <span
                         className={`text-sm font-medium ${
                           checkResult.score_drift > 0
-                            ? "text-emerald-600"
-                            : "text-red-600"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
                         }`}
                       >
                         {checkResult.score_drift > 0 ? "+" : ""}
@@ -839,7 +839,7 @@ export default function BatchSyncPage() {
                 </div>
 
                 {checkResult.last_synced_at && (
-                  <div className="text-xs text-[#b9b9c3] flex items-center gap-1">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     Last synced: {new Date(checkResult.last_synced_at).toLocaleString()}
                   </div>
@@ -847,13 +847,13 @@ export default function BatchSyncPage() {
 
                 {checkResult.critical_issues.length > 0 && (
                   <div className="space-y-1">
-                    <div className="text-xs font-medium text-amber-700">
+                    <div className="text-xs font-medium text-amber-700 dark:text-amber-300">
                       Critical Issues:
                     </div>
                     {checkResult.critical_issues.map((issue, i) => (
                       <div
                         key={i}
-                        className="flex items-start gap-1 text-xs text-amber-600"
+                        className="flex items-start gap-1 text-xs text-amber-600 dark:text-amber-400"
                       >
                         <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                         {issue}
@@ -870,16 +870,16 @@ export default function BatchSyncPage() {
       {/* ======================== */}
       {/* Section C: Activity History */}
       {/* ======================== */}
-      <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-[#5e5873] flex items-center gap-2">
+      <div className="rounded-[0.428rem] border border-border bg-card p-6 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Clock className="h-5 w-5" />
             {t("pages.pim.batchSync.activityHistory")}
           </h2>
           <button
             onClick={loadHistory}
             disabled={isHistoryLoading}
-            className="text-sm text-[#009688] hover:underline flex items-center gap-1"
+            className="text-sm text-primary hover:underline flex items-center gap-1"
           >
             {isHistoryLoading ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -891,14 +891,14 @@ export default function BatchSyncPage() {
         </div>
 
         {history.length === 0 ? (
-          <div className="text-center py-8 text-[#b9b9c3] text-sm">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             {t("pages.pim.batchSync.noRunsYet")}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-[#b9b9c3] border-b border-[#ebe9f1]">
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
                   <th className="pb-2 font-medium">{t("common.date")}</th>
                   <th className="pb-2 font-medium">{t("pages.pim.batchSync.startedBy")}</th>
                   <th className="pb-2 font-medium">{t("pages.pim.batchSync.cleanup")}</th>
@@ -911,30 +911,30 @@ export default function BatchSyncPage() {
               </thead>
               <tbody>
                 {history.map((item) => (
-                  <tr key={item._id} className="border-b border-[#ebe9f1] last:border-0">
-                    <td className="py-2.5 text-[#5e5873]">
+                  <tr key={item._id} className="border-b border-border last:border-0">
+                    <td className="py-2.5 text-foreground">
                       {new Date(item.created_at).toLocaleString()}
                     </td>
-                    <td className="py-2.5 text-[#6e6b7b]">{item.started_by}</td>
-                    <td className="py-2.5 text-[#6e6b7b] capitalize">
+                    <td className="py-2.5 text-muted-foreground">{item.started_by}</td>
+                    <td className="py-2.5 text-muted-foreground capitalize">
                       {item.params.cleanup_mode.replace("_", " ")}
                     </td>
-                    <td className="py-2.5 text-[#6e6b7b]">
+                    <td className="py-2.5 text-muted-foreground">
                       {item.cleanup_result?.removed_count === -1
                         ? "All"
                         : item.cleanup_result?.removed_count ?? "-"}
                     </td>
-                    <td className="py-2.5 text-[#6e6b7b]">
+                    <td className="py-2.5 text-muted-foreground">
                       {item.resync_result?.indexed ?? "-"}
                     </td>
                     <td className="py-2.5">
                       {item.resync_result?.failed ? (
-                        <span className="text-red-600">{item.resync_result.failed}</span>
+                        <span className="text-red-600 dark:text-red-400">{item.resync_result.failed}</span>
                       ) : (
-                        <span className="text-[#6e6b7b]">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
-                    <td className="py-2.5 text-[#6e6b7b]">
+                    <td className="py-2.5 text-muted-foreground">
                       {item.duration_ms
                         ? `${(item.duration_ms / 1000).toFixed(1)}s`
                         : "-"}
@@ -975,10 +975,10 @@ export default function BatchSyncPage() {
 function ScoreBadge({ score }: { score: number }) {
   const color =
     score >= 80
-      ? "text-emerald-700 bg-emerald-100"
+      ? "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-500/15"
       : score >= 50
-        ? "text-amber-700 bg-amber-100"
-        : "text-red-700 bg-red-100";
+        ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-500/15"
+        : "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-500/15";
 
   return (
     <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-semibold ${color}`}>
@@ -989,9 +989,9 @@ function ScoreBadge({ score }: { score: number }) {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    published: "text-emerald-700 bg-emerald-100",
-    draft: "text-amber-700 bg-amber-100",
-    archived: "text-[#6e6b7b] bg-[#f0f0f3]",
+    published: "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-500/15",
+    draft: "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-500/15",
+    archived: "text-muted-foreground bg-muted",
   };
 
   return (
@@ -1007,9 +1007,9 @@ function StatusBadge({ status }: { status: string }) {
 
 function JobStatusBadge({ status }: { status: string }) {
   const config: Record<string, { icon: typeof CheckCircle2; color: string }> = {
-    completed: { icon: CheckCircle2, color: "text-emerald-600" },
-    failed: { icon: XCircle, color: "text-red-600" },
-    running: { icon: Loader2, color: "text-blue-600" },
+    completed: { icon: CheckCircle2, color: "text-emerald-600 dark:text-emerald-400" },
+    failed: { icon: XCircle, color: "text-red-600 dark:text-red-400" },
+    running: { icon: Loader2, color: "text-blue-600 dark:text-blue-400" },
   };
 
   const { icon: Icon, color } = config[status] ?? config.running;

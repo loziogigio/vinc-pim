@@ -264,8 +264,8 @@ export default function CategoriesPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -283,8 +283,8 @@ export default function CategoriesPage() {
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.categories.title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {categories.length} {t("pages.pim.categories.totalOf")} • {rootCategories.length} {t("pages.pim.categories.rootCategories")}
@@ -304,8 +304,8 @@ export default function CategoriesPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
               type="text"
@@ -523,12 +523,12 @@ function SortableCategoryRow({
               </span>
             )}
             {!category.parent_id && !channelInfo && (
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40">
                 {t("pages.pim.categories.rootNoChannel")}
               </span>
             )}
             {!category.is_active && (
-              <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+              <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300">
                 {t("pages.pim.categories.inactive")}
               </span>
             )}
@@ -570,7 +570,7 @@ function SortableCategoryRow({
           <button
             type="button"
             onClick={onDelete}
-            className="p-2 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition"
+            className="p-2 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition"
             title="Delete category"
           >
             <Trash2 className="h-4 w-4" />

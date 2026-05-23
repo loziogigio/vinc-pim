@@ -193,15 +193,15 @@ export default function JobsPage() {
   function getStatusIcon(status: string) {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="h-5 w-5 text-emerald-600" />;
+        return <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />;
       case "failed":
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
       case "processing":
-        return <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-amber-600" />;
+        return <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />;
       case "cancelled":
-        return <StopCircle className="h-5 w-5 text-gray-500" />;
+        return <StopCircle className="h-5 w-5 text-muted-foreground" />;
       default:
         return null;
     }
@@ -210,17 +210,17 @@ export default function JobsPage() {
   function getStatusColor(status: string) {
     switch (status) {
       case "completed":
-        return "bg-emerald-100 text-emerald-700";
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
       case "failed":
-        return "bg-red-100 text-red-700";
+        return "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300";
       case "processing":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300";
       case "pending":
-        return "bg-amber-100 text-amber-700";
+        return "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300";
       case "cancelled":
-        return "bg-gray-200 text-gray-600";
+        return "bg-muted text-muted-foreground";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-muted text-muted-foreground";
     }
   }
 
@@ -257,8 +257,8 @@ export default function JobsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -273,8 +273,8 @@ export default function JobsPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.jobs.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.pim.jobs.subtitle")}
@@ -302,8 +302,8 @@ export default function JobsPage() {
 
       {/* Search and Filters */}
       <div className="rounded-lg bg-card p-4 shadow-sm">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="flex-1 min-w-0 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -322,7 +322,7 @@ export default function JobsPage() {
               setStatusFilter(e.target.value);
               setPagination((p) => ({ ...p, page: 1 }));
             }}
-            className="px-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[150px]"
+            className="w-full sm:w-auto px-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">{t("pages.pim.jobs.allStatuses")}</option>
             <option value="pending">{t("common.pending")}</option>
@@ -332,34 +332,32 @@ export default function JobsPage() {
             <option value="cancelled">{t("pages.pim.jobs.cancelled")}</option>
           </select>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Database className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Source ID..."
-                value={sourceFilter}
-                onChange={(e) => {
-                  setSourceFilter(e.target.value);
-                  setPagination((p) => ({ ...p, page: 1 }));
-                }}
-                className="pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
-              />
-            </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Batch ID..."
-                value={batchFilter}
-                onChange={(e) => {
-                  setBatchFilter(e.target.value);
-                  setPagination((p) => ({ ...p, page: 1 }));
-                }}
-                className="pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
-              />
-            </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Database className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Source ID..."
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value);
+                setPagination((p) => ({ ...p, page: 1 }));
+              }}
+              className="w-full sm:w-auto pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Batch ID..."
+              value={batchFilter}
+              onChange={(e) => {
+                setBatchFilter(e.target.value);
+                setPagination((p) => ({ ...p, page: 1 }));
+              }}
+              className="w-full sm:w-auto pl-10 pr-4 py-2 rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
         </div>
 
@@ -424,8 +422,8 @@ export default function JobsPage() {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {(statusFilter || sourceFilter || batchFilter || searchQuery || createdFrom || createdTo || completedFrom || completedTo) && (
               <button
                 onClick={() => {
@@ -494,8 +492,8 @@ export default function JobsPage() {
 
                 {/* Main Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-lg font-semibold text-foreground">
                           {job.job_category === "import"
@@ -517,8 +515,8 @@ export default function JobsPage() {
                         {job.job_category === "association" && (
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                             job.action === "add"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-red-100 text-red-700"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                              : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                           }`}>
                             {job.action === "add" ? "Adding" : "Removing"}
                           </span>
@@ -599,7 +597,7 @@ export default function JobsPage() {
                               e.stopPropagation();
                               handleJobAction(job.job_id, "cancel");
                             }}
-                            className="p-1.5 rounded border border-border hover:bg-amber-50 hover:border-amber-200 text-amber-600"
+                            className="p-1.5 rounded border border-border hover:bg-amber-50 hover:border-amber-200 text-amber-600 dark:hover:bg-amber-500/10 dark:hover:border-amber-500/40 dark:text-amber-400"
                             title="Cancel job"
                           >
                             <StopCircle className="h-4 w-4" />
@@ -613,7 +611,7 @@ export default function JobsPage() {
                               e.stopPropagation();
                               handleJobAction(job.job_id, "delete");
                             }}
-                            className="p-1.5 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600"
+                            className="p-1.5 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600 dark:hover:bg-red-500/10 dark:hover:border-red-500/40 dark:text-red-400"
                             title="Delete job"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -638,7 +636,7 @@ export default function JobsPage() {
                           </div>
                           <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-blue-600 transition-all duration-300"
+                              className="h-full bg-primary transition-all duration-300"
                               style={{
                                 width: `${(job.processed_rows / job.total_rows) * 100}%`,
                               }}
@@ -658,7 +656,7 @@ export default function JobsPage() {
                           </div>
                           <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-blue-600 transition-all duration-300"
+                              className="h-full bg-primary transition-all duration-300"
                               style={{
                                 width: `${(job.processed_items / job.total_items) * 100}%`,
                               }}
@@ -671,24 +669,24 @@ export default function JobsPage() {
 
                   {/* Stats */}
                   {job.job_category === "import" ? (
-                    <div className="grid grid-cols-5 gap-4 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.totalRows")}:</span>
                         <div className="font-medium">{job.total_rows}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.successful")}:</span>
-                        <div className="font-medium text-emerald-600">
+                        <div className="font-medium text-emerald-600 dark:text-emerald-400">
                           {job.successful_rows}
                         </div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.failedLabel")}:</span>
-                        <div className="font-medium text-red-600">{job.failed_rows}</div>
+                        <div className="font-medium text-red-600 dark:text-red-400">{job.failed_rows}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.autoPublished")}:</span>
-                        <div className="font-medium text-blue-600">
+                        <div className="font-medium text-primary">
                           {job.auto_published_count}
                         </div>
                       </div>
@@ -700,20 +698,20 @@ export default function JobsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.totalItems")}:</span>
                         <div className="font-medium">{job.total_items}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.successful")}:</span>
-                        <div className="font-medium text-emerald-600">
+                        <div className="font-medium text-emerald-600 dark:text-emerald-400">
                           {job.successful_items}
                         </div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.failedLabel")}:</span>
-                        <div className="font-medium text-red-600">{job.failed_items}</div>
+                        <div className="font-medium text-red-600 dark:text-red-400">{job.failed_items}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">{t("pages.pim.jobs.duration")}:</span>
@@ -745,22 +743,22 @@ export default function JobsPage() {
                   {/* Errors — list endpoint returns at most 3 errors and `failed_rows` is the real total */}
                   {job.job_category === "import" &&
                     job.failed_rows > 0 && (
-                      <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+                      <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/30">
                         <div className="flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-red-900 mb-2">
+                            <p className="text-sm font-medium text-red-900 dark:text-red-200 mb-2">
                               {job.failed_rows} errors occurred:
                             </p>
                             <div className="space-y-1 max-h-32 overflow-y-auto">
                               {(job.import_errors || []).map((error, idx) => (
-                                <p key={idx} className="text-xs text-red-700">
+                                <p key={idx} className="text-xs text-red-700 dark:text-red-300">
                                   Row {error.row}
                                   {error.entity_code && ` (${error.entity_code})`}: {error.error}
                                 </p>
                               ))}
                               {job.failed_rows > (job.import_errors?.length || 0) && (
-                                <p className="text-xs text-red-700 font-medium">
+                                <p className="text-xs text-red-700 dark:text-red-300 font-medium">
                                   ... and {job.failed_rows - (job.import_errors?.length || 0)} more errors (open the job to see all)
                                 </p>
                               )}
@@ -771,12 +769,12 @@ export default function JobsPage() {
                     )}
                   {job.job_category === "association" &&
                     job.error_message && (
-                      <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+                      <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/30">
                         <div className="flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-red-900 mb-1">Error:</p>
-                            <p className="text-xs text-red-700">{job.error_message}</p>
+                            <p className="text-sm font-medium text-red-900 dark:text-red-200 mb-1">Error:</p>
+                            <p className="text-xs text-red-700 dark:text-red-300">{job.error_message}</p>
                           </div>
                         </div>
                       </div>
@@ -790,7 +788,7 @@ export default function JobsPage() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-lg bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-card p-4 shadow-sm">
           <div className="text-sm text-muted-foreground">
             {t("common.page")} {pagination.page} {t("common.of")} {pagination.totalPages}
           </div>

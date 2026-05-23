@@ -26,15 +26,15 @@ export interface GatewayTransaction {
 }
 
 const GATEWAY_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  completed: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  captured: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  processing: { bg: "bg-blue-100", text: "text-blue-700" },
-  pending: { bg: "bg-amber-100", text: "text-amber-700" },
-  authorized: { bg: "bg-sky-100", text: "text-sky-700" },
-  failed: { bg: "bg-red-100", text: "text-red-700" },
-  cancelled: { bg: "bg-gray-100", text: "text-gray-600" },
-  refunded: { bg: "bg-gray-100", text: "text-gray-600" },
-  partial_refund: { bg: "bg-orange-100", text: "text-orange-700" },
+  completed: { bg: "bg-emerald-100 dark:bg-emerald-500/15", text: "text-emerald-700 dark:text-emerald-300" },
+  captured: { bg: "bg-emerald-100 dark:bg-emerald-500/15", text: "text-emerald-700 dark:text-emerald-300" },
+  processing: { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-300" },
+  pending: { bg: "bg-amber-100 dark:bg-amber-500/15", text: "text-amber-700 dark:text-amber-300" },
+  authorized: { bg: "bg-sky-100 dark:bg-sky-500/15", text: "text-sky-700 dark:text-sky-300" },
+  failed: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-700 dark:text-red-300" },
+  cancelled: { bg: "bg-gray-100 dark:bg-gray-500/15", text: "text-gray-600 dark:text-gray-400" },
+  refunded: { bg: "bg-gray-100 dark:bg-gray-500/15", text: "text-gray-600 dark:text-gray-400" },
+  partial_refund: { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-300" },
 };
 
 export function GatewayTransactionRow({

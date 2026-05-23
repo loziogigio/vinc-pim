@@ -58,8 +58,8 @@ export default async function B2BProtectedLayout({
   };
 
   return (
-    <div className={cn(publicSans.className, "min-h-screen bg-[#f8f7fa] text-[#5e5873]")}>
-      <Toaster position="top-right" richColors />
+    <div className={cn(publicSans.className, "min-h-screen bg-muted text-foreground dark:bg-background")}>
+      <Toaster position="top-right" richColors theme="system" />
       <DashboardHeader session={sessionData} />
       <MainContent>
         {children}

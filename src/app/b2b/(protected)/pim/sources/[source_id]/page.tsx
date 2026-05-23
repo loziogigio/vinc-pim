@@ -229,8 +229,8 @@ export default function SourceDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -250,8 +250,8 @@ export default function SourceDetailPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={() => router.push("/b2b/pim/sources")}
             className="p-2 rounded border border-border hover:bg-muted"
@@ -259,20 +259,20 @@ export default function SourceDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold text-foreground">
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold text-foreground truncate">
                 {source.source_name}
               </h1>
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                 {source.source_type.toUpperCase()}
               </span>
               {source.is_active ? (
-                <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                   <CheckCircle2 className="h-3 w-3" />
                   {t("common.active")}
                 </span>
               ) : (
-                <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300">
                   <XCircle className="h-3 w-3" />
                   {t("common.inactive")}
                 </span>
@@ -326,7 +326,7 @@ export default function SourceDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="rounded-lg bg-card p-4 shadow-sm border">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded bg-blue-100 text-blue-600">
+              <div className="p-2 rounded bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
                 <Package className="h-5 w-5" />
               </div>
               <div>
@@ -338,7 +338,7 @@ export default function SourceDetailPage() {
 
           <div className="rounded-lg bg-card p-4 shadow-sm border">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded bg-emerald-100 text-emerald-600">
+              <div className="p-2 rounded bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
@@ -350,7 +350,7 @@ export default function SourceDetailPage() {
 
           <div className="rounded-lg bg-card p-4 shadow-sm border">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded bg-amber-100 text-amber-600">
+              <div className="p-2 rounded bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
                 <FileText className="h-5 w-5" />
               </div>
               <div>
@@ -362,7 +362,7 @@ export default function SourceDetailPage() {
 
           <div className="rounded-lg bg-card p-4 shadow-sm border">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded bg-purple-100 text-purple-600">
+              <div className="p-2 rounded bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400">
                 <TrendingUp className="h-5 w-5" />
               </div>
               <div>
@@ -555,7 +555,7 @@ export default function SourceDetailPage() {
 
         {/* Field Mappings - Always Visible with Inline Editing */}
         <div className="rounded-lg bg-card p-6 shadow-sm border lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-lg font-semibold">{t("pages.pim.sources.fieldMappings")}</h2>
               <p className="text-xs text-muted-foreground mt-1">
@@ -574,11 +574,11 @@ export default function SourceDetailPage() {
             </button>
           </div>
 
-          <div className="mb-4 p-3 rounded bg-blue-50 border border-blue-200">
-            <p className="text-sm text-blue-800">
+          <div className="mb-4 p-3 rounded bg-blue-50 border border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
               <strong>{t("pages.pim.sources.mappingRulesTitle")}</strong> {t("pages.pim.sources.mappingRulesDesc")}
             </p>
-            <p className="text-sm text-blue-800 mt-2">
+            <p className="text-sm text-blue-800 dark:text-blue-300 mt-2">
               <strong>{t("pages.pim.sources.requiredFieldsTitle")}</strong> <span className="px-1 py-0.5 rounded text-xs bg-purple-600 text-white">{t("pages.pim.sources.schemaRequiredBadge")}</span> {t("pages.pim.sources.schemaRequiredNote")}
             </p>
           </div>
@@ -593,7 +593,7 @@ export default function SourceDetailPage() {
               if (isEditing) {
                 // Edit mode for this row
                 return (
-                  <div key={supplierField} className="flex items-center gap-2 p-3 rounded border border-primary bg-blue-50">
+                  <div key={supplierField} className="flex items-center gap-2 p-3 rounded border border-primary bg-blue-50 dark:bg-blue-500/10">
                     <input
                       type="text"
                       value={editingData.supplierField}
@@ -645,8 +645,8 @@ export default function SourceDetailPage() {
               return (
                 <div
                   key={supplierField}
-                  className={`flex items-center gap-2 p-3 rounded border ${
-                    isOneToOne ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'
+                  className={`flex flex-wrap items-center gap-2 p-3 rounded border ${
+                    isOneToOne ? 'bg-muted/50 border-border' : 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30'
                   }`}
                 >
                   <span className="font-mono text-sm flex-1">{supplierField}</span>
@@ -698,7 +698,7 @@ export default function SourceDetailPage() {
                           console.error("Error updating required fields:", error);
                         }
                       }}
-                      className="rounded border-gray-300"
+                      className="rounded border-border"
                     />
                     <span className="text-xs text-muted-foreground">{t("pages.pim.sources.requiredCheckbox")}</span>
                   </label>
@@ -711,7 +711,7 @@ export default function SourceDetailPage() {
                   </button>
                   <button
                     onClick={() => deleteFieldMapping(supplierField)}
-                    className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600"
+                    className="p-2 rounded border border-border hover:bg-red-50 hover:border-red-200 text-red-600 dark:hover:bg-red-500/10 dark:hover:border-red-500/40 dark:text-red-400"
                     title={t("common.delete")}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -722,7 +722,7 @@ export default function SourceDetailPage() {
 
             {/* Add New Row */}
             {isAddingNew && (
-              <div className="flex items-center gap-2 p-3 rounded border-2 border-dashed border-primary bg-blue-50">
+              <div className="flex items-center gap-2 p-3 rounded border-2 border-dashed border-primary bg-blue-50 dark:bg-blue-500/10">
                 <input
                   type="text"
                   value={editingData.supplierField}
@@ -752,7 +752,7 @@ export default function SourceDetailPage() {
                     type="checkbox"
                     checked={isNewFieldRequired}
                     onChange={(e) => setIsNewFieldRequired(e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded border-border"
                   />
                   <span className="text-xs text-muted-foreground">{t("pages.pim.sources.requiredCheckbox")}</span>
                 </label>
@@ -823,7 +823,7 @@ export default function SourceDetailPage() {
                                   {field.type}
                                 </span>
                                 {field.required && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
                                     {t("pages.pim.sources.requiredCheckbox")}
                                   </span>
                                 )}

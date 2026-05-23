@@ -51,9 +51,9 @@ export function PIMNavigation() {
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
   return (
-    <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-[#ebe9f1] bg-white p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
-      <div className="mb-2 pb-3 border-b border-[#ebe9f1]">
-        <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
+    <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-border bg-card p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
+      <div className="mb-2 pb-3 border-b border-border">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
           {t("nav.pim.title")}
         </h2>
       </div>
@@ -71,8 +71,8 @@ export function PIMNavigation() {
             className={cn(
               "flex items-center gap-3 rounded-[0.358rem] px-4 py-2.5 text-[0.875rem] font-medium transition",
               isActive
-                ? "bg-[rgba(0,150,136,0.12)] text-[#009688] shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
-                : "text-[#6e6b7b] hover:bg-[#fafafc] hover:text-[#009688]"
+                ? "bg-primary/10 text-primary shadow-[0_0_10px_1px_rgba(0,150,136,0.15)]"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />

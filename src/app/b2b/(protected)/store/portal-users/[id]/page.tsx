@@ -303,8 +303,8 @@ export default function PortalUserDetailPage({
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
-          <div className="h-8 w-48 bg-gray-200 rounded mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+          <div className="h-8 w-48 bg-muted rounded mb-4"></div>
+          <div className="h-64 bg-muted rounded"></div>
         </div>
       </div>
     );
@@ -347,13 +347,13 @@ export default function PortalUserDetailPage({
 
       {/* Success/Error Messages */}
       {saveSuccess && (
-        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-sm flex items-center gap-2">
+        <div className="p-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300 rounded-lg text-sm flex items-center gap-2">
           <CheckCircle className="h-4 w-4" />
           {saveSuccess}
         </div>
       )}
       {saveError && (
-        <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-2">
+        <div className="p-3 bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300 rounded-lg text-sm flex items-center gap-2">
           <XCircle className="h-4 w-4" />
           {saveError}
           <button onClick={() => setSaveError(null)} className="ml-auto">
@@ -363,28 +363,28 @@ export default function PortalUserDetailPage({
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-4 min-w-0">
           <Link
             href={`${tenantPrefix}/b2b/store/portal-users`}
-            className="p-2 rounded-lg hover:bg-muted transition"
+            className="p-2 rounded-lg hover:bg-muted transition flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Link>
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
+            <div className="p-3 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
               <UserCog className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-foreground">{portalUser.username}</h1>
                 {portalUser.is_active ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                     <CheckCircle className="h-3 w-3" />
                     {t("common.active")}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                     <XCircle className="h-3 w-3" />
                     {t("common.inactive")}
                   </span>
@@ -394,14 +394,14 @@ export default function PortalUserDetailPage({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleToggleActive}
             disabled={isSubmitting}
             className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition ${
               portalUser.is_active
-                ? "text-amber-600 border-amber-200 hover:bg-amber-50"
-                : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                ? "text-amber-600 border-amber-200 hover:bg-amber-50 dark:border-amber-500/40 dark:hover:bg-amber-500/15"
+                : "text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-500/40 dark:hover:bg-emerald-500/15"
             }`}
           >
             {portalUser.is_active ? (
@@ -418,7 +418,7 @@ export default function PortalUserDetailPage({
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 dark:border-red-500/40 dark:hover:bg-red-500/15 transition"
           >
             <Trash2 className="h-4 w-4" />
             {t("common.delete")}
@@ -437,8 +437,8 @@ export default function PortalUserDetailPage({
               {t("pages.store.portalUserDetail.deleteConfirm")} <strong>{portalUser.username}</strong>? {t("pages.store.portalUserDetail.deleteWarning")}
             </p>
             {portalUser.customer_access && portalUser.customer_access.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-amber-700">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 dark:bg-amber-500/15 dark:border-amber-500/40">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
                   {t("pages.store.portalUserDetail.deleteCustomerWarning").replace("{count}", String(portalUser.customer_access.length))}
                 </p>
               </div>
@@ -668,10 +668,10 @@ export default function PortalUserDetailPage({
                       setPasswordForm({ ...passwordForm, sendCopy: e.target.checked })
                     }
                     disabled={!portalUser?.email}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary disabled:opacity-50"
+                    className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
                   />
                   <span>
-                    <span className={!portalUser?.email ? "text-muted-foreground" : "text-slate-600"}>
+                    <span className={!portalUser?.email ? "text-muted-foreground" : "text-foreground"}>
                       {t("pages.store.portalUserDetail.sendCopyOfPassword")}
                     </span>
                     {!portalUser?.email && (

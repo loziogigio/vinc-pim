@@ -212,12 +212,12 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
   // Status badge colors
   const statusColors: Record<string, { bg: string; text: string; icon: React.ElementType }> = {
-    not_required: { bg: "bg-gray-100", text: "text-gray-600", icon: CheckCircle },
-    awaiting: { bg: "bg-amber-100", text: "text-amber-700", icon: Clock },
-    partial: { bg: "bg-orange-100", text: "text-orange-700", icon: AlertTriangle },
-    paid: { bg: "bg-emerald-100", text: "text-emerald-700", icon: CheckCircle },
-    failed: { bg: "bg-red-100", text: "text-red-700", icon: AlertTriangle },
-    refunded: { bg: "bg-gray-100", text: "text-gray-600", icon: CreditCard },
+    not_required: { bg: "bg-gray-100 dark:bg-gray-500/15", text: "text-gray-600 dark:text-gray-400", icon: CheckCircle },
+    awaiting: { bg: "bg-amber-100 dark:bg-amber-500/15", text: "text-amber-700 dark:text-amber-300", icon: Clock },
+    partial: { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-300", icon: AlertTriangle },
+    paid: { bg: "bg-emerald-100 dark:bg-emerald-500/15", text: "text-emerald-700 dark:text-emerald-300", icon: CheckCircle },
+    failed: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-700 dark:text-red-300", icon: AlertTriangle },
+    refunded: { bg: "bg-gray-100 dark:bg-gray-500/15", text: "text-gray-600 dark:text-gray-400", icon: CreditCard },
   };
 
   const statusStyle = statusColors[paymentStatus] || statusColors.awaiting;
@@ -534,7 +534,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   ? "bg-emerald-500"
                   : progressPct > 0
                     ? "bg-amber-500"
-                    : "bg-gray-300"
+                    : "bg-muted-foreground/30"
               }`}
               style={{ width: `${progressPct}%` }}
             />
@@ -724,13 +724,13 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 {t(`pages.store.paymentCard.paymentMethods.${p.method}`) || p.method.replace(/_/g, " ")}
                               </span>
                               {isRefundedGateway ? (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-400">
                                   <XCircle className="h-2.5 w-2.5" />
                                   {t("pages.store.paymentCard.refunded")}
                                 </span>
                               ) : p.confirmed ? (
                                 <span
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 cursor-pointer hover:bg-emerald-200 dark:hover:bg-emerald-500/25"
                                   onClick={() => handleToggleConfirmed(p)}
                                   title={t("pages.store.paymentCard.clickToUnconfirm")}
                                 >
@@ -739,7 +739,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 </span>
                               ) : (
                                 <span
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-500/25"
                                   onClick={() => handleToggleConfirmed(p)}
                                   title={t("pages.store.paymentCard.clickToConfirm")}
                                 >
@@ -756,7 +756,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     onClick={() => startEditPayment(p)}
-                                    className="p-1 rounded hover:bg-blue-100 text-blue-500"
+                                    className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-500/15 text-blue-500 dark:text-blue-400"
                                     title={t("pages.store.paymentCard.editPaymentTitle")}
                                   >
                                     <Pencil className="h-3 w-3" />
@@ -770,7 +770,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                                       })
                                     }
                                     disabled={deletingPaymentId === p.payment_id}
-                                    className="p-1 rounded hover:bg-red-100 text-red-500 disabled:opacity-50"
+                                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-500/15 text-red-500 dark:text-red-400 disabled:opacity-50"
                                     title={t("pages.store.paymentCard.deletePaymentTitle")}
                                   >
                                     {deletingPaymentId === p.payment_id ? (
@@ -936,7 +936,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                 <>
                   {/* Warning about processing transactions */}
                   {gatewayProcessingAmount > 0 && (
-                    <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300">
                       <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                       <span>
                         {t("pages.store.paymentCard.processingGatewayWarning", { amount: formatCurrency(gatewayProcessingAmount) })}
@@ -999,7 +999,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
                   </button>
                 </>
               ) : (
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300">
                   <CheckCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                   <span>{t("pages.store.paymentCard.paymentCompletedViaGateway")}</span>
                 </div>
@@ -1010,14 +1010,14 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
 
         {/* Payment Link Display */}
         {paymentLink && (
-          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 space-y-2">
-            <p className="text-xs font-medium text-blue-800">{t("pages.store.paymentCard.paymentLinkGenLabel")}</p>
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 space-y-2 dark:bg-blue-500/10 dark:border-blue-500/30">
+            <p className="text-xs font-medium text-blue-800 dark:text-blue-300">{t("pages.store.paymentCard.paymentLinkGenLabel")}</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 readOnly
                 value={paymentLink}
-                className="flex-1 text-xs font-mono bg-white border border-blue-200 rounded px-2 py-1.5 text-blue-900 truncate"
+                className="flex-1 text-xs font-mono bg-card border border-blue-200 dark:border-blue-500/30 rounded px-2 py-1.5 text-blue-900 dark:text-blue-300 truncate"
               />
               <button
                 onClick={() => {
@@ -1033,7 +1033,7 @@ export function PaymentCard({ order, onPaymentChange }: PaymentCardProps) {
               href={paymentLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
               {t("pages.store.paymentCard.openInPaypal")} <ArrowRight className="h-3 w-3" />
             </a>

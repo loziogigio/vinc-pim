@@ -288,11 +288,11 @@ export default function ProductHistoryPage({
   function getStatusIcon(status: string) {
     switch (status) {
       case "published":
-        return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+        return <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
       case "draft":
-        return <Clock className="h-4 w-4 text-amber-600" />;
+        return <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
       case "archived":
-        return <XCircle className="h-4 w-4 text-gray-600" />;
+        return <XCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
       default:
         return null;
     }
@@ -301,13 +301,13 @@ export default function ProductHistoryPage({
   function getStatusColor(status: string) {
     switch (status) {
       case "published":
-        return "bg-emerald-100 text-emerald-700";
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
       case "draft":
-        return "bg-amber-100 text-amber-700";
+        return "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300";
       case "archived":
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300";
     }
   }
 
@@ -325,8 +325,8 @@ export default function ProductHistoryPage({
   if (isLoading && !headerProduct && items.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="h-96 bg-muted rounded animate-pulse"></div>
       </div>
     );
   }
@@ -359,8 +359,8 @@ export default function ProductHistoryPage({
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
           <Link
             href={`/b2b/pim/products/${entity_code}`}
             className="p-2 rounded border border-border hover:bg-muted"
@@ -383,14 +383,14 @@ export default function ProductHistoryPage({
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
             hasActiveFilters
-              ? "bg-blue-50 border-blue-300 text-blue-700"
+              ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-500/15 dark:border-blue-500/40 dark:text-blue-300"
               : "border-border hover:bg-muted"
           }`}
         >
           <Filter className="h-4 w-4" />
           {t("common.filters")}
           {activeFilterCount > 0 && (
-            <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+            <span className="px-2 py-0.5 bg-blue-600 dark:bg-blue-500 text-white text-xs rounded-full">
               {activeFilterCount}
             </span>
           )}
@@ -478,7 +478,7 @@ export default function ProductHistoryPage({
                   }}
                   className={`px-3 py-1 rounded text-sm font-medium transition ${
                     dateFilter === preset.value
-                      ? "bg-blue-100 text-blue-700 border border-blue-300"
+                      ? "bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/40"
                       : "bg-background border border-border hover:bg-muted"
                   }`}
                 >
@@ -528,7 +528,7 @@ export default function ProductHistoryPage({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
               >
                 <X className="h-4 w-4" />
                 {t("pages.pim.history.clearAllFilters")}
@@ -540,9 +540,9 @@ export default function ProductHistoryPage({
 
       {/* Current Product Info */}
       {currentProduct && (
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+        <div className="rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30 p-4">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded overflow-hidden bg-white flex-shrink-0">
+            <div className="w-16 h-16 rounded overflow-hidden bg-card flex-shrink-0">
               {currentProduct.images?.[0]?.url && (
                 <Image
                   src={currentProduct.images[0].url}
@@ -574,28 +574,28 @@ export default function ProductHistoryPage({
 
       {/* Comparison Selection Bar */}
       {selectedVersions.length > 0 && (
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-          <div className="flex items-center justify-between">
+        <div className="rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-600" />
+              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <div>
-                <p className="text-sm font-medium text-blue-900">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                   {selectedVersions.length === 1
                     ? "1 version selected"
                     : `${selectedVersions.length} versions selected`}
                 </p>
-                <p className="text-xs text-blue-700">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
                   {selectedVersions.length === 1
                     ? "Select one more version to compare"
                     : "Click Compare to see differences"}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedVersions([])}
-                className="px-3 py-1 text-sm text-blue-700 hover:text-blue-900 font-medium"
+                className="px-3 py-1 text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 font-medium"
               >
                 Clear
               </button>
@@ -621,7 +621,7 @@ export default function ProductHistoryPage({
               <GitBranch className="h-5 w-5" />
               {t("pages.pim.history.versionTimeline")}
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Select 2 versions to compare • Click rollback to restore old version
             </p>
           </div>
@@ -630,7 +630,7 @@ export default function ProductHistoryPage({
         <div className="divide-y divide-border relative">
           {isLoading && (
             <div className="absolute inset-0 bg-background/60 z-10 flex items-center justify-center pointer-events-none">
-              <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="h-6 w-6 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
@@ -658,8 +658,8 @@ export default function ProductHistoryPage({
               <div
                 key={version._id}
                 className={`p-4 hover:bg-muted/30 transition ${
-                  version.isCurrent ? "bg-blue-50/50" : ""
-                } ${selectedVersions.includes(version.version) ? "bg-blue-100/50 border-l-4 border-blue-500" : ""}`}
+                  version.isCurrent ? "bg-blue-50/50 dark:bg-blue-500/5" : ""
+                } ${selectedVersions.includes(version.version) ? "bg-blue-100/50 border-l-4 border-blue-500 dark:bg-blue-500/10 dark:border-blue-500/60" : ""}`}
               >
                 <div className="flex items-start gap-4">
                   {/* Selection Checkbox */}
@@ -668,7 +668,7 @@ export default function ProductHistoryPage({
                       type="checkbox"
                       checked={selectedVersions.includes(version.version)}
                       onChange={() => handleVersionSelect(version.version)}
-                      className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                      className="w-4 h-4 text-primary rounded cursor-pointer"
                     />
                   </div>
 
@@ -677,7 +677,7 @@ export default function ProductHistoryPage({
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
                         version.isCurrent
-                          ? "bg-blue-600 text-white"
+                          ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -700,21 +700,21 @@ export default function ProductHistoryPage({
 
                   {/* Version Details */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                       <div>
                         <h3 className="font-semibold text-foreground">
                           {getLocalizedString(version.name)}
                         </h3>
                         <p className="text-xs text-muted-foreground">{version.sku}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {version.isCurrent && (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
                             Current
                           </span>
                         )}
                         {version.isCurrentPublished && (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                             Published
                           </span>
                         )}
@@ -758,7 +758,7 @@ export default function ProductHistoryPage({
                     )}
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/b2b/pim/products/${entity_code}?version=${version.version}`}
                         className="inline-flex items-center gap-1 px-3 py-1 rounded border border-border hover:bg-muted text-sm"
@@ -771,7 +771,7 @@ export default function ProductHistoryPage({
                           type="button"
                           onClick={() => handleRollback(version.version)}
                           disabled={rollingBack}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-700 dark:border-orange-500/40 dark:bg-orange-500/10 dark:hover:bg-orange-500/20 dark:text-orange-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <RotateCcw className="h-3 w-3" />
                           {t("pages.pim.history.rollback")}

@@ -41,13 +41,13 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
 
   // Status badge colors
   const statusColors: Record<string, { bg: string; text: string }> = {
-    draft: { bg: "bg-gray-100", text: "text-gray-700" },
-    sent: { bg: "bg-blue-100", text: "text-blue-700" },
-    counter_offer: { bg: "bg-amber-100", text: "text-amber-700" },
-    revised: { bg: "bg-indigo-100", text: "text-indigo-700" },
-    accepted: { bg: "bg-emerald-100", text: "text-emerald-700" },
-    rejected: { bg: "bg-red-100", text: "text-red-700" },
-    expired: { bg: "bg-gray-100", text: "text-gray-500" },
+    draft: { bg: "bg-gray-100 dark:bg-gray-500/15", text: "text-gray-700 dark:text-gray-400" },
+    sent: { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-300" },
+    counter_offer: { bg: "bg-amber-100 dark:bg-amber-500/15", text: "text-amber-700 dark:text-amber-300" },
+    revised: { bg: "bg-indigo-100 dark:bg-indigo-500/15", text: "text-indigo-700 dark:text-indigo-300" },
+    accepted: { bg: "bg-emerald-100 dark:bg-emerald-500/15", text: "text-emerald-700 dark:text-emerald-300" },
+    rejected: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-700 dark:text-red-300" },
+    expired: { bg: "bg-gray-100 dark:bg-gray-500/15", text: "text-gray-500 dark:text-gray-400" },
   };
 
   const currentStatus = isExpired ? "expired" : quotation.quotation_status;
@@ -292,7 +292,7 @@ export function QuotationCard({ order, onQuotationChange }: QuotationCardProps) 
                   "bg-primary text-white hover:bg-primary/90 border-primary",
                 secondary:
                   "bg-background text-foreground hover:bg-muted border-border",
-                danger: "bg-red-50 text-red-600 hover:bg-red-100 border-red-200",
+                danger: "bg-red-50 text-red-600 hover:bg-red-100 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 dark:border-red-500/30",
               };
 
               return (
