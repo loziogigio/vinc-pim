@@ -37,6 +37,7 @@ import type {
   AdjustmentReason,
 } from "@/lib/constants/order";
 import { getModelRegistry } from "@/lib/db/model-registry";
+import { confirmBooking, cancelBooking } from "@/lib/services/booking.service";
 import { confirmCouponUsage } from "@/lib/services/coupon.service";
 import { saveOrder } from "@/lib/services/order.service";
 import { getNextOrderNumber } from "@/lib/db/models/counter";
@@ -337,6 +338,19 @@ export async function confirmOrder(
   await order.save();
 
   const dbName = tenantDb.name;
+
+  // Confirm held bookings for bookable lines
+  const tId = tenantIdFromDbName(dbName);
+  for (const item of order.items) {
+    if (item.booking_id) {
+      try {
+        await confirmBooking(dbName, tId, item.booking_id);
+      } catch (err) {
+        console.error(`[confirmOrder] failed to confirm booking ${item.booking_id}:`, err);
+      }
+    }
+  }
+
   emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
     from: previousStatus,
     to: "confirmed",
@@ -487,6 +501,19 @@ export async function cancelOrder(
   order.is_current = false;
 
   await order.save();
+
+  // Release held bookings for bookable lines
+  const cDbName = tenantDb.name;
+  const cTenantId = tenantIdFromDbName(cDbName);
+  for (const item of order.items) {
+    if (item.booking_id) {
+      try {
+        await cancelBooking(cDbName, cTenantId, item.booking_id, userId, reason || "order cancelled");
+      } catch (err) {
+        console.error(`[cancelOrder] failed to cancel booking ${item.booking_id}:`, err);
+      }
+    }
+  }
 
   const dbName = tenantDb.name;
   emitStatusChangeAfterHook(dbName, tenantIdFromDbName(dbName), order, {
@@ -787,6 +814,20 @@ export async function rejectQuotation(
   }
 
   await order.save();
+
+  // Release held bookings for bookable lines
+  const rDbName = tenantDb.name;
+  const rTenantId = tenantIdFromDbName(rDbName);
+  for (const item of order.items) {
+    if (item.booking_id) {
+      try {
+        await cancelBooking(rDbName, rTenantId, item.booking_id, userId, "quotation rejected");
+      } catch (err) {
+        console.error(`[rejectQuotation] failed to cancel booking ${item.booking_id}:`, err);
+      }
+    }
+  }
+
   return { success: true, order };
 }
 
@@ -1384,19 +1425,36 @@ export async function markExpiredQuotations(
 
   const now = new Date();
 
-  const result = await Order.updateMany(
-    {
-      status: "quotation",
-      "quotation.quotation_status": { $nin: ["accepted", "rejected", "expired"] },
-      "quotation.valid_until": { $lt: now },
+  const expiredFilter = {
+    status: "quotation",
+    "quotation.quotation_status": { $nin: ["accepted", "rejected", "expired"] },
+    "quotation.valid_until": { $lt: now },
+  };
+
+  // Fetch orders BEFORE the bulk update to get their items (for booking release)
+  const toExpire = await Order.find(expiredFilter).select("order_id items");
+
+  const result = await Order.updateMany(expiredFilter, {
+    $set: {
+      "quotation.quotation_status": "expired",
+      "quotation.expired_at": now,
     },
-    {
-      $set: {
-        "quotation.quotation_status": "expired",
-        "quotation.expired_at": now,
-      },
+  });
+
+  // Release held bookings for expired orders
+  const mDbName = tenantDb.name;
+  const mTenantId = tenantIdFromDbName(mDbName);
+  for (const order of toExpire) {
+    for (const item of order.items) {
+      if (item.booking_id) {
+        try {
+          await cancelBooking(mDbName, mTenantId, item.booking_id, "system", "quotation expired");
+        } catch (err) {
+          console.error(`[markExpiredQuotations] failed to cancel booking ${item.booking_id}:`, err);
+        }
+      }
     }
-  );
+  }
 
   return { count: result.modifiedCount };
 }
