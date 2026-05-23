@@ -95,28 +95,13 @@ function splitName(full: string): { first: string; last: string } {
   return { first: full.slice(0, idx), last: full.slice(idx + 1) };
 }
 
-/**
- * Recursively parse all string-valued monetary fields in an OC price object
- * from decimal strings to numbers.
- */
-function parseOCPriceStrings(obj: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (typeof v === "string" && !isNaN(Number(v)) && v.trim() !== "") {
-      out[k] = Number.parseFloat(v);
-    } else if (Array.isArray(v)) {
-      out[k] = v.map((item) =>
-        typeof item === "object" && item !== null
-          ? parseOCPriceStrings(item as Record<string, unknown>)
-          : item
-      );
-    } else if (typeof v === "object" && v !== null) {
-      out[k] = parseOCPriceStrings(v as Record<string, unknown>);
-    } else {
-      out[k] = v;
-    }
+/** Coerce an OC monetary value (number or decimal string) to a number. */
+function toNum(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) {
+    return Number.parseFloat(v);
   }
-  return out;
+  return 0;
 }
 
 // ============================================
@@ -173,7 +158,10 @@ export async function createResourceQuotation(
       };
 
       if (line.mode === "external") {
-        // Attempt OC availability snapshot
+        // Attempt OC availability snapshot. Persist a CUSTOMER-SAFE shape:
+        // a structured price (NO commission) + an availability summary, with
+        // operator-only fields (commission, fare price_code) under `operator`
+        // so the customer projection strips them. Never persist the raw OC payload.
         try {
           const oc = getOCApiForTenant(tenantId);
           const avail = await oc.getCruiseAvailability({
@@ -183,20 +171,43 @@ export async function createResourceQuotation(
             children: line.cruise.children,
           });
 
-          const parsedPrice = parseOCPriceStrings(
-            avail.price as Record<string, unknown>
-          );
+          const rawPrice = (avail.price ?? {}) as Record<string, unknown>;
+          const perPax = Array.isArray(rawPrice.per_pax)
+            ? (rawPrice.per_pax as Record<string, unknown>[]).map((p) => ({
+                pax_no: p.pax_no,
+                type: p.type,
+                amount: toNum(p.amount),
+              }))
+            : [];
+          const totalGross = toNum(rawPrice.total_gross);
 
           return {
             ...baseItem,
             resource_type: line.resource_type,
             source: line.source,
+            unit_price: totalGross,
+            line_gross: totalGross,
+            line_net: totalGross,
+            line_total: totalGross,
             quote_snapshot: {
-              availability: {
-                source_status: "ok",
-                raw: avail,
+              price: {
+                currency: rawPrice.currency ?? "EUR",
+                per_pax: perPax,
+                total_gross: totalGross,
+                taxes: toNum(rawPrice.taxes),
               },
-              price: parsedPrice,
+              availability: {
+                available: avail.available ?? null,
+                cabins_available: avail.cabins_available ?? null,
+                guarantees_available: avail.guarantees_available ?? null,
+                checked_at: new Date().toISOString(),
+                source_status: "ok",
+              },
+              // operator-only — stripped from the customer-safe projection
+              operator: {
+                commission: toNum(rawPrice.commission),
+                price_code: avail.price_code ?? null,
+              },
             },
           };
         } catch {
@@ -208,6 +219,7 @@ export async function createResourceQuotation(
             quote_snapshot: {
               availability: {
                 source_status: "oc_unavailable",
+                checked_at: new Date().toISOString(),
               },
             },
           };
@@ -431,11 +443,20 @@ function sanitizeQuoteSnapshot(snap: unknown): unknown {
   if (typeof snap !== "object" || snap === null) return snap;
 
   const s = snap as Record<string, unknown>;
-  const out: Record<string, unknown> = { ...s };
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(s)) {
+    // Drop operator-only fields (commission, fare price_code) and any raw
+    // upstream payload — never expose these to customers.
+    if (k === "operator" || k === "raw") continue;
+    out[k] = v;
+  }
 
-  if (typeof s.price === "object" && s.price !== null) {
-    const price = { ...(s.price as Record<string, unknown>) };
+  // Defensively strip commercial fields from the price block.
+  if (typeof out.price === "object" && out.price !== null) {
+    const price = { ...(out.price as Record<string, unknown>) };
     delete price.commission;
+    delete price.net;
+    delete price.cost;
     out.price = price;
   }
 

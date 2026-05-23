@@ -220,6 +220,18 @@ describe("getResourceQuotationByToken", () => {
     expect("raw_data" in lines[0]).toBe(false);
     expect("erp_data" in lines[0]).toBe(false);
     expect("list_price" in lines[0]).toBe(false);
+
+    // Deep guard: NO operator-only field anywhere in the customer-safe payload
+    // (the OC mock includes price.commission and price_code).
+    const fullJson = JSON.stringify(data);
+    expect(fullJson).not.toContain("commission");
+    expect(fullJson).not.toContain("price_code");
+
+    // Customer-facing availability + price ARE present on the line.
+    const snap0 = lines[0].quote_snapshot as Record<string, unknown>;
+    const avail0 = snap0.availability as Record<string, unknown>;
+    expect(avail0.available).toBe(true);
+    expect((snap0.price as Record<string, unknown>).total_gross).toBeCloseTo(979, 0);
   });
 
   it("returns 404 for unknown token", async () => {
