@@ -220,18 +220,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Date range filter
+    // Date range filter — by cart submission date, falling back to creation date
+    // for orders that were never submitted (e.g. imported/synced orders).
     if (dateFrom || dateTo) {
-      query.created_at = {};
+      const range: Record<string, Date> = {};
       if (dateFrom) {
-        (query.created_at as Record<string, Date>).$gte = new Date(dateFrom);
+        range.$gte = new Date(dateFrom);
       }
       if (dateTo) {
         // Set to end of day
         const endDate = new Date(dateTo);
         endDate.setHours(23, 59, 59, 999);
-        (query.created_at as Record<string, Date>).$lte = endDate;
+        range.$lte = endDate;
       }
+      // submitted_at: null matches both null and missing, so the fallback only
+      // applies to orders that have no submission date at all.
+      const dateOr = [{ submitted_at: range }, { submitted_at: null, created_at: range }];
+      query.$and = [...((query.$and as unknown[]) ?? []), { $or: dateOr }];
     }
 
     // Free-text search across multiple fields (server-side so it works across all pages)
@@ -272,9 +277,12 @@ export async function GET(req: NextRequest) {
         const spanMs = toMs - fromMs;
         const prevFrom = new Date(fromMs - spanMs - 24 * 60 * 60 * 1000);
         const prevTo = new Date(fromMs - 1);
-        const prevQuery: Record<string, unknown> = { ...baseQuery, created_at: { $gte: prevFrom, $lte: prevTo } };
+        // Drop the current-period date filter from baseQuery; match the previous
+        // window on the effective date (submitted_at, falling back to created_at).
+        const { $and: _omitDateAnd, ...prevBaseQuery } = baseQuery as Record<string, unknown>;
         prevAggPromise = OrderModel.aggregate([
-          { $match: prevQuery },
+          { $addFields: { _eff_date: { $ifNull: ["$submitted_at", "$created_at"] } } },
+          { $match: { ...prevBaseQuery, _eff_date: { $gte: prevFrom, $lte: prevTo } } },
           {
             $group: {
               _id: null,
@@ -299,9 +307,10 @@ export async function GET(req: NextRequest) {
     const dailyPromise: Promise<Array<{ _id: string; value: number; count: number }>> = daily
       ? OrderModel.aggregate([
           { $match: { ...baseQuery, status: { $in: REVENUE_STATUSES } } },
+          { $addFields: { _eff_date: { $ifNull: ["$submitted_at", "$created_at"] } } },
           {
             $group: {
-              _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$_eff_date" } },
               value: { $sum: "$order_total" },
               count: { $sum: 1 },
             },
@@ -321,6 +330,9 @@ export async function GET(req: NextRequest) {
       // Aggregate stats with $facet: status breakdown + time periods
       OrderModel.aggregate([
         { $match: baseQuery },
+        // Effective date for time-period metrics: submission date, falling back
+        // to creation date for orders that were never submitted.
+        { $addFields: { _eff_date: { $ifNull: ["$submitted_at", "$created_at"] } } },
         {
           $facet: {
             byStatus: [
@@ -341,7 +353,7 @@ export async function GET(req: NextRequest) {
                       $cond: [
                         {
                           $and: [
-                            { $gte: ["$created_at", todayStart] },
+                            { $gte: ["$_eff_date", todayStart] },
                             { $in: ["$status", CONFIRMED_AND_BEYOND] },
                           ],
                         },
@@ -355,7 +367,7 @@ export async function GET(req: NextRequest) {
                       $cond: [
                         {
                           $and: [
-                            { $gte: ["$created_at", todayStart] },
+                            { $gte: ["$_eff_date", todayStart] },
                             { $in: ["$status", CONFIRMED_AND_BEYOND] },
                           ],
                         },
@@ -369,7 +381,7 @@ export async function GET(req: NextRequest) {
                       $cond: [
                         {
                           $and: [
-                            { $gte: ["$created_at", weekStart] },
+                            { $gte: ["$_eff_date", weekStart] },
                             { $in: ["$status", CONFIRMED_AND_BEYOND] },
                           ],
                         },
@@ -383,7 +395,7 @@ export async function GET(req: NextRequest) {
                       $cond: [
                         {
                           $and: [
-                            { $gte: ["$created_at", weekStart] },
+                            { $gte: ["$_eff_date", weekStart] },
                             { $in: ["$status", CONFIRMED_AND_BEYOND] },
                           ],
                         },
@@ -397,7 +409,7 @@ export async function GET(req: NextRequest) {
                       $cond: [
                         {
                           $and: [
-                            { $gte: ["$created_at", monthStart] },
+                            { $gte: ["$_eff_date", monthStart] },
                             { $in: ["$status", CONFIRMED_AND_BEYOND] },
                           ],
                         },
@@ -411,7 +423,7 @@ export async function GET(req: NextRequest) {
                       $cond: [
                         {
                           $and: [
-                            { $gte: ["$created_at", monthStart] },
+                            { $gte: ["$_eff_date", monthStart] },
                             { $in: ["$status", CONFIRMED_AND_BEYOND] },
                           ],
                         },

@@ -821,6 +821,9 @@ export default function OrdersListPage() {
                       {t("pages.store.ordersList.created")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                      {t("pages.store.ordersList.submitted")}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                       {t("pages.store.ordersList.updated")}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
@@ -943,6 +946,25 @@ export default function OrdersListPage() {
                               })}
                             </div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {order.submitted_at ? (
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(order.submitted_at).toLocaleDateString("it-IT", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                              <div className="text-xs text-muted-foreground/70">
+                                {new Date(order.submitted_at).toLocaleTimeString("it-IT", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-muted-foreground/50">-</div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-xs text-muted-foreground" title={order.updated_at ? new Date(order.updated_at).toLocaleString("it-IT") : ""}>
