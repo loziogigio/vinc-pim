@@ -191,6 +191,12 @@ export async function createResourceQuotation(
             line_net: totalGross,
             line_total: totalGross,
             quote_snapshot: {
+              oc_cruise_id: line.cruise.oc_cruise_id,
+              cabin_category: line.cruise.category,
+              occupancy: {
+                adults: line.cruise.adults,
+                children: line.cruise.children,
+              },
               price: {
                 currency: rawPrice.currency ?? "EUR",
                 per_pax: perPax,
@@ -218,6 +224,12 @@ export async function createResourceQuotation(
             resource_type: line.resource_type,
             source: line.source,
             quote_snapshot: {
+              oc_cruise_id: line.cruise.oc_cruise_id,
+              cabin_category: line.cruise.category,
+              occupancy: {
+                adults: line.cruise.adults,
+                children: line.cruise.children,
+              },
               availability: {
                 source_status: "oc_unavailable",
                 checked_at: new Date().toISOString(),
