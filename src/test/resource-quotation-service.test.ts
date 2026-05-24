@@ -121,6 +121,8 @@ describe("createResourceQuotation — external/cruise mode", () => {
     expect(order).not.toBeNull();
     expect(order!.public_token).toBe(result.data!.public_token);
     expect(order!.status).toBe("quotation");
+    // order_total reflects the OC line price (recalculated in the create path)
+    expect(order!.order_total).toBeCloseTo(979, 0);
 
     // Line has OC snapshot with numeric price
     const line = (order!.items as unknown[])[0] as Record<string, unknown>;
@@ -312,6 +314,8 @@ describe("createResourceQuotation — bookable mode", () => {
     expect(line.booking_id).toBeTruthy();
     expect(line.departure_id).toBe(departure.departure_id);
     expect(line.resource_id).toBe(resourceId);
+    // order_total reflects the held booking's price (250 × 1)
+    expect(order!.order_total).toBeCloseTo(250, 0);
 
     // Departure capacity was decremented
     const dep = await DepartureModel.findOne({ departure_id: departure.departure_id }).lean();

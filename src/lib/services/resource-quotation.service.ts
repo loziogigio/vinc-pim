@@ -17,6 +17,7 @@ import mongoose from "mongoose";
 import { nanoid } from "nanoid";
 import { getModelRegistry } from "@/lib/db/model-registry";
 import { convertToQuotation } from "@/lib/services/order-lifecycle.service";
+import { recalculateOrderTotals } from "@/lib/db/models/order";
 import { holdBooking, cancelBooking } from "@/lib/services/booking.service";
 import { getOCApiForTenant } from "@/lib/oc-api/client";
 
@@ -253,11 +254,16 @@ export async function createResourceQuotation(
 
       heldBookingIds.push(holdResult.data.booking_id);
 
+      const bookingTotal = holdResult.data.total_price;
       return {
         ...baseItem,
         departure_id: line.departure_id,
         resource_id: line.resource_id,
         booking_id: holdResult.data.booking_id,
+        unit_price: holdResult.data.unit_price,
+        line_gross: bookingTotal,
+        line_net: bookingTotal,
+        line_total: bookingTotal,
         quote_snapshot: {
           availability: {
             source_status: "ok",
@@ -269,7 +275,7 @@ export async function createResourceQuotation(
 
   // Persist the draft order, then convert to quotation
   try {
-    await Order.create({
+    const orderDoc = await Order.create({
       order_id: orderId,
       year,
       tenant_id: tenantId,
@@ -296,6 +302,10 @@ export async function createResourceQuotation(
       notes: input.notes,
       items,
     });
+
+    // Reflect line prices in the order totals before converting to a quotation.
+    recalculateOrderTotals(orderDoc);
+    await orderDoc.save();
 
     const qResult = await convertToQuotation(tenantDb, orderId, "system", {
       daysValid: input.days_valid ?? 30,
