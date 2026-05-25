@@ -27,7 +27,7 @@ interface CompanySectionProps {
 }
 
 const inputClass =
-  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
   const { t } = useTranslation();
@@ -35,7 +35,7 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
     <SectionCard title={t("pages.homeSettings.company.title")} description={t("pages.homeSettings.company.description")}>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <label htmlFor="company-legal-name" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-legal-name" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.legalName")}
           </label>
           <input
@@ -46,11 +46,11 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
             placeholder="My Company Srl"
             className={inputClass}
           />
-          <p className="text-xs text-slate-500">{t("pages.homeSettings.company.legalNameHelper")}</p>
+          <p className="text-xs text-muted-foreground">{t("pages.homeSettings.company.legalNameHelper")}</p>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-vat" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-vat" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.vatNumber")}
           </label>
           <input
@@ -64,7 +64,7 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-address1" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-address1" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.addressLine1")}
           </label>
           <input
@@ -78,7 +78,7 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-address2" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-address2" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.addressLine2")}
           </label>
           <input
@@ -89,11 +89,11 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
             placeholder="00100 Roma (RM)"
             className={inputClass}
           />
-          <p className="text-xs text-slate-500">{t("pages.homeSettings.company.addressLine2Helper")}</p>
+          <p className="text-xs text-muted-foreground">{t("pages.homeSettings.company.addressLine2Helper")}</p>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-phone" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-phone" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.phone")}
           </label>
           <input
@@ -107,7 +107,7 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-email" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-email" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.generalEmail")}
           </label>
           <input
@@ -121,7 +121,7 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-support-email" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-support-email" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.supportEmail")}
           </label>
           <input
@@ -132,11 +132,11 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
             placeholder="support@company.com"
             className={inputClass}
           />
-          <p className="text-xs text-slate-500">{t("pages.homeSettings.company.supportEmailHelper")}</p>
+          <p className="text-xs text-muted-foreground">{t("pages.homeSettings.company.supportEmailHelper")}</p>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="company-hours" className="text-sm font-medium text-slate-600">
+          <label htmlFor="company-hours" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.company.businessHours")}
           </label>
           <input
@@ -150,24 +150,24 @@ export function CompanySection({ companyInfo, onChange }: CompanySectionProps) {
         </div>
       </div>
 
-      <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.company.footerPreview")}</h4>
-        <p className="text-xs text-slate-500 mb-3">{t("pages.homeSettings.company.footerPreviewHelper")}</p>
-        <div className="bg-white rounded border border-slate-200 p-4 text-center">
-          <p className="font-semibold text-slate-900 text-sm">{companyInfo.legal_name || "Company Name"}</p>
+      <div className="mt-6 rounded-lg border border-border bg-muted/50 p-4">
+        <h4 className="text-sm font-semibold text-foreground">{t("pages.homeSettings.company.footerPreview")}</h4>
+        <p className="text-xs text-muted-foreground mb-3">{t("pages.homeSettings.company.footerPreviewHelper")}</p>
+        <div className="bg-card rounded border border-border p-4 text-center">
+          <p className="font-semibold text-foreground text-sm">{companyInfo.legal_name || "Company Name"}</p>
           {(companyInfo.address_line1 || companyInfo.address_line2) && (
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-foreground/80 mt-1">
               {[companyInfo.address_line1, companyInfo.address_line2].filter(Boolean).join(" - ")}
             </p>
           )}
           {(companyInfo.phone || companyInfo.email) && (
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-foreground/80 mt-1">
               {[companyInfo.phone ? `📞 ${companyInfo.phone}` : "", companyInfo.email ? `✉️ ${companyInfo.email}` : ""]
                 .filter(Boolean)
                 .join(" | ")}
             </p>
           )}
-          {companyInfo.business_hours && <p className="text-xs text-slate-600 mt-1">🕐 {companyInfo.business_hours}</p>}
+          {companyInfo.business_hours && <p className="text-xs text-foreground/80 mt-1">🕐 {companyInfo.business_hours}</p>}
         </div>
       </div>
     </SectionCard>

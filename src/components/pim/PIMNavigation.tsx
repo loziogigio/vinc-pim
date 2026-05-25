@@ -19,10 +19,13 @@ import {
   Languages,
   BookA,
   RefreshCw,
-  BookOpen
+  BookOpen,
+  PanelLeftClose
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { useSidebarCollapsed } from "@/components/navigation/use-sidebar-collapsed";
+import { SidebarReopenButton } from "@/components/navigation/SidebarReopenButton";
 
 const navItems = [
   { labelKey: "nav.pim.overview", href: "/b2b/pim", icon: Box, descKey: "nav.pim.overviewDesc" },
@@ -49,13 +52,28 @@ export function PIMNavigation() {
   const { t } = useTranslation();
   // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/pim/products" -> "/dfl-eventi-it")
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+  const { collapsed, setCollapsed } = useSidebarCollapsed();
+
+  // Collapsed: fully hide the nav and show a floating button to reopen it.
+  if (collapsed) {
+    return <SidebarReopenButton onClick={() => setCollapsed(false)} />;
+  }
 
   return (
     <nav className="flex flex-col gap-1 rounded-[0.428rem] border border-border bg-card p-4 shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] min-w-[220px]">
-      <div className="mb-2 pb-3 border-b border-border">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+      <div className="mb-2 flex items-center justify-between gap-2 border-b border-border pb-3">
+        <h2 className="truncate text-sm font-semibold text-foreground uppercase tracking-wide">
           {t("nav.pim.title")}
         </h2>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          aria-label={t("common.closeSidebar")}
+          title={t("common.closeSidebar")}
+          className="flex-shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
       </div>
       {navItems.map((item) => {
         const Icon = item.icon;

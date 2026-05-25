@@ -184,7 +184,7 @@ export function ApiKeysSection() {
                 <div>
                   <label className="text-xs font-medium text-amber-700">{t("pages.homeSettings.apiKeys.apiKey")}</label>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-amber-200">
+                    <code className="flex-1 rounded bg-background px-3 py-2 text-sm font-mono border border-amber-200">
                       {createdKey.key_id}
                     </code>
                     <Button
@@ -208,7 +208,7 @@ export function ApiKeysSection() {
                     {t("pages.homeSettings.apiKeys.apiSecret")}
                   </label>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-amber-200">
+                    <code className="flex-1 rounded bg-background px-3 py-2 text-sm font-mono border border-amber-200">
                       {createdKey.secret}
                     </code>
                     <Button
@@ -244,7 +244,7 @@ export function ApiKeysSection() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.apiKeys.yourKeys")}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("pages.homeSettings.apiKeys.yourKeys")}</h3>
           <Button type="button" size="sm" onClick={() => setShowCreateModal(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             {t("pages.homeSettings.apiKeys.createNewKey")}
@@ -253,13 +253,13 @@ export function ApiKeysSection() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/60" />
           </div>
         ) : keys.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-8 text-center">
-            <Key className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm text-slate-600">{t("pages.homeSettings.apiKeys.noKeysYet")}</p>
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.apiKeys.noKeysYetDesc")}</p>
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 py-8 text-center">
+            <Key className="mx-auto h-8 w-8 text-muted-foreground/60" />
+            <p className="mt-2 text-sm text-foreground/80">{t("pages.homeSettings.apiKeys.noKeysYet")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.apiKeys.noKeysYetDesc")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -268,24 +268,24 @@ export function ApiKeysSection() {
                 key={key._id}
                 className={cn(
                   "rounded-lg border p-4",
-                  key.is_active ? "border-slate-200 bg-white" : "border-slate-200 bg-slate-50 opacity-60"
+                  key.is_active ? "border-border bg-card" : "border-border bg-muted/50 opacity-60"
                 )}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-medium text-slate-900">{key.name}</h4>
+                      <h4 className="font-medium text-foreground">{key.name}</h4>
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 text-xs font-medium",
-                          key.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
+                          key.is_active ? "bg-emerald-100 text-emerald-700" : "bg-muted text-foreground/80"
                         )}
                       >
                         {key.is_active ? t("common.active") : t("common.inactive")}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs font-mono text-slate-500 truncate">{key.key_id}</p>
-                    <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
+                    <p className="mt-1 text-xs font-mono text-muted-foreground truncate">{key.key_id}</p>
+                    <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                       <span>
                         {t("pages.homeSettings.apiKeys.created")}: {formatDate(key.created_at)}
                       </span>
@@ -295,7 +295,7 @@ export function ApiKeysSection() {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {(key.permissions ?? []).map((perm) => (
-                        <span key={perm} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                        <span key={perm} className="rounded bg-muted px-2 py-0.5 text-xs text-foreground/80">
                           {perm === "*" ? t("pages.homeSettings.apiKeys.fullAccess") : perm}
                         </span>
                       ))}
@@ -322,7 +322,7 @@ export function ApiKeysSection() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setKeyToDelete(key)}
-                      className="text-slate-400 hover:text-rose-600"
+                      className="text-muted-foreground/60 hover:text-rose-600"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -336,13 +336,13 @@ export function ApiKeysSection() {
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-900">{t("pages.homeSettings.apiKeys.createNewKey")}</h3>
-            <p className="mt-1 text-sm text-slate-500">{t("pages.homeSettings.apiKeys.createNewKeyDesc")}</p>
+          <div className="w-full max-w-md rounded-xl bg-popover p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-foreground">{t("pages.homeSettings.apiKeys.createNewKey")}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t("pages.homeSettings.apiKeys.createNewKeyDesc")}</p>
 
             <div className="mt-4 space-y-4">
               <div className="space-y-2">
-                <label htmlFor="key-name" className="text-sm font-medium text-slate-600">
+                <label htmlFor="key-name" className="text-sm font-medium text-foreground/80">
                   {t("pages.homeSettings.apiKeys.keyName")}
                 </label>
                 <input
@@ -351,12 +351,12 @@ export function ApiKeysSection() {
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
                   placeholder="e.g., ERP Integration"
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.apiKeys.permissions")}</label>
+                <label className="text-sm font-medium text-foreground/80">{t("pages.homeSettings.apiKeys.permissions")}</label>
                 <div className="space-y-2">
                   {permissions.map((perm) => (
                     <label key={perm.value} className="flex items-start gap-3 cursor-pointer">
@@ -372,11 +372,11 @@ export function ApiKeysSection() {
                             setNewKeyPermissions((prev) => prev.filter((p) => p !== perm.value));
                           }
                         }}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                        className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
                       />
                       <div>
-                        <p className="text-sm font-medium text-slate-700">{perm.label}</p>
-                        <p className="text-xs text-slate-500">{perm.description}</p>
+                        <p className="text-sm font-medium text-foreground/90">{perm.label}</p>
+                        <p className="text-xs text-muted-foreground">{perm.description}</p>
                       </div>
                     </label>
                   ))}
@@ -413,14 +413,14 @@ export function ApiKeysSection() {
 
       {keyToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-popover p-6 shadow-xl">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
                 <AlertTriangle className="h-5 w-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">{t("pages.homeSettings.apiKeys.deleteKey")}</h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <h3 className="text-lg font-semibold text-foreground">{t("pages.homeSettings.apiKeys.deleteKey")}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {t("pages.homeSettings.apiKeys.deleteKeyConfirm", { name: keyToDelete.name })}
                 </p>
               </div>

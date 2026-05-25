@@ -48,7 +48,7 @@ interface EmailSectionProps {
 }
 
 const inputClass =
-  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  "w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 export function EmailSection({
   emailTransport,
@@ -140,29 +140,29 @@ export function EmailSection({
   return (
     <SectionCard title={t("pages.homeSettings.email.title")} description={t("pages.homeSettings.email.description")}>
       <div className="mb-6">
-        <label className="text-sm font-medium text-slate-600 mb-3 block">{t("pages.homeSettings.email.transport")}</label>
+        <label className="text-sm font-medium text-foreground/80 mb-3 block">{t("pages.homeSettings.email.transport")}</label>
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => handleTransportSwitch("smtp")}
             className={cn(
               "flex-1 rounded-xl border-2 px-4 py-3 text-left transition-all",
-              emailTransport === "smtp" ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
+              emailTransport === "smtp" ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"
             )}
           >
-            <div className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.email.smtp")}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{t("pages.homeSettings.email.smtpDesc")}</div>
+            <div className="text-sm font-semibold text-foreground">{t("pages.homeSettings.email.smtp")}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{t("pages.homeSettings.email.smtpDesc")}</div>
           </button>
           <button
             type="button"
             onClick={() => handleTransportSwitch("graph")}
             className={cn(
               "flex-1 rounded-xl border-2 px-4 py-3 text-left transition-all",
-              emailTransport === "graph" ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
+              emailTransport === "graph" ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"
             )}
           >
-            <div className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.email.graph")}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{t("pages.homeSettings.email.graphDesc")}</div>
+            <div className="text-sm font-semibold text-foreground">{t("pages.homeSettings.email.graph")}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{t("pages.homeSettings.email.graphDesc")}</div>
           </button>
         </div>
       </div>
@@ -170,7 +170,7 @@ export function EmailSection({
       {emailTransport === "smtp" && (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
-            <label htmlFor="smtp-host" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-host" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.smtpHost")}
             </label>
             <input
@@ -184,7 +184,7 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="smtp-port" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-port" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.port")}
             </label>
             <input
@@ -195,11 +195,11 @@ export function EmailSection({
               placeholder="587"
               className={inputClass}
             />
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.email.portHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.email.portHelper")}</p>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="smtp-user" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-user" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.username")}
             </label>
             <input
@@ -213,7 +213,7 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="smtp-password" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-password" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.password")}
             </label>
             <input
@@ -227,7 +227,7 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="smtp-from" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-from" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.fromEmail")}
             </label>
             <input
@@ -241,7 +241,7 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="smtp-from-name" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-from-name" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.fromName")}
             </label>
             <input
@@ -255,7 +255,7 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="smtp-default-to" className="text-sm font-medium text-slate-600">
+            <label htmlFor="smtp-default-to" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.defaultRecipient")}
             </label>
             <input
@@ -266,18 +266,18 @@ export function EmailSection({
               placeholder="info@example.com"
               className={inputClass}
             />
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.email.defaultRecipientHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.email.defaultRecipientHelper")}</p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.email.secureTls")}</label>
+            <label className="text-sm font-medium text-foreground/80">{t("pages.homeSettings.email.secureTls")}</label>
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => onSmtpChange("secure", !smtpSettings.secure)}
                 className={cn(
                   "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                  smtpSettings.secure ? "bg-primary" : "bg-slate-200"
+                  smtpSettings.secure ? "bg-primary" : "bg-muted"
                 )}
               >
                 <span
@@ -287,7 +287,7 @@ export function EmailSection({
                   )}
                 />
               </button>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-foreground/80">
                 {smtpSettings.secure
                   ? t("pages.homeSettings.email.secureEnabled")
                   : t("pages.homeSettings.email.secureDisabled")}
@@ -300,7 +300,7 @@ export function EmailSection({
       {emailTransport === "graph" && (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
-            <label htmlFor="graph-client-id" className="text-sm font-medium text-slate-600">
+            <label htmlFor="graph-client-id" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.clientId")}
             </label>
             <input
@@ -311,11 +311,11 @@ export function EmailSection({
               placeholder="00000000-0000-0000-0000-000000000000"
               className={inputClass}
             />
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.email.clientIdHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.email.clientIdHelper")}</p>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="graph-tenant-id" className="text-sm font-medium text-slate-600">
+            <label htmlFor="graph-tenant-id" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.azureTenantId")}
             </label>
             <input
@@ -326,11 +326,11 @@ export function EmailSection({
               placeholder="00000000-0000-0000-0000-000000000000"
               className={inputClass}
             />
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.email.azureTenantIdHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.email.azureTenantIdHelper")}</p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <label htmlFor="graph-secret" className="text-sm font-medium text-slate-600">
+            <label htmlFor="graph-secret" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.clientSecret")}
             </label>
             <input
@@ -344,7 +344,7 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="graph-sender" className="text-sm font-medium text-slate-600">
+            <label htmlFor="graph-sender" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.senderEmail")}
             </label>
             <input
@@ -355,11 +355,11 @@ export function EmailSection({
               placeholder="noreply@company.com"
               className={inputClass}
             />
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.email.senderEmailHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.email.senderEmailHelper")}</p>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="graph-sender-name" className="text-sm font-medium text-slate-600">
+            <label htmlFor="graph-sender-name" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.email.senderName")}
             </label>
             <input
@@ -373,14 +373,14 @@ export function EmailSection({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.email.saveToSent")}</label>
+            <label className="text-sm font-medium text-foreground/80">{t("pages.homeSettings.email.saveToSent")}</label>
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => onGraphChange("save_to_sent_items", !graphSettings.save_to_sent_items)}
                 className={cn(
                   "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                  graphSettings.save_to_sent_items ? "bg-primary" : "bg-slate-200"
+                  graphSettings.save_to_sent_items ? "bg-primary" : "bg-muted"
                 )}
               >
                 <span
@@ -390,20 +390,20 @@ export function EmailSection({
                   )}
                 />
               </button>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-foreground/80">
                 {graphSettings.save_to_sent_items ? t("common.enabled") : t("common.disabled")}
               </span>
             </div>
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.email.saveToSentHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.email.saveToSentHelper")}</p>
           </div>
         </div>
       )}
 
-      <div className="border-t border-slate-200 pt-6 mt-6">
+      <div className="border-t border-border pt-6 mt-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.email.testConnection")}</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-sm font-semibold text-foreground">{t("pages.homeSettings.email.testConnection")}</h3>
+            <p className="text-xs text-muted-foreground">
               {t("pages.homeSettings.email.testConnectionHelper", {
                 transport: emailTransport === "smtp" ? "SMTP" : "Graph API",
               })}
@@ -412,7 +412,7 @@ export function EmailSection({
 
           <div className="flex items-end gap-3">
             <div className="flex-1 space-y-2">
-              <label htmlFor="test-email" className="text-sm font-medium text-slate-600">
+              <label htmlFor="test-email" className="text-sm font-medium text-foreground/80">
                 {t("pages.homeSettings.email.sendTestTo")}
               </label>
               <input

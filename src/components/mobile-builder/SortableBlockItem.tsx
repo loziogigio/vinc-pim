@@ -38,19 +38,19 @@ export function SortableBlockItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-2 rounded-md border bg-white p-3 transition-all",
+        "flex items-center gap-2 rounded-md border bg-card p-3 transition-all",
         isDragging ? "opacity-50 shadow-lg" : "",
-        isSelected ? "border-slate-500 ring-2 ring-slate-200" : "border-gray-200"
+        isSelected ? "border-primary ring-2 ring-primary/20" : "border-border"
       )}
     >
       {/* Block number */}
-      <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-xs font-medium text-slate-600">
+      <span className="flex h-5 w-5 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
         {index + 1}
       </span>
 
       <button
         type="button"
-        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+        className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
         {...attributes}
         {...listeners}
       >
@@ -62,7 +62,7 @@ export function SortableBlockItem({
         onClick={onClick}
         className="flex flex-1 items-center gap-2 text-left"
       >
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-sm font-medium text-foreground">
           {blockMeta?.name || block.type}
         </span>
       </button>
@@ -70,7 +70,7 @@ export function SortableBlockItem({
       <button
         type="button"
         onClick={onClick}
-        className="p-1 text-gray-400 hover:text-gray-600"
+        className="p-1 text-muted-foreground hover:text-foreground"
         title="Settings"
       >
         <Settings className="h-4 w-4" />
@@ -79,7 +79,7 @@ export function SortableBlockItem({
       <button
         type="button"
         onClick={onDelete}
-        className="p-1 text-gray-400 hover:text-red-500"
+        className="p-1 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
         title="Delete"
       >
         <Trash2 className="h-4 w-4" />

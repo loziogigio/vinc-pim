@@ -194,23 +194,23 @@ export default function TemplateEditorPage({
   return (
     <div className="p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() =>
               router.push(`${tenantPrefix}/b2b/documents/templates`)
             }
-            className="p-2 rounded-lg hover:bg-[#f8f8f8]"
+            className="p-2 rounded-lg hover:bg-muted"
           >
-            <ArrowLeft className="w-5 h-5 text-[#5e5873]" />
+            <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-[#5e5873]">
+              <h1 className="text-2xl font-bold text-foreground">
                 {template.name}
               </h1>
               {isSystem && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
                   <Lock className="w-3 h-3" />
                   {t("pages.documents.templateEditor.system")}
                 </span>
@@ -229,7 +229,7 @@ export default function TemplateEditorPage({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm font-medium"
+            className="inline-flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm font-medium"
           >
             <Eye className="w-4 h-4" />
             {showPreview ? t("pages.documents.templateEditor.editor") : t("pages.documents.templateEditor.previewToggle")}
@@ -239,8 +239,8 @@ export default function TemplateEditorPage({
             disabled={isSaving}
             className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               saveSuccess
-                ? "bg-green-500 text-white"
-                : "bg-[#009688] text-white hover:bg-[#00796b]"
+                ? "bg-green-500 dark:bg-green-600 text-white"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
             } disabled:opacity-50`}
           >
             {isSaving ? (
@@ -256,27 +256,27 @@ export default function TemplateEditorPage({
       </div>
 
       {/* Template Settings Row */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
-        <div className="grid grid-cols-6 gap-4">
+      <div className="bg-card rounded-lg border border-border p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           <div>
-            <label className="block text-xs font-medium text-[#5e5873] mb-1">
+            <label className="block text-xs font-medium text-foreground mb-1">
               {t("pages.documents.templateEditor.nameLabel")}
             </label>
             <input
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
+              className="w-full px-2 py-1.5 border border-border rounded text-sm bg-background text-foreground"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#5e5873] mb-1">
+            <label className="block text-xs font-medium text-foreground mb-1">
               {t("pages.documents.templateEditor.documentType")}
             </label>
             <select
               value={editDocType}
               onChange={(e) => setEditDocType(e.target.value)}
-              className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
+              className="w-full px-2 py-1.5 border border-border rounded text-sm bg-background text-foreground"
             >
               <option value="all">{t("pages.documents.templateEditor.allTypes")}</option>
               {DOCUMENT_TYPES.map((t) => (
@@ -287,13 +287,13 @@ export default function TemplateEditorPage({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#5e5873] mb-1">
+            <label className="block text-xs font-medium text-foreground mb-1">
               {t("pages.documents.templateEditor.pageFormat")}
             </label>
             <select
               value={editPageSize}
               onChange={(e) => setEditPageSize(e.target.value)}
-              className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
+              className="w-full px-2 py-1.5 border border-border rounded text-sm bg-background text-foreground"
             >
               {PAGE_SIZES.map((s) => (
                 <option key={s} value={s}>
@@ -303,13 +303,13 @@ export default function TemplateEditorPage({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#5e5873] mb-1">
+            <label className="block text-xs font-medium text-foreground mb-1">
               {t("pages.documents.templateEditor.orientation")}
             </label>
             <select
               value={editOrientation}
               onChange={(e) => setEditOrientation(e.target.value)}
-              className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
+              className="w-full px-2 py-1.5 border border-border rounded text-sm bg-background text-foreground"
             >
               {PAGE_ORIENTATIONS.map((o) => (
                 <option key={o} value={o}>
@@ -319,7 +319,7 @@ export default function TemplateEditorPage({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#5e5873] mb-1">
+            <label className="block text-xs font-medium text-foreground mb-1">
               {t("pages.documents.templateEditor.descriptionLabel")}
             </label>
             <input
@@ -327,7 +327,7 @@ export default function TemplateEditorPage({
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               placeholder={t("pages.documents.templateEditor.descriptionPlaceholder")}
-              className="w-full px-2 py-1.5 border border-[#ebe9f1] rounded text-sm"
+              className="w-full px-2 py-1.5 border border-border rounded text-sm bg-background text-foreground"
             />
           </div>
           <div className="flex items-end gap-2 pb-0.5">
@@ -336,7 +336,7 @@ export default function TemplateEditorPage({
                 type="checkbox"
                 checked={editIsDefault}
                 onChange={(e) => setEditIsDefault(e.target.checked)}
-                className="rounded border-[#ebe9f1]"
+                className="rounded border-border"
               />
               <Star className="w-4 h-4 text-amber-500" />
               {t("pages.documents.templateEditor.defaultTemplate")}
@@ -345,8 +345,8 @@ export default function TemplateEditorPage({
         </div>
 
         {/* Margins */}
-        <div className="mt-3 flex items-center gap-4">
-          <span className="text-xs font-medium text-[#5e5873]">
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <span className="text-xs font-medium text-foreground">
             {t("pages.documents.templateEditor.margins")}
           </span>
           {(["top", "right", "bottom", "left"] as const).map((side) => (
@@ -371,7 +371,7 @@ export default function TemplateEditorPage({
                     [side]: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-16 px-2 py-1 border border-[#ebe9f1] rounded text-sm text-center"
+                className="w-16 px-2 py-1 border border-border rounded text-sm text-center bg-background text-foreground"
               />
             </div>
           ))}
@@ -379,13 +379,13 @@ export default function TemplateEditorPage({
       </div>
 
       {/* Tabs: Editor / Config */}
-      <div className="flex items-center gap-1 border-b border-[#ebe9f1]">
+      <div className="flex items-center gap-1 border-b border-border">
         <button
           onClick={() => setActiveTab("editor")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === "editor"
-              ? "border-[#009688] text-[#009688]"
-              : "border-transparent text-muted-foreground hover:text-[#5e5873]"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <span className="inline-flex items-center gap-1.5">
@@ -397,8 +397,8 @@ export default function TemplateEditorPage({
           onClick={() => setActiveTab("config")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === "config"
-              ? "border-[#009688] text-[#009688]"
-              : "border-transparent text-muted-foreground hover:text-[#5e5873]"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <span className="inline-flex items-center gap-1.5">
@@ -411,14 +411,14 @@ export default function TemplateEditorPage({
       {/* Tab Content */}
       {activeTab === "editor" ? (
         showPreview ? (
-          <div className="bg-white rounded-lg border border-[#ebe9f1] overflow-hidden">
-            <div className="p-2 bg-[#f8f8f8] border-b border-[#ebe9f1] text-xs text-muted-foreground">
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="p-2 bg-muted border-b border-border text-xs text-muted-foreground">
               {t("pages.documents.templateEditor.previewWithSampleData")}
             </div>
             <div className="p-4">
               <iframe
                 srcDoc={`<style>${editCss}</style>${previewHtml}`}
-                className="w-full border border-[#ebe9f1] rounded"
+                className="w-full border border-border rounded"
                 style={{ minHeight: "600px" }}
                 title="Template Preview"
               />
@@ -427,33 +427,33 @@ export default function TemplateEditorPage({
         ) : (
           <>
             {isSystem && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
                 {t("pages.documents.templateEditor.systemHtmlNote")}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-lg border border-[#ebe9f1]">
-                <div className="p-2 bg-[#f8f8f8] border-b border-[#ebe9f1] text-xs font-medium text-[#5e5873]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-card rounded-lg border border-border">
+                <div className="p-2 bg-muted border-b border-border text-xs font-medium text-foreground">
                   {t("pages.documents.templateEditor.htmlTemplate")}
                 </div>
                 <textarea
                   value={editHtml}
                   onChange={(e) => setEditHtml(e.target.value)}
                   readOnly={isSystem}
-                  className={`w-full p-3 text-sm font-mono focus:outline-none resize-none ${isSystem ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}`}
+                  className={`w-full p-3 text-sm font-mono focus:outline-none resize-none bg-background text-foreground ${isSystem ? "opacity-60 cursor-not-allowed" : ""}`}
                   style={{ minHeight: "500px" }}
                   spellCheck={false}
                 />
               </div>
-              <div className="bg-white rounded-lg border border-[#ebe9f1]">
-                <div className="p-2 bg-[#f8f8f8] border-b border-[#ebe9f1] text-xs font-medium text-[#5e5873]">
+              <div className="bg-card rounded-lg border border-border">
+                <div className="p-2 bg-muted border-b border-border text-xs font-medium text-foreground">
                   {t("pages.documents.templateEditor.cssStyles")}
                 </div>
                 <textarea
                   value={editCss}
                   onChange={(e) => setEditCss(e.target.value)}
                   readOnly={isSystem}
-                  className={`w-full p-3 text-sm font-mono focus:outline-none resize-none ${isSystem ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}`}
+                  className={`w-full p-3 text-sm font-mono focus:outline-none resize-none bg-background text-foreground ${isSystem ? "opacity-60 cursor-not-allowed" : ""}`}
                   style={{ minHeight: "500px" }}
                   spellCheck={false}
                 />
@@ -471,118 +471,118 @@ export default function TemplateEditorPage({
       )}
 
       {/* Placeholder Reference */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex items-center gap-2 mb-3">
-          <div className="p-1 bg-teal-50 rounded">
-            <Hash className="w-3.5 h-3.5 text-teal-600" />
+          <div className="p-1 bg-accent rounded">
+            <Hash className="w-3.5 h-3.5 text-accent-foreground" />
           </div>
-          <h3 className="font-semibold text-[#5e5873] text-sm">
+          <h3 className="font-semibold text-foreground text-sm">
             {t("pages.documents.templateEditor.availablePlaceholders")}
           </h3>
         </div>
-        <div className="grid grid-cols-4 gap-x-6 gap-y-1 text-xs text-muted-foreground">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{company.legal_name}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCompanyName")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{company.vat_number}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCompanyVat")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{company.address_line1}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCompanyAddress")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{company.logo_url}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCompanyLogo")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{customer.company_name}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCustomerName")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{customer.vat_number}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCustomerVat")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{customer.billing_address.city}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCustomerCity")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{customer.pec_email}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderCustomerPec")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{document.document_number}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderDocNumber")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{document.date}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderDocDate")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{document.type_label}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderDocType")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{document.due_date}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderDocDueDate")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">{"{{items}}"}</span> —{" "}
+            <span className="font-mono text-foreground">{"{{items}}"}</span> —{" "}
             {t("pages.documents.templateEditor.placeholderItems")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{totals.total}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderTotal")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{totals.subtotal_net}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderSubtotal")}
           </div>
           <div>
-            <span className="font-mono text-[#5e5873]">
+            <span className="font-mono text-foreground">
               {"{{vat_breakdown}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderVatBreakdown")}
           </div>
-          <div className="col-span-2 mt-1 pt-1 border-t border-[#ebe9f1]">
-            <span className="font-mono text-[#009688]">
+          <div className="col-span-2 mt-1 pt-1 border-t border-border">
+            <span className="font-mono text-primary">
               {"{{header}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderHeader")}
           </div>
-          <div className="col-span-2 mt-1 pt-1 border-t border-[#ebe9f1]">
-            <span className="font-mono text-[#009688]">
+          <div className="col-span-2 mt-1 pt-1 border-t border-border">
+            <span className="font-mono text-primary">
               {"{{footer}}"}
             </span>{" "}
             — {t("pages.documents.templateEditor.placeholderFooter")}
@@ -618,17 +618,17 @@ function HeaderFooterConfig({
   return (
     <div className="grid grid-cols-2 gap-4">
       {/* Header Config */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-3 bg-[#f8f8f8] border-b border-[#ebe9f1] flex items-center gap-2">
-          <Type className="w-4 h-4 text-[#5e5873]" />
-          <span className="text-sm font-medium text-[#5e5873]">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-3 bg-muted border-b border-border flex items-center gap-2">
+          <Type className="w-4 h-4 text-foreground" />
+          <span className="text-sm font-medium text-foreground">
             {t("pages.documents.templateEditor.headerConfig")}
           </span>
         </div>
         <div className="p-4 space-y-4">
           {/* Header Style */}
           <div>
-            <label className="block text-xs font-medium text-[#5e5873] mb-2">
+            <label className="block text-xs font-medium text-foreground mb-2">
               {t("pages.documents.templateEditor.headerStyle")}
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -640,8 +640,8 @@ function HeaderFooterConfig({
                   }
                   className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left ${
                     headerConfig.style === style
-                      ? "border-[#009688] bg-[#e0f2f1] text-[#009688] font-medium"
-                      : "border-[#ebe9f1] hover:bg-[#f8f8f8] text-[#5e5873]"
+                      ? "border-primary bg-accent text-accent-foreground font-medium"
+                      : "border-border hover:bg-muted text-foreground"
                   }`}
                 >
                   {HEADER_STYLE_LABELS[style]}
@@ -654,7 +654,7 @@ function HeaderFooterConfig({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Image className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-[#5e5873]">{t("pages.documents.templateEditor.showLogo")}</span>
+              <span className="text-sm text-foreground">{t("pages.documents.templateEditor.showLogo")}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -668,14 +668,14 @@ function HeaderFooterConfig({
                 }
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009688]" />
+              <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
             </label>
           </div>
 
           {/* Logo Position */}
           {headerConfig.show_logo && (
             <div>
-              <label className="block text-xs font-medium text-[#5e5873] mb-2">
+              <label className="block text-xs font-medium text-foreground mb-2">
                 {t("pages.documents.templateEditor.logoPosition")}
               </label>
               <div className="flex gap-2">
@@ -690,8 +690,8 @@ function HeaderFooterConfig({
                     }
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                       headerConfig.logo_position === pos
-                        ? "border-[#009688] bg-[#e0f2f1] text-[#009688]"
-                        : "border-[#ebe9f1] hover:bg-[#f8f8f8] text-[#5e5873]"
+                        ? "border-primary bg-accent text-accent-foreground"
+                        : "border-border hover:bg-muted text-foreground"
                     }`}
                   >
                     {logoPositionIcons[pos]}
@@ -706,7 +706,7 @@ function HeaderFooterConfig({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-[#5e5873]">{t("pages.documents.templateEditor.companyInfo")}</span>
+              <span className="text-sm text-foreground">{t("pages.documents.templateEditor.companyInfo")}</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -720,12 +720,12 @@ function HeaderFooterConfig({
                 }
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009688]" />
+              <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
             </label>
           </div>
 
           {/* Header Preview */}
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+          <div className="mt-3 p-3 bg-muted rounded-lg border border-dashed border-border">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">{t("pages.documents.templateEditor.previewToggle")}</p>
             <HeaderPreview config={headerConfig} />
           </div>
@@ -733,17 +733,17 @@ function HeaderFooterConfig({
       </div>
 
       {/* Footer Config */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-3 bg-[#f8f8f8] border-b border-[#ebe9f1] flex items-center gap-2">
-          <AlignLeft className="w-4 h-4 text-[#5e5873]" />
-          <span className="text-sm font-medium text-[#5e5873]">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-3 bg-muted border-b border-border flex items-center gap-2">
+          <AlignLeft className="w-4 h-4 text-foreground" />
+          <span className="text-sm font-medium text-foreground">
             {t("pages.documents.templateEditor.footerConfig")}
           </span>
         </div>
         <div className="p-4 space-y-4">
           {/* Enable Footer */}
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-[#5e5873]">
+            <span className="text-sm font-medium text-foreground">
               {t("pages.documents.templateEditor.footerActive")}
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -758,7 +758,7 @@ function HeaderFooterConfig({
                 }
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009688]" />
+              <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
             </label>
           </div>
 
@@ -766,7 +766,7 @@ function HeaderFooterConfig({
             <>
               {/* Show Notes */}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#5e5873]">{t("pages.documents.templateEditor.showNotes")}</span>
+                <span className="text-sm text-foreground">{t("pages.documents.templateEditor.showNotes")}</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -779,13 +779,13 @@ function HeaderFooterConfig({
                     }
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009688]" />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
                 </label>
               </div>
 
               {/* Show Page Numbers */}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#5e5873]">
+                <span className="text-sm text-foreground">
                   {t("pages.documents.templateEditor.pageNumbers")}
                 </span>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -800,13 +800,13 @@ function HeaderFooterConfig({
                     }
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009688]" />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
                 </label>
               </div>
 
               {/* Custom Text */}
               <div>
-                <label className="block text-xs font-medium text-[#5e5873] mb-1">
+                <label className="block text-xs font-medium text-foreground mb-1">
                   {t("pages.documents.templateEditor.customText")}
                 </label>
                 <textarea
@@ -818,7 +818,7 @@ function HeaderFooterConfig({
                     })
                   }
                   placeholder={t("pages.documents.templateEditor.customTextPlaceholder")}
-                  className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm resize-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm resize-none bg-background text-foreground"
                   rows={3}
                 />
               </div>
@@ -826,7 +826,7 @@ function HeaderFooterConfig({
           )}
 
           {/* Footer Preview */}
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+          <div className="mt-3 p-3 bg-muted rounded-lg border border-dashed border-border">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">{t("pages.documents.templateEditor.previewToggle")}</p>
             <FooterPreview config={footerConfig} />
           </div>
@@ -863,7 +863,7 @@ function HeaderPreview({ config }: { config: TemplateHeaderConfig }) {
   }
   if (config.style === "banner") {
     return (
-      <div className="bg-[#009688] text-white text-[10px] px-2 py-1 rounded flex justify-between items-center">
+      <div className="bg-primary text-primary-foreground text-[10px] px-2 py-1 rounded flex justify-between items-center">
         <div className="flex items-center gap-1">
           {config.show_logo && <div className="w-4 h-2 bg-white/30 rounded" />}
           <span className="font-bold">Azienda S.r.l.</span>

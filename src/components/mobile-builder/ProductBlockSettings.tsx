@@ -129,7 +129,7 @@ export function ProductSliderSettings({
           onProductsLoaded={(products) => onUpdate({ _cached_products: products })}
         />
       ) : (
-        <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-center text-xs text-gray-500">
+        <p className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-3 text-center text-xs text-muted-foreground">
           Products are loaded automatically by the mobile app.
         </p>
       )}
@@ -284,7 +284,7 @@ export function ProductGallerySettings({
           onProductsLoaded={(products) => onUpdate({ _cached_products: products })}
         />
       ) : (
-        <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-center text-xs text-gray-500">
+        <p className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-3 text-center text-xs text-muted-foreground">
           Products are loaded automatically by the mobile app.
         </p>
       )}

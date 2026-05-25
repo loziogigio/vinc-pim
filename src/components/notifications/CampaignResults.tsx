@@ -78,9 +78,9 @@ const channelIcons: Record<DisplayChannel, typeof Mail> = {
 };
 
 const channelColors: Record<DisplayChannel, { bg: string; text: string; border: string }> = {
-  email: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
-  mobile_app: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
-  web: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+  email: { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800" },
+  mobile_app: { bg: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-600 dark:text-purple-300", border: "border-purple-200 dark:border-purple-800" },
+  web: { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800" },
 };
 
 function formatPercent(value: number): string {
@@ -107,7 +107,7 @@ function StatCard({
   label,
   value,
   subValue,
-  color = "text-slate-600",
+  color = "text-muted-foreground",
 }: {
   icon: typeof Send;
   label: string;
@@ -116,13 +116,13 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <div className="p-4 rounded-lg border border-slate-200 bg-white">
+    <div className="p-4 rounded-lg border border-border bg-card">
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`w-4 h-4 ${color}`} />
-        <span className="text-sm text-slate-500">{label}</span>
+        <span className="text-sm text-muted-foreground">{label}</span>
       </div>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      {subValue && <p className="text-xs text-slate-400 mt-1">{subValue}</p>}
+      {subValue && <p className="text-xs text-muted-foreground mt-1">{subValue}</p>}
     </div>
   );
 }
@@ -167,52 +167,52 @@ function ChannelCard({
 
       <div className="grid grid-cols-2 gap-3">
         {/* Sent */}
-        <div className="bg-white rounded-lg p-3">
-          <div className="flex items-center gap-1 text-emerald-600 mb-1">
+        <div className="bg-card rounded-lg p-3 border border-border/50">
+          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 mb-1">
             <CheckCircle2 className="w-3 h-3" />
             <span className="text-xs">{t("pages.notifications.campaigns.results.channelSent")}</span>
           </div>
-          <p className="text-lg font-bold text-slate-900">{results.sent}</p>
+          <p className="text-lg font-bold text-foreground">{results.sent}</p>
         </div>
 
         {/* Failed */}
-        <div className="bg-white rounded-lg p-3">
-          <div className="flex items-center gap-1 text-rose-600 mb-1">
+        <div className="bg-card rounded-lg p-3 border border-border/50">
+          <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400 mb-1">
             <XCircle className="w-3 h-3" />
             <span className="text-xs">{t("pages.notifications.campaigns.results.channelFailed")}</span>
           </div>
-          <p className="text-lg font-bold text-slate-900">{results.failed}</p>
+          <p className="text-lg font-bold text-foreground">{results.failed}</p>
         </div>
 
         {/* Delivery Rate */}
-        <div className="bg-white rounded-lg p-3">
-          <div className="flex items-center gap-1 text-blue-600 mb-1">
+        <div className="bg-card rounded-lg p-3 border border-border/50">
+          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 mb-1">
             <Send className="w-3 h-3" />
             <span className="text-xs">{t("pages.notifications.campaigns.results.channelDelivery")}</span>
           </div>
-          <p className="text-lg font-bold text-slate-900">
+          <p className="text-lg font-bold text-foreground">
             {formatPercent(deliveryRate)}
           </p>
         </div>
 
         {/* Open Rate - always show */}
-        <div className="bg-white rounded-lg p-3">
-          <div className="flex items-center gap-1 text-amber-600 mb-1">
+        <div className="bg-card rounded-lg p-3 border border-border/50">
+          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 mb-1">
             <Eye className="w-3 h-3" />
             <span className="text-xs">{t("pages.notifications.campaigns.results.channelOpens")}</span>
           </div>
-          <p className="text-lg font-bold text-slate-900">
+          <p className="text-lg font-bold text-foreground">
             {formatPercent(openRate)}
           </p>
         </div>
 
         {/* Click Rate - always show */}
-        <div className="bg-white rounded-lg p-3 col-span-2">
-          <div className="flex items-center gap-1 text-purple-600 mb-1">
+        <div className="bg-card rounded-lg p-3 border border-border/50 col-span-2">
+          <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 mb-1">
             <MousePointerClick className="w-3 h-3" />
             <span className="text-xs">{t("pages.notifications.campaigns.results.channelClicks")}</span>
           </div>
-          <p className="text-lg font-bold text-slate-900">
+          <p className="text-lg font-bold text-foreground">
             {formatPercent(clickRate)}
           </p>
         </div>
@@ -258,7 +258,7 @@ export function CampaignResults({ campaignId, onBack }: Props) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-        <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.results.loadingResults")}</span>
+        <span className="text-sm text-muted-foreground">{t("pages.notifications.campaigns.results.loadingResults")}</span>
       </div>
     );
   }
@@ -266,8 +266,8 @@ export function CampaignResults({ campaignId, onBack }: Props) {
   if (error || !data) {
     return (
       <div className="text-center py-12">
-        <AlertCircle className="w-12 h-12 text-rose-300 mx-auto mb-3" />
-        <p className="text-sm text-slate-500">{error || t("pages.notifications.campaigns.results.resultsUnavailable")}</p>
+        <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">{error || t("pages.notifications.campaigns.results.resultsUnavailable")}</p>
         {onBack && (
           <button
             onClick={onBack}
@@ -287,14 +287,14 @@ export function CampaignResults({ campaignId, onBack }: Props) {
         {onBack && (
           <button
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-slate-100 transition"
+            className="p-2 rounded-lg hover:bg-muted transition"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
         <div className="flex-1">
-          <h2 className="text-xl font-bold text-slate-900">{data.name}</h2>
-          <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-foreground">{data.name}</h2>
+          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
             {data.sent_at && (
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
@@ -343,7 +343,7 @@ export function CampaignResults({ campaignId, onBack }: Props) {
 
       {/* Per-Channel Results */}
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           {t("pages.notifications.campaigns.results.resultsByChannel")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -361,9 +361,9 @@ export function CampaignResults({ campaignId, onBack }: Props) {
 
       {/* No Results */}
       {!data.results.email && !data.results.mobile_app && !data.results.web && (
-        <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg">
-          <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">
+        <div className="text-center py-8 border border-dashed border-border rounded-lg">
+          <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
             {t("pages.notifications.campaigns.results.noDetailedResults")}
           </p>
         </div>

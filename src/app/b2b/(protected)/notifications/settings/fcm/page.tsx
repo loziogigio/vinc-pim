@@ -225,7 +225,7 @@ export default function FCMSettingsPage() {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -244,14 +244,14 @@ export default function FCMSettingsPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300 flex items-center justify-center">
             <Smartphone className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-foreground">
               {t("pages.notifications.fcm.title")}
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               {t("pages.notifications.fcm.subtitle")}
             </p>
           </div>
@@ -260,24 +260,24 @@ export default function FCMSettingsPage() {
 
       {/* Status Messages */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 dark:bg-red-950/40 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-300">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           {error}
         </div>
       )}
       {success && (
-        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-700">
+        <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 rounded-lg flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
           {success}
         </div>
       )}
 
       {/* Enable/Disable Toggle */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-card rounded-xl border border-border p-4 mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="font-medium text-slate-900">{t("pages.notifications.fcm.enableFcm")}</h3>
-            <p className="text-sm text-slate-500">
+            <h3 className="font-medium text-foreground">{t("pages.notifications.fcm.enableFcm")}</h3>
+            <p className="text-sm text-muted-foreground">
               {t("pages.notifications.fcm.togglePushNotifications")}
             </p>
           </div>
@@ -286,14 +286,14 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Upload JSON File */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-        <h3 className="font-medium text-slate-900 mb-4">
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h3 className="font-medium text-foreground mb-4">
           {t("pages.notifications.fcm.importFirebaseConfig")}
         </h3>
-        <p className="text-sm text-slate-500 mb-4" dangerouslySetInnerHTML={{ __html: t("pages.notifications.fcm.importDesc") }} />
-        <label className="flex items-center justify-center gap-2 p-6 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
-          <Upload className="w-5 h-5 text-slate-400" />
-          <span className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground mb-4" dangerouslySetInnerHTML={{ __html: t("pages.notifications.fcm.importDesc") }} />
+        <label className="flex items-center justify-center gap-2 p-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
+          <Upload className="w-5 h-5 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
             {t("pages.notifications.fcm.uploadJsonFile")}
           </span>
           <input
@@ -306,8 +306,8 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Manual Configuration */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-        <h3 className="font-medium text-slate-900 mb-4">
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h3 className="font-medium text-foreground mb-4">
           {t("pages.notifications.fcm.firebaseConfig")}
         </h3>
 
@@ -356,7 +356,7 @@ export default function FCMSettingsPage() {
                     ? t("pages.notifications.fcm.keepExistingKey")
                     : "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
                 }
-                className="w-full h-32 px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full h-32 px-3 py-2 border border-border rounded-lg font-mono text-xs resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 style={{
                   WebkitTextSecurity: showPrivateKey ? "none" : "disc",
                 }}
@@ -364,7 +364,7 @@ export default function FCMSettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowPrivateKey(!showPrivateKey)}
-                className="absolute top-2 right-2 p-1 text-slate-400 hover:text-slate-600"
+                className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground"
               >
                 {showPrivateKey ? (
                   <EyeOff className="w-4 h-4" />
@@ -378,8 +378,8 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Optional Settings */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-        <h3 className="font-medium text-slate-900 mb-4">{t("pages.notifications.fcm.optionalSettings")}</h3>
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h3 className="font-medium text-foreground mb-4">{t("pages.notifications.fcm.optionalSettings")}</h3>
 
         <div className="space-y-4">
           {/* Default Icon */}
@@ -392,7 +392,7 @@ export default function FCMSettingsPage() {
               placeholder="https://example.com/icon.png"
               className="mt-1"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {t("pages.notifications.fcm.iconUrlHint")}
             </p>
           </div>
@@ -424,7 +424,7 @@ export default function FCMSettingsPage() {
               id="ios_badge"
               value={iosBadgeBehavior}
               onChange={(e) => setIosBadgeBehavior(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="increment">{t("pages.notifications.fcm.incrementBadge")}</option>
               <option value="set">{t("pages.notifications.fcm.setBadge")}</option>
@@ -435,11 +435,11 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Client-Side Config (for mobile app SDK) */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-        <h3 className="font-medium text-slate-900 mb-2">
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h3 className="font-medium text-foreground mb-2">
           {t("pages.notifications.fcm.clientSideConfig")}
         </h3>
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           {t("pages.notifications.fcm.clientSideConfigDesc")}
         </p>
 
@@ -454,7 +454,7 @@ export default function FCMSettingsPage() {
               placeholder="999634491165"
               className="mt-1"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {t("pages.notifications.fcm.senderIdHint")}
             </p>
           </div>
@@ -474,12 +474,12 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Android Configuration */}
-      <div className="bg-white rounded-xl border border-green-200 p-6 mb-6">
+      <div className="bg-card rounded-xl border border-green-200 dark:border-green-800 p-6 mb-6">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-            <span className="text-green-600 text-lg">🤖</span>
+          <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+            <span className="text-green-600 dark:text-green-300 text-lg">🤖</span>
           </div>
-          <h3 className="font-medium text-slate-900">{t("pages.notifications.fcm.androidConfig")}</h3>
+          <h3 className="font-medium text-foreground">{t("pages.notifications.fcm.androidConfig")}</h3>
         </div>
 
         <div className="space-y-4">
@@ -510,12 +510,12 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* iOS Configuration */}
-      <div className="bg-white rounded-xl border border-blue-200 p-6 mb-6">
+      <div className="bg-card rounded-xl border border-blue-200 dark:border-blue-800 p-6 mb-6">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-            <span className="text-blue-600 text-lg">🍎</span>
+          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+            <span className="text-blue-600 dark:text-blue-300 text-lg">🍎</span>
           </div>
-          <h3 className="font-medium text-slate-900">{t("pages.notifications.fcm.iosConfig")}</h3>
+          <h3 className="font-medium text-foreground">{t("pages.notifications.fcm.iosConfig")}</h3>
         </div>
 
         <div className="space-y-4">
@@ -558,12 +558,12 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <Button
           variant="outline"
           onClick={handleDisable}
           disabled={saving || !enabled}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
         >
           <Trash2 className="w-4 h-4 mr-2" />
           {t("pages.notifications.fcm.disableFcm")}
@@ -584,9 +584,9 @@ export default function FCMSettingsPage() {
       </div>
 
       {/* Help Text */}
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="font-medium text-blue-900 mb-2">{t("pages.notifications.fcm.howToGetCredentials")}</h3>
-        <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
+      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg">
+        <h3 className="font-medium text-blue-900 dark:text-blue-300 mb-2">{t("pages.notifications.fcm.howToGetCredentials")}</h3>
+        <ol className="text-sm text-blue-700 dark:text-blue-400 list-decimal list-inside space-y-1">
           <li>{t("pages.notifications.fcm.step1")}</li>
           <li>{t("pages.notifications.fcm.step2")}</li>
           <li>{t("pages.notifications.fcm.step3")}</li>

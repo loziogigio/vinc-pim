@@ -57,7 +57,7 @@ export function VisibilitySettings({
           className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${
             visibility === "all"
               ? "bg-primary/10 border-primary text-primary"
-              : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              : "bg-card border-border text-muted-foreground hover:border-border hover:bg-accent"
           }`}
         >
           <Eye className="h-4 w-4" />
@@ -69,7 +69,7 @@ export function VisibilitySettings({
           className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${
             visibility === "logged_in_only"
               ? "bg-primary/10 border-primary text-primary"
-              : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              : "bg-card border-border text-muted-foreground hover:border-border hover:bg-accent"
           }`}
         >
           <EyeOff className="h-4 w-4" />
@@ -304,7 +304,7 @@ export function MobileBlockSettings({ block, onUpdate, onClose }: MobileBlockSet
       case "mobile_text":
         return <TextSettings block={block as MobileTextBlock} onUpdate={onUpdate as any} />;
       default:
-        return <p className="text-sm text-gray-500">No settings available</p>;
+        return <p className="text-sm text-muted-foreground">No settings available</p>;
     }
   };
 
@@ -312,8 +312,8 @@ export function MobileBlockSettings({ block, onUpdate, onClose }: MobileBlockSet
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b p-4">
         <div>
-          <h2 className="font-semibold text-gray-800">{blockMeta?.name || "Block"} Settings</h2>
-          <p className="text-xs text-gray-500">{blockMeta?.description}</p>
+          <h2 className="font-semibold text-foreground">{blockMeta?.name || "Block"} Settings</h2>
+          <p className="text-xs text-muted-foreground">{blockMeta?.description}</p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />

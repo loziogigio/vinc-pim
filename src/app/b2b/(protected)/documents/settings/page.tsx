@@ -55,10 +55,10 @@ interface CounterEntry {
 }
 
 const TYPE_COLORS: Record<DocumentType, { bg: string; text: string; border: string }> = {
-  quotation: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  proforma: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
-  invoice: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-  credit_note: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  quotation: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800" },
+  proforma: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-300", border: "border-purple-200 dark:border-purple-800" },
+  invoice: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800" },
+  credit_note: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800" },
 };
 
 export default function DocumentSettingsPage() {
@@ -236,9 +236,9 @@ export default function DocumentSettingsPage() {
   return (
     <div className="p-6 space-y-8">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#5e5873]">
+          <h1 className="text-2xl font-bold text-foreground">
             {t("pages.documents.settings.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -250,8 +250,8 @@ export default function DocumentSettingsPage() {
           disabled={isSaving}
           className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all disabled:opacity-50 ${
             saveSuccess
-              ? "bg-green-500 text-white"
-              : "bg-[#009688] text-white hover:bg-[#00796b]"
+              ? "bg-green-500 dark:bg-green-600 text-white"
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
           }`}
         >
           {isSaving ? (
@@ -268,16 +268,16 @@ export default function DocumentSettingsPage() {
       </div>
 
       {/* Company Info Link */}
-      <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <Building2 className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <Building2 className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <p className="text-sm text-amber-800">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
             {t("pages.documents.settings.companyInfoNote")}{" "}
             <strong>{t("pages.documents.settings.storeSettings")}</strong>.
           </p>
           <Link
             href={`${tenantPrefix}/b2b/home-settings`}
-            className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors"
+            className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
           >
             {t("pages.documents.settings.goToCompanySettings")}
             <ExternalLink className="w-3.5 h-3.5" />
@@ -286,14 +286,14 @@ export default function DocumentSettingsPage() {
       </div>
 
       {/* Numbering Configuration */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-5 border-b border-[#ebe9f1]">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-[#009688]/10">
-              <Hash className="w-4 h-4 text-[#009688]" />
+            <div className="p-2 rounded-lg bg-accent">
+              <Hash className="w-4 h-4 text-accent-foreground" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.settings.numbering")}</h2>
+              <h2 className="font-semibold text-foreground">{t("pages.documents.settings.numbering")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t("pages.documents.settings.numberingDesc")}
               </p>
@@ -301,7 +301,7 @@ export default function DocumentSettingsPage() {
           </div>
         </div>
 
-        <div className="p-5 grid grid-cols-2 gap-4">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {editNumbering.map((config) => {
             const colors = TYPE_COLORS[config.document_type];
             const previewNumber = formatPreview(
@@ -319,14 +319,14 @@ export default function DocumentSettingsPage() {
                   <span className={`text-sm font-semibold ${colors.text}`}>
                     {DOCUMENT_TYPE_LABELS[config.document_type]}
                   </span>
-                  <span className="text-[11px] font-mono text-muted-foreground bg-white/80 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded">
                     {DOCUMENT_TYPE_PREFIXES[config.document_type]}
                   </span>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[11px] font-medium text-[#5e5873]/70 mb-1">
+                    <label className="block text-[11px] font-medium text-foreground/70 mb-1">
                       {t("pages.documents.settings.format")}
                     </label>
                     <input
@@ -339,13 +339,13 @@ export default function DocumentSettingsPage() {
                           e.target.value,
                         )
                       }
-                      className="w-full px-3 py-2 bg-white border border-[#ebe9f1] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                     />
                   </div>
 
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="block text-[11px] font-medium text-[#5e5873]/70 mb-1">
+                      <label className="block text-[11px] font-medium text-foreground/70 mb-1">
                         {t("pages.documents.settings.padding")}
                       </label>
                       <input
@@ -360,7 +360,7 @@ export default function DocumentSettingsPage() {
                             parseInt(e.target.value) || 5,
                           )
                         }
-                        className="w-full px-3 py-2 bg-white border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                       />
                     </div>
                     <div className="flex-1 flex items-end">
@@ -375,9 +375,9 @@ export default function DocumentSettingsPage() {
                               e.target.checked,
                             )
                           }
-                          className="rounded border-gray-300 text-[#009688] focus:ring-[#009688]"
+                          className="rounded border-border text-primary focus:ring-primary"
                         />
-                        <span className="text-xs text-[#5e5873]/70">
+                        <span className="text-xs text-foreground/70">
                           {t("pages.documents.settings.yearlyReset")}
                         </span>
                       </label>
@@ -385,9 +385,9 @@ export default function DocumentSettingsPage() {
                   </div>
 
                   {/* Live Preview */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-black/5">
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/40">
                     <span className="text-[11px] text-muted-foreground">{t("pages.documents.settings.previewLabel")}</span>
-                    <span className="font-mono text-sm font-medium text-[#5e5873]">
+                    <span className="font-mono text-sm font-medium text-foreground">
                       {previewNumber}
                     </span>
                   </div>
@@ -399,14 +399,14 @@ export default function DocumentSettingsPage() {
       </div>
 
       {/* Defaults */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-5 border-b border-[#ebe9f1]">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-[#009688]/10">
-              <Settings2 className="w-4 h-4 text-[#009688]" />
+            <div className="p-2 rounded-lg bg-accent">
+              <Settings2 className="w-4 h-4 text-accent-foreground" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.settings.defaults")}</h2>
+              <h2 className="font-semibold text-foreground">{t("pages.documents.settings.defaults")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t("pages.documents.settings.defaultsDesc")}
               </p>
@@ -414,15 +414,15 @@ export default function DocumentSettingsPage() {
           </div>
         </div>
         <div className="p-5 space-y-5">
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("pages.documents.settings.currency")}
               </label>
               <select
                 value={editCurrency}
                 onChange={(e) => setEditCurrency(e.target.value)}
-                className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               >
                 <option value="EUR">EUR - Euro</option>
                 <option value="USD">USD - US Dollar</option>
@@ -431,13 +431,13 @@ export default function DocumentSettingsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("pages.documents.settings.paymentTerms")}
               </label>
               <select
                 value={editPaymentTerms}
                 onChange={(e) => setEditPaymentTerms(e.target.value)}
-                className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               >
                 <option value="">{t("pages.documents.settings.noPaymentTerms")}</option>
                 {PAYMENT_TERMS.map((t) => (
@@ -448,7 +448,7 @@ export default function DocumentSettingsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("pages.documents.settings.quotationValidity")}
               </label>
               <input
@@ -458,12 +458,12 @@ export default function DocumentSettingsPage() {
                 onChange={(e) =>
                   setEditValidityDays(parseInt(e.target.value) || 30)
                 }
-                className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               {t("pages.documents.settings.defaultNotes")}
             </label>
             <textarea
@@ -471,22 +471,22 @@ export default function DocumentSettingsPage() {
               onChange={(e) => setEditNotes(e.target.value)}
               rows={3}
               placeholder={t("pages.documents.settings.defaultNotesPlaceholder")}
-              className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
             />
           </div>
         </div>
       </div>
 
       {/* Counter Management */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-5 border-b border-[#ebe9f1]">
-          <div className="flex items-center justify-between">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-5 border-b border-border">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-[#009688]/10">
-                <Calendar className="w-4 h-4 text-[#009688]" />
+              <div className="p-2 rounded-lg bg-accent">
+                <Calendar className="w-4 h-4 text-accent-foreground" />
               </div>
               <div>
-                <h2 className="font-semibold text-[#5e5873]">
+                <h2 className="font-semibold text-foreground">
                   {t("pages.documents.settings.counters")}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -498,7 +498,7 @@ export default function DocumentSettingsPage() {
               <select
                 value={counterYear}
                 onChange={(e) => setCounterYear(parseInt(e.target.value))}
-                className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="px-3 py-2 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               >
                 {Array.from(
                   { length: 5 },
@@ -512,7 +512,7 @@ export default function DocumentSettingsPage() {
               <button
                 onClick={fetchCounters}
                 disabled={isLoadingCounters}
-                className="p-2 rounded-lg hover:bg-[#f8f8f8] transition-colors"
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
                 title={t("pages.documents.settings.refreshCounters")}
               >
                 <RefreshCw
@@ -528,7 +528,7 @@ export default function DocumentSettingsPage() {
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="p-5 grid grid-cols-2 gap-4">
+          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {DOCUMENT_TYPES.map((type) => {
               const colors = TYPE_COLORS[type];
               const currentValue = parseInt(editCounterValues[type] || "0");
@@ -545,7 +545,7 @@ export default function DocumentSettingsPage() {
               return (
                 <div
                   key={type}
-                  className="rounded-lg border border-[#ebe9f1] p-4 hover:shadow-sm transition-shadow"
+                  className="rounded-lg border border-border p-4 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -572,13 +572,13 @@ export default function DocumentSettingsPage() {
                             [type]: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                       />
                     </div>
                     <button
                       onClick={() => handleSetCounter(type)}
                       disabled={!!savingCounterType}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] transition-colors disabled:opacity-50 font-medium text-[#5e5873]"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 font-medium text-foreground"
                     >
                       {savingCounterType === type ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -589,12 +589,12 @@ export default function DocumentSettingsPage() {
                   </div>
 
                   {/* Next number preview */}
-                  <div className="mt-3 pt-3 border-t border-[#ebe9f1] flex items-center gap-2">
+                  <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
                     <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     <span className="text-[11px] text-muted-foreground">
                       {t("pages.documents.settings.nextLabel")}
                     </span>
-                    <span className="text-xs font-mono font-medium text-[#5e5873]">
+                    <span className="text-xs font-mono font-medium text-foreground">
                       {nextPreview}
                     </span>
                   </div>
@@ -606,9 +606,9 @@ export default function DocumentSettingsPage() {
 
         {/* Info box */}
         <div className="px-5 pb-5">
-          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-            <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700">
+          <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
+            <Info className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700 dark:text-blue-300">
               {t("pages.documents.settings.counterInfo")}
             </p>
           </div>

@@ -85,20 +85,20 @@ export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
 
   return (
     <div className="p-4">
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-muted-foreground mb-4">
         {t("pages.notifications.campaigns.tagsTab.description")}
       </p>
 
       {isLoadingTags ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.tagsTab.loadingTags")}</span>
+          <span className="text-sm text-muted-foreground">{t("pages.notifications.campaigns.tagsTab.loadingTags")}</span>
         </div>
       ) : tags.length === 0 ? (
         <div className="text-center py-12">
-          <Tag className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">{t("pages.notifications.campaigns.tagsTab.noTags")}</p>
-          <p className="text-xs text-slate-400 mt-1">
+          <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">{t("pages.notifications.campaigns.tagsTab.noTags")}</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
             {t("pages.notifications.campaigns.tagsTab.noTagsHint")}
           </p>
         </div>
@@ -112,11 +112,11 @@ export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
                 type="button"
                 onClick={() => toggleTag(tag.tag_id)}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition ${
-                  isSelected ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
+                  isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/30"
                 }`}
               >
                 <div className="flex items-center h-5">
-                  <input type="checkbox" checked={isSelected} onChange={() => {}} className="w-4 h-4 rounded border-slate-300 text-primary" />
+                  <input type="checkbox" checked={isSelected} onChange={() => {}} className="w-4 h-4 rounded border-border text-primary" />
                 </div>
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -125,8 +125,8 @@ export function TagsTab({ existingUserIds, onAddUsers }: TagsTabProps) {
                   <Tag className="w-4 h-4" style={{ color: tag.color || "#64748b" }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900">{tag.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-medium text-foreground">{tag.name}</p>
+                  <p className="text-xs text-muted-foreground">
                     {tag.user_count !== 1
                       ? t("pages.notifications.campaigns.tagsTab.usersPlural", { count: tag.user_count })
                       : t("pages.notifications.campaigns.tagsTab.usersSingular", { count: tag.user_count })}

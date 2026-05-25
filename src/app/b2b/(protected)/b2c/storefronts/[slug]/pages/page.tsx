@@ -220,24 +220,24 @@ export default function PagesManagementPage({
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[#5e5873]">{t("pages.b2c.pagesManagement.title")}</h1>
-          <p className="text-sm text-[#b9b9c3]">
+          <h1 className="text-xl font-semibold text-foreground">{t("pages.b2c.pagesManagement.title")}</h1>
+          <p className="text-sm text-muted-foreground">
             {t("pages.b2c.pagesManagement.subtitle").replace("{slug}", slug).replace("{count}", String(pages.length))}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${slug}`}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#009688] px-4 py-2 text-sm font-medium text-[#009688] hover:bg-[#009688]/10 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Home className="h-4 w-4" />
             {t("pages.b2c.pagesManagement.homeBuilder")}
           </Link>
           <Button
             onClick={() => setShowAddDialog(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b]"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             {t("pages.b2c.pagesManagement.addPage")}
@@ -247,12 +247,12 @@ export default function PagesManagementPage({
 
       {/* Messages */}
       {error && (
-        <div className="rounded-[0.428rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-[0.428rem] border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </div>
       )}
       {success && (
-        <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">
+        <div className="rounded-[0.428rem] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
           {success}
         </div>
       )}
@@ -261,29 +261,29 @@ export default function PagesManagementPage({
       {!isLoading && pages.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={filterTitle}
               onChange={(e) => setFilterTitle(e.target.value)}
               placeholder={t("pages.b2c.pagesManagement.filterByTitle")}
-              className="h-9 w-48 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+              className="h-9 w-48 rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={filterSlug}
               onChange={(e) => setFilterSlug(e.target.value)}
               placeholder={t("pages.b2c.pagesManagement.filterBySlug")}
-              className="h-9 w-48 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+              className="h-9 w-48 rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as "" | "active" | "inactive")}
-            className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+            className="h-9 w-full sm:w-auto rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
           >
             <option value="">{t("pages.b2c.pagesManagement.allStatuses")}</option>
             <option value="active">{t("common.active")}</option>
@@ -295,15 +295,15 @@ export default function PagesManagementPage({
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#009688]" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
 
       {/* Empty State */}
       {!isLoading && pages.length === 0 && (
-        <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
-          <FileText className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-          <p className="text-sm text-[#b9b9c3]">
+        <div className="rounded-[0.428rem] border border-dashed border-border bg-muted px-6 py-12 text-center">
+          <FileText className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">
             {t("pages.b2c.pagesManagement.noPages")}
           </p>
         </div>
@@ -311,42 +311,42 @@ export default function PagesManagementPage({
 
       {/* No results after filter */}
       {!isLoading && pages.length > 0 && filteredPages.length === 0 && (
-        <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
-          <Search className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-          <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.pagesManagement.noFilterResults")}</p>
+        <div className="rounded-[0.428rem] border border-dashed border-border bg-muted px-6 py-12 text-center">
+          <Search className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">{t("pages.b2c.pagesManagement.noFilterResults")}</p>
         </div>
       )}
 
       {/* Pages Table */}
       {!isLoading && filteredPages.length > 0 && (
-        <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
+        <div className="rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] dark:shadow-none overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[#fafafc]">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colTitle")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colSlug")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("common.status")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colContent")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colShowInNav")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.b2c.pagesManagement.colLastSaved")}</th>
-                <th className="px-4 py-3 text-right font-medium text-[#5e5873]">{t("common.actions")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2c.pagesManagement.colTitle")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2c.pagesManagement.colSlug")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("common.status")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2c.pagesManagement.colContent")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2c.pagesManagement.colShowInNav")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2c.pagesManagement.colLastSaved")}</th>
+                <th className="px-4 py-3 text-right font-medium text-foreground">{t("common.actions")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#ebe9f1]">
+            <tbody className="divide-y divide-border">
               {filteredPages.map((pg) => (
-                <tr key={pg._id} className="hover:bg-[#fafafc]">
-                  <td className="px-4 py-3 font-medium text-[#5e5873]">
+                <tr key={pg._id} className="hover:bg-muted/50">
+                  <td className="px-4 py-3 font-medium text-foreground">
                     {pg.title}
                   </td>
-                  <td className="px-4 py-3 text-[#b9b9c3] font-mono text-xs">
+                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
                     /{pg.slug}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         pg.status === "active"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-100 text-slate-500"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {pg.status}
@@ -357,39 +357,39 @@ export default function PagesManagementPage({
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                           pg.template_status === "published"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
                         }`}
                       >
                         {pg.template_status || "draft"}
                       </span>
                       {pg.has_unpublished_changes && (
-                        <span className="inline-flex items-center gap-0.5 text-xs text-amber-600" title="Unpublished changes">
+                        <span className="inline-flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400" title="Unpublished changes">
                           <AlertCircle className="h-3 w-3" />
                         </span>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs ${pg.show_in_nav ? "text-emerald-600" : "text-[#b9b9c3]"}`}>
+                    <span className={`text-xs ${pg.show_in_nav ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
                       {pg.show_in_nav ? "Yes" : "No"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#b9b9c3]">
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
                     {formatDate(pg.last_saved_at || pg.updated_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`${tenantPrefix}/b2b/b2c-page-builder?storefront=${slug}&page=${pg.slug}`}
-                        className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
                       >
                         {t("common.edit")}
                       </Link>
                       <button
                         type="button"
                         onClick={() => { setRenameTarget(pg); setRenameTitle(pg.title); setRenameSlug(pg.slug); }}
-                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10 transition-colors"
+                        className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                         title={t("pages.b2c.pagesManagement.rename")}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -398,7 +398,7 @@ export default function PagesManagementPage({
                         type="button"
                         onClick={() => handleDuplicatePage(pg.slug)}
                         disabled={isDuplicating === pg.slug}
-                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10 transition-colors disabled:opacity-50"
+                        className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
                         title={t("common.duplicate")}
                       >
                         {isDuplicating === pg.slug ? (
@@ -410,7 +410,7 @@ export default function PagesManagementPage({
                       <button
                         type="button"
                         onClick={() => handleDeletePage(pg.slug)}
-                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="rounded-md p-1.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                         title={t("common.delete")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -427,13 +427,13 @@ export default function PagesManagementPage({
       {/* Add Page Dialog */}
       {showAddDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-[#5e5873]">
+          <div className="w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-foreground">
               {t("pages.b2c.pagesManagement.createNewPage")}
             </h2>
             <div className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   {t("pages.b2c.pagesManagement.pageTitle")}
                 </label>
                 <Input
@@ -450,7 +450,7 @@ export default function PagesManagementPage({
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   {t("pages.b2c.pagesManagement.urlSlug")}
                 </label>
                 <Input
@@ -459,7 +459,7 @@ export default function PagesManagementPage({
                   placeholder={t("pages.b2c.pagesManagement.urlSlugPlaceholder")}
                   className="mt-1"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {t("pages.b2c.pagesManagement.urlPath")}: /{newSlug || "..."}
                 </p>
               </div>
@@ -478,7 +478,7 @@ export default function PagesManagementPage({
               <Button
                 onClick={handleCreatePage}
                 disabled={isCreating || !newTitle.trim() || !newSlug.trim()}
-                className="bg-[#009688] text-white hover:bg-[#00796b]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {isCreating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -492,13 +492,13 @@ export default function PagesManagementPage({
       {/* Rename Dialog */}
       {renameTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-[#5e5873]">
+          <div className="w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-foreground">
               {t("pages.b2c.pagesManagement.editPage")}
             </h2>
             <div className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   {t("pages.b2c.pagesManagement.pageTitle")}
                 </label>
                 <Input
@@ -510,7 +510,7 @@ export default function PagesManagementPage({
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   {t("pages.b2c.pagesManagement.urlSlug")}
                 </label>
                 <Input
@@ -522,10 +522,10 @@ export default function PagesManagementPage({
                     if (e.key === "Enter") handleRenamePage();
                   }}
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {t("pages.b2c.pagesManagement.urlPath")}: /{renameSlug || "..."}
                   {renameSlug !== renameTarget.slug && (
-                    <span className="ml-2 text-amber-600">
+                    <span className="ml-2 text-amber-600 dark:text-amber-400">
                       {t("pages.b2c.pagesManagement.slugChangeWarning")}
                     </span>
                   )}
@@ -547,7 +547,7 @@ export default function PagesManagementPage({
                   !renameSlug.trim() ||
                   (renameTitle.trim() === renameTarget.title && renameSlug.trim() === renameTarget.slug)
                 }
-                className="bg-[#009688] text-white hover:bg-[#00796b]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {isRenaming ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -132,7 +132,7 @@ export default function DataModelDetailPage({
 
   if (loading) {
     return (
-      <div className="p-6 text-slate-500">
+      <div className="p-6 text-muted-foreground">
         <Loader2 className="inline h-4 w-4 animate-spin" /> Loading…
       </div>
     );
@@ -140,12 +140,12 @@ export default function DataModelDetailPage({
   if (!definition) {
     return (
       <div className="space-y-4 p-6">
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 p-3 text-sm text-rose-700 dark:text-rose-400">
           {error || "Not found"}
         </div>
         <Link
           href="/b2b/admin/data-models"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </Link>
@@ -155,19 +155,19 @@ export default function DataModelDetailPage({
 
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
             href="/b2b/admin/data-models"
-            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> All data models
           </Link>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-slate-800">
-            <Database className="h-6 w-6 text-slate-500" />
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-foreground">
+            <Database className="h-6 w-6 text-muted-foreground" />
             {definition.name}
           </h1>
-          <p className="mt-1 font-mono text-xs text-slate-500">
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
             {definition.slug} · relation: {definition.relation} · cardinality:{" "}
             {definition.cardinality} · channel: {definition.channel}
             {definition.external_ref_field
@@ -183,15 +183,15 @@ export default function DataModelDetailPage({
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-slate-200">
+      <div className="flex gap-2 border-b border-border overflow-x-auto">
         {(["schema", "records", "import", "api"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm capitalize ${
+            className={`-mb-px border-b-2 px-3 py-2 text-sm capitalize whitespace-nowrap ${
               tab === t
-                ? "border-orange-500 font-medium text-orange-600"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                ? "border-primary font-medium text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {t}
@@ -200,24 +200,24 @@ export default function DataModelDetailPage({
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 p-3 text-sm text-rose-700 dark:text-rose-400">
           {error}
         </div>
       )}
 
       {tab === "schema" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-slate-500">Name</label>
+              <label className="text-xs font-medium text-muted-foreground">Name</label>
               <input
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
-            <div className="flex items-end gap-4 pb-1">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="flex flex-wrap items-end gap-4 pb-1">
+              <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={draftEnabled}
@@ -226,7 +226,7 @@ export default function DataModelDetailPage({
                 />
                 Enabled
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={draftReadable}
@@ -372,13 +372,13 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
       </div>
 
       {loading && (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> Loading records…
         </p>
       )}
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 p-3 text-sm text-rose-700 dark:text-rose-400">
           {error}
         </div>
       )}

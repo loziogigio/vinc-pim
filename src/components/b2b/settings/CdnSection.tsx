@@ -78,7 +78,7 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
     <SectionCard title={t("pages.homeSettings.cdn.title")} description={t("pages.homeSettings.cdn.description")}>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="md:col-span-2 space-y-2">
-          <label htmlFor="cdn-url" className="text-sm font-medium text-slate-600">
+          <label htmlFor="cdn-url" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.cdn.endpointUrl")}
           </label>
           <input
@@ -87,13 +87,13 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
             value={cdnCredentials.cdn_url || ""}
             onChange={(e) => onChange("cdn_url", e.target.value)}
             placeholder="https://s3.eu-de.cloud-object-storage.appdomain.cloud"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-slate-500">{t("pages.homeSettings.cdn.endpointUrlHelper")}</p>
+          <p className="text-xs text-muted-foreground">{t("pages.homeSettings.cdn.endpointUrlHelper")}</p>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="bucket-region" className="text-sm font-medium text-slate-600">
+          <label htmlFor="bucket-region" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.cdn.bucketRegion")}
           </label>
           <input
@@ -102,12 +102,12 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
             value={cdnCredentials.bucket_region || ""}
             onChange={(e) => onChange("bucket_region", e.target.value)}
             placeholder="eu-de"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="bucket-name" className="text-sm font-medium text-slate-600">
+          <label htmlFor="bucket-name" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.cdn.bucketName")}
           </label>
           <input
@@ -116,12 +116,12 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
             value={cdnCredentials.bucket_name || ""}
             onChange={(e) => onChange("bucket_name", e.target.value)}
             placeholder="my-bucket"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="folder-name" className="text-sm font-medium text-slate-600">
+          <label htmlFor="folder-name" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.cdn.folderName")}
           </label>
           <input
@@ -130,13 +130,13 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
             value={cdnCredentials.folder_name || ""}
             onChange={(e) => onChange("folder_name", e.target.value)}
             placeholder="uploads"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-slate-500">{t("pages.homeSettings.cdn.folderNameHelper")}</p>
+          <p className="text-xs text-muted-foreground">{t("pages.homeSettings.cdn.folderNameHelper")}</p>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="cdn-key" className="text-sm font-medium text-slate-600">
+          <label htmlFor="cdn-key" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.cdn.accessKeyId")}
           </label>
           <input
@@ -145,12 +145,12 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
             value={cdnCredentials.cdn_key || ""}
             onChange={(e) => onChange("cdn_key", e.target.value)}
             placeholder="••••••••••••••••"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="cdn-secret" className="text-sm font-medium text-slate-600">
+          <label htmlFor="cdn-secret" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.cdn.secretAccessKey")}
           </label>
           <input
@@ -159,16 +159,16 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
             value={cdnCredentials.cdn_secret || ""}
             onChange={(e) => onChange("cdn_secret", e.target.value)}
             placeholder="••••••••••••••••••••••••••••••••"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
       </div>
 
-      <div className="border-t border-slate-200 pt-6 mt-6">
-        <h3 className="text-sm font-semibold text-slate-900 mb-4">{t("pages.homeSettings.cdn.advancedSettings")}</h3>
+      <div className="border-t border-border pt-6 mt-6">
+        <h3 className="text-sm font-semibold text-foreground mb-4">{t("pages.homeSettings.cdn.advancedSettings")}</h3>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
-            <label htmlFor="signed-url-expiry" className="text-sm font-medium text-slate-600">
+            <label htmlFor="signed-url-expiry" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.cdn.signedUrlExpiry")}
             </label>
             <input
@@ -178,20 +178,20 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
               value={cdnCredentials.signed_url_expiry || 0}
               onChange={(e) => onChange("signed_url_expiry", Number(e.target.value))}
               placeholder="0"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.cdn.signedUrlExpiryHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.cdn.signedUrlExpiryHelper")}</p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.cdn.deleteFromCloud")}</label>
+            <label className="text-sm font-medium text-foreground/80">{t("pages.homeSettings.cdn.deleteFromCloud")}</label>
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => onChange("delete_from_cloud", !cdnCredentials.delete_from_cloud)}
                 className={cn(
                   "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                  cdnCredentials.delete_from_cloud ? "bg-primary" : "bg-slate-200"
+                  cdnCredentials.delete_from_cloud ? "bg-primary" : "bg-muted"
                 )}
               >
                 <span
@@ -201,16 +201,16 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
                   )}
                 />
               </button>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-foreground/80">
                 {cdnCredentials.delete_from_cloud ? t("common.enabled") : t("common.disabled")}
               </span>
             </div>
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.cdn.deleteFromCloudHelper")}</p>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.cdn.deleteFromCloudHelper")}</p>
           </div>
         </div>
       </div>
 
-      <div className="border-t border-slate-200 pt-6 mt-6">
+      <div className="border-t border-border pt-6 mt-6">
         {hasUnsavedChanges && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
             {t("pages.homeSettings.cdn.saveBeforeTesting")}
@@ -218,8 +218,8 @@ export function CdnSection({ cdnCredentials, onChange, hasUnsavedChanges }: CdnS
         )}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">{t("pages.homeSettings.cdn.testConnection")}</h3>
-            <p className="text-xs text-slate-500">{t("pages.homeSettings.cdn.testConnectionHelper")}</p>
+            <h3 className="text-sm font-semibold text-foreground">{t("pages.homeSettings.cdn.testConnection")}</h3>
+            <p className="text-xs text-muted-foreground">{t("pages.homeSettings.cdn.testConnectionHelper")}</p>
           </div>
           <Button
             type="button"

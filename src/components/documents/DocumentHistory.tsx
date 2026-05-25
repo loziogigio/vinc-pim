@@ -13,16 +13,16 @@ export function DocumentHistory({ history }: Props) {
   if (!history || history.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-lg border border-[#ebe9f1]">
-      <div className="p-4 border-b border-[#ebe9f1]">
-        <h2 className="font-semibold text-[#5e5873]">Cronologia</h2>
+    <div className="bg-card rounded-lg border border-border">
+      <div className="p-4 border-b border-border">
+        <h2 className="font-semibold text-foreground">Cronologia</h2>
       </div>
-      <div className="divide-y divide-[#ebe9f1]">
+      <div className="divide-y divide-border">
         {[...history].reverse().map((entry, idx) => (
           <div key={idx} className="px-4 py-3 flex items-start gap-3">
             <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-sm text-[#5e5873]">
+              <div className="text-sm text-foreground">
                 <span className="font-medium capitalize">
                   {DOCUMENT_STATUS_LABELS[
                     entry.action as DocumentStatus

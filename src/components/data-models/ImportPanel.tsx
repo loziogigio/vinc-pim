@@ -61,16 +61,16 @@ export function ImportPanel({ slug, onImported }: ImportPanelProps) {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Paste a batch payload matching the{" "}
-          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
             POST /records/batch
           </code>{" "}
           shape.
         </p>
-        <details className="mt-2 text-xs text-slate-500">
+        <details className="mt-2 text-xs text-muted-foreground">
           <summary className="cursor-pointer">Show example</summary>
-          <pre className="mt-2 max-h-60 overflow-auto rounded bg-slate-50 p-3 font-mono text-[11px]">
+          <pre className="mt-2 max-h-60 overflow-auto rounded bg-muted p-3 font-mono text-[11px] text-foreground">
 {`{
   "merge_mode": "partial",
   "source": "mymb-erp",
@@ -106,7 +106,7 @@ export function ImportPanel({ slug, onImported }: ImportPanelProps) {
       />
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-muted-foreground">
           {text ? `${text.length.toLocaleString()} chars` : ""}
         </span>
         <Button onClick={onSubmit} disabled={busy || !text.trim()}>
@@ -115,13 +115,13 @@ export function ImportPanel({ slug, onImported }: ImportPanelProps) {
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 p-3 text-sm text-rose-700 dark:text-rose-400">
           {error}
         </div>
       )}
 
       {result && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40 p-3 text-sm text-emerald-800 dark:text-emerald-400">
           <p>
             <strong>Submitted:</strong> {result.submitted} ·{" "}
             <strong>Created:</strong> {result.created} ·{" "}

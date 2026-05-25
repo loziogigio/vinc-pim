@@ -66,7 +66,7 @@ function CardStyleForm({
       description={t("pages.homeSettings.product.description")}
     >
       <div className="space-y-4">
-        <label className="text-sm font-medium text-slate-600">{t("pages.homeSettings.product.defaultLayout")}</label>
+        <label className="text-sm font-medium text-foreground/80">{t("pages.homeSettings.product.defaultLayout")}</label>
         <div className="grid gap-3 md:grid-cols-2">
           {CARD_VARIANTS.map((variant) => {
             const isActive = cardVariant === variant.value;
@@ -79,7 +79,7 @@ function CardStyleForm({
                   "rounded-2xl border px-4 py-3 text-left transition-all",
                   isActive
                     ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-slate-200 hover:border-primary/30 hover:bg-primary/5"
+                    : "border-border hover:border-primary/30 hover:bg-primary/5"
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -88,14 +88,14 @@ function CardStyleForm({
                       "flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold",
                       isActive
                         ? "border-primary/30 bg-primary/15 text-primary"
-                        : "border-slate-200 bg-white text-slate-500"
+                        : "border-border bg-muted text-muted-foreground"
                     )}
                   >
                     {variant.value === "b2b" ? "V" : "H"}
                   </span>
                   <div>
                     <div className="text-sm font-semibold">{t(variant.labelKey)}</div>
-                    <div className="text-xs text-slate-500">{t(variant.helperKey)}</div>
+                    <div className="text-xs text-muted-foreground">{t(variant.helperKey)}</div>
                   </div>
                 </div>
               </button>
@@ -106,7 +106,7 @@ function CardStyleForm({
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-3">
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.product.borderWidth")}: {cardStyle.borderWidth}px
           </label>
           <input
@@ -128,7 +128,7 @@ function CardStyleForm({
         />
 
         <div className="space-y-2">
-          <label htmlFor="border-style" className="text-sm font-medium text-slate-600">
+          <label htmlFor="border-style" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.product.borderStyle")}
           </label>
           <select
@@ -137,7 +137,7 @@ function CardStyleForm({
             onChange={(event) =>
               onStyleChange("borderStyle", event.target.value as ProductCardStyle["borderStyle"])
             }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="solid">{t("pages.homeSettings.product.borderSolid")}</option>
             <option value="dashed">{t("pages.homeSettings.product.borderDashed")}</option>
@@ -147,7 +147,7 @@ function CardStyleForm({
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="border-radius" className="text-sm font-medium text-slate-600">
+          <label htmlFor="border-radius" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.product.borderRadius")}
           </label>
           <select
@@ -156,7 +156,7 @@ function CardStyleForm({
             onChange={(event) =>
               onStyleChange("borderRadius", event.target.value as ProductCardStyle["borderRadius"])
             }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="none">{t("pages.homeSettings.product.radiusSharp")}</option>
             <option value="sm">{t("pages.homeSettings.product.radiusSlight")}</option>
@@ -171,7 +171,7 @@ function CardStyleForm({
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <label htmlFor="shadow-size" className="text-sm font-medium text-slate-600">
+          <label htmlFor="shadow-size" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.product.shadowSize")}
           </label>
           <select
@@ -180,7 +180,7 @@ function CardStyleForm({
             onChange={(event) =>
               onStyleChange("shadowSize", event.target.value as ProductCardStyle["shadowSize"])
             }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="none">{t("common.none")}</option>
             <option value="sm">{t("pages.homeSettings.product.sizeSmall")}</option>
@@ -201,7 +201,7 @@ function CardStyleForm({
 
       <div className="space-y-6">
         <div className="space-y-2">
-          <label htmlFor="hover-effect" className="text-sm font-medium text-slate-600">
+          <label htmlFor="hover-effect" className="text-sm font-medium text-foreground/80">
             {t("pages.homeSettings.product.hoverEffect")}
           </label>
           <select
@@ -210,7 +210,7 @@ function CardStyleForm({
             onChange={(event) =>
               onStyleChange("hoverEffect", event.target.value as ProductCardStyle["hoverEffect"])
             }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="none">{t("common.none")}</option>
             <option value="lift">{t("pages.homeSettings.product.hoverLift")}</option>
@@ -223,7 +223,7 @@ function CardStyleForm({
 
         {cardStyle.hoverEffect === "scale" ? (
           <div className="space-y-3">
-            <label className="text-sm font-medium text-slate-600">
+            <label className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.product.hoverScaleLabel")}: {(cardStyle.hoverScale ?? 1.02).toFixed(2)}×
             </label>
             <input
@@ -240,7 +240,7 @@ function CardStyleForm({
 
         {cardStyle.hoverEffect === "shadow" ? (
           <div className="space-y-2">
-            <label htmlFor="hover-shadow" className="text-sm font-medium text-slate-600">
+            <label htmlFor="hover-shadow" className="text-sm font-medium text-foreground/80">
               {t("pages.homeSettings.product.hoverShadowSize")}
             </label>
             <select
@@ -249,7 +249,7 @@ function CardStyleForm({
               onChange={(event) =>
                 onStyleChange("hoverShadowSize", event.target.value as ProductCardStyle["hoverShadowSize"])
               }
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="sm">{t("pages.homeSettings.product.sizeSmall")}</option>
               <option value="md">{t("pages.homeSettings.product.sizeMedium")}</option>
@@ -280,7 +280,7 @@ function CardStyleForm({
       </div>
 
       <div className="space-y-3">
-        <label className="text-sm font-medium text-slate-600">
+        <label className="text-sm font-medium text-foreground/80">
           {t("pages.homeSettings.product.priceDecimals")}: {cardStyle.priceDecimals ?? 2}
         </label>
         <div className="flex items-center gap-3">
@@ -293,18 +293,18 @@ function CardStyleForm({
             onChange={(event) => onStyleChange("priceDecimals", Number(event.target.value))}
             className="w-full"
           />
-          <span className="min-w-[3rem] rounded-md border border-slate-200 bg-white px-2 py-1 text-center text-sm font-mono text-slate-700">
+          <span className="min-w-[3rem] rounded-md border border-border bg-muted px-2 py-1 text-center text-sm font-mono text-foreground">
             {(99.99).toFixed(cardStyle.priceDecimals ?? 2)}
           </span>
         </div>
-        <p className="text-xs text-slate-500">{t("pages.homeSettings.product.priceDecimalsHelper")}</p>
+        <p className="text-xs text-muted-foreground">{t("pages.homeSettings.product.priceDecimalsHelper")}</p>
       </div>
 
       <div>
         <Button
           type="button"
           variant="ghost"
-          className="text-sm text-slate-500 hover:text-slate-900"
+          className="text-sm text-muted-foreground hover:text-foreground"
           onClick={() => {
             onStyleChange("borderWidth", DEFAULT_CARD_STYLE.borderWidth);
             onStyleChange("borderColor", DEFAULT_CARD_STYLE.borderColor);
@@ -356,7 +356,7 @@ function ProductCardPreviewPanel({
               "rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors",
               previewVariant === variant.value
                 ? "border-primary bg-primary/10 text-primary"
-                : "border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                : "border-border text-muted-foreground hover:text-foreground/80 hover:border-border"
             )}
           >
             {t(variant.labelKey)}
@@ -364,7 +364,7 @@ function ProductCardPreviewPanel({
         ))}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="rounded-xl border border-border bg-muted/50 p-4">
         <ProductCardPreview variant={previewVariant} cardStyle={cardStyle} branding={branding} />
       </div>
     </SectionCard>

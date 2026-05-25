@@ -270,14 +270,14 @@ export default function ComponentsPage() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-violet-100 rounded-lg">
-            <Puzzle className="w-6 h-6 text-violet-600" />
+          <div className="p-2 bg-violet-100 dark:bg-violet-900/40 rounded-lg">
+            <Puzzle className="w-6 h-6 text-violet-600 dark:text-violet-300" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.components.title")}</h1>
-            <p className="text-sm text-slate-500">{t("pages.notifications.components.subtitle")}</p>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.notifications.components.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("pages.notifications.components.subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -301,18 +301,18 @@ export default function ComponentsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Panel - List */}
-        <div className="col-span-4">
+        <div className="md:col-span-4">
           {/* Tabs */}
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
+          <div className="flex gap-1 p-1 bg-muted rounded-lg mb-4">
             <button
               onClick={() => setActiveTab("header")}
               className={cn(
                 "flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors",
                 activeTab === "header"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {t("pages.notifications.components.headers")}
@@ -322,8 +322,8 @@ export default function ComponentsPage() {
               className={cn(
                 "flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors",
                 activeTab === "footer"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {t("pages.notifications.components.footers")}
@@ -331,15 +331,15 @@ export default function ComponentsPage() {
           </div>
 
           {/* Component List */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredComponents.length === 0 ? (
               <div className="text-center py-12 px-4">
-                <FileCode className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                <p className="text-slate-500 mb-4">
+                <FileCode className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-muted-foreground mb-4">
                   {t("pages.notifications.components.noComponents").replace("{type}", activeTab)}
                 </p>
                 <Button variant="outline" size="sm" onClick={handleSeedDefaults}>
@@ -347,7 +347,7 @@ export default function ComponentsPage() {
                 </Button>
               </div>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-border">
                 {filteredComponents.map((component) => (
                   <li
                     key={component.component_id}
@@ -358,31 +358,31 @@ export default function ComponentsPage() {
                     className={cn(
                       "px-4 py-3 cursor-pointer transition-colors",
                       selectedComponent?.component_id === component.component_id
-                        ? "bg-violet-50 border-l-2 border-violet-500"
-                        : "hover:bg-slate-50 border-l-2 border-transparent"
+                        ? "bg-violet-50 dark:bg-violet-950/30 border-l-2 border-violet-500"
+                        : "hover:bg-muted/50 border-l-2 border-transparent"
                     )}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900 truncate">
+                          <span className="font-medium text-foreground truncate">
                             {component.name}
                           </span>
                           {component.is_default && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-medium rounded-full">
                               <Star className="w-3 h-3" />
                               {t("pages.notifications.components.defaultBadge")}
                             </span>
                           )}
                         </div>
                         {component.description && (
-                          <p className="text-xs text-slate-500 mt-1 truncate">
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
                             {component.description}
                           </p>
                         )}
                       </div>
                       {!component.is_active && (
-                        <span className="text-xs text-slate-400">{t("common.inactive")}</span>
+                        <span className="text-xs text-muted-foreground">{t("common.inactive")}</span>
                       )}
                     </div>
                   </li>
@@ -393,13 +393,13 @@ export default function ComponentsPage() {
         </div>
 
         {/* Right Panel - Editor/Preview */}
-        <div className="col-span-8">
+        <div className="md:col-span-8">
           {selectedComponent ? (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
               {/* Editor Header */}
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-border bg-muted flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     {isEditing
                       ? selectedComponent._id
                         ? t("pages.notifications.components.editComponent")
@@ -407,7 +407,7 @@ export default function ComponentsPage() {
                       : selectedComponent.name}
                   </h2>
                   {!isEditing && selectedComponent.description && (
-                    <p className="text-sm text-slate-500">{selectedComponent.description}</p>
+                    <p className="text-sm text-muted-foreground">{selectedComponent.description}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -434,7 +434,7 @@ export default function ComponentsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                         onClick={() => handleDelete(selectedComponent)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -473,7 +473,7 @@ export default function ComponentsPage() {
                   <div className="space-y-4">
                     {/* Name */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                      <label className="block text-sm font-medium text-foreground mb-1">
                         {t("pages.notifications.components.nameLabel")}
                       </label>
                       <input
@@ -482,14 +482,14 @@ export default function ComponentsPage() {
                         onChange={(e) =>
                           setSelectedComponent({ ...selectedComponent, name: e.target.value })
                         }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                         placeholder={t("pages.notifications.components.namePlaceholder")}
                       />
                     </div>
 
                     {/* Description */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                      <label className="block text-sm font-medium text-foreground mb-1">
                         {t("pages.notifications.components.descriptionLabel")}
                       </label>
                       <input
@@ -501,14 +501,14 @@ export default function ComponentsPage() {
                             description: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                         placeholder={t("pages.notifications.components.descriptionPlaceholder")}
                       />
                     </div>
 
                     {/* HTML Content */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         {t("pages.notifications.components.htmlContentLabel")}
                       </label>
                       <MonacoHtmlEditor
@@ -521,14 +521,14 @@ export default function ComponentsPage() {
                         }
                         height="350px"
                       />
-                      <p className="text-xs text-slate-500 mt-2">
+                      <p className="text-xs text-muted-foreground mt-2">
                         {t("pages.notifications.components.variableHint")}
                       </p>
                     </div>
 
                     {/* Variables */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                      <label className="block text-sm font-medium text-foreground mb-1">
                         {t("pages.notifications.components.variablesLabel")}
                       </label>
                       <input
@@ -543,13 +543,13 @@ export default function ComponentsPage() {
                               .filter(Boolean),
                           })
                         }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                         placeholder={t("pages.notifications.components.variablesPlaceholder")}
                       />
                     </div>
 
                     {/* Settings */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-6 flex-wrap">
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -560,9 +560,9 @@ export default function ComponentsPage() {
                               is_default: e.target.checked,
                             })
                           }
-                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          className="rounded border-border text-violet-600 focus:ring-violet-500"
                         />
-                        <span className="text-sm text-slate-700">{t("pages.notifications.components.setAsDefaultCheckbox")}</span>
+                        <span className="text-sm text-foreground">{t("pages.notifications.components.setAsDefaultCheckbox")}</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <input
@@ -574,33 +574,33 @@ export default function ComponentsPage() {
                               is_active: e.target.checked,
                             })
                           }
-                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          className="rounded border-border text-violet-600 focus:ring-violet-500"
                         />
-                        <span className="text-sm text-slate-700">{t("pages.notifications.components.activeCheckbox")}</span>
+                        <span className="text-sm text-foreground">{t("pages.notifications.components.activeCheckbox")}</span>
                       </label>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Info */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-slate-500">{t("pages.notifications.components.id")}</span>{" "}
-                        <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
+                        <span className="text-muted-foreground">{t("pages.notifications.components.id")}</span>{" "}
+                        <code className="bg-muted px-2 py-0.5 rounded text-xs">
                           {selectedComponent.component_id}
                         </code>
                       </div>
                       <div>
-                        <span className="text-slate-500">{t("pages.notifications.components.type")}</span>{" "}
-                        <span className="capitalize">{selectedComponent.type}</span>
+                        <span className="text-muted-foreground">{t("pages.notifications.components.type")}</span>{" "}
+                        <span className="capitalize text-foreground">{selectedComponent.type}</span>
                       </div>
                       {selectedComponent.variables && selectedComponent.variables.length > 0 && (
-                        <div className="col-span-2">
-                          <span className="text-slate-500">{t("pages.notifications.components.variablesInfo")}</span>{" "}
+                        <div className="col-span-full">
+                          <span className="text-muted-foreground">{t("pages.notifications.components.variablesInfo")}</span>{" "}
                           {selectedComponent.variables.map((v) => (
                             <code
                               key={v}
-                              className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded text-xs mr-1"
+                              className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2 py-0.5 rounded text-xs mr-1"
                             >
                               {`{{${v}}}`}
                             </code>
@@ -611,8 +611,8 @@ export default function ComponentsPage() {
 
                     {/* Preview */}
                     <div>
-                      <h3 className="text-sm font-medium text-slate-700 mb-2">{t("pages.notifications.components.preview")}</h3>
-                      <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                      <h3 className="text-sm font-medium text-foreground mb-2">{t("pages.notifications.components.preview")}</h3>
+                      <div className="border border-border rounded-lg overflow-hidden bg-muted">
                         <iframe
                           srcDoc={`
                             <!DOCTYPE html>
@@ -632,8 +632,8 @@ export default function ComponentsPage() {
 
                     {/* HTML Code */}
                     <div>
-                      <h3 className="text-sm font-medium text-slate-700 mb-2">{t("pages.notifications.components.htmlCode")}</h3>
-                      <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-xs max-h-[300px]">
+                      <h3 className="text-sm font-medium text-foreground mb-2">{t("pages.notifications.components.htmlCode")}</h3>
+                      <pre className="bg-zinc-900 text-zinc-100 p-4 rounded-lg overflow-x-auto text-xs max-h-[300px]">
                         <code>{selectedComponent.html_content}</code>
                       </pre>
                     </div>
@@ -642,10 +642,10 @@ export default function ComponentsPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 flex items-center justify-center h-[600px]">
+            <div className="bg-card rounded-xl border border-border flex items-center justify-center h-[600px]">
               <div className="text-center">
-                <FileCode className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-500">{t("pages.notifications.components.selectComponent")}</p>
+                <FileCode className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">{t("pages.notifications.components.selectComponent")}</p>
                 <Button variant="outline" className="mt-4" onClick={handleCreateNew}>
                   <Plus className="w-4 h-4 mr-2" />
                   {t("pages.notifications.components.createNew")}

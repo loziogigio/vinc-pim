@@ -47,8 +47,8 @@ function DomainListInput({
             title={d.is_primary ? "Primary domain" : "Set as primary"}
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors ${
               d.is_primary
-                ? "border-[#009688] bg-[#009688] text-white"
-                : "border-slate-200 bg-white text-slate-400 hover:border-[#009688] hover:text-[#009688]"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
             }`}
           >
             {d.is_primary ? "P" : i + 1}
@@ -56,7 +56,7 @@ function DomainListInput({
           <select
             value={d.protocol}
             onChange={(e) => update(i, "protocol", e.target.value)}
-            className="rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-700 focus:border-[#009688] focus:outline-none bg-gray-50"
+            className="rounded-lg border border-border px-2 py-2 text-sm text-foreground focus:border-primary focus:outline-none bg-muted w-full sm:w-auto"
           >
             <option value="https">https://</option>
             <option value="http">http://</option>
@@ -66,12 +66,12 @@ function DomainListInput({
             value={d.host}
             onChange={(e) => update(i, "host", e.target.value)}
             placeholder="www.example.com"
-            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
           />
           <button
             type="button"
             onClick={() => remove(i)}
-            className="rounded-md p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50"
+            className="rounded-md p-1.5 text-muted-foreground hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
           >
             <X className="h-4 w-4" />
           </button>
@@ -81,13 +81,13 @@ function DomainListInput({
         <button
           type="button"
           onClick={add}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80"
         >
           <Plus className="h-3.5 w-3.5" />
           Add domain
         </button>
         {domains.length > 1 && (
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             Click the circle to set the primary domain (used in email links)
           </span>
         )}
@@ -147,9 +147,9 @@ export function GeneralSection({
         />
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Domains</label>
+          <label className="block text-sm font-medium text-foreground mb-1">Domains</label>
           <DomainListInput domains={domains} onChange={onDomainsChange} />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Used to identify which storefront a B2C frontend belongs to via the Origin header.
           </p>
         </div>
@@ -180,7 +180,7 @@ export function GeneralSection({
         <button
           onClick={onSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-5 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? "Saving..." : "Save"}

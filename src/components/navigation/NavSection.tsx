@@ -29,7 +29,7 @@ export function NavSection({
   if (!collapsible) {
     return (
       <div className="py-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#b9b9c3]">
+        <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {Icon && <Icon className="w-3.5 h-3.5" />}
           <span>{title}</span>
         </div>
@@ -45,7 +45,7 @@ export function NavSection({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider",
-          "text-[#b9b9c3] hover:text-[#6e6b7b] transition-colors"
+          "text-muted-foreground hover:text-foreground transition-colors"
         )}
       >
         {Icon && <Icon className="w-3.5 h-3.5" />}

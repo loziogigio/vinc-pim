@@ -39,17 +39,17 @@ export function LoginHero({ compact = false }: LoginHeroProps) {
             priority
             className="mb-3"
           />
-          <h1 className="text-lg font-semibold leading-snug text-[#5e5873] dark:text-slate-100">
+          <h1 className="text-lg font-semibold leading-snug text-foreground">
             {t("login.hero.title")}
           </h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-[#6e6b7b] dark:text-slate-400">
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
             {t("login.hero.subtitle")}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-1.5">
             {modules.map((m) => (
               <span
                 key={m.title}
-                className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-0.5 text-[11px] font-semibold text-[#009688] shadow-sm ring-1 ring-[#009688]/20 dark:bg-white/5 dark:text-[#4dd0c8] dark:ring-[#4dd0c8]/20"
+                className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-0.5 text-[11px] font-semibold text-primary shadow-sm ring-1 ring-primary/20"
               >
                 <m.icon className="h-3 w-3" />
                 {m.title}
@@ -73,16 +73,16 @@ export function LoginHero({ compact = false }: LoginHeroProps) {
           height={44}
           priority
         />
-        <span className="text-[15px] font-semibold tracking-tight text-[#5e5873] dark:text-slate-100">
+        <span className="text-[15px] font-semibold tracking-tight text-foreground">
           VendereInCloud
         </span>
       </div>
 
       <div className="relative mt-auto flex max-w-[520px] flex-col">
-        <h1 className="text-[2.25rem] font-semibold leading-[1.15] tracking-tight text-[#5e5873] dark:text-slate-100">
+        <h1 className="text-[2.25rem] font-semibold leading-[1.15] tracking-tight text-foreground">
           {t("login.hero.title")}
         </h1>
-        <p className="mt-4 max-w-md text-sm leading-relaxed text-[#6e6b7b] dark:text-slate-400">
+        <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
           {t("login.hero.subtitle")}
         </p>
 
@@ -92,16 +92,16 @@ export function LoginHero({ compact = false }: LoginHeroProps) {
             return (
               <li
                 key={m.title}
-                className="group flex items-start gap-3 rounded-[0.428rem] border border-[#ebe9f1]/80 bg-white/65 p-3 backdrop-blur-sm transition hover:border-[#009688]/40 hover:bg-white/90 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
+                className="group flex items-start gap-3 rounded-[0.428rem] border border-border/80 bg-card/65 p-3 backdrop-blur-sm transition hover:border-primary/40 hover:bg-card/90"
               >
-                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[0.358rem] bg-[rgba(0,150,136,0.12)] text-[#009688] transition group-hover:bg-[rgba(0,150,136,0.18)]">
+                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[0.358rem] bg-primary/10 text-primary transition group-hover:bg-primary/20">
                   <Icon className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-[#5e5873] dark:text-slate-100">
+                  <p className="text-[13px] font-semibold text-foreground">
                     {m.title}
                   </p>
-                  <p className="mt-0.5 text-[12px] leading-snug text-[#6e6b7b] dark:text-slate-400">
+                  <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
                     {m.desc}
                   </p>
                 </div>
@@ -111,13 +111,13 @@ export function LoginHero({ compact = false }: LoginHeroProps) {
         </ul>
       </div>
 
-      <div className="relative mt-10 flex items-center justify-between text-[11px] text-[#9e9b99] dark:text-slate-500">
+      <div className="relative mt-10 flex items-center justify-between text-[11px] text-muted-foreground/60">
         <span>
           {t("login.copyright", { year: new Date().getFullYear().toString() })}
         </span>
         <Link
           href="/developers"
-          className="font-medium text-[#009688] underline-offset-2 hover:underline dark:text-[#4dd0c8]"
+          className="font-medium text-primary underline-offset-2 hover:underline"
         >
           {t("login.developerDocsLink")} →
         </Link>
@@ -131,11 +131,11 @@ function BackgroundGlow() {
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 -top-24 h-[360px] w-[360px] rounded-full bg-[#009688]/25 blur-[120px] dark:bg-[#009688]/30"
+        className="pointer-events-none absolute -left-32 -top-24 h-[360px] w-[360px] rounded-full bg-primary/20 blur-[120px] dark:bg-primary/30"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-24 bottom-0 h-[300px] w-[300px] rounded-full bg-[#28c76f]/15 blur-[110px] dark:bg-[#28c76f]/20"
+        className="pointer-events-none absolute -right-24 bottom-0 h-[300px] w-[300px] rounded-full bg-emerald-500/10 blur-[110px] dark:bg-emerald-500/20"
       />
       <div
         aria-hidden

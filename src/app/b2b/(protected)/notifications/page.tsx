@@ -103,15 +103,15 @@ export default function NotificationsDashboard() {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.dashboard.title")}</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.notifications.dashboard.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           {t("pages.notifications.dashboard.subtitle")}
         </p>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <>
@@ -145,38 +145,38 @@ export default function NotificationsDashboard() {
 
           {/* Period Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500 mb-1">{t("pages.notifications.dashboard.thisWeek")}</p>
-              <p className="text-2xl font-bold text-slate-900">{stats.sent_this_week}</p>
-              <p className="text-xs text-slate-400">{t("pages.notifications.dashboard.emailsSent")}</p>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <p className="text-sm text-muted-foreground mb-1">{t("pages.notifications.dashboard.thisWeek")}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.sent_this_week}</p>
+              <p className="text-xs text-muted-foreground">{t("pages.notifications.dashboard.emailsSent")}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500 mb-1">{t("pages.notifications.dashboard.thisMonth")}</p>
-              <p className="text-2xl font-bold text-slate-900">{stats.sent_this_month}</p>
-              <p className="text-xs text-slate-400">{t("pages.notifications.dashboard.emailsSent")}</p>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <p className="text-sm text-muted-foreground mb-1">{t("pages.notifications.dashboard.thisMonth")}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.sent_this_month}</p>
+              <p className="text-xs text-muted-foreground">{t("pages.notifications.dashboard.emailsSent")}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500 mb-1">{t("pages.notifications.dashboard.deliveryStatus")}</p>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <p className="text-sm text-muted-foreground mb-1">{t("pages.notifications.dashboard.deliveryStatus")}</p>
               <div className="flex items-center gap-4 mt-2">
                 <div>
-                  <span className="text-lg font-bold text-emerald-600">{stats.by_status.sent}</span>
-                  <span className="text-xs text-slate-400 ml-1">{t("pages.notifications.dashboard.sent")}</span>
+                  <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{stats.by_status.sent}</span>
+                  <span className="text-xs text-muted-foreground ml-1">{t("pages.notifications.dashboard.sent")}</span>
                 </div>
                 <div>
-                  <span className="text-lg font-bold text-rose-600">{stats.by_status.failed}</span>
-                  <span className="text-xs text-slate-400 ml-1">{t("pages.notifications.dashboard.failed")}</span>
+                  <span className="text-lg font-bold text-rose-600 dark:text-rose-400">{stats.by_status.failed}</span>
+                  <span className="text-xs text-muted-foreground ml-1">{t("pages.notifications.dashboard.failed")}</span>
                 </div>
                 <div>
-                  <span className="text-lg font-bold text-amber-600">{stats.by_status.queued}</span>
-                  <span className="text-xs text-slate-400 ml-1">{t("pages.notifications.dashboard.queued")}</span>
+                  <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{stats.by_status.queued}</span>
+                  <span className="text-xs text-muted-foreground ml-1">{t("pages.notifications.dashboard.queued")}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Channel Stats */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">{t("pages.notifications.dashboard.byChannel")}</h2>
+          <div className="bg-card rounded-xl border border-border p-6 mb-8">
+            <h2 className="text-lg font-semibold text-foreground mb-4">{t("pages.notifications.dashboard.byChannel")}</h2>
             <div className="space-y-4">
               <ChannelRow
                 icon={Mail}
@@ -218,7 +218,7 @@ export default function NotificationsDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <QuickActionCard
               href="/b2b/notifications/campaigns"
               title={t("pages.notifications.dashboard.sendCampaign")}
@@ -262,14 +262,14 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-card rounded-xl border border-border p-4">
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
-          <p className="text-sm text-slate-500">{label}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
         </div>
       </div>
     </div>
@@ -302,23 +302,23 @@ function ChannelRow({
   return (
     <div className={`flex items-center gap-4 ${disabled ? "opacity-50" : ""}`}>
       <Icon className={`w-5 h-5 ${color}`} />
-      <span className="w-24 text-sm font-medium text-slate-700">{label}</span>
-      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+      <span className="w-24 text-sm font-medium text-foreground">{label}</span>
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full ${color.replace("text-", "bg-")} transition-all`}
           style={{ width: `${progressWidth}%` }}
         />
       </div>
-      <span className="w-20 text-right text-sm text-slate-600">
+      <span className="w-20 text-right text-sm text-muted-foreground">
         {t("pages.notifications.dashboard.sentCount").replace("{count}", String(count))}
       </span>
       {rate !== undefined && rateLabel && (
-        <span className="w-24 text-right text-sm text-slate-500">
+        <span className="w-24 text-right text-sm text-muted-foreground">
           {rate}% {rateLabel}
         </span>
       )}
       {disabled && disabledLabel && (
-        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
           {disabledLabel}
         </span>
       )}
@@ -340,13 +340,13 @@ function QuickActionCard({
   return (
     <a
       href={href}
-      className="block bg-white rounded-xl border border-slate-200 p-4 hover:border-slate-300 hover:shadow-sm transition-all"
+      className="block bg-card rounded-xl border border-border p-4 hover:border-primary/40 hover:shadow-sm transition-all"
     >
       <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 text-slate-400" />
+        <Icon className="w-5 h-5 text-muted-foreground" />
         <div>
-          <p className="font-medium text-slate-900">{title}</p>
-          <p className="text-sm text-slate-500">{description}</p>
+          <p className="font-medium text-foreground">{title}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
     </a>

@@ -56,8 +56,8 @@ function PortalSectionLink({
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors pl-7",
         active
-          ? "bg-[#009688]/10 text-[#009688] font-medium"
-          : "text-[#6e6b7b] hover:bg-[#f8f8f8] hover:text-[#5e5873]"
+          ? "bg-primary/10 text-primary font-medium"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
     >
       <Icon className="w-4 h-4 flex-shrink-0" />

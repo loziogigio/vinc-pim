@@ -173,9 +173,9 @@ function EntityLoaderSettings({
   }, [fetchEntities, page]);
 
   return (
-    <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+    <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
       <div className="flex items-center gap-2">
-        <Layers className="h-4 w-4 text-gray-500" />
+        <Layers className="h-4 w-4 text-muted-foreground" />
         <Label className="font-medium">Entity Source</Label>
       </div>
 
@@ -196,17 +196,17 @@ function EntityLoaderSettings({
       </Select>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" />
           Loading {ENTITY_SOURCE_LABELS[entitySource].toLowerCase()}...
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
 
       {!isLoading && entities.length > 0 && (
         <div className="space-y-1">
-          <Label className="text-xs text-gray-500">
+          <Label className="text-xs text-muted-foreground">
             {total} {ENTITY_SOURCE_LABELS[entitySource].toLowerCase()} total
             {totalPages > 1 && ` — page ${page}/${totalPages}`}
           </Label>
@@ -214,7 +214,7 @@ function EntityLoaderSettings({
             {entities.map((entity) => (
               <div
                 key={entity.id}
-                className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm"
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground"
               >
                 {entity.image_url ? (
                   <img
@@ -223,12 +223,12 @@ function EntityLoaderSettings({
                     className="h-6 w-6 rounded object-contain"
                   />
                 ) : (
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-gray-100">
-                    <Tag className="h-3 w-3 text-gray-400" />
+                  <div className="flex h-6 w-6 items-center justify-center rounded bg-muted">
+                    <Tag className="h-3 w-3 text-muted-foreground" />
                   </div>
                 )}
                 <span className="flex-1 truncate">{entity.name}</span>
-                <span className="text-[10px] text-gray-400">
+                <span className="text-[10px] text-muted-foreground">
                   {entity.product_count}
                 </span>
               </div>
@@ -242,18 +242,18 @@ function EntityLoaderSettings({
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft className="h-3 w-3" /> Prev
               </button>
-              <span className="text-[10px] text-gray-400">
+              <span className="text-[10px] text-muted-foreground">
                 {page} / {totalPages}
               </span>
               <button
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next <ChevronRight className="h-3 w-3" />
               </button>
@@ -263,14 +263,14 @@ function EntityLoaderSettings({
       )}
 
       {!isLoading && entities.length === 0 && !error && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           No {ENTITY_SOURCE_LABELS[entitySource].toLowerCase()} found.
         </p>
       )}
 
-      <p className="text-[10px] text-gray-400">
+      <p className="text-[10px] text-muted-foreground">
         Filter:{" "}
-        <code className="rounded bg-gray-100 px-1">
+        <code className="rounded bg-muted px-1">
           filters-{ENTITY_SEARCH_FILTER[entitySource]}
         </code>
       </p>

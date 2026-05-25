@@ -97,16 +97,16 @@ export function CampaignPreviewModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl m-4 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold text-slate-900">{t("pages.notifications.campaigns.previewModal.title")}</h3>
-          <button onClick={onClose} className="p-1 rounded hover:bg-slate-100">
+      <div className="relative bg-card rounded-xl shadow-xl border border-border w-full max-w-4xl m-4 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="text-lg font-semibold text-foreground">{t("pages.notifications.campaigns.previewModal.title")}</h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Channel tabs */}
-        <div className="flex gap-2 px-6 py-3 border-b bg-slate-50">
+        <div className="flex gap-2 px-6 py-3 border-b border-border bg-muted overflow-x-auto">
           {channels.map((channelId) => {
             const config = CHANNEL_UI_CONFIG[channelId];
             return (
@@ -114,10 +114,10 @@ export function CampaignPreviewModal({
                 key={channelId}
                 onClick={() => setPreviewChannel(channelId)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition",
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap",
                   previewChannel === channelId
-                    ? "bg-white shadow text-slate-900"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-card shadow text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {config.label}
@@ -130,17 +130,17 @@ export function CampaignPreviewModal({
         <div className="flex-1 overflow-auto p-6">
           {previewChannel === "email" && (
             <div className="max-w-2xl mx-auto">
-              <div className="bg-slate-100 rounded-t-lg px-4 py-2 text-xs text-slate-500">
+              <div className="bg-muted rounded-t-lg px-4 py-2 text-xs text-muted-foreground">
                 {t("pages.notifications.campaigns.previewModal.emailPreview")}
               </div>
               {isLoadingPreview ? (
-                <div className="bg-white border rounded-b-lg p-8 flex items-center justify-center">
+                <div className="bg-card border border-border rounded-b-lg p-8 flex items-center justify-center">
                   <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-                  <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.previewModal.loadingPreview")}</span>
+                  <span className="text-sm text-muted-foreground">{t("pages.notifications.campaigns.previewModal.loadingPreview")}</span>
                 </div>
               ) : (
                 <div
-                  className="bg-white border rounded-b-lg"
+                  className="bg-white border border-border rounded-b-lg"
                   dangerouslySetInnerHTML={{ __html: emailPreviewHtml }}
                 />
               )}
@@ -150,14 +150,14 @@ export function CampaignPreviewModal({
           {previewChannel === "mobile" && (
             <div className="flex justify-center">
               <div className="w-80">
-                <div className="bg-slate-800 rounded-3xl p-3">
+                <div className="bg-zinc-800 rounded-3xl p-3">
                   <div className="bg-white rounded-2xl overflow-hidden">
-                    <div className="bg-slate-100 px-4 py-2 flex justify-between text-xs text-slate-500">
+                    <div className="bg-zinc-100 px-4 py-2 flex justify-between text-xs text-zinc-500">
                       <span>9:41</span>
                       <span>100%</span>
                     </div>
                     <div className="p-4">
-                      <div className="bg-slate-50 rounded-xl p-3 shadow-sm">
+                      <div className="bg-zinc-50 rounded-xl p-3 shadow-sm">
                         <div className="flex items-start gap-3">
                           {notificationImage ? (
                             <img src={notificationImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
@@ -167,10 +167,10 @@ export function CampaignPreviewModal({
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-slate-900 truncate">
+                            <p className="font-semibold text-sm text-zinc-900 truncate">
                               {title || t("pages.notifications.campaigns.previewModal.notificationTitle")}
                             </p>
-                            <p className="text-xs text-slate-500 line-clamp-2">
+                            <p className="text-xs text-zinc-500 line-clamp-2">
                               {body || t("pages.notifications.campaigns.previewModal.notificationBody")}
                             </p>
                           </div>
@@ -186,10 +186,10 @@ export function CampaignPreviewModal({
           {previewChannel === "web_in_app" && (
             <div className="flex justify-center">
               <div className="w-96">
-                <div className="bg-slate-100 rounded-lg p-2 text-xs text-slate-500 mb-2">
+                <div className="bg-muted rounded-lg p-2 text-xs text-muted-foreground mb-2">
                   {t("pages.notifications.campaigns.previewModal.browserNotification")}
                 </div>
-                <div className="bg-white border rounded-lg shadow-lg p-4">
+                <div className="bg-card border border-border rounded-lg shadow-lg p-4">
                   <div className="flex items-start gap-3">
                     {notificationImage ? (
                       <img src={notificationImage} alt="" className="w-12 h-12 rounded object-cover" />
@@ -199,14 +199,14 @@ export function CampaignPreviewModal({
                       </div>
                     )}
                     <div className="flex-1">
-                      <p className="font-semibold text-slate-900">
+                      <p className="font-semibold text-foreground">
                         {title || t("pages.notifications.campaigns.previewModal.notificationTitle")}
                       </p>
-                      <p className="text-sm text-slate-500 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {body || t("pages.notifications.campaigns.previewModal.notificationBody")}
                       </p>
                     </div>
-                    <button className="text-slate-400 hover:text-slate-600">
+                    <button className="text-muted-foreground hover:text-foreground">
                       <X className="w-4 h-4" />
                     </button>
                   </div>

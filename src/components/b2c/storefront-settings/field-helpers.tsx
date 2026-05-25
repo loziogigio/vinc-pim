@@ -1,11 +1,11 @@
 "use client";
 
 export const inputClass =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#009688] focus:outline-none";
+  "w-full rounded-lg border border-border px-3 py-2 text-sm text-foreground bg-background focus:border-primary focus:outline-none";
 
-export const labelClass = "block text-sm font-medium text-slate-700 mb-1";
+export const labelClass = "block text-sm font-medium text-foreground mb-1";
 
-export const helperClass = "mt-1 text-xs text-slate-500";
+export const helperClass = "mt-1 text-xs text-muted-foreground";
 
 export function Field({
   label,
@@ -44,7 +44,7 @@ export function ColorField({
           type="color"
           value={value || "#000000"}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-9 cursor-pointer rounded border border-slate-200 p-0.5"
+          className="h-9 w-9 cursor-pointer rounded border border-border p-0.5 bg-background"
         />
         <input
           type="text"

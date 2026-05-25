@@ -31,16 +31,16 @@ export function CatalogOverviewCards({ overview }: CatalogOverviewCardsProps) {
 
         <div className="space-y-0.5">
           <div className="flex items-baseline gap-1.5">
-            <p className="text-2xl font-bold text-emerald-600">{overview.enhancedProducts.toLocaleString()}</p>
-            <Sparkles className="h-4 w-4 text-emerald-600" />
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{overview.enhancedProducts.toLocaleString()}</p>
+            <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-xs text-muted-foreground">Enhanced ({enhancedPercentage}%)</p>
         </div>
 
         <div className="space-y-0.5">
           <div className="flex items-baseline gap-1.5">
-            <p className="text-2xl font-bold text-amber-600">{overview.needsAttention.toLocaleString()}</p>
-            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{overview.needsAttention.toLocaleString()}</p>
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           </div>
           <p className="text-xs text-muted-foreground">Need Attention ({needsAttentionPercentage}%)</p>
         </div>

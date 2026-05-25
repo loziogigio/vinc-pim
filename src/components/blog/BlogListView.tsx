@@ -117,9 +117,9 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
   const statusClass = (s: string) =>
-    s === "published" ? "bg-emerald-100 text-emerald-700"
-      : s === "scheduled" ? "bg-amber-100 text-amber-700"
-      : "bg-slate-100 text-slate-500";
+    s === "published" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+      : s === "scheduled" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+      : "bg-muted text-muted-foreground";
 
   function formatDate(d?: string | null) {
     if (!d) return "—";
@@ -128,35 +128,35 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[#5e5873]">{t("pages.blog.list.title")}</h1>
-          <p className="text-sm text-[#b9b9c3]">
+          <h1 className="text-xl font-semibold text-foreground">{t("pages.blog.list.title")}</h1>
+          <p className="text-sm text-muted-foreground">
             {t("pages.blog.list.subtitle").replace("{label}", context.label).replace("{count}", String(total))}
           </p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 bg-[#009688] text-white hover:bg-[#00796b]">
+        <Button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
           <Plus className="h-4 w-4" /> {t("pages.blog.list.newPost")}
         </Button>
       </div>
 
-      {error && <div className="rounded-[0.428rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
-      {success && <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{success}</div>}
+      {error && <div className="rounded-[0.428rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">{error}</div>}
+      {success && <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">{success}</div>}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={filterQ}
             onChange={(e) => { setPage(1); setFilterQ(e.target.value); }}
             placeholder={t("pages.blog.list.filterByTitle")}
-            className="h-9 w-56 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+            className="h-9 w-full min-w-[10rem] max-w-[14rem] rounded-lg border border-border pl-9 pr-3 text-sm focus:border-primary focus:outline-none"
           />
         </div>
         <select
           value={filterStatus}
           onChange={(e) => { setPage(1); setFilterStatus(e.target.value); }}
-          className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+          className="h-9 rounded-lg border border-border px-3 text-sm text-foreground focus:border-primary focus:outline-none"
         >
           <option value="">{t("pages.blog.list.allStatuses")}</option>
           <option value="draft">{t("pages.blog.status.draft")}</option>
@@ -166,54 +166,55 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-[#009688]" /></div>
+        <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : items.length === 0 ? (
-        <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
-          <FileText className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-          <p className="text-sm text-[#b9b9c3]">{t("pages.blog.list.empty")}</p>
+        <div className="rounded-[0.428rem] border border-dashed border-border bg-muted/50 px-6 py-12 text-center">
+          <FileText className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">{t("pages.blog.list.empty")}</p>
         </div>
       ) : (
-        <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[#fafafc]">
+        <div className="rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] dark:shadow-none overflow-hidden">
+          <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.blog.list.colTitle")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("common.status")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.blog.list.colLocales")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.blog.list.colChannels")}</th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">{t("pages.blog.list.colUpdated")}</th>
-                <th className="px-4 py-3 text-right font-medium text-[#5e5873]">{t("common.actions")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.blog.list.colTitle")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("common.status")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground hidden sm:table-cell">{t("pages.blog.list.colLocales")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground hidden md:table-cell">{t("pages.blog.list.colChannels")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground hidden lg:table-cell">{t("pages.blog.list.colUpdated")}</th>
+                <th className="px-4 py-3 text-right font-medium text-foreground">{t("common.actions")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#ebe9f1]">
+            <tbody className="divide-y divide-border">
               {items.map((p) => (
-                <tr key={p.post_id} className="hover:bg-[#fafafc]">
+                <tr key={p.post_id} className="hover:bg-muted/50">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-[#5e5873]">{p.title || t("pages.blog.list.untitled")}</div>
-                    <div className="text-[#b9b9c3] font-mono text-xs">/{p.slug}</div>
+                    <div className="font-medium text-foreground">{p.title || t("pages.blog.list.untitled")}</div>
+                    <div className="text-muted-foreground font-mono text-xs">/{p.slug}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(p.status)}`}>
                       {t(`pages.blog.status.${p.status}`)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#6e6b7b]">{p.locales.map(contentLocaleLabel).join(", ")}</td>
-                  <td className="px-4 py-3 text-xs text-[#6e6b7b]">{p.channels.join(", ")}</td>
-                  <td className="px-4 py-3 text-xs text-[#b9b9c3]">{formatDate(p.updated_at)}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">{p.locales.map(contentLocaleLabel).join(", ")}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground hidden md:table-cell">{p.channels.join(", ")}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">{formatDate(p.updated_at)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`${tenantPrefix}/b2b/blog-builder?post=${p.post_id}&locale=${p.default_locale}&back=${encodeURIComponent(context.basePath)}`}
-                        className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b]"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80"
                       >
                         {t("pages.blog.list.editContent")}
                       </Link>
                       <button type="button" onClick={() => setSettingsTarget(p)} title={t("pages.blog.list.settings")}
-                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#009688] hover:bg-[#009688]/10">
+                        className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-accent">
                         <Settings2 className="h-3.5 w-3.5" />
                       </button>
                       <button type="button" onClick={() => handleDelete(p)} title={t("common.delete")}
-                        className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50">
+                        className="rounded-md p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -222,48 +223,49 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-end gap-2 text-sm">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded border border-[#ebe9f1] px-3 py-1 disabled:opacity-40">‹</button>
-          <span className="text-[#6e6b7b]">{t("pages.blog.list.pageOf").replace("{page}", String(page)).replace("{totalPages}", String(totalPages))}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border border-[#ebe9f1] px-3 py-1 disabled:opacity-40">›</button>
+          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded border border-border px-3 py-1 text-foreground disabled:opacity-40">‹</button>
+          <span className="text-muted-foreground">{t("pages.blog.list.pageOf").replace("{page}", String(page)).replace("{totalPages}", String(totalPages))}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border border-border px-3 py-1 text-foreground disabled:opacity-40">›</button>
         </div>
       )}
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-[#5e5873]">{t("pages.blog.list.createTitle")}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-foreground">{t("pages.blog.list.createTitle")}</h2>
             <div className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-700">{t("pages.blog.list.fieldTitle")}</label>
+                <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldTitle")}</label>
                 <Input value={newTitle} autoFocus
                   onChange={(e) => { setNewTitle(e.target.value); if (!newSlug) setNewSlug(blogSlugify(e.target.value)); }}
                   className="mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">{t("pages.blog.list.fieldSlug")}</label>
+                <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldSlug")}</label>
                 <Input value={newSlug} onChange={(e) => setNewSlug(blogSlugify(e.target.value))} className="mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">{t("pages.blog.list.fieldLocale")}</label>
+                <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldLocale")}</label>
                 <select value={newLocale} onChange={(e) => setNewLocale(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-[#ebe9f1] px-3 text-sm">
+                  className="mt-1 h-10 w-full rounded-lg border border-border px-3 text-sm">
                   {getEnabledLanguages().map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">{t("pages.blog.list.fieldChannels")}</label>
+                <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldChannels")}</label>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {channels.map((c) => {
                     const on = newChannels.includes(c.code);
                     return (
                       <button key={c.code} type="button"
                         onClick={() => setNewChannels((prev) => on ? prev.filter((x) => x !== c.code) : [...prev, c.code])}
-                        className={`rounded-full border px-3 py-1 text-xs ${on ? "border-[#009688] bg-[#009688]/10 text-[#009688]" : "border-[#ebe9f1] text-[#6e6b7b]"}`}>
+                        className={`rounded-full border px-3 py-1 text-xs ${on ? "border-primary bg-accent text-accent-foreground" : "border-border text-muted-foreground"}`}>
                         {c.name}
                       </button>
                     );
@@ -273,7 +275,7 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="ghost" onClick={() => setShowAdd(false)}>{t("common.cancel")}</Button>
-              <Button onClick={handleCreate} disabled={isCreating || !newTitle.trim()} className="bg-[#009688] text-white hover:bg-[#00796b]">
+              <Button onClick={handleCreate} disabled={isCreating || !newTitle.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {t("pages.blog.list.create")}
               </Button>
@@ -341,29 +343,29 @@ function BlogPostSettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold text-[#5e5873]">{t("pages.blog.settings.title")}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold text-foreground">{t("pages.blog.settings.title")}</h2>
         <div className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("pages.blog.list.fieldTitle")} ({post.locale})</label>
+            <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldTitle")} ({post.locale})</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("pages.blog.list.fieldSlug")}</label>
+            <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldSlug")}</label>
             <Input value={slug} onChange={(e) => setSlug(blogSlugify(e.target.value))} className="mt-1" />
           </div>
           <TaxPicker label={t("pages.blog.list.fieldChannels")} options={channels.map((c) => ({ id: c.code, name: c.name }))} selected={sel} onToggle={(id) => toggle(sel, setSel, id)} />
           <TaxPicker label={t("nav.blog.categories")} options={categories.map((c) => ({ id: c.category_id!, name: taxName(c) }))} selected={catIds} onToggle={(id) => toggle(catIds, setCatIds, id)} />
           <TaxPicker label={t("nav.blog.tags")} options={tags.map((tg) => ({ id: tg.tag_id!, name: taxName(tg) }))} selected={tagIds} onToggle={(id) => toggle(tagIds, setTagIds, id)} />
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("pages.blog.settings.coverImageUrl")}</label>
+            <label className="text-sm font-medium text-foreground">{t("pages.blog.settings.coverImageUrl")}</label>
             <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://…" className="mt-1" />
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button>
-          <Button onClick={save} disabled={saving} className="bg-[#009688] text-white hover:bg-[#00796b]">
+          <Button onClick={save} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{t("common.save")}
           </Button>
         </div>
@@ -377,13 +379,13 @@ function TaxPicker({ label, options, selected, onToggle }: {
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-slate-700">{label}</label>
+      <label className="text-sm font-medium text-foreground">{label}</label>
       <div className="mt-1 flex flex-wrap gap-2">
-        {options.length === 0 ? <span className="text-xs text-[#b9b9c3]">—</span> : options.map((o) => {
+        {options.length === 0 ? <span className="text-xs text-muted-foreground">—</span> : options.map((o) => {
           const on = selected.includes(o.id);
           return (
             <button key={o.id} type="button" onClick={() => onToggle(o.id)}
-              className={`rounded-full border px-3 py-1 text-xs ${on ? "border-[#009688] bg-[#009688]/10 text-[#009688]" : "border-[#ebe9f1] text-[#6e6b7b]"}`}>
+              className={`rounded-full border px-3 py-1 text-xs ${on ? "border-primary bg-accent text-accent-foreground" : "border-border text-muted-foreground"}`}>
               {o.name}
             </button>
           );

@@ -102,24 +102,24 @@ export default function DocumentPreviewPage({
   return (
     <div>
       {/* Toolbar (hidden on print) */}
-      <div className="print:hidden px-6 py-3 flex items-center justify-between border-b border-[#ebe9f1] bg-white sticky top-0 z-10">
+      <div className="print:hidden px-6 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button
             onClick={() =>
               router.push(`${tenantPrefix}/b2b/documents/${documentId}`)
             }
-            className="p-2 rounded-lg hover:bg-[#f8f8f8]"
+            className="p-2 rounded-lg hover:bg-muted"
           >
-            <ArrowLeft className="w-5 h-5 text-[#5e5873]" />
+            <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <span className="font-semibold text-[#5e5873]">
+          <span className="font-semibold text-foreground">
             {t("pages.documents.preview.previewLabel")} {doc.document_number || t("pages.documents.preview.draftLabel")}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
           >
             <Printer className="w-4 h-4" />
             {t("pages.documents.preview.print")}
@@ -127,7 +127,7 @@ export default function DocumentPreviewPage({
           <button
             onClick={handleDownload}
             disabled={isDownloading}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium disabled:opacity-50"
           >
             {isDownloading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -140,7 +140,7 @@ export default function DocumentPreviewPage({
       </div>
 
       {/* Preview Content */}
-      <div className="flex justify-center bg-gray-100 print:bg-white min-h-screen p-8 print:p-0">
+      <div className="flex justify-center bg-muted print:bg-white min-h-screen p-8 print:p-0">
         <div
           className="bg-white shadow-lg print:shadow-none w-full max-w-[210mm] p-[15mm]"
           style={{ minHeight: "297mm" }}

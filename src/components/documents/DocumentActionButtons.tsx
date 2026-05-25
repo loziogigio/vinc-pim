@@ -71,7 +71,7 @@ export function DocumentActionButtons({
         <button
           onClick={onSave}
           disabled={isSaving}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium disabled:opacity-50"
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -86,7 +86,7 @@ export function DocumentActionButtons({
         <button
           onClick={onFinalize}
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 text-sm font-medium disabled:opacity-50"
         >
           {actionLoading === "finalize" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -102,7 +102,7 @@ export function DocumentActionButtons({
           <button
             onClick={onSendModal}
             disabled={!!actionLoading}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 dark:bg-amber-700 text-white rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 text-sm font-medium disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
             Invia
@@ -110,7 +110,7 @@ export function DocumentActionButtons({
           <button
             onClick={onMarkSentManually}
             disabled={!!actionLoading}
-            className="inline-flex items-center gap-1.5 px-4 py-2 border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-50 text-sm font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-sm font-medium disabled:opacity-50"
           >
             {actionLoading === "mark-sent" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -126,7 +126,7 @@ export function DocumentActionButtons({
         <button
           onClick={onMarkPaid}
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 text-sm font-medium disabled:opacity-50"
         >
           {actionLoading === "paid" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -143,7 +143,7 @@ export function DocumentActionButtons({
             window.open(`/api/b2b/documents/${documentId}/pdf`, "_blank")
           }
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm font-medium disabled:opacity-50"
         >
           <Eye className="w-4 h-4" />
           Anteprima
@@ -154,7 +154,7 @@ export function DocumentActionButtons({
         <button
           onClick={onDownloadPdf}
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm font-medium disabled:opacity-50"
         >
           {actionLoading === "pdf" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -168,7 +168,7 @@ export function DocumentActionButtons({
       <button
         onClick={onDuplicate}
         disabled={!!actionLoading}
-        className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm font-medium disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm font-medium disabled:opacity-50"
       >
         {actionLoading === "duplicate" ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -189,7 +189,7 @@ export function DocumentActionButtons({
         <button
           onClick={() => setShowConvertMenu(!showConvertMenu)}
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#ebe9f1] rounded-lg hover:bg-[#f8f8f8] text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm font-medium disabled:opacity-50"
         >
           {actionLoading === "convert" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -199,7 +199,7 @@ export function DocumentActionButtons({
           Converti in...
         </button>
         {showConvertMenu && (
-          <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-[#ebe9f1] rounded-lg shadow-lg min-w-[180px]">
+          <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[180px]">
             {DOCUMENT_TYPES.filter((t) => t !== doc.document_type).map((t) => (
               <button
                 key={t}
@@ -207,7 +207,7 @@ export function DocumentActionButtons({
                   onConvert(t);
                   setShowConvertMenu(false);
                 }}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-[#f8f8f8] first:rounded-t-lg last:rounded-b-lg"
+                className="w-full text-left px-4 py-2 text-sm hover:bg-muted first:rounded-t-lg last:rounded-b-lg"
               >
                 {DOCUMENT_TYPE_LABELS[t]}
               </button>
@@ -220,7 +220,7 @@ export function DocumentActionButtons({
         <button
           onClick={onVoid}
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium disabled:opacity-50"
         >
           {actionLoading === "void" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -235,7 +235,7 @@ export function DocumentActionButtons({
         <button
           onClick={onDelete}
           disabled={!!actionLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium disabled:opacity-50"
         >
           <Trash2 className="w-4 h-4" />
           Elimina

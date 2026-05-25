@@ -121,36 +121,36 @@ export default function LoginAttemptsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.loginAttempts.title")}</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.admin.loginAttempts.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           {t("pages.admin.loginAttempts.subtitle")}
         </p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <form onSubmit={handleSearch} className="flex-1">
+      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
+        <form onSubmit={handleSearch} className="flex-1 min-w-0">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder={t("pages.admin.loginAttempts.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
         </form>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
+          <Filter className="w-4 h-4 text-muted-foreground" />
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value as "" | "success" | "failed");
               setPagination((prev) => ({ ...prev, page: 1 }));
             }}
-            className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="">{t("pages.admin.loginAttempts.all")}</option>
             <option value="success">{t("pages.admin.loginAttempts.successful")}</option>
@@ -161,68 +161,68 @@ export default function LoginAttemptsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : attempts.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-          <History className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">{t("pages.admin.loginAttempts.noAttempts")}</p>
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">{t("pages.admin.loginAttempts.noAttempts")}</p>
         </div>
       ) : (
         <>
           {/* Attempts Table */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-muted border-b border-border">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.loginAttempts.dateTime")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.loginAttempts.email")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.loginAttempts.status")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.loginAttempts.ipLocation")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.loginAttempts.device")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.loginAttempts.client")}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-border">
                   {attempts.map((a) => (
-                    <tr key={a._id} className="hover:bg-slate-50">
+                    <tr key={a._id} className="hover:bg-muted/50">
                       <td className="px-4 py-3">
-                        <span className="text-sm text-slate-600">
+                        <span className="text-sm text-muted-foreground">
                           {formatDate(a.timestamp)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-foreground">
                           {a.email}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {a.success ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-full">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40 rounded-full">
                             <CheckCircle className="w-3 h-3" />
                             {t("pages.admin.loginAttempts.success")}
                           </span>
                         ) : (
                           <div>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40 rounded-full">
                               <XCircle className="w-3 h-3" />
                               {t("pages.admin.loginAttempts.failure")}
                             </span>
                             {a.failure_reason && (
-                              <p className="text-xs text-slate-500 mt-1">
+                              <p className="text-xs text-muted-foreground mt-1">
                                 {FAILURE_REASON_LABELS[a.failure_reason] ||
                                   a.failure_reason}
                               </p>
@@ -232,13 +232,13 @@ export default function LoginAttemptsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-slate-400" />
+                          <Globe className="w-4 h-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm text-slate-900 font-mono">
+                            <p className="text-sm text-foreground font-mono">
                               {a.ip_address}
                             </p>
                             {(a.city || a.country) && (
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-muted-foreground">
                                 {a.city && a.country
                                   ? `${a.city}, ${a.country}`
                                   : a.country}
@@ -251,17 +251,17 @@ export default function LoginAttemptsPage() {
                         <div className="flex items-center gap-2">
                           {getDeviceIcon(a.device_type)}
                           <div>
-                            <p className="text-sm text-slate-900">
+                            <p className="text-sm text-foreground">
                               {a.browser || "Unknown"}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               {a.os || "Unknown OS"}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-slate-600">
+                        <span className="text-sm text-muted-foreground">
                           {a.client_id || "-"}
                         </span>
                       </td>
@@ -274,8 +274,8 @@ export default function LoginAttemptsPage() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+              <p className="text-sm text-muted-foreground">
                 {t("pages.admin.loginAttempts.showingPagination")
                   .replace("{from}", String((pagination.page - 1) * pagination.limit + 1))
                   .replace("{to}", String(Math.min(pagination.page * pagination.limit, pagination.total)))
@@ -290,11 +290,11 @@ export default function LoginAttemptsPage() {
                     }))
                   }
                   disabled={pagination.page === 1}
-                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white"
+                  className="p-2 rounded-lg border border-border hover:bg-muted/50 disabled:opacity-50 disabled:hover:bg-card"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-muted-foreground">
                   {t("pages.admin.loginAttempts.pageOf")
                     .replace("{page}", String(pagination.page))
                     .replace("{pages}", String(pagination.totalPages))}
@@ -307,7 +307,7 @@ export default function LoginAttemptsPage() {
                     }))
                   }
                   disabled={pagination.page === pagination.totalPages}
-                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white"
+                  className="p-2 rounded-lg border border-border hover:bg-muted/50 disabled:opacity-50 disabled:hover:bg-card"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

@@ -67,7 +67,7 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         <UILanguageSwitcher />
       </div>
       <div className="space-y-1">
-        <h1 className="text-[1.625rem] font-semibold tracking-tight text-[#5e5873] dark:text-slate-100">
+        <h1 className="text-[1.625rem] font-semibold tracking-tight text-foreground">
           {t("login.welcomeBack")}
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -121,7 +121,7 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
                   ? `/auth/forgot-password?tenant_id=${encodeURIComponent(tenant.trim())}`
                   : "/auth/forgot-password"
               }
-              className="text-xs font-medium text-[#009688] hover:underline dark:text-[#4dd0c8]"
+              className="text-xs font-medium text-primary hover:underline"
             >
               {t("login.forgotPassword")}
             </Link>
@@ -154,11 +154,11 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
 
       <div className="space-y-3 text-sm text-muted-foreground">
         <p className="text-center">{t("login.needAccess")}</p>
-        <div className="flex items-center justify-center gap-1 border-t border-[#ebe9f1] pt-3 text-[13px] dark:border-white/10">
+        <div className="flex items-center justify-center gap-1 border-t border-border pt-3 text-[13px]">
           <span>{t("login.developerDocsPrompt")}</span>
           <Link
             href="/developers"
-            className="inline-flex items-center gap-0.5 font-medium text-[#009688] hover:underline dark:text-[#4dd0c8]"
+            className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
           >
             {t("login.developerDocsLink")}
             <ArrowUpRight className="h-3 w-3" />

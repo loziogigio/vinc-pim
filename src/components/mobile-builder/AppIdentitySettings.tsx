@@ -66,10 +66,10 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+    <div className="space-y-4 rounded-lg border border-border bg-muted/50 p-4">
       <div className="flex items-center gap-2">
-        <Smartphone className="h-4 w-4 text-slate-600" />
-        <h3 className="text-sm font-semibold text-gray-700">App Identity</h3>
+        <Smartphone className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">App Identity</h3>
       </div>
 
       {/* App Name */}
@@ -87,15 +87,15 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs">Logo</Label>
-          <div className="flex rounded-md border bg-white">
+          <div className="flex rounded-md border border-border bg-card">
             <button
               type="button"
               onClick={() => setLogoInputMode("upload")}
               className={cn(
                 "flex items-center gap-1 px-2 py-1 text-xs transition",
                 logoInputMode === "upload"
-                  ? "bg-slate-100 text-slate-700"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Upload className="h-3 w-3" />
@@ -107,8 +107,8 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
               className={cn(
                 "flex items-center gap-1 px-2 py-1 text-xs transition",
                 logoInputMode === "url"
-                  ? "bg-slate-100 text-slate-700"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <LinkIcon className="h-3 w-3" />
@@ -156,7 +156,7 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
 
         {/* Logo Preview */}
         {appIdentity.logo_url && (
-          <div className="flex items-center gap-2 rounded border bg-white p-2">
+          <div className="flex items-center gap-2 rounded border border-border bg-card p-2">
             <img
               src={appIdentity.logo_url}
               alt="Logo preview"
@@ -165,7 +165,7 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
             <button
               type="button"
               onClick={() => onChange({ logo_url: "" })}
-              className="ml-auto text-gray-400 hover:text-red-500"
+              className="ml-auto text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -211,7 +211,7 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
             type="color"
             value={appIdentity.primary_color || "#ec4899"}
             onChange={(e) => onChange({ primary_color: e.target.value })}
-            className="h-8 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+            className="h-8 w-12 cursor-pointer rounded border border-border p-0.5"
           />
           <Input
             value={appIdentity.primary_color || "#ec4899"}
@@ -225,14 +225,14 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
       {/* Access Mode */}
       <div className="space-y-1.5">
         <Label className="text-xs">Access</Label>
-        <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
           <div className="flex items-center gap-2">
             {appIdentity.access_mode === "private" ? (
-              <Lock className="h-4 w-4 text-amber-600" />
+              <Lock className="h-4 w-4 text-amber-500 dark:text-amber-400" />
             ) : (
-              <Globe className="h-4 w-4 text-green-600" />
+              <Globe className="h-4 w-4 text-green-600 dark:text-green-400" />
             )}
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-foreground">
               {appIdentity.access_mode === "private" ? "Private" : "Public"}
             </span>
           </div>
@@ -243,7 +243,7 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
             }
           />
         </div>
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-muted-foreground">
           {appIdentity.access_mode === "private"
             ? "Users must log in to access the app"
             : "Anyone can browse the app without logging in"}
@@ -251,18 +251,18 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
       </div>
 
       {/* Post-Login Landing */}
-      <div className="space-y-1.5 border-t border-slate-200 pt-4">
-        <Label className="text-xs font-semibold text-gray-700">
+      <div className="space-y-1.5 border-t border-border pt-4">
+        <Label className="text-xs font-semibold text-foreground">
           {t("pages.mobileBuilder.postLogin.sectionTitle")}
         </Label>
-        <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
           <div className="flex items-center gap-2">
             {appIdentity.post_login_mode === "landing" ? (
-              <Lock className="h-4 w-4 text-amber-600" />
+              <Lock className="h-4 w-4 text-amber-500 dark:text-amber-400" />
             ) : (
-              <Smartphone className="h-4 w-4 text-slate-500" />
+              <Smartphone className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-foreground">
               {appIdentity.post_login_mode === "landing"
                 ? t("pages.mobileBuilder.postLogin.pageLabelLanding")
                 : t("pages.mobileBuilder.postLogin.pageLabelStandard")}
@@ -275,7 +275,7 @@ export function AppIdentitySettings({ appIdentity, onChange }: AppIdentitySettin
             }
           />
         </div>
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-muted-foreground">
           {t("pages.mobileBuilder.postLogin.helperText")}
         </p>
       </div>

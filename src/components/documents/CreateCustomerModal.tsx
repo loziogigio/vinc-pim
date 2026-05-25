@@ -122,19 +122,19 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-popover shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 border-b border-slate-200 p-6 sticky top-0 bg-white rounded-t-2xl z-10">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#009688]/10">
-            <Building2 className="h-5 w-5 text-[#009688]" />
+        <div className="flex items-center gap-4 border-b border-border p-6 sticky top-0 bg-popover rounded-t-2xl z-10">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent">
+            <Building2 className="h-5 w-5 text-accent-foreground" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">{t("pages.documents.detail.customer.title")}</h3>
-            <p className="text-sm text-slate-500">{subtitle || t("pages.documents.detail.customer.subtitle")}</p>
+            <h3 className="text-lg font-semibold text-foreground">{t("pages.documents.detail.customer.title")}</h3>
+            <p className="text-sm text-muted-foreground">{subtitle || t("pages.documents.detail.customer.subtitle")}</p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -143,15 +143,15 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Customer Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">{t("pages.documents.detail.customer.type")}</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("pages.documents.detail.customer.type")}</label>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setCustomerType("business")}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
                   isBusiness
-                    ? "border-[#009688] bg-[#009688]/5 text-[#009688]"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300"
+                    ? "border-primary bg-accent text-accent-foreground"
+                    : "border-border text-muted-foreground hover:border-border/80"
                 }`}
               >
                 {t("pages.documents.detail.customer.business")}
@@ -161,8 +161,8 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
                 onClick={() => setCustomerType("private")}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition ${
                   !isBusiness
-                    ? "border-[#009688] bg-[#009688]/5 text-[#009688]"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300"
+                    ? "border-primary bg-accent text-accent-foreground"
+                    : "border-border text-muted-foreground hover:border-border/80"
                 }`}
               >
                 {t("pages.documents.detail.customer.private")}
@@ -172,64 +172,64 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
 
           {/* Basic Info */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
+            <h4 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               {t("pages.documents.detail.customer.basicInfo")}
             </h4>
             {isBusiness && (
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">
-                  {t("pages.documents.detail.customer.companyName")} <span className="text-red-500">*</span>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  {t("pages.documents.detail.customer.companyName")} <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <input
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder={t("pages.documents.detail.customer.companyNamePlaceholder")}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">
-                  {t("pages.documents.detail.customer.firstName")} {!isBusiness && <span className="text-red-500">*</span>}
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  {t("pages.documents.detail.customer.firstName")} {!isBusiness && <span className="text-red-500 dark:text-red-400">*</span>}
                 </label>
                 <input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder={t("pages.documents.detail.customer.firstNamePlaceholder")}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.lastName")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.lastName")}</label>
                 <input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder={t("pages.documents.detail.customer.lastNamePlaceholder")}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Email <span className="text-red-500">*</span>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Email <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@esempio.it"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.phone")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.phone")}</label>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+39 ..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
             </div>
@@ -237,51 +237,51 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
 
           {/* Legal Info */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
+            <h4 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               {t("pages.documents.detail.customer.fiscalData")}
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.vatNumber")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.vatNumber")}</label>
                 <input
                   value={vatNumber}
                   onChange={(e) => setVatNumber(e.target.value)}
                   placeholder="IT12345678901"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.fiscalCode")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.fiscalCode")}</label>
                 <input
                   value={fiscalCode}
                   onChange={(e) => setFiscalCode(e.target.value)}
                   placeholder={isBusiness ? t("pages.documents.detail.customer.fiscalCodePlaceholderBusiness") : t("pages.documents.detail.customer.fiscalCodePlaceholderPrivate")}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   {isBusiness ? t("pages.documents.detail.customer.fiscalCodeHintBusiness") : t("pages.documents.detail.customer.fiscalCodeHintPrivate")}
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.pec")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.pec")}</label>
                 <input
                   type="email"
                   value={pecEmail}
                   onChange={(e) => setPecEmail(e.target.value)}
                   placeholder="azienda@pec.it"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.sdiCode")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.sdiCode")}</label>
                 <input
                   value={sdiCode}
                   onChange={(e) => setSdiCode(e.target.value)}
                   placeholder="ABCDEFG"
                   maxLength={7}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
             </div>
@@ -289,87 +289,87 @@ export function CreateCustomerModal({ onCreated, onClose, subtitle }: Props) {
 
           {/* Legal Seat Address */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-700 border-b border-slate-100 pb-2">
+            <h4 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               {t("pages.documents.detail.customer.legalSeat")}
             </h4>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.recipient")}</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.recipient")}</label>
               <input
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
                 placeholder={isBusiness ? companyName || t("pages.documents.detail.customer.recipientPlaceholderBusiness") : [firstName, lastName].filter(Boolean).join(" ") || t("pages.documents.detail.customer.recipientPlaceholderPrivate")}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.address")}</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.address")}</label>
               <input
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
                 placeholder={t("pages.documents.detail.customer.addressPlaceholder")}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               />
             </div>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.city")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.city")}</label>
                 <input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder={t("pages.documents.detail.customer.cityPlaceholder")}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.province")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.province")}</label>
                 <input
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
                   placeholder="MI"
                   maxLength={2}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20 uppercase"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground uppercase"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.postalCode")}</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.postalCode")}</label>
                 <input
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
                   placeholder="20100"
                   maxLength={5}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                 />
               </div>
             </div>
             <div className="w-1/2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">{t("pages.documents.detail.customer.country")}</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t("pages.documents.detail.customer.country")}</label>
               <input
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 placeholder="IT"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20 uppercase"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground uppercase"
               />
             </div>
           </div>
 
           {/* Error */}
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded">{error}</p>
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2 sticky bottom-0 bg-white pb-2">
+          <div className="flex gap-3 pt-2 sticky bottom-0 bg-popover pb-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+              className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-border text-foreground hover:bg-muted transition"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={!canSubmit || saving}
-              className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-[#009688] text-white hover:bg-[#00796b] transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {saving ? t("pages.documents.detail.customer.creating") : t("pages.documents.detail.customer.createButton")}

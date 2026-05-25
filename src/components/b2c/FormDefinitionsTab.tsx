@@ -179,7 +179,7 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-[#009688]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -189,14 +189,14 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
   return (
     <>
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="mb-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </div>
       )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#b9b9c3]">
+        <p className="text-sm text-muted-foreground">
           {t("pages.b2c.formDefinitions.subtitle").replace("{slug}", storefrontSlug)}
         </p>
         <Button onClick={openCreateModal} size="sm">
@@ -207,57 +207,57 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
 
       {/* Empty state */}
       {definitions.length === 0 && (
-        <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
-          <FileText className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-          <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.formDefinitions.noDefinitions")}</p>
+        <div className="rounded-[0.428rem] border border-dashed border-border bg-muted px-6 py-12 text-center">
+          <FileText className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">{t("pages.b2c.formDefinitions.noDefinitions")}</p>
         </div>
       )}
 
       {/* Table */}
       {definitions.length > 0 && (
-        <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
+        <div className="rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] dark:shadow-none overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[#fafafc]">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                <th className="px-4 py-3 text-left font-medium text-foreground">
                   {t("pages.b2c.formDefinitions.name")}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                <th className="px-4 py-3 text-left font-medium text-foreground">
                   {t("pages.b2c.formDefinitions.slug")}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                <th className="px-4 py-3 text-left font-medium text-foreground">
                   {t("pages.b2c.formDefinitions.recipients")}
                 </th>
-                <th className="px-4 py-3 text-center font-medium text-[#5e5873]">
+                <th className="px-4 py-3 text-center font-medium text-foreground">
                   {t("pages.b2c.formDefinitions.enabled")}
                 </th>
-                <th className="px-4 py-3 text-right font-medium text-[#5e5873]">
+                <th className="px-4 py-3 text-right font-medium text-foreground">
                   {t("common.actions")}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#ebe9f1]">
+            <tbody className="divide-y divide-border">
               {definitions.map((def) => (
-                <tr key={def._id} className="hover:bg-[#fafafc]">
-                  <td className="px-4 py-3 text-[#5e5873] font-medium">
+                <tr key={def._id} className="hover:bg-muted/50">
+                  <td className="px-4 py-3 text-foreground font-medium">
                     <div className="flex items-center gap-2">
                       {def.name}
                       {def.is_system && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                           <Lock className="h-2.5 w-2.5" />
                           {t("pages.b2c.formDefinitions.system")}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[#b9b9c3] font-mono text-xs">{def.slug}</td>
-                  <td className="px-4 py-3 text-[#b9b9c3]">
+                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{def.slug}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
                     {def.notification_emails.length || "—"}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span
                       className={`inline-block h-2.5 w-2.5 rounded-full ${
-                        def.enabled ? "bg-green-500" : "bg-slate-300"
+                        def.enabled ? "bg-green-500 dark:bg-green-400" : "bg-muted-foreground/40"
                       }`}
                     />
                   </td>
@@ -266,7 +266,7 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
                       <button
                         type="button"
                         onClick={() => openEditModal(def)}
-                        className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         {t("common.edit")}
@@ -275,7 +275,7 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
                         <button
                           type="button"
                           onClick={() => handleDelete(def)}
-                          className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50 transition-colors"
+                          className="rounded-md p-1.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -308,9 +308,9 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
       >
         <div className="space-y-8">
           {/* Name & Slug */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-700">
+              <label className="text-sm font-medium text-foreground">
                 {t("pages.b2c.formDefinitions.name")}
               </label>
               <Input
@@ -324,7 +324,7 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">
+              <label className="text-sm font-medium text-foreground">
                 {t("pages.b2c.formDefinitions.slug")}
               </label>
               <Input
@@ -343,28 +343,28 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
               type="checkbox"
               checked={formEnabled}
               onChange={(e) => setFormEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-[#009688] focus:ring-[#009688]"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
             />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               {t("pages.b2c.formDefinitions.enabled")}
             </span>
           </label>
 
           {/* Form Builder — hide fields for system forms like order_note */}
           {!isSystemForm && (
-            <div className="rounded-lg border border-slate-200 p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <FormBlockSettings config={formConfig} onChange={setFormConfig} />
             </div>
           )}
 
           {/* Notification Emails */}
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   {t("pages.b2c.formDefinitions.recipients")}
                 </label>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {t("pages.b2c.formDefinitions.recipientsDesc")}
                 </p>
               </div>
@@ -388,14 +388,14 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
                     variant="ghost"
                     size="sm"
                     onClick={() => removeEmail(idx)}
-                    className="h-9 w-9 p-0 text-slate-400 hover:text-red-500"
+                    className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ))}
               {formEmails.length === 0 && (
-                <p className="text-sm text-slate-400 italic">
+                <p className="text-sm text-muted-foreground italic">
                   {t("pages.b2c.formDefinitions.addEmail")}
                 </p>
               )}
@@ -408,13 +408,13 @@ export function FormDefinitionsTab({ storefrontSlug, apiBase: apiBaseProp }: For
               type="checkbox"
               checked={formSenderCopy}
               onChange={(e) => setFormSenderCopy(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#009688] focus:ring-[#009688]"
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
             />
             <div>
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-foreground">
                 {t("pages.b2c.formDefinitions.senderCopy")}
               </span>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {t("pages.b2c.formDefinitions.senderCopyDesc")}
               </p>
             </div>

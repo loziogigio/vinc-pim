@@ -91,7 +91,7 @@ function DomainListInput({
           <select
             value={d.protocol}
             onChange={(e) => update(i, "protocol", e.target.value)}
-            className="rounded-lg border border-[#ebe9f1] px-2 py-2 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none bg-gray-50"
+            className="rounded-lg border border-border px-2 py-2 text-sm text-foreground focus:border-primary focus:outline-none bg-muted/50"
           >
             <option value="https">https://</option>
             <option value="http">http://</option>
@@ -101,12 +101,12 @@ function DomainListInput({
             value={d.host}
             onChange={(e) => update(i, "host", e.target.value)}
             placeholder="www.example.com"
-            className="flex-1 rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+            className="flex-1 rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
           <button
             type="button"
             onClick={() => remove(i)}
-            className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-500 hover:bg-red-50"
+            className="rounded-md p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50"
           >
             <X className="h-4 w-4" />
           </button>
@@ -115,7 +115,7 @@ function DomainListInput({
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#009688] hover:text-[#00796b]"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80"
       >
         <Plus className="h-3.5 w-3.5" />
         {t("pages.b2bPortal.list.addDomain")}
@@ -249,15 +249,15 @@ export default function B2BPortalsPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-[#5e5873]">{t("pages.b2bPortal.list.title")}</h1>
-          <p className="text-sm text-[#b9b9c3]">{t("pages.b2bPortal.list.subtitle")}</p>
+          <h1 className="text-xl font-semibold text-foreground">{t("pages.b2bPortal.list.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("pages.b2bPortal.list.subtitle")}</p>
         </div>
         {portals.length === 0 && (
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             {t("pages.b2bPortal.list.newPortal")}
@@ -285,20 +285,20 @@ export default function B2BPortalsPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full max-w-sm rounded-lg border border-[#ebe9f1] px-4 py-2 text-sm focus:border-[#009688] focus:outline-none"
+            className="w-full max-w-sm rounded-lg border border-border px-4 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </div>
       )}
 
       {/* Create dialog */}
       {showCreate && (
-        <div className="mb-6 rounded-lg border border-[#ebe9f1] bg-white p-6 shadow-sm">
-          <h3 className="font-semibold text-[#5e5873] mb-4">
+        <div className="mb-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <h3 className="font-semibold text-foreground mb-4">
             {t("pages.b2bPortal.list.createTitle")}
           </h3>
           <div className="space-y-3 max-w-lg">
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.b2bPortal.list.nameLabel")}
               </label>
               <input
@@ -316,11 +316,11 @@ export default function B2BPortalsPage() {
                   }
                 }}
                 placeholder="My Portal"
-                className="w-full rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.b2bPortal.list.slugLabel")}
               </label>
               <input
@@ -331,9 +331,9 @@ export default function B2BPortalsPage() {
                   setSlugTouched(true);
                 }}
                 placeholder="my-portal"
-                className="w-full rounded-lg border border-[#ebe9f1] px-3 py-2 text-sm focus:border-[#009688] focus:outline-none"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
-              <p className="mt-1 text-xs text-[#b9b9c3]">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {t("pages.b2bPortal.list.slugHelp")}
               </p>
             </div>
@@ -342,10 +342,10 @@ export default function B2BPortalsPage() {
               onChange={setNewChannel}
               label={t("pages.b2bPortal.list.channelLabel")}
               required
-              className="!border-[#ebe9f1] !rounded-lg !focus:border-[#009688] !focus:ring-0"
+              className="!border-border !rounded-lg !focus:border-primary !focus:ring-0"
             />
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.b2bPortal.list.domainsLabel")}
               </label>
               <DomainListInput domains={newDomains} onChange={setNewDomains} />
@@ -363,13 +363,13 @@ export default function B2BPortalsPage() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {creating ? t("pages.b2bPortal.list.creating") : t("pages.b2bPortal.list.create")}
               </button>
               <button
                 onClick={resetCreateForm}
-                className="rounded-lg border border-[#ebe9f1] px-4 py-2 text-sm text-[#5e5873] hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted/50"
               >
                 {t("pages.b2bPortal.list.cancel")}
               </button>
@@ -381,18 +381,18 @@ export default function B2BPortalsPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#009688] border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       ) : portals.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[#ebe9f1] bg-white p-12 text-center">
-          <Store className="mx-auto h-12 w-12 text-[#b9b9c3]" />
-          <h3 className="mt-4 text-lg font-medium text-[#5e5873]">{t("pages.b2bPortal.list.noPortals")}</h3>
-          <p className="mt-2 text-sm text-[#b9b9c3]">
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
+          <Store className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-medium text-foreground">{t("pages.b2bPortal.list.noPortals")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
             {t("pages.b2bPortal.list.noPortalsDesc")}
           </p>
           <button
             onClick={() => setShowCreate(true)}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             {t("pages.b2bPortal.list.createPortal")}
@@ -407,7 +407,7 @@ export default function B2BPortalsPage() {
                 label: t("pages.b2bPortal.list.totalPortals"),
                 count: portals.length,
                 icon: Store,
-                iconBg: "bg-[#009688]",
+                iconBg: "bg-primary",
               },
               {
                 label: t("pages.b2bPortal.list.active"),
@@ -424,15 +424,15 @@ export default function B2BPortalsPage() {
             ].map((card) => (
               <div
                 key={card.label}
-                className="rounded-xl border border-[#ebe9f1] bg-white p-4"
+                className="rounded-xl border border-border bg-card p-4"
               >
                 <div className="flex items-center gap-3">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.iconBg}`}>
                     <card.icon className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-[#5e5873]">{card.count}</p>
-                    <p className="text-sm text-[#b9b9c3]">{card.label}</p>
+                    <p className="text-2xl font-bold text-foreground">{card.count}</p>
+                    <p className="text-sm text-muted-foreground">{card.label}</p>
                   </div>
                 </div>
               </div>
@@ -443,19 +443,19 @@ export default function B2BPortalsPage() {
             {portals.map((p) => (
               <div
                 key={p._id}
-                className="group relative rounded-xl border border-[#ebe9f1] bg-white transition-shadow hover:shadow-md"
+                className="group relative rounded-xl border border-border bg-card transition-shadow hover:shadow-md"
               >
                 {/* Card Header */}
                 <div className="flex items-start justify-between px-5 pt-5 pb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#009688]/10">
-                      <Store className="h-5 w-5 text-[#009688]" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Store className="h-5 w-5 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="truncate text-sm font-semibold text-[#5e5873]">
+                      <h3 className="truncate text-sm font-semibold text-foreground">
                         {p.name}
                       </h3>
-                      <p className="truncate text-xs text-[#b9b9c3]">
+                      <p className="truncate text-xs text-muted-foreground">
                         {p.slug}
                       </p>
                     </div>
@@ -465,7 +465,7 @@ export default function B2BPortalsPage() {
                       className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         p.status === "active"
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {p.status === "active" ? t("pages.b2bPortal.list.active") : t("pages.b2bPortal.list.inactive")}
@@ -476,26 +476,26 @@ export default function B2BPortalsPage() {
                 {/* Domains & Channel */}
                 <div className="px-5 pb-3 space-y-2">
                   {p.channel && (
-                    <div className="flex items-center gap-1.5 text-xs text-[#6e6b7b]">
-                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
                         {p.channel}
                       </span>
                     </div>
                   )}
                   {p.domains.length > 0 ? (
-                    <div className="flex items-center gap-1.5 text-xs text-[#b9b9c3]">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Globe className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate font-mono">
                         {p.domains.find((d) => d.is_primary)?.domain || p.domains[0]?.domain}
                       </span>
                       {p.domains.length > 1 && (
-                        <span className="shrink-0 text-[10px] text-[#b9b9c3]">
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
                           +{p.domains.length - 1}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5 text-xs text-[#b9b9c3]">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Globe className="h-3.5 w-3.5" />
                       <span>{t("pages.b2bPortal.list.noDomains")}</span>
                     </div>
@@ -503,13 +503,13 @@ export default function B2BPortalsPage() {
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-[#ebe9f1]" />
+                <div className="border-t border-border" />
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-4 divide-x divide-[#ebe9f1]">
                   <Link
                     href={`${tenantPrefix}/b2b/home-builder`}
-                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    className="flex flex-col items-center gap-1 py-3 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
                     title={t("pages.b2bPortal.list.homeBuilder")}
                   >
                     <Pencil className="h-4 w-4" />
@@ -517,7 +517,7 @@ export default function B2BPortalsPage() {
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}/pages`}
-                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    className="flex flex-col items-center gap-1 py-3 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
                     title={t("pages.b2bPortal.list.pages")}
                   >
                     <FileText className="h-4 w-4" />
@@ -525,7 +525,7 @@ export default function B2BPortalsPage() {
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}/forms`}
-                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    className="flex flex-col items-center gap-1 py-3 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
                     title={t("pages.b2bPortal.list.forms")}
                   >
                     <Inbox className="h-4 w-4" />
@@ -533,7 +533,7 @@ export default function B2BPortalsPage() {
                   </Link>
                   <Link
                     href={`${tenantPrefix}/b2b/b2b/portals/${p.slug}`}
-                    className="flex flex-col items-center gap-1 py-3 text-[#6e6b7b] transition-colors hover:bg-[#009688]/5 hover:text-[#009688]"
+                    className="flex flex-col items-center gap-1 py-3 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
                     title={t("pages.b2bPortal.list.settingsAction")}
                   >
                     <Settings className="h-4 w-4" />
@@ -547,7 +547,7 @@ export default function B2BPortalsPage() {
                     e.stopPropagation();
                     handleDelete(p.slug, p.name);
                   }}
-                  className="absolute top-2 right-2 rounded-md p-1.5 text-transparent group-hover:text-[#b9b9c3] hover:!text-red-600 hover:bg-red-50 transition-colors"
+                  className="absolute top-2 right-2 rounded-md p-1.5 text-transparent group-hover:text-muted-foreground hover:!text-red-600 hover:bg-red-50 transition-colors"
                   title={t("pages.b2bPortal.list.deletePortal")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -559,7 +559,7 @@ export default function B2BPortalsPage() {
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">
-              <p className="text-xs text-[#b9b9c3]">
+              <p className="text-xs text-muted-foreground">
                 {t("pages.b2bPortal.list.portalCount").replace("{count}", String(pagination.total))}
               </p>
               <div className="flex gap-1">
@@ -569,8 +569,8 @@ export default function B2BPortalsPage() {
                     onClick={() => setPage(i + 1)}
                     className={`rounded px-2.5 py-1 text-xs ${
                       page === i + 1
-                        ? "bg-[#009688] text-white"
-                        : "text-[#5e5873] hover:bg-gray-100"
+                        ? "bg-primary text-white"
+                        : "text-foreground hover:bg-muted"
                     }`}
                   >
                     {i + 1}

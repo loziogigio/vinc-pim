@@ -39,9 +39,9 @@ export function DocumentHeader({
     <div className="flex items-center gap-4">
       <button
         onClick={onBack}
-        className="p-2 rounded-lg hover:bg-[#f8f8f8]"
+        className="p-2 rounded-lg hover:bg-muted"
       >
-        <ArrowLeft className="w-5 h-5 text-[#5e5873]" />
+        <ArrowLeft className="w-5 h-5 text-foreground" />
       </button>
       <div>
         <div className="flex items-center gap-3">
@@ -52,7 +52,7 @@ export function DocumentHeader({
                 min={1}
                 value={editNumberValue}
                 onChange={(e) => setEditNumberValue(e.target.value)}
-                className="w-24 px-2 py-1 border border-[#ebe9f1] rounded text-lg font-bold text-[#5e5873] focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-24 px-2 py-1 border border-border rounded text-lg font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleConfirmNumber();
@@ -62,7 +62,7 @@ export function DocumentHeader({
               <button
                 onClick={handleConfirmNumber}
                 disabled={actionLoading === "update-number"}
-                className="p-1.5 rounded-lg text-green-600 hover:bg-green-50"
+                className="p-1.5 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
                 title={t("pages.documents.detail.header.confirmTitle")}
               >
                 {actionLoading === "update-number" ? (
@@ -73,7 +73,7 @@ export function DocumentHeader({
               </button>
               <button
                 onClick={() => setEditingNumber(false)}
-                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
+                className="p-1.5 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 title={t("pages.documents.detail.header.cancelTitle")}
               >
                 <X className="w-4 h-4" />
@@ -81,7 +81,7 @@ export function DocumentHeader({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-[#5e5873]">
+              <h1 className="text-2xl font-bold text-foreground">
                 {doc.document_number || (
                   <span className="text-muted-foreground italic">{t("pages.documents.detail.header.draft")}</span>
                 )}
@@ -94,7 +94,7 @@ export function DocumentHeader({
                     );
                     setEditingNumber(true);
                   }}
-                  className="p-1 rounded hover:bg-[#f8f8f8] text-muted-foreground hover:text-[#5e5873]"
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
                   title={t("pages.documents.detail.header.editNumberTitle")}
                 >
                   <Pencil className="w-3.5 h-3.5" />

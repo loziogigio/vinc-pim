@@ -94,6 +94,8 @@ const sk = {
     logout: "Odhl\u00e1si\u0165",
     signOut: "Odhl\u00e1si\u0165 sa",
     providedBy: "Poskytuje vendereincloud.it",
+    openSidebar: "Otvoriť menu",
+    closeSidebar: "Zbaliť menu",
   },
   login: {
     welcome: "Vitajte vo VendereInCloud - CommerceSuite",

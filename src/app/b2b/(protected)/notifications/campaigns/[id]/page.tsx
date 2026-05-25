@@ -86,7 +86,7 @@ export default function CampaignDetailPage() {
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-slate-500">{t("pages.notifications.campaigns.loading")}</span>
+          <span className="text-sm text-muted-foreground">{t("pages.notifications.campaigns.loading")}</span>
         </div>
       </div>
     );
@@ -103,10 +103,10 @@ export default function CampaignDetailPage() {
           ]} />
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">{error || t("pages.notifications.campaigns.notFound")}</p>
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">{error || t("pages.notifications.campaigns.notFound")}</p>
             <Button variant="outline" onClick={handleBack} className="mt-4 gap-2">
               <ArrowLeft className="w-4 h-4" />
               {t("pages.notifications.campaigns.backToCampaigns")}
@@ -132,8 +132,8 @@ export default function CampaignDetailPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{campaign.name}</h1>
-            <p className="text-sm text-slate-500 mt-1">{campaign.title}</p>
+            <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{campaign.title}</p>
           </div>
           <Button variant="outline" onClick={handleBack} className="gap-2">
             <ArrowLeft className="w-4 h-4" />
@@ -145,7 +145,7 @@ export default function CampaignDetailPage() {
         <div className="flex items-center gap-3 mt-3">
           <button
             onClick={() => copyToClipboard(campaign.campaign_id, "id")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono text-slate-600 transition"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs font-mono text-muted-foreground transition"
             title={t("pages.notifications.campaigns.copyId")}
           >
             {copiedId === "id" ? (
@@ -173,16 +173,16 @@ export default function CampaignDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         {campaign.status === "sent" || campaign.status === "failed" || campaign.status === "sending" ? (
           <CampaignResults campaignId={campaign.campaign_id} />
         ) : (
           <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">
               {t("pages.notifications.campaigns.noResults")}
             </p>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {t("pages.notifications.campaigns.currentStatus").replace("{status}", campaign.status)}
             </p>
           </div>

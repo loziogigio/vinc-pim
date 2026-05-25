@@ -248,24 +248,24 @@ export default function CreateDocumentPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#5e5873]">
+          <h1 className="text-2xl font-bold text-foreground">
             {t("pages.documents.create.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t("pages.documents.create.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="px-5 py-2.5 border border-[#ebe9f1] rounded-lg text-sm hover:bg-[#f8f8f8] transition-colors font-medium text-[#5e5873]"
+            className="px-5 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors font-medium text-foreground"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !customerId}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -278,21 +278,21 @@ export default function CreateDocumentPage() {
       </div>
 
       {/* Document Info Card */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-5 border-b border-[#ebe9f1]">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-[#009688]/10">
-              <FileText className="w-4 h-4 text-[#009688]" />
+            <div className="p-2 rounded-lg bg-accent">
+              <FileText className="w-4 h-4 text-accent-foreground" />
             </div>
-            <h2 className="font-semibold text-[#5e5873]">
+            <h2 className="font-semibold text-foreground">
               {t("pages.documents.create.documentInfo")}
             </h2>
           </div>
         </div>
         <div className="p-5">
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("pages.documents.create.documentType")}
               </label>
               <select
@@ -300,7 +300,7 @@ export default function CreateDocumentPage() {
                 onChange={(e) =>
                   setDocumentType(e.target.value as DocumentType)
                 }
-                className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               >
                 {DOCUMENT_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -311,7 +311,7 @@ export default function CreateDocumentPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("pages.documents.create.paymentTerms")}
               </label>
               <select
@@ -321,7 +321,7 @@ export default function CreateDocumentPage() {
                   if (e.target.value !== "custom_days") setCustomDays("");
                   if (e.target.value !== "custom_date") setDueDate("");
                 }}
-                className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
               >
                 <option value="">{t("pages.documents.create.noPaymentTerms")}</option>
                 {PAYMENT_TERMS.map((t) => (
@@ -339,7 +339,7 @@ export default function CreateDocumentPage() {
                     value={customDays}
                     onChange={(e) => setCustomDays(e.target.value)}
                     placeholder={t("pages.documents.create.numberOfDays")}
-                    className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                   />
                 </div>
               )}
@@ -350,19 +350,19 @@ export default function CreateDocumentPage() {
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
                     min={new Date().toISOString().split("T")[0]}
-                    className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                   />
                 </div>
               )}
             </div>
 
             <div className="relative">
-              <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("pages.documents.create.customerRequired")}
               </label>
               {customerId ? (
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm bg-[#f8f8f8] flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2.5 border border-border rounded-lg text-sm bg-muted flex items-center gap-2">
                     <Users className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                     <span className="truncate">{customerName}</span>
                   </div>
@@ -371,7 +371,7 @@ export default function CreateDocumentPage() {
                       setCustomerId("");
                       setCustomerName("");
                     }}
-                    className="p-2.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -394,21 +394,21 @@ export default function CreateDocumentPage() {
                       onBlur={() =>
                         setTimeout(() => setShowCustomerDropdown(false), 200)
                       }
-                      className="w-full pl-9 pr-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                      className="w-full pl-9 pr-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                     />
                     {isSearching && (
                       <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
                     )}
                   </div>
                   {showCustomerDropdown && customerResults.length > 0 && (
-                    <div className="absolute z-50 top-full mt-1 w-full bg-white border border-[#ebe9f1] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {customerResults.map((c) => (
                         <button
                           key={c.customer_id}
                           onMouseDown={() => selectCustomer(c)}
-                          className="w-full text-left px-3 py-2.5 hover:bg-[#f8f8f8] text-sm transition-colors"
+                          className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm transition-colors"
                         >
-                          <div className="font-medium text-[#5e5873]">
+                          <div className="font-medium text-foreground">
                             {c.company_name ||
                               [c.first_name, c.last_name]
                                 .filter(Boolean)
@@ -426,7 +426,7 @@ export default function CreateDocumentPage() {
                           setShowCustomerDropdown(false);
                           setShowCreateCustomer(true);
                         }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-[#009688]/5 text-sm transition-colors border-t border-[#ebe9f1] flex items-center gap-2 text-[#009688]"
+                        className="w-full text-left px-3 py-2.5 hover:bg-accent/50 text-sm transition-colors border-t border-border flex items-center gap-2 text-primary"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
                         <span className="font-medium">{t("pages.documents.create.createNewCustomer")}</span>
@@ -434,7 +434,7 @@ export default function CreateDocumentPage() {
                     </div>
                   )}
                   {showCustomerDropdown && customerResults.length === 0 && customerSearch.length >= 2 && !isSearching && (
-                    <div className="absolute z-50 top-full mt-1 w-full bg-white border border-[#ebe9f1] rounded-lg shadow-lg">
+                    <div className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-lg shadow-lg">
                       <p className="px-3 py-2.5 text-sm text-muted-foreground">
                         {t("pages.documents.create.noCustomerFound")}
                       </p>
@@ -443,7 +443,7 @@ export default function CreateDocumentPage() {
                           setShowCustomerDropdown(false);
                           setShowCreateCustomer(true);
                         }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-[#009688]/5 text-sm transition-colors border-t border-[#ebe9f1] flex items-center gap-2 text-[#009688]"
+                        className="w-full text-left px-3 py-2.5 hover:bg-accent/50 text-sm transition-colors border-t border-border flex items-center gap-2 text-primary"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
                         <span className="font-medium">{t("pages.documents.create.createNewCustomer")}</span>
@@ -458,14 +458,14 @@ export default function CreateDocumentPage() {
       </div>
 
       {/* Line Items Card */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-5 border-b border-[#ebe9f1] flex items-center justify-between">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-[#009688]/10">
-              <List className="w-4 h-4 text-[#009688]" />
+            <div className="p-2 rounded-lg bg-accent">
+              <List className="w-4 h-4 text-accent-foreground" />
             </div>
             <div>
-              <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.create.documentLines")}</h2>
+              <h2 className="font-semibold text-foreground">{t("pages.documents.create.documentLines")}</h2>
               {items.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   {t("pages.documents.create.linesCount", { count: items.length })}
@@ -475,7 +475,7 @@ export default function CreateDocumentPage() {
           </div>
           <button
             onClick={addItem}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#009688] text-white rounded-lg hover:bg-[#00796b] transition-colors font-medium"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
           >
             <Plus className="w-3.5 h-3.5" />
             {t("pages.documents.create.addLine")}
@@ -484,7 +484,7 @@ export default function CreateDocumentPage() {
 
         {items.length === 0 ? (
           <div className="p-12 text-center">
-            <List className="w-10 h-10 text-[#ebe9f1] mx-auto mb-3" />
+            <List className="w-10 h-10 text-border mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
               {t("pages.documents.create.noLines")}
             </p>
@@ -493,26 +493,26 @@ export default function CreateDocumentPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-                  <th className="text-left px-4 py-3 font-medium text-[#5e5873]">
+                <tr className="border-b border-border bg-muted">
+                  <th className="text-left px-4 py-3 font-medium text-foreground">
                     {t("common.description")}
                   </th>
-                  <th className="text-center px-3 py-3 font-medium text-[#5e5873] w-24">
+                  <th className="text-center px-3 py-3 font-medium text-foreground w-24">
                     {t("pages.documents.create.qty")}
                   </th>
-                  <th className="text-right px-3 py-3 font-medium text-[#5e5873] w-32">
+                  <th className="text-right px-3 py-3 font-medium text-foreground w-32">
                     {t("pages.documents.create.unitPrice")}
                   </th>
-                  <th className="text-center px-3 py-3 font-medium text-[#5e5873] w-24">
+                  <th className="text-center px-3 py-3 font-medium text-foreground w-24">
                     {t("pages.documents.create.vatPercent")}
                   </th>
-                  <th className="text-center px-3 py-3 font-medium text-[#5e5873] w-24">
+                  <th className="text-center px-3 py-3 font-medium text-foreground w-24">
                     {t("pages.documents.create.discountPercent")}
                   </th>
-                  <th className="text-right px-3 py-3 font-medium text-[#5e5873] w-32">
+                  <th className="text-right px-3 py-3 font-medium text-foreground w-32">
                     {t("pages.documents.create.net")}
                   </th>
-                  <th className="text-right px-4 py-3 font-medium text-[#5e5873] w-32">
+                  <th className="text-right px-4 py-3 font-medium text-foreground w-32">
                     {t("pages.documents.create.lineTotal")}
                   </th>
                   <th className="w-20"></th>
@@ -522,7 +522,7 @@ export default function CreateDocumentPage() {
                 {items.map((item, idx) => (
                   <tr
                     key={item.line_number}
-                    className="border-b border-[#ebe9f1] hover:bg-[#f8f8f8]/50 transition-colors"
+                    className="border-b border-border hover:bg-muted/50 transition-colors"
                   >
                     <td className="px-4 py-2.5">
                       <input
@@ -532,7 +532,7 @@ export default function CreateDocumentPage() {
                           updateItem(idx, "description", e.target.value)
                         }
                         placeholder={t("pages.documents.create.descriptionPlaceholder")}
-                        className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-2.5 py-1.5 border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                       />
                     </td>
                     <td className="px-3 py-2.5">
@@ -541,7 +541,7 @@ export default function CreateDocumentPage() {
                         inputMode="decimal"
                         value={getInputValue(item.line_number, "quantity", item.quantity)}
                         onChange={(e) => handleDecimalChange(idx, "quantity", e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-2.5 py-1.5 border border-border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                       />
                     </td>
                     <td className="px-3 py-2.5">
@@ -550,7 +550,7 @@ export default function CreateDocumentPage() {
                         inputMode="decimal"
                         value={getInputValue(item.line_number, "unit_price", item.unit_price)}
                         onChange={(e) => handleDecimalChange(idx, "unit_price", e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-2.5 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                       />
                     </td>
                     <td className="px-3 py-2.5">
@@ -559,7 +559,7 @@ export default function CreateDocumentPage() {
                         onChange={(e) =>
                           updateItem(idx, "vat_rate", parseInt(e.target.value))
                         }
-                        className="w-full px-1.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-1.5 py-1.5 border border-border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                       >
                         <option value={22}>22%</option>
                         <option value={10}>10%</option>
@@ -574,13 +574,13 @@ export default function CreateDocumentPage() {
                         value={getInputValue(item.line_number, "discount_percent", item.discount_percent || 0)}
                         onChange={(e) => handleDecimalChange(idx, "discount_percent", e.target.value)}
                         placeholder="0"
-                        className="w-full px-2.5 py-1.5 border border-[#ebe9f1] rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                        className="w-full px-2.5 py-1.5 border border-border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
                       {formatCurrency(item.line_net)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-medium text-[#5e5873]">
+                    <td className="px-4 py-2.5 text-right font-medium text-foreground">
                       {formatCurrency(item.line_total)}
                     </td>
                     <td className="px-2 py-2.5">
@@ -588,14 +588,14 @@ export default function CreateDocumentPage() {
                         <button
                           onClick={() => duplicateItem(idx)}
                           title={t("pages.documents.create.duplicateLine")}
-                          className="p-1.5 text-slate-400 hover:text-[#009688] hover:bg-[#009688]/5 rounded transition-colors"
+                          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-accent/50 rounded transition-colors"
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => removeItem(idx)}
                           title={t("pages.documents.create.deleteLine")}
-                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -610,7 +610,7 @@ export default function CreateDocumentPage() {
 
         {/* Totals */}
         {items.length > 0 && (
-          <div className="flex justify-end p-5 border-t border-[#ebe9f1] bg-[#f8f8f8]/50">
+          <div className="flex justify-end p-5 border-t border-border bg-muted/50">
             <div className="w-80 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("pages.documents.create.subtotal")}</span>
@@ -619,7 +619,7 @@ export default function CreateDocumentPage() {
                 </span>
               </div>
               {docTotals.total_discount > 0 && (
-                <div className="flex justify-between text-red-600">
+                <div className="flex justify-between text-red-600 dark:text-red-400">
                   <span>{t("pages.documents.create.totalDiscount")}</span>
                   <span>-{formatCurrency(docTotals.total_discount)}</span>
                 </div>
@@ -635,7 +635,7 @@ export default function CreateDocumentPage() {
                   <span>{formatCurrency(v.vat)}</span>
                 </div>
               ))}
-              <div className="flex justify-between font-bold text-base border-t border-[#ebe9f1] pt-3 mt-3 text-[#5e5873]">
+              <div className="flex justify-between font-bold text-base border-t border-border pt-3 mt-3 text-foreground">
                 <span>{t("pages.documents.create.total")}</span>
                 <span>{formatCurrency(docTotals.total)}</span>
               </div>
@@ -645,18 +645,18 @@ export default function CreateDocumentPage() {
       </div>
 
       {/* Notes Card */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-5 border-b border-[#ebe9f1]">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-[#009688]/10">
-              <MessageSquare className="w-4 h-4 text-[#009688]" />
+            <div className="p-2 rounded-lg bg-accent">
+              <MessageSquare className="w-4 h-4 text-accent-foreground" />
             </div>
-            <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.create.notesSection")}</h2>
+            <h2 className="font-semibold text-foreground">{t("pages.documents.create.notesSection")}</h2>
           </div>
         </div>
-        <div className="p-5 grid grid-cols-2 gap-5">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               {t("pages.documents.create.notesVisible")}
             </label>
             <textarea
@@ -664,11 +664,11 @@ export default function CreateDocumentPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder={t("pages.documents.create.notesVisiblePlaceholder")}
-              className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20 resize-none"
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-background text-foreground"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#5e5873] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               {t("pages.documents.create.internalNotes")}
             </label>
             <textarea
@@ -676,7 +676,7 @@ export default function CreateDocumentPage() {
               onChange={(e) => setInternalNotes(e.target.value)}
               rows={3}
               placeholder={t("pages.documents.create.internalNotesPlaceholder")}
-              className="w-full px-3 py-2.5 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20 resize-none"
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-background text-foreground"
             />
           </div>
         </div>

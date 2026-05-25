@@ -62,27 +62,27 @@ export default function QueuesOverviewPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Sync & Job Queues</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Sync & Job Queues</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Tenant-scoped view of background jobs (sync, imports, notifications, payments).
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-border"
             />
             Auto-refresh ({REFRESH_MS / 1000}s)
           </label>
           <button
             onClick={() => load()}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-border hover:bg-muted/50 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
@@ -92,23 +92,24 @@ export default function QueuesOverviewPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : error ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-400">
           {error}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <SummaryCard label="Active now" value={totalActive} color="bg-emerald-500" />
             <SummaryCard label="Waiting" value={totalWaiting} color="bg-amber-500" />
             <SummaryCard label="Failed" value={totalFailed} color="bg-rose-500" />
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+              <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3 text-left">Queue</th>
                   <th className="px-3 py-3 text-right">Waiting</th>
@@ -119,27 +120,27 @@ export default function QueuesOverviewPage() {
                   <th className="px-3 py-3"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {queues.map((q) => (
-                  <tr key={q.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={q.id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-slate-400" />
+                        <Activity className="w-4 h-4 text-muted-foreground" />
                         <div>
-                          <div className="font-medium text-slate-900">{q.label}</div>
-                          <div className="text-xs text-slate-500">{q.id}</div>
+                          <div className="font-medium text-foreground">{q.label}</div>
+                          <div className="text-xs text-muted-foreground">{q.id}</div>
                         </div>
                       </div>
                     </td>
-                    <CountCell sc={q.counts.waiting} colorClass="text-amber-700" />
-                    <CountCell sc={q.counts.active} colorClass="text-emerald-700" />
-                    <CountCell sc={q.counts.delayed} colorClass="text-slate-600" />
-                    <CountCell sc={q.counts.completed} colorClass="text-slate-600" />
-                    <CountCell sc={q.counts.failed} colorClass="text-rose-700" />
+                    <CountCell sc={q.counts.waiting} colorClass="text-amber-700 dark:text-amber-400" />
+                    <CountCell sc={q.counts.active} colorClass="text-emerald-700 dark:text-emerald-400" />
+                    <CountCell sc={q.counts.delayed} colorClass="text-muted-foreground" />
+                    <CountCell sc={q.counts.completed} colorClass="text-muted-foreground" />
+                    <CountCell sc={q.counts.failed} colorClass="text-rose-700 dark:text-rose-400" />
                     <td className="px-3 py-3 text-right">
                       <Link
                         href={`/b2b/admin/queues/detail?queue=${encodeURIComponent(q.id)}`}
-                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         Open
                         <ChevronRight className="w-4 h-4" />
@@ -149,8 +150,9 @@ export default function QueuesOverviewPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-muted-foreground">
             Counts are scoped to your tenant via <code>job.data.tenant_id</code>. Limited to the
             most recent 200 jobs per state.
           </p>
@@ -162,14 +164,14 @@ export default function QueuesOverviewPage() {
 
 function SummaryCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-card rounded-xl border border-border p-4">
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
           <Activity className="w-5 h-5 text-white" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
-          <p className="text-sm text-slate-500">{label}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
         </div>
       </div>
     </div>
@@ -180,12 +182,12 @@ function CountCell({ sc, colorClass }: { sc: StateCount; colorClass: string }) {
   return (
     <td
       className={`px-3 py-3 text-right tabular-nums ${
-        sc.count > 0 ? colorClass : "text-slate-400"
+        sc.count > 0 ? colorClass : "text-muted-foreground"
       }`}
       title={sc.capped ? "Showing first 1000 most recent jobs in this state" : undefined}
     >
       {sc.count.toLocaleString()}
-      {sc.capped && <span className="text-amber-600">+</span>}
+      {sc.capped && <span className="text-amber-600 dark:text-amber-400">+</span>}
     </td>
   );
 }

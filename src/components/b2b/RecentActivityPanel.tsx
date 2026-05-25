@@ -11,7 +11,7 @@ export function RecentActivityPanel({ activities }: RecentActivityPanelProps) {
   return (
     <div className="rounded-lg bg-card p-3.5 shadow-sm">
       <div className="mb-3 flex items-center gap-1.5">
-        <Clock className="h-4 w-4 text-emerald-500" />
+        <Clock className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
         <h2 className="text-sm font-semibold">Recent Activity</h2>
       </div>
 

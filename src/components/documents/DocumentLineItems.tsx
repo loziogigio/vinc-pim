@@ -59,13 +59,13 @@ export function DocumentLineItems({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-[#ebe9f1]">
-      <div className="p-4 border-b border-[#ebe9f1] flex items-center justify-between">
-        <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.detail.lineItems.title")}</h2>
+    <div className="bg-card rounded-lg border border-border">
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <h2 className="font-semibold text-foreground">{t("pages.documents.detail.lineItems.title")}</h2>
         {isDraft && (
           <button
             onClick={onAddItem}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#009688] text-white rounded-lg hover:bg-[#00796b] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             {t("pages.documents.detail.lineItems.addLine")}
@@ -78,25 +78,26 @@ export function DocumentLineItems({
           {t("pages.documents.detail.lineItems.noLines")}
         </div>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-              <th className="text-left px-3 py-2 font-medium text-[#5e5873]">
+            <tr className="border-b border-border bg-muted">
+              <th className="text-left px-3 py-2 font-medium text-foreground">
                 {t("pages.documents.detail.lineItems.description")}
               </th>
-              <th className="text-center px-3 py-2 font-medium text-[#5e5873] w-20">
+              <th className="text-center px-3 py-2 font-medium text-foreground w-20">
                 {t("pages.documents.detail.lineItems.qty")}
               </th>
-              <th className="text-right px-3 py-2 font-medium text-[#5e5873] w-28">
+              <th className="text-right px-3 py-2 font-medium text-foreground w-28">
                 {t("pages.documents.detail.lineItems.unitPrice")}
               </th>
-              <th className="text-center px-3 py-2 font-medium text-[#5e5873] w-24">
+              <th className="text-center px-3 py-2 font-medium text-foreground w-24">
                 {t("pages.documents.detail.lineItems.vatPercent")}
               </th>
-              <th className="text-center px-3 py-2 font-medium text-[#5e5873] w-20">
+              <th className="text-center px-3 py-2 font-medium text-foreground w-20">
                 {t("pages.documents.detail.lineItems.discountPercent")}
               </th>
-              <th className="text-right px-3 py-2 font-medium text-[#5e5873] w-28">
+              <th className="text-right px-3 py-2 font-medium text-foreground w-28">
                 {t("pages.documents.detail.lineItems.total")}
               </th>
               {isDraft && <th className="w-10"></th>}
@@ -106,7 +107,7 @@ export function DocumentLineItems({
             {items.map((item, idx) => (
               <tr
                 key={item.line_number}
-                className="border-b border-[#ebe9f1]"
+                className="border-b border-border"
               >
                 <td className="px-3 py-2">
                   {isDraft ? (
@@ -117,7 +118,7 @@ export function DocumentLineItems({
                         onUpdateItem(idx, "description", e.target.value)
                       }
                       placeholder={t("pages.documents.detail.lineItems.descriptionPlaceholder")}
-                      className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm"
+                      className="w-full px-2 py-1 border border-border rounded text-sm bg-background text-foreground"
                     />
                   ) : (
                     <span>{item.description}</span>
@@ -130,7 +131,7 @@ export function DocumentLineItems({
                       inputMode="decimal"
                       value={getInput(idx, "quantity", item.quantity)}
                       onChange={(e) => handleDecimalChange(idx, "quantity", e.target.value)}
-                      className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm text-center"
+                      className="w-full px-2 py-1 border border-border rounded text-sm text-center bg-background text-foreground"
                     />
                   ) : (
                     <span>{item.quantity}</span>
@@ -143,7 +144,7 @@ export function DocumentLineItems({
                       inputMode="decimal"
                       value={getInput(idx, "unit_price", item.unit_price)}
                       onChange={(e) => handleDecimalChange(idx, "unit_price", e.target.value)}
-                      className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm text-right"
+                      className="w-full px-2 py-1 border border-border rounded text-sm text-right bg-background text-foreground"
                     />
                   ) : (
                     <span>{formatCurrency(item.unit_price, currency)}</span>
@@ -156,7 +157,7 @@ export function DocumentLineItems({
                       onChange={(e) =>
                         onUpdateItem(idx, "vat_rate", parseInt(e.target.value))
                       }
-                      className="w-full px-1 py-1 border border-[#ebe9f1] rounded text-sm text-center"
+                      className="w-full px-1 py-1 border border-border rounded text-sm text-center bg-background text-foreground"
                     >
                       <option value={22}>22%</option>
                       <option value={10}>10%</option>
@@ -175,7 +176,7 @@ export function DocumentLineItems({
                       value={getInput(idx, "discount_percent", item.discount_percent || undefined)}
                       onChange={(e) => handleDecimalChange(idx, "discount_percent", e.target.value)}
                       placeholder="0"
-                      className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm text-center"
+                      className="w-full px-2 py-1 border border-border rounded text-sm text-center bg-background text-foreground"
                     />
                   ) : (
                     <span>{item.discount_percent || 0}%</span>
@@ -188,7 +189,7 @@ export function DocumentLineItems({
                   <td className="px-1 py-2">
                     <button
                       onClick={() => onRemoveItem(idx)}
-                      className="p-1 text-red-400 hover:text-red-600 rounded"
+                      className="p-1 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-300 rounded"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -198,11 +199,12 @@ export function DocumentLineItems({
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {/* Totals */}
       {items.length > 0 && totals && (
-        <div className="flex justify-end p-4 border-t border-[#ebe9f1]">
+        <div className="flex justify-end p-4 border-t border-border">
           <div className="w-72 space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("pages.documents.detail.lineItems.subtotal")}</span>
@@ -220,7 +222,7 @@ export function DocumentLineItems({
                 </div>
               ),
             )}
-            <div className="flex justify-between font-bold text-base border-t border-[#ebe9f1] pt-2 mt-2">
+            <div className="flex justify-between font-bold text-base border-t border-border pt-2 mt-2">
               <span>{t("pages.documents.detail.lineItems.total")}</span>
               <span>
                 {formatCurrency(totals.total, currency)}

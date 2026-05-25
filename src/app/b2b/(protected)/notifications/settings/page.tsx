@@ -43,25 +43,25 @@ export default function NotificationSettingsPage() {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.settings.title")}</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.notifications.settings.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           {t("pages.notifications.settings.subtitle")}
         </p>
       </div>
 
       {/* Company Info Section */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+      <div className="bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 rounded-xl p-4 mb-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium text-amber-900 mb-1">{t("pages.notifications.settings.companyInfoTitle")}</h3>
-            <p className="text-sm text-amber-700 mb-3">
+            <h3 className="font-medium text-amber-900 dark:text-amber-300 mb-1">{t("pages.notifications.settings.companyInfoTitle")}</h3>
+            <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
               {t("pages.notifications.settings.companyInfoDesc")}
             </p>
             <Link href="/b2b/home-settings">
-              <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-amber-50">
+              <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-amber-50 dark:bg-transparent dark:hover:bg-amber-950/40">
                 <ExternalLink className="w-4 h-4" />
                 {t("pages.notifications.settings.configureHomeSettings")}
               </Button>
@@ -120,9 +120,9 @@ export default function NotificationSettingsPage() {
       />
 
       {/* Info */}
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="font-medium text-blue-900 mb-2">{t("pages.notifications.settings.multiChannelTitle")}</h3>
-        <p className="text-sm text-blue-700">
+      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg">
+        <h3 className="font-medium text-blue-900 dark:text-blue-300 mb-2">{t("pages.notifications.settings.multiChannelTitle")}</h3>
+        <p className="text-sm text-blue-700 dark:text-blue-400">
           {t("pages.notifications.settings.multiChannelDesc")}
         </p>
       </div>
@@ -158,16 +158,16 @@ function ChannelCard({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-card rounded-xl border border-border p-4 mb-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               loading
-                ? "bg-slate-100 text-slate-400"
+                ? "bg-muted text-muted-foreground"
                 : configured
-                  ? "bg-emerald-100 text-emerald-600"
-                  : "bg-slate-100 text-slate-400"
+                  ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300"
+                  : "bg-muted text-muted-foreground"
             }`}
           >
             {loading ? (
@@ -177,21 +177,21 @@ function ChannelCard({
             )}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium text-slate-900">{name}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-medium text-foreground">{name}</h3>
               {comingSoon && (
-                <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
                   {comingSoonLabel || t("pages.notifications.settings.comingSoon")}
                 </span>
               )}
               {configured && (
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
+                <span className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded">
                   {configuredLabel || t("pages.notifications.settings.configured")}
                 </span>
               )}
             </div>
-            <p className="text-sm text-slate-500">{description}</p>
-            {status && <p className="text-xs text-slate-400 mt-1">{status}</p>}
+            <p className="text-sm text-muted-foreground">{description}</p>
+            {status && <p className="text-xs text-muted-foreground mt-1">{status}</p>}
           </div>
         </div>
         {configUrl && (

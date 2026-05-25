@@ -122,25 +122,25 @@ export function ProductCardPreview({
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 px-4 py-4">
-        <div className="text-[12px] uppercase tracking-wide text-slate-500">
+        <div className="text-[12px] uppercase tracking-wide text-neutral-500">
           {SAMPLE_PRODUCT.model}
         </div>
-        <div className="line-clamp-2 text-sm font-semibold text-slate-900">
+        <div className="line-clamp-2 text-sm font-semibold text-neutral-900">
           {SAMPLE_PRODUCT.name}
         </div>
-        <div className="flex items-center gap-2 text-[13px] text-slate-500">
+        <div className="flex items-center gap-2 text-[13px] text-neutral-500">
           <span className="font-semibold" style={priceColor}>
             {price}
           </span>
-          <span className="line-through text-slate-400">{listPrice}</span>
+          <span className="line-through text-neutral-400">{listPrice}</span>
         </div>
         <div className="text-[12px]">
-          <span className="font-medium text-slate-500">Status:</span>{" "}
+          <span className="font-medium text-neutral-500">Status:</span>{" "}
           <span className="font-semibold uppercase" style={etaColor}>
             {SAMPLE_PRODUCT.availability}
           </span>
         </div>
-        <div className="text-[12px] text-slate-500">
+        <div className="text-[12px] text-neutral-500">
           <span className="font-semibold" style={etaColor}>
             {SAMPLE_PRODUCT.eta}
           </span>
@@ -165,25 +165,25 @@ export function ProductCardPreview({
       </div>
       <div className="flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between text-[12px] uppercase tracking-wide text-slate-500">
+          <div className="flex items-center justify-between text-[12px] uppercase tracking-wide text-neutral-500">
             <span>{SAMPLE_PRODUCT.sku}</span>
             <span className="font-semibold" style={priceColor}>
               {SAMPLE_PRODUCT.model}
             </span>
           </div>
-          <div className="mt-1 line-clamp-2 text-sm font-semibold text-slate-900">
+          <div className="mt-1 line-clamp-2 text-sm font-semibold text-neutral-900">
             {SAMPLE_PRODUCT.name}
           </div>
           <div className="mt-3 flex items-center gap-3 text-sm">
             <span className="text-lg font-semibold" style={priceColor}>
               {price}
             </span>
-            <span className="text-slate-400 line-through">{listPrice}</span>
+            <span className="text-neutral-400 line-through">{listPrice}</span>
           </div>
         </div>
-        <div className="flex items-center justify-between text-[12px] text-slate-500">
+        <div className="flex items-center justify-between text-[12px] text-neutral-500">
           <div>
-            <span className="font-medium text-slate-500">Status:</span>{" "}
+            <span className="font-medium text-neutral-500">Status:</span>{" "}
             <span className="font-semibold uppercase" style={etaColor}>
               {SAMPLE_PRODUCT.availability}
             </span>

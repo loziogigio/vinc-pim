@@ -66,10 +66,10 @@ export default function DocumentListPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.documents.list.title")}</h1>
+      <h1 className="text-2xl font-bold text-foreground">{t("pages.documents.list.title")}</h1>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -77,13 +77,13 @@ export default function DocumentListPage() {
             placeholder={t("pages.documents.list.searchPlaceholder")}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background text-foreground"
           />
         </div>
         <select
           value={typeFilter}
           onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
+          className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none bg-background text-foreground"
         >
           <option value="">{t("pages.documents.list.allTypes")}</option>
           {DOCUMENT_TYPES.map((dt) => (
@@ -93,7 +93,7 @@ export default function DocumentListPage() {
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none"
+          className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none bg-background text-foreground"
         >
           <option value="">{t("pages.documents.list.allStatuses")}</option>
           {DOCUMENT_STATUSES.map((s) => (
@@ -103,7 +103,7 @@ export default function DocumentListPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1] overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -113,55 +113,57 @@ export default function DocumentListPage() {
             {t("pages.documents.list.noDocuments")}
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#ebe9f1] bg-[#f8f8f8]">
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.documents.list.number")}</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.documents.list.type")}</th>
-                <th className="text-left px-4 py-3 font-medium text-[#5e5873]">{t("pages.documents.list.customer")}</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.documents.list.totalAmount")}</th>
-                <th className="text-center px-4 py-3 font-medium text-[#5e5873]">{t("pages.documents.list.status")}</th>
-                <th className="text-right px-4 py-3 font-medium text-[#5e5873]">{t("pages.documents.list.date")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => {
-                const customerName =
-                  doc.customer?.company_name ||
-                  [doc.customer?.first_name, doc.customer?.last_name].filter(Boolean).join(" ") ||
-                  "—";
-                return (
-                  <tr
-                    key={doc.document_id}
-                    className="border-b border-[#ebe9f1] hover:bg-[#f8f8f8] transition-colors cursor-pointer"
-                    onClick={() => window.location.href = `${tenantPrefix}/b2b/documents/${doc.document_id}`}
-                  >
-                    <td className="px-4 py-3 font-medium text-[#5e5873]">
-                      {doc.document_number || <span className="text-muted-foreground italic">{t("pages.documents.dashboard.draft")}</span>}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {DOCUMENT_TYPE_LABELS[doc.document_type]}
-                    </td>
-                    <td className="px-4 py-3 text-[#5e5873]">{customerName}</td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {formatCurrency(doc.totals?.total || 0, doc.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <DocumentStatusBadge status={doc.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
-                      {new Date(doc.created_at).toLocaleDateString("it-IT")}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted">
+                  <th className="text-left px-4 py-3 font-medium text-foreground">{t("pages.documents.list.number")}</th>
+                  <th className="text-left px-4 py-3 font-medium text-foreground">{t("pages.documents.list.type")}</th>
+                  <th className="text-left px-4 py-3 font-medium text-foreground">{t("pages.documents.list.customer")}</th>
+                  <th className="text-right px-4 py-3 font-medium text-foreground">{t("pages.documents.list.totalAmount")}</th>
+                  <th className="text-center px-4 py-3 font-medium text-foreground">{t("pages.documents.list.status")}</th>
+                  <th className="text-right px-4 py-3 font-medium text-foreground">{t("pages.documents.list.date")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map((doc) => {
+                  const customerName =
+                    doc.customer?.company_name ||
+                    [doc.customer?.first_name, doc.customer?.last_name].filter(Boolean).join(" ") ||
+                    "—";
+                  return (
+                    <tr
+                      key={doc.document_id}
+                      className="border-b border-border hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() => window.location.href = `${tenantPrefix}/b2b/documents/${doc.document_id}`}
+                    >
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        {doc.document_number || <span className="text-muted-foreground italic">{t("pages.documents.dashboard.draft")}</span>}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {DOCUMENT_TYPE_LABELS[doc.document_type]}
+                      </td>
+                      <td className="px-4 py-3 text-foreground">{customerName}</td>
+                      <td className="px-4 py-3 text-right font-medium">
+                        {formatCurrency(doc.totals?.total || 0, doc.currency)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <DocumentStatusBadge status={doc.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {new Date(doc.created_at).toLocaleDateString("it-IT")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[#ebe9f1]">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-border">
             <span className="text-sm text-muted-foreground">
               {t("pages.documents.list.pageOf").replace("{page}", String(pagination.page)).replace("{pages}", String(pagination.totalPages)).replace("{total}", String(pagination.total))}
             </span>
@@ -169,14 +171,14 @@ export default function DocumentListPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-[#f8f8f8] disabled:opacity-50"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={page >= pagination.totalPages}
-                className="p-1.5 rounded hover:bg-[#f8f8f8] disabled:opacity-50"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-50"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

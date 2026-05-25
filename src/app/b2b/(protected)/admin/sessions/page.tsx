@@ -130,8 +130,8 @@ export default function SessionsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.sessions.title")}</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.admin.sessions.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           {t("pages.admin.sessions.subtitle")}
         </p>
       </div>
@@ -139,69 +139,69 @@ export default function SessionsPage() {
       {/* Search */}
       <form onSubmit={handleSearch} className="mb-6">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("pages.admin.sessions.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
       </form>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : sessions.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-          <Monitor className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">{t("pages.admin.sessions.noSessions")}</p>
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <Monitor className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">{t("pages.admin.sessions.noSessions")}</p>
         </div>
       ) : (
         <>
           {/* Sessions Table */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-muted border-b border-border">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.sessions.user")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.sessions.app")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.sessions.device")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.sessions.location")}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("pages.admin.sessions.lastActivity")}
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-border">
                   {sessions.map((s) => (
-                    <tr key={s.session_id} className="hover:bg-slate-50">
+                    <tr key={s.session_id} className="hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-sm font-medium text-slate-900">
+                          <p className="text-sm font-medium text-foreground">
                             {s.user_email}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             {s.company_name || s.user_role}
                           </p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-slate-600">
+                        <span className="text-sm text-muted-foreground">
                           {s.client_app}
                         </span>
                       </td>
@@ -209,10 +209,10 @@ export default function SessionsPage() {
                         <div className="flex items-center gap-2">
                           {getDeviceIcon(s.device_type)}
                           <div>
-                            <p className="text-sm text-slate-900">
+                            <p className="text-sm text-foreground">
                               {s.browser || "Unknown"}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               {s.os || "Unknown OS"}
                             </p>
                           </div>
@@ -220,21 +220,21 @@ export default function SessionsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-slate-400" />
+                          <Globe className="w-4 h-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm text-slate-900">
+                            <p className="text-sm text-foreground">
                               {s.city && s.country
                                 ? `${s.city}, ${s.country}`
                                 : s.country || "Unknown"}
                             </p>
-                            <p className="text-xs text-slate-500 font-mono">
+                            <p className="text-xs text-muted-foreground font-mono">
                               {s.ip_address}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-slate-600">
+                        <span className="text-sm text-muted-foreground">
                           {formatTimeAgo(s.last_activity)}
                         </span>
                       </td>
@@ -242,7 +242,7 @@ export default function SessionsPage() {
                         <button
                           onClick={() => handleRevoke(s.session_id)}
                           disabled={revoking === s.session_id}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors disabled:opacity-50"
                         >
                           {revoking === s.session_id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -261,8 +261,8 @@ export default function SessionsPage() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+              <p className="text-sm text-muted-foreground">
                 {t("pages.admin.sessions.showingPagination")
                   .replace("{from}", String((pagination.page - 1) * pagination.limit + 1))
                   .replace("{to}", String(Math.min(pagination.page * pagination.limit, pagination.total)))
@@ -277,11 +277,11 @@ export default function SessionsPage() {
                     }))
                   }
                   disabled={pagination.page === 1}
-                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white"
+                  className="p-2 rounded-lg border border-border hover:bg-muted/50 disabled:opacity-50 disabled:hover:bg-card"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-muted-foreground">
                   {t("pages.admin.sessions.pageOf")
                     .replace("{page}", String(pagination.page))
                     .replace("{pages}", String(pagination.totalPages))}
@@ -294,7 +294,7 @@ export default function SessionsPage() {
                     }))
                   }
                   disabled={pagination.page === pagination.totalPages}
-                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white"
+                  className="p-2 rounded-lg border border-border hover:bg-muted/50 disabled:opacity-50 disabled:hover:bg-card"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

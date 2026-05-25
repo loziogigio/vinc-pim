@@ -59,13 +59,13 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-6 py-4">
-        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-6 py-4">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Image className="h-5 w-5 text-primary" />
           {t("components.imageVersions.sectionTitle")}
         </h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {t("components.imageVersions.sectionDescription")} <code>main_</code>, <code>gallery_</code>{t("components.imageVersions.sectionDescriptionEnd")}
         </p>
       </div>
@@ -77,9 +77,9 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
             type="checkbox"
             checked={value.enabled}
             onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
           />
-          <span className="text-sm font-medium text-slate-700">
+          <span className="text-sm font-medium text-foreground/90">
             {t("components.imageVersions.enableLabel")}
           </span>
         </label>
@@ -90,7 +90,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                  <tr className="border-b border-border text-left text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colKey")}</th>
                     <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colPrefix")}</th>
                     <th className="pb-2 pr-4 font-medium">{t("components.imageVersions.colWidth")}</th>
@@ -98,22 +98,22 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                     <th className="pb-2 font-medium w-20">{t("components.imageVersions.colActions")}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {versions.map((version, index) => (
                     <tr key={version.key} className="group">
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
                           {version.is_default && (
-                            <Lock className="h-3.5 w-3.5 text-slate-400" title={t("components.imageVersions.builtInVersion")} />
+                            <Lock className="h-3.5 w-3.5 text-muted-foreground/60" title={t("components.imageVersions.builtInVersion")} />
                           )}
-                          <span className={version.is_default ? "text-slate-600 font-medium" : "text-slate-900"}>
+                          <span className={version.is_default ? "text-foreground/80 font-medium" : "text-foreground"}>
                             {version.key}
                           </span>
                         </div>
                       </td>
                       <td className="py-3 pr-4">
                         {version.is_default ? (
-                          <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-foreground/80">
                             {version.prefix}
                           </code>
                         ) : (
@@ -121,7 +121,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                             type="text"
                             value={version.prefix}
                             onChange={(e) => updateVersion(index, "prefix", e.target.value)}
-                            className="w-24 rounded border border-slate-200 px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                            className="w-24 rounded border border-border px-2 py-1 text-sm focus:border-primary focus:outline-none"
                           />
                         )}
                       </td>
@@ -132,7 +132,7 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                           onChange={(e) => updateVersion(index, "width", parseInt(e.target.value) || 0)}
                           min={50}
                           max={4000}
-                          className="w-24 rounded border border-slate-200 px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                          className="w-24 rounded border border-border px-2 py-1 text-sm focus:border-primary focus:outline-none"
                         />
                       </td>
                       <td className="py-3 pr-4">
@@ -142,14 +142,14 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
                           onChange={(e) => updateVersion(index, "height", parseInt(e.target.value) || 0)}
                           min={50}
                           max={4000}
-                          className="w-24 rounded border border-slate-200 px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                          className="w-24 rounded border border-border px-2 py-1 text-sm focus:border-primary focus:outline-none"
                         />
                       </td>
                       <td className="py-3">
                         {!version.is_default && (
                           <button
                             onClick={() => removeVersion(index)}
-                            className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                            className="rounded p-1 text-muted-foreground/60 hover:bg-red-50 hover:text-red-500 transition-colors"
                             title={t("components.imageVersions.removeVersion")}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -163,49 +163,49 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
             </div>
 
             {/* Add custom version */}
-            <div className="border-t border-slate-200 pt-4">
-              <h3 className="text-sm font-medium text-slate-700 mb-3">{t("components.imageVersions.addCustomVersion")}</h3>
+            <div className="border-t border-border pt-4">
+              <h3 className="text-sm font-medium text-foreground/90 mb-3">{t("components.imageVersions.addCustomVersion")}</h3>
               <div className="flex items-end gap-3 flex-wrap">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colKey")}</label>
+                  <label className="block text-xs text-muted-foreground mb-1">{t("components.imageVersions.colKey")}</label>
                   <input
                     type="text"
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
                     placeholder="e.g. thumb"
-                    className="w-28 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+                    className="w-28 rounded border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colPrefix")}</label>
+                  <label className="block text-xs text-muted-foreground mb-1">{t("components.imageVersions.colPrefix")}</label>
                   <input
                     type="text"
                     value={newPrefix}
                     onChange={(e) => setNewPrefix(e.target.value)}
                     placeholder="e.g. thumb_"
-                    className="w-28 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+                    className="w-28 rounded border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colWidth")}</label>
+                  <label className="block text-xs text-muted-foreground mb-1">{t("components.imageVersions.colWidth")}</label>
                   <input
                     type="number"
                     value={newWidth}
                     onChange={(e) => setNewWidth(parseInt(e.target.value) || 0)}
                     min={50}
                     max={4000}
-                    className="w-20 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+                    className="w-20 rounded border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">{t("components.imageVersions.colHeight")}</label>
+                  <label className="block text-xs text-muted-foreground mb-1">{t("components.imageVersions.colHeight")}</label>
                   <input
                     type="number"
                     value={newHeight}
                     onChange={(e) => setNewHeight(parseInt(e.target.value) || 0)}
                     min={50}
                     max={4000}
-                    className="w-20 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+                    className="w-20 rounded border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
                 <Button
@@ -221,8 +221,8 @@ export default function ImageVersionsSection({ value, onChange }: ImageVersionsS
             </div>
 
             {/* Info */}
-            <div className="rounded-lg bg-blue-50 border border-blue-100 p-3">
-              <p className="text-xs text-blue-700">
+            <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 dark:bg-blue-950/40 dark:border-blue-800">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
                 <strong>{t("components.imageVersions.noteTitle")}</strong> {t("components.imageVersions.noteText")} <code>main_photo.jpg</code>{t("components.imageVersions.noteTextEnd")}
               </p>
             </div>

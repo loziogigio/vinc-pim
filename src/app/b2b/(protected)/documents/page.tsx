@@ -77,11 +77,11 @@ export default function DocumentsDashboard() {
   }, []);
 
   const statCards = [
-    { label: t("pages.documents.dashboard.drafts"), value: stats?.draft || 0, icon: FilePlus, color: "text-gray-600 bg-gray-50" },
-    { label: t("pages.documents.dashboard.finalized"), value: stats?.finalized || 0, icon: FileText, color: "text-blue-600 bg-blue-50" },
-    { label: t("pages.documents.dashboard.sent"), value: stats?.sent || 0, icon: Send, color: "text-amber-600 bg-amber-50" },
-    { label: t("pages.documents.dashboard.paid"), value: stats?.paid || 0, icon: CheckCircle, color: "text-green-600 bg-green-50" },
-    { label: t("pages.documents.dashboard.voided"), value: stats?.voided || 0, icon: XCircle, color: "text-red-600 bg-red-50" },
+    { label: t("pages.documents.dashboard.drafts"), value: stats?.draft || 0, icon: FilePlus, color: "text-gray-600 bg-gray-100 dark:text-gray-300 dark:bg-gray-800" },
+    { label: t("pages.documents.dashboard.finalized"), value: stats?.finalized || 0, icon: FileText, color: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30" },
+    { label: t("pages.documents.dashboard.sent"), value: stats?.sent || 0, icon: Send, color: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30" },
+    { label: t("pages.documents.dashboard.paid"), value: stats?.paid || 0, icon: CheckCircle, color: "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30" },
+    { label: t("pages.documents.dashboard.voided"), value: stats?.voided || 0, icon: XCircle, color: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30" },
   ];
 
   if (isLoading) {
@@ -98,10 +98,10 @@ export default function DocumentsDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.documents.dashboard.title")}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("pages.documents.dashboard.title")}</h1>
         <Link
           href={`${tenantPrefix}/b2b/documents/create`}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] transition-colors text-sm font-medium"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
         >
           <FilePlus className="w-4 h-4" />
           {t("pages.documents.dashboard.newDocument")}
@@ -109,18 +109,18 @@ export default function DocumentsDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="bg-white rounded-lg border border-[#ebe9f1] p-4"
+            className="bg-card rounded-lg border border-border p-4"
           >
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${card.color}`}>
                 <card.icon className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#5e5873]">{card.value}</p>
+                <p className="text-2xl font-bold text-foreground">{card.value}</p>
                 <p className="text-xs text-muted-foreground">{card.label}</p>
               </div>
             </div>
@@ -129,17 +129,17 @@ export default function DocumentsDashboard() {
       </div>
 
       {/* Recent Documents */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1]">
-        <div className="p-4 border-b border-[#ebe9f1] flex items-center justify-between">
-          <h2 className="font-semibold text-[#5e5873]">{t("pages.documents.dashboard.recentDocuments")}</h2>
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-foreground">{t("pages.documents.dashboard.recentDocuments")}</h2>
           <Link
             href={`${tenantPrefix}/b2b/documents/list`}
-            className="text-sm text-[#009688] hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             {t("pages.documents.dashboard.viewAll")}
           </Link>
         </div>
-        <div className="divide-y divide-[#ebe9f1]">
+        <div className="divide-y divide-border">
           {recent.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               {t("pages.documents.dashboard.noDocuments")}
@@ -156,11 +156,11 @@ export default function DocumentsDashboard() {
                 <Link
                   key={doc.document_id}
                   href={`${tenantPrefix}/b2b/documents/${doc.document_id}`}
-                  className="flex items-center justify-between p-4 hover:bg-[#f8f8f8] transition-colors"
+                  className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div>
-                      <p className="font-medium text-[#5e5873]">
+                      <p className="font-medium text-foreground">
                         {doc.document_number || t("pages.documents.dashboard.draft").toUpperCase()}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -169,7 +169,7 @@ export default function DocumentsDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-[#5e5873]">
+                    <span className="text-sm font-medium text-foreground">
                       {formatCurrency(doc.totals?.total || 0, doc.currency)}
                     </span>
                     <DocumentStatusBadge status={doc.status} />

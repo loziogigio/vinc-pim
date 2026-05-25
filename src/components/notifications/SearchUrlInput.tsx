@@ -250,7 +250,7 @@ async function fetchSearchPreview(
 }
 
 const PreviewPlaceholder = ({ message }: { message: string }) => (
-  <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-center text-xs text-slate-500">
+  <div className="rounded-md border border-dashed border-border bg-muted px-4 py-4 text-center text-xs text-muted-foreground">
     {message}
   </div>
 );
@@ -321,7 +321,7 @@ export function SearchUrlInput({
 
     if (previewLoading) {
       return (
-        <div className="flex items-center justify-center py-4 text-xs text-slate-500">
+        <div className="flex items-center justify-center py-4 text-xs text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin mr-2" />
           {t("pages.notifications.campaigns.searchUrlInput.loadingPreview")}
         </div>
@@ -337,11 +337,11 @@ export function SearchUrlInput({
     }
 
     return (
-      <div className="max-h-48 overflow-y-auto rounded-md border border-slate-200 bg-white">
+      <div className="max-h-48 overflow-y-auto rounded-md border border-border bg-card">
         {previewProducts.map((product) => (
           <div
             key={product.id || product.sku}
-            className="flex items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0"
+            className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-b-0"
           >
             {product?.image?.thumbnail || product?.image?.url ? (
               <img
@@ -351,13 +351,13 @@ export function SearchUrlInput({
                 loading="lazy"
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-slate-100 text-slate-400 flex-shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded bg-muted text-muted-foreground flex-shrink-0">
                 <Package className="w-4 h-4" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-slate-700 truncate">{product.name ?? product.sku}</p>
-              {product.sku && <p className="text-[10px] text-slate-400">SKU: {product.sku}</p>}
+              <p className="text-xs font-medium text-foreground truncate">{product.name ?? product.sku}</p>
+              {product.sku && <p className="text-[10px] text-muted-foreground">SKU: {product.sku}</p>}
             </div>
           </div>
         ))}
@@ -367,7 +367,7 @@ export function SearchUrlInput({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-700">
+      <label className="block text-sm font-medium text-foreground">
         <Search className="w-4 h-4 inline mr-1" />
         {label}
       </label>
@@ -378,17 +378,17 @@ export function SearchUrlInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:bg-slate-50"
+        className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:bg-muted"
       />
 
-      {helpText && <p className="text-xs text-slate-500">{helpText}</p>}
+      {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
 
       {/* Parsed URL Summary */}
       {parsed && (parsed.keyword || parsed.filters.length > 0) && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+        <div className="rounded-lg border border-border bg-muted p-3 space-y-2">
           {/* Base Path */}
           {parsed.basePath && (
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ExternalLink className="w-3 h-3" />
               <span className="font-mono">{parsed.basePath}</span>
             </div>
@@ -397,7 +397,7 @@ export function SearchUrlInput({
           {/* Keyword */}
           {parsed.keyword && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600 uppercase">{t("pages.notifications.campaigns.searchUrlInput.keyword")}</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase">{t("pages.notifications.campaigns.searchUrlInput.keyword")}</span>
               <span className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
                 <Search className="w-3 h-3 mr-1" />
                 {parsed.keyword}
@@ -408,7 +408,7 @@ export function SearchUrlInput({
           {/* Filters */}
           {parsed.filters.length > 0 && (
             <div className="space-y-1.5">
-              <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 uppercase">
+              <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase">
                 <Filter className="w-3 h-3" />
                 {t("pages.notifications.campaigns.searchUrlInput.filtersLabel")}
               </div>
@@ -416,10 +416,10 @@ export function SearchUrlInput({
                 {parsed.filters.map(({ key, label, values }) => (
                   <div
                     key={key}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-card border border-border text-xs"
                   >
-                    <span className="font-semibold text-slate-500 uppercase text-[10px]">{getTranslatedFilterLabel(key, t)}</span>
-                    <span className="text-slate-700">
+                    <span className="font-semibold text-muted-foreground uppercase text-[10px]">{getTranslatedFilterLabel(key, t)}</span>
+                    <span className="text-foreground">
                       {values.length > 2 ? `${values.slice(0, 2).join(", ")} +${values.length - 2}` : values.join(", ")}
                     </span>
                   </div>
@@ -433,14 +433,14 @@ export function SearchUrlInput({
       {/* Product Preview */}
       {showPreview && (
         <div>
-          <p className="text-xs font-medium text-slate-600 mb-1.5">{t("pages.notifications.campaigns.searchUrlInput.previewLabel")}</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("pages.notifications.campaigns.searchUrlInput.previewLabel")}</p>
           {previewContent}
         </div>
       )}
 
       {/* URL Format Help */}
       {!parsed && value && (
-        <p className="text-xs text-amber-600">
+        <p className="text-xs text-amber-600 dark:text-amber-400">
           {t("pages.notifications.campaigns.searchUrlInput.unrecognizedFormat", { example: "shop?text=keyword&filters-brand_id=004" })}
         </p>
       )}

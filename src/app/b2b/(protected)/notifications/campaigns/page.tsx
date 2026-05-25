@@ -283,18 +283,18 @@ export default function CampaignsPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{t("pages.notifications.campaigns.title")}</h1>
-            <p className="text-sm text-slate-500 mt-1">{t("pages.notifications.campaigns.subtitle")}</p>
+            <h1 className="text-2xl font-bold text-foreground">{t("pages.notifications.campaigns.title")}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t("pages.notifications.campaigns.subtitle")}</p>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 mt-4 border-b border-slate-200">
+        <div className="flex gap-1 mt-4 border-b border-border">
           <button
             onClick={() => setActiveTab("create")}
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition",
-              activeTab === "create" ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-700"
+              activeTab === "create" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
             <Send className="w-4 h-4" />
@@ -304,7 +304,7 @@ export default function CampaignsPage() {
             onClick={() => { setActiveTab("history"); form.setEditingDraftId(null); }}
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition",
-              activeTab === "history" ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-700"
+              activeTab === "history" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
             <Clock className="w-4 h-4" />
@@ -318,7 +318,7 @@ export default function CampaignsPage() {
         <div
           className={cn(
             "mb-4 rounded-lg border px-4 py-3 text-sm flex items-center gap-2",
-            toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"
+            toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300"
           )}
         >
           {toast.type === "success" ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -328,14 +328,14 @@ export default function CampaignsPage() {
 
       {/* History Tab - Navigates to detail page for results */}
       {activeTab === "history" && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <CampaignList onEditDraft={loadDraft} />
         </div>
       )}
 
       {/* Create Tab */}
       {activeTab === "create" && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <CampaignForm
             {...form}
             onCampaignNameChange={form.setCampaignName}
@@ -356,7 +356,7 @@ export default function CampaignsPage() {
           />
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-4 mt-8 border-t border-slate-200">
+          <div className="flex flex-wrap items-center gap-3 pt-4 mt-8 border-t border-border">
             <Button variant="outline" onClick={() => setShowPreview(true)} disabled={!form.title && !form.body} className="gap-2">
               <Eye className="w-4 h-4" />
               {t("pages.notifications.campaigns.preview")}
@@ -438,14 +438,14 @@ export default function CampaignsPage() {
       {/* Error Modal */}
       {errorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-rose-600" />
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">{errorModal.title}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{errorModal.title}</h3>
             </div>
-            <p className="text-slate-600 mb-6">{errorModal.message}</p>
+            <p className="text-muted-foreground mb-6">{errorModal.message}</p>
             <div className="flex justify-end">
               <Button onClick={() => setErrorModal(null)}>{t("pages.notifications.campaigns.close")}</Button>
             </div>

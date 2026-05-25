@@ -157,8 +157,8 @@ export default function FormsPage({
   const tabClasses = (tab: ActiveTab) =>
     `px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
       activeTab === tab
-        ? "border-[#009688] text-[#009688]"
-        : "border-transparent text-[#b9b9c3] hover:text-[#5e5873]"
+        ? "border-primary text-primary"
+        : "border-transparent text-muted-foreground hover:text-foreground"
     }`;
 
   return (
@@ -172,12 +172,12 @@ export default function FormsPage({
       />
 
       {/* Header */}
-      <h1 className="text-xl font-semibold text-[#5e5873]">
+      <h1 className="text-xl font-semibold text-foreground">
         {t("nav.b2c.forms")}
       </h1>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#ebe9f1]">
+      <div className="flex border-b border-border">
         <button type="button" className={tabClasses("submissions")} onClick={() => setActiveTab("submissions")}>
           {t("pages.b2c.forms.tabSubmissions")}
         </button>
@@ -190,7 +190,7 @@ export default function FormsPage({
       {activeTab === "submissions" && (
         <div className="space-y-4">
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}
@@ -199,29 +199,29 @@ export default function FormsPage({
           {!isLoading && submissions.length > 0 && (
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   value={filterPage}
                   onChange={(e) => setFilterPage(e.target.value)}
                   placeholder={t("pages.b2c.formSubmissions.filterByPage")}
-                  className="h-9 w-44 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+                  className="h-9 w-44 rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b9b9c3]" />
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   value={filterEmail}
                   onChange={(e) => setFilterEmail(e.target.value)}
                   placeholder={t("pages.b2c.formSubmissions.filterByEmail")}
-                  className="h-9 w-44 rounded-lg border border-[#ebe9f1] pl-9 pr-3 text-sm focus:border-[#009688] focus:outline-none"
+                  className="h-9 w-44 rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as "" | "page_form" | "standalone")}
-                className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+                className="h-9 w-full sm:w-auto rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
               >
                 <option value="">{t("pages.b2c.formSubmissions.allTypes")}</option>
                 <option value="page_form">{t("pages.b2c.formSubmissions.typePageForm")}</option>
@@ -230,7 +230,7 @@ export default function FormsPage({
               <select
                 value={filterSeen}
                 onChange={(e) => setFilterSeen(e.target.value as "" | "seen" | "unseen")}
-                className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+                className="h-9 w-full sm:w-auto rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
               >
                 <option value="">{t("common.all")}</option>
                 <option value="unseen">{t("pages.b2c.formSubmissions.unseen")}</option>
@@ -240,14 +240,14 @@ export default function FormsPage({
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
-                className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
                 title={t("pages.b2c.formSubmissions.fromDate")}
               />
               <input
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
-                className="h-9 rounded-lg border border-[#ebe9f1] px-3 text-sm text-[#5e5873] focus:border-[#009688] focus:outline-none"
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
                 title={t("pages.b2c.formSubmissions.toDate")}
               />
             </div>
@@ -256,85 +256,85 @@ export default function FormsPage({
           {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#009688]" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
 
           {/* Empty state */}
           {!isLoading && submissions.length === 0 && (
-            <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
-              <Inbox className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-              <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.formSubmissions.noSubmissions")}</p>
+            <div className="rounded-[0.428rem] border border-dashed border-border bg-muted px-6 py-12 text-center">
+              <Inbox className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">{t("pages.b2c.formSubmissions.noSubmissions")}</p>
             </div>
           )}
 
           {/* No filter results */}
           {!isLoading && submissions.length > 0 && filteredSubmissions.length === 0 && (
-            <div className="rounded-[0.428rem] border border-dashed border-[#ebe9f1] bg-[#fafafc] px-6 py-12 text-center">
-              <Search className="mx-auto h-10 w-10 text-[#b9b9c3] mb-3" />
-              <p className="text-sm text-[#b9b9c3]">{t("pages.b2c.formSubmissions.noFilterResults")}</p>
+            <div className="rounded-[0.428rem] border border-dashed border-border bg-muted px-6 py-12 text-center">
+              <Search className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">{t("pages.b2c.formSubmissions.noFilterResults")}</p>
             </div>
           )}
 
           {/* Table */}
           {!isLoading && filteredSubmissions.length > 0 && (
             <>
-              <div className="rounded-[0.428rem] border border-[#ebe9f1] bg-white shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] overflow-hidden">
+              <div className="rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)] dark:shadow-none overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-[#fafafc]">
+                  <thead className="bg-muted">
                     <tr>
                       <th className="w-10 px-4 py-3" />
-                      <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                      <th className="px-4 py-3 text-left font-medium text-foreground">
                         {t("pages.b2c.formSubmissions.colPage")}
                       </th>
-                      <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                      <th className="px-4 py-3 text-left font-medium text-foreground">
                         {t("pages.b2c.formSubmissions.formType")}
                       </th>
-                      <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                      <th className="px-4 py-3 text-left font-medium text-foreground">
                         {t("common.email")}
                       </th>
-                      <th className="px-4 py-3 text-left font-medium text-[#5e5873]">
+                      <th className="px-4 py-3 text-left font-medium text-foreground">
                         {t("pages.b2c.formSubmissions.colSubmitted")}
                       </th>
-                      <th className="px-4 py-3 text-right font-medium text-[#5e5873]">
+                      <th className="px-4 py-3 text-right font-medium text-foreground">
                         {t("common.actions")}
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#ebe9f1]">
+                  <tbody className="divide-y divide-border">
                     {filteredSubmissions.map((sub) => (
-                      <tr key={sub._id} className={`hover:bg-[#fafafc] ${!sub.seen ? "bg-blue-50/40" : ""}`}>
+                      <tr key={sub._id} className={`hover:bg-muted/50 ${!sub.seen ? "bg-blue-50/40 dark:bg-blue-950/20" : ""}`}>
                         <td className="px-4 py-3 text-center">
                           {!sub.seen && (
-                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#009688]" title={t("pages.b2c.formSubmissions.unseen")} />
+                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary" title={t("pages.b2c.formSubmissions.unseen")} />
                           )}
                         </td>
-                        <td className={`px-4 py-3 text-[#5e5873] ${!sub.seen ? "font-semibold" : "font-medium"}`}>
+                        <td className={`px-4 py-3 text-foreground ${!sub.seen ? "font-semibold" : "font-medium"}`}>
                           {getSourceLabel(sub)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
                             sub.form_type === "standalone"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-blue-50 text-blue-700"
+                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                              : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
                           }`}>
                             {sub.form_type === "standalone"
                               ? t("pages.b2c.formSubmissions.typeStandalone")
                               : t("pages.b2c.formSubmissions.typePageForm")}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-[#b9b9c3]">{sub.submitter_email || "—"}</td>
-                        <td className="px-4 py-3 text-xs text-[#b9b9c3]">{formatDate(sub.created_at)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{sub.submitter_email || "—"}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.created_at)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-3">
-                            <button type="button" onClick={() => handleView(sub)} className="inline-flex items-center gap-1 text-sm text-[#009688] hover:text-[#00796b] transition-colors">
+                            <button type="button" onClick={() => handleView(sub)} className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
                               <Eye className="h-3.5 w-3.5" />
                               {t("common.view")}
                             </button>
-                            <button type="button" onClick={() => handleToggleSeen(sub)} className="rounded-md p-1.5 text-[#b9b9c3] hover:text-[#5e5873] hover:bg-slate-100 transition-colors" title={sub.seen ? t("pages.b2c.formSubmissions.markAsUnseen") : t("pages.b2c.formSubmissions.markAsSeen")}>
+                            <button type="button" onClick={() => handleToggleSeen(sub)} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title={sub.seen ? t("pages.b2c.formSubmissions.markAsUnseen") : t("pages.b2c.formSubmissions.markAsSeen")}>
                               {sub.seen ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </button>
-                            <button type="button" onClick={() => handleDelete(sub._id)} className="rounded-md p-1.5 text-[#b9b9c3] hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <button type="button" onClick={() => handleDelete(sub._id)} className="rounded-md p-1.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -347,8 +347,8 @@ export default function FormsPage({
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
-                  <p className="text-sm text-[#b9b9c3]">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
                     {t("pages.b2c.formSubmissions.pageOf").replace("{page}", String(page)).replace("{totalPages}", String(totalPages))}
                   </p>
                   <div className="flex items-center gap-2">
@@ -374,44 +374,46 @@ export default function FormsPage({
       {/* Detail Modal */}
       {selectedSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div className="w-full max-w-lg rounded-xl bg-card border border-border shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-[#5e5873]">
+                <h2 className="text-lg font-semibold text-foreground">
                   {t("pages.b2c.formSubmissions.submissionDetail")}
                 </h2>
-                <p className="text-sm text-[#b9b9c3]">
+                <p className="text-sm text-muted-foreground">
                   {getSourceLabel(selectedSubmission)} — {formatDate(selectedSubmission.created_at)}
                 </p>
               </div>
-              <button type="button" onClick={() => setSelectedSubmission(null)} className="rounded-full p-2 text-slate-500 transition hover:bg-slate-200">
+              <button type="button" onClick={() => setSelectedSubmission(null)} className="rounded-full p-2 text-muted-foreground transition hover:bg-muted">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
-              <table className="w-full text-sm">
-                <tbody className="divide-y divide-slate-100">
-                  {Object.entries(selectedSubmission.data).map(([key, value]) => (
-                    <tr key={key}>
-                      <td className="py-2 pr-4 font-medium text-[#5e5873] capitalize">
-                        {key.replace(/_/g, " ")}
-                      </td>
-                      <td className="py-2 text-[#6e6b7b] whitespace-pre-wrap">
-                        {typeof value === "object" && value !== null
-                          ? JSON.stringify(value, null, 2)
-                          : String(value ?? "—")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-border">
+                    {Object.entries(selectedSubmission.data).map(([key, value]) => (
+                      <tr key={key}>
+                        <td className="py-2 pr-4 font-medium text-foreground capitalize">
+                          {key.replace(/_/g, " ")}
+                        </td>
+                        <td className="py-2 text-muted-foreground whitespace-pre-wrap">
+                          {typeof value === "object" && value !== null
+                            ? JSON.stringify(value, null, 2)
+                            : String(value ?? "—")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {selectedSubmission.submitter_email && (
-                <p className="mt-4 text-sm text-[#b9b9c3]">
+                <p className="mt-4 text-sm text-muted-foreground">
                   {t("pages.b2c.formSubmissions.submitterEmail")}: {selectedSubmission.submitter_email}
                 </p>
               )}
             </div>
-            <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+            <div className="flex justify-end border-t border-border px-6 py-4">
               <Button variant="ghost" onClick={() => setSelectedSubmission(null)}>
                 {t("common.close")}
               </Button>

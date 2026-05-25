@@ -86,10 +86,10 @@ export function DocumentPartiesInfo({
   const customerName = getCustomerDisplayName(doc);
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
       {/* Issuer Card */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
-        <h3 className="font-semibold text-[#5e5873] mb-2">{t("pages.documents.detail.parties.issuer")}</h3>
+      <div className="bg-card rounded-lg border border-border p-4">
+        <h3 className="font-semibold text-foreground mb-2">{t("pages.documents.detail.parties.issuer")}</h3>
         <div className="text-sm space-y-0.5">
           <div className="font-medium">{doc.company?.legal_name}</div>
           {doc.company?.address_line1 && (
@@ -111,13 +111,13 @@ export function DocumentPartiesInfo({
       </div>
 
       {/* Customer Card */}
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-[#5e5873]">{t("pages.documents.detail.parties.customer")}</h3>
+          <h3 className="font-semibold text-foreground">{t("pages.documents.detail.parties.customer")}</h3>
           {isDraft && !editingCustomer && (
             <button
               onClick={() => setEditingCustomer(true)}
-              className="text-xs text-[#009688] hover:underline"
+              className="text-xs text-primary hover:underline"
             >
               {t("pages.documents.detail.parties.change")}
             </button>
@@ -144,21 +144,21 @@ export function DocumentPartiesInfo({
                   setTimeout(() => setShowCustomerDropdown(false), 200)
                 }
                 autoFocus
-                className="w-full pl-9 pr-3 py-2 border border-[#ebe9f1] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009688]/20"
+                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               {isSearching && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
               )}
             </div>
             {showCustomerDropdown && customerResults.length > 0 && (
-              <div className="absolute z-50 top-full mt-1 w-full bg-white border border-[#ebe9f1] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {customerResults.map((c) => (
                   <button
                     key={c.customer_id}
                     onMouseDown={() => selectCustomer(c)}
-                    className="w-full text-left px-3 py-2 hover:bg-[#f8f8f8] text-sm"
+                    className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
                   >
-                    <div className="font-medium text-[#5e5873]">
+                    <div className="font-medium text-foreground">
                       {c.company_name ||
                         [c.first_name, c.last_name]
                           .filter(Boolean)

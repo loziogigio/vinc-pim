@@ -41,9 +41,9 @@ export function RecordsTable({
     .slice(0, MAX_COLUMNS);
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2">Relation</th>
             <th className="px-3 py-2">Channel</th>
@@ -56,19 +56,19 @@ export function RecordsTable({
             <th className="px-3 py-2 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="divide-y divide-border bg-card">
           {records.map((rec) => (
-            <tr key={rec._id} className="hover:bg-slate-50">
-              <td className="px-3 py-2 font-mono text-xs text-slate-700">
+            <tr key={rec._id} className="hover:bg-muted/50">
+              <td className="px-3 py-2 font-mono text-xs text-foreground">
                 {rec.relation_id}
               </td>
-              <td className="px-3 py-2 text-slate-600">{rec.channel}</td>
+              <td className="px-3 py-2 text-muted-foreground">{rec.channel}</td>
               {columns.map((c) => (
                 <td key={c.slug} className="px-3 py-2">
                   {renderCell(rec.data?.[c.slug], c, locale)}
                 </td>
               ))}
-              <td className="px-3 py-2 text-xs text-slate-500">
+              <td className="px-3 py-2 text-xs text-muted-foreground">
                 {rec.imported_at
                   ? new Date(rec.imported_at).toLocaleString()
                   : "—"}
@@ -80,7 +80,7 @@ export function RecordsTable({
                     variant="ghost"
                     size="sm"
                     onClick={() => onEdit(rec)}
-                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-800"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -91,7 +91,7 @@ export function RecordsTable({
                     variant="ghost"
                     size="sm"
                     onClick={() => onDelete(rec)}
-                    className="h-7 w-7 p-0 text-slate-400 hover:text-red-500"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -103,7 +103,7 @@ export function RecordsTable({
             <tr>
               <td
                 colSpan={columns.length + 4}
-                className="px-3 py-8 text-center text-slate-500"
+                className="px-3 py-8 text-center text-muted-foreground"
               >
                 No records yet.
               </td>
@@ -117,7 +117,7 @@ export function RecordsTable({
 
 function renderCell(value: unknown, field: DataModelField, locale: string) {
   if (value === undefined || value === null || value === "") {
-    return <span className="text-slate-300">—</span>;
+    return <span className="text-muted-foreground/50">—</span>;
   }
   if (field.type === "select") {
     const opt = field.options?.find((o) => o.value === value);

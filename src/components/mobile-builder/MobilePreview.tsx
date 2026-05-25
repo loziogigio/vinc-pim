@@ -143,7 +143,7 @@ export function MobilePreview({
         <button
           type="button"
           onClick={() => setShowDeviceDropdown(!showDeviceDropdown)}
-          className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition"
+          className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground transition hover:bg-accent"
         >
           {isApple ? (
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -155,14 +155,14 @@ export function MobilePreview({
             </svg>
           )}
           <span>{device.name}</span>
-          <span className="text-gray-400">({device.width} × {device.height})</span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <span className="text-muted-foreground">({device.width} × {device.height})</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </button>
 
         {showDeviceDropdown && (
-          <div className="absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-lg border bg-white py-2 shadow-lg">
+          <div className="absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-lg border bg-popover py-2 shadow-lg">
             {/* Apple devices */}
-            <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase">Apple</div>
+            <div className="px-3 py-1.5 text-xs font-semibold uppercase text-muted-foreground">Apple</div>
             {DEVICES.filter((d) => d.brand === "apple").map((d) => (
               <button
                 key={d.id}
@@ -172,17 +172,17 @@ export function MobilePreview({
                   setShowDeviceDropdown(false);
                 }}
                 className={cn(
-                  "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50",
-                  d.id === selectedDeviceId && "bg-slate-50 text-slate-600"
+                  "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted",
+                  d.id === selectedDeviceId && "bg-accent text-accent-foreground"
                 )}
               >
                 <span>{d.name}</span>
-                <span className="text-xs text-gray-400">{d.width} × {d.height}</span>
+                <span className="text-xs text-muted-foreground">{d.width} × {d.height}</span>
               </button>
             ))}
 
             {/* Android devices */}
-            <div className="mt-2 border-t px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase">Android</div>
+            <div className="mt-2 border-t px-3 py-1.5 text-xs font-semibold uppercase text-muted-foreground">Android</div>
             {DEVICES.filter((d) => d.brand === "android").map((d) => (
               <button
                 key={d.id}
@@ -192,12 +192,12 @@ export function MobilePreview({
                   setShowDeviceDropdown(false);
                 }}
                 className={cn(
-                  "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50",
-                  d.id === selectedDeviceId && "bg-slate-50 text-slate-600"
+                  "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted",
+                  d.id === selectedDeviceId && "bg-accent text-accent-foreground"
                 )}
               >
                 <span>{d.name}</span>
-                <span className="text-xs text-gray-400">{d.width} × {d.height}</span>
+                <span className="text-xs text-muted-foreground">{d.width} × {d.height}</span>
               </button>
             ))}
           </div>

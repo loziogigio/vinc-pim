@@ -232,7 +232,7 @@ export default function PortalDetailPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#009688] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -240,7 +240,7 @@ export default function PortalDetailPage({
   if (!portal) {
     return (
       <div className="p-6">
-        <p className="text-slate-400">{t("pages.b2bPortal.detail.portalNotFound")}</p>
+        <p className="text-muted-foreground">{t("pages.b2bPortal.detail.portalNotFound")}</p>
       </div>
     );
   }
@@ -255,27 +255,27 @@ export default function PortalDetailPage({
       />
 
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">{portal.name}</h1>
-          <p className="text-sm text-slate-400">{t("pages.b2bPortal.detail.subtitle")}</p>
+          <h1 className="text-xl font-semibold text-foreground">{portal.name}</h1>
+          <p className="text-sm text-muted-foreground">{t("pages.b2bPortal.detail.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href={`${tenantPrefix}/b2b/b2b/portals/${slug}/pages`}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/90 hover:bg-muted/50 transition-colors"
           >
             <FileText className="h-4 w-4" /> {t("nav.b2bPortal.pages")}
           </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2b/portals/${slug}/forms`}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/90 hover:bg-muted/50 transition-colors"
           >
             <Inbox className="h-4 w-4" /> {t("nav.b2bPortal.forms")}
           </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2b-home-builder?portal=${slug}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Pencil className="h-4 w-4" /> {t("pages.b2bPortal.detail.homeBuilder")}
           </Link>

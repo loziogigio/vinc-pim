@@ -20,7 +20,7 @@ const statusConfig = {
   not_enhanced: {
     label: "Not Enhanced",
     icon: AlertCircle,
-    className: "bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-400",
+    className: "bg-muted text-muted-foreground",
   },
   needs_attention: {
     label: "Needs Attention",
@@ -96,7 +96,7 @@ export function ProductsTable({ products, onEnhance }: ProductsTableProps) {
                     if (input) input.indeterminate = someSelected;
                   }}
                   onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-gray-300"
+                  className="h-3.5 w-3.5 rounded border-border"
                 />
               </th>
               <th className="p-2 text-left text-xs font-semibold">SKU</th>
@@ -133,7 +133,7 @@ export function ProductsTable({ products, onEnhance }: ProductsTableProps) {
                         type="checkbox"
                         checked={isSelected}
                         onChange={(e) => handleSelectProduct(product._id, e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-gray-300"
+                        className="h-3.5 w-3.5 rounded border-border"
                       />
                     </td>
                     <td className="p-2">

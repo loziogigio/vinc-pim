@@ -43,8 +43,8 @@ function SidebarItem({
       className={cn(
         "w-full rounded-2xl border px-4 py-3 text-left transition-all",
         active
-          ? "border-[#009688] bg-[#009688]/10 text-[#009688] shadow-sm"
-          : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-800"
+          ? "border-primary bg-primary/10 text-primary shadow-sm"
+          : "border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-accent-foreground"
       )}
     >
       <div className="flex items-center gap-3">
@@ -52,15 +52,15 @@ function SidebarItem({
           className={cn(
             "flex h-10 w-10 items-center justify-center rounded-xl border",
             active
-              ? "border-[#009688]/30 bg-[#009688]/15 text-[#009688]"
-              : "border-slate-200 bg-white text-slate-500"
+              ? "border-primary/30 bg-primary/15 text-primary"
+              : "border-border bg-card text-muted-foreground"
           )}
         >
           <Icon className="h-4 w-4" />
         </span>
         <div>
           <div className="text-sm font-semibold">{label}</div>
-          <div className="text-xs text-slate-500">{description}</div>
+          <div className="text-xs text-muted-foreground">{description}</div>
         </div>
       </div>
     </button>

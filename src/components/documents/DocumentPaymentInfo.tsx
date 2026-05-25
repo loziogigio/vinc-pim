@@ -28,8 +28,8 @@ export function DocumentPaymentInfo({
   const { t } = useTranslation();
 
   return (
-    <div className="grid grid-cols-4 gap-4">
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="text-xs text-muted-foreground mb-1">
           {t("pages.documents.detail.payment.paymentTerms")}
         </div>
@@ -38,7 +38,7 @@ export function DocumentPaymentInfo({
             <select
               value={editPaymentTerms}
               onChange={(e) => onPaymentTermsChange(e.target.value)}
-              className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm"
+              className="w-full px-2 py-1 border border-border rounded text-sm bg-background text-foreground"
             >
               <option value="">—</option>
               {PAYMENT_TERMS.map((t) => (
@@ -54,7 +54,7 @@ export function DocumentPaymentInfo({
                 value={editCustomDays}
                 onChange={(e) => onCustomDaysChange(e.target.value)}
                 placeholder={t("pages.documents.detail.payment.daysPlaceholder")}
-                className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm"
+                className="w-full px-2 py-1 border border-border rounded text-sm bg-background text-foreground"
               />
             )}
             {editPaymentTerms === "custom_date" && (
@@ -62,7 +62,7 @@ export function DocumentPaymentInfo({
                 type="date"
                 value={editDueDate}
                 onChange={(e) => onDueDateChange(e.target.value)}
-                className="w-full px-2 py-1 border border-[#ebe9f1] rounded text-sm"
+                className="w-full px-2 py-1 border border-border rounded text-sm bg-background text-foreground"
               />
             )}
           </div>
@@ -76,7 +76,7 @@ export function DocumentPaymentInfo({
           </div>
         )}
       </div>
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="text-xs text-muted-foreground mb-1">{t("pages.documents.detail.payment.dueDate")}</div>
         <div className="font-medium text-sm">
           {doc.due_date
@@ -88,11 +88,11 @@ export function DocumentPaymentInfo({
             : "—"}
         </div>
       </div>
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="text-xs text-muted-foreground mb-1">{t("pages.documents.detail.payment.currency")}</div>
         <div className="font-medium text-sm">{doc.currency || "EUR"}</div>
       </div>
-      <div className="bg-white rounded-lg border border-[#ebe9f1] p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="text-xs text-muted-foreground mb-1">{t("pages.documents.detail.payment.lastSent")}</div>
         <div className="font-medium text-sm">
           {doc.last_sent_at

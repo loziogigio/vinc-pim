@@ -94,6 +94,8 @@ const en = {
     logout: "Logout",
     signOut: "Sign out",
     providedBy: "Provided by vendereincloud.it",
+    openSidebar: "Open menu",
+    closeSidebar: "Collapse menu",
   },
   login: {
     welcome: "Welcome to VendereInCloud - CommerceSuite",

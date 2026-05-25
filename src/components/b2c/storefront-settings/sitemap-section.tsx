@@ -257,7 +257,7 @@ export function SitemapSection({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-6 w-6 animate-spin text-[#009688]" />
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -286,10 +286,10 @@ export function SitemapSection({
 
   // Type badge colors
   const typeBadgeColors: Record<string, string> = {
-    homepage: "bg-blue-100 text-blue-700",
-    page: "bg-purple-100 text-purple-700",
-    product: "bg-amber-100 text-amber-700",
-    category: "bg-emerald-100 text-emerald-700",
+    homepage: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+    page: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
+    product: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    category: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
   };
 
   const primaryDomain = browseResult?.primary_domain;
@@ -302,8 +302,8 @@ export function SitemapSection({
         <div
           className={`rounded-lg border px-4 py-3 text-sm ${
             message.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-              : "border-red-200 bg-red-50 text-red-600"
+              ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"
+              : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"
           }`}
         >
           {message.text}
@@ -314,13 +314,13 @@ export function SitemapSection({
       <SectionCard title="Sitemap Status" description="Overview of generated sitemap data">
         {!data?.generated ? (
           <div className="text-center py-6">
-            <p className="text-slate-500 text-sm mb-4">
+            <p className="text-muted-foreground text-sm mb-4">
               No sitemap has been generated yet. Click the button below to generate one.
             </p>
             <button
               onClick={handleRegenerate}
               disabled={regenerating}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {regenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -337,29 +337,29 @@ export function SitemapSection({
               {urlTypes.map(({ key, label, icon: Icon, count }) => (
                 <div
                   key={key}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-center"
+                  className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-center"
                 >
-                  <Icon className="mx-auto mb-1 h-5 w-5 text-slate-400" />
-                  <div className="text-2xl font-bold text-slate-800">{count}</div>
-                  <div className="text-xs text-slate-500">{label}</div>
+                  <Icon className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
+                  <div className="text-2xl font-bold text-foreground">{count}</div>
+                  <div className="text-xs text-muted-foreground">{label}</div>
                 </div>
               ))}
             </div>
 
             {/* Summary row */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span>
-                <strong className="text-slate-700">{stats?.total_urls || 0}</strong> total URLs
+                <strong className="text-foreground">{stats?.total_urls || 0}</strong> total URLs
               </span>
-              <span className="text-slate-300">|</span>
+              <span className="text-border">|</span>
               <span>
                 Locales: {stats?.locales?.join(", ") || "—"}
               </span>
-              <span className="text-slate-300">|</span>
+              <span className="text-border">|</span>
               <span>
                 Generated {stats?.last_generated_at ? timeAgo(stats.last_generated_at) : "—"}
               </span>
-              <span className="text-slate-300">|</span>
+              <span className="text-border">|</span>
               <span>{stats?.generation_duration_ms || 0}ms</span>
             </div>
 
@@ -367,7 +367,7 @@ export function SitemapSection({
             <button
               onClick={handleRegenerate}
               disabled={regenerating}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-5 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {regenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -384,17 +384,17 @@ export function SitemapSection({
       <SectionCard title="robots.txt" description="Configure crawler access rules">
         {/* Preview */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             Generated robots.txt
           </label>
-          <pre className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs font-mono text-slate-700 overflow-x-auto whitespace-pre">
+          <pre className="rounded-lg border border-border bg-muted p-4 text-xs font-mono text-foreground overflow-x-auto whitespace-pre">
             {robotsPreview}
           </pre>
         </div>
 
         {/* Custom rules */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             Custom Rules
           </label>
           <textarea
@@ -404,7 +404,7 @@ export function SitemapSection({
             onChange={(e) => setCustomRules(e.target.value)}
             placeholder={"# Additional rules\nUser-agent: Googlebot\nAllow: /special-page/"}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             These rules are appended to the auto-generated robots.txt
           </p>
         </div>
@@ -413,7 +413,7 @@ export function SitemapSection({
         <button
           onClick={handleSaveRules}
           disabled={savingRules}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-5 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {savingRules ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -430,7 +430,7 @@ export function SitemapSection({
           <button
             onClick={handleValidate}
             disabled={validating}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-colors"
           >
             {validating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -441,7 +441,7 @@ export function SitemapSection({
           </button>
 
           {validation && validation.errors.length === 0 && validation.warnings.length === 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
+            <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4" /> All checks passed
             </span>
           )}
@@ -453,7 +453,7 @@ export function SitemapSection({
             {validation.errors.map((err, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-400"
               >
                 <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 {err}
@@ -468,7 +468,7 @@ export function SitemapSection({
             {validation.warnings.map((warn, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400"
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 {warn}
@@ -490,8 +490,8 @@ export function SitemapSection({
                 onClick={() => handleTypeChange("all")}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   browseType === "all"
-                    ? "bg-slate-800 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
                 All ({stats?.total_urls || 0})
@@ -503,8 +503,8 @@ export function SitemapSection({
                   onClick={() => handleTypeChange(key)}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                     browseType === key
-                      ? "bg-slate-800 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                 >
                   {label} ({count})
@@ -514,13 +514,13 @@ export function SitemapSection({
 
             {/* Search */}
             <div className="relative sm:ml-auto sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search paths..."
                 value={browseSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#009688] focus:outline-none focus:ring-1 focus:ring-[#009688]"
+                className="w-full rounded-lg border border-border bg-background py-1.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
           </div>
@@ -528,40 +528,40 @@ export function SitemapSection({
           {/* Table */}
           {browseLoading && !browseResult ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : browseResult && browseResult.urls.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                  <tr className="border-b border-border bg-muted text-foreground">
                     <th className="py-2 px-3 text-left font-medium">Path</th>
                     <th className="py-2 px-3 text-left font-medium w-24">Type</th>
                     <th className="py-2 px-3 text-right font-medium w-16">Priority</th>
                     <th className="py-2 px-3 text-right font-medium w-20">Freq</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {browseResult.urls.map((u, i) => {
                     const base = primaryDomain?.startsWith("http")
                       ? primaryDomain.replace(/\/+$/, "")
                       : primaryDomain ? `https://${primaryDomain}` : null;
                     const fullUrl = base ? `${base}${u.path}` : null;
                     return (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={i} className="hover:bg-muted/50 transition-colors">
                         <td className="py-2 px-3">
                           {fullUrl ? (
                             <a
                               href={fullUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 font-mono text-xs text-[#009688] hover:text-[#00796b] hover:underline"
+                              className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:text-primary/80 hover:underline"
                             >
                               <span className="truncate max-w-[400px]">{u.path}</span>
                               <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
                             </a>
                           ) : (
-                            <span className="font-mono text-xs text-slate-700 truncate max-w-[400px] block">
+                            <span className="font-mono text-xs text-foreground truncate max-w-[400px] block">
                               {u.path}
                             </span>
                           )}
@@ -569,16 +569,16 @@ export function SitemapSection({
                         <td className="py-2 px-3">
                           <span
                             className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                              typeBadgeColors[u.type] || "bg-slate-100 text-slate-600"
+                              typeBadgeColors[u.type] || "bg-muted text-muted-foreground"
                             }`}
                           >
                             {u.type}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-right text-xs text-slate-500">
+                        <td className="py-2 px-3 text-right text-xs text-muted-foreground">
                           {u.priority}
                         </td>
-                        <td className="py-2 px-3 text-right text-xs text-slate-500">
+                        <td className="py-2 px-3 text-right text-xs text-muted-foreground">
                           {u.changefreq}
                         </td>
                       </tr>
@@ -588,15 +588,15 @@ export function SitemapSection({
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-sm text-slate-400">
+            <div className="text-center py-8 text-sm text-muted-foreground">
               {browseSearch ? "No URLs matching your search" : "No URLs found"}
             </div>
           )}
 
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">
                 {pagination.total} URLs — page {pagination.page} of {pagination.totalPages}
               </span>
               <div className="flex items-center gap-2">
@@ -604,7 +604,7 @@ export function SitemapSection({
                   type="button"
                   onClick={() => setBrowsePage((p) => Math.max(1, p - 1))}
                   disabled={pagination.page <= 1 || browseLoading}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" /> Previous
                 </button>
@@ -612,7 +612,7 @@ export function SitemapSection({
                   type="button"
                   onClick={() => setBrowsePage((p) => Math.min(pagination.totalPages, p + 1))}
                   disabled={pagination.page >= pagination.totalPages || browseLoading}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Next <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -623,7 +623,7 @@ export function SitemapSection({
           {/* Loading overlay for page transitions */}
           {browseLoading && browseResult && (
             <div className="flex items-center justify-center py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           )}
         </SectionCard>

@@ -13,9 +13,9 @@ interface AppLayoutProps {
  */
 export function AppLayout({ navigation, children }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex flex-col min-h-screen lg:flex-row">
       {navigation}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-w-0 overflow-auto">
         {children}
       </main>
     </div>

@@ -67,8 +67,8 @@ interface VersionInfo {
 }
 
 const TAB_CLASS = {
-  active: "bg-slate-900 text-white",
-  idle: "text-gray-600 hover:bg-gray-100",
+  active: "bg-foreground text-background",
+  idle: "text-muted-foreground hover:bg-muted",
 } as const;
 
 export default function MobileBuilderPage() {
@@ -451,8 +451,8 @@ export default function MobileBuilderPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-muted">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -460,12 +460,12 @@ export default function MobileBuilderPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col">
       {/* Toolbar */}
-      <div className="flex h-14 items-center justify-between border-b bg-white px-6">
-        <div className="flex items-center gap-4">
+      <div className="flex h-14 flex-wrap items-center justify-between gap-2 border-b bg-card px-4 sm:px-6">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="rounded-md p-2 text-gray-500 hover:bg-gray-100"
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted"
           >
             {sidebarCollapsed ? (
               <ChevronRight className="h-5 w-5" />
@@ -473,16 +473,16 @@ export default function MobileBuilderPage() {
               <ChevronLeft className="h-5 w-5" />
             )}
           </button>
-          <div className="flex items-center gap-3">
-            <Smartphone className="h-5 w-5 text-slate-600" />
-            <span className="text-lg font-semibold text-gray-800">{t("pages.mobileBuilder.title")}</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Smartphone className="h-5 w-5 text-muted-foreground" />
+            <span className="text-base font-semibold text-foreground sm:text-lg">{t("pages.mobileBuilder.title")}</span>
 
             {/* Version Selector Dropdown */}
             <div className="relative" ref={versionDropdownRef}>
               <button
                 type="button"
                 onClick={() => setShowVersionDropdown(!showVersionDropdown)}
-                className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
               >
                 <History className="h-3 w-3" />
                 v{currentVersion}
@@ -490,13 +490,13 @@ export default function MobileBuilderPage() {
               </button>
 
               {showVersionDropdown && (
-                <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-md border bg-white py-1 shadow-lg">
-                  <div className="border-b px-3 py-2 text-xs font-semibold text-gray-500">
+                <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-md border bg-popover py-1 shadow-lg">
+                  <div className="border-b px-3 py-2 text-xs font-semibold text-muted-foreground">
                     {t("pages.mobileBuilder.versions")}
                   </div>
                   <div className="max-h-48 overflow-y-auto">
                     {versions.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-gray-400">{t("pages.mobileBuilder.noVersions")}</div>
+                      <div className="px-3 py-2 text-xs text-muted-foreground">{t("pages.mobileBuilder.noVersions")}</div>
                     ) : (
                       versions.map((v) => (
                         <button
@@ -504,24 +504,24 @@ export default function MobileBuilderPage() {
                           type="button"
                           onClick={() => handleSwitchVersion(v.version)}
                           className={cn(
-                            "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50",
-                            v.version === currentVersion && "bg-slate-50 text-slate-600"
+                            "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted",
+                            v.version === currentVersion && "bg-accent text-accent-foreground"
                           )}
                         >
                           <span>v{v.version}</span>
                           <div className="flex items-center gap-1">
                             {v.is_current && (
-                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-600">
+                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
                                 {t("pages.mobileBuilder.current")}
                               </span>
                             )}
                             {v.is_current_published && (
-                              <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] text-green-600">
+                              <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] text-green-600 dark:bg-green-900/40 dark:text-green-400">
                                 {t("pages.mobileBuilder.live").toLowerCase()}
                               </span>
                             )}
                             {v.status === "draft" && !v.is_current_published && (
-                              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                                 {t("pages.mobileBuilder.draft")}
                               </span>
                             )}
@@ -535,7 +535,7 @@ export default function MobileBuilderPage() {
                       type="button"
                       onClick={handleCreateNewVersion}
                       disabled={isCreatingVersion || isDirty}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
                     >
                       {isCreatingVersion ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -551,7 +551,7 @@ export default function MobileBuilderPage() {
           </div>
 
           {/* Page switcher */}
-          <div className="ml-4 flex items-center gap-1 rounded-md border bg-white p-0.5">
+          <div className="ml-2 flex items-center gap-1 rounded-md border bg-card p-0.5 sm:ml-4">
             {MOBILE_CONFIG_IDS.map((cfgId) => {
               const isActive = cfgId === activeConfigId;
               const showLiveBadge = !isMobileHome(cfgId);
@@ -571,8 +571,8 @@ export default function MobileBuilderPage() {
                       className={cn(
                         "rounded px-1.5 py-0.5 text-[10px] font-medium",
                         isLandingLive
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-200 text-gray-600"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                          : "bg-muted text-muted-foreground"
                       )}
                     >
                       {isLandingLive
@@ -586,16 +586,16 @@ export default function MobileBuilderPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Status indicators */}
           {isDirty && (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
               {t("pages.mobileBuilder.unsavedChanges")}
             </span>
           )}
           {!isDirty && isLiveVersion && (
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               {t("pages.mobileBuilder.live")}
             </span>
@@ -647,7 +647,7 @@ export default function MobileBuilderPage() {
                   {t("pages.mobileBuilder.publish")}
                 </Button>
                 {isDirty && (
-                  <div className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 shadow-lg transition group-hover:opacity-100">
+                  <div className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground opacity-0 shadow-lg transition group-hover:opacity-100">
                     {t("pages.mobileBuilder.saveFirst")}
                   </div>
                 )}
@@ -659,7 +659,7 @@ export default function MobileBuilderPage() {
 
       {/* Alerts */}
       {error && (
-        <div className="border-l-4 border-red-500 bg-red-50 px-6 py-3 text-sm text-red-600">
+        <div className="border-l-4 border-red-500 bg-red-50 px-6 py-3 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
           {error}
         </div>
       )}
@@ -668,15 +668,15 @@ export default function MobileBuilderPage() {
           className={cn(
             "border-l-4 px-6 py-3 text-sm",
             info.includes("live")
-              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-              : "border-slate-500 bg-slate-50 text-slate-600"
+              ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+              : "border-border bg-muted text-muted-foreground"
           )}
         >
           {info}
         </div>
       )}
       {isLiveVersion && !isDirty && !info && !error && (
-        <div className="border-l-4 border-[#2196f3] bg-[rgba(33,150,243,0.08)] px-6 py-3 text-sm text-[#1976d2]">
+        <div className="border-l-4 border-blue-400 bg-blue-50 px-6 py-3 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
           <strong>{t("pages.mobileBuilder.viewingPublished").replace("{version}", String(currentVersion))}</strong>{" "}
           {t("pages.mobileBuilder.viewingPublishedHint")}
         </div>
@@ -687,11 +687,11 @@ export default function MobileBuilderPage() {
         {/* Left sidebar - App Identity + Block Library */}
         <aside
           className={cn(
-            "flex flex-col border-r bg-white transition-all duration-300",
+            "flex flex-col border-r bg-card transition-all duration-300",
             sidebarCollapsed ? "w-0 overflow-hidden" : "w-72"
           )}
         >
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {isMobileHome(activeConfigId) && (
               <AppIdentitySettings
                 appIdentity={appIdentity}
@@ -701,21 +701,21 @@ export default function MobileBuilderPage() {
 
             {/* Block Library */}
             <div>
-              <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("pages.mobileBuilder.blockLibrary")}</h2>
+              <h2 className="mb-3 text-sm font-semibold text-foreground">{t("pages.mobileBuilder.blockLibrary")}</h2>
               <div className="space-y-2">
                 {MOBILE_BLOCK_LIBRARY.map((blockMeta) => (
                   <button
                     key={blockMeta.type}
                     type="button"
                     onClick={() => handleAddBlock(blockMeta.type)}
-                    className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition hover:border-border hover:bg-accent"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
                       <Plus className="h-4 w-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-700">{blockMeta.name}</div>
-                      <div className="text-xs text-gray-500">{blockMeta.description}</div>
+                      <div className="text-sm font-medium text-foreground">{blockMeta.name}</div>
+                      <div className="text-xs text-muted-foreground">{blockMeta.description}</div>
                     </div>
                   </button>
                 ))}
@@ -725,17 +725,17 @@ export default function MobileBuilderPage() {
         </aside>
 
         {/* Center - Canvas (Block list) */}
-        <section className="flex w-80 flex-col border-r bg-gray-50">
-          <div className="border-b bg-white p-4">
-            <h2 className="text-sm font-semibold text-gray-700">{t("pages.mobileBuilder.canvas")}</h2>
-            <p className="text-xs text-gray-500">{t("pages.mobileBuilder.dragToReorder")}</p>
+        <section className="flex w-80 flex-col border-r bg-muted/40">
+          <div className="border-b bg-card p-4">
+            <h2 className="text-sm font-semibold text-foreground">{t("pages.mobileBuilder.canvas")}</h2>
+            <p className="text-xs text-muted-foreground">{t("pages.mobileBuilder.dragToReorder")}</p>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {blocks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
-                <Eye className="mb-2 h-8 w-8 text-gray-400" />
-                <p className="text-sm text-gray-500">{t("pages.mobileBuilder.noBlocks")}</p>
-                <p className="text-xs text-gray-400">{t("pages.mobileBuilder.noBlocksHint")}</p>
+              <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-12 text-center">
+                <Eye className="mb-2 h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">{t("pages.mobileBuilder.noBlocks")}</p>
+                <p className="text-xs text-muted-foreground">{t("pages.mobileBuilder.noBlocksHint")}</p>
               </div>
             ) : (
               <DndContext
@@ -765,7 +765,7 @@ export default function MobileBuilderPage() {
         {/* Right side - Preview + Settings */}
         <section className="flex flex-1 overflow-hidden">
           {/* Phone Preview */}
-          <div className="flex flex-1 items-start justify-center bg-gray-100 px-4 pt-6 pb-8 overflow-y-auto">
+          <div className="flex flex-1 items-start justify-center overflow-y-auto bg-muted/60 px-4 pb-8 pt-6">
             <MobilePreview
               blocks={blocks}
               appIdentity={appIdentity}
@@ -774,11 +774,11 @@ export default function MobileBuilderPage() {
                 !isMobileHome(activeConfigId) && (
                   <div className="mb-3 space-y-2 max-w-[320px]">
                     {!isLandingLive && (
-                      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
                         {t("pages.mobileBuilder.postLogin.notLiveBanner")}
                       </div>
                     )}
-                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                       {t("pages.mobileBuilder.postLogin.lockedPreviewBanner")}
                     </div>
                   </div>
@@ -789,7 +789,7 @@ export default function MobileBuilderPage() {
 
           {/* Settings Panel */}
           {selectedBlock && (
-            <aside className="w-96 border-l bg-white overflow-y-auto">
+            <aside className="w-full overflow-y-auto border-l bg-card sm:w-80 md:w-96">
               <MobileBlockSettings
                 block={selectedBlock}
                 onUpdate={(updates) => handleUpdateBlock(selectedBlock.id, updates)}

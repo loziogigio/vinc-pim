@@ -73,24 +73,24 @@ export function CampaignScheduleModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+      <div className="bg-card rounded-xl shadow-xl border border-border max-w-md w-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-300" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900">{t("pages.notifications.campaigns.scheduleModal.title")}</h3>
-              <p className="text-sm text-slate-500">{t("pages.notifications.campaigns.scheduleModal.subtitle")}</p>
+              <h3 className="font-semibold text-foreground">{t("pages.notifications.campaigns.scheduleModal.title")}</h3>
+              <p className="text-sm text-muted-foreground">{t("pages.notifications.campaigns.scheduleModal.subtitle")}</p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={isScheduling}
-            className="p-2 rounded-lg hover:bg-slate-100 transition disabled:opacity-50"
+            className="p-2 rounded-lg hover:bg-muted transition disabled:opacity-50"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -98,7 +98,7 @@ export function CampaignScheduleModal({
         <div className="p-4 space-y-4">
           {/* Date/Time Picker */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               <Calendar className="w-4 h-4 inline mr-1" />
               {t("pages.notifications.campaigns.scheduleModal.dateTime")}
             </label>
@@ -107,16 +107,16 @@ export function CampaignScheduleModal({
               value={formatDateForInput(selectedDate)}
               min={getMinDate()}
               onChange={handleDateChange}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
 
           {/* Preview */}
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
               {t("pages.notifications.campaigns.scheduleModal.willBeSent")}
             </p>
-            <p className="text-sm font-medium text-blue-900 mt-1">
+            <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mt-1">
               {formatDateDisplay(selectedDate)}
             </p>
           </div>
@@ -130,7 +130,7 @@ export function CampaignScheduleModal({
                 date.setHours(date.getHours() + 1, 0, 0, 0);
                 setSelectedDate(date);
               }}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              className="px-3 py-1.5 text-xs font-medium bg-muted hover:bg-muted/80 text-foreground rounded-lg transition"
             >
               {t("pages.notifications.campaigns.scheduleModal.in1Hour")}
             </button>
@@ -142,7 +142,7 @@ export function CampaignScheduleModal({
                 date.setHours(9, 0, 0, 0);
                 setSelectedDate(date);
               }}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              className="px-3 py-1.5 text-xs font-medium bg-muted hover:bg-muted/80 text-foreground rounded-lg transition"
             >
               {t("pages.notifications.campaigns.scheduleModal.tomorrow9")}
             </button>
@@ -154,7 +154,7 @@ export function CampaignScheduleModal({
                 date.setHours(9, 0, 0, 0);
                 setSelectedDate(date);
               }}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              className="px-3 py-1.5 text-xs font-medium bg-muted hover:bg-muted/80 text-foreground rounded-lg transition"
             >
               {t("pages.notifications.campaigns.scheduleModal.in1Week")}
             </button>
@@ -162,7 +162,7 @@ export function CampaignScheduleModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-slate-200">
+        <div className="flex justify-end gap-2 p-4 border-t border-border">
           <Button
             variant="outline"
             onClick={onClose}

@@ -101,22 +101,22 @@ function CategoryPickerSettings({
   };
 
   return (
-    <div className="space-y-3 border rounded-lg p-4 bg-gray-50">
+    <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
       <div className="flex items-center gap-2">
-        <FolderOpen className="h-4 w-4 text-gray-500" />
+        <FolderOpen className="h-4 w-4 text-muted-foreground" />
         <Label className="font-medium">Categories</Label>
       </div>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" /> Loading categories...
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
 
       {!isLoading && allCategories.length === 0 && !error && (
-        <p className="text-xs text-gray-500">No categories found.</p>
+        <p className="text-xs text-muted-foreground">No categories found.</p>
       )}
 
       {allCategories.length > 0 && (
@@ -131,7 +131,7 @@ function CategoryPickerSettings({
                 className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition ${
                   isSelected
                     ? "bg-primary/10 text-primary border border-primary/30"
-                    : "bg-white border border-gray-200 text-gray-700 hover:border-gray-300"
+                    : "bg-card border border-border text-foreground hover:border-border hover:bg-accent"
                 }`}
               >
                 <div className="flex h-4 w-4 items-center justify-center rounded border border-current">
@@ -140,12 +140,12 @@ function CategoryPickerSettings({
                 {cat.hero_image_url ? (
                   <img src={cat.hero_image_url} alt="" className="h-6 w-6 rounded object-cover" />
                 ) : (
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-gray-100">
-                    <FolderOpen className="h-3 w-3 text-gray-400" />
+                  <div className="flex h-6 w-6 items-center justify-center rounded bg-muted">
+                    <FolderOpen className="h-3 w-3 text-muted-foreground" />
                   </div>
                 )}
                 <span className="flex-1 truncate">{cat.name}</span>
-                <span className="text-[10px] text-gray-400">{cat.product_count}</span>
+                <span className="text-[10px] text-muted-foreground">{cat.product_count}</span>
               </button>
             );
           })}
@@ -153,7 +153,7 @@ function CategoryPickerSettings({
       )}
 
       {selectedIds.length > 0 && (
-        <p className="text-xs text-gray-500">{selectedIds.length} selected</p>
+        <p className="text-xs text-muted-foreground">{selectedIds.length} selected</p>
       )}
     </div>
   );

@@ -53,8 +53,8 @@ const REFRESH_MS = 5000;
 const STATE_META: Record<State, { label: string; icon: any; color: string }> = {
   waiting: { label: "Waiting", icon: Clock, color: "text-amber-600" },
   active: { label: "Active", icon: PlayCircle, color: "text-emerald-600" },
-  delayed: { label: "Delayed", icon: Pause, color: "text-slate-500" },
-  completed: { label: "Completed", icon: CheckCircle2, color: "text-slate-600" },
+  delayed: { label: "Delayed", icon: Pause, color: "text-muted-foreground" },
+  completed: { label: "Completed", icon: CheckCircle2, color: "text-muted-foreground" },
   failed: { label: "Failed", icon: AlertTriangle, color: "text-rose-600" },
 };
 
@@ -176,32 +176,32 @@ export default function QueueDetailPage() {
       <div className="mb-4">
         <Link
           href="/b2b/admin/queues"
-          className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to queues
         </Link>
       </div>
 
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{queueId}</h1>
-          <p className="text-sm text-slate-500 mt-1">Tenant-scoped jobs in this queue.</p>
+          <h1 className="text-2xl font-bold text-foreground">{queueId}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Tenant-scoped jobs in this queue.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-border"
             />
             Auto-refresh
           </label>
           <button
             onClick={() => load()}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-border hover:bg-muted/50 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
@@ -219,86 +219,86 @@ export default function QueueDetailPage() {
               onClick={() => changeState(s)}
               className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 state === s
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                  : "border-border bg-card text-muted-foreground hover:border-border/80"
               }`}
             >
-              <Icon className={`w-4 h-4 ${state === s ? "text-blue-600" : meta.color}`} />
+              <Icon className={`w-4 h-4 ${state === s ? "text-blue-600 dark:text-blue-400" : meta.color}`} />
               {meta.label}
             </button>
           );
         })}
       </div>
 
-      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-3">
+      <div className="mb-4 rounded-xl border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-slate-500 mr-1">Time:</span>
+          <span className="text-muted-foreground mr-1">Time:</span>
           {QUICK_RANGES.map((r) => (
             <button
               key={r.id}
               onClick={() => applyQuickRange(r.id)}
               className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                 quickRange === r.id
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                  : "border-border bg-card text-muted-foreground hover:border-border/80"
               }`}
             >
               {r.label}
             </button>
           ))}
-          <span className="mx-1 text-slate-300">|</span>
-          <label className="flex items-center gap-1 text-xs text-slate-600">
+          <span className="mx-1 text-border">|</span>
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
             From
             <input
               type="datetime-local"
               value={customFrom}
               onChange={(e) => applyCustomFrom(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+              className="rounded border border-border bg-card px-2 py-1 text-xs focus:border-primary focus:outline-none"
             />
           </label>
-          <label className="flex items-center gap-1 text-xs text-slate-600">
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
             To
             <input
               type="datetime-local"
               value={customTo}
               onChange={(e) => applyCustomTo(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+              className="rounded border border-border bg-card px-2 py-1 text-xs focus:border-primary focus:outline-none"
             />
           </label>
           {hasTimeFilter && (
             <button
               onClick={clearTimeFilter}
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-border bg-card text-muted-foreground hover:border-border/80"
             >
               <X className="w-3 h-3" />
               Clear
             </button>
           )}
         </div>
-        <p className="mt-2 text-xs text-slate-400">
+        <p className="mt-2 text-xs text-muted-foreground">
           Filters by the most relevant timestamp on each job (finished &gt; started &gt; created).
         </p>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : error ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-400">
           {error}
         </div>
       ) : (
         <>
           {capped && (
-            <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="mb-3 rounded border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
               Showing the most recent {scanCap.toLocaleString()} {state} jobs in this queue. Older jobs
               for your tenant aren&apos;t included in this view.
             </div>
           )}
 
-          <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-sm text-slate-600">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground">
               {total === 0 ? (
                 <>No {state} jobs for this tenant.</>
               ) : (
@@ -306,7 +306,7 @@ export default function QueueDetailPage() {
                   Showing <span className="font-medium tabular-nums">{rangeStart}–{rangeEnd}</span> of{" "}
                   <span className="font-medium tabular-nums">{total.toLocaleString()}</span> tenant jobs
                   {scanned > 0 && (
-                    <span className="text-slate-400">
+                    <span className="text-muted-foreground/60">
                       {" "}· scanned {scanned.toLocaleString()} most recent
                     </span>
                   )}
@@ -314,14 +314,14 @@ export default function QueueDetailPage() {
               )}
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <label htmlFor="pageSize" className="text-slate-500">
+              <label htmlFor="pageSize" className="text-muted-foreground">
                 Per page
               </label>
               <select
                 id="pageSize"
                 value={pageSize}
                 onChange={(e) => changePageSize(Number(e.target.value))}
-                className="rounded border border-slate-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                className="rounded border border-border bg-card px-2 py-1 text-sm focus:border-primary focus:outline-none"
               >
                 {PAGE_SIZES.map((n) => (
                   <option key={n} value={n}>
@@ -333,15 +333,16 @@ export default function QueueDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
               {jobs.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-500">
+                <div className="p-8 text-center text-sm text-muted-foreground">
                   No {state} jobs for this tenant.
                 </div>
               ) : (
                 <>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                    <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wider">
                       <tr>
                         <th className="px-3 py-2 text-left">ID</th>
                         <th className="px-3 py-2 text-left">Name</th>
@@ -349,21 +350,21 @@ export default function QueueDetailPage() {
                         <th className="px-3 py-2 text-right">Tries</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-border">
                       {jobs.map((j) => {
                         const ts = j.finishedOn || j.processedOn || j.timestamp;
                         return (
                           <tr
                             key={j.id}
                             onClick={() => setSelected(j)}
-                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${
-                              selected?.id === j.id ? "bg-blue-50" : ""
+                            className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                              selected?.id === j.id ? "bg-blue-50 dark:bg-blue-950/30" : ""
                             }`}
                           >
-                            <td className="px-3 py-2 font-mono text-xs text-slate-600">{j.id}</td>
-                            <td className="px-3 py-2 text-slate-900">{j.name}</td>
-                            <td className="px-3 py-2 text-xs text-slate-500">{formatTime(ts)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                            <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{j.id}</td>
+                            <td className="px-3 py-2 text-foreground">{j.name}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{formatTime(ts)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                               {j.attempts}
                             </td>
                           </tr>
@@ -371,6 +372,7 @@ export default function QueueDetailPage() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                   <Pagination
                     page={page}
                     totalPages={totalPages}
@@ -380,11 +382,11 @@ export default function QueueDetailPage() {
               )}
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="bg-card rounded-xl border border-border p-4">
               {selected ? (
                 <JobDetail job={selected} />
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Select a job to inspect its payload, result, and errors.
                 </p>
               )}
@@ -400,8 +402,8 @@ function JobDetail({ job }: { job: JobSummary }) {
   return (
     <div className="space-y-4 text-sm">
       <div>
-        <h3 className="font-semibold text-slate-900">{job.name}</h3>
-        <p className="text-xs text-slate-500">
+        <h3 className="font-semibold text-foreground">{job.name}</h3>
+        <p className="text-xs text-muted-foreground">
           ID <span className="font-mono">{job.id}</span> · State{" "}
           <span className="font-medium">{job.state}</span> · Attempts {job.attempts}
         </p>
@@ -435,13 +437,13 @@ function JobDetail({ job }: { job: JobSummary }) {
 
       {job.failedReason && (
         <Section title="Failure" tone="error">
-          <p className="font-mono text-xs whitespace-pre-wrap break-words text-rose-700">
+          <p className="font-mono text-xs whitespace-pre-wrap break-words text-rose-700 dark:text-rose-400">
             {job.failedReason}
           </p>
           {job.stacktrace && job.stacktrace.length > 0 && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-rose-700">Stacktrace</summary>
-              <pre className="mt-1 text-xs text-rose-700 whitespace-pre-wrap break-words font-mono">
+              <summary className="cursor-pointer text-xs text-rose-700 dark:text-rose-400">Stacktrace</summary>
+              <pre className="mt-1 text-xs text-rose-700 dark:text-rose-400 whitespace-pre-wrap break-words font-mono">
                 {job.stacktrace.join("\n")}
               </pre>
             </details>
@@ -455,7 +457,7 @@ function JobDetail({ job }: { job: JobSummary }) {
 function Section({ title, tone, children }: { title: string; tone?: "error"; children: React.ReactNode }) {
   return (
     <div>
-      <h4 className={`text-xs font-semibold uppercase tracking-wider mb-1 ${tone === "error" ? "text-rose-700" : "text-slate-500"}`}>
+      <h4 className={`text-xs font-semibold uppercase tracking-wider mb-1 ${tone === "error" ? "text-rose-700 dark:text-rose-400" : "text-muted-foreground"}`}>
         {title}
       </h4>
       {children}
@@ -466,15 +468,15 @@ function Section({ title, tone, children }: { title: string; tone?: "error"; chi
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div>
-      <span className="text-slate-500">{k}: </span>
-      <span className="text-slate-800">{v}</span>
+      <span className="text-muted-foreground">{k}: </span>
+      <span className="text-foreground">{v}</span>
     </div>
   );
 }
 
 function Pre({ value }: { value: unknown }) {
   return (
-    <pre className="bg-slate-50 border border-slate-200 rounded p-2 text-xs overflow-auto max-h-80 font-mono">
+    <pre className="bg-muted border border-border rounded p-2 text-xs overflow-auto max-h-80 font-mono text-foreground">
       {JSON.stringify(value, null, 2)}
     </pre>
   );
@@ -517,8 +519,8 @@ function Pagination({
   const pageButtons = buildPageList(page, totalPages);
 
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-      <div className="text-xs text-slate-500">
+    <div className="flex items-center justify-between gap-2 border-t border-border bg-muted px-3 py-2 text-sm">
+      <div className="text-xs text-muted-foreground">
         Page <span className="font-medium tabular-nums">{page}</span> of{" "}
         <span className="font-medium tabular-nums">{totalPages}</span>
       </div>
@@ -535,7 +537,7 @@ function Pagination({
         </PageBtn>
         {pageButtons.map((p, i) =>
           p === "…" ? (
-            <span key={`gap-${i}`} className="px-2 text-slate-400">
+            <span key={`gap-${i}`} className="px-2 text-muted-foreground">
               …
             </span>
           ) : (
@@ -544,8 +546,8 @@ function Pagination({
               onClick={() => onChange(p)}
               className={`min-w-[2rem] px-2 py-1 text-xs rounded border transition-colors ${
                 p === page
-                  ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 font-medium"
+                  : "border-border bg-card text-foreground hover:border-border/80"
               }`}
             >
               {p}
@@ -587,7 +589,7 @@ function PageBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+      className="inline-flex items-center justify-center w-7 h-7 rounded border border-border bg-card text-muted-foreground hover:border-border/80 disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {children}
     </button>

@@ -40,10 +40,10 @@ export function CampaignTestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md m-4 p-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">{t("pages.notifications.campaigns.testModal.title")}</h3>
+      <div className="relative bg-card rounded-xl shadow-xl border border-border w-full max-w-md m-4 p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">{t("pages.notifications.campaigns.testModal.title")}</h3>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             {t("pages.notifications.campaigns.testModal.testEmailLabel")}
           </label>
           <input
@@ -51,10 +51,10 @@ export function CampaignTestModal({
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
             placeholder={t("pages.notifications.campaigns.testModal.testEmailPlaceholder")}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
-        <p className="text-xs text-slate-500 mb-4">
+        <p className="text-xs text-muted-foreground mb-4">
           {t("pages.notifications.campaigns.testModal.selectedChannels", { channels: channelLabels })}
         </p>
         <div className="flex justify-end gap-2">

@@ -94,7 +94,7 @@ export default function SecurityPage() {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
@@ -103,9 +103,9 @@ export default function SecurityPage() {
   if (!config) {
     return (
       <div className="p-6">
-        <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-          <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">{t("pages.admin.security.unableToLoad")}</p>
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <ShieldCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">{t("pages.admin.security.unableToLoad")}</p>
         </div>
       </div>
     );
@@ -113,17 +113,17 @@ export default function SecurityPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t("pages.admin.security.title")}</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.admin.security.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {t("pages.admin.security.subtitle")}
           </p>
         </div>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -139,8 +139,8 @@ export default function SecurityPage() {
         <div
           className={`mb-6 p-4 rounded-lg ${
             message.type === "success"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-rose-50 text-rose-700"
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+              : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
           }`}
         >
           {message.text}
@@ -149,20 +149,20 @@ export default function SecurityPage() {
 
       <div className="space-y-6">
         {/* Session Limits */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.sessionLimits")}</h2>
-              <p className="text-sm text-slate-500">{t("pages.admin.security.sessionLimitsDesc")}</p>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.admin.security.sessionLimits")}</h2>
+              <p className="text-sm text-muted-foreground">{t("pages.admin.security.sessionLimitsDesc")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.admin.security.maxSessionsPerUser")}
               </label>
               <input
@@ -173,15 +173,15 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("max_sessions_per_user", parseInt(e.target.value) || 5)
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t("pages.admin.security.maxSessionsPerUserDesc")}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.admin.security.sessionTimeoutHours")}
               </label>
               <input
@@ -192,15 +192,15 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("session_timeout_hours", parseInt(e.target.value) || 24)
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t("pages.admin.security.sessionTimeoutDesc")}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.admin.security.idleTimeoutHours")}
               </label>
               <input
@@ -211,9 +211,9 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("idle_timeout_hours", parseInt(e.target.value) || 8)
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t("pages.admin.security.idleTimeoutDesc")}
               </p>
             </div>
@@ -221,20 +221,20 @@ export default function SecurityPage() {
         </div>
 
         {/* Login Protection */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-amber-600" />
+            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.loginProtection")}</h2>
-              <p className="text-sm text-slate-500">{t("pages.admin.security.loginProtectionDesc")}</p>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.admin.security.loginProtection")}</h2>
+              <p className="text-sm text-muted-foreground">{t("pages.admin.security.loginProtectionDesc")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.admin.security.maxLoginAttempts")}
               </label>
               <input
@@ -245,15 +245,15 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("max_login_attempts", parseInt(e.target.value) || 5)
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t("pages.admin.security.maxLoginAttemptsDesc")}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.admin.security.lockoutMinutes")}
               </label>
               <input
@@ -264,9 +264,9 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("lockout_minutes", parseInt(e.target.value) || 15)
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t("pages.admin.security.lockoutMinutesDesc")}
               </p>
             </div>
@@ -279,13 +279,13 @@ export default function SecurityPage() {
               onChange={(e) =>
                 updateConfig("enable_progressive_delay", e.target.checked)
               }
-              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
             />
             <div>
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-foreground">
                 {t("pages.admin.security.progressiveDelay")}
               </span>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {t("pages.admin.security.progressiveDelayDesc")}
               </p>
             </div>
@@ -293,14 +293,14 @@ export default function SecurityPage() {
         </div>
 
         {/* Password Policy */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
-              <Key className="w-5 h-5 text-violet-600" />
+            <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center">
+              <Key className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.passwordPolicy")}</h2>
-              <p className="text-sm text-slate-500">{t("pages.admin.security.passwordPolicyDesc")}</p>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.admin.security.passwordPolicy")}</h2>
+              <p className="text-sm text-muted-foreground">{t("pages.admin.security.passwordPolicyDesc")}</p>
             </div>
           </div>
 
@@ -312,20 +312,20 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("require_strong_password", e.target.checked)
                 }
-                className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
               />
               <div>
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-foreground">
                   {t("pages.admin.security.requireStrongPassword")}
                 </span>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {t("pages.admin.security.requireStrongPasswordDesc")}
                 </p>
               </div>
             </label>
 
             <div className="max-w-xs">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.admin.security.passwordExpiryDays")}
               </label>
               <input
@@ -338,9 +338,9 @@ export default function SecurityPage() {
                   const val = e.target.value ? parseInt(e.target.value) : undefined;
                   updateConfig("password_expiry_days", val);
                 }}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t("pages.admin.security.passwordExpiryDesc")}
               </p>
             </div>
@@ -348,14 +348,14 @@ export default function SecurityPage() {
         </div>
 
         {/* Notifications */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
-              <Bell className="w-5 h-5 text-rose-600" />
+            <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center">
+              <Bell className="w-5 h-5 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">{t("pages.admin.security.notifications")}</h2>
-              <p className="text-sm text-slate-500">{t("pages.admin.security.notificationsDesc")}</p>
+              <h2 className="text-lg font-semibold text-foreground">{t("pages.admin.security.notifications")}</h2>
+              <p className="text-sm text-muted-foreground">{t("pages.admin.security.notificationsDesc")}</p>
             </div>
           </div>
 
@@ -367,13 +367,13 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("notify_on_new_device", e.target.checked)
                 }
-                className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
               />
               <div>
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-foreground">
                   {t("pages.admin.security.newDevice")}
                 </span>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {t("pages.admin.security.newDeviceDesc")}
                 </p>
               </div>
@@ -386,13 +386,13 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("notify_on_suspicious_login", e.target.checked)
                 }
-                className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
               />
               <div>
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-foreground">
                   {t("pages.admin.security.suspiciousLogin")}
                 </span>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {t("pages.admin.security.suspiciousLoginDesc")}
                 </p>
               </div>
@@ -405,13 +405,13 @@ export default function SecurityPage() {
                 onChange={(e) =>
                   updateConfig("notify_on_password_change", e.target.checked)
                 }
-                className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
               />
               <div>
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-foreground">
                   {t("pages.admin.security.passwordChange")}
                 </span>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {t("pages.admin.security.passwordChangeDesc")}
                 </p>
               </div>
@@ -419,7 +419,7 @@ export default function SecurityPage() {
           </div>
 
           <div className="max-w-md">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {t("pages.admin.security.alertEmail")}
             </label>
             <input
@@ -427,9 +427,9 @@ export default function SecurityPage() {
               value={config.alert_email || ""}
               placeholder="admin@example.com"
               onChange={(e) => updateConfig("alert_email", e.target.value || undefined)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {t("pages.admin.security.alertEmailDesc")}
             </p>
           </div>

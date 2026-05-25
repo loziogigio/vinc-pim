@@ -99,7 +99,7 @@ export function FieldsEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-700">
+        <span className="text-sm font-medium text-foreground">
           Fields ({fields.length})
         </span>
         <Button type="button" variant="outline" size="sm" onClick={addField}>
@@ -109,7 +109,7 @@ export function FieldsEditor({
       </div>
 
       {fields.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="rounded-lg border border-dashed border-border bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
           No fields yet — click <strong>Add field</strong> to start.
         </div>
       )}
@@ -126,7 +126,7 @@ export function FieldsEditor({
           return (
             <div
               key={idx}
-              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+              className="rounded-lg border border-border bg-muted/30 p-4"
             >
               <div className="flex items-start gap-2">
                 {/* Move controls */}
@@ -135,7 +135,7 @@ export function FieldsEditor({
                     type="button"
                     onClick={() => moveField(idx, "up")}
                     disabled={idx === 0}
-                    className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
                     title="Move up"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
@@ -144,7 +144,7 @@ export function FieldsEditor({
                     type="button"
                     onClick={() => moveField(idx, "down")}
                     disabled={idx === fields.length - 1}
-                    className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
                     title="Move down"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -195,7 +195,7 @@ export function FieldsEditor({
                         patchField(idx, patch);
                       }}
                       disabled={slugLocked}
-                      className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60"
+                      className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
                       title={slugLocked ? "Type is locked after first save" : undefined}
                     >
                       {FIELD_TYPES.map((ft) => (
@@ -204,7 +204,7 @@ export function FieldsEditor({
                         </option>
                       ))}
                     </select>
-                    <label className="flex items-center gap-1.5 text-sm text-slate-600">
+                    <label className="flex items-center gap-1.5 text-sm text-foreground">
                       <input
                         type="checkbox"
                         checked={!!field.required}
@@ -220,7 +220,7 @@ export function FieldsEditor({
                   {/* Row 2: Slug + filterable + external_ref */}
                   <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
                     <div>
-                      <label className="text-xs font-medium text-slate-500">
+                      <label className="text-xs font-medium text-muted-foreground">
                         Slug (key in JSON)
                       </label>
                       <Input
@@ -234,7 +234,7 @@ export function FieldsEditor({
                       />
                     </div>
                     <label
-                      className="flex items-center gap-1.5 text-xs text-slate-600"
+                      className="flex items-center gap-1.5 text-xs text-foreground"
                       title="When checked, this field can be used in filter[…] query params"
                     >
                       <input
@@ -256,8 +256,8 @@ export function FieldsEditor({
                       <label
                         className={`flex items-center gap-1.5 text-xs ${
                           canBeExternalRef && !otherIsExternalRef
-                            ? "text-slate-600"
-                            : "text-slate-300"
+                            ? "text-foreground"
+                            : "text-muted-foreground/40"
                         }`}
                         title={
                           !canBeExternalRef
@@ -295,8 +295,8 @@ export function FieldsEditor({
 
                   {/* Nested fields */}
                   {(field.type === "object" || field.type === "array_of_objects") && (
-                    <div className="rounded-md border border-slate-200 bg-white p-3">
-                      <p className="mb-2 text-xs font-medium text-slate-500">
+                    <div className="rounded-md border border-border bg-card p-3">
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">
                         Nested fields ({field.type === "array_of_objects" ? "per item" : ""})
                       </p>
                       <FieldsEditor
@@ -316,7 +316,7 @@ export function FieldsEditor({
                   variant="ghost"
                   size="sm"
                   onClick={() => removeField(idx)}
-                  className="mt-0.5 h-8 w-8 p-0 text-slate-400 hover:text-red-500"
+                  className="mt-0.5 h-8 w-8 p-0 text-muted-foreground hover:text-rose-500"
                   title="Remove field"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -346,7 +346,7 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-500">Options</span>
+        <span className="text-xs font-medium text-muted-foreground">Options</span>
         <Button
           type="button"
           variant="ghost"
@@ -360,7 +360,7 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
       </div>
 
       {options.map((opt, idx) => (
-        <div key={idx} className="rounded-md border border-slate-200 bg-white p-2">
+        <div key={idx} className="rounded-md border border-border bg-card p-2">
           <div className="grid grid-cols-[1fr_140px_36px_28px] items-center gap-2">
             <Input
               value={opt.label}
@@ -392,7 +392,7 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
               onClick={() =>
                 onChange(options.filter((_, i) => i !== idx))
               }
-              className="h-9 w-9 p-0 text-slate-400 hover:text-red-500"
+              className="h-9 w-9 p-0 text-muted-foreground hover:text-rose-500"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -402,7 +402,7 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
           <button
             type="button"
             onClick={() => setOpenLocalesIdx(openLocalesIdx === idx ? null : idx)}
-            className="mt-1 text-xs text-slate-500 hover:text-slate-700 underline-offset-2 hover:underline"
+            className="mt-1 text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
           >
             {openLocalesIdx === idx ? "Hide" : "Edit"} locale labels (
             {Object.keys(opt.i18n_labels ?? {}).length})
@@ -438,14 +438,14 @@ function ColorPicker({
         title={value || "no color"}
       />
       {open && (
-        <div className="absolute right-0 top-10 z-10 grid grid-cols-4 gap-1 rounded-md border border-slate-200 bg-white p-2 shadow-md">
+        <div className="absolute right-0 top-10 z-10 grid grid-cols-4 gap-1 rounded-md border border-border bg-popover p-2 shadow-md">
           <button
             type="button"
             onClick={() => {
               onChange(undefined);
               setOpen(false);
             }}
-            className="h-6 w-6 rounded border border-slate-300 bg-white text-xs text-slate-400"
+            className="h-6 w-6 rounded border border-border bg-card text-xs text-muted-foreground"
             title="No color"
           >
             ×
@@ -458,7 +458,7 @@ function ColorPicker({
                 onChange(s.value);
                 setOpen(false);
               }}
-              className="h-6 w-6 rounded border border-slate-200"
+              className="h-6 w-6 rounded border border-border"
               style={{ backgroundColor: s.value }}
               title={s.label}
             />
@@ -480,10 +480,10 @@ function I18nLabelsEditor({
   const entries = Object.entries(labels);
 
   return (
-    <div className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2">
+    <div className="mt-2 space-y-1.5 rounded-md bg-muted/50 p-2">
       {entries.map(([locale, label]) => (
         <div key={locale} className="grid grid-cols-[60px_1fr_28px] items-center gap-2">
-          <span className="font-mono text-xs text-slate-600">{locale}</span>
+          <span className="font-mono text-xs text-muted-foreground">{locale}</span>
           <Input
             value={label}
             onChange={(e) => onChange({ ...labels, [locale]: e.target.value })}
@@ -499,7 +499,7 @@ function I18nLabelsEditor({
               delete next[locale];
               onChange(next);
             }}
-            className="h-7 w-7 p-0 text-slate-400 hover:text-red-500"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -528,7 +528,7 @@ function I18nLabelsEditor({
               setNewLocale("");
             }
           }}
-          className="h-7 w-7 p-0 text-slate-400 hover:text-emerald-600"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-emerald-600"
         >
           <Plus className="h-3 w-3" />
         </Button>

@@ -201,7 +201,7 @@ export default function StorefrontDetailPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#009688] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -209,7 +209,7 @@ export default function StorefrontDetailPage({
   if (!storefront) {
     return (
       <div className="p-6">
-        <p className="text-slate-400">{t("pages.b2c.storefrontDetail.storefrontNotFound")}</p>
+        <p className="text-muted-foreground">{t("pages.b2c.storefrontDetail.storefrontNotFound")}</p>
       </div>
     );
   }
@@ -224,27 +224,27 @@ export default function StorefrontDetailPage({
       />
 
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">{storefront.name}</h1>
-          <p className="text-sm text-slate-400">{t("pages.b2c.storefrontDetail.slug")}: {storefront.slug}</p>
+          <h1 className="text-xl font-semibold text-foreground">{storefront.name}</h1>
+          <p className="text-sm text-muted-foreground">{t("pages.b2c.storefrontDetail.slug")}: {storefront.slug}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`${tenantPrefix}/b2b/b2c/storefronts/${slug}/pages`}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
             <FileText className="h-4 w-4" /> {t("pages.b2c.storefrontDetail.pages")}
           </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2c/storefronts/${slug}/forms`}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
             <Inbox className="h-4 w-4" /> {t("pages.b2c.storefrontDetail.forms")}
           </Link>
           <Link
             href={`${tenantPrefix}/b2b/b2c-home-builder?storefront=${slug}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-4 py-2 text-sm font-medium text-white hover:bg-[#00796b] transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Pencil className="h-4 w-4" /> {t("pages.b2c.storefrontDetail.homeBuilder")}
           </Link>
@@ -253,10 +253,10 @@ export default function StorefrontDetailPage({
 
       {/* Feedback */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">{error}</div>
       )}
       {success && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{success}</div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">{success}</div>
       )}
 
       {/* Content */}

@@ -18,6 +18,9 @@ const ITEM_TYPE_BUTTONS: { type: FooterItemType; label: string; Icon: typeof Typ
 
 // ============================================
 // Footer Preview
+// NOTE: This surface intentionally renders a public-storefront mockup.
+// The preview area bg/text color uses the user-configured footer colors
+// (inline styles). Only the chrome (border, label) around it is themed.
 // ============================================
 
 function FooterPreview({ footer }: { footer: IB2CStorefrontFooter }) {
@@ -26,10 +29,11 @@ function FooterPreview({ footer }: { footer: IB2CStorefrontFooter }) {
   const columns = footer.columns || [];
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <div className="border-b border-slate-200 bg-slate-50 px-3 py-2">
-        <span className="text-xs font-medium text-slate-600">Live Preview</span>
+    <div className="rounded-xl border border-border overflow-hidden">
+      <div className="border-b border-border bg-muted px-3 py-2">
+        <span className="text-xs font-medium text-muted-foreground">Live Preview</span>
       </div>
+      {/* Preview surface renders public storefront mockup — intentionally uses custom colors */}
       <div className="p-3" style={{ backgroundColor: bgColor, color: textColor }}>
         {footer.show_newsletter && (
           <div className="mb-4 text-center">
@@ -109,7 +113,7 @@ function ImageItemEditor({ item, onChange }: { item: IFooterColumnItem; onChange
     <div className="space-y-2">
       {item.image_url && (
         <div className="relative inline-block">
-          <img src={item.image_url} alt={item.image_alt || ""} className="max-h-20 rounded border border-slate-200 object-contain" />
+          <img src={item.image_url} alt={item.image_alt || ""} className="max-h-20 rounded border border-border object-contain" />
           <button type="button" onClick={() => onChange({ image_url: undefined })} className="absolute -right-2 -top-2 rounded-full bg-red-500 p-0.5 text-white hover:bg-red-600">
             <Trash2 className="h-3 w-3" />
           </button>
@@ -121,14 +125,14 @@ function ImageItemEditor({ item, onChange }: { item: IFooterColumnItem; onChange
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadState.isUploading}
-          className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
         >
           {uploadState.isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
           {uploadState.isUploading ? "Uploading..." : "Upload"}
         </button>
         <input type="text" value={item.image_url || ""} onChange={(e) => onChange({ image_url: e.target.value })} placeholder="Paste image URL" className={`${inputClass} flex-1 text-xs`} />
       </div>
-      {uploadState.error && <p className="text-xs text-red-500">{uploadState.error}</p>}
+      {uploadState.error && <p className="text-xs text-red-500 dark:text-red-400">{uploadState.error}</p>}
       <div className="grid grid-cols-2 gap-2">
         <input type="text" value={item.image_alt || ""} onChange={(e) => onChange({ image_alt: e.target.value })} placeholder="Alt text" className={`${inputClass} text-xs`} />
         <input type="text" inputMode="numeric" value={item.image_max_width ?? ""} onChange={(e) => onChange({ image_max_width: e.target.value ? parseInt(e.target.value, 10) : undefined })} placeholder="Max width (px)" className={`${inputClass} text-xs`} />
@@ -170,16 +174,16 @@ function FooterColumnEditor({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-gray-50 p-4 space-y-3">
+    <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
       {/* Column header */}
       <div className="flex items-center gap-2">
         <input type="text" value={col.title} onChange={(e) => onUpdateColumn(colIdx, { ...col, title: e.target.value })} placeholder="Column title" className={`${inputClass} flex-1 font-medium`} />
-        <button type="button" onClick={() => onRemoveColumn(colIdx)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+        <button type="button" onClick={() => onRemoveColumn(colIdx)} className="p-1 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
       </div>
 
       {/* Items */}
       {items.map((item, idx) => (
-        <div key={idx} className="flex gap-2 pl-3 border-l-2 border-slate-200">
+        <div key={idx} className="flex gap-2 pl-3 border-l-2 border-border">
           <div className="flex-1 space-y-1">
             {/* Text item */}
             {item.type === "text" && (
@@ -206,8 +210,8 @@ function FooterColumnEditor({
             )}
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">
-            <span className="rounded bg-slate-200 px-1 py-0.5 text-[9px] font-medium text-slate-500 uppercase">{item.type}</span>
-            <button type="button" onClick={() => removeItem(idx)} className="p-0.5 text-slate-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+            <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground uppercase">{item.type}</span>
+            <button type="button" onClick={() => removeItem(idx)} className="p-0.5 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
         </div>
       ))}
@@ -219,7 +223,7 @@ function FooterColumnEditor({
             key={type}
             type="button"
             onClick={() => addItem(type)}
-            className="inline-flex items-center gap-1 text-[11px] text-[#009688] hover:text-[#00796b] rounded border border-dashed border-[#009688]/30 px-2 py-1 hover:bg-[#009688]/5"
+            className="inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 rounded border border-dashed border-primary/30 px-2 py-1 hover:bg-primary/5"
           >
             <Icon className="h-3 w-3" /> {label}
           </button>
@@ -295,19 +299,19 @@ export function FooterSection({
   return (
     <div className="space-y-4">
       {/* Status and Actions Bar */}
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
         <div className="flex items-center gap-2">
           {hasUnpublishedChanges ? (
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Draft has unpublished changes</span>
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">Draft has unpublished changes</span>
           ) : (footer.columns?.length || footer.copyright_text) ? (
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Published</span>
+            <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">Published</span>
           ) : (
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">No footer configured</span>
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">No footer configured</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {hasUnpublishedChanges && (footer.columns?.length || footer.copyright_text) && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => onDraftChange(footer)} className="text-xs text-slate-500">
+            <Button type="button" variant="ghost" size="sm" onClick={() => onDraftChange(footer)} className="text-xs text-muted-foreground">
               Revert to Published
             </Button>
           )}
@@ -315,7 +319,7 @@ export function FooterSection({
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Draft"}
           </Button>
-          <Button type="button" size="sm" onClick={handlePublish} disabled={isPublishing} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button type="button" size="sm" onClick={handlePublish} disabled={isPublishing} className="gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white">
             {isPublishing ? <><Loader2 className="h-4 w-4 animate-spin" /> Publishing...</> : <><Send className="h-4 w-4" /> Publish</>}
           </Button>
         </div>
@@ -336,12 +340,12 @@ export function FooterSection({
 
             {/* Newsletter */}
             <div className="space-y-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input type="checkbox" checked={footerDraft.show_newsletter || false} onChange={(e) => update("show_newsletter", e.target.checked)} className="rounded border-slate-200" />
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <input type="checkbox" checked={footerDraft.show_newsletter || false} onChange={(e) => update("show_newsletter", e.target.checked)} className="rounded border-border" />
                 Show Newsletter Signup
               </label>
               {footerDraft.show_newsletter && (
-                <div className="grid gap-3 md:grid-cols-2 rounded-lg border border-slate-200 bg-gray-50 p-4">
+                <div className="grid gap-3 md:grid-cols-2 rounded-lg border border-border bg-muted/50 p-4">
                   <Field label="Heading">
                     <input type="text" value={footerDraft.newsletter_heading || ""} onChange={(e) => update("newsletter_heading", e.target.value)} placeholder="Stay updated" className={inputClass} />
                   </Field>
@@ -355,19 +359,19 @@ export function FooterSection({
             {/* Editor Mode Toggle */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Footer Content</p>
-                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                <p className="text-sm font-medium text-foreground">Footer Content</p>
+                <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-0.5">
                   <button
                     type="button"
                     onClick={switchToStructuredMode}
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${!isHtmlMode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${!isHtmlMode ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     <LayoutGrid className="h-3 w-3" /> Structured
                   </button>
                   <button
                     type="button"
                     onClick={switchToHtmlMode}
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${isHtmlMode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${isHtmlMode ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     <Code className="h-3 w-3" /> HTML
                   </button>
@@ -377,7 +381,7 @@ export function FooterSection({
               {/* HTML Editor Mode */}
               {isHtmlMode ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-slate-500">Write custom HTML for the entire footer. This replaces the structured columns.</p>
+                  <p className="text-xs text-muted-foreground">Write custom HTML for the entire footer. This replaces the structured columns.</p>
                   <textarea
                     value={footerDraft.footer_html_draft || ""}
                     onChange={(e) => update("footer_html_draft", e.target.value)}
@@ -385,7 +389,7 @@ export function FooterSection({
                     placeholder={"<div class='container'>\n  <div class='row'>\n    <div class='col'>Your footer content...</div>\n  </div>\n</div>"}
                     className={`${inputClass} w-full font-mono text-xs`}
                   />
-                  <p className="text-[10px] text-slate-400">{(footerDraft.footer_html_draft || "").length} characters</p>
+                  <p className="text-[10px] text-muted-foreground">{(footerDraft.footer_html_draft || "").length} characters</p>
                 </div>
               ) : (
                 /* Structured Columns Mode */
@@ -393,7 +397,7 @@ export function FooterSection({
                   <button
                     type="button"
                     onClick={addColumn}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-[#009688] hover:text-[#00796b] rounded-md border border-dashed border-[#009688]/30 px-2.5 py-1.5 hover:bg-[#009688]/5"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 rounded-md border border-dashed border-primary/30 px-2.5 py-1.5 hover:bg-primary/5"
                   >
                     <Plus className="h-3 w-3" /> Add Column
                   </button>

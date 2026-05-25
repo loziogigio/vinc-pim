@@ -74,13 +74,13 @@ export function BrandingSection({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Logo</label>
-              <p className="text-xs text-slate-500">Upload a square SVG/PNG. Max 20MB.</p>
+              <label className="block text-sm font-medium text-foreground">Logo</label>
+              <p className="text-xs text-muted-foreground">Upload a square SVG/PNG. Max 20MB.</p>
             </div>
             {branding.logo_url && (
               <button
                 type="button"
-                className="text-xs text-slate-400 hover:text-red-500"
+                className="text-xs text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
                 onClick={() => update("logo_url", "")}
               >
                 Remove
@@ -88,12 +88,12 @@ export function BrandingSection({
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-200 bg-gray-50">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted">
               {branding.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={branding.logo_url} alt="Logo" className="h-full w-full object-contain" />
               ) : (
-                <span className="text-xs font-semibold uppercase text-slate-400">Logo</span>
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Logo</span>
               )}
             </div>
             <div className="flex flex-col gap-1.5">
@@ -101,7 +101,7 @@ export function BrandingSection({
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
                 disabled={logoUploader.uploadState.isUploading}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#00796b] disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {logoUploader.uploadState.isUploading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -111,7 +111,7 @@ export function BrandingSection({
                 {logoUploader.uploadState.isUploading ? "Uploading..." : "Upload logo"}
               </button>
               {logoUploader.uploadState.error && (
-                <p className="text-xs text-red-500">{logoUploader.uploadState.error}</p>
+                <p className="text-xs text-red-500 dark:text-red-400">{logoUploader.uploadState.error}</p>
               )}
             </div>
           </div>
@@ -131,13 +131,13 @@ export function BrandingSection({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Favicon</label>
-              <p className="text-xs text-slate-500">Suggested 32x32 PNG/ICO.</p>
+              <label className="block text-sm font-medium text-foreground">Favicon</label>
+              <p className="text-xs text-muted-foreground">Suggested 32x32 PNG/ICO.</p>
             </div>
             {branding.favicon_url && (
               <button
                 type="button"
-                className="text-xs text-slate-400 hover:text-red-500"
+                className="text-xs text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
                 onClick={() => update("favicon_url", "")}
               >
                 Remove
@@ -145,12 +145,12 @@ export function BrandingSection({
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-200 bg-gray-50">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted">
               {branding.favicon_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={branding.favicon_url} alt="Favicon" className="h-full w-full object-contain" />
               ) : (
-                <span className="text-[10px] font-semibold uppercase text-slate-400">ICO</span>
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">ICO</span>
               )}
             </div>
             <div className="flex flex-col gap-1.5">
@@ -158,7 +158,7 @@ export function BrandingSection({
                 type="button"
                 onClick={() => faviconInputRef.current?.click()}
                 disabled={faviconUploader.uploadState.isUploading}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#00796b] disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {faviconUploader.uploadState.isUploading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -168,7 +168,7 @@ export function BrandingSection({
                 {faviconUploader.uploadState.isUploading ? "Uploading..." : "Upload favicon"}
               </button>
               {faviconUploader.uploadState.error && (
-                <p className="text-xs text-red-500">{faviconUploader.uploadState.error}</p>
+                <p className="text-xs text-red-500 dark:text-red-400">{faviconUploader.uploadState.error}</p>
               )}
             </div>
           </div>
@@ -205,7 +205,7 @@ export function BrandingSection({
         <button
           onClick={onSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#009688] px-5 py-2 text-sm font-medium text-white hover:bg-[#00796b] disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? "Saving..." : "Save"}

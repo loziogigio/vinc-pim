@@ -196,17 +196,17 @@ export default function DocumentTemplatesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#5e5873]">{t("pages.documents.templates.title")}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("pages.documents.templates.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t("pages.documents.templates.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {systemTemplates.length === 0 && (
             <button
               onClick={handleSeed}
               disabled={isSeeding}
-              className="inline-flex items-center gap-1.5 px-4 py-2 border border-[#009688] text-[#009688] rounded-lg hover:bg-[#e0f2f1] text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-accent text-sm font-medium disabled:opacity-50"
             >
               {isSeeding ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -218,7 +218,7 @@ export default function DocumentTemplatesPage() {
           )}
           <button
             onClick={() => setShowCreate(!showCreate)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
             {t("pages.documents.templates.newTemplate")}
@@ -228,10 +228,10 @@ export default function DocumentTemplatesPage() {
 
       {/* Create Form */}
       {showCreate && (
-        <div className="bg-white rounded-lg border border-[#ebe9f1] p-4 space-y-3">
-          <div className="grid grid-cols-3 gap-4">
+        <div className="bg-card rounded-lg border border-border p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.documents.templates.templateName")}
               </label>
               <input
@@ -239,17 +239,17 @@ export default function DocumentTemplatesPage() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t("pages.documents.templates.templateNamePlaceholder")}
-                className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.documents.templates.documentType")}
               </label>
               <select
                 value={newDocType}
                 onChange={(e) => setNewDocType(e.target.value)}
-                className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
               >
                 <option value="all">{t("pages.documents.templates.allTypes")}</option>
                 {DOCUMENT_TYPES.map((t) => (
@@ -260,7 +260,7 @@ export default function DocumentTemplatesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#5e5873] mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {t("pages.documents.templates.templateDescription")}
               </label>
               <input
@@ -268,7 +268,7 @@ export default function DocumentTemplatesPage() {
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder={t("pages.documents.templates.templateDescriptionPlaceholder")}
-                className="w-full px-3 py-2 border border-[#ebe9f1] rounded-lg text-sm"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
               />
             </div>
           </div>
@@ -276,14 +276,14 @@ export default function DocumentTemplatesPage() {
             <button
               onClick={handleCreate}
               disabled={isCreating}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium disabled:opacity-50"
             >
               {isCreating && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("pages.documents.templates.createTemplate")}
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="px-4 py-2 border border-[#ebe9f1] rounded-lg text-sm hover:bg-[#f8f8f8]"
+              className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted"
             >
               {t("common.cancel")}
             </button>
@@ -295,10 +295,10 @@ export default function DocumentTemplatesPage() {
       {systemTemplates.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <div className="p-1.5 bg-amber-50 rounded-lg">
-              <Sparkles className="w-4 h-4 text-amber-600" />
+            <div className="p-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             </div>
-            <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
               {t("pages.documents.templates.standardTemplates")}
             </h2>
             <span className="text-xs text-muted-foreground">
@@ -326,10 +326,10 @@ export default function DocumentTemplatesPage() {
       {/* Custom Templates Section */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 bg-teal-50 rounded-lg">
-            <FileText className="w-4 h-4 text-teal-600" />
+          <div className="p-1.5 bg-accent rounded-lg">
+            <FileText className="w-4 h-4 text-accent-foreground" />
           </div>
-          <h2 className="text-sm font-semibold text-[#5e5873] uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
             {t("pages.documents.templates.customTemplates")}
           </h2>
           <span className="text-xs text-muted-foreground">
@@ -337,7 +337,7 @@ export default function DocumentTemplatesPage() {
           </span>
         </div>
         {customTemplates.length === 0 ? (
-          <div className="bg-white rounded-lg border border-dashed border-[#d5d5d5] p-8 text-center">
+          <div className="bg-card rounded-lg border border-dashed border-border p-8 text-center">
             <Layout className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground mb-1">
               {t("pages.documents.templates.noCustomTemplates")}
@@ -367,9 +367,9 @@ export default function DocumentTemplatesPage() {
 
       {/* Empty state when no templates at all */}
       {templates.length === 0 && (
-        <div className="bg-white rounded-lg border border-[#ebe9f1] p-12 text-center">
+        <div className="bg-card rounded-lg border border-border p-12 text-center">
           <Layout className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-[#5e5873] mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             {t("pages.documents.templates.noTemplates")}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
@@ -378,7 +378,7 @@ export default function DocumentTemplatesPage() {
           <button
             onClick={handleSeed}
             disabled={isSeeding}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#009688] text-white rounded-lg hover:bg-[#00796b] text-sm font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium disabled:opacity-50"
           >
             {isSeeding ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -417,11 +417,11 @@ function TemplateCard({
 
   return (
     <div
-      className="bg-white rounded-lg border border-[#ebe9f1] hover:shadow-md transition-shadow cursor-pointer group"
+      className="bg-card rounded-lg border border-border hover:shadow-md transition-shadow cursor-pointer group"
       onClick={() => onNavigate(tpl.template_id)}
     >
       {/* Preview thumbnail */}
-      <div className="h-28 bg-gradient-to-b from-gray-50 to-gray-100 rounded-t-lg flex items-center justify-center relative overflow-hidden">
+      <div className="h-28 bg-gradient-to-b from-muted to-muted/80 rounded-t-lg flex items-center justify-center relative overflow-hidden">
         <div className="w-16 h-20 bg-white rounded shadow-sm border border-gray-200 flex flex-col items-center justify-center p-1.5">
           <div className="w-full h-1 bg-gray-300 rounded mb-1" />
           <div className="w-full h-0.5 bg-gray-200 rounded mb-0.5" />
@@ -448,7 +448,7 @@ function TemplateCard({
       {/* Info */}
       <div className="p-3">
         <div className="flex items-center gap-1.5 mb-1">
-          <h3 className="font-semibold text-[#5e5873] text-sm truncate">
+          <h3 className="font-semibold text-foreground text-sm truncate">
             {tpl.name}
           </h3>
         </div>
@@ -461,19 +461,19 @@ function TemplateCard({
         {/* Config badges */}
         <div className="flex flex-wrap gap-1 mb-2">
           {headerStyle && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
+            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded">
               <Type className="w-2.5 h-2.5" />
               {HEADER_STYLE_LABELS[headerStyle] || headerStyle}
             </span>
           )}
-          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded">
+          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
             {footerEnabled ? (
               <><Eye className="w-2.5 h-2.5" /> {t("pages.documents.templates.footer")}</>
             ) : (
               <><EyeOff className="w-2.5 h-2.5" /> {t("pages.documents.templates.noFooter")}</>
             )}
           </span>
-          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-600 rounded">
+          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
             <AlignLeft className="w-2.5 h-2.5" />
             {tpl.page_size}
           </span>
@@ -491,7 +491,7 @@ function TemplateCard({
       </div>
 
       {/* Actions */}
-      <div className="px-3 py-2 border-t border-[#ebe9f1] flex items-center justify-between">
+      <div className="px-3 py-2 border-t border-border flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
           {new Date(tpl.updated_at).toLocaleDateString("it-IT")}
         </span>
@@ -502,7 +502,7 @@ function TemplateCard({
               onDuplicate(tpl.template_id);
             }}
             disabled={isDuplicating}
-            className="p-1 text-[#009688] hover:text-[#00796b] rounded hover:bg-teal-50 transition-colors"
+            className="p-1 text-primary hover:text-primary/80 rounded hover:bg-accent transition-colors"
             title={t("pages.documents.templates.duplicateTemplate")}
           >
             {isDuplicating ? (
@@ -517,7 +517,7 @@ function TemplateCard({
                 e.stopPropagation();
                 onDelete(tpl.template_id);
               }}
-              className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
+              className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               title={t("pages.documents.templates.deleteTemplate")}
             >
               <Trash2 className="w-3.5 h-3.5" />

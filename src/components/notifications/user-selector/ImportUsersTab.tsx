@@ -63,7 +63,7 @@ export function ImportUsersTab({ onAddUsers }: ImportUsersTabProps) {
   return (
     <div className="p-4 space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Incolla i nomi utente (uno per riga o separati da virgola)
         </label>
         <textarea
@@ -71,7 +71,7 @@ export function ImportUsersTab({ onAddUsers }: ImportUsersTabProps) {
           onChange={(e) => setImportText(e.target.value)}
           placeholder="utente1&#10;utente2&#10;utente3"
           rows={8}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-primary focus:outline-none resize-none font-mono text-sm"
+          className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none font-mono text-sm"
         />
       </div>
 
@@ -89,28 +89,28 @@ export function ImportUsersTab({ onAddUsers }: ImportUsersTabProps) {
         <div className="space-y-3">
           {/* Matched */}
           {importResult.matched.length > 0 && (
-            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-medium text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                   {importResult.matched.length} utenti trovati
                 </span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {importResult.matched.slice(0, 10).map((u) => (
-                  <span key={u.id} className="px-2 py-1 rounded bg-white text-xs">
+                  <span key={u.id} className="px-2 py-1 rounded bg-card border border-border text-foreground text-xs">
                     {u.name}
                   </span>
                 ))}
                 {importResult.matched.length > 10 && (
-                  <span className="px-2 py-1 text-xs text-emerald-600">
+                  <span className="px-2 py-1 text-xs text-emerald-600 dark:text-emerald-400">
                     +{importResult.matched.length - 10} altri
                   </span>
                 )}
               </div>
               <button
                 onClick={addImportedUsers}
-                className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700"
+                className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-500"
               >
                 Aggiungi {importResult.matched.length} utenti
               </button>
@@ -119,16 +119,16 @@ export function ImportUsersTab({ onAddUsers }: ImportUsersTabProps) {
 
           {/* Not Found */}
           {importResult.not_found.length > 0 && (
-            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
               <div className="flex items-center gap-2 mb-2">
-                <XCircle className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-700">
+                <XCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                   {importResult.not_found.length} non trovati
                 </span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {importResult.not_found.slice(0, 10).map((name, i) => (
-                  <span key={i} className="px-2 py-1 rounded bg-white text-xs text-amber-700">
+                  <span key={i} className="px-2 py-1 rounded bg-card border border-border text-xs text-amber-700 dark:text-amber-400">
                     {name}
                   </span>
                 ))}

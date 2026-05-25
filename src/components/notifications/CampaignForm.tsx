@@ -158,21 +158,21 @@ export function CampaignForm({
     <div className="space-y-8">
       {/* Campaign Name */}
       <div className="max-w-xl">
-        <label className="block text-sm font-medium text-slate-700 mb-1">{t("pages.notifications.campaigns.form.campaignName")}</label>
+        <label className="block text-sm font-medium text-foreground mb-1">{t("pages.notifications.campaigns.form.campaignName")}</label>
         <input
           type="text"
           value={campaignName}
           onChange={(e) => onCampaignNameChange(e.target.value)}
           placeholder={t("pages.notifications.campaigns.form.campaignNamePlaceholder")}
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
-        <p className="text-xs text-slate-500 mt-1">{t("pages.notifications.campaigns.form.campaignNameHint")}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t("pages.notifications.campaigns.form.campaignNameHint")}</p>
       </div>
 
       {/* Campaign Type Selector */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.campaigns.form.campaignType")}</label>
-        <div className="grid grid-cols-2 gap-4 max-w-xl">
+        <label className="block text-sm font-medium text-foreground mb-3">{t("pages.notifications.campaigns.form.campaignType")}</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
           {TEMPLATE_TYPE_IDS.map((type) => {
             const Icon = type.icon;
             const isSelected = campaignType === type.id;
@@ -184,20 +184,20 @@ export function CampaignForm({
                 onClick={() => onCampaignTypeChange(type.id)}
                 className={cn(
                   "flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all",
-                  isSelected ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
+                  isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
                 )}
               >
                 <div
                   className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                    isSelected ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
+                    isSelected ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                   )}
                 >
                   <Icon className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-700")}>{t(type.labelKey)}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{t(type.descKey)}</p>
+                  <p className={cn("font-medium", isSelected ? "text-primary" : "text-foreground")}>{t(type.labelKey)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t(type.descKey)}</p>
                 </div>
               </button>
             );
@@ -207,7 +207,7 @@ export function CampaignForm({
 
       {/* Channel Selector */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.campaigns.form.sendChannels")}</label>
+        <label className="block text-sm font-medium text-foreground mb-3">{t("pages.notifications.campaigns.form.sendChannels")}</label>
         <div className="flex flex-wrap gap-3">
           {NOTIFICATION_CHANNELS.map((channelId) => {
             const isEnabled = enabledChannels.has(channelId);
@@ -224,22 +224,22 @@ export function CampaignForm({
                 className={cn(
                   "relative flex flex-col items-center justify-center w-28 h-28 rounded-xl border-2 transition-all",
                   !isAvailable && "opacity-50 cursor-not-allowed",
-                  isEnabled && isAvailable ? config.bgColor : "border-slate-200 bg-white",
-                  isAvailable && !isEnabled && "hover:border-slate-300"
+                  isEnabled && isAvailable ? config.bgColor : "border-border bg-card",
+                  isAvailable && !isEnabled && "hover:border-primary/40"
                 )}
                 style={{ borderColor: isEnabled && isAvailable ? config.borderColor : undefined }}
               >
-                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-2", isEnabled && isAvailable ? config.bgColor : "bg-slate-100")}>
-                  <Icon className={cn("w-5 h-5", isEnabled && isAvailable ? config.textColor : "text-slate-400")} />
+                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-2", isEnabled && isAvailable ? config.bgColor : "bg-muted")}>
+                  <Icon className={cn("w-5 h-5", isEnabled && isAvailable ? config.textColor : "text-muted-foreground")} />
                 </div>
-                <span className={cn("text-xs font-medium", isEnabled && isAvailable ? "text-slate-700" : "text-slate-400")}>{config.label}</span>
+                <span className={cn("text-xs font-medium", isEnabled && isAvailable ? "text-foreground" : "text-muted-foreground")}>{config.label}</span>
                 {isEnabled && isAvailable && (
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
                 )}
                 {!isAvailable && (
-                  <span className="absolute top-2 right-2 text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                  <span className="absolute top-2 right-2 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                     {t("pages.notifications.campaigns.form.notConfigured")}
                   </span>
                 )}
@@ -251,45 +251,45 @@ export function CampaignForm({
 
       {/* Push Notification Fields */}
       {hasPush && (
-        <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 max-w-xl">
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 max-w-xl">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
               <Smartphone className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-medium text-emerald-800">{t("pages.notifications.campaigns.form.pushContentTitle")}</h3>
-              <p className="text-xs text-emerald-600">{t("pages.notifications.campaigns.form.pushContentSubtitle")}</p>
+              <h3 className="font-medium text-emerald-800 dark:text-emerald-300">{t("pages.notifications.campaigns.form.pushContentTitle")}</h3>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("pages.notifications.campaigns.form.pushContentSubtitle")}</p>
             </div>
           </div>
           <div className="grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-emerald-700 mb-1">{t("pages.notifications.campaigns.form.pushTitle")}</label>
+              <label className="block text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">{t("pages.notifications.campaigns.form.pushTitle")}</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => onTitleChange(e.target.value)}
                 placeholder={t("pages.notifications.campaigns.form.pushTitlePlaceholder")}
-                className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
+                className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg text-sm bg-background text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-emerald-700 mb-1">{t("pages.notifications.campaigns.form.pushDescription")}</label>
+              <label className="block text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">{t("pages.notifications.campaigns.form.pushDescription")}</label>
               <textarea
                 value={body}
                 onChange={(e) => onBodyChange(e.target.value)}
                 placeholder={t("pages.notifications.campaigns.form.pushDescriptionPlaceholder")}
                 rows={2}
-                className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none bg-white"
+                className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg text-sm bg-background text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-emerald-700 mb-2">
+              <label className="block text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-2">
                 <ImageIcon className="w-4 h-4 inline mr-1" />
                 {t("pages.notifications.campaigns.form.pushImage")}
               </label>
               {pushImage && (
                 <div className="mb-3 relative inline-block">
-                  <img src={pushImage} alt="Push preview" className="w-24 h-24 object-cover rounded-lg border-2 border-emerald-300" />
+                  <img src={pushImage} alt="Push preview" className="w-24 h-24 object-cover rounded-lg border-2 border-emerald-300 dark:border-emerald-700" />
                   <button
                     type="button"
                     onClick={() => onPushImageChange("")}
@@ -299,13 +299,13 @@ export function CampaignForm({
                   </button>
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <label className="flex-shrink-0">
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploadingImage} />
                   <span
                     className={cn(
-                      "inline-flex items-center gap-2 px-3 py-2 border border-emerald-300 rounded-lg text-sm font-medium cursor-pointer transition",
-                      isUploadingImage ? "bg-emerald-100 text-emerald-400 cursor-not-allowed" : "bg-white text-emerald-700 hover:bg-emerald-100"
+                      "inline-flex items-center gap-2 px-3 py-2 border border-emerald-300 dark:border-emerald-700 rounded-lg text-sm font-medium cursor-pointer transition",
+                      isUploadingImage ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-400 cursor-not-allowed" : "bg-background text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
                     )}
                   >
                     {isUploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -317,12 +317,12 @@ export function CampaignForm({
                   value={pushImage}
                   onChange={(e) => onPushImageChange(e.target.value)}
                   placeholder={t("pages.notifications.campaigns.form.imageUrlPlaceholder")}
-                  className="flex-1 px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
+                  className="flex-1 min-w-0 px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg text-sm bg-background text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
             </div>
             {/* URL Action - different input based on campaign type */}
-            <div className="pt-2 border-t border-emerald-200">
+            <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800">
               {campaignType === "product" ? (
                 <>
                   <SearchUrlInput
@@ -331,7 +331,7 @@ export function CampaignForm({
                     label={t("pages.notifications.campaigns.form.actionUrl")}
                     placeholder="shop?text=prodotto&filters-brand_id=004"
                   />
-                  <p className="text-xs text-emerald-600 mt-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                     {t("pages.notifications.campaigns.form.actionUrlHint", {
                       example1: "shop?text=moon&filters-brand_id=004",
                       example2: "search?text=moon&filters-brand_id=004",
@@ -340,7 +340,7 @@ export function CampaignForm({
                 </>
               ) : (
                 <>
-                  <label className="block text-sm font-medium text-emerald-700 mb-1">
+                  <label className="block text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">
                     <LinkIcon className="w-4 h-4 inline mr-1" />
                     {t("pages.notifications.campaigns.form.genericActionUrl")}
                   </label>
@@ -349,9 +349,9 @@ export function CampaignForm({
                     value={productsUrl}
                     onChange={(e) => onProductsUrlChange(e.target.value)}
                     placeholder={t("pages.notifications.campaigns.form.genericActionUrlPlaceholder")}
-                    className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
+                    className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg text-sm bg-background text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
-                  <p className="text-xs text-emerald-600 mt-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                     {t("pages.notifications.campaigns.form.genericActionUrlHint")}
                   </p>
                 </>
@@ -359,7 +359,7 @@ export function CampaignForm({
               {productsUrl && (
                 <label className="flex items-center gap-2 mt-2">
                   <input type="checkbox" checked={openInNewTab} onChange={(e) => onOpenInNewTabChange(e.target.checked)} className="w-4 h-4 rounded text-emerald-500" />
-                  <span className="text-xs text-emerald-700">{t("pages.notifications.campaigns.form.openInNewTab")}</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-300">{t("pages.notifications.campaigns.form.openInNewTab")}</span>
                 </label>
               )}
             </div>
@@ -369,40 +369,40 @@ export function CampaignForm({
 
       {/* Email Fields */}
       {enabledChannels.has("email") && (
-        <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 max-w-xl">
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800 max-w-xl">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
               <Mail className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-medium text-blue-800">{t("pages.notifications.campaigns.form.emailContentTitle")}</h3>
-              <p className="text-xs text-blue-600">{t("pages.notifications.campaigns.form.emailContentSubtitle")}</p>
+              <h3 className="font-medium text-blue-800 dark:text-blue-300">{t("pages.notifications.campaigns.form.emailContentTitle")}</h3>
+              <p className="text-xs text-blue-600 dark:text-blue-400">{t("pages.notifications.campaigns.form.emailContentSubtitle")}</p>
             </div>
           </div>
           <div className="grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">{t("pages.notifications.campaigns.form.emailSubject")}</label>
+              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">{t("pages.notifications.campaigns.form.emailSubject")}</label>
               <input
                 type="text"
                 value={emailSubject}
                 onChange={(e) => onEmailSubjectChange(e.target.value)}
                 placeholder={t("pages.notifications.campaigns.form.emailSubjectPlaceholder")}
-                className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+                className="w-full px-3 py-2 border border-blue-200 dark:border-blue-700 rounded-lg text-sm bg-background text-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">{t("pages.notifications.campaigns.form.emailHtmlContent")}</label>
+              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">{t("pages.notifications.campaigns.form.emailHtmlContent")}</label>
               <textarea
                 value={emailHtml}
                 onChange={(e) => onEmailHtmlChange(e.target.value)}
                 placeholder={t("pages.notifications.campaigns.form.emailHtmlPlaceholder")}
                 rows={6}
-                className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+                className="w-full px-3 py-2 border border-blue-200 dark:border-blue-700 rounded-lg text-sm font-mono bg-background text-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
-              <p className="text-xs text-blue-600 mt-1">{t("pages.notifications.campaigns.form.emailHtmlHint")}</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{t("pages.notifications.campaigns.form.emailHtmlHint")}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-700 mb-1">
+              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
                 <LinkIcon className="w-4 h-4 inline mr-1" />
                 {t("pages.notifications.campaigns.form.emailViewAllLink")}
               </label>
@@ -411,7 +411,7 @@ export function CampaignForm({
                 value={emailLink}
                 onChange={(e) => onEmailLinkChange(e.target.value)}
                 placeholder={t("pages.notifications.campaigns.form.emailViewAllPlaceholder")}
-                className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+                className="w-full px-3 py-2 border border-blue-200 dark:border-blue-700 rounded-lg text-sm bg-background text-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
@@ -428,22 +428,22 @@ export function CampaignForm({
 
       {/* Recipients */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-3">{t("pages.notifications.campaigns.form.recipients")}</label>
+        <label className="block text-sm font-medium text-foreground mb-3">{t("pages.notifications.campaigns.form.recipients")}</label>
         <div className="space-y-2 max-w-xl">
-          <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/50">
             <input type="radio" name="recipients" value="all" checked={recipientType === "all"} onChange={() => onRecipientTypeChange("all")} className="w-4 h-4 text-primary" />
-            <Users className="w-5 h-5 text-slate-400" />
+            <Users className="w-5 h-5 text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-slate-700">{t("pages.notifications.campaigns.form.allCustomers")}</p>
-              <p className="text-xs text-slate-500">{t("pages.notifications.campaigns.form.allCustomersDesc")}</p>
+              <p className="text-sm font-medium text-foreground">{t("pages.notifications.campaigns.form.allCustomers")}</p>
+              <p className="text-xs text-muted-foreground">{t("pages.notifications.campaigns.form.allCustomersDesc")}</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+          <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/50">
             <input type="radio" name="recipients" value="selected" checked={recipientType === "selected"} onChange={() => onRecipientTypeChange("selected")} className="w-4 h-4 text-primary" />
-            <UserCheck className="w-5 h-5 text-slate-400" />
+            <UserCheck className="w-5 h-5 text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-slate-700">{t("pages.notifications.campaigns.form.selectedRecipients")}</p>
-              <p className="text-xs text-slate-500">{t("pages.notifications.campaigns.form.selectedRecipientsDesc")}</p>
+              <p className="text-sm font-medium text-foreground">{t("pages.notifications.campaigns.form.selectedRecipients")}</p>
+              <p className="text-xs text-muted-foreground">{t("pages.notifications.campaigns.form.selectedRecipientsDesc")}</p>
             </div>
           </label>
         </div>
@@ -544,14 +544,14 @@ function ValidationErrors({
   if (errors.length === 0) return null;
 
   return (
-    <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 max-w-xl">
+    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 max-w-xl">
       <div className="flex items-start gap-2">
-        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-amber-800 mb-2">{t("pages.notifications.campaigns.form.validationTitle")}</p>
+          <p className="font-medium text-amber-800 dark:text-amber-300 mb-2">{t("pages.notifications.campaigns.form.validationTitle")}</p>
           <ul className="space-y-1">
             {errors.map((error, idx) => (
-              <li key={idx} className="text-sm text-amber-700 flex items-center gap-2">
+              <li key={idx} className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 {error}
               </li>

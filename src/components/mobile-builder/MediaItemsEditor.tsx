@@ -72,12 +72,12 @@ function SortableMediaItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 group"
+      className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3"
     >
       {/* Drag handle */}
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600"
+        className="cursor-grab p-1 text-muted-foreground active:cursor-grabbing hover:text-foreground"
         {...attributes}
         {...listeners}
       >
@@ -85,11 +85,11 @@ function SortableMediaItem({
       </button>
 
       {/* Thumbnail */}
-      <div className="w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] flex-shrink-0 rounded overflow-hidden bg-gray-100 relative">
+      <div className="relative h-12 w-12 min-h-[48px] min-w-[48px] max-h-[48px] max-w-[48px] flex-shrink-0 overflow-hidden rounded bg-muted">
         {item.media_url ? (
           item.media_type === "video" ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-              <Video className="h-5 w-5 text-gray-500" />
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <Video className="h-5 w-5 text-muted-foreground" />
             </div>
           ) : (
             <img
@@ -100,7 +100,7 @@ function SortableMediaItem({
           )
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <ImageIcon className="h-5 w-5 text-gray-300" />
+            <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
           </div>
         )}
       </div>
@@ -112,14 +112,14 @@ function SortableMediaItem({
           value={item.alt_text || ""}
           onChange={(e) => onUpdate({ alt_text: e.target.value })}
           placeholder="Alt text / Title"
-          className="w-full text-xs px-2 py-1 border border-gray-200 rounded focus:outline-none focus:border-primary"
+          className="w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
         />
         <input
           type="text"
           value={item.link_url || ""}
           onChange={(e) => onUpdate({ link_url: e.target.value })}
           placeholder="Link URL (optional)"
-          className="w-full text-xs px-2 py-1 mt-1 border border-gray-200 rounded focus:outline-none focus:border-primary"
+          className="mt-1 w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
         />
       </div>
 
@@ -127,7 +127,7 @@ function SortableMediaItem({
       <button
         type="button"
         onClick={onDelete}
-        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
       >
         <Trash2 className="h-4 w-4" />
       </button>
@@ -214,13 +214,13 @@ function AddMediaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="font-semibold">Add Media</h3>
+      <div className="mx-4 w-full max-w-md rounded-lg bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b p-4">
+          <h3 className="font-semibold text-foreground">Add Media</h3>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded"
+            className="rounded p-1 hover:bg-muted"
           >
             <X className="h-5 w-5" />
           </button>
@@ -238,7 +238,7 @@ function AddMediaModal({
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md border transition-colors ${
                 mode === "upload"
                   ? "bg-primary/10 border-primary text-primary"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "bg-card border-border text-muted-foreground hover:border-border hover:bg-accent"
               }`}
             >
               <Upload className="h-4 w-4" />
@@ -253,7 +253,7 @@ function AddMediaModal({
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md border transition-colors ${
                 mode === "url"
                   ? "bg-primary/10 border-primary text-primary"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "bg-card border-border text-muted-foreground hover:border-border hover:bg-accent"
               }`}
             >
               <Link2 className="h-4 w-4" />
@@ -262,7 +262,7 @@ function AddMediaModal({
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+            <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
               {error}
             </div>
           )}
@@ -272,22 +272,22 @@ function AddMediaModal({
               <label
                 className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
                   isUploading
-                    ? "border-gray-300 bg-gray-50"
-                    : "border-gray-300 hover:border-primary hover:bg-primary/5"
+                    ? "border-border bg-muted"
+                    : "border-border hover:border-primary hover:bg-primary/5"
                 }`}
               >
                 {isUploading ? (
                   <div className="flex flex-col items-center">
                     <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                    <span className="mt-2 text-sm text-gray-500">Uploading...</span>
+                    <span className="mt-2 text-sm text-muted-foreground">Uploading...</span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">
-                    <Upload className="h-8 w-8 text-gray-400" />
-                    <span className="mt-2 text-sm text-gray-500">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <span className="mt-2 text-sm text-muted-foreground">
                       Click to upload image or video
                     </span>
-                    <span className="text-xs text-gray-400 mt-1">
+                    <span className="mt-1 text-xs text-muted-foreground/70">
                       PNG, JPG, GIF, MP4 up to 10MB
                     </span>
                   </div>
@@ -312,7 +312,7 @@ function AddMediaModal({
                     className={`flex items-center gap-2 px-3 py-1.5 rounded border text-sm ${
                       mediaType === "image"
                         ? "bg-primary/10 border-primary text-primary"
-                        : "bg-white border-gray-200 text-gray-600"
+                        : "bg-card border-border text-muted-foreground"
                     }`}
                   >
                     <ImageIcon className="h-4 w-4" />
@@ -324,7 +324,7 @@ function AddMediaModal({
                     className={`flex items-center gap-2 px-3 py-1.5 rounded border text-sm ${
                       mediaType === "video"
                         ? "bg-primary/10 border-primary text-primary"
-                        : "bg-white border-gray-200 text-gray-600"
+                        : "bg-card border-border text-muted-foreground"
                     }`}
                   >
                     <Video className="h-4 w-4" />
@@ -435,9 +435,9 @@ export function MediaItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-          <ImageIcon className="h-8 w-8 text-gray-300 mb-2" />
-          <p className="text-sm text-gray-500">No media items yet</p>
+        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/30 py-8">
+          <ImageIcon className="mb-2 h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">No media items yet</p>
           <Button
             type="button"
             variant="ghost"

@@ -179,7 +179,7 @@ export default function GlobalB2BSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#009688] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -196,8 +196,8 @@ export default function GlobalB2BSettingsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">{t("pages.b2bSettings.title")}</h1>
-          <p className="text-sm text-slate-400">{t("pages.b2bSettings.subtitle")}</p>
+          <h1 className="text-xl font-semibold text-foreground">{t("pages.b2bSettings.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("pages.b2bSettings.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {dirty ? (
@@ -233,8 +233,8 @@ export default function GlobalB2BSettingsPage() {
                   className={cn(
                     "w-full rounded-2xl border px-4 py-3 text-left transition-all",
                     active
-                      ? "border-[#009688] bg-[#009688]/10 text-[#009688] shadow-sm"
-                      : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-800"
+                      ? "border-primary bg-primary/10 text-primary shadow-sm"
+                      : "border-transparent text-foreground/80 hover:border-border hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -242,15 +242,15 @@ export default function GlobalB2BSettingsPage() {
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-xl border",
                         active
-                          ? "border-[#009688]/30 bg-[#009688]/15 text-[#009688]"
-                          : "border-slate-200 bg-white text-slate-500"
+                          ? "border-primary/30 bg-primary/15 text-primary"
+                          : "border-border bg-muted text-muted-foreground"
                       )}
                     >
                       <Icon className="h-4 w-4" />
                     </span>
                     <div>
                       <div className="text-sm font-semibold">{t(item.labelKey)}</div>
-                      <div className="text-xs text-slate-500">{t(item.descKey)}</div>
+                      <div className="text-xs text-muted-foreground">{t(item.descKey)}</div>
                     </div>
                   </div>
                 </button>
@@ -308,7 +308,7 @@ export default function GlobalB2BSettingsPage() {
 
           {/* Save bar — for every section backed by /api/b2b/home-settings. */}
           {showSaveBar && (
-            <div className="flex items-center justify-end gap-2 border-t border-slate-200 pt-4">
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button variant="outline" size="sm" onClick={() => loadSettings()} disabled={saving} className="gap-2">
                 <RefreshCcw className="h-4 w-4" /> {t("pages.homeSettings.reload")}
               </Button>
@@ -316,7 +316,7 @@ export default function GlobalB2BSettingsPage() {
                 size="sm"
                 onClick={handleSave}
                 disabled={saving || !dirty}
-                className="gap-2 bg-[#009688] px-5 text-white hover:bg-[#00796b]"
+                className="gap-2 bg-primary px-5 text-primary-foreground hover:bg-primary/90"
               >
                 {saving ? (
                   <>

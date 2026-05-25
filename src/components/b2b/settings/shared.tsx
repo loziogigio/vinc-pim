@@ -27,14 +27,14 @@ export const ColorInput = ({
 }) => (
   <div className="space-y-2">
     <div className="flex items-center justify-between">
-      <label htmlFor={id} className="text-sm font-medium text-slate-600">
+      <label htmlFor={id} className="text-sm font-medium text-foreground/80">
         {label}
       </label>
       {allowClear && value && (
         <button
           type="button"
           onClick={onClear}
-          className="text-xs font-medium text-slate-500 hover:text-slate-700"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground"
         >
           {clearLabel || "Clear"}
         </button>
@@ -46,16 +46,16 @@ export const ColorInput = ({
         type="color"
         value={value || "#ffffff"}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-12 cursor-pointer rounded-md border border-slate-200 bg-white"
+        className="h-11 w-12 cursor-pointer rounded-md border border-border bg-background"
       />
       <input
         type="text"
         value={value || ""}
         onChange={(event) => onChange(event.target.value)}
         placeholder="#FFFFFF"
-        className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="flex-1 rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
       />
     </div>
-    {helper ? <p className="text-xs text-slate-500">{helper}</p> : null}
+    {helper ? <p className="text-xs text-muted-foreground">{helper}</p> : null}
   </div>
 );

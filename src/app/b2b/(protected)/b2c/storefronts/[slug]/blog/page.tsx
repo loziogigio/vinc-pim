@@ -23,7 +23,7 @@ export default function StorefrontBlogPage({ params }: { params: Promise<{ slug:
   }, [slug]);
 
   if (!context) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-[#009688]" /></div>;
+    return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
   return <BlogListView context={context} />;
 }
