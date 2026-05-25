@@ -60,6 +60,17 @@ export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
     dateFormat: "DD.MM.YYYY",
     numberFormat: "cs-CZ"
   },
+  {
+    code: "sk",
+    name: "Slovak",
+    nativeName: "Slovenčina",
+    isDefault: false,
+    isEnabled: true,
+    solrAnalyzer: "text_general",
+    direction: "ltr",
+    dateFormat: "DD.MM.YYYY",
+    numberFormat: "sk-SK"
+  },
   // Easy to add new languages:
   // {
   //   code: "fr",
