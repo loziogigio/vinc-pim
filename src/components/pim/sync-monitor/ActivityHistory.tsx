@@ -12,8 +12,10 @@ export interface HistoryItem {
   job_id: string;
   status: "running" | "completed" | "failed";
   params: {
-    cleanup_mode: string;
+    cleanup_mode?: string;
     resync_min_score?: number;
+    operation?: string;
+    channel?: string | null;
   };
   cleanup_result?: { mode: string; removed_count?: number };
   resync_result?: {
@@ -110,7 +112,7 @@ export function ActivityHistory({ items, loading, onRefresh }: ActivityHistoryPr
                   </td>
                   <td className="py-2.5 text-muted-foreground">{item.started_by}</td>
                   <td className="py-2.5 text-muted-foreground capitalize">
-                    {item.params.cleanup_mode.replace("_", " ")}
+                    {(item.params?.operation ?? item.params?.cleanup_mode ?? "—").replace(/[_-]/g, " ")}
                   </td>
                   <td className="py-2.5 text-muted-foreground">
                     {item.cleanup_result?.removed_count === -1
