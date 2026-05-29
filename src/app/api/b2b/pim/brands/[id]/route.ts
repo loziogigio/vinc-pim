@@ -15,7 +15,7 @@ export async function GET(
     }
 
     const tenantDb = `vinc-${session.tenantId}`;
-    const { Brand: BrandModel } = await connectWithModels(tenantDb);
+    const { Brand: BrandModel, PIMProduct } = await connectWithModels(tenantDb);
 
     const brand = await BrandModel.findOne({
       brand_id: id,
@@ -26,7 +26,20 @@ export async function GET(
       return NextResponse.json({ error: "Brand not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ brand });
+    // Live product-count breakdown so the UI can explain why search shows fewer
+    // than the published total: published = searchable + variant parents.
+    const brandMatch = { isCurrent: true, "brand.brand_id": id };
+    const [published, searchable, variant_parents, drafts] = await Promise.all([
+      PIMProduct.countDocuments({ ...brandMatch, status: "published" }),
+      PIMProduct.countDocuments({ ...brandMatch, status: "published", include_faceting: true }),
+      PIMProduct.countDocuments({ ...brandMatch, status: "published", include_faceting: false }),
+      PIMProduct.countDocuments({ ...brandMatch, status: "draft" }),
+    ]);
+
+    return NextResponse.json({
+      brand,
+      counts: { published, searchable, variant_parents, drafts },
+    });
   } catch (error) {
     console.error("Error fetching brand:", error);
     return NextResponse.json(

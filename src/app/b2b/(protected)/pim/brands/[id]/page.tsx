@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Package, ExternalLink } from "lucide-react";
+import { ArrowLeft, Package, ExternalLink, Info } from "lucide-react";
 import {
   ProductAssociationSection,
   ProductAssociationConfig,
@@ -34,6 +34,12 @@ export default function BrandDetailPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [loading, setLoading] = useState(true);
   const [productCount, setProductCount] = useState(0);
+  const [counts, setCounts] = useState<{
+    published: number;
+    searchable: number;
+    variant_parents: number;
+    drafts: number;
+  } | null>(null);
 
   useEffect(() => {
     if (brandId) {
@@ -47,7 +53,8 @@ export default function BrandDetailPage() {
       if (!res.ok) throw new Error("Failed to fetch brand");
       const data = await res.json();
       setBrand(data.brand);
-      setProductCount(data.brand.product_count || 0);
+      setCounts(data.counts ?? null);
+      setProductCount(data.counts?.published ?? data.brand.product_count ?? 0);
     } catch (error) {
       console.error("Failed to fetch brand:", error);
       toast.error(t("pages.pim.brands.loadFailed"));
@@ -128,12 +135,32 @@ export default function BrandDetailPage() {
                   {brand.description}
                 </p>
               )}
-              <div className="flex items-center gap-4 text-sm mt-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm mt-2">
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-foreground font-medium">{productCount}</span>
-                  <span className="text-muted-foreground">{t("pages.pim.brands.products")}</span>
+                  <span className="text-foreground font-medium">{counts?.published ?? productCount}</span>
+                  <span className="text-muted-foreground">{t("pages.pim.brands.published")}</span>
                 </div>
+                {counts && (
+                  <>
+                    <span className="text-muted-foreground">·</span>
+                    <span>
+                      <span className="text-foreground font-medium">{counts.searchable}</span>{" "}
+                      <span className="text-muted-foreground">{t("pages.pim.brands.shownInSearch")}</span>
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-foreground font-medium">{counts.variant_parents}</span>{" "}
+                      <span className="text-muted-foreground">{t("pages.pim.brands.variantParentsGrouped")}</span>
+                      <Info className="w-3.5 h-3.5 text-muted-foreground" title={t("pages.pim.brands.countsHelp")} />
+                    </span>
+                    {counts.drafts > 0 && (
+                      <span className="text-muted-foreground">
+                        · {t("pages.pim.brands.draftsNote", { count: counts.drafts })}
+                      </span>
+                    )}
+                  </>
+                )}
                 {brand.website_url && (
                   <a
                     href={brand.website_url}
