@@ -58,3 +58,4 @@ docs/superpowers/
 
 # Git worktrees created by superpowers:using-git-worktrees
 .worktrees/
+.superpowers/
