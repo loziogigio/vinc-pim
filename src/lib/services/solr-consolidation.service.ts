@@ -1,5 +1,5 @@
 import type { Model } from "mongoose";
-import { buildNeedsIndexingFilter, markSolrIndexed, mongoChannelClause, solrChannelQuery } from "./solr-sync-state";
+import { buildNeedsIndexingFilter, markSolrIndexed, mongoChannelClause, solrChannelQuery, UNTAGGED_CHANNEL } from "./solr-sync-state";
 
 export interface ConsolidationAdapter {
   bulkIndexProducts(products: any[]): Promise<{
@@ -72,4 +72,78 @@ export async function consolidateChannel(
   }
 
   return result;
+}
+
+export interface ChannelGap {
+  channel: string;
+  published: number;
+  indexed: number;
+  missing: number;
+  stale: number;
+  in_sync: boolean;
+}
+
+export interface SyncScan {
+  channels: ChannelGap[];
+  totals: ChannelGap;
+}
+
+/** Distinct channels among current products, plus "(untagged)" if any product has none. */
+export async function getScanChannels(model: Model<any>): Promise<string[]> {
+  const distinct: string[] = await model.distinct("channels", { isCurrent: true });
+  const channels = distinct.filter(Boolean);
+  const untaggedCount = await model.countDocuments({
+    isCurrent: true,
+    $or: [{ channels: { $exists: false } }, { channels: { $size: 0 } }],
+  });
+  if (untaggedCount > 0) channels.push(UNTAGGED_CHANNEL);
+  return channels;
+}
+
+/** On-demand per-channel gap between published (Mongo) and the Solr search index. */
+export async function computeSyncScan(params: {
+  model: Model<any>;
+  adapter: Pick<ConsolidationAdapter, "fetchAllEntityCodes"> & {
+    countByQuery(query: string): Promise<number>;
+  };
+  channels: string[];
+}): Promise<SyncScan> {
+  const { model, adapter, channels } = params;
+  const rows: ChannelGap[] = [];
+
+  for (const channel of channels) {
+    const scope = mongoChannelClause(channel);
+    const published = await model.countDocuments({
+      isCurrent: true,
+      status: "published",
+      include_faceting: true,
+      ...scope,
+    });
+    const missing = await model.countDocuments(buildNeedsIndexingFilter(channel));
+    const indexed = await adapter.countByQuery(
+      `${solrChannelQuery(channel)} AND include_faceting:true`
+    );
+
+    const solrCodes = await adapter.fetchAllEntityCodes(solrChannelQuery(channel));
+    let stale = 0;
+    if (solrCodes.length > 0) {
+      const publishedDocs: any[] = await model
+        .find({ isCurrent: true, status: "published", ...scope }, { entity_code: 1 })
+        .lean();
+      const publishedSet = new Set(publishedDocs.map((d) => d.entity_code));
+      stale = solrCodes.filter((c) => !publishedSet.has(c)).length;
+    }
+
+    rows.push({ channel, published, indexed, missing, stale, in_sync: missing === 0 && stale === 0 });
+  }
+
+  const totals: ChannelGap = {
+    channel: "TOTAL",
+    published: rows.reduce((s, r) => s + r.published, 0),
+    indexed: rows.reduce((s, r) => s + r.indexed, 0),
+    missing: rows.reduce((s, r) => s + r.missing, 0),
+    stale: rows.reduce((s, r) => s + r.stale, 0),
+    in_sync: rows.every((r) => r.in_sync),
+  };
+  return { channels: rows, totals };
 }
