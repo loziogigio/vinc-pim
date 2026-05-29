@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
-import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
+import { syncQueue } from "@/lib/queue/queues";
+import { isSolrEnabled } from "@/config/project.config";
 import { nanoid } from "nanoid";
 import { readExcel } from "@/lib/utils/excel";
 
@@ -242,31 +243,32 @@ async function processAssociationJob(
       { $set: { product_count: productCount } }
     );
 
-    // Sync affected products to Solr
+    // Queue affected products for batched Solr re-sync (50/batch, async) — same
+    // BullMQ path as ERP imports; the worker uses a tenant-scoped adapter so
+    // synonym_terms_text_* are re-derived.
     let solrSynced = 0;
-    const adapterConfigs = loadAdapterConfigs(tenantId);
-    if (adapterConfigs.solr?.enabled && successful > 0) {
-      console.log(`Starting Solr sync for ${entityCodes.length} products after synonym dictionary import`);
-
-      const products = await PIMProductModel.find({
-        entity_code: { $in: entityCodes },
-        isCurrent: true,
-      }).lean();
-
-      const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
-
-      for (const product of products) {
-        try {
-          const result = await solrAdapter.syncProduct(product as any);
-          if (result.success) {
-            solrSynced++;
-          }
-        } catch (error: any) {
-          console.error(`Solr sync error for ${product.entity_code}:`, error.message);
-        }
+    if (isSolrEnabled() && successful > 0 && entityCodes.length > 0) {
+      const SYNC_BATCH_SIZE = 50;
+      const stamp = Date.now();
+      let batches = 0;
+      for (let i = 0; i < entityCodes.length; i += SYNC_BATCH_SIZE) {
+        const batchIds = entityCodes.slice(i, i + SYNC_BATCH_SIZE);
+        batches += 1;
+        await syncQueue.add(
+          "bulk-sync-batch",
+          {
+            product_id: `synonym-import-${dictionaryKey}-${stamp}-${batches}`,
+            product_ids: batchIds,
+            operation: "bulk-sync",
+            channels: ["solr"],
+            tenant_id: tenantId,
+            priority: "high",
+          },
+          { priority: 1 }
+        );
       }
-
-      console.log(`Synced ${solrSynced}/${products.length} products to Solr after ${action === "add" ? "adding to" : "removing from"} dictionary "${dictionaryKey}"`);
+      solrSynced = entityCodes.length;
+      console.log(`Queued ${solrSynced} products (${batches} batches) for Solr sync after ${action === "add" ? "adding to" : "removing from"} dictionary "${dictionaryKey}"`);
     }
 
     // Mark job as completed

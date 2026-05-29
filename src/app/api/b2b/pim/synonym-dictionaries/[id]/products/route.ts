@@ -1,47 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
-import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
-import { Model } from "mongoose";
+import { syncQueue } from "@/lib/queue/queues";
+import { isSolrEnabled } from "@/config/project.config";
 import { safeRegexQuery } from "@/lib/security";
 
 /**
- * Sync products to Solr after synonym_keys change
+ * Queue batched Solr re-sync for products whose synonym_keys changed.
+ * Uses the BullMQ syncQueue (50/batch) — async, one commit per batch, like ERP imports.
  */
 async function syncProductsToSolr(
   entityCodes: string[],
-  PIMProductModel: Model<any>,
-  tenantDb: string,
-  tenantId: string
-): Promise<{ synced: number; errors: string[] }> {
-  const adapterConfigs = loadAdapterConfigs(tenantId);
-  if (!adapterConfigs.solr?.enabled) {
-    return { synced: 0, errors: ["Solr is not enabled"] };
+  tenantId: string,
+  dictionaryKey: string
+): Promise<{ queued: number; batches: number }> {
+  if (!isSolrEnabled() || entityCodes.length === 0) {
+    return { queued: 0, batches: 0 };
   }
 
-  const products = await PIMProductModel.find({
-    entity_code: { $in: entityCodes },
-    isCurrent: true,
-  }).lean();
-
-  const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
-  let syncedCount = 0;
-  const errors: string[] = [];
-
-  for (const product of products) {
-    try {
-      const result = await solrAdapter.syncProduct(product as any);
-      if (result.success) {
-        syncedCount++;
-      } else {
-        errors.push(`${product.entity_code}: ${result.error}`);
-      }
-    } catch (error: any) {
-      errors.push(`${product.entity_code}: ${error.message}`);
-    }
+  const SYNC_BATCH_SIZE = 50;
+  const stamp = Date.now();
+  let batches = 0;
+  for (let i = 0; i < entityCodes.length; i += SYNC_BATCH_SIZE) {
+    const batchIds = entityCodes.slice(i, i + SYNC_BATCH_SIZE);
+    batches += 1;
+    await syncQueue.add(
+      "bulk-sync-batch",
+      {
+        product_id: `synonym-${dictionaryKey}-${stamp}-${batches}`,
+        product_ids: batchIds,
+        operation: "bulk-sync",
+        channels: ["solr"],
+        tenant_id: tenantId,
+        priority: "high",
+      },
+      { priority: 1 }
+    );
   }
-
-  return { synced: syncedCount, errors };
+  return { queued: entityCodes.length, batches };
 }
 
 // GET /api/b2b/pim/synonym-dictionaries/[id]/products - List products with this dictionary
@@ -164,21 +160,18 @@ export async function POST(
     dictionary.product_count = newCount;
     await dictionary.save();
 
-    // Sync affected products to Solr
-    let solrSync = { synced: 0, errors: [] as string[] };
+    // Queue affected products for batched Solr re-sync
+    let solrSync = { queued: 0, batches: 0 };
     if (result.modifiedCount > 0) {
-      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel, tenantDb, tenantId);
-      console.log(`Synced ${solrSync.synced} products to Solr after adding to dictionary "${dictionary.key}"`);
+      solrSync = await syncProductsToSolr(entity_codes, tenantId, dictionary.key);
+      console.log(`Queued ${solrSync.queued} products for Solr sync after adding to dictionary "${dictionary.key}"`);
     }
 
     return NextResponse.json({
       success: true,
       added: result.modifiedCount,
       message: `Added ${result.modifiedCount} product(s) to dictionary`,
-      solrSync: {
-        synced: solrSync.synced,
-        errors: solrSync.errors.length > 0 ? solrSync.errors.slice(0, 5) : undefined,
-      },
+      solrSync,
     });
   } catch (error) {
     console.error("Error adding products to dictionary:", error);
@@ -237,21 +230,18 @@ export async function DELETE(
     dictionary.product_count = newCount;
     await dictionary.save();
 
-    // Sync affected products to Solr
-    let solrSync = { synced: 0, errors: [] as string[] };
+    // Queue affected products for batched Solr re-sync
+    let solrSync = { queued: 0, batches: 0 };
     if (result.modifiedCount > 0) {
-      solrSync = await syncProductsToSolr(entity_codes, PIMProductModel, tenantDb, tenantId);
-      console.log(`Synced ${solrSync.synced} products to Solr after removing from dictionary "${dictionary.key}"`);
+      solrSync = await syncProductsToSolr(entity_codes, tenantId, dictionary.key);
+      console.log(`Queued ${solrSync.queued} products for Solr sync after removing from dictionary "${dictionary.key}"`);
     }
 
     return NextResponse.json({
       success: true,
       removed: result.modifiedCount,
       message: `Removed ${result.modifiedCount} product(s) from dictionary`,
-      solrSync: {
-        synced: solrSync.synced,
-        errors: solrSync.errors.length > 0 ? solrSync.errors.slice(0, 5) : undefined,
-      },
+      solrSync,
     });
   } catch (error) {
     console.error("Error removing products from dictionary:", error);
