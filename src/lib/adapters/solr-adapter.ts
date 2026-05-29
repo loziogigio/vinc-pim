@@ -1493,6 +1493,25 @@ export class SolrAdapter extends MarketplaceAdapter {
   }
 
   /**
+   * Delete multiple documents by id (scoped, batched). Never deletes *:*.
+   */
+  async deleteByIds(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const response = await fetch(deleteUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delete: chunk }),
+      });
+      await this.assertSolrUpdateOk(response, `Solr deleteByIds failed (${chunk.length} ids)`);
+    }
+    this.log(`Deleted ${ids.length} docs by id`);
+  }
+
+  /**
    * Delete documents matching a Solr query
    */
   async deleteByQuery(query: string): Promise<void> {
