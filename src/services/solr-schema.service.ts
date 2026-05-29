@@ -588,6 +588,9 @@ const BASE_FIELDS = [
   { name: "brand_ancestors", type: "strings", stored: true, indexed: true },
   { name: "brand_family", type: "string", stored: true, indexed: true },
   { name: "brand_label", type: "lowercase", stored: true, indexed: true },
+  // Tokenized, language-neutral brand name for full-text search (word-order
+  // independent): "cassette pucci" / "pucci cassette" both match brand "Cassette Pucci".
+  { name: "brand_label_text", type: "text_general", stored: true, indexed: true },
   { name: "product_type_path", type: "strings", stored: true, indexed: true },
   { name: "product_type_ancestors", type: "strings", stored: true, indexed: true },
   { name: "product_type_level", type: "pint", stored: true, indexed: true },

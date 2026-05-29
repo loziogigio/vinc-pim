@@ -204,6 +204,9 @@ const SEARCH_FIELDS_CONFIG = [
   { field: 'synonym_terms_text_{lang}', weight: 4500, wildcardWeight: 1800, containsWeight: 600 },
   // Brand/Model (medium weight)
   { field: 'brand_label', weight: 200, wildcardWeight: 80 },
+  // Tokenized brand name — each word is its own token, so multi-word brand
+  // searches match in any order ("cassette pucci" / "pucci cassette").
+  { field: 'brand_label_text', weight: 250, wildcardWeight: 80 },
   { field: 'product_model', weight: 150, wildcardWeight: 50 },
   // Short description sort - LOW (avoid double boost)
   { field: 'short_description_sort_{lang}', weight: 0, wildcardWeight: 50, noExact: true, noContains: true },

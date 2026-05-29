@@ -85,6 +85,7 @@ interface SolrMultilingualDocument {
   brand_ancestors?: string[];        // All ancestor brand IDs
   brand_family?: string;             // Brand family name
   brand_label?: string;              // Brand label for faceting/display
+  brand_label_text?: string;         // Tokenized brand name for full-text search
 
   // Product Type hierarchy for faceting
   product_type_path?: string[];      // Hierarchical ID path: ["tools", "tools/power-tools"]
@@ -717,6 +718,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       brand_ancestors: brandPaths.brand_ancestors,
       brand_family: brandPaths.brand_family,
       brand_label: product.brand?.label,
+      brand_label_text: product.brand?.label,
 
       // Product Type hierarchy for faceting
       product_type_path: productTypePaths.product_type_path,
