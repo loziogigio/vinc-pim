@@ -1376,74 +1376,103 @@ export class SolrAdapter extends MarketplaceAdapter {
     success: number;
     failed: number;
     errors: string[];
+    succeeded: string[];
+    failedItems: { entity_code: string; error: string }[];
   }> {
-    const results = {
-      success: 0,
-      failed: 0,
-      errors: [] as string[],
-    };
+    const succeeded: string[] = [];
+    const failedItems: { entity_code: string; error: string }[] = [];
 
-    try {
-      // Transform all products
-      const docs = await Promise.all(
-        products.map((p) => this.transformProduct(p, options))
-      );
+    // Transform all products to Solr docs.
+    const docs = await Promise.all(
+      products.map((p) => this.transformProduct(p, options))
+    );
 
-      // Extract synonym fields per doc (full replace drops them, apply via atomic update)
-      const atomicUpdates: Record<string, any>[] = [];
-      for (const doc of docs) {
-        const synonymFields: Record<string, string> = {};
-        for (const key of Object.keys(doc)) {
-          if (key.startsWith('synonym_terms_text_')) {
-            synonymFields[key] = doc[key];
-            delete doc[key];
-          }
-        }
-        if (Object.keys(synonymFields).length > 0) {
-          const atomic: Record<string, any> = { id: doc.id };
-          for (const [field, value] of Object.entries(synonymFields)) {
-            atomic[field] = { set: value };
-          }
-          atomicUpdates.push(atomic);
+    // Extract synonym fields per doc (full replace drops them; applied atomically later).
+    const atomicUpdates: Record<string, any>[] = [];
+    for (const doc of docs) {
+      const synonymFields: Record<string, string> = {};
+      for (const key of Object.keys(doc)) {
+        if (key.startsWith('synonym_terms_text_')) {
+          synonymFields[key] = doc[key];
+          delete doc[key];
         }
       }
+      if (Object.keys(synonymFields).length > 0) {
+        const atomic: Record<string, any> = { id: doc.id };
+        for (const [field, value] of Object.entries(synonymFields)) {
+          atomic[field] = { set: value };
+        }
+        atomicUpdates.push(atomic);
+      }
+    }
 
-      // Send bulk update (docs is already an array)
-      const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+    const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+
+    try {
+      // Fast path: one batch POST for the whole array.
       const response = await fetch(updateUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(docs),
       });
-
       await this.assertSolrUpdateOk(response, `Bulk index failed (${docs.length} docs)`);
-
-      // Apply synonym atomic updates after main docs are indexed
-      if (atomicUpdates.length > 0) {
-        const atomicResponse = await fetch(updateUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(atomicUpdates),
-        });
+      for (const doc of docs) succeeded.push(doc.entity_code);
+    } catch (batchError: any) {
+      // Resilient path: one bad doc must not drop its batch-mates.
+      this.logError(
+        `Batch index failed (${docs.length} docs), falling back to per-doc`,
+        batchError
+      );
+      for (const doc of docs) {
         try {
+          const r = await fetch(updateUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([doc]),
+          });
+          await this.assertSolrUpdateOk(r, `Index failed for ${doc.entity_code}`);
+          succeeded.push(doc.entity_code);
+        } catch (docError: any) {
+          failedItems.push({ entity_code: doc.entity_code, error: docError.message });
+        }
+      }
+    }
+
+    // Apply synonym atomic updates for docs that indexed OK (best-effort).
+    if (atomicUpdates.length > 0 && succeeded.length > 0) {
+      const okIds = new Set(succeeded);
+      const toApply = atomicUpdates.filter((a) => okIds.has(String(a.id)));
+      if (toApply.length > 0) {
+        try {
+          const atomicResponse = await fetch(updateUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(toApply),
+          });
           await this.assertSolrUpdateOk(atomicResponse, 'Bulk synonym atomic update failed');
         } catch (err: any) {
           this.logError(err.message, err);
         }
       }
-
-      results.success = products.length;
-      const langInfo = options?.language ? ` for language ${options.language}` : '';
-      this.log(`✓ Bulk indexed ${products.length} products${langInfo}`);
-    } catch (error: any) {
-      results.failed = products.length;
-      results.errors.push(error.message);
-      this.logError('Bulk index failed', error);
     }
 
-    return results;
+    const errors = failedItems.map((f) => `${f.entity_code}: ${f.error}`);
+    if (failedItems.length === 0) {
+      this.log(`✓ Bulk indexed ${succeeded.length} products`);
+    } else {
+      this.logError(
+        `Bulk index: ${succeeded.length} ok, ${failedItems.length} failed`,
+        new Error(errors.slice(0, 5).join('; '))
+      );
+    }
+
+    return {
+      success: succeeded.length,
+      failed: failedItems.length,
+      errors,
+      succeeded,
+      failedItems,
+    };
   }
 
   /**
