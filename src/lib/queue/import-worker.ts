@@ -836,7 +836,6 @@ async function processImport(job: Job<ImportJobData>) {
               add_to_cart_30d: 0,
               conversions_30d: 0,
               priority_score: 0,
-              last_synced_at: new Date(),
             },
             // Conflict tracking
             last_api_update_at: new Date(),
