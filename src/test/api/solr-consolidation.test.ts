@@ -57,4 +57,31 @@ describe("consolidateChannel", () => {
     const after: any = await m.findOne({ entity_code: "MISSING" }).lean();
     expect(after.solr_indexed_at).toBeInstanceOf(Date);
   });
+
+  it("re-indexes an explicit entity_codes set regardless of staleness", async () => {
+    const m = Model();
+    await m.create(baseProduct("X1"));
+    await m.create(baseProduct("X2"));
+    // Both already indexed — would NOT be 'missing'…
+    await m.updateOne({ entity_code: "X1" }, { $set: { solr_indexed_at: new Date() } }, { timestamps: false });
+    await m.updateOne({ entity_code: "X2" }, { $set: { solr_indexed_at: new Date() } }, { timestamps: false });
+
+    const indexed: string[] = [];
+    const adapter = {
+      bulkIndexProducts: vi.fn(async (products: any[]) => {
+        const codes = products.map((p) => p.entity_code);
+        indexed.push(...codes);
+        return { success: codes.length, failed: 0, errors: [], succeeded: codes, failedItems: [] };
+      }),
+      fetchAllEntityCodes: vi.fn(async () => []),
+      deleteByIds: vi.fn(async () => {}),
+    };
+
+    const res = await consolidateChannel({
+      model: m, adapter: adapter as any, entityCodes: ["X1"],
+    });
+
+    expect(indexed).toEqual(["X1"]); // only the requested one, even though not "missing"
+    expect(res.indexed).toBe(1);
+  });
 });

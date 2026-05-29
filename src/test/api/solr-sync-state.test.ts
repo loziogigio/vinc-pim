@@ -15,6 +15,9 @@ import { PIMProductSchema } from "@/lib/db/models/pim-product";
 import {
   markSolrIndexed,
   buildNeedsIndexingFilter,
+  UNTAGGED_CHANNEL,
+  mongoChannelClause,
+  solrChannelQuery,
 } from "@/lib/services/solr-sync-state";
 
 const Model = () =>
@@ -98,5 +101,29 @@ describe("markSolrIndexed", () => {
   it("is a no-op for an empty list", async () => {
     const m = Model();
     await expect(markSolrIndexed(m, [])).resolves.toBeUndefined();
+  });
+});
+
+describe("channel scope helpers", () => {
+  it("solrChannelQuery handles real / untagged / none", () => {
+    expect(solrChannelQuery("b2b")).toBe("channels:b2b");
+    expect(solrChannelQuery(UNTAGGED_CHANNEL)).toBe("-channels:[* TO *]");
+    expect(solrChannelQuery()).toBe("*:*");
+  });
+
+  it("mongoChannelClause handles real / untagged / none", () => {
+    expect(mongoChannelClause("b2b")).toEqual({ channels: "b2b" });
+    expect(mongoChannelClause(UNTAGGED_CHANNEL)).toEqual({
+      $or: [{ channels: { $exists: false } }, { channels: { $size: 0 } }],
+    });
+    expect(mongoChannelClause()).toEqual({});
+  });
+
+  it("buildNeedsIndexingFilter for untagged uses $and (no $or collision)", () => {
+    const f = buildNeedsIndexingFilter(UNTAGGED_CHANNEL);
+    expect(Array.isArray(f.$and)).toBe(true);
+    expect(f.channels).toBeUndefined();
+    expect(JSON.stringify(f)).toContain("solr_indexed_at");
+    expect(JSON.stringify(f)).toContain("$size");
   });
 });
