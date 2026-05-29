@@ -100,6 +100,89 @@ export async function getScanChannels(model: Model<any>): Promise<string[]> {
   return channels;
 }
 
+export interface GapDetailParams {
+  model: Model<any>;
+  adapter: Pick<ConsolidationAdapter, "fetchAllEntityCodes">;
+  channel?: string;
+  type: "missing" | "stale";
+  page: number;
+  limit: number;
+  q?: string;
+}
+
+export interface GapDetailRow {
+  entity_code: string;
+  sku?: string;
+  name?: any;
+  status?: string;
+  source_job_id?: string;
+  solr_indexed_at?: Date | null;
+}
+
+const GAP_DETAIL_PROJECTION = {
+  entity_code: 1, sku: 1, name: 1, status: 1,
+  "source.job_id": 1, solr_indexed_at: 1,
+};
+
+function toGapRow(d: any): GapDetailRow {
+  return {
+    entity_code: d.entity_code,
+    sku: d.sku,
+    name: d.name,
+    status: d.status,
+    source_job_id: d.source?.job_id,
+    solr_indexed_at: d.solr_indexed_at ?? null,
+  };
+}
+
+export async function listGapDetail(params: GapDetailParams): Promise<{
+  items: GapDetailRow[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}> {
+  const { model, adapter, channel, type, page, limit, q } = params;
+  const skip = (page - 1) * limit;
+
+  if (type === "missing") {
+    const filter: Record<string, any> = buildNeedsIndexingFilter(channel);
+    if (q) {
+      const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      filter.$and = [...(filter.$and ?? []), { $or: [{ entity_code: rx }, { sku: rx }, { "name.it": rx }] }];
+    }
+    const [docs, total] = await Promise.all([
+      model.find(filter, GAP_DETAIL_PROJECTION).sort({ entity_code: 1 }).skip(skip).limit(limit).lean(),
+      model.countDocuments(filter),
+    ]);
+    return {
+      items: (docs as any[]).map(toGapRow),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  // stale: Solr codes for the channel that are not currently published.
+  const solrCodes = await adapter.fetchAllEntityCodes(solrChannelQuery(channel));
+  const publishedDocs: any[] = await model
+    .find({ isCurrent: true, status: "published", ...mongoChannelClause(channel) }, { entity_code: 1 })
+    .lean();
+  const publishedSet = new Set(publishedDocs.map((d) => d.entity_code));
+  let stale = solrCodes.filter((c) => !publishedSet.has(c));
+  if (q) {
+    const lc = q.toLowerCase();
+    stale = stale.filter((c) => c.toLowerCase().includes(lc));
+  }
+  stale.sort();
+  const total = stale.length;
+  const pageCodes = stale.slice(skip, skip + limit);
+  // Hydrate whatever Mongo still has for these codes (orphans may be absent / non-published).
+  const hydrated: any[] = await model
+    .find({ entity_code: { $in: pageCodes } }, GAP_DETAIL_PROJECTION)
+    .lean();
+  const byCode = new Map(hydrated.map((d) => [d.entity_code, d]));
+  const items = pageCodes.map((code) =>
+    byCode.has(code) ? toGapRow(byCode.get(code)) : { entity_code: code }
+  );
+  return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+}
+
 /** On-demand per-channel gap between published (Mongo) and the Solr search index. */
 export async function computeSyncScan(params: {
   model: Model<any>;
