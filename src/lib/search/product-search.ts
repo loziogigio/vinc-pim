@@ -32,3 +32,26 @@ export async function buildProductSearchConditions(
     { parent_entity_code: safeSearch },
   ];
 }
+
+/** Sentinel param value for "products with no channel assigned". */
+export const UNTAGGED_CHANNEL_PARAM = "__untagged__";
+
+/**
+ * Apply a sales-channel filter to a product query in place.
+ * - falsy channel        → no-op (all channels)
+ * - UNTAGGED_CHANNEL_PARAM → products with no/empty channels array
+ * - any code             → products whose channels array contains it
+ *
+ * Uses `$and` so it never clobbers an existing `$or` (e.g. text search).
+ */
+export function applyChannelFilter(
+  query: Record<string, any>,
+  channel?: string | null
+): void {
+  if (!channel) return;
+  const clause =
+    channel === UNTAGGED_CHANNEL_PARAM
+      ? { $or: [{ channels: { $exists: false } }, { channels: { $size: 0 } }] }
+      : { channels: channel };
+  query.$and = [...((query.$and as unknown[]) ?? []), clause];
+}

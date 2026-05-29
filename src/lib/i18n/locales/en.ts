@@ -397,6 +397,8 @@ const en = {
         removeSelected: "Remove Selected",
         importProducts: "Import Products",
         associatedProducts: "Associated Products",
+        allChannels: "All channels",
+        noChannel: "(no channel)",
         activate: "Activate",
         deactivate: "Deactivate",
         quickActions: "Quick Actions",

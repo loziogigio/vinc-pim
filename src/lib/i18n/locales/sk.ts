@@ -398,6 +398,8 @@ const sk = {
         removeSelected: "Odstr\u00e1ni\u0165 vybran\u00e9",
         importProducts: "Importova\u0165 produkty",
         associatedProducts: "Priraden\u00e9 produkty",
+        allChannels: "V\u0161etky kan\u00e1ly",
+        noChannel: "(bez kan\u00e1la)",
         activate: "Aktivova\u0165",
         deactivate: "Deaktivova\u0165",
         quickActions: "R\u00fdchle akcie",

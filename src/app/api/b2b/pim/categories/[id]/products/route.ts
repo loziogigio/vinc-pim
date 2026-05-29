@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { buildCategoryEmbedding } from "@/lib/services/category.service";
-import { buildProductSearchConditions } from "@/lib/search/product-search";
+import { buildProductSearchConditions, applyChannelFilter } from "@/lib/search/product-search";
 
 // GET /api/b2b/pim/categories/[id]/products - Get products for a category
 export async function GET(
@@ -27,6 +27,7 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const channel = searchParams.get("channel") || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
     const skip = (page - 1) * limit;
@@ -39,6 +40,8 @@ export async function GET(
     if (search) {
       query.$or = await buildProductSearchConditions(search, tenantDb);
     }
+
+    applyChannelFilter(query, channel);
 
     const [products, total] = await Promise.all([
       PIMProductModel.find(query)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { buildProductSearchConditions } from "@/lib/search/product-search";
+import { buildProductSearchConditions, applyChannelFilter } from "@/lib/search/product-search";
 
 // GET /api/b2b/pim/product-types/[id]/products - Get products for a product type
 export async function GET(
@@ -29,6 +29,7 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const channel = searchParams.get("channel") || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
     const skip = (page - 1) * limit;
@@ -56,6 +57,8 @@ export async function GET(
       ];
       delete query.$or;
     }
+
+    applyChannelFilter(query, channel);
 
     const [products, total] = await Promise.all([
       PIMProductModel.find(query)

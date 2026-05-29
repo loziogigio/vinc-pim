@@ -398,6 +398,8 @@ const it = {
         removeSelected: "Rimuovi Selezionati",
         importProducts: "Importa Prodotti",
         associatedProducts: "Prodotti Associati",
+        allChannels: "Tutti i canali",
+        noChannel: "(senza canale)",
         activate: "Attiva",
         deactivate: "Disattiva",
         quickActions: "Azioni Rapide",

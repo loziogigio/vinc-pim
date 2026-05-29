@@ -94,6 +94,8 @@ export function ProductAssociationSection({
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [channel, setChannel] = useState("");
+  const [channels, setChannels] = useState<{ code: string; name: string }[]>([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
@@ -131,6 +133,7 @@ export function ProductAssociationSection({
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
+      if (channel) params.set("channel", channel);
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
@@ -150,11 +153,21 @@ export function ProductAssociationSection({
     } finally {
       setLoading(false);
     }
-  }, [entityId, search, page]);
+  }, [entityId, search, page, channel]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Load available sales channels once for the channel filter
+  useEffect(() => {
+    fetch("/api/b2b/channels")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d?.channels)) setChannels(d.channels);
+      })
+      .catch(() => {});
+  }, []);
 
   // Selection handlers
   function selectAllVisible() {
@@ -170,6 +183,7 @@ export function ProductAssociationSection({
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
+      if (channel) params.set("channel", channel);
       params.set("page", "1");
       params.set("limit", "1000");
 
@@ -500,17 +514,35 @@ export function ProductAssociationSection({
       {/* Search and Remove */}
       <div className="px-6 py-4 border-b border-border">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              value={search}
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:max-w-xl">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search products..."
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:border-primary focus:outline-none text-sm"
+              />
+            </div>
+            <select
+              value={channel}
               onChange={(e) => {
-                setSearch(e.target.value);
+                setChannel(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search products..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:border-primary focus:outline-none text-sm"
-            />
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            >
+              <option value="">{t("pages.pim.common.allChannels")}</option>
+              {channels.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+              <option value="__untagged__">{t("pages.pim.common.noChannel")}</option>
+            </select>
           </div>
           {selectedProducts.size > 0 && (
             <button
