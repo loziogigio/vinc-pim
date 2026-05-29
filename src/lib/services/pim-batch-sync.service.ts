@@ -6,6 +6,7 @@
 import { connectWithModels } from "@/lib/db/connection";
 import { loadAdapterConfigs, SolrAdapter } from "@/lib/adapters";
 import { isSolrEnabled } from "@/config/project.config";
+import { markSolrIndexed } from "@/lib/services/solr-sync-state";
 import {
   calculateCompletenessScore,
   findCriticalIssues,
@@ -566,6 +567,7 @@ async function performResync(
       indexed += result.success;
       failed += result.failed;
       if (result.errors.length) errors.push(...result.errors);
+      await markSolrIndexed(PIMProduct, result.succeeded);
       batch = [];
     }
   }
@@ -576,6 +578,7 @@ async function performResync(
     indexed += result.success;
     failed += result.failed;
     if (result.errors.length) errors.push(...result.errors);
+    await markSolrIndexed(PIMProduct, result.succeeded);
   }
 
   // Persist updated scores to MongoDB

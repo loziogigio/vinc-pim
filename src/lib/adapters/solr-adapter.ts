@@ -1382,10 +1382,23 @@ export class SolrAdapter extends MarketplaceAdapter {
     const succeeded: string[] = [];
     const failedItems: { entity_code: string; error: string }[] = [];
 
-    // Transform all products to Solr docs.
-    const docs = await Promise.all(
+    // Transform products to Solr docs. A product that fails to transform
+    // (e.g. malformed data) is recorded as a per-doc failure rather than
+    // aborting the whole batch.
+    const docs: any[] = [];
+    const transformed = await Promise.allSettled(
       products.map((p) => this.transformProduct(p, options))
     );
+    transformed.forEach((t, i) => {
+      if (t.status === 'fulfilled') {
+        docs.push(t.value);
+      } else {
+        failedItems.push({
+          entity_code: products[i].entity_code,
+          error: `transform failed: ${t.reason?.message ?? String(t.reason)}`,
+        });
+      }
+    });
 
     // Extract synonym fields per doc (full replace drops them; applied atomically later).
     const atomicUpdates: Record<string, any>[] = [];

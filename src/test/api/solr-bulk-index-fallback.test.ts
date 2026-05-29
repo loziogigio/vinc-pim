@@ -59,4 +59,24 @@ describe("bulkIndexProducts per-doc fallback", () => {
     expect(result.succeeded.sort()).toEqual(["A", "B"]);
     expect(result.failedItems).toHaveLength(0);
   });
+
+  it("records a transform failure as a per-doc failure without aborting the batch", async () => {
+    const adapter = makeAdapter();
+    vi.spyOn(adapter as any, "transformProduct").mockImplementation(async (p: any) => {
+      if (p.entity_code === "BADTRANSFORM") throw new Error("kaboom");
+      return { id: p.entity_code, entity_code: p.entity_code };
+    });
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ responseHeader: { status: 0 } }), { status: 200 })
+    ));
+
+    const result = await adapter.bulkIndexProducts(
+      [{ entity_code: "A" }, { entity_code: "BADTRANSFORM" }, { entity_code: "C" }] as any
+    );
+
+    expect(result.succeeded.sort()).toEqual(["A", "C"]);
+    expect(result.failedItems).toHaveLength(1);
+    expect(result.failedItems[0].entity_code).toBe("BADTRANSFORM");
+    expect(result.failedItems[0].error).toContain("transform failed");
+  });
 });
