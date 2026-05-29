@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
-import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
+import { isSolrEnabled } from "@/config/project.config";
+import { syncQueue } from "@/lib/queue/queues";
 
 /**
  * POST /api/b2b/pim/synonym-dictionaries/[id]/sync
- * Sync all products associated with this dictionary to Solr
+ * Queue all products using this dictionary for batched Solr re-index
+ * (so synonym_terms_text_* are refreshed). Uses the same BullMQ batch path
+ * as ERP imports — async, 50 products/batch, one commit per batch.
  */
 export async function POST(
   req: NextRequest,
@@ -32,60 +35,59 @@ export async function POST(
     }
 
     // Check if Solr is enabled
-    const adapterConfigs = loadAdapterConfigs(tenantId);
-    if (!adapterConfigs.solr?.enabled) {
-      return NextResponse.json(
-        { error: "Solr is not enabled" },
-        { status: 400 }
-      );
+    if (!isSolrEnabled()) {
+      return NextResponse.json({ error: "Solr is not enabled" }, { status: 400 });
     }
 
-    // Get all products associated with this dictionary
-    const products = await PIMProductModel.find({
-      synonym_keys: dictionary.key,
-      isCurrent: true,
-    }).lean();
+    // Collect entity_codes of every product using this dictionary
+    const products = await PIMProductModel.find(
+      { synonym_keys: dictionary.key, isCurrent: true },
+      { entity_code: 1 }
+    ).lean();
+    const entityCodes = (products as any[])
+      .map((p) => p.entity_code)
+      .filter(Boolean);
 
-    if (products.length === 0) {
+    if (entityCodes.length === 0) {
       return NextResponse.json({
         success: true,
-        synced: 0,
+        queued: 0,
+        batches: 0,
         message: "No products to sync",
       });
     }
 
-    // Sync to Solr
-    const solrAdapter = new SolrAdapter(adapterConfigs.solr, tenantDb);
-    let syncedCount = 0;
-    const errors: string[] = [];
-
-    for (const product of products) {
-      try {
-        const result = await solrAdapter.syncProduct(product as any);
-        if (result.success) {
-          syncedCount++;
-        } else {
-          errors.push(`${product.entity_code}: ${result.error}`);
-        }
-      } catch (error: any) {
-        errors.push(`${product.entity_code}: ${error.message}`);
-      }
+    // Queue batched Solr sync jobs (50/batch) — same path the ERP import uses.
+    // The sync worker builds a tenant-scoped adapter, so synonym_terms_text_*
+    // are re-derived and indexed in bulk (one commit per batch, async).
+    const SYNC_BATCH_SIZE = 50;
+    const stamp = Date.now();
+    let batches = 0;
+    for (let i = 0; i < entityCodes.length; i += SYNC_BATCH_SIZE) {
+      const batchIds = entityCodes.slice(i, i + SYNC_BATCH_SIZE);
+      batches += 1;
+      await syncQueue.add(
+        "bulk-sync-batch",
+        {
+          product_id: `synonym-${id}-${stamp}-${batches}`,
+          product_ids: batchIds,
+          operation: "bulk-sync",
+          channels: ["solr"],
+          tenant_id: tenantId,
+          priority: "high",
+        },
+        { priority: 1 }
+      );
     }
 
     console.log(
-      `Synced ${syncedCount}/${products.length} products to Solr for dictionary "${dictionary.key}"`
+      `Queued ${batches} Solr sync batch(es) for ${entityCodes.length} products (dictionary "${dictionary.key}")`
     );
 
-    if (errors.length > 0) {
-      console.warn(`Sync errors:`, errors.slice(0, 10));
-    }
-
-    return NextResponse.json({
-      success: true,
-      synced: syncedCount,
-      total: products.length,
-      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
-    });
+    return NextResponse.json(
+      { success: true, status: "queued", queued: entityCodes.length, batches },
+      { status: 202 }
+    );
   } catch (error) {
     console.error("Error syncing to Solr:", error);
     return NextResponse.json(

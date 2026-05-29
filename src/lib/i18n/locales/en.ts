@@ -4803,6 +4803,7 @@ const en = {
         },
       },
       productAssociation: {
+        queuedForSync: "Queued {{count}} product(s) for sync — running in background",
         failedToAdd: "Failed to add products",
         failedToRemove: "Failed to remove products",
         failedToSync: "Failed to sync products to Solr",

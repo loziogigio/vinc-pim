@@ -329,7 +329,13 @@ export function ProductAssociationSection({
 
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Synced ${data.synced} product(s) to Solr`);
+        if (data.queued !== undefined) {
+          toast.success(
+            t("pages.pim.productAssociation.queuedForSync", { count: data.queued })
+          );
+        } else {
+          toast.success(`Synced ${data.synced} product(s) to Solr`);
+        }
       } else {
         const error = await res.json();
         toast.error(error.error || t("pages.pim.productAssociation.syncFailed"));

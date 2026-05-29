@@ -4776,6 +4776,7 @@ const sk = {
         },
       },
       productAssociation: {
+        queuedForSync: "{{count}} produkt(ov) zaradených na synchronizáciu — beží na pozadí",
         failedToAdd: "Nepodarilo sa pridať produkty",
         failedToRemove: "Nepodarilo sa odstrániť produkty",
         failedToSync: "Nepodarilo sa synchronizovať produkty so Solr",

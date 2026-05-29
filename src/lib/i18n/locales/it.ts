@@ -4800,6 +4800,7 @@ const it = {
         },
       },
       productAssociation: {
+        queuedForSync: "{{count}} prodotto/i in coda per la sincronizzazione — in corso in background",
         failedToAdd: "Impossibile aggiungere i prodotti",
         failedToRemove: "Impossibile rimuovere i prodotti",
         failedToSync: "Impossibile sincronizzare i prodotti con Solr",
