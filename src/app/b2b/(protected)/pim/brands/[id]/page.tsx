@@ -39,6 +39,7 @@ export default function BrandDetailPage() {
     searchable: number;
     variant_parents: number;
     drafts: number;
+    by_channel: { channel: string | null; count: number }[];
   } | null>(null);
 
   useEffect(() => {
@@ -173,6 +174,20 @@ export default function BrandDetailPage() {
                   </a>
                 )}
               </div>
+              {counts && counts.by_channel.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-1.5">
+                  <span className="font-medium">{t("pages.pim.brands.inSearchByChannel")}:</span>
+                  {counts.by_channel.map((c, i) => (
+                    <span key={c.channel ?? "untagged"} className="inline-flex items-center gap-1">
+                      {i > 0 && <span className="text-muted-foreground/60">·</span>}
+                      <span className="text-foreground font-medium">
+                        {c.channel ?? t("pages.pim.brands.untaggedChannel")}
+                      </span>
+                      <span>{c.count}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

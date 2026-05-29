@@ -29,16 +29,29 @@ export async function GET(
     // Live product-count breakdown so the UI can explain why search shows fewer
     // than the published total: published = searchable + variant parents.
     const brandMatch = { isCurrent: true, "brand.brand_id": id };
-    const [published, searchable, variant_parents, drafts] = await Promise.all([
+    const [published, searchable, variant_parents, drafts, byChannelAgg] = await Promise.all([
       PIMProduct.countDocuments({ ...brandMatch, status: "published" }),
       PIMProduct.countDocuments({ ...brandMatch, status: "published", include_faceting: true }),
       PIMProduct.countDocuments({ ...brandMatch, status: "published", include_faceting: false }),
       PIMProduct.countDocuments({ ...brandMatch, status: "draft" }),
+      // Searchable (published + include_faceting) split by sales channel — this is
+      // what each channel's storefront search actually surfaces for the brand.
+      PIMProduct.aggregate([
+        { $match: { ...brandMatch, status: "published", include_faceting: true } },
+        { $unwind: { path: "$channels", preserveNullAndEmptyArrays: true } },
+        { $group: { _id: "$channels", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
     ]);
+
+    const by_channel = (byChannelAgg as any[]).map((c) => ({
+      channel: c._id ?? null,
+      count: c.count,
+    }));
 
     return NextResponse.json({
       brand,
-      counts: { published, searchable, variant_parents, drafts },
+      counts: { published, searchable, variant_parents, drafts, by_channel },
     });
   } catch (error) {
     console.error("Error fetching brand:", error);

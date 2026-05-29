@@ -715,6 +715,8 @@ const sk = {
         variantParentsGrouped: "hlavn\u00e9 produkty (zoskupen\u00e9)",
         countsHelp: "Hlavn\u00e9 produkty sa zobrazuj\u00fa zoskupen\u00e9 pod ich variantmi, tak\u017ee vyh\u013ead\u00e1vanie zobrazuje menej polo\u017eiek ako publikovan\u00fd s\u00fa\u010det. Publikovan\u00e9 = zobrazen\u00e9 vo vyh\u013ead\u00e1van\u00ed + hlavn\u00e9 produkty.",
         draftsNote: "{{count}} konceptov (nepublikovan\u00e9)",
+        inSearchByChannel: "Vo vyh\u013ead\u00e1van\u00ed pod\u013ea kan\u00e1la",
+        untaggedChannel: "(bez kan\u00e1la)",
         website: "Webov\u00e1 str\u00e1nka",
         sortImageLabel: "Obr\u00e1zok + N\u00e1zov",
         sortName: "N\u00e1zov",

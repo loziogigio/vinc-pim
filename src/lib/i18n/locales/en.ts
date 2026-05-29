@@ -714,6 +714,8 @@ const en = {
         variantParentsGrouped: "variant parents (grouped)",
         countsHelp: "Variant parents are shown grouped under their variants, so search lists fewer items than the published total. Published = shown in search + variant parents.",
         draftsNote: "{{count}} drafts (not published)",
+        inSearchByChannel: "In search by channel",
+        untaggedChannel: "(no channel)",
         website: "Website",
         sortImageLabel: "Image + Name",
         sortName: "Name",

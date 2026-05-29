@@ -715,6 +715,8 @@ const it = {
         variantParentsGrouped: "prodotti principali (raggruppati)",
         countsHelp: "I prodotti principali vengono mostrati raggruppati sotto le loro varianti, quindi la ricerca elenca meno articoli del totale pubblicato. Pubblicati = visibili nella ricerca + prodotti principali.",
         draftsNote: "{{count}} bozze (non pubblicate)",
+        inSearchByChannel: "Nella ricerca per canale",
+        untaggedChannel: "(senza canale)",
         website: "Sito web",
         sortImageLabel: "Immagine + Nome",
         sortName: "Nome",
