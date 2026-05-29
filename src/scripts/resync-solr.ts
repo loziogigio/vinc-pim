@@ -49,7 +49,10 @@ async function main() {
   console.log(`  Solr URL: ${solrUrl}`);
   console.log(`  Solr Core: ${solrCore}`);
 
-  const solrAdapter = new SolrAdapter(solrConfig);
+  // Pass the tenant DB so transformProduct can resolve synonym dictionaries
+  // (synonym_terms_text_*). Without it, the synonym lookup fails silently and
+  // the full-doc reindex DROPS synonyms.
+  const solrAdapter = new SolrAdapter(solrConfig, dbName);
 
   // Ensure Solr collection exists (creates if missing)
   try {
