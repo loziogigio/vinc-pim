@@ -10,6 +10,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { markSolrIndexed } from "@/lib/services/solr-sync-state";
 
 export async function POST(
   request: NextRequest,
@@ -93,15 +94,8 @@ export async function POST(
       );
     }
 
-    // Update the last_synced_at timestamp
-    await PIMProductModel.updateOne(
-      { _id: product._id },
-      {
-        $set: {
-          "analytics.last_synced_at": new Date(),
-        },
-      }
-    );
+    // Stamp the confirmed-sync timestamp WITHOUT bumping updated_at.
+    await markSolrIndexed(PIMProductModel as any, [entity_code]);
 
     return NextResponse.json({
       success: true,
