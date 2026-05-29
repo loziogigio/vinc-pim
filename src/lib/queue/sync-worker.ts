@@ -7,6 +7,7 @@ import { Worker, Job } from 'bullmq';
 import { connectWithModels } from '../db/connection';
 import { initializeAdapters, MarketplaceAdapter } from '../adapters';
 import { SyncJobData, SyncOperation } from '../adapters/types';
+import { markSolrIndexed } from '@/lib/services/solr-sync-state';
 
 /**
  * Per-tenant adapters cache
@@ -269,6 +270,9 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
         // Use bulk indexing for Solr
         if (channel === 'solr' && 'bulkIndexProducts' in adapter) {
           const bulkResult = await (adapter as any).bulkIndexProducts(products, options);
+
+          // Mark ONLY the docs Solr actually acked (timestamps-safe write).
+          await markSolrIndexed(PIMProductModel as any, bulkResult.succeeded ?? []);
 
           console.log(`  ✓ ${adapter.name}: ${bulkResult.success}/${products.length} successful`);
 
