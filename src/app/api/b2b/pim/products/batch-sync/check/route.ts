@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     if (isSolrEnabled()) {
       try {
         const configs = loadAdapterConfigs(auth.tenantId);
-        const adapter = new SolrAdapter(configs.solr, tenantDb);
+        const adapter = new SolrAdapter(configs.solr, auth.tenantDb);
         await adapter.initialize();
 
         const count = await adapter.countByQuery(
