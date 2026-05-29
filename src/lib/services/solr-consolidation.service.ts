@@ -183,6 +183,78 @@ export async function listGapDetail(params: GapDetailParams): Promise<{
   return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 }
 
+// ============================================================
+// Async consolidation job helpers (BatchSyncLog lifecycle)
+// ============================================================
+
+export type ConsolidationOperation = "reindex" | "remove-stale";
+
+export async function createConsolidationLog(
+  BatchSyncLog: Model<any>,
+  opts: { startedBy: string; operation: ConsolidationOperation; channel?: string; entityCodesCount?: number }
+): Promise<{ job_id: string }> {
+  const job_id = `consol-${opts.operation}-${Date.now()}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+  await BatchSyncLog.create({
+    job_id,
+    status: "running",
+    params: {
+      operation: opts.operation,
+      channel: opts.channel ?? null,
+      entity_codes_count: opts.entityCodesCount ?? null,
+    },
+    started_by: opts.startedBy,
+  });
+  return { job_id };
+}
+
+export async function runConsolidation(
+  BatchSyncLog: Model<any>,
+  job_id: string,
+  params: {
+    model: Model<any>;
+    adapter: ConsolidationAdapter;
+    channel?: string;
+    removeStale?: boolean;
+    entityCodes?: string[];
+  }
+): Promise<void> {
+  const startedAt = Date.now();
+  try {
+    const result = await consolidateChannel({
+      model: params.model,
+      adapter: params.adapter,
+      channel: params.channel,
+      removeStale: params.removeStale,
+      entityCodes: params.entityCodes,
+    });
+    await BatchSyncLog.updateOne(
+      { job_id },
+      {
+        $set: {
+          status: "completed",
+          duration_ms: Date.now() - startedAt,
+          // Reuse resync_result so the existing Activity History UI renders it.
+          resync_result: {
+            total: result.indexed + result.failed,
+            eligible: result.indexed + result.failed,
+            indexed: result.indexed,
+            failed: result.failed,
+            batches_processed: 0,
+            score_updates: 0,
+            errors: result.errors,
+          },
+          cleanup_result: { mode: "remove_stale", removed_count: result.removed },
+        },
+      }
+    );
+  } catch (err: any) {
+    await BatchSyncLog.updateOne(
+      { job_id },
+      { $set: { status: "failed", duration_ms: Date.now() - startedAt, error_message: err?.message ?? String(err) } }
+    );
+  }
+}
+
 /** On-demand per-channel gap between published (Mongo) and the Solr search index. */
 export async function computeSyncScan(params: {
   model: Model<any>;
