@@ -129,6 +129,11 @@ export interface IPIMProduct extends Document {
     last_synced_at?: Date;
   };
 
+  // Set ONLY when a Solr write for this product confirms success (never at
+  // import). Authoritative "is this product in the search index?" signal.
+  // Compared against updated_at to detect edited-but-not-resynced products.
+  solr_indexed_at?: Date;
+
   // Manual Editing
   locked_fields: string[]; // Fields protected from auto-import
   manually_edited: boolean;
@@ -556,6 +561,8 @@ const PIMProductSchema = new Schema<IPIMProduct>(
       priority_score: { type: Number, default: 0, index: true },
       last_synced_at: { type: Date },
     },
+
+    solr_indexed_at: { type: Date },
 
     locked_fields: [{ type: String }],
     manually_edited: { type: Boolean, default: false },
@@ -1044,6 +1051,8 @@ PIMProductSchema.index({ channels: 1, status: 1 }); // Channel + status queries
 // and the existing `{ entity_code: 1, isCurrent: 1 }` index can't be used because
 // `isCurrent` is the second key.
 PIMProductSchema.index({ isCurrent: 1, status: 1 });
+// Supports the "needs indexing" gap query (published + searchable + not-yet/stale-synced).
+PIMProductSchema.index({ isCurrent: 1, status: 1, solr_indexed_at: 1 });
 PIMProductSchema.index({ isCurrent: 1, published_at: -1 });
 
 // Wildcard index over the multilingual slug map so the public B2B product
