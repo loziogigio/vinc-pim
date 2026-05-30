@@ -103,6 +103,23 @@ describe("resolveAuthorization", () => {
     expect(authz.permissions.size).toBe(0);
   });
 
+  it("resolves a B2BUser found by Mongo _id (session path)", async () => {
+    const { B2BUser, Role } = await connectWithModels("vinc-test");
+    await Role.create({
+      role_id: "role_byid", name: "ById", permissions: ["customers.view"],
+      scope: { channels: "all", customers: "all", price_lists: "all" },
+    });
+    const created = await B2BUser.create({
+      username: "byid", email: "byid@example.com", passwordHash: "x",
+      companyName: "Acme", role: "admin", role_id: "role_byid",
+    });
+    const authz = await resolveAuthorization({
+      authenticated: true, tenantId: "test", tenantDb: "vinc-test",
+      userId: created._id.toString(), userType: "b2b_user", authMethod: "session",
+    });
+    expect(authz.can("customers.view")).toBe(true);
+  });
+
   it("intersects role permissions with tenant module entitlement", async () => {
     const { B2BUser, Role } = await connectWithModels("vinc-test");
     await Role.create({
