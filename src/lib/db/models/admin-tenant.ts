@@ -113,6 +113,8 @@ export interface ITenant {
   b2b_theme?: string;
   vetrina?: ITenantVetrina;
   enabled_apps?: string[];
+  /** RBAC (Phase 0B): module apps (apps.config ids) this tenant may use. Unset ⇒ all. */
+  enabled_modules?: string[];
   b2b_portal_migrated_at?: Date | null;
 }
 
@@ -264,6 +266,10 @@ export const TenantSchema = new Schema<ITenantDocument>(
     },
     vetrina: TenantVetrinaSchema,
     enabled_apps: {
+      type: [String],
+      default: undefined,
+    },
+    enabled_modules: {
       type: [String],
       default: undefined,
     },
