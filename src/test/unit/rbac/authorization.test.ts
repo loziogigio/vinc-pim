@@ -1,4 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+vi.mock("@/lib/services/admin-tenant.service", () => ({
+  getTenant: vi.fn(async () => ({ enabled_modules: undefined })), // default: all entitled
+}));
+import { getTenant } from "@/lib/services/admin-tenant.service";
 import { setupTestDatabase, teardownTestDatabase, clearDatabase } from "@/test/conftest";
 import { connectWithModels } from "@/lib/db/connection";
 import { resolveAuthorization, __clearAuthzCache } from "@/lib/auth/authorization";
@@ -97,5 +101,28 @@ describe("resolveAuthorization", () => {
       userId: "sub-gone", userType: "b2b_user", authMethod: "bearer",
     });
     expect(authz.permissions.size).toBe(0);
+  });
+
+  it("intersects role permissions with tenant module entitlement", async () => {
+    const { B2BUser, Role } = await connectWithModels("vinc-test");
+    await Role.create({
+      role_id: "role_multi", name: "Multi",
+      permissions: ["pim.product.view", "orders.view"],
+      scope: { channels: "all", customers: "all", price_lists: "all" },
+    });
+    await B2BUser.create({
+      username: "usr", email: "usr@example.com", passwordHash: "x",
+      companyName: "Acme", role: "admin", user_id: "sub-ent", role_id: "role_multi",
+    });
+    // tenant entitled to PIM only (not store-orders) for THIS call
+    (getTenant as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ enabled_modules: ["pim"] });
+
+    const authz = await resolveAuthorization({
+      authenticated: true, tenantId: "test", tenantDb: "vinc-test",
+      userId: "sub-ent", userType: "b2b_user", authMethod: "bearer",
+    });
+    expect(authz.can("pim.product.view")).toBe(true);
+    expect(authz.can("orders.view")).toBe(false); // store-orders not entitled
+    expect(authz.entitledApps).toContain("pim");
   });
 });

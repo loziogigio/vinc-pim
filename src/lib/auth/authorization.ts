@@ -13,6 +13,7 @@ import {
 import { isPermissionKey, type PermissionKey } from "./permissions/catalog";
 import { SYSTEM_ROLE_PRESETS, type SystemRoleKey } from "./permissions/system-roles";
 import { ALL_SCOPE, type RoleScope, type ScopeValues } from "./permissions/scope";
+import { resolveEntitledModules } from "@/config/module-entitlement";
 
 interface CacheEntry {
   authz: AuthorizationContext;
@@ -33,6 +34,18 @@ const LEGACY_ROLE_MAP: Record<string, SystemRoleKey> = {
 /** Test helper — reset the in-memory cache between tests. */
 export function __clearAuthzCache(): void {
   cache.clear();
+}
+
+/** Best-effort tenant entitlement read. Defaults to "all" (undefined) on any
+ *  failure so an admin-DB blip never locks a user out of every app. */
+async function readEntitledApps(tenantId: string): Promise<string[]> {
+  try {
+    const { getTenant } = await import("@/lib/services/admin-tenant.service");
+    const tenant = await getTenant(tenantId);
+    return resolveEntitledModules(tenant?.enabled_modules);
+  } catch {
+    return resolveEntitledModules(undefined); // all
+  }
 }
 
 export async function resolveAuthorization(
@@ -81,12 +94,13 @@ export async function resolveAuthorization(
       }
 
       const scopeValues: ScopeValues = user.scope_values ?? ALL_SCOPE;
+      const entitledApps = await readEntitledApps(auth.tenantId!);
 
       authz = assembleAuthorization({
         permissions,
         roleScope,
         scopeValues,
-        entitledApps: undefined, // Phase 0B introduces module-app entitlement
+        entitledApps,
       });
     }
   } catch (err) {

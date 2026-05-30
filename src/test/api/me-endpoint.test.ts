@@ -3,6 +3,10 @@ import { setupTestDatabase, teardownTestDatabase, clearDatabase } from "@/test/c
 import { connectWithModels } from "@/lib/db/connection";
 import { NextRequest } from "next/server";
 
+vi.mock("@/lib/services/admin-tenant.service", () => ({
+  getTenant: vi.fn(async () => ({ enabled_modules: undefined })),
+}));
+
 vi.mock("@/lib/sso/tokens", () => ({
   validateAccessToken: vi.fn(async () => ({
     sub: "sub-123", email: "agent1@example.com", tenant_id: "test", session_id: "s1",

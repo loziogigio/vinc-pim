@@ -3,6 +3,10 @@ import { setupTestDatabase, teardownTestDatabase, clearDatabase } from "@/test/c
 import { connectWithModels } from "@/lib/db/connection";
 import { NextRequest } from "next/server";
 
+vi.mock("@/lib/services/admin-tenant.service", () => ({
+  getTenant: vi.fn(async () => ({ enabled_modules: undefined })),
+}));
+
 // Force the bearer path to resolve to our b2b_user without real JWT/SSO.
 vi.mock("@/lib/sso/tokens", () => ({
   validateAccessToken: vi.fn(async () => ({
