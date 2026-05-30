@@ -31,6 +31,8 @@ import { verifyAPIKey } from "./api-key-auth";
 import { validateAccessToken } from "@/lib/sso/tokens";
 import { verifyPortalUserToken } from "./portal-user-token";
 import { getSSOSessionModel } from "@/lib/db/models/sso-session";
+import { resolveAuthorization } from "./authorization";
+import type { AuthorizationContext } from "./permissions/resolve";
 
 // ============================================
 // TYPES
@@ -358,7 +360,7 @@ export type AuthSuccess = {
   email?: string;
   userType?: UserType;
   authMethod: AuthMethod;
-};
+} & AuthorizationContext;
 
 export type AuthFailure = {
   success: false;
@@ -409,6 +411,8 @@ export async function requireTenantAuth(
     };
   }
 
+  const authz = await resolveAuthorization(auth);
+
   return {
     success: true,
     tenantId: auth.tenantId,
@@ -417,5 +421,10 @@ export async function requireTenantAuth(
     email: auth.email,
     userType: auth.userType,
     authMethod: auth.authMethod!,
+    permissions: authz.permissions,
+    entitledApps: authz.entitledApps,
+    ability: authz.ability,
+    scope: authz.scope,
+    can: authz.can,
   };
 }
