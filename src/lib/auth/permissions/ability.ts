@@ -1,4 +1,4 @@
-import { AbilityBuilder, createMongoAbility, type MongoAbility } from "@casl/ability";
+import { AbilityBuilder, createMongoAbility, type MongoAbility, type MongoQuery } from "@casl/ability";
 import { PERMISSIONS, type AppAction, type AppSubject, type PermissionKey } from "./catalog";
 import type { SubjectConditions } from "./scope";
 
@@ -19,7 +19,11 @@ export function buildAbility(
     const def = PERMISSIONS[key];
     const conditions = scopeConditions[def.subject];
     if (conditions) {
-      can(def.action, def.subject, conditions);
+      // Our subjects are string-typed, so CASL types the conditions param as
+      // MongoQuery<never> (it can't express field conditions on string-only
+      // subjects). The scope conditions are valid Mongo-style queries; bridge
+      // the cast explicitly. (Typed object subjects would remove this in Phase 3.)
+      can(def.action, def.subject, conditions as unknown as MongoQuery<never>);
     } else {
       can(def.action, def.subject);
     }
