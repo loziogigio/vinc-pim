@@ -80,4 +80,22 @@ describe("resolveAuthorization", () => {
     });
     expect(authz.permissions.size).toBe(0);
   });
+
+  it("denies a deactivated B2BUser (fail-closed)", async () => {
+    const { B2BUser, Role } = await connectWithModels("vinc-test");
+    await Role.create({
+      role_id: "role_x", name: "X", permissions: ["orders.view"],
+      scope: { channels: "all", customers: "all", price_lists: "all" },
+    });
+    await B2BUser.create({
+      username: "gone", email: "gone@example.com", passwordHash: "x",
+      companyName: "Acme", role: "admin", user_id: "sub-gone",
+      role_id: "role_x", isActive: false,
+    });
+    const authz = await resolveAuthorization({
+      authenticated: true, tenantId: "test", tenantDb: "vinc-test",
+      userId: "sub-gone", userType: "b2b_user", authMethod: "bearer",
+    });
+    expect(authz.permissions.size).toBe(0);
+  });
 });

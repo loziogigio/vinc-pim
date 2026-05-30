@@ -54,7 +54,10 @@ export async function resolveAuthorization(
     const { connectWithModels } = await import("@/lib/db/connection");
     const { B2BUser, Role } = await connectWithModels(auth.tenantDb);
 
+    // isActive filter: a staff user deactivated after token issuance resolves
+    // to no user → deny-all (fail-closed), without waiting for the token to expire.
     const user = await B2BUser.findOne({
+      isActive: true,
       $or: [{ user_id: auth.userId }, { username: auth.userId }],
     }).lean<{ role_id?: string; role?: string; scope_values?: ScopeValues } | null>();
 
