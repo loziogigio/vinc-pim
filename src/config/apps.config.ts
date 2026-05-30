@@ -6,6 +6,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
+import type { AppId } from "./app-ids";
 import {
   Home,
   Package,
@@ -41,6 +42,18 @@ export interface AppConfig {
   showInHeader: boolean;
   // Navigation
   hasNavigation: boolean;
+  // RBAC (Phase 0B): all optional + additive.
+  /** Tenant-entitlement id; defaults to `id` when omitted. */
+  entitlementId?: AppId;
+  /** Permission-group id this app maps to in the catalog; defaults to `id`. */
+  permissionPrefix?: AppId;
+  /** Upsell presentation shown when the tenant is NOT entitled to this app. */
+  presentation?: {
+    titleKey: string;
+    blurbKey: string;
+    ctaLabelKey: string;
+    ctaHref: string;
+  };
 }
 
 /**
