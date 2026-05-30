@@ -647,6 +647,7 @@ export async function updateTenant(
     | "b2b_theme"
     | "vetrina"
     | "enabled_apps"
+    | "enabled_modules"
   >>
 ): Promise<ITenantDocument> {
   const TenantModel = await getTenantModel();
@@ -672,6 +673,7 @@ export async function updateTenant(
   if (updates.b2b_theme !== undefined) tenant.b2b_theme = updates.b2b_theme;
   if (updates.vetrina !== undefined) tenant.vetrina = updates.vetrina;
   if (updates.enabled_apps !== undefined) tenant.enabled_apps = updates.enabled_apps;
+  if (updates.enabled_modules !== undefined) tenant.enabled_modules = updates.enabled_modules;
 
   await tenant.save();
 

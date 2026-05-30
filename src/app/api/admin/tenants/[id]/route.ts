@@ -15,6 +15,7 @@ import {
   suspendTenant,
   activateTenant,
 } from "@/lib/services/admin-tenant.service";
+import { isAppId } from "@/config/app-ids";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -95,6 +96,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       b2b_theme,
       vetrina,
       enabled_apps,
+      enabled_modules,
     } = body;
 
     // Handle status changes with special functions
@@ -142,6 +144,10 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
 
       updates.enabled_apps = (enabled_apps as string[]).filter((id: string) => validIds.has(id));
+    }
+
+    if (Array.isArray(enabled_modules)) {
+      updates.enabled_modules = enabled_modules.filter((id: string) => isAppId(id));
     }
 
     if (Object.keys(updates).length === 0) {
