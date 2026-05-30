@@ -8,6 +8,15 @@ import type { B2BUser } from "@/lib/types/b2b";
 
 const { Schema, models, model } = mongoose;
 
+const ScopeValuesSchema = new Schema(
+  {
+    channels:    { type: Schema.Types.Mixed, default: "all" }, // "all" | string[]
+    customers:   { type: Schema.Types.Mixed, default: "all" },
+    price_lists: { type: Schema.Types.Mixed, default: "all" },
+  },
+  { _id: false }
+);
+
 const B2BUserSchema = new Schema<B2BUser>(
   {
     username: {
@@ -53,6 +62,16 @@ const B2BUserSchema = new Schema<B2BUser>(
     },
     lastLoginAt: {
       type: Date,
+    },
+    /** RBAC: reference to a roles-collection role_id (additive; coexists with legacy `role`). */
+    role_id: {
+      type: String,
+      index: true,
+    },
+    /** RBAC: per-user data-scope values for the dimensions the role marks per_user. */
+    scope_values: {
+      type: ScopeValuesSchema,
+      default: () => ({}),
     },
   },
   {

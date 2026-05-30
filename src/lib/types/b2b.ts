@@ -29,6 +29,12 @@ export type B2BUser = {
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
+  role_id?: string;
+  scope_values?: {
+    channels: "all" | string[];
+    customers: "all" | string[];
+    price_lists: "all" | string[];
+  };
 };
 
 export type ProductStatus = "enhanced" | "not_enhanced" | "needs_attention" | "missing_data";
