@@ -304,7 +304,7 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
         tenantDb: `vinc-${session.tenantId}`,
         userId: session.userId,
         email: session.email,
-        userType: "portal_user", // Session = portal user (customer)
+        userType: "b2b_user", // Dashboard cookie session = B2B staff user (RBAC-resolved)
         authMethod: "session",
       };
     }
