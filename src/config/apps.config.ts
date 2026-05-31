@@ -172,6 +172,17 @@ export const APPS: AppConfig[] = [
     hasNavigation: true,
   },
   {
+    id: "team",
+    name: "Team",
+    description: "Roles & user access",
+    href: "/b2b/team/roles",
+    icon: Users,
+    color: "bg-indigo-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
     id: "builder",
     // Legacy home builder — superseded by the "b2b-portal" app (/b2b/b2b → portal home builder).
     // Kept so getAppByPath("/b2b/home-builder") still resolves while the legacy page exists,

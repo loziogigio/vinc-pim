@@ -180,6 +180,7 @@ const sk = {
     "store-coupons": { name: "Kup\u00f3ny", description: "Spr\u00e1va kup\u00f3nov a z\u013eavov\u00fdch k\u00f3dov" },
     "store-customers": { name: "Z\u00e1kazn\u00edci", description: "Spr\u00e1va z\u00e1kazn\u00edkov" },
     "store-portal-users": { name: "Pou\u017e\u00edvatelia port\u00e1lu", description: "Pou\u017e\u00edvatelia B2B port\u00e1lu" },
+    team: { name: "T\u00edm", description: "Roly a pr\u00edstup pou\u017e\u00edvate\u013eov" },
     builder: { name: "Builder", description: "Kon\u0161trukt\u00e9r domovskej str\u00e1nky" },
     "mobile-builder": { name: "Mobile Builder", description: "Vytvori\u0165 domovsk\u00fa obrazovku mobilnej aplik\u00e1cie" },
     notifications: { name: "Notifik\u00e1cie", description: "Viackan\u00e1lov\u00e9 notifik\u00e1cie a kampane" },
@@ -4932,6 +4933,20 @@ const sk = {
         statusCircuitOpen: "Obvod otvoren\u00fd",
         showing: "Zobrazuje sa {{from}}-{{to}} z {{total}}",
       },
+    },
+    team: {
+      roles: { title: "Roly", subtitle: "Definujte súbory povolení a rozsah údajov", create: "Nová rola", edit: "Upraviť rolu", name: "Názov", description: "Popis", permissions: "Povolenia", scope: "Rozsah údajov", system: "Systém", restoreSystem: "Obnoviť systémové roly", deleteConfirm: "Odstrániť túto rolu?", scopeAll: "Všetko", scopePerUser: "Podľa používateľa" },
+      users: { title: "Používatelia", subtitle: "Priraďte roly a prístup zamestnancom", role: "Rola", active: "Aktívny", priceOverride: "Prepísanie prístupu k cenám", channels: "Kanály", customers: "Zákazníci", noRole: "Žiadna rola" },
+    },
+  },
+  rbac: {
+    priceAccess: { label: "Prístup k cenám", none: "Skryté", view: "Iba zobrazenie", edit: "Upraviť", inherit: "Zdediť z roly" },
+    perm: {
+      pim: { product: { view: "Zobraziť produkty", create: "Vytvoriť produkty", edit: "Upraviť produkty", delete: "Odstrániť produkty" } },
+      orders: { view: "Zobraziť objednávky", confirm: "Potvrdiť objednávky", ship: "Expedovať objednávky", cancel: "Zrušiť objednávky" },
+      customers: { view: "Zobraziť zákazníkov", edit: "Upraviť zákazníkov" },
+      roles: { manage: "Spravovať roly" },
+      users: { manage: "Spravovať používateľov" },
     },
   },
   components: {

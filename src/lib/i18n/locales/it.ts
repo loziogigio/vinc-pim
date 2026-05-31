@@ -180,6 +180,7 @@ const it = {
     "store-coupons": { name: "Coupon", description: "Gestione coupon e codici sconto" },
     "store-customers": { name: "Clienti", description: "Gestione clienti" },
     "store-portal-users": { name: "Utenti Portale", description: "Utenti portale B2B" },
+    team: { name: "Team", description: "Ruoli e accessi utente" },
     builder: { name: "Builder", description: "Costruttore pagina home" },
     "mobile-builder": { name: "Mobile Builder", description: "Costruisci la home dell'app mobile" },
     notifications: { name: "Notifiche", description: "Notifiche e campagne multi-canale" },
@@ -4956,6 +4957,20 @@ const it = {
         statusCircuitOpen: "Circuito Aperto",
         showing: "Mostrando {{from}}-{{to}} di {{total}}",
       },
+    },
+    team: {
+      roles: { title: "Ruoli", subtitle: "Definisci set di permessi e ambito dati", create: "Nuovo ruolo", edit: "Modifica ruolo", name: "Nome", description: "Descrizione", permissions: "Permessi", scope: "Ambito dati", system: "Sistema", restoreSystem: "Ripristina ruoli di sistema", deleteConfirm: "Eliminare questo ruolo?", scopeAll: "Tutti", scopePerUser: "Per utente" },
+      users: { title: "Utenti", subtitle: "Assegna ruoli e accessi allo staff", role: "Ruolo", active: "Attivo", priceOverride: "Override accesso prezzi", channels: "Canali", customers: "Clienti", noRole: "Nessun ruolo" },
+    },
+  },
+  rbac: {
+    priceAccess: { label: "Accesso prezzi", none: "Nascosto", view: "Solo visualizzazione", edit: "Modifica", inherit: "Eredita dal ruolo" },
+    perm: {
+      pim: { product: { view: "Visualizza prodotti", create: "Crea prodotti", edit: "Modifica prodotti", delete: "Elimina prodotti" } },
+      orders: { view: "Visualizza ordini", confirm: "Conferma ordini", ship: "Spedisci ordini", cancel: "Annulla ordini" },
+      customers: { view: "Visualizza clienti", edit: "Modifica clienti" },
+      roles: { manage: "Gestisci ruoli" },
+      users: { manage: "Gestisci utenti" },
     },
   },
   components: {
