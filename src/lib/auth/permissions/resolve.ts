@@ -1,6 +1,7 @@
 import { PERMISSIONS, type PermissionKey } from "./catalog";
 import { buildAbility, type AppAbility } from "./ability";
 import { scopeConditionsFor, type RoleScope, type ScopeValues } from "./scope";
+import type { PriceAccess } from "./price-access";
 
 /**
  * Intersect a role's permissions with the tenant's entitled apps. When
@@ -21,6 +22,7 @@ export interface AuthorizationContext {
   entitledApps: string[] | undefined;
   ability: AppAbility;
   scope: ScopeValues;
+  priceAccess: PriceAccess;
   can(permission: PermissionKey): boolean;
 }
 
@@ -29,6 +31,7 @@ export interface AssembleInput {
   roleScope: RoleScope;
   scopeValues: ScopeValues;
   entitledApps: string[] | undefined;
+  priceAccess?: PriceAccess;
 }
 
 /**
@@ -46,6 +49,7 @@ export function assembleAuthorization(input: AssembleInput): AuthorizationContex
     entitledApps: input.entitledApps,
     ability,
     scope: input.scopeValues,
+    priceAccess: input.priceAccess ?? "none",
     can: (permission: PermissionKey) => permissionSet.has(permission),
   };
 }

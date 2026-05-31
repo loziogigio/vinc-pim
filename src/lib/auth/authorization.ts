@@ -13,6 +13,7 @@ import {
 import { isPermissionKey, type PermissionKey } from "./permissions/catalog";
 import { SYSTEM_ROLE_PRESETS, type SystemRoleKey } from "./permissions/system-roles";
 import { ALL_SCOPE, type RoleScope, type ScopeValues } from "./permissions/scope";
+import { PRESET_PRICE_ACCESS, type PriceAccess } from "./permissions/price-access";
 import { resolveEntitledModules } from "@/config/module-entitlement";
 
 export { emptyAuthorization } from "./permissions/resolve";
@@ -54,6 +55,7 @@ export interface B2BUserAuthDoc {
   role_id?: string;
   role?: string;
   scope_values?: ScopeValues;
+  price_access?: PriceAccess;
 }
 
 /** Given a B2BUser doc, resolve permissions + scope + entitlement into an
@@ -65,25 +67,29 @@ export async function authorizationForB2BUser(
 ): Promise<AuthorizationContext> {
   let permissions: PermissionKey[] = [];
   let roleScope: RoleScope = ALL_ROLE_SCOPE;
+  let rolePriceAccess: PriceAccess = "none";
 
   if (user.role_id) {
     const { connectWithModels } = await import("@/lib/db/connection");
     const { Role } = await connectWithModels(tenantDb);
     const role = await Role.findOne({ role_id: user.role_id, is_active: true })
-      .lean<{ permissions: string[]; scope: RoleScope } | null>();
+      .lean<{ permissions: string[]; scope: RoleScope; price_access?: PriceAccess } | null>();
     if (role) {
       permissions = role.permissions.filter(isPermissionKey);
       roleScope = role.scope;
+      rolePriceAccess = role.price_access ?? "none";
     }
   } else if (user.role && LEGACY_ROLE_MAP[user.role]) {
     const presetKey = LEGACY_ROLE_MAP[user.role];
     permissions = [...SYSTEM_ROLE_PRESETS[presetKey].permissions];
     roleScope = SYSTEM_ROLE_PRESETS[presetKey].scope;
+    rolePriceAccess = PRESET_PRICE_ACCESS[presetKey];
   }
 
   const scopeValues: ScopeValues = user.scope_values ?? ALL_SCOPE;
   const entitledApps = await readEntitledApps(tenantId);
-  return assembleAuthorization({ permissions, roleScope, scopeValues, entitledApps });
+  const priceAccess: PriceAccess = user.price_access ?? rolePriceAccess;
+  return assembleAuthorization({ permissions, roleScope, scopeValues, entitledApps, priceAccess });
 }
 
 export async function resolveAuthorization(
@@ -132,6 +138,7 @@ export interface PermissionsDTO {
   permissions: PermissionKey[];
   entitledApps: string[];
   scope: ScopeValues;
+  priceAccess: PriceAccess;
 }
 
 /** Strip non-serializable parts (ability, can) for passing server→client. */
@@ -140,5 +147,6 @@ export function toPermissionsDTO(authz: AuthorizationContext): PermissionsDTO {
     permissions: [...authz.permissions],
     entitledApps: authz.entitledApps ?? [],
     scope: authz.scope,
+    priceAccess: authz.priceAccess,
   };
 }
