@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { nanoid } from "nanoid";
 import type { PermissionKey } from "@/lib/auth/permissions/catalog";
 import type { RoleScope } from "@/lib/auth/permissions/scope";
+import { PRICE_ACCESS_LEVELS, type PriceAccess } from "@/lib/auth/permissions/price-access";
 
 const { Schema } = mongoose;
 
@@ -16,6 +17,8 @@ export interface IRole {
   is_system: boolean;
   permissions: PermissionKey[];
   scope: RoleScope;
+  /** Tri-state price-access default for this role; users may override. */
+  price_access: PriceAccess;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -38,6 +41,12 @@ const RoleSchema = new Schema<IRole>(
     is_system: { type: Boolean, default: false },
     permissions: { type: [String], default: [] },
     scope: { type: ScopeSchema, default: () => ({}) },
+    price_access: {
+      type: String,
+      enum: PRICE_ACCESS_LEVELS,
+      default: "none",
+      required: true,
+    },
     is_active: { type: Boolean, default: true },
   },
   {

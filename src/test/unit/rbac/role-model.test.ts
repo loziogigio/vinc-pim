@@ -55,6 +55,13 @@ describe("Role model", () => {
   it("stores under collection 'roles'", () => {
     expect(RoleSchema.get("collection")).toBe("roles");
   });
+
+  it("defaults price_access to 'none' and persists an explicit level", async () => {
+    const def = await Role.create({ name: "NoPrice", permissions: [], scope: {} });
+    expect(def.price_access).toBe("none");
+    const edit = await Role.create({ name: "Pricer", price_access: "edit", permissions: [], scope: {} });
+    expect(edit.price_access).toBe("edit");
+  });
 });
 
 describe("Role registry wiring", () => {

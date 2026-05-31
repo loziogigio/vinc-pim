@@ -5,6 +5,7 @@
 
 import mongoose from "mongoose";
 import type { B2BUser } from "@/lib/types/b2b";
+import { PRICE_ACCESS_LEVELS } from "@/lib/auth/permissions/price-access";
 
 const { Schema, models, model } = mongoose;
 
@@ -72,6 +73,12 @@ const B2BUserSchema = new Schema<B2BUser>(
     scope_values: {
       type: ScopeValuesSchema,
       default: () => ({}),
+    },
+    /** RBAC: per-user price-access override. Omitted ⇒ inherit role's price_access. */
+    price_access: {
+      type: String,
+      enum: PRICE_ACCESS_LEVELS,
+      default: undefined,
     },
   },
   {

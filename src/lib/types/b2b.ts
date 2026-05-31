@@ -35,6 +35,8 @@ export type B2BUser = {
     customers: "all" | string[];
     price_lists: "all" | string[];
   };
+  /** RBAC: per-user price-access override (none|view|edit). Omitted ⇒ inherit role. */
+  price_access?: "none" | "view" | "edit";
 };
 
 export type ProductStatus = "enhanced" | "not_enhanced" | "needs_attention" | "missing_data";
