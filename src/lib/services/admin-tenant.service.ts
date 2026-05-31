@@ -25,6 +25,7 @@ import {
 } from "../notifications/seed-templates";
 import { initializeHomeSettings } from "../db/home-settings";
 import { regenerateB2BConfig, regenerateB2CConfigDebounced } from "./traefik-config.service";
+import { ensureSystemRoles } from "@/lib/auth/permissions/seed-system-roles";
 
 // ============================================
 // TYPES
@@ -494,7 +495,14 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
   // Step 4: Seed home settings with default header
   await seedInitialHomeSettings(mongoDb, name);
 
-  // Step 4b: Provision Windmill folder for tenant (best-effort, non-blocking)
+  // Step 4b: Seed system roles (best-effort)
+  try {
+    await ensureSystemRoles(mongoDb);
+  } catch (err) {
+    console.warn(`System roles seeding skipped for ${tenant_id}:`, (err as Error).message);
+  }
+
+  // Step 4c: Provision Windmill folder for tenant (best-effort, non-blocking)
   try {
     const { windmillCreateFolder } = await import("./windmill-client");
     await windmillCreateFolder(tenant_id);
