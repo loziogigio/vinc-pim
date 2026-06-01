@@ -32,7 +32,7 @@ export async function ensureSystemRoles(tenantDb: string): Promise<void> {
           scope: preset.scope,
           price_access: PRESET_PRICE_ACCESS[key],
         },
-        $setOnInsert: { role_id: SYSTEM_ROLE_IDS[key] },
+        // role_id is applied from the filter on insert, so no $setOnInsert needed.
       },
       { upsert: true },
     );

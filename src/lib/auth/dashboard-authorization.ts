@@ -1,9 +1,10 @@
 /**
  * Server-side authorization resolution for the cookie-session B2B dashboard.
- * The dashboard session stores the B2BUser Mongo _id and is tagged portal_user
- * by authenticateTenant, so it cannot go through resolveAuthorization's
- * b2b_user gate. This helper resolves directly from the session by _id and
- * returns a serializable DTO for the client PermissionsProvider.
+ * Used from server components, which have no NextRequest to pass to
+ * requireTenantAuth/resolveAuthorization. The dashboard session stores the
+ * B2BUser Mongo _id; this helper resolves authorization directly from the
+ * session by _id and returns a serializable DTO for the client
+ * PermissionsProvider.
  */
 import {
   authorizationForB2BUser,

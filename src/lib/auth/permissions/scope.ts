@@ -16,6 +16,16 @@ export const ALL_SCOPE: ScopeValues = {
 };
 
 /**
+ * Normalize an untrusted scope object into a RoleScope. A dimension is
+ * "per_user" only when explicitly set to that string; anything else → "all".
+ */
+export function sanitizeScope(input: unknown): RoleScope {
+  const s = (input ?? {}) as Record<string, unknown>;
+  const dim = (v: unknown): "all" | "per_user" => (v === "per_user" ? "per_user" : "all");
+  return { channels: dim(s.channels), customers: dim(s.customers), price_lists: dim(s.price_lists) };
+}
+
+/**
  * Which subject field each scope dimension constrains. Phase 0A wires the
  * worked example (channels -> Order.channel); Phase 3 extends this table and
  * the query sites that consume the conditions.

@@ -5,13 +5,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { ensureSystemRoles } from "@/lib/auth/permissions/seed-system-roles";
 import { isPermissionKey } from "@/lib/auth/permissions/catalog";
 import { isPriceAccess } from "@/lib/auth/permissions/price-access";
-import type { RoleScope } from "@/lib/auth/permissions/scope";
-
-function sanitizeScope(input: unknown): RoleScope {
-  const s = (input ?? {}) as Record<string, unknown>;
-  const dim = (v: unknown): "all" | "per_user" => (v === "per_user" ? "per_user" : "all");
-  return { channels: dim(s.channels), customers: dim(s.customers), price_lists: dim(s.price_lists) };
-}
+import { sanitizeScope } from "@/lib/auth/permissions/scope";
 
 export async function GET(req: NextRequest) {
   const auth = await requireTenantAuth(req);

@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         { status: 403 }
       );
     }
-    if (!relationTypeMatches(definition.relation, auth.userType)) {
+    if (!relationTypeMatches(definition.relation, auth)) {
       return NextResponse.json(
         {
           error: `This data model is keyed by ${definition.relation}, but you are signed in as ${auth.userType ?? "unknown"}`,
@@ -60,8 +60,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 function relationTypeMatches(
   relation: "portal_user" | "customer",
-  userType: string | undefined
+  auth: { authMethod?: string; userType?: string }
 ): boolean {
-  if (relation === "customer") return userType === "b2b_user";
-  return userType === "portal_user";
+  // Customer-keyed models belong to real storefront customers: userType
+  // "b2b_user" reached via bearer token or API key. Requiring "b2b_user"
+  // excludes portal_user bearer tokens; requiring bearer/api-key excludes
+  // dashboard cookie sessions (authMethod "session"), which are staff also
+  // tagged "b2b_user" after the RBAC session flip.
+  if (relation === "customer") {
+    return auth.userType === "b2b_user" && (auth.authMethod === "bearer" || auth.authMethod === "api-key");
+  }
+  return auth.userType === "portal_user";
 }

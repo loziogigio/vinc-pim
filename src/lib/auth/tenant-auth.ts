@@ -152,10 +152,11 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
               userType = "b2b_user";
             }
           } catch (err) {
-            console.warn("[authenticateTenant] SSO session lookup failed:", err);
-            // Fallback: SSO users are typically B2B users
-            // If they came through SSO login, they're likely B2B
-            userType = "b2b_user";
+            console.warn("[authenticateTenant] SSO session lookup failed; treating as non-customer:", err);
+            // Fail closed: customer membership could not be verified, so do NOT
+            // grant b2b_user. Leave userType as "portal_user" — consistent with
+            // the not-found / no-customers path below.
+            userType = "portal_user";
           }
 
           console.log("[authenticateTenant] API key + Bearer (SSO token):", {
@@ -220,9 +221,10 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
               userType = "b2b_user";
             }
           } catch (err) {
-            console.warn("[authenticateTenant] SSO session lookup failed (Bearer):", err);
-            // Fallback: SSO users are typically B2B users
-            userType = "b2b_user";
+            console.warn("[authenticateTenant] SSO session lookup failed (Bearer); treating as non-customer:", err);
+            // Fail closed: customer membership could not be verified, so do NOT
+            // grant b2b_user. Leave userType as "portal_user".
+            userType = "portal_user";
           }
 
           console.log("[authenticateTenant] Bearer auth (SSO) success:", {
@@ -425,6 +427,7 @@ export async function requireTenantAuth(
     entitledApps: authz.entitledApps,
     ability: authz.ability,
     scope: authz.scope,
+    priceAccess: authz.priceAccess,
     can: authz.can,
   };
 }

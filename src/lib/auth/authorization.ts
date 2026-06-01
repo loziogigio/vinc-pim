@@ -39,6 +39,15 @@ export function __clearAuthzCache(): void {
   cache.clear();
 }
 
+/** Permissions + price access a user resolves to from the legacy `role` field
+ *  alone (when no role_id is set). Mirrors the fallback in
+ *  authorizationForB2BUser so callers can ceiling-check a role-clear. */
+export function legacyRoleGrant(role: string | undefined): { permissions: PermissionKey[]; priceAccess: PriceAccess } {
+  const key = role ? LEGACY_ROLE_MAP[role] : undefined;
+  if (!key) return { permissions: [], priceAccess: "none" };
+  return { permissions: [...SYSTEM_ROLE_PRESETS[key].permissions], priceAccess: PRESET_PRICE_ACCESS[key] };
+}
+
 /** Best-effort tenant entitlement read. Defaults to "all" (undefined) on any
  *  failure so an admin-DB blip never locks a user out of every app. */
 async function readEntitledApps(tenantId: string): Promise<string[]> {
