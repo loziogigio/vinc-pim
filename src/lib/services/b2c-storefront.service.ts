@@ -57,6 +57,7 @@ export interface UpdateStorefrontInput {
   footer_draft?: IB2CStorefrontFooter;
   meta_tags?: IB2CStorefrontMetaTags;
   custom_scripts?: IB2CCustomScript[];
+  custom_css?: string;
   settings?: {
     default_language?: string;
     theme?: string;
@@ -279,6 +280,9 @@ export async function updateStorefront(
       }
     }
     (storefront as any).custom_scripts = input.custom_scripts;
+  }
+  if (input.custom_css !== undefined) {
+    (storefront as any).custom_css = input.custom_css;
   }
   if (input.settings !== undefined) {
     storefront.settings = { ...storefront.settings, ...input.settings };

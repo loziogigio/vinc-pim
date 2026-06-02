@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Edit, Trash2, ExternalLink, BookOpen } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  ExternalLink,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useLanguageStore } from "@/lib/stores/languageStore";
@@ -25,7 +34,9 @@ export default function SynonymDictionariesPage() {
   // Use language store like product detail page
   const { languages, fetchLanguages, getEnabledLanguages } = useLanguageStore();
   const enabledLanguages = getEnabledLanguages();
-  const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
+  const defaultLanguage =
+    languages.find((lang) => lang.isDefault) ||
+    languages.find((lang) => lang.code === "it");
   const defaultLanguageCode = defaultLanguage?.code || "it";
 
   const [dictionaries, setDictionaries] = useState<SynonymDictionary[]>([]);
@@ -35,9 +46,15 @@ export default function SynonymDictionariesPage() {
   const [filterActive, setFilterActive] = useState<string>("all");
   const [sortBy, setSortBy] = useState("display_order");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(0);
 
   const [showModal, setShowModal] = useState(false);
-  const [editingDict, setEditingDict] = useState<SynonymDictionary | null>(null);
+  const [editingDict, setEditingDict] = useState<SynonymDictionary | null>(
+    null,
+  );
   const [formData, setFormData] = useState({
     key: "",
     description: "",
@@ -60,13 +77,18 @@ export default function SynonymDictionariesPage() {
     }
   }, [languages, defaultLanguageCode, selectedLocale]);
 
-  // Fetch dictionaries when filters change
+  // Reset to first page whenever filters/search/sort change
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedLocale, filterActive, sortBy, sortOrder]);
+
+  // Fetch dictionaries when filters or page change
   useEffect(() => {
     if (selectedLocale) {
       fetchDictionaries();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, selectedLocale, filterActive, sortBy, sortOrder]);
+  }, [search, selectedLocale, filterActive, sortBy, sortOrder, page]);
 
   async function fetchDictionaries() {
     setLoading(true);
@@ -78,13 +100,19 @@ export default function SynonymDictionariesPage() {
       params.set("sort_by", sortBy);
       params.set("sort_order", sortOrder);
       params.set("include_inactive", "true");
+      params.set("page", String(page));
+      params.set("limit", String(PAGE_SIZE));
 
-      const res = await fetch(`/api/b2b/pim/synonym-dictionaries?${params.toString()}`);
+      const res = await fetch(
+        `/api/b2b/pim/synonym-dictionaries?${params.toString()}`,
+      );
       if (!res.ok) {
         throw new Error("Failed to fetch dictionaries");
       }
       const data = await res.json();
       setDictionaries(data.dictionaries || []);
+      setTotal(data.pagination?.total ?? (data.dictionaries?.length || 0));
+      setPages(data.pagination?.pages ?? 0);
     } catch (error) {
       console.error("Failed to fetch dictionaries:", error);
       toast.error(t("pages.pim.synonymDictionaries.loadFailed"));
@@ -137,11 +165,17 @@ export default function SynonymDictionariesPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || t("pages.pim.synonymDictionaries.saveFailed"));
+        toast.error(
+          error.error || t("pages.pim.synonymDictionaries.saveFailed"),
+        );
         return;
       }
 
-      toast.success(editingDict ? t("pages.pim.synonymDictionaries.saveSuccess") : t("pages.pim.synonymDictionaries.createSuccess"));
+      toast.success(
+        editingDict
+          ? t("pages.pim.synonymDictionaries.saveSuccess")
+          : t("pages.pim.synonymDictionaries.createSuccess"),
+      );
       setShowModal(false);
       fetchDictionaries();
     } catch (error) {
@@ -153,7 +187,9 @@ export default function SynonymDictionariesPage() {
   async function handleDelete(dictId: string, productCount: number) {
     if (productCount > 0) {
       toast.error(
-        t("pages.pim.synonymDictionaries.deleteHasProducts", { count: productCount })
+        t("pages.pim.synonymDictionaries.deleteHasProducts", {
+          count: productCount,
+        }),
       );
       return;
     }
@@ -169,7 +205,9 @@ export default function SynonymDictionariesPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        toast.error(error.error || t("pages.pim.synonymDictionaries.deleteFailed"));
+        toast.error(
+          error.error || t("pages.pim.synonymDictionaries.deleteFailed"),
+        );
         return;
       }
 
@@ -209,7 +247,9 @@ export default function SynonymDictionariesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.synonymDictionaries.title")}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("pages.pim.synonymDictionaries.title")}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t("pages.pim.synonymDictionaries.subtitle")}
           </p>
@@ -259,7 +299,9 @@ export default function SynonymDictionariesPage() {
               onChange={(event) => setFilterActive(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="all">{t("pages.pim.synonymDictionaries.allStatuses")}</option>
+              <option value="all">
+                {t("pages.pim.synonymDictionaries.allStatuses")}
+              </option>
               <option value="true">{t("common.active")}</option>
               <option value="false">{t("common.inactive")}</option>
             </select>
@@ -268,18 +310,30 @@ export default function SynonymDictionariesPage() {
               onChange={(event) => setSortBy(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="display_order">{t("pages.pim.synonymDictionaries.displayOrder")}</option>
-              <option value="key">{t("pages.pim.synonymDictionaries.key")}</option>
-              <option value="product_count">{t("pages.pim.synonymDictionaries.productCount")}</option>
+              <option value="display_order">
+                {t("pages.pim.synonymDictionaries.displayOrder")}
+              </option>
+              <option value="key">
+                {t("pages.pim.synonymDictionaries.key")}
+              </option>
+              <option value="product_count">
+                {t("pages.pim.synonymDictionaries.productCount")}
+              </option>
               <option value="created_at">{t("common.createdAt")}</option>
             </select>
             <select
               value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
+              onChange={(event) =>
+                setSortOrder(event.target.value as "asc" | "desc")
+              }
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              <option value="asc">{t("pages.pim.synonymDictionaries.sortAsc")}</option>
-              <option value="desc">{t("pages.pim.synonymDictionaries.sortDesc")}</option>
+              <option value="asc">
+                {t("pages.pim.synonymDictionaries.sortAsc")}
+              </option>
+              <option value="desc">
+                {t("pages.pim.synonymDictionaries.sortDesc")}
+              </option>
             </select>
           </div>
         </div>
@@ -288,8 +342,16 @@ export default function SynonymDictionariesPage() {
       <div className="rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold text-foreground">
-            {t("pages.pim.synonymDictionaries.directory")} ({selectedLocale.toUpperCase()})
+            {t("pages.pim.synonymDictionaries.directory")} (
+            {selectedLocale.toUpperCase()})
           </h2>
+          {!loading && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("pages.pim.synonymDictionaries.dictionariesCount", {
+                count: total,
+              })}
+            </p>
+          )}
         </div>
 
         {loading ? (
@@ -315,7 +377,9 @@ export default function SynonymDictionariesPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold text-foreground">{dict.key}</h3>
+                      <h3 className="text-base font-semibold text-foreground">
+                        {dict.key}
+                      </h3>
                       {!dict.is_active && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           {t("common.inactive")}
@@ -341,13 +405,23 @@ export default function SynonymDictionariesPage() {
                       ))}
                       {dict.terms.length > 5 && (
                         <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          {t("pages.pim.synonymDictionaries.moreTerms", { count: dict.terms.length - 5 })}
+                          {t("pages.pim.synonymDictionaries.moreTerms", {
+                            count: dict.terms.length - 5,
+                          })}
                         </span>
                       )}
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <span>{t("pages.pim.synonymDictionaries.productsCount", { count: dict.product_count })}</span>
-                      <span>{t("pages.pim.synonymDictionaries.termsCount", { count: dict.terms.length })}</span>
+                      <span>
+                        {t("pages.pim.synonymDictionaries.productsCount", {
+                          count: dict.product_count,
+                        })}
+                      </span>
+                      <span>
+                        {t("pages.pim.synonymDictionaries.termsCount", {
+                          count: dict.terms.length,
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -370,7 +444,9 @@ export default function SynonymDictionariesPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(dict.dictionary_id, dict.product_count)}
+                    onClick={() =>
+                      handleDelete(dict.dictionary_id, dict.product_count)
+                    }
                     className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -379,6 +455,37 @@ export default function SynonymDictionariesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!loading && pages > 1 && (
+          <div className="flex items-center justify-between border-t border-border px-6 py-3">
+            <div className="text-sm text-muted-foreground">
+              {t("common.showing")} {(page - 1) * PAGE_SIZE + 1}{" "}
+              {t("common.to")} {Math.min(page * PAGE_SIZE, total)}{" "}
+              {t("common.of")} {total}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-medium text-foreground">
+                {t("common.page")} {page} {t("common.of")} {pages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pages, p + 1))}
+                disabled={page === pages}
+                className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -390,7 +497,9 @@ export default function SynonymDictionariesPage() {
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
-                    {editingDict ? t("pages.pim.synonymDictionaries.editDictionary") : t("pages.pim.synonymDictionaries.createDictionary")}
+                    {editingDict
+                      ? t("pages.pim.synonymDictionaries.editDictionary")
+                      : t("pages.pim.synonymDictionaries.createDictionary")}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {t("pages.pim.synonymDictionaries.modalSubtitle")}
@@ -423,7 +532,10 @@ export default function SynonymDictionariesPage() {
                     <select
                       value={formData.locale}
                       onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, locale: event.target.value }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          locale: event.target.value,
+                        }))
                       }
                       required
                       disabled={!!editingDict}
@@ -445,7 +557,10 @@ export default function SynonymDictionariesPage() {
                   <textarea
                     value={formData.description}
                     onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, description: event.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: event.target.value,
+                      }))
                     }
                     rows={2}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
@@ -485,7 +600,9 @@ export default function SynonymDictionariesPage() {
                         }
                       }}
                       className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                      placeholder={t("pages.pim.synonymDictionaries.addTermPlaceholder")}
+                      placeholder={t(
+                        "pages.pim.synonymDictionaries.addTermPlaceholder",
+                      )}
                     />
                     <button
                       type="button"
@@ -520,7 +637,10 @@ export default function SynonymDictionariesPage() {
                         type="checkbox"
                         checked={formData.is_active}
                         onChange={(event) =>
-                          setFormData((prev) => ({ ...prev, is_active: event.target.checked }))
+                          setFormData((prev) => ({
+                            ...prev,
+                            is_active: event.target.checked,
+                          }))
                         }
                         className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                       />
@@ -542,7 +662,9 @@ export default function SynonymDictionariesPage() {
                   type="submit"
                   className="px-4 py-2 rounded bg-primary text-white hover:bg-primary/90 transition"
                 >
-                  {editingDict ? t("pages.pim.synonymDictionaries.updateDictionary") : t("pages.pim.synonymDictionaries.createDictionary")}
+                  {editingDict
+                    ? t("pages.pim.synonymDictionaries.updateDictionary")
+                    : t("pages.pim.synonymDictionaries.createDictionary")}
                 </button>
               </div>
             </form>

@@ -51,7 +51,9 @@ export default function TagDetailPage() {
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(false);
 
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set(),
+  );
   const [selectAll, setSelectAll] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -63,7 +65,12 @@ export default function TagDetailPage() {
 
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [availableSearch, setAvailableSearch] = useState("");
-  const [availableSelected, setAvailableSelected] = useState<Set<string>>(new Set());
+  const [availableSelected, setAvailableSelected] = useState<Set<string>>(
+    new Set(),
+  );
+  const [availablePage, setAvailablePage] = useState(1);
+  const [availableTotalPages, setAvailableTotalPages] = useState(1);
+  const availableLimit = 50;
 
   useEffect(() => {
     if (tagId) {
@@ -96,7 +103,9 @@ export default function TagDetailPage() {
         ...(search && { search }),
       });
 
-      const res = await fetch(`/api/b2b/pim/tags/${tagId}/products?${params.toString()}`);
+      const res = await fetch(
+        `/api/b2b/pim/tags/${tagId}/products?${params.toString()}`,
+      );
       if (!res.ok) throw new Error("Failed to fetch products");
 
       const data = await res.json();
@@ -113,17 +122,21 @@ export default function TagDetailPage() {
   async function fetchAvailableProducts() {
     try {
       const params = new URLSearchParams({
-        limit: "100",
+        page: availablePage.toString(),
+        limit: availableLimit.toString(),
         ...(availableSearch && { search: availableSearch }),
       });
       const res = await fetch(`/api/b2b/pim/products?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
-      const currentIds = new Set(products.map((product) => product.entity_code));
+      const currentIds = new Set(
+        products.map((product) => product.entity_code),
+      );
       const filtered = (data.products || []).filter(
-        (product: Product) => !currentIds.has(product.entity_code)
+        (product: Product) => !currentIds.has(product.entity_code),
       );
       setAvailableProducts(filtered);
+      setAvailableTotalPages(data.pagination?.pages || 1);
     } catch (error) {
       console.error("Failed to fetch products:", error);
       toast.error(t("pages.pim.tags.fetchProductsFailed"));
@@ -134,7 +147,9 @@ export default function TagDetailPage() {
     if (selectAll) {
       setSelectedProducts(new Set<string>());
     } else {
-      setSelectedProducts(new Set(products.map((product) => product.entity_code)));
+      setSelectedProducts(
+        new Set(products.map((product) => product.entity_code)),
+      );
     }
     setSelectAll(!selectAll);
   }
@@ -164,12 +179,16 @@ export default function TagDetailPage() {
   }
 
   useEffect(() => {
+    setAvailablePage(1);
+  }, [availableSearch]);
+
+  useEffect(() => {
     if (showAddModal) {
       setAvailableSelected(new Set<string>());
       fetchAvailableProducts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableSearch, showAddModal, products]);
+  }, [availableSearch, availablePage, showAddModal, products]);
 
   async function handleBulkAssociate(entityCodes: string[]) {
     try {
@@ -204,7 +223,11 @@ export default function TagDetailPage() {
       return;
     }
 
-    if (!confirm(t("pages.pim.tags.removeConfirm", { count: selectedProducts.size }))) {
+    if (
+      !confirm(
+        t("pages.pim.tags.removeConfirm", { count: selectedProducts.size }),
+      )
+    ) {
       return;
     }
 
@@ -277,7 +300,9 @@ export default function TagDetailPage() {
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-foreground">{tag.name}</h1>
+                <h1 className="text-3xl font-bold text-foreground">
+                  {tag.name}
+                </h1>
                 {!tag.is_active && (
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                     {t("common.inactive")}
@@ -295,12 +320,26 @@ export default function TagDetailPage() {
               </div>
               <p className="text-sm text-muted-foreground">{tag.slug}</p>
               {tag.description && (
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{tag.description}</p>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  {tag.description}
+                </p>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span>{t("pages.pim.tags.productCount", { count: tag.product_count })}</span>
-                <span>{t("pages.pim.tags.displayOrderLabel", { order: tag.display_order })}</span>
-                <span>{t("pages.pim.tags.updatedLabel", { date: new Date(tag.updated_at).toLocaleString() })}</span>
+                <span>
+                  {t("pages.pim.tags.productCount", {
+                    count: tag.product_count,
+                  })}
+                </span>
+                <span>
+                  {t("pages.pim.tags.displayOrderLabel", {
+                    order: tag.display_order,
+                  })}
+                </span>
+                <span>
+                  {t("pages.pim.tags.updatedLabel", {
+                    date: new Date(tag.updated_at).toLocaleString(),
+                  })}
+                </span>
               </div>
             </div>
           </div>
@@ -325,8 +364,9 @@ export default function TagDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
+                  setAvailableSearch("");
+                  setAvailablePage(1);
                   setShowAddModal(true);
-                  fetchAvailableProducts();
                 }}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition"
               >
@@ -348,9 +388,14 @@ export default function TagDetailPage() {
         <div className="rounded-lg border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.common.associatedProducts")}</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t("pages.pim.common.associatedProducts")}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                {t("pages.pim.tags.showingProducts", { shown: products.length, total: totalProducts })}
+                {t("pages.pim.tags.showingProducts", {
+                  shown: products.length,
+                  total: totalProducts,
+                })}
               </p>
             </div>
             {products.length > 0 && (
@@ -358,7 +403,9 @@ export default function TagDetailPage() {
                 onClick={handleSelectAll}
                 className="text-sm text-primary hover:underline"
               >
-                {selectAll ? t("pages.pim.tags.deselectAll") : t("pages.pim.tags.selectAll")}
+                {selectAll
+                  ? t("pages.pim.tags.deselectAll")
+                  : t("pages.pim.tags.selectAll")}
               </button>
             )}
           </div>
@@ -400,7 +447,9 @@ export default function TagDetailPage() {
                     </div>
                     <div className="flex flex-1 flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">{product.name}</span>
+                        <span className="font-medium text-foreground">
+                          {product.name}
+                        </span>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           {product.status}
                         </span>
@@ -410,7 +459,9 @@ export default function TagDetailPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => router.push(`/b2b/pim/products/${product.entity_code}`)}
+                      onClick={() =>
+                        router.push(`/b2b/pim/products/${product.entity_code}`)
+                      }
                       className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                       type="button"
                     >
@@ -437,7 +488,9 @@ export default function TagDetailPage() {
                   {t("common.previous")}
                 </button>
                 <button
-                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  onClick={() =>
+                    setPage((prev) => Math.min(prev + 1, totalPages))
+                  }
                   disabled={page === totalPages}
                   className="rounded-md border border-border px-3 py-1 hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -458,7 +511,9 @@ export default function TagDetailPage() {
                   {t("pages.pim.tags.addProductsToTag")}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {t("pages.pim.tags.addProductsDescription", { name: tag.name })}
+                  {t("pages.pim.tags.addProductsDescription", {
+                    name: tag.name,
+                  })}
                 </p>
               </div>
               <button
@@ -492,7 +547,9 @@ export default function TagDetailPage() {
                 ) : (
                   <div className="divide-y divide-border">
                     {availableProducts.map((product) => {
-                      const isSelected = availableSelected.has(product.entity_code);
+                      const isSelected = availableSelected.has(
+                        product.entity_code,
+                      );
                       return (
                         <label
                           key={product.entity_code}
@@ -501,7 +558,9 @@ export default function TagDetailPage() {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => toggleAvailable(product.entity_code)}
+                            onChange={() =>
+                              toggleAvailable(product.entity_code)
+                            }
                             className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                           />
                           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-border bg-background">
@@ -517,8 +576,12 @@ export default function TagDetailPage() {
                             )}
                           </div>
                           <div>
-                            <div className="font-medium text-foreground">{product.name}</div>
-                            <div className="text-sm text-muted-foreground">SKU: {product.sku}</div>
+                            <div className="font-medium text-foreground">
+                              {product.name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              SKU: {product.sku}
+                            </div>
                           </div>
                         </label>
                       );
@@ -526,6 +589,37 @@ export default function TagDetailPage() {
                   </div>
                 )}
               </div>
+
+              {availableTotalPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div>
+                    {t("common.page")} {availablePage} {t("common.of")}{" "}
+                    {availableTotalPages}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        setAvailablePage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={availablePage === 1}
+                      className="rounded-md border border-border px-3 py-1 hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {t("common.previous")}
+                    </button>
+                    <button
+                      onClick={() =>
+                        setAvailablePage((prev) =>
+                          Math.min(prev + 1, availableTotalPages),
+                        )
+                      }
+                      disabled={availablePage === availableTotalPages}
+                      className="rounded-md border border-border px-3 py-1 hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {t("common.next")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t border-border px-6 py-4">
@@ -540,12 +634,16 @@ export default function TagDetailPage() {
                 {t("common.cancel")}
               </button>
               <button
-                onClick={() => handleBulkAssociate(Array.from(availableSelected))}
+                onClick={() =>
+                  handleBulkAssociate(Array.from(availableSelected))
+                }
                 disabled={availableSelected.size === 0}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
-                {t("pages.pim.tags.addCount", { count: availableSelected.size || 0 })}
+                {t("pages.pim.tags.addCount", {
+                  count: availableSelected.size || 0,
+                })}
               </button>
             </div>
           </div>

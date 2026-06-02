@@ -502,9 +502,19 @@ const WORKER_CONCURRENCY = parseInt(process.env.SYNC_WORKER_CONCURRENCY || '2');
 const RATE_LIMIT_MAX = parseInt(process.env.SYNC_RATE_LIMIT_MAX || '10');
 const RATE_LIMIT_DURATION = parseInt(process.env.SYNC_RATE_LIMIT_DURATION_MS || '60000');
 
+// Bulk worker configuration — the isolated background lane (sync-bulk-queue).
+// Deliberately small concurrency so a 100k+ catalog backfill is bounded and
+// can never saturate Solr; falls back to the interactive rate limit if its own
+// is unset.
+const BULK_WORKER_CONCURRENCY = parseInt(process.env.SYNC_BULK_WORKER_CONCURRENCY || '1');
+const BULK_RATE_LIMIT_MAX = parseInt(process.env.SYNC_BULK_RATE_LIMIT_MAX || String(RATE_LIMIT_MAX));
+const BULK_RATE_LIMIT_DURATION = parseInt(
+  process.env.SYNC_BULK_RATE_LIMIT_DURATION_MS || String(RATE_LIMIT_DURATION)
+);
+
 console.log(`🔧 Sync Worker Configuration:`);
-console.log(`   Concurrency: ${WORKER_CONCURRENCY} jobs`);
-console.log(`   Rate Limit: ${RATE_LIMIT_MAX} jobs per ${RATE_LIMIT_DURATION / 1000}s`);
+console.log(`   Interactive: concurrency ${WORKER_CONCURRENCY}, rate ${RATE_LIMIT_MAX}/${RATE_LIMIT_DURATION / 1000}s (sync-queue)`);
+console.log(`   Bulk:        concurrency ${BULK_WORKER_CONCURRENCY}, rate ${BULK_RATE_LIMIT_MAX}/${BULK_RATE_LIMIT_DURATION / 1000}s (sync-bulk-queue)`);
 
 export const syncWorker = new Worker('sync-queue', processSyncJob, {
   connection: {
@@ -538,6 +548,41 @@ syncWorker.on('failed', (job, err) => {
 
 syncWorker.on('progress', (job, progress) => {
   console.log(`Sync job ${job.id}: ${progress}%`);
+});
+
+// ============================================================================
+// BULK WORKER — isolated background lane (sync-bulk-queue)
+// ============================================================================
+// Reuses the exact same processor as the interactive worker, but runs on a
+// separate queue with its own (small) concurrency and rate limit. This is the
+// "Low + isolate" guarantee: bulk catalog backfills are both lower priority
+// AND bounded, so they cannot starve or saturate interactive syncs even when
+// the interactive queue is idle.
+export const syncBulkWorker = new Worker('sync-bulk-queue', processSyncJob, {
+  connection: {
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+  },
+  concurrency: BULK_WORKER_CONCURRENCY,
+  lockDuration: 300_000, // 5 min — bulk index calls can be slow
+  stalledInterval: 150_000,
+  maxStalledCount: 1, // Sync is idempotent — safe to retry once on stall
+  limiter: {
+    max: BULK_RATE_LIMIT_MAX,
+    duration: BULK_RATE_LIMIT_DURATION,
+  },
+});
+
+syncBulkWorker.on('completed', (job, result) => {
+  console.log(`✓ Bulk sync job ${job.id} completed`);
+  console.log(`  Summary: ${result.summary.successful}/${result.summary.total} successful`);
+});
+
+syncBulkWorker.on('failed', (job, err) => {
+  console.error(`✗ Bulk sync job ${job?.id} failed:`, err.message);
+  if (err.message?.includes('Rate limited')) {
+    console.log(`  ⏸️  Will retry when rate limit resets`);
+  }
 });
 
 // Helper function

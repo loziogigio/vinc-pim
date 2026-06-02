@@ -245,6 +245,8 @@ export interface IB2CStorefront {
   meta_tags?: IB2CStorefrontMetaTags;
   /** Third-party scripts (analytics, cookie consent, tracking pixels, etc.) */
   custom_scripts?: IB2CCustomScript[];
+  /** Custom CSS injected into the storefront <head> (style overrides, @import fonts, etc.) */
+  custom_css?: string;
   settings: IB2CStorefrontSettings;
   created_at: Date;
   updated_at: Date;
@@ -514,6 +516,10 @@ const B2CStorefrontSchema = new Schema(
     custom_scripts: {
       type: [CustomScriptSchema],
       default: [],
+    },
+    custom_css: {
+      type: String,
+      default: "",
     },
     settings: {
       type: B2CStorefrontSettingsSchema,

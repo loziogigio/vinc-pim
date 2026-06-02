@@ -1229,6 +1229,7 @@ const it = {
         productsCount: "Prodotti: {{count}}",
         termsCount: "Termini: {{count}}",
         moreTerms: "+{{count}} altri",
+        dictionariesCount: "{{count}} dizionari",
         // Etichette modulo modale
         keyLabel: "Chiave",
         localeLabel: "Lingua",
@@ -4968,6 +4969,15 @@ const it = {
       hint: "Si applica all'intero store. Il CSS salvato viene iniettato come un unico tag <style>.",
       save: "Salva CSS",
       saving: "Salvataggio...",
+    },
+    installErpSettings: {
+      title: "Installa impostazioni ERP",
+      descriptionPrefix: "Crea il modello",
+      descriptionMiddle: "e inizializza il suo record di configurazione",
+      descriptionSuffix: " predefinito.",
+      install: "Installa",
+      installing: "Installazione…",
+      error: "Installazione delle impostazioni ERP non riuscita",
     },
     channelSelect: {
       loading: "Caricamento canali...",

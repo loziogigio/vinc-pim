@@ -51,25 +51,21 @@ export default function CustomersOverviewPage() {
   async function fetchStats() {
     setIsLoading(true);
     try {
-      // Fetch total and recent
-      const res = await fetch("/api/b2b/customers?limit=5");
+      // Recent 5 customers + server-side totals and per-type counts (the cards
+      // must reflect ALL customers, not just the 5 fetched here).
+      const res = await fetch("/api/b2b/customers?limit=5&counts=1");
       if (res.ok) {
         const data = await res.json();
         const customers: Customer[] = data.customers || [];
-
-        // Count by type
-        const business = customers.filter((c) => c.customer_type === "business").length;
-        const privateCount = customers.filter((c) => c.customer_type === "private").length;
-        const reseller = customers.filter((c) => c.customer_type === "reseller").length;
-        const guests = customers.filter((c) => c.is_guest).length;
+        const counts = data.counts || {};
 
         setStats({
-          total: data.pagination?.total || customers.length,
-          business,
-          private: privateCount,
-          reseller,
-          guests,
-          recent: customers.slice(0, 5),
+          total: data.pagination?.total || 0,
+          business: counts.business || 0,
+          private: counts.private || 0,
+          reseller: counts.reseller || 0,
+          guests: counts.guests || 0,
+          recent: customers,
         });
       }
     } catch (error) {
@@ -91,21 +87,24 @@ export default function CustomersOverviewPage() {
       label: t("pages.store.customers.business"),
       value: stats.business,
       icon: Building2,
-      color: "text-emerald-600 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300",
+      color:
+        "text-emerald-600 bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300",
       href: `${tenantPrefix}/b2b/store/customers/business`,
     },
     {
       label: t("pages.store.customers.private"),
       value: stats.private,
       icon: User,
-      color: "text-purple-600 bg-purple-100 dark:bg-purple-500/15 dark:text-purple-300",
+      color:
+        "text-purple-600 bg-purple-100 dark:bg-purple-500/15 dark:text-purple-300",
       href: `${tenantPrefix}/b2b/store/customers/private`,
     },
     {
       label: t("pages.store.customers.resellers"),
       value: stats.reseller,
       icon: Store,
-      color: "text-amber-600 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300",
+      color:
+        "text-amber-600 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300",
       href: `${tenantPrefix}/b2b/store/customers/reseller`,
     },
   ];
@@ -116,7 +115,9 @@ export default function CustomersOverviewPage() {
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-foreground">{t("pages.store.customers.overview")}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("pages.store.customers.overview")}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {t("pages.store.customers.subtitle")}
           </p>
@@ -164,7 +165,9 @@ export default function CustomersOverviewPage() {
       <div className="rounded-lg bg-card shadow-sm">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="font-semibold text-foreground">{t("pages.store.customers.recentCustomers")}</h2>
+            <h2 className="font-semibold text-foreground">
+              {t("pages.store.customers.recentCustomers")}
+            </h2>
             <Link
               href={`${tenantPrefix}/b2b/store/customers/list`}
               className="text-sm text-primary hover:underline"
@@ -195,13 +198,15 @@ export default function CustomersOverviewPage() {
                 className="flex items-center justify-between p-4 hover:bg-muted/30 transition"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    customer.customer_type === "business"
-                      ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
-                      : customer.customer_type === "private"
-                      ? "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
-                      : "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
-                  }`}>
+                  <div
+                    className={`p-2 rounded-full ${
+                      customer.customer_type === "business"
+                        ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
+                        : customer.customer_type === "private"
+                          ? "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
+                          : "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+                    }`}
+                  >
                     {customer.customer_type === "business" ? (
                       <Building2 className="h-4 w-4" />
                     ) : customer.customer_type === "private" ? (
@@ -212,9 +217,12 @@ export default function CustomersOverviewPage() {
                   </div>
                   <div>
                     <p className="font-medium text-foreground">
-                      {customer.company_name || `${customer.first_name} ${customer.last_name}`}
+                      {customer.company_name ||
+                        `${customer.first_name} ${customer.last_name}`}
                     </p>
-                    <p className="text-sm text-muted-foreground">{customer.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {customer.email}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -239,7 +247,9 @@ export default function CustomersOverviewPage() {
           onClose={() => setShowCreateModal(false)}
           onCreated={(customer) => {
             setShowCreateModal(false);
-            router.push(`${tenantPrefix}/b2b/store/customers/${customer.customer_id}`);
+            router.push(
+              `${tenantPrefix}/b2b/store/customers/${customer.customer_id}`,
+            );
           }}
         />
       )}

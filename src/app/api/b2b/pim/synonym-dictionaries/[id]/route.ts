@@ -3,6 +3,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { loadAdapterConfigs } from "@/lib/adapters";
 import { syncQueue } from "@/lib/queue/queues";
+import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 
 // GET /api/b2b/pim/synonym-dictionaries/[id] - Fetch single dictionary
 export async function GET(
@@ -145,7 +146,7 @@ export async function PATCH(
               tenant_id: tenantId,
               channels: ["solr"],
             },
-            { priority: 5, removeOnComplete: true, removeOnFail: false }
+            { priority: SYNC_PRIORITY.NORMAL, removeOnComplete: true, removeOnFail: false }
           );
           console.log(`Queued Solr resync for dictionary "${dictionary.key}": ${product_ids.length} products`);
         }

@@ -255,6 +255,22 @@ describe("unit: B2C Storefront Service", () => {
       expect(updated.footer.copyright_text).toBe("© 2026 Updated Corp");
     });
 
+    it("should persist custom_css (regression: whitelist must not drop it)", async () => {
+      const payload = B2CStorefrontFactory.createPayload({ slug: "upd-css" });
+      await createStorefront(TEST_DB, payload);
+
+      const css = ".cookie-bar { display: none; }\n:root { --brand: #0a7; }";
+      const updated = await updateStorefront(TEST_DB, "upd-css", {
+        custom_css: css,
+      });
+
+      expect((updated as any).custom_css).toBe(css);
+
+      // Re-read to confirm the value was written to the DB, not just echoed back.
+      const reloaded = await getStorefrontBySlug(TEST_DB, "upd-css");
+      expect((reloaded as any)?.custom_css).toBe(css);
+    });
+
     it("should reject domain conflict with other storefront", async () => {
       await createStorefront(TEST_DB, {
         name: "Store 1",

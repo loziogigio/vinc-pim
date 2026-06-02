@@ -60,6 +60,10 @@ export const B2BPortalSchema = new Schema(
       type: [CustomScriptSchema],
       default: [],
     },
+    custom_css: {
+      type: String,
+      default: "",
+    },
     settings: {
       type: B2CStorefrontSettingsSchema,
       default: () => ({}),

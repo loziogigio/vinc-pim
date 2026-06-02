@@ -3,6 +3,10 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
 import { invalidateCategoryCache } from "@/lib/services/category.service";
+import {
+  getEnabledLocaleCodes,
+  buildMultilangSearchOr,
+} from "@/lib/search/multilang-search";
 
 /**
  * GET /api/b2b/pim/categories
@@ -14,12 +18,22 @@ export async function GET(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const { tenantDb } = auth;
-    const { Category: CategoryModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+    const {
+      Category: CategoryModel,
+      PIMProduct: PIMProductModel,
+      Language: LanguageModel,
+    } = await connectWithModels(tenantDb);
 
     const searchParams = req.nextUrl.searchParams;
     const parentId = searchParams.get("parent_id");
     const includeInactive = searchParams.get("include_inactive") === "true";
     const channelFilter = searchParams.get("channel");
+    const search = searchParams.get("search")?.trim();
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(searchParams.get("limit") || "100") || 100),
+    );
 
     // Build query - no wholesaler_id, database provides isolation
     const query: any = {};
@@ -45,7 +59,9 @@ export async function GET(req: NextRequest) {
       const rootsWithChannel = await CategoryModel.find({
         channel_code: channelFilter,
         $or: [{ parent_id: null }, { parent_id: { $exists: false } }],
-      }).select("category_id").lean();
+      })
+        .select("category_id")
+        .lean();
 
       const rootIds = rootsWithChannel.map((r: any) => r.category_id);
 
@@ -60,9 +76,41 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const categories = await CategoryModel.find(query)
-      .sort({ display_order: 1, name: 1 })
-      .lean();
+    // Server-side search across the multilingual name + slug + external_code.
+    if (search) {
+      const codes = await getEnabledLocaleCodes(LanguageModel);
+      const searchOr = buildMultilangSearchOr(search, codes, {
+        plainFields: ["slug", "external_code"],
+      });
+      if (query.$or) {
+        // Combine the channel-root $or with the search $or via $and.
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
+    }
+
+    // Root-category filter (top-level: no parent_id) for server-side count.
+    // Restrict the same query to top-level categories without clobbering any
+    // existing $or (channel/search) — combine via $and.
+    const rootCondition = {
+      $or: [{ parent_id: null }, { parent_id: { $exists: false } }],
+    };
+    const { $or: queryOr, $and: queryAnd, ...queryRest } = query;
+    const rootQuery: any = { ...queryRest, $and: [...(queryAnd || [])] };
+    if (queryOr) rootQuery.$and.push({ $or: queryOr });
+    rootQuery.$and.push(rootCondition);
+
+    const [categories, total, rootCount] = await Promise.all([
+      CategoryModel.find(query)
+        .sort({ display_order: 1, name: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      CategoryModel.countDocuments(query),
+      CategoryModel.countDocuments(rootQuery),
+    ]);
 
     // Update product counts for each category
     const categoryIds = categories.map((c) => c.category_id);
@@ -89,12 +137,16 @@ export async function GET(req: NextRequest) {
       product_count: countMap.get(cat.category_id) || 0,
     }));
 
-    return NextResponse.json({ categories: categoriesWithCounts });
+    return NextResponse.json({
+      categories: categoriesWithCounts,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      root_count: rootCount,
+    });
   } catch (error) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -112,12 +164,24 @@ export async function POST(req: NextRequest) {
     const { Category: CategoryModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { name, slug, description, parent_id, hero_image, mobile_hero_image, item_icon, seo, display_order, channel_code, external_code } = body;
+    const {
+      name,
+      slug,
+      description,
+      parent_id,
+      hero_image,
+      mobile_hero_image,
+      item_icon,
+      seo,
+      display_order,
+      channel_code,
+      external_code,
+    } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
         { error: "Name and slug are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -125,7 +189,7 @@ export async function POST(req: NextRequest) {
     if (!parent_id && !channel_code) {
       return NextResponse.json(
         { error: "Root categories must be assigned to a sales channel" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -137,7 +201,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: "A category with this slug already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -154,7 +218,7 @@ export async function POST(req: NextRequest) {
       if (!parent) {
         return NextResponse.json(
           { error: "Parent category not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -179,7 +243,7 @@ export async function POST(req: NextRequest) {
       is_active: true,
       product_count: 0,
       // Only set channel_code on root categories
-      ...((!parent_id && channel_code) ? { channel_code } : {}),
+      ...(!parent_id && channel_code ? { channel_code } : {}),
     });
 
     // Invalidate B2C category cache
@@ -190,7 +254,7 @@ export async function POST(req: NextRequest) {
     console.error("Error creating category:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

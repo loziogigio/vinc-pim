@@ -3,6 +3,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { isSolrEnabled } from "@/config/project.config";
 import { syncQueue } from "@/lib/queue/queues";
+import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 
 /**
  * POST /api/b2b/pim/synonym-dictionaries/[id]/sync
@@ -74,9 +75,9 @@ export async function POST(
           operation: "bulk-sync",
           channels: ["solr"],
           tenant_id: tenantId,
-          priority: "high",
+          priority: "normal",
         },
-        { priority: 1 }
+        { priority: SYNC_PRIORITY.NORMAL }
       );
     }
 

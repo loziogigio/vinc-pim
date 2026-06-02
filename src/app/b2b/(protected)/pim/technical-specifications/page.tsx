@@ -1,15 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
-import {
-  Sliders,
-  Plus,
-  Edit2,
-  Trash2,
-  Search,
-  Filter,
-} from "lucide-react";
+import { Sliders, Plus, Edit2, Trash2, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -30,24 +24,44 @@ type TechnicalSpecification = {
 
 export default function TechnicalSpecificationsPage() {
   const { t } = useTranslation();
-  const [technicalSpecifications, setTechnicalSpecifications] = useState<TechnicalSpecification[]>([]);
+  const [technicalSpecifications, setTechnicalSpecifications] = useState<
+    TechnicalSpecification[]
+  >([]);
+  // Server-provided total (the count reflects ALL matches, not the fetched page).
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingSpec, setEditingSpec] = useState<TechnicalSpecification | null>(null);
+  const [editingSpec, setEditingSpec] = useState<TechnicalSpecification | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
+  const appliedSearch = useDebouncedValue(searchQuery, 300);
   const [showInactive, setShowInactive] = useState(true);
+  const PAGE_LIMIT = 200;
 
   useEffect(() => {
     fetchTechnicalSpecifications();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch, showInactive]);
 
   async function fetchTechnicalSpecifications() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/technical-specifications?include_inactive=true");
+      // Filtering + search + count are server-side (see client-filtering standard).
+      const params = new URLSearchParams();
+      params.set("include_inactive", String(showInactive));
+      params.set("limit", String(PAGE_LIMIT));
+      if (appliedSearch) params.set("search", appliedSearch);
+      const res = await fetch(
+        `/api/b2b/pim/technical-specifications?${params.toString()}`,
+      );
       if (res.ok) {
         const data = await res.json();
-        setTechnicalSpecifications(data.technical_specifications);
+        setTechnicalSpecifications(data.technical_specifications || []);
+        setTotal(
+          data.pagination?.total ??
+            (data.technical_specifications?.length || 0),
+        );
       }
     } catch (error) {
       console.error("Error fetching technical specifications:", error);
@@ -58,14 +72,21 @@ export default function TechnicalSpecificationsPage() {
   }
 
   async function handleDelete(spec: TechnicalSpecification) {
-    if (!confirm(t("pages.pim.technicalSpecs.deleteConfirm", { label: spec.label }))) {
+    if (
+      !confirm(
+        t("pages.pim.technicalSpecs.deleteConfirm", { label: spec.label }),
+      )
+    ) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/b2b/pim/technical-specifications/${spec.technical_specification_id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/b2b/pim/technical-specifications/${spec.technical_specification_id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (res.ok) {
         toast.success(t("pages.pim.technicalSpecs.deleteSuccess"));
@@ -80,15 +101,6 @@ export default function TechnicalSpecificationsPage() {
     }
   }
 
-  // Filter specifications based on search and active status
-  const filteredSpecifications = technicalSpecifications.filter((spec) => {
-    const matchesSearch =
-      spec.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      spec.key.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesActive = showInactive || spec.is_active;
-    return matchesSearch && matchesActive;
-  });
-
   const typeLabels: Record<string, string> = {
     text: t("pages.pim.technicalSpecs.typeText"),
     number: t("pages.pim.technicalSpecs.typeNumber"),
@@ -99,10 +111,14 @@ export default function TechnicalSpecificationsPage() {
 
   const typeColors: Record<string, string> = {
     text: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-    number: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-    select: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
-    multiselect: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
-    boolean: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    number:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    select:
+      "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+    multiselect:
+      "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+    boolean:
+      "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   };
 
   if (isLoading) {
@@ -127,9 +143,11 @@ export default function TechnicalSpecificationsPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.technicalSpecs.title")}</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("pages.pim.technicalSpecs.title")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {technicalSpecifications.length} {t("pages.pim.technicalSpecs.totalSpecifications")}
+              {total} {t("pages.pim.technicalSpecs.totalSpecifications")}
             </p>
           </div>
           <button
@@ -171,11 +189,13 @@ export default function TechnicalSpecificationsPage() {
 
         {/* Specifications Table */}
         <div className="rounded-lg bg-card shadow-sm border border-border overflow-hidden">
-          {filteredSpecifications.length === 0 ? (
+          {technicalSpecifications.length === 0 ? (
             <div className="p-12 text-center">
               <Sliders className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? t("pages.pim.technicalSpecs.noFound") : t("pages.pim.technicalSpecs.noYet")}
+                {searchQuery
+                  ? t("pages.pim.technicalSpecs.noFound")
+                  : t("pages.pim.technicalSpecs.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
@@ -222,7 +242,7 @@ export default function TechnicalSpecificationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredSpecifications.map((spec) => (
+                  {technicalSpecifications.map((spec) => (
                     <tr
                       key={spec.technical_specification_id}
                       className={`hover:bg-muted/30 transition ${!spec.is_active ? "opacity-60" : ""}`}
@@ -230,7 +250,9 @@ export default function TechnicalSpecificationsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Sliders className="h-5 w-5 text-primary flex-shrink-0" />
-                          <span className="font-medium text-foreground">{spec.label}</span>
+                          <span className="font-medium text-foreground">
+                            {spec.label}
+                          </span>
                           {spec.default_required && (
                             <span className="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
                               {t("pages.pim.technicalSpecs.requiredBadge")}
@@ -244,26 +266,39 @@ export default function TechnicalSpecificationsPage() {
                         </code>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${typeColors[spec.type] || "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300"}`}>
+                        <span
+                          className={`inline-flex px-2 py-1 rounded text-xs font-medium ${typeColors[spec.type] || "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300"}`}
+                        >
                           {typeLabels[spec.type] || spec.type}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {spec.unit ? (
-                          <span className="text-sm text-muted-foreground">{spec.unit}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {spec.unit}
+                          </span>
                         ) : (
-                          <span className="text-sm text-muted-foreground/50">—</span>
+                          <span className="text-sm text-muted-foreground/50">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {spec.options && spec.options.length > 0 ? (
                           <span className="text-sm text-muted-foreground">
                             {spec.options.length === 1
-                              ? t("pages.pim.technicalSpecs.optionsCount", { count: spec.options.length })
-                              : t("pages.pim.technicalSpecs.optionsCountPlural", { count: spec.options.length })}
+                              ? t("pages.pim.technicalSpecs.optionsCount", {
+                                  count: spec.options.length,
+                                })
+                              : t(
+                                  "pages.pim.technicalSpecs.optionsCountPlural",
+                                  { count: spec.options.length },
+                                )}
                           </span>
                         ) : (
-                          <span className="text-sm text-muted-foreground/50">—</span>
+                          <span className="text-sm text-muted-foreground/50">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -370,7 +405,10 @@ function TechnicalSpecificationModal({
         unit: formData.unit || undefined,
         options:
           formData.type === "select" || formData.type === "multiselect"
-            ? formData.options.split(",").map((o) => o.trim()).filter(Boolean)
+            ? formData.options
+                .split(",")
+                .map((o) => o.trim())
+                .filter(Boolean)
             : undefined,
         default_required: formData.default_required,
         display_order: formData.display_order,
@@ -390,7 +428,11 @@ function TechnicalSpecificationModal({
       });
 
       if (res.ok) {
-        toast.success(specification ? t("pages.pim.technicalSpecs.saveSuccess") : t("pages.pim.technicalSpecs.createSuccess"));
+        toast.success(
+          specification
+            ? t("pages.pim.technicalSpecs.saveSuccess")
+            : t("pages.pim.technicalSpecs.createSuccess"),
+        );
         onSuccess();
       } else {
         const error = await res.json();
@@ -411,7 +453,9 @@ function TechnicalSpecificationModal({
           {/* Header */}
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-xl font-bold text-foreground">
-              {specification ? t("pages.pim.technicalSpecs.editSpecification") : t("pages.pim.technicalSpecs.createSpecification")}
+              {specification
+                ? t("pages.pim.technicalSpecs.editSpecification")
+                : t("pages.pim.technicalSpecs.createSpecification")}
             </h2>
           </div>
 
@@ -441,13 +485,18 @@ function TechnicalSpecificationModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  {t("pages.pim.technicalSpecs.key")} * <span className="text-muted-foreground text-xs">({t("pages.pim.technicalSpecs.uniqueIdentifier")})</span>
+                  {t("pages.pim.technicalSpecs.key")} *{" "}
+                  <span className="text-muted-foreground text-xs">
+                    ({t("pages.pim.technicalSpecs.uniqueIdentifier")})
+                  </span>
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.key}
-                  onChange={(e) => setFormData({ ...formData, key: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, key: e.target.value })
+                  }
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none font-mono"
                   placeholder="diameter"
                 />
@@ -457,27 +506,54 @@ function TechnicalSpecificationModal({
             {/* Type & Unit */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">{t("common.type")} *</label>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  {t("common.type")} *
+                </label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as "text" | "number" | "select" | "multiselect" | "boolean" })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      type: e.target.value as
+                        | "text"
+                        | "number"
+                        | "select"
+                        | "multiselect"
+                        | "boolean",
+                    })
+                  }
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="text">{t("pages.pim.technicalSpecs.typeText")}</option>
-                  <option value="number">{t("pages.pim.technicalSpecs.typeNumber")}</option>
-                  <option value="select">{t("pages.pim.technicalSpecs.typeSelect")}</option>
-                  <option value="multiselect">{t("pages.pim.technicalSpecs.typeMultiselect")}</option>
-                  <option value="boolean">{t("pages.pim.technicalSpecs.typeBoolean")}</option>
+                  <option value="text">
+                    {t("pages.pim.technicalSpecs.typeText")}
+                  </option>
+                  <option value="number">
+                    {t("pages.pim.technicalSpecs.typeNumber")}
+                  </option>
+                  <option value="select">
+                    {t("pages.pim.technicalSpecs.typeSelect")}
+                  </option>
+                  <option value="multiselect">
+                    {t("pages.pim.technicalSpecs.typeMultiselect")}
+                  </option>
+                  <option value="boolean">
+                    {t("pages.pim.technicalSpecs.typeBoolean")}
+                  </option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  {t("pages.pim.technicalSpecs.unit")} <span className="text-muted-foreground text-xs">({t("common.optional")})</span>
+                  {t("pages.pim.technicalSpecs.unit")}{" "}
+                  <span className="text-muted-foreground text-xs">
+                    ({t("common.optional")})
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unit: e.target.value })
+                  }
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder="mm, kg, bar..."
                 />
@@ -485,16 +561,22 @@ function TechnicalSpecificationModal({
             </div>
 
             {/* Options for select/multiselect */}
-            {(formData.type === "select" || formData.type === "multiselect") && (
+            {(formData.type === "select" ||
+              formData.type === "multiselect") && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  {t("pages.pim.technicalSpecs.options")} * <span className="text-muted-foreground text-xs">({t("pages.pim.technicalSpecs.commaSeparated")})</span>
+                  {t("pages.pim.technicalSpecs.options")} *{" "}
+                  <span className="text-muted-foreground text-xs">
+                    ({t("pages.pim.technicalSpecs.commaSeparated")})
+                  </span>
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.options}
-                  onChange={(e) => setFormData({ ...formData, options: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, options: e.target.value })
+                  }
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder="Option 1, Option 2, Option 3"
                 />
@@ -510,7 +592,10 @@ function TechnicalSpecificationModal({
                 type="number"
                 value={formData.display_order}
                 onChange={(e) =>
-                  setFormData({ ...formData, display_order: parseInt(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    display_order: parseInt(e.target.value),
+                  })
                 }
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
@@ -523,10 +608,18 @@ function TechnicalSpecificationModal({
                   type="checkbox"
                   id="default_required"
                   checked={formData.default_required}
-                  onChange={(e) => setFormData({ ...formData, default_required: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      default_required: e.target.checked,
+                    })
+                  }
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
-                <label htmlFor="default_required" className="text-sm text-foreground">
+                <label
+                  htmlFor="default_required"
+                  className="text-sm text-foreground"
+                >
                   {t("pages.pim.technicalSpecs.requiredByDefault")}
                 </label>
               </div>
@@ -535,7 +628,9 @@ function TechnicalSpecificationModal({
                   type="checkbox"
                   id="is_active"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_active: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <label htmlFor="is_active" className="text-sm text-foreground">
@@ -559,7 +654,11 @@ function TechnicalSpecificationModal({
               disabled={isSaving}
               className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
             >
-              {isSaving ? t("pages.pim.saving") : specification ? t("common.update") : t("common.create")}
+              {isSaving
+                ? t("pages.pim.saving")
+                : specification
+                  ? t("common.update")
+                  : t("common.create")}
             </button>
           </div>
         </form>

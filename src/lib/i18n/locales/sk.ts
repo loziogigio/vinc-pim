@@ -1229,6 +1229,7 @@ const sk = {
         productsCount: "Produkty: {{count}}",
         termsCount: "Výrazy: {{count}}",
         moreTerms: "+{{count}} ďalších",
+        dictionariesCount: "{{count}} slovníkov",
         // Polia formulára modálu
         keyLabel: "Kľúč",
         localeLabel: "Jazyk",
@@ -4944,6 +4945,15 @@ const sk = {
       hint: "Platí pre celý obchod. Uložené CSS sa vloží ako jeden tag <style>.",
       save: "Uložiť CSS",
       saving: "Ukladá sa...",
+    },
+    installErpSettings: {
+      title: "Inštalovať nastavenia ERP",
+      descriptionPrefix: "Vytvorí model",
+      descriptionMiddle: "a vytvorí jeho predvolený konfiguračný záznam",
+      descriptionSuffix: ".",
+      install: "Inštalovať",
+      installing: "Inštaluje sa…",
+      error: "Inštalácia nastavení ERP zlyhala",
     },
     channelSelect: {
       loading: "Načítavajú sa kanály...",

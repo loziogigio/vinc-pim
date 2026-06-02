@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
@@ -49,14 +50,20 @@ export default function ProductTypesPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  // Server-provided total (the count reflects ALL matches, not the fetched page).
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const appliedSearch = useDebouncedValue(searchQuery, 300);
   const [showInactive, setShowInactive] = useState(true);
+  const PAGE_LIMIT = 200;
   const [syncing, setSyncing] = useState(false);
 
   // Image modal state
   const [showImageModal, setShowImageModal] = useState(false);
-  const [editingImagePT, setEditingImagePT] = useState<ProductType | null>(null);
+  const [editingImagePT, setEditingImagePT] = useState<ProductType | null>(
+    null,
+  );
   const [imageFormData, setImageFormData] = useState({
     image_url: "",
     image_alt: "",
@@ -80,18 +87,27 @@ export default function ProductTypesPage() {
     try {
       const payload = {
         image: imageFormData.image_url
-          ? { url: imageFormData.image_url, alt_text: imageFormData.image_alt || undefined }
+          ? {
+              url: imageFormData.image_url,
+              alt_text: imageFormData.image_alt || undefined,
+            }
           : undefined,
         mobile_image: imageFormData.mobile_image_url
-          ? { url: imageFormData.mobile_image_url, alt_text: imageFormData.mobile_image_alt || undefined }
+          ? {
+              url: imageFormData.mobile_image_url,
+              alt_text: imageFormData.mobile_image_alt || undefined,
+            }
           : undefined,
       };
 
-      const res = await fetch(`/api/b2b/pim/product-types/${editingImagePT.product_type_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `/api/b2b/pim/product-types/${editingImagePT.product_type_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (res.ok) {
         toast.success(t("pages.pim.productTypes.imagesUpdated"));
@@ -99,7 +115,9 @@ export default function ProductTypesPage() {
         fetchProductTypes();
       } else {
         const error = await res.json();
-        toast.error(error.error || t("pages.pim.productTypes.imagesUpdateFailed"));
+        toast.error(
+          error.error || t("pages.pim.productTypes.imagesUpdateFailed"),
+        );
       }
     } catch (error) {
       console.error("Error updating images:", error);
@@ -109,15 +127,24 @@ export default function ProductTypesPage() {
 
   useEffect(() => {
     fetchProductTypes();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch, showInactive]);
 
   async function fetchProductTypes() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/product-types?include_inactive=true");
+      // Filtering + search + count are server-side (see client-filtering standard).
+      const params = new URLSearchParams();
+      params.set("include_inactive", String(showInactive));
+      params.set("limit", String(PAGE_LIMIT));
+      if (appliedSearch) params.set("search", appliedSearch);
+      const res = await fetch(
+        `/api/b2b/pim/product-types?${params.toString()}`,
+      );
       if (res.ok) {
         const data = await res.json();
-        setProductTypes(data.productTypes);
+        setProductTypes(data.productTypes || []);
+        setTotal(data.pagination?.total ?? (data.productTypes?.length || 0));
       }
     } catch (error) {
       console.error("Error fetching product types:", error);
@@ -130,19 +157,30 @@ export default function ProductTypesPage() {
   async function handleDelete(productType: ProductType) {
     if (productType.product_count > 0) {
       toast.error(
-        t("pages.pim.productTypes.deleteHasProducts", { count: productType.product_count })
+        t("pages.pim.productTypes.deleteHasProducts", {
+          count: productType.product_count,
+        }),
       );
       return;
     }
 
-    if (!confirm(t("pages.pim.productTypes.deleteConfirm", { name: getLocalizedString(productType.name) }))) {
+    if (
+      !confirm(
+        t("pages.pim.productTypes.deleteConfirm", {
+          name: getLocalizedString(productType.name),
+        }),
+      )
+    ) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/b2b/pim/product-types/${productType.product_type_id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/b2b/pim/product-types/${productType.product_type_id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (res.ok) {
         toast.success(t("pages.pim.productTypes.deleteSuccess"));
@@ -180,18 +218,6 @@ export default function ProductTypesPage() {
     }
   }
 
-  // Filter product types based on search and active status
-  const filteredProductTypes = productTypes.filter((pt) => {
-    const nameStr = getLocalizedString(pt.name, "").toLowerCase();
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      nameStr.includes(query) ||
-      pt.slug.toLowerCase().includes(query) ||
-      (pt.code && pt.code.toLowerCase().includes(query));
-    const matchesActive = showInactive || pt.is_active;
-    return matchesSearch && matchesActive;
-  });
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -214,21 +240,27 @@ export default function ProductTypesPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.productTypes.title")}</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("pages.pim.productTypes.title")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {productTypes.length} {t("pages.pim.productTypes.totalProductTypes")}
+              {total} {t("pages.pim.productTypes.totalProductTypes")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleSyncAll}
-              disabled={syncing || productTypes.length === 0}
+              disabled={syncing || total === 0}
               className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed"
               title={t("pages.pim.productTypes.syncAllTitle")}
             >
-              <RefreshCw className={`h-5 w-5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? t("pages.pim.productTypes.syncing") : t("pages.pim.productTypes.syncAll")}
+              <RefreshCw
+                className={`h-5 w-5 ${syncing ? "animate-spin" : ""}`}
+              />
+              {syncing
+                ? t("pages.pim.productTypes.syncing")
+                : t("pages.pim.productTypes.syncAll")}
             </button>
             <button
               type="button"
@@ -276,11 +308,13 @@ export default function ProductTypesPage() {
             </h2>
           </div>
 
-          {filteredProductTypes.length === 0 ? (
+          {productTypes.length === 0 ? (
             <div className="p-12 text-center">
               <Cpu className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? t("pages.pim.productTypes.noFound") : t("pages.pim.productTypes.noYet")}
+                {searchQuery
+                  ? t("pages.pim.productTypes.noFound")
+                  : t("pages.pim.productTypes.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
@@ -300,7 +334,7 @@ export default function ProductTypesPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {filteredProductTypes.map((productType) => (
+              {productTypes.map((productType) => (
                 <div
                   key={productType.product_type_id}
                   className={`flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between ${
@@ -313,7 +347,9 @@ export default function ProductTypesPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-semibold text-foreground">{getLocalizedString(productType.name)}</h3>
+                        <h3 className="text-base font-semibold text-foreground">
+                          {getLocalizedString(productType.name)}
+                        </h3>
                         {productType.code && (
                           <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-mono font-medium text-primary">
                             {productType.code}
@@ -330,7 +366,9 @@ export default function ProductTypesPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">{productType.slug}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                        {productType.slug}
+                      </p>
                       {productType.description && (
                         <p className="mt-1 max-w-2xl text-sm text-muted-foreground line-clamp-1">
                           {getLocalizedString(productType.description)}
@@ -339,10 +377,12 @@ export default function ProductTypesPage() {
                       <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Package className="h-4 w-4" />
-                          {productType.product_count} {t("pages.pim.productTypes.products")}
+                          {productType.product_count}{" "}
+                          {t("pages.pim.productTypes.products")}
                         </span>
                         <span>
-                          {(productType.features || []).length} {t("pages.pim.productTypes.features")}
+                          {(productType.features || []).length}{" "}
+                          {t("pages.pim.productTypes.features")}
                         </span>
                       </div>
                     </div>
@@ -367,7 +407,11 @@ export default function ProductTypesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => router.push(`/b2b/pim/product-types/${productType.product_type_id}/edit`)}
+                      onClick={() =>
+                        router.push(
+                          `/b2b/pim/product-types/${productType.product_type_id}/edit`,
+                        )
+                      }
                       className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-sm hover:bg-muted transition"
                     >
                       <Edit2 className="h-4 w-4" />
@@ -393,7 +437,13 @@ export default function ProductTypesPage() {
       <FullScreenModal
         open={showImageModal}
         onClose={() => setShowImageModal(false)}
-        title={editingImagePT ? t("pages.pim.productTypes.imagesModalTitle", { name: getLocalizedString(editingImagePT.name) }) : t("pages.pim.productTypes.imagesModalTitleFallback")}
+        title={
+          editingImagePT
+            ? t("pages.pim.productTypes.imagesModalTitle", {
+                name: getLocalizedString(editingImagePT.name),
+              })
+            : t("pages.pim.productTypes.imagesModalTitleFallback")
+        }
         actions={
           <>
             <button
@@ -418,15 +468,24 @@ export default function ProductTypesPage() {
           <ImageUpload
             label={t("pages.pim.productTypes.productTypeImage")}
             value={imageFormData.image_url}
-            onChange={(url) => setImageFormData((prev) => ({ ...prev, image_url: url }))}
+            onChange={(url) =>
+              setImageFormData((prev) => ({ ...prev, image_url: url }))
+            }
           />
           {imageFormData.image_url && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.productTypes.imageAltText")}</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.productTypes.imageAltText")}
+              </label>
               <input
                 type="text"
                 value={imageFormData.image_alt}
-                onChange={(e) => setImageFormData((prev) => ({ ...prev, image_alt: e.target.value }))}
+                onChange={(e) =>
+                  setImageFormData((prev) => ({
+                    ...prev,
+                    image_alt: e.target.value,
+                  }))
+                }
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t("pages.pim.productTypes.altTextPlaceholder")}
               />
@@ -437,15 +496,24 @@ export default function ProductTypesPage() {
           <ImageUpload
             label={t("pages.pim.productTypes.mobileProductTypeImage")}
             value={imageFormData.mobile_image_url}
-            onChange={(url) => setImageFormData((prev) => ({ ...prev, mobile_image_url: url }))}
+            onChange={(url) =>
+              setImageFormData((prev) => ({ ...prev, mobile_image_url: url }))
+            }
           />
           {imageFormData.mobile_image_url && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">{t("pages.pim.productTypes.mobileImageAltText")}</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {t("pages.pim.productTypes.mobileImageAltText")}
+              </label>
               <input
                 type="text"
                 value={imageFormData.mobile_image_alt}
-                onChange={(e) => setImageFormData((prev) => ({ ...prev, mobile_image_alt: e.target.value }))}
+                onChange={(e) =>
+                  setImageFormData((prev) => ({
+                    ...prev,
+                    mobile_image_alt: e.target.value,
+                  }))
+                }
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t("pages.pim.productTypes.altTextPlaceholder")}
               />

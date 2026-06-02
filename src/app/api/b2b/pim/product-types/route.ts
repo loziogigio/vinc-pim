@@ -3,6 +3,10 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
+import {
+  getEnabledLocaleCodes,
+  buildMultilangSearchOr,
+} from "@/lib/search/multilang-search";
 
 /**
  * Authenticate request via session or API key
@@ -61,14 +65,24 @@ export async function GET(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
-    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = auth.models;
+    const {
+      ProductType: ProductTypeModel,
+      PIMProduct: PIMProductModel,
+      Language: LanguageModel,
+    } = auth.models;
 
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
+    const search = searchParams.get("search")?.trim();
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(searchParams.get("limit") || "100") || 100),
+    );
 
     // Build query - no wholesaler_id, database provides isolation
     const query: any = {};
@@ -77,9 +91,22 @@ export async function GET(req: NextRequest) {
       query.is_active = true;
     }
 
-    const productTypes = await ProductTypeModel.find(query)
-      .sort({ display_order: 1, name: 1 })
-      .lean();
+    // Server-side search across the multilingual name + slug + code.
+    if (search) {
+      const codes = await getEnabledLocaleCodes(LanguageModel);
+      query.$or = buildMultilangSearchOr(search, codes, {
+        plainFields: ["slug", "code"],
+      });
+    }
+
+    const [productTypes, total] = await Promise.all([
+      ProductTypeModel.find(query)
+        .sort({ display_order: 1, name: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      ProductTypeModel.countDocuments(query),
+    ]);
 
     // Update product counts for each product type
     const productTypeIds = productTypes.map((pt) => pt.product_type_id);
@@ -98,7 +125,9 @@ export async function GET(req: NextRequest) {
       {
         $group: {
           // Use coalesce-like logic to get the ID from either field
-          _id: { $ifNull: ["$product_type.product_type_id", "$product_type.id"] },
+          _id: {
+            $ifNull: ["$product_type.product_type_id", "$product_type.id"],
+          },
           count: { $sum: 1 },
         },
       },
@@ -117,12 +146,15 @@ export async function GET(req: NextRequest) {
       })),
     }));
 
-    return NextResponse.json({ productTypes: productTypesWithCounts });
+    return NextResponse.json({
+      productTypes: productTypesWithCounts,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error("Error fetching product types:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -137,19 +169,28 @@ export async function POST(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
     const { ProductType: ProductTypeModel } = auth.models;
 
     const body = await req.json();
-    const { code, name, slug, description, image, mobile_image, technical_specifications, display_order } = body;
+    const {
+      code,
+      name,
+      slug,
+      description,
+      image,
+      mobile_image,
+      technical_specifications,
+      display_order,
+    } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
         { error: "Name and slug are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -159,7 +200,7 @@ export async function POST(req: NextRequest) {
     if (existingSlug) {
       return NextResponse.json(
         { error: "A product type with this slug already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -169,7 +210,7 @@ export async function POST(req: NextRequest) {
       if (existingCode) {
         return NextResponse.json(
           { error: "A product type with this code already exists" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -194,7 +235,7 @@ export async function POST(req: NextRequest) {
     console.error("Error creating product type:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -214,19 +255,26 @@ export async function DELETE(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
-    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } = auth.models;
+    const { ProductType: ProductTypeModel, PIMProduct: PIMProductModel } =
+      auth.models;
 
     const body = await req.json().catch(() => ({}));
     const { delete_all, product_type_ids, force } = body;
 
-    if (!delete_all && (!product_type_ids || !Array.isArray(product_type_ids))) {
+    if (
+      !delete_all &&
+      (!product_type_ids || !Array.isArray(product_type_ids))
+    ) {
       return NextResponse.json(
-        { error: "Either delete_all: true or product_type_ids array is required" },
-        { status: 400 }
+        {
+          error:
+            "Either delete_all: true or product_type_ids array is required",
+        },
+        { status: 400 },
       );
     }
 
@@ -243,20 +291,28 @@ export async function DELETE(req: NextRequest) {
       },
       {
         $group: {
-          _id: { $ifNull: ["$product_type.product_type_id", "$product_type.id"] },
+          _id: {
+            $ifNull: ["$product_type.product_type_id", "$product_type.id"],
+          },
           count: { $sum: 1 },
         },
       },
     ]);
 
-    const typesWithProducts = new Map(productCounts.map((c) => [c._id, c.count]));
+    const typesWithProducts = new Map(
+      productCounts.map((c) => [c._id, c.count]),
+    );
 
     let typesToDelete: string[];
 
     if (delete_all) {
       // Get all product type IDs
-      const allTypes = await ProductTypeModel.find({}).select("product_type_id").lean();
-      typesToDelete = allTypes.map((pt: { product_type_id: string }) => pt.product_type_id);
+      const allTypes = await ProductTypeModel.find({})
+        .select("product_type_id")
+        .lean();
+      typesToDelete = allTypes.map(
+        (pt: { product_type_id: string }) => pt.product_type_id,
+      );
     } else {
       typesToDelete = product_type_ids;
     }
@@ -266,9 +322,13 @@ export async function DELETE(req: NextRequest) {
     let skippedIds: string[] = [];
 
     if (!force) {
-      skippedIds = typesToDelete.filter((id: string) => typesWithProducts.has(id));
+      skippedIds = typesToDelete.filter((id: string) =>
+        typesWithProducts.has(id),
+      );
       skipped = skippedIds.length;
-      typesToDelete = typesToDelete.filter((id: string) => !typesWithProducts.has(id));
+      typesToDelete = typesToDelete.filter(
+        (id: string) => !typesWithProducts.has(id),
+      );
     } else {
       // Force mode: clear product_type from products first (support both field names)
       await PIMProductModel.updateMany(
@@ -278,7 +338,7 @@ export async function DELETE(req: NextRequest) {
             { "product_type.id": { $in: typesToDelete } },
           ],
         },
-        { $unset: { product_type: "" } }
+        { $unset: { product_type: "" } },
       );
     }
 
@@ -291,13 +351,16 @@ export async function DELETE(req: NextRequest) {
       success: true,
       deleted: result.deletedCount,
       skipped,
-      skipped_reason: skipped > 0 ? "Product types have products assigned (use force: true to override)" : undefined,
+      skipped_reason:
+        skipped > 0
+          ? "Product types have products assigned (use force: true to override)"
+          : undefined,
     });
   } catch (error) {
     console.error("Error bulk deleting product types:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -342,6 +342,22 @@ describe("integration: B2C Storefronts API", () => {
       expect(data.data.branding.font_family).toBe("Roboto");
     });
 
+    it("should persist custom_css through PATCH (regression)", async () => {
+      await createViaAPI({ name: "CSS Test", slug: "patch-css", channel: "ch-css", domains: [] });
+
+      const css = ":root { --brand: #0a7; }\n.cookie-bar { display: none; }";
+      const req = makeReq("/api/b2b/b2c/storefronts/patch-css", {
+        method: "PATCH",
+        body: { custom_css: css },
+      });
+
+      const res = await updateStorefront(req, createParams({ slug: "patch-css" }));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.data.custom_css).toBe(css);
+    });
+
     it("should update header nav links", async () => {
       await createViaAPI({ name: "Nav Test", slug: "patch-nav", channel: "ch-nav", domains: [] });
 
@@ -518,6 +534,33 @@ describe("integration: B2C Public Home API", () => {
       expect(data.storefront.header.nav_links).toHaveLength(1);
       expect(data.storefront.footer.copyright_text).toBe("© 2026 Public Shop");
       expect(data.storefront.footer.social_links).toHaveLength(1);
+    });
+
+    it("should include custom_css in storefront metadata (regression)", async () => {
+      const css = ".promo { color: red; }";
+      await B2CStorefrontModel.create({
+        name: "CSS Shop",
+        slug: "css-shop",
+        channel: "ch-css-shop",
+        domains: [{ domain: "css.test.com", is_primary: true }],
+        status: "active",
+        custom_css: css,
+      });
+
+      const req = makeReq("/api/b2b/b2c/public/home", {
+        headers: {
+          origin: "https://css.test.com",
+          "x-auth-method": "api-key",
+          "x-api-key-id": "ak_test_123",
+          "x-api-secret": "sk_test_456",
+        },
+      });
+
+      const res = await getPublicHome(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.storefront.custom_css).toBe(css);
     });
 
     it("should return 400 without Origin header", async () => {

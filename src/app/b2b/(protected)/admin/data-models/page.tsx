@@ -6,6 +6,7 @@ import { Database, Plus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { slugify } from "@/lib/data-models/slugify";
+import { InstallErpSettingsButton } from "./install-erp-settings-button";
 import type {
   DataModelCardinality,
   DataModelRelation,
@@ -66,10 +67,15 @@ export default function DataModelsPage() {
             Records are exposed via a generated CRUD API.
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          New model
-        </Button>
+        <div className="flex items-center gap-2">
+          {!loading && !items.some((i) => i.slug === "erp_settings") && (
+            <InstallErpSettingsButton onInstalled={() => void load()} />
+          )}
+          <Button onClick={() => setModalOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" />
+            New model
+          </Button>
+        </div>
       </div>
 
       {error && (

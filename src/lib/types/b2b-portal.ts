@@ -69,6 +69,8 @@ export interface IB2BPortal {
   footer_draft?: IB2CStorefrontFooter;
   meta_tags: IB2CStorefrontMetaTags;
   custom_scripts: IB2CCustomScript[];
+  /** Custom CSS injected into the storefront <head> */
+  custom_css?: string;
   settings: IB2CStorefrontSettings;
   /** SEO / routing config consumed by the storefront (category root + robots). */
   seo_config?: IB2BPortalSeoConfig;

@@ -11,6 +11,7 @@ import {
   FileCode2,
   Globe,
   Code2,
+  Paintbrush,
   MapPin,
   FileText,
   Inbox,
@@ -21,7 +22,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { StorefrontActiveSection } from "@/components/b2c/storefront-settings/types";
 
 /**
- * The 7 portal-detail sections (?section=...). Mirrors STOREFRONT_SECTIONS in
+ * The portal-detail sections (?section=...). Mirrors STOREFRONT_SECTIONS in
  * B2CNavigation — the B2B portal detail page reuses the same B2C section
  * components, so the section keys and labels are shared.
  */
@@ -36,6 +37,7 @@ const PORTAL_SECTIONS: {
   { key: "footer", icon: FileCode2, labelKey: "nav.b2c.footer" },
   { key: "seo", icon: Globe, labelKey: "nav.b2c.seoMetaTags" },
   { key: "scripts", icon: Code2, labelKey: "nav.b2c.customScripts" },
+  { key: "css", icon: Paintbrush, labelKey: "nav.b2c.customCss" },
   { key: "sitemap", icon: MapPin, labelKey: "nav.b2c.sitemap" },
 ];
 

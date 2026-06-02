@@ -14,6 +14,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { refreshLanguageCache } from "@/services/language.service";
 import { addLanguageFieldsToSolr, ensureBaseFields } from "@/services/solr-schema.service";
 import { syncQueue } from "@/lib/queue/queues";
+import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 import { projectConfig, ensureSolrCore } from "@/config/project.config";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
@@ -186,7 +187,7 @@ export async function POST(
         productCount: productsWithContent,
         tenant_id: "default", // TODO: Get from request context
       }, {
-        priority: 5, // Medium priority
+        priority: SYNC_PRIORITY.NORMAL, // targeted multi-product reindex
         removeOnComplete: true,
         removeOnFail: false,
       });

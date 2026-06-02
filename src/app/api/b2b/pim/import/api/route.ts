@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { syncQueue } from "@/lib/queue/queues";
+import { syncBulkQueue } from "@/lib/queue/queues";
+import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
+import {
+  checkImportRateLimit,
+  acquireImportSlot,
+  type ImportSlot,
+} from "@/lib/services/pim-import-rate-limit.service";
 import {
   calculateCompletenessScore,
   findCriticalIssues,
@@ -155,6 +161,9 @@ function deepMerge(target: any, source: any): any {
  * - "partial": New data is merged with existing product (delta updates)
  */
 export async function POST(req: NextRequest) {
+  // Held for the lifetime of the request; released in the finally below so a
+  // tenant's concurrency slot is freed on every exit path.
+  let importSlot: ImportSlot | null = null;
   try {
     // Check for API key authentication first
     const authMethod = req.headers.get("x-auth-method");
@@ -180,6 +189,48 @@ export async function POST(req: NextRequest) {
       }
       tenantDb = `vinc-${session.tenantId}`;
       tenantId = session.tenantId;
+    }
+
+    // Per-tenant import burst limiter — enforced BEFORE any MongoDB work so a
+    // flood of imports can't spike the shared DB and starve order/search traffic.
+    const rateLimit = await checkImportRateLimit(tenantId || tenantDb);
+    if (!rateLimit.allowed) {
+      console.warn(
+        `⛔ Import rate limit hit for tenant "${tenantId || tenantDb}" ` +
+          `(by ${rateLimit.blockedBy}; minute ${rateLimit.minute.current}/${rateLimit.minute.limit}, ` +
+          `hour ${rateLimit.hour.current}/${rateLimit.hour.limit})`
+      );
+      return NextResponse.json(
+        {
+          error: "Import rate limit exceeded. Slow down and retry.",
+          blocked_by: rateLimit.blockedBy,
+          retry_after_seconds: rateLimit.retryAfter,
+          limits: {
+            per_minute: rateLimit.minute.limit,
+            per_hour: rateLimit.hour.limit,
+          },
+        },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } }
+      );
+    }
+
+    // Cap simultaneous in-flight imports per tenant — the most direct DB guard:
+    // it bounds how many heavy imports hit MongoDB at once. Released in finally.
+    importSlot = await acquireImportSlot(tenantId || tenantDb);
+    if (!importSlot.acquired) {
+      console.warn(
+        `⛔ Import concurrency limit hit for tenant "${tenantId || tenantDb}" ` +
+          `(${importSlot.current}/${importSlot.limit} in flight)`
+      );
+      return NextResponse.json(
+        {
+          error: "Too many concurrent imports for this tenant. Retry shortly.",
+          blocked_by: "concurrent",
+          retry_after_seconds: 5,
+          limits: { max_concurrent: importSlot.limit },
+        },
+        { status: 429, headers: { "Retry-After": "5" } }
+      );
     }
 
     // Get models bound to the correct tenant connection
@@ -557,15 +608,15 @@ export async function POST(req: NextRequest) {
             const batchIds = successfulEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
             const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
 
-            await syncQueue.add('bulk-sync-batch', {
+            await syncBulkQueue.add('bulk-sync-batch', {
               product_id: `batch-${jobId}-${batchNumber}`,
               product_ids: batchIds,
               operation: 'bulk-sync',
               channels: ['solr'],
               tenant_id: tenantId,
-              priority: 'high',
+              priority: 'low',
             }, {
-              priority: 1, // High priority for search indexing
+              priority: SYNC_PRIORITY.LOW, // Background: bulk import → isolated bulk lane
             });
 
             console.log(`   ✓ Queued batch ${batchNumber}/${batchCount} (${batchIds.length} products)`);
@@ -613,5 +664,8 @@ export async function POST(req: NextRequest) {
       { error: "Internal server error", details: error.message },
       { status: 500 }
     );
+  } finally {
+    // Always free the tenant's concurrency slot (no-op if none was acquired).
+    if (importSlot) await importSlot.release();
   }
 }

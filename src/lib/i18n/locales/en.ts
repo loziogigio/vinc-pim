@@ -1228,6 +1228,7 @@ const en = {
         productsCount: "Products: {{count}}",
         termsCount: "Terms: {{count}}",
         moreTerms: "+{{count}} more",
+        dictionariesCount: "{{count}} dictionaries",
         // Modal form labels
         keyLabel: "Key",
         localeLabel: "Locale",
@@ -4971,6 +4972,15 @@ const en = {
       hint: "Applies to the whole storefront. Saved CSS is injected as a single <style> tag.",
       save: "Save CSS",
       saving: "Saving...",
+    },
+    installErpSettings: {
+      title: "Install ERP Settings",
+      descriptionPrefix: "Creates the",
+      descriptionMiddle: "model and seeds its default",
+      descriptionSuffix: " config record.",
+      install: "Install",
+      installing: "Installing…",
+      error: "Failed to install ERP settings",
     },
     channelSelect: {
       loading: "Loading channels...",

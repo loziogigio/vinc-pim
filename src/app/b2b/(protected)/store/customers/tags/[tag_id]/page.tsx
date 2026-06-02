@@ -92,24 +92,35 @@ export default function TagDetailPage() {
   // Assigned customers
   const [customers, setCustomers] = useState<CustomerEntry[]>([]);
   const [customerPagination, setCustomerPagination] = useState({
-    page: 1, limit: 20, total: 0, totalPages: 0,
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
   });
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPage, setCustomerPage] = useState(1);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
-  const [removingCustomerId, setRemovingCustomerId] = useState<string | null>(null);
+  const [removingCustomerId, setRemovingCustomerId] = useState<string | null>(
+    null,
+  );
 
   // Address overrides
-  const [addressOverrides, setAddressOverrides] = useState<AddressOverrideEntry[]>([]);
+  const [addressOverrides, setAddressOverrides] = useState<
+    AddressOverrideEntry[]
+  >([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
-  const [removingAddressKey, setRemovingAddressKey] = useState<string | null>(null);
+  const [removingAddressKey, setRemovingAddressKey] = useState<string | null>(
+    null,
+  );
 
   // Panel visibility
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showAddOverride, setShowAddOverride] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"customers" | "addresses">("customers");
+  const [activeTab, setActiveTab] = useState<"customers" | "addresses">(
+    "customers",
+  );
 
   // ============================================
   // Load tag info
@@ -120,13 +131,14 @@ export default function TagDetailPage() {
     (async () => {
       setIsLoadingTag(true);
       try {
-        const res = await fetch("/api/b2b/customer-tags");
+        const res = await fetch(
+          `/api/b2b/customer-tags/${encodeURIComponent(tagId)}`,
+        );
         if (res.ok) {
           const data = await res.json();
-          const found = (data.tags || []).find(
-            (t: TagInfo) => t.tag_id === tagId
-          );
-          setTag(found || null);
+          setTag(data.tag || null);
+        } else {
+          setTag(null);
         }
       } catch (err) {
         console.error("Error loading tag:", err);
@@ -151,12 +163,14 @@ export default function TagDetailPage() {
     if (customerSearch) params.set("search", customerSearch);
 
     try {
-      const res = await fetch(`/api/b2b/customer-tags/${tagId}/customers?${params}`);
+      const res = await fetch(
+        `/api/b2b/customer-tags/${tagId}/customers?${params}`,
+      );
       if (res.ok) {
         const data = await res.json();
         setCustomers(data.customers || []);
         setCustomerPagination(
-          data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 }
+          data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 },
         );
         if (data.address_overrides) {
           setAddressOverrides(data.address_overrides);
@@ -190,9 +204,11 @@ export default function TagDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setTag((prev) =>
-          prev ? { ...prev, customer_count: data.customer_count } : prev
+          prev ? { ...prev, customer_count: data.customer_count } : prev,
         );
-        setCustomers((prev) => prev.filter((c) => c.customer_id !== customerId));
+        setCustomers((prev) =>
+          prev.filter((c) => c.customer_id !== customerId),
+        );
         setCustomerPagination((prev) => ({
           ...prev,
           total: prev.total - 1,
@@ -212,7 +228,7 @@ export default function TagDetailPage() {
 
   const handleRemoveAddressOverride = async (
     customerId: string,
-    addressId: string
+    addressId: string,
   ) => {
     if (!tag) return;
     const key = `${customerId}:${addressId}`;
@@ -225,13 +241,14 @@ export default function TagDetailPage() {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ full_tag: tag.full_tag }),
-        }
+        },
       );
       if (res.ok) {
         setAddressOverrides((prev) =>
           prev.filter(
-            (a) => !(a.customer_id === customerId && a.address_id === addressId)
-          )
+            (a) =>
+              !(a.customer_id === customerId && a.address_id === addressId),
+          ),
         );
       }
     } catch (err) {
@@ -254,7 +271,7 @@ export default function TagDetailPage() {
     if (res.ok) {
       const data = await res.json();
       setTag((prev) =>
-        prev ? { ...prev, customer_count: data.customer_count } : prev
+        prev ? { ...prev, customer_count: data.customer_count } : prev,
       );
       loadCustomers();
     }
@@ -268,7 +285,7 @@ export default function TagDetailPage() {
     customerId: string,
     addressId: string,
     customerName: string,
-    addressLabel: string
+    addressLabel: string,
   ) => {
     if (!tag) return;
     const res = await fetch(
@@ -277,12 +294,17 @@ export default function TagDetailPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ full_tag: tag.full_tag }),
-      }
+      },
     );
     if (res.ok) {
       setAddressOverrides((prev) => [
         ...prev,
-        { customer_id: customerId, customer_name: customerName, address_id: addressId, address_label: addressLabel },
+        {
+          customer_id: customerId,
+          customer_name: customerName,
+          address_id: addressId,
+          address_label: addressLabel,
+        },
       ]);
     }
   };
@@ -316,8 +338,14 @@ export default function TagDetailPage() {
       <Breadcrumbs
         items={[
           { label: "Store", href: "/b2b/store" },
-          { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
-          { label: t("pages.store.customerTags.title"), href: "/b2b/store/customers/tags" },
+          {
+            label: t("pages.store.customers.title"),
+            href: "/b2b/store/customers",
+          },
+          {
+            label: t("pages.store.customerTags.title"),
+            href: "/b2b/store/customers/tags",
+          },
           { label: tag.code },
         ]}
       />
@@ -338,7 +366,8 @@ export default function TagDetailPage() {
               </code>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="h-3 w-3" />
-                {tag.customer_count} {t("pages.store.tagDetail.customers").toLowerCase()}
+                {tag.customer_count}{" "}
+                {t("pages.store.tagDetail.customers").toLowerCase()}
               </span>
             </div>
           </div>
@@ -386,7 +415,8 @@ export default function TagDetailPage() {
         >
           <span className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4" />
-            {t("pages.store.tagDetail.addressOverrides")} ({addressOverrides.length})
+            {t("pages.store.tagDetail.addressOverrides")} (
+            {addressOverrides.length})
           </span>
         </button>
       </div>
@@ -421,71 +451,82 @@ export default function TagDetailPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.customerCol")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.codeCol")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.emailCol")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.typeCol")}</th>
-                    <th className="w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((c) => {
-                    const TypeIcon =
-                      CUSTOMER_TYPE_ICONS[c.customer_type || ""] || User;
-                    return (
-                      <tr
-                        key={c.customer_id}
-                        className="border-b border-border hover:bg-muted/20 transition"
-                      >
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`${tenantPrefix}/b2b/store/customers/${c.customer_id}`}
-                            className="font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                          >
-                            {getCustomerDisplayName(c)}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                          {getCustomerCode(c)}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {c.email || "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <TypeIcon className="h-3 w-3" />
-                            {c.customer_type || "—"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleRemoveCustomer(c.customer_id)}
-                            disabled={removingCustomerId === c.customer_id}
-                            className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
-                            title={t("pages.store.tagDetail.removeTag")}
-                          >
-                            {removingCustomerId === c.customer_id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <UserMinus className="h-4 w-4" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                        {t("pages.store.tagDetail.customerCol")}
+                      </th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                        {t("pages.store.tagDetail.codeCol")}
+                      </th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                        {t("pages.store.tagDetail.emailCol")}
+                      </th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                        {t("pages.store.tagDetail.typeCol")}
+                      </th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((c) => {
+                      const TypeIcon =
+                        CUSTOMER_TYPE_ICONS[c.customer_type || ""] || User;
+                      return (
+                        <tr
+                          key={c.customer_id}
+                          className="border-b border-border hover:bg-muted/20 transition"
+                        >
+                          <td className="px-4 py-3">
+                            <Link
+                              href={`${tenantPrefix}/b2b/store/customers/${c.customer_id}`}
+                              className="font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                            >
+                              {getCustomerDisplayName(c)}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                            {getCustomerCode(c)}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {c.email || "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <TypeIcon className="h-3 w-3" />
+                              {c.customer_type || "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() =>
+                                handleRemoveCustomer(c.customer_id)
+                              }
+                              disabled={removingCustomerId === c.customer_id}
+                              className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
+                              title={t("pages.store.tagDetail.removeTag")}
+                            >
+                              {removingCustomerId === c.customer_id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <UserMinus className="h-4 w-4" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
 
             {customerPagination.totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <span className="text-xs text-muted-foreground">
-                  {t("common.page")} {customerPagination.page} {t("common.of")} {customerPagination.totalPages} ({customerPagination.total})
+                  {t("common.page")} {customerPagination.page} {t("common.of")}{" "}
+                  {customerPagination.totalPages} ({customerPagination.total})
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -498,7 +539,7 @@ export default function TagDetailPage() {
                   <button
                     onClick={() =>
                       setCustomerPage((p) =>
-                        Math.min(customerPagination.totalPages, p + 1)
+                        Math.min(customerPagination.totalPages, p + 1),
                       )
                     }
                     disabled={customerPage >= customerPagination.totalPages}
@@ -546,57 +587,64 @@ export default function TagDetailPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.customerCol")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("pages.store.tagDetail.addressCol")}</th>
-                    <th className="w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {addressOverrides.map((a) => {
-                    const key = `${a.customer_id}:${a.address_id}`;
-                    return (
-                      <tr
-                        key={key}
-                        className="border-b border-border hover:bg-muted/20 transition"
-                      >
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`${tenantPrefix}/b2b/store/customers/${a.customer_id}`}
-                            className="font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                          >
-                            {a.customer_name}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3 flex-shrink-0" />
-                            {a.address_label}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() =>
-                              handleRemoveAddressOverride(a.customer_id, a.address_id)
-                            }
-                            disabled={removingAddressKey === key}
-                            className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
-                            title={t("pages.store.tagDetail.removeOverride")}
-                          >
-                            {removingAddressKey === key ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <UserMinus className="h-4 w-4" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                        {t("pages.store.tagDetail.customerCol")}
+                      </th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                        {t("pages.store.tagDetail.addressCol")}
+                      </th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {addressOverrides.map((a) => {
+                      const key = `${a.customer_id}:${a.address_id}`;
+                      return (
+                        <tr
+                          key={key}
+                          className="border-b border-border hover:bg-muted/20 transition"
+                        >
+                          <td className="px-4 py-3">
+                            <Link
+                              href={`${tenantPrefix}/b2b/store/customers/${a.customer_id}`}
+                              className="font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                            >
+                              {a.customer_name}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              {a.address_label}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() =>
+                                handleRemoveAddressOverride(
+                                  a.customer_id,
+                                  a.address_id,
+                                )
+                              }
+                              disabled={removingAddressKey === key}
+                              className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/15 transition disabled:opacity-50"
+                              title={t("pages.store.tagDetail.removeOverride")}
+                            >
+                              {removingAddressKey === key ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <UserMinus className="h-4 w-4" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

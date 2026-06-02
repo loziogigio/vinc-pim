@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { syncQueue } from "@/lib/queue/queues";
+import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 import { isSolrEnabled } from "@/config/project.config";
 import { safeRegexQuery } from "@/lib/security";
 
@@ -32,9 +33,9 @@ async function syncProductsToSolr(
         operation: "bulk-sync",
         channels: ["solr"],
         tenant_id: tenantId,
-        priority: "high",
+        priority: "normal",
       },
-      { priority: 1 }
+      { priority: SYNC_PRIORITY.NORMAL }
     );
   }
   return { queued: entityCodes.length, batches };

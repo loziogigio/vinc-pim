@@ -122,10 +122,10 @@ export interface ILineItem {
 
   // Resource Quotation & Booking extensions
   resource_type?: import("@/lib/constants/booking").ResourceType;
-  source?: string;          // "msc" (external) | "internal" (bookable)
-  departure_id?: string;    // bookable lines only
-  resource_id?: string;     // bookable lines only
-  booking_id?: string;      // set when a hold is placed
+  source?: string; // "msc" (external) | "internal" (bookable)
+  departure_id?: string; // bookable lines only
+  resource_id?: string; // bookable lines only
+  booking_id?: string; // set when a hold is placed
   quote_snapshot?: Record<string, unknown>; // external: { price, availability }
 }
 
@@ -414,8 +414,6 @@ export interface IOrder extends Document {
   session_id: string;
   flow_id: string;
   source?: OrderSource;
-  /** Channel of provenance — which interface or integration produced this order */
-  channel?: string;
   /** Optional reference within the channel (e.g. storefront slug, API key ID, "ios"/"android") */
   channel_ref?: string;
 
@@ -445,12 +443,15 @@ export interface IOrder extends Document {
   processing_phase?: "before" | "on"; // Which hook phase is running async
   processing_started_at?: Date;
   processing_completed_at?: Date;
-  processing_errors?: Array<string | {
-    message: string;
-    line_number?: number;
-    field?: string;
-    severity?: "error" | "warning";
-  }>;
+  processing_errors?: Array<
+    | string
+    | {
+        message: string;
+        line_number?: number;
+        field?: string;
+        severity?: "error" | "warning";
+      }
+  >;
 
   // Items
   items: ILineItem[];
@@ -527,7 +528,7 @@ const DiscountTierSchema = new Schema<IDiscountTier>(
       enum: ADJUSTMENT_REASONS,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -545,7 +546,7 @@ const CartDiscountSchema = new Schema<ICartDiscount>(
     applied_at: { type: Date, default: Date.now },
     revision: { type: Number },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -569,7 +570,7 @@ const LineAdjustmentSchema = new Schema<ILineAdjustment>(
     applied_at: { type: Date, default: Date.now },
     revision: { type: Number },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -582,7 +583,7 @@ const QtyChangeSchema = new Schema(
     old_qty: { type: Number, required: true },
     new_qty: { type: Number, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const QuotationRevisionSchema = new Schema<IQuotationRevision>(
@@ -609,7 +610,7 @@ const QuotationRevisionSchema = new Schema<IQuotationRevision>(
     notes: { type: String },
     internal_notes: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -645,7 +646,7 @@ const QuotationDataSchema = new Schema<IQuotationData>(
     rejected_at: { type: Date },
     expired_at: { type: Date },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -659,7 +660,7 @@ const ProviderDataSchema = new Schema(
     payment_type: { type: String, enum: ["onclick", "moto", "recurrent"] },
     three_ds_status: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const PaymentRecordSchema = new Schema<IPaymentRecord>(
@@ -675,7 +676,7 @@ const PaymentRecordSchema = new Schema<IPaymentRecord>(
     provider: { type: String },
     provider_data: { type: ProviderDataSchema },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -706,7 +707,7 @@ const PaymentDataSchema = new Schema<IPaymentData>(
     // Payments
     payments: { type: [PaymentRecordSchema], default: [] },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ============================================
@@ -724,7 +725,7 @@ const DeliveryDataSchema = new Schema<IDeliveryData>(
     delivery_proof: { type: String },
     delivery_notes: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const LineItemSchema = new Schema<ILineItem>(
@@ -733,7 +734,11 @@ const LineItemSchema = new Schema<ILineItem>(
     line_number: { type: Number, required: true },
     entity_code: { type: String, required: true },
     sku: { type: String, required: true },
-    product_source: { type: String, enum: ["pim", "external", "manual"], default: "pim" },
+    product_source: {
+      type: String,
+      enum: ["pim", "external", "manual"],
+      default: "pim",
+    },
     external_ref: { type: String },
 
     // Quantity & Packaging
@@ -789,22 +794,33 @@ const LineItemSchema = new Schema<ILineItem>(
     promo_label: { type: String },
     promo_discount_pct: { type: Number },
     promo_discount_amt: { type: Number },
-    discount_chain: [{
-      type: { type: String, enum: ["percentage", "amount", "net"] },
-      value: { type: Number },
-      source: { type: String, enum: ["price_list", "price_list_sale", "promo"] },
-      order: { type: Number },
-    }],
+    discount_chain: [
+      {
+        type: { type: String, enum: ["percentage", "amount", "net"] },
+        value: { type: Number },
+        source: {
+          type: String,
+          enum: ["price_list", "price_list_sale", "promo"],
+        },
+        order: { type: Number },
+      },
+    ],
 
     // Promo goal (for threshold-based promos)
-    promo_goal_type: { type: String, enum: ["value", "quantity", "line_count"] },
+    promo_goal_type: {
+      type: String,
+      enum: ["value", "quantity", "line_count"],
+    },
     promo_goal_value: { type: Number },
     promo_goal_label: { type: String },
     promo_start_date: { type: String },
     promo_end_date: { type: String },
 
     // Promo reward type (what the ERP gives when goal is reached)
-    promo_reward_type: { type: String, enum: ["extra_discount", "fixed_price", "gift"] },
+    promo_reward_type: {
+      type: String,
+      enum: ["extra_discount", "fixed_price", "gift"],
+    },
     promo_reward_gift_code: { type: String },
     promo_reward_gift_quantity: { type: Number },
 
@@ -816,14 +832,17 @@ const LineItemSchema = new Schema<ILineItem>(
     erp_data: { type: Schema.Types.Mixed },
 
     // Resource Quotation & Booking extensions
-    resource_type: { type: String, enum: ["cabin", "room", "slot", "seat", "generic"] },
+    resource_type: {
+      type: String,
+      enum: ["cabin", "room", "slot", "seat", "generic"],
+    },
     source: { type: String },
     departure_id: { type: String },
     resource_id: { type: String },
     booking_id: { type: String },
     quote_snapshot: { type: Schema.Types.Mixed },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const OrderSchema = new Schema<IOrder>(
@@ -856,7 +875,7 @@ const OrderSchema = new Schema<IOrder>(
     tenant_id: { type: String, required: true, index: true },
 
     // Sales channel
-    channel: { type: String, default: "default", index: true },
+    channel: { type: String, default: "default", trim: true, index: true },
 
     // Customer (optional for B2C guest orders)
     customer_id: { type: String, index: true },
@@ -877,7 +896,7 @@ const OrderSchema = new Schema<IOrder>(
           company_name: { type: String },
           is_guest: { type: Boolean, required: true },
         },
-        { _id: false }
+        { _id: false },
       ),
     },
     invoice_requested: { type: Boolean },
@@ -890,7 +909,7 @@ const OrderSchema = new Schema<IOrder>(
           pec_email: { type: String },
           sdi_code: { type: String },
         },
-        { _id: false }
+        { _id: false },
       ),
     },
     shipping_snapshot: {
@@ -905,7 +924,7 @@ const OrderSchema = new Schema<IOrder>(
           country: { type: String, required: true },
           phone: { type: String },
         },
-        { _id: false }
+        { _id: false },
       ),
     },
     billing_snapshot: {
@@ -920,7 +939,7 @@ const OrderSchema = new Schema<IOrder>(
           country: { type: String, required: true },
           phone: { type: String },
         },
-        { _id: false }
+        { _id: false },
       ),
     },
 
@@ -977,10 +996,6 @@ const OrderSchema = new Schema<IOrder>(
       enum: ORDER_SOURCES,
       default: "web",
     },
-    channel: {
-      type: String,
-      trim: true,
-    },
     channel_ref: {
       type: String,
       trim: true,
@@ -1022,21 +1037,30 @@ const OrderSchema = new Schema<IOrder>(
     quotation: { type: QuotationDataSchema },
 
     // Promo progress (aggregated, updated on item changes)
-    promo_progress: [{
-      promo_code: { type: String, required: true },
-      promo_label: { type: String },
-      goal_type: { type: String, enum: ["value", "quantity", "line_count"], required: true },
-      goal_value: { type: Number, required: true },
-      current_value: { type: Number, default: 0 },
-      remaining: { type: Number, default: 0 },
-      reached: { type: Boolean, default: false },
-      start_date: { type: String },
-      end_date: { type: String },
-      item_count: { type: Number, default: 0 },
-      reward_type: { type: String, enum: ["extra_discount", "fixed_price", "gift"] },
-      reward_gift_code: { type: String },
-      reward_gift_quantity: { type: Number },
-    }],
+    promo_progress: [
+      {
+        promo_code: { type: String, required: true },
+        promo_label: { type: String },
+        goal_type: {
+          type: String,
+          enum: ["value", "quantity", "line_count"],
+          required: true,
+        },
+        goal_value: { type: Number, required: true },
+        current_value: { type: Number, default: 0 },
+        remaining: { type: Number, default: 0 },
+        reached: { type: Boolean, default: false },
+        start_date: { type: String },
+        end_date: { type: String },
+        item_count: { type: Number, default: 0 },
+        reward_type: {
+          type: String,
+          enum: ["extra_discount", "fixed_price", "gift"],
+        },
+        reward_gift_code: { type: String },
+        reward_gift_quantity: { type: Number },
+      },
+    ],
 
     // Cart-level discounts
     cart_discounts: { type: [CartDiscountSchema], default: [] },
@@ -1085,7 +1109,7 @@ const OrderSchema = new Schema<IOrder>(
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
-  }
+  },
 );
 
 // ============================================
@@ -1105,7 +1129,7 @@ OrderSchema.index(
   {
     unique: true,
     partialFilterExpression: { is_current: true, status: "draft" },
-  }
+  },
 );
 
 // Unique order number per year (only when assigned)
@@ -1114,7 +1138,7 @@ OrderSchema.index(
   {
     unique: true,
     partialFilterExpression: { order_number: { $exists: true, $ne: null } },
-  }
+  },
 );
 
 // Unique cart number per year (assigned on cart creation)
@@ -1123,11 +1147,34 @@ OrderSchema.index(
   {
     unique: true,
     partialFilterExpression: { cart_number: { $exists: true, $ne: null } },
-  }
+  },
 );
 
 // List by status with date sorting
 OrderSchema.index({ status: 1, created_at: -1 });
+
+// Tenant-scoped order listing — the hot path for the store orders pages.
+// Serves the default list (filter by tenant_id, sort by created_at desc),
+// countDocuments, and the stats aggregation's $match, without an in-memory sort
+// or a full-collection scan (the single-field tenant_id index left the sort
+// unindexed). Compound so the equality (tenant_id) + sort (created_at) are one
+// index range scan.
+OrderSchema.index({ tenant_id: 1, created_at: -1 });
+
+// Tenant + status with date sorting — the per-status pages (pending, confirmed,
+// shipped, cancelled, …) and any status-filtered list.
+OrderSchema.index({ tenant_id: 1, status: 1, created_at: -1 });
+
+// Tenant + submission date — the dashboard date-range aggregations match on the
+// effective date (submitted_at, falling back to created_at); this covers the
+// submitted_at branch as an index range scan instead of a collection scan.
+OrderSchema.index({ tenant_id: 1, submitted_at: -1 });
+
+// Tenant + customer with date sorting — a customer's Order History (customer
+// detail page, /api/b2b/orders?customer_id=…) filters by tenant_id + customer_id
+// and sorts by created_at; this serves it as one index range scan instead of an
+// in-memory sort over the customer's orders.
+OrderSchema.index({ tenant_id: 1, customer_id: 1, created_at: -1 });
 
 // Find orders containing specific product
 OrderSchema.index({ "items.entity_code": 1 });
@@ -1137,8 +1184,10 @@ OrderSchema.index(
   { "quotation.quotation_number": 1 },
   {
     unique: true,
-    partialFilterExpression: { "quotation.quotation_number": { $exists: true, $ne: null } },
-  }
+    partialFilterExpression: {
+      "quotation.quotation_number": { $exists: true, $ne: null },
+    },
+  },
 );
 OrderSchema.index({ "quotation.quotation_status": 1 });
 OrderSchema.index({ "quotation.valid_until": 1 }); // For expiration checks
@@ -1149,7 +1198,7 @@ OrderSchema.index({ duplicated_from: 1 });
 // B2C guest order linking (find orders by buyer email for account registration)
 OrderSchema.index(
   { "buyer.email": 1 },
-  { partialFilterExpression: { "buyer.email": { $exists: true } } }
+  { partialFilterExpression: { "buyer.email": { $exists: true } } },
 );
 
 // Lifecycle date indexes
@@ -1190,7 +1239,7 @@ OrderSchema.methods.recalculateTotals = function (): void {
       totalVat -= priceDiff * (item.vat_rate / 100);
     } else if (adj.type === "discount_percentage") {
       // Percentage discount on line
-      const lineDiscount = item.line_net * Math.abs(adj.new_value) / 100;
+      const lineDiscount = (item.line_net * Math.abs(adj.new_value)) / 100;
       subtotalNet -= lineDiscount;
       totalVat -= lineDiscount * (item.vat_rate / 100);
     } else if (adj.type === "discount_fixed") {
@@ -1204,7 +1253,7 @@ OrderSchema.methods.recalculateTotals = function (): void {
   let cartDiscountTotal = 0;
   for (const discount of cartDiscounts) {
     if (discount.type === "percentage") {
-      const discountAmount = subtotalNet * Math.abs(discount.value) / 100;
+      const discountAmount = (subtotalNet * Math.abs(discount.value)) / 100;
       cartDiscountTotal += discountAmount;
     } else if (discount.type === "fixed") {
       cartDiscountTotal += Math.abs(discount.value);
@@ -1227,7 +1276,8 @@ OrderSchema.methods.recalculateTotals = function (): void {
   this.subtotal_net = Math.round(subtotalNet * 100) / 100;
   this.total_vat = Math.round(totalVat * 100) / 100;
   this.total_discount = Math.round((subtotalGross - subtotalNet) * 100) / 100;
-  this.order_total = Math.round((subtotalNet + totalVat + this.shipping_cost) * 100) / 100;
+  this.order_total =
+    Math.round((subtotalNet + totalVat + this.shipping_cost) * 100) / 100;
 };
 
 // ============================================
@@ -1272,7 +1322,7 @@ export function recalculateOrderTotals(order: IOrder): void {
       subtotalNet -= priceDiff;
       totalVat -= priceDiff * vatFactor;
     } else if (adj.type === "discount_percentage") {
-      const lineDiscount = item.line_net * Math.abs(adj.new_value) / 100;
+      const lineDiscount = (item.line_net * Math.abs(adj.new_value)) / 100;
       subtotalNet -= lineDiscount;
       totalVat -= lineDiscount * vatFactor;
     } else if (adj.type === "discount_fixed") {
@@ -1292,7 +1342,7 @@ export function recalculateOrderTotals(order: IOrder): void {
 
   for (const discount of cartDiscounts) {
     if (discount.type === "percentage") {
-      const netPart = subtotalNet * Math.abs(discount.value) / 100;
+      const netPart = (subtotalNet * Math.abs(discount.value)) / 100;
       cartDiscountNet += netPart;
       cartDiscountVat += netPart * avgVatRate;
     } else if (discount.type === "fixed") {
@@ -1319,7 +1369,8 @@ export function recalculateOrderTotals(order: IOrder): void {
   order.subtotal_net = Math.round(subtotalNet * 100) / 100;
   order.total_vat = Math.round(totalVat * 100) / 100;
   order.total_discount = Math.round((subtotalGross - subtotalNet) * 100) / 100;
-  order.order_total = Math.round((subtotalNet + totalVat + order.shipping_cost) * 100) / 100;
+  order.order_total =
+    Math.round((subtotalNet + totalVat + order.shipping_cost) * 100) / 100;
 }
 
 /**
@@ -1337,7 +1388,7 @@ export function calculateLineItemTotals(
   unit_price: number,
   vat_rate: number,
   vat_included?: boolean,
-  price_decimals: number = 2
+  price_decimals: number = 2,
 ): Pick<ILineItem, "line_gross" | "line_net" | "line_vat" | "line_total"> {
   const factor = Math.pow(10, price_decimals);
   const roundedUnitPrice = Math.round(unit_price * factor) / factor;
@@ -1390,13 +1441,13 @@ export function getNextLineNumber(items: ILineItem[]): number {
 export function calculateCartDiscountTotal(
   subtotalNet: number,
   cartDiscounts: ICartDiscount[],
-  totalVat?: number
+  totalVat?: number,
 ): number {
   let total = 0;
   const avgVatRate = totalVat && subtotalNet > 0 ? totalVat / subtotalNet : 0;
   for (const discount of cartDiscounts) {
     if (discount.type === "percentage") {
-      total += subtotalNet * Math.abs(discount.value) / 100;
+      total += (subtotalNet * Math.abs(discount.value)) / 100;
     } else if (discount.type === "fixed") {
       if (avgVatRate > 0) {
         total += Math.abs(discount.value) / (1 + avgVatRate);
@@ -1421,10 +1472,10 @@ export function isQuotationExpired(order: IOrder): boolean {
  */
 export function getEffectiveUnitPrice(
   item: ILineItem,
-  lineAdjustments: ILineAdjustment[]
+  lineAdjustments: ILineAdjustment[],
 ): number {
   const adjustment = lineAdjustments.find(
-    (adj) => adj.line_number === item.line_number
+    (adj) => adj.line_number === item.line_number,
   );
   if (!adjustment) return item.unit_price;
 

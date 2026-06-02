@@ -5,6 +5,7 @@
 
 import { syncQueue } from '../queue/queues';
 import { SyncJobData, SyncOperation } from '../adapters/types';
+import { getPriorityValue } from '@/lib/constants/sync-priority';
 
 /**
  * Sync a product to all enabled marketplaces
@@ -136,22 +137,6 @@ export function getEnabledChannels(): string[] {
   if (process.env.B2C_ENABLED === 'true') channels.push('b2c');
 
   return channels;
-}
-
-/**
- * Get priority value for BullMQ (lower number = higher priority)
- */
-function getPriorityValue(priority?: 'low' | 'normal' | 'high'): number {
-  switch (priority) {
-    case 'high':
-      return 1;
-    case 'normal':
-      return 5;
-    case 'low':
-      return 10;
-    default:
-      return 5;
-  }
 }
 
 /**

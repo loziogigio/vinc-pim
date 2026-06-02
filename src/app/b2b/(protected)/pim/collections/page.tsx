@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
@@ -53,25 +54,42 @@ type Collection = {
 export default function CollectionsPage() {
   const { t } = useTranslation();
   const [collections, setCollections] = useState<Collection[]>([]);
+  // Server-provided total (count reflects ALL matches, not the fetched page).
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
+  const appliedSearch = useDebouncedValue(searchQuery, 300);
   const [showInactive, setShowInactive] = useState(true);
+  const PAGE_LIMIT = 200;
   const { languages, fetchLanguages, getEnabledLanguages } = useLanguageStore();
 
   useEffect(() => {
-    fetchCollections();
     fetchLanguages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    fetchCollections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch, showInactive]);
 
   async function fetchCollections() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/collections?include_inactive=true");
+      // Filtering + search + count are server-side (see client-filtering standard).
+      const params = new URLSearchParams();
+      params.set("include_inactive", String(showInactive));
+      params.set("limit", String(PAGE_LIMIT));
+      if (appliedSearch) params.set("search", appliedSearch);
+      const res = await fetch(`/api/b2b/pim/collections?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setCollections(data.collections);
+        setCollections(data.collections || []);
+        setTotal(data.pagination?.total ?? (data.collections?.length || 0));
       }
     } catch (error) {
       console.error("Error fetching collections:", error);
@@ -84,19 +102,28 @@ export default function CollectionsPage() {
   async function handleDelete(collection: Collection) {
     if (collection.product_count > 0) {
       toast.error(
-        t("pages.pim.collections.hasProductsError", { count: collection.product_count })
+        t("pages.pim.collections.hasProductsError", {
+          count: collection.product_count,
+        }),
       );
       return;
     }
 
-    if (!confirm(t("pages.pim.collections.deleteConfirm", { name: collection.name }))) {
+    if (
+      !confirm(
+        t("pages.pim.collections.deleteConfirm", { name: collection.name }),
+      )
+    ) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/b2b/pim/collections/${collection.collection_id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/b2b/pim/collections/${collection.collection_id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (res.ok) {
         toast.success(t("pages.pim.collections.deleteSuccess"));
@@ -110,15 +137,6 @@ export default function CollectionsPage() {
       toast.error(t("pages.pim.collections.deleteFailed"));
     }
   }
-
-  // Filter collections based on search and active status
-  const filteredCollections = collections.filter((col) => {
-    const matchesSearch =
-      col.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      col.slug.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesActive = showInactive || col.is_active;
-    return matchesSearch && matchesActive;
-  });
 
   if (isLoading) {
     return (
@@ -142,9 +160,11 @@ export default function CollectionsPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.collections.title")}</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("pages.pim.collections.title")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {collections.length} {t("pages.pim.collections.totalCollections")}
+              {total} {t("pages.pim.collections.totalCollections")}
             </p>
           </div>
           <button
@@ -186,11 +206,13 @@ export default function CollectionsPage() {
 
         {/* Collections Grid */}
         <div className="rounded-lg bg-card shadow-sm border border-border">
-          {filteredCollections.length === 0 ? (
+          {collections.length === 0 ? (
             <div className="p-12 text-center">
               <Layers className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? t("pages.pim.collections.noFound") : t("pages.pim.collections.noYet")}
+                {searchQuery
+                  ? t("pages.pim.collections.noFound")
+                  : t("pages.pim.collections.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
@@ -210,7 +232,7 @@ export default function CollectionsPage() {
             </div>
           ) : (
             <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredCollections.map((collection) => (
+              {collections.map((collection) => (
                 <div
                   key={collection.collection_id}
                   className={`rounded-lg border border-border overflow-hidden hover:shadow-md transition ${
@@ -257,7 +279,10 @@ export default function CollectionsPage() {
                     {/* Product Count */}
                     <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                       <Package className="h-4 w-4" />
-                      <span>{collection.product_count} {t("pages.pim.collections.productsCount")}</span>
+                      <span>
+                        {collection.product_count}{" "}
+                        {t("pages.pim.collections.productsCount")}
+                      </span>
                     </div>
 
                     {/* Actions */}
@@ -343,7 +368,9 @@ function CollectionModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const { getEnabledLanguages } = useLanguageStore();
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!collection?.slug);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(
+    !!collection?.slug,
+  );
 
   function generateSlug(name: string) {
     return name
@@ -368,7 +395,10 @@ function CollectionModal({
         seo: {
           title: formData.seo_title,
           description: formData.seo_description,
-          keywords: formData.seo_keywords.split(",").map((k) => k.trim()).filter(Boolean),
+          keywords: formData.seo_keywords
+            .split(",")
+            .map((k) => k.trim())
+            .filter(Boolean),
         },
       };
 
@@ -406,7 +436,7 @@ function CollectionModal({
         toast.success(
           collection
             ? t("pages.pim.collections.updateSuccess")
-            : t("pages.pim.collections.createSuccess")
+            : t("pages.pim.collections.createSuccess"),
         );
         onSuccess();
       } else {
@@ -425,7 +455,11 @@ function CollectionModal({
     <FullScreenModal
       open
       onClose={onClose}
-      title={collection ? t("pages.pim.collections.editCollection") : t("pages.pim.collections.createCollection")}
+      title={
+        collection
+          ? t("pages.pim.collections.editCollection")
+          : t("pages.pim.collections.createCollection")
+      }
       actions={
         <>
           <button
@@ -441,7 +475,11 @@ function CollectionModal({
             disabled={isSaving || !formData.name || !formData.slug}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 text-sm"
           >
-            {isSaving ? t("pages.pim.common.saving") : collection ? t("common.update") : t("common.create")}
+            {isSaving
+              ? t("pages.pim.common.saving")
+              : collection
+                ? t("common.update")
+                : t("common.create")}
           </button>
         </>
       }
@@ -455,7 +493,9 @@ function CollectionModal({
           <select
             required
             value={formData.locale}
-            onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, locale: e.target.value })
+            }
             disabled={!!collection}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -475,7 +515,9 @@ function CollectionModal({
         {/* Name & Slug */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">{t("common.name")} *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              {t("common.name")} *
+            </label>
             <input
               type="text"
               required
@@ -512,7 +554,9 @@ function CollectionModal({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">{t("common.description")}</label>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {t("common.description")}
+          </label>
           <RichTextEditor
             content={formData.description}
             onChange={(html) => setFormData({ ...formData, description: html })}
@@ -531,7 +575,10 @@ function CollectionModal({
               type="number"
               value={formData.display_order}
               onChange={(e) =>
-                setFormData({ ...formData, display_order: parseInt(e.target.value) })
+                setFormData({
+                  ...formData,
+                  display_order: parseInt(e.target.value),
+                })
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             />
@@ -541,7 +588,9 @@ function CollectionModal({
               <input
                 type="checkbox"
                 checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_active: e.target.checked })
+                }
                 className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
               />
               {t("pages.pim.collections.activeLabel")}
@@ -554,7 +603,11 @@ function CollectionModal({
           label={t("pages.pim.collections.heroImage")}
           value={formData.hero_image_url}
           onChange={(url) =>
-            setFormData((prev) => ({ ...prev, hero_image_url: url, hero_image_cdn_key: "" }))
+            setFormData((prev) => ({
+              ...prev,
+              hero_image_url: url,
+              hero_image_cdn_key: "",
+            }))
           }
         />
 
@@ -567,7 +620,9 @@ function CollectionModal({
             <input
               type="text"
               value={formData.hero_image_alt}
-              onChange={(e) => setFormData({ ...formData, hero_image_alt: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, hero_image_alt: e.target.value })
+              }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="Alt text for image"
             />
@@ -579,7 +634,11 @@ function CollectionModal({
           label={t("pages.pim.collections.mobileHeroImage")}
           value={formData.mobile_hero_image_url}
           onChange={(url) =>
-            setFormData((prev) => ({ ...prev, mobile_hero_image_url: url, mobile_hero_image_cdn_key: "" }))
+            setFormData((prev) => ({
+              ...prev,
+              mobile_hero_image_url: url,
+              mobile_hero_image_cdn_key: "",
+            }))
           }
         />
 
@@ -591,7 +650,12 @@ function CollectionModal({
             <input
               type="text"
               value={formData.mobile_hero_image_alt}
-              onChange={(e) => setFormData({ ...formData, mobile_hero_image_alt: e.target.value })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  mobile_hero_image_alt: e.target.value,
+                })
+              }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="Alt text for mobile image"
             />
@@ -600,7 +664,9 @@ function CollectionModal({
 
         {/* SEO Fields */}
         <div className="space-y-4 pt-4 border-t border-border">
-          <h4 className="font-semibold text-foreground">{t("pages.pim.collections.seoSettings")}</h4>
+          <h4 className="font-semibold text-foreground">
+            {t("pages.pim.collections.seoSettings")}
+          </h4>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
@@ -609,7 +675,9 @@ function CollectionModal({
             <input
               type="text"
               value={formData.seo_title}
-              onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, seo_title: e.target.value })
+              }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="SEO optimized title"
             />
@@ -621,7 +689,9 @@ function CollectionModal({
             </label>
             <textarea
               value={formData.seo_description}
-              onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, seo_description: e.target.value })
+              }
               rows={2}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
               placeholder="SEO meta description"
@@ -635,7 +705,9 @@ function CollectionModal({
             <input
               type="text"
               value={formData.seo_keywords}
-              onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, seo_keywords: e.target.value })
+              }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="keyword1, keyword2, keyword3"
             />

@@ -83,7 +83,8 @@ export default function OrdersListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+  const tenantPrefix =
+    pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,7 +112,9 @@ export default function OrdersListPage() {
   });
 
   const [customerName, setCustomerName] = useState<string | null>(null);
-  const [channels, setChannels] = useState<{ code: string; name: string }[]>([]);
+  const [channels, setChannels] = useState<{ code: string; name: string }[]>(
+    [],
+  );
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [stats, setStats] = useState<OrderStats>({
     draft: 0,
@@ -175,7 +178,9 @@ export default function OrdersListPage() {
   async function deleteOrder(orderId: string) {
     if (!confirm(t("pages.store.ordersList.confirmDeleteCart"))) return;
     try {
-      const res = await fetch(`/api/b2b/orders/${orderId}`, { method: "DELETE" });
+      const res = await fetch(`/api/b2b/orders/${orderId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const data = await res.json();
         alert(data.error || "Failed to delete");
@@ -187,8 +192,10 @@ export default function OrdersListPage() {
     }
   }
 
-  const isAllSelected = orders.length > 0 && selectedOrders.size === orders.length;
-  const isSomeSelected = selectedOrders.size > 0 && selectedOrders.size < orders.length;
+  const isAllSelected =
+    orders.length > 0 && selectedOrders.size === orders.length;
+  const isSomeSelected =
+    selectedOrders.size > 0 && selectedOrders.size < orders.length;
 
   useEffect(() => {
     fetch("/api/b2b/channels")
@@ -198,12 +205,17 @@ export default function OrdersListPage() {
   }, []);
 
   useEffect(() => {
-    fetchOrders();
+    // Cancel the previous request so an earlier, slower response (e.g. while
+    // typing "5446" the intermediate "544" query) can't land last and overwrite
+    // the current filter's results.
+    const ac = new AbortController();
+    fetchOrders(ac.signal);
     if (filters.customer_id) {
       fetchCustomerInfo(filters.customer_id);
     } else {
       setCustomerName(null);
     }
+    return () => ac.abort();
   }, [searchParams]);
 
   async function fetchCustomerInfo(customerId: string) {
@@ -215,7 +227,7 @@ export default function OrdersListPage() {
         setCustomerName(
           customer.company_name ||
             `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
-            customer.email
+            customer.email,
         );
       }
     } catch (err) {
@@ -223,7 +235,7 @@ export default function OrdersListPage() {
     }
   }
 
-  async function fetchOrders() {
+  async function fetchOrders(signal?: AbortSignal) {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -241,14 +253,20 @@ export default function OrdersListPage() {
       if (filters.erp_code) params.set("customer_code", filters.erp_code);
       if (filters.is_current) params.set("is_current", filters.is_current);
       if (filters.channel) params.set("channel", filters.channel);
+      if (filters.sort) params.set("sort", filters.sort);
 
-      const res = await fetch(`/api/b2b/orders?${params.toString()}`);
+      const res = await fetch(`/api/b2b/orders?${params.toString()}`, {
+        signal,
+      });
       if (res.ok) {
         const data = await res.json();
+        if (signal?.aborted) return; // superseded by a newer request — ignore
         const ordersList = data.orders || [];
 
         setOrders(ordersList);
-        setPagination(data.pagination || { page: 1, limit: 20, total: 0, pages: 0 });
+        setPagination(
+          data.pagination || { page: 1, limit: 20, total: 0, pages: 0 },
+        );
 
         // Calculate stats from current page (or use API stats if available)
         const newStats: OrderStats = {
@@ -265,23 +283,18 @@ export default function OrdersListPage() {
           totalValue: 0,
         };
 
-        // Use stats from API if available, otherwise calculate from current page
+        // Stats are computed server-side and returned by the API; never derive
+        // them from the current page (which only holds `limit` rows).
         if (data.stats) {
           Object.assign(newStats, data.stats);
-        } else {
-          ordersList.forEach((o: Order) => {
-            if (o.status in newStats) {
-              newStats[o.status as keyof Omit<OrderStats, "total" | "totalValue">]++;
-            }
-            newStats.totalValue += o.order_total || 0;
-          });
         }
         setStats(newStats);
       }
     } catch (error) {
+      if ((error as Error)?.name === "AbortError") return; // expected on supersede
       console.error("Error fetching orders:", error);
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setIsLoading(false);
     }
   }
 
@@ -308,24 +321,55 @@ export default function OrdersListPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; icon: React.ElementType }> = {
-      draft: { bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: ShoppingCart },
-      quotation: { bg: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300", icon: FileText },
-      pending: { bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", icon: Clock },
-      confirmed: { bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCircle2 },
-      preparing: { bg: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", icon: Package },
-      shipped: { bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300", icon: Truck },
-      delivered: { bg: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", icon: Package },
+      draft: {
+        bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+        icon: ShoppingCart,
+      },
+      quotation: {
+        bg: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+        icon: FileText,
+      },
+      pending: {
+        bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+        icon: Clock,
+      },
+      confirmed: {
+        bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+        icon: CheckCircle2,
+      },
+      preparing: {
+        bg: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+        icon: Package,
+      },
+      shipped: {
+        bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+        icon: Truck,
+      },
+      delivered: {
+        bg: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+        icon: Package,
+      },
       cancelled: { bg: "bg-muted text-muted-foreground", icon: XCircle },
-      deleted: { bg: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300", icon: Trash2 },
+      deleted: {
+        bg: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+        icon: Trash2,
+      },
     };
-    return styles[status] || { bg: "bg-muted text-muted-foreground", icon: ShoppingCart };
+    return (
+      styles[status] || {
+        bg: "bg-muted text-muted-foreground",
+        icon: ShoppingCart,
+      }
+    );
   };
 
   const renderEmptyState = () => (
     <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <div className="text-center text-foreground">
         <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-        <p className="text-[1.05rem] font-semibold">{t("pages.store.ordersList.noOrdersFound")}</p>
+        <p className="text-[1.05rem] font-semibold">
+          {t("pages.store.ordersList.noOrdersFound")}
+        </p>
         <p className="mt-1 text-[0.85rem] text-muted-foreground">
           {filters.search || filters.status
             ? t("pages.store.ordersList.tryAdjustingFilters")
@@ -352,113 +396,175 @@ export default function OrdersListPage() {
         <button
           onClick={() => updateFilters({ status: "draft" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "draft" ? "border-amber-400 bg-amber-50 dark:bg-amber-500/15 dark:border-amber-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "draft"
+              ? "border-amber-400 bg-amber-50 dark:bg-amber-500/15 dark:border-amber-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <ShoppingCart className="h-4 w-4 text-amber-600 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.draft}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.carts")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.draft}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.carts")}
+            </div>
           </div>
         </button>
         <button
-          onClick={() => updateFilters({ status: "quotation,pending,confirmed,preparing,shipped,delivered" })}
+          onClick={() =>
+            updateFilters({
+              status: "quotation,pending,confirmed,preparing,shipped,delivered",
+            })
+          }
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "quotation,pending,confirmed,preparing,shipped,delivered" ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 dark:border-indigo-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status ===
+            "quotation,pending,confirmed,preparing,shipped,delivered"
+              ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 dark:border-indigo-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <FileText className="h-4 w-4 text-indigo-600 flex-shrink-0" />
           <div className="text-left">
             <div className="text-lg font-bold text-foreground">
-              {stats.quotation + stats.pending + stats.confirmed + (stats.preparing || 0) + stats.shipped + stats.delivered}
+              {stats.quotation +
+                stats.pending +
+                stats.confirmed +
+                (stats.preparing || 0) +
+                stats.shipped +
+                stats.delivered}
             </div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.active")}</div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.active")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "pending" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "pending" ? "border-blue-400 bg-blue-50 dark:bg-blue-500/15 dark:border-blue-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "pending"
+              ? "border-blue-400 bg-blue-50 dark:bg-blue-500/15 dark:border-blue-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <Clock className="h-4 w-4 text-blue-600 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.pending}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.pending")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.pending}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.pending")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "confirmed" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "confirmed" ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 dark:border-emerald-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "confirmed"
+              ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 dark:border-emerald-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.confirmed}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.confirmed")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.confirmed}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.confirmed")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "shipped" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "shipped" ? "border-purple-400 bg-purple-50 dark:bg-purple-500/15 dark:border-purple-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "shipped"
+              ? "border-purple-400 bg-purple-50 dark:bg-purple-500/15 dark:border-purple-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <Truck className="h-4 w-4 text-purple-600 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.shipped}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.shipped")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.shipped}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.shipped")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "delivered" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "delivered" ? "border-teal-400 bg-teal-50 dark:bg-teal-500/15 dark:border-teal-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "delivered"
+              ? "border-teal-400 bg-teal-50 dark:bg-teal-500/15 dark:border-teal-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <Package className="h-4 w-4 text-teal-600 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.delivered}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.delivered")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.delivered}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.delivered")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "cancelled" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "cancelled" ? "border-red-400 bg-red-50 dark:bg-red-500/15 dark:border-red-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "cancelled"
+              ? "border-red-400 bg-red-50 dark:bg-red-500/15 dark:border-red-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.cancelled}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.cancelled")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.cancelled}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.cancelled")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "deleted" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            filters.status === "deleted" ? "border-red-500 bg-red-100 dark:bg-red-500/15 dark:border-red-500/40" : "border-border bg-card hover:bg-muted/50"
+            filters.status === "deleted"
+              ? "border-red-500 bg-red-100 dark:bg-red-500/15 dark:border-red-500/40"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <Trash2 className="h-4 w-4 text-red-600 flex-shrink-0" />
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.deleted}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.deleted")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.deleted}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.deleted")}
+            </div>
           </div>
         </button>
         <button
           onClick={() => updateFilters({ status: "" })}
           className={`flex items-center gap-2 p-2.5 rounded-lg border transition min-w-0 ${
-            !filters.status ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/50"
+            !filters.status
+              ? "border-primary bg-primary/5"
+              : "border-border bg-card hover:bg-muted/50"
           }`}
         >
           <div className="h-4 w-4 rounded bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
             #
           </div>
           <div className="text-left">
-            <div className="text-lg font-bold text-foreground">{stats.total}</div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.total")}</div>
+            <div className="text-lg font-bold text-foreground">
+              {stats.total}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.total")}
+            </div>
           </div>
         </button>
         <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card min-w-0">
@@ -467,9 +573,14 @@ export default function OrdersListPage() {
           </div>
           <div className="text-left">
             <div className="text-sm font-bold text-foreground">
-              {new Intl.NumberFormat("it-IT", { notation: "compact", maximumFractionDigits: 1 }).format(stats.totalValue)}
+              {new Intl.NumberFormat("it-IT", {
+                notation: "compact",
+                maximumFractionDigits: 1,
+              }).format(stats.totalValue)}
             </div>
-            <div className="text-[10px] text-muted-foreground">{t("pages.store.ordersList.value")}</div>
+            <div className="text-[10px] text-muted-foreground">
+              {t("pages.store.ordersList.value")}
+            </div>
           </div>
         </div>
       </div>
@@ -483,10 +594,14 @@ export default function OrdersListPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                {t("pages.store.ordersList.viewingOrdersFor")} <span className="font-bold">{customerName}</span>
+                {t("pages.store.ordersList.viewingOrdersFor")}{" "}
+                <span className="font-bold">{customerName}</span>
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-300">
-                {pagination.total} {pagination.total !== 1 ? t("pages.store.ordersList.ordersFound") : t("pages.store.ordersList.orderFound")}
+                {pagination.total}{" "}
+                {pagination.total !== 1
+                  ? t("pages.store.ordersList.ordersFound")
+                  : t("pages.store.ordersList.orderFound")}
               </p>
             </div>
           </div>
@@ -509,7 +624,9 @@ export default function OrdersListPage() {
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold text-foreground min-w-0">
-          {filters.customer_id && customerName ? `${t("pages.store.ordersList.title")}: ${customerName}` : t("pages.store.ordersList.title")}
+          {filters.customer_id && customerName
+            ? `${t("pages.store.ordersList.title")}: ${customerName}`
+            : t("pages.store.ordersList.title")}
         </h1>
         <button
           onClick={() => setShowNewOrderModal(true)}
@@ -543,15 +660,33 @@ export default function OrdersListPage() {
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
             <option value="">{t("pages.store.ordersList.allStatus")}</option>
-            <option value="draft">{t("pages.store.ordersList.draftCart")}</option>
-            <option value="quotation">{t("pages.store.ordersList.quotation")}</option>
-            <option value="pending">{t("pages.store.ordersList.pending")}</option>
-            <option value="confirmed">{t("pages.store.ordersList.confirmed")}</option>
-            <option value="preparing">{t("pages.store.ordersList.preparing")}</option>
-            <option value="shipped">{t("pages.store.ordersList.shipped")}</option>
-            <option value="delivered">{t("pages.store.ordersList.delivered")}</option>
-            <option value="cancelled">{t("pages.store.ordersList.cancelled")}</option>
-            <option value="deleted">{t("pages.store.ordersList.deleted")}</option>
+            <option value="draft">
+              {t("pages.store.ordersList.draftCart")}
+            </option>
+            <option value="quotation">
+              {t("pages.store.ordersList.quotation")}
+            </option>
+            <option value="pending">
+              {t("pages.store.ordersList.pending")}
+            </option>
+            <option value="confirmed">
+              {t("pages.store.ordersList.confirmed")}
+            </option>
+            <option value="preparing">
+              {t("pages.store.ordersList.preparing")}
+            </option>
+            <option value="shipped">
+              {t("pages.store.ordersList.shipped")}
+            </option>
+            <option value="delivered">
+              {t("pages.store.ordersList.delivered")}
+            </option>
+            <option value="cancelled">
+              {t("pages.store.ordersList.cancelled")}
+            </option>
+            <option value="deleted">
+              {t("pages.store.ordersList.deleted")}
+            </option>
           </select>
 
           {/* Year Filter */}
@@ -574,10 +709,18 @@ export default function OrdersListPage() {
             onChange={(e) => updateFilters({ sort: e.target.value })}
             className="rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="recent">{t("pages.store.ordersList.mostRecent")}</option>
-            <option value="oldest">{t("pages.store.ordersList.oldestFirst")}</option>
-            <option value="total_high">{t("pages.store.ordersList.highestValue")}</option>
-            <option value="total_low">{t("pages.store.ordersList.lowestValue")}</option>
+            <option value="recent">
+              {t("pages.store.ordersList.mostRecent")}
+            </option>
+            <option value="oldest">
+              {t("pages.store.ordersList.oldestFirst")}
+            </option>
+            <option value="total_high">
+              {t("pages.store.ordersList.highestValue")}
+            </option>
+            <option value="total_low">
+              {t("pages.store.ordersList.lowestValue")}
+            </option>
           </select>
         </div>
 
@@ -585,7 +728,9 @@ export default function OrdersListPage() {
         <div className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-7">
           {/* Cart Number */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.cartNumber")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.cartNumber")}
+            </label>
             <input
               type="text"
               placeholder="e.g. 12"
@@ -596,7 +741,9 @@ export default function OrdersListPage() {
           </div>
           {/* Public Code */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.customerCode")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.customerCode")}
+            </label>
             <input
               type="text"
               placeholder="e.g. C-00001"
@@ -607,7 +754,9 @@ export default function OrdersListPage() {
           </div>
           {/* ERP Code */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.erpCode")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.erpCode")}
+            </label>
             <input
               type="text"
               placeholder="e.g. CLI-001"
@@ -618,20 +767,28 @@ export default function OrdersListPage() {
           </div>
           {/* Active Cart Filter */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.activeCart")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.activeCart")}
+            </label>
             <select
               value={filters.is_current}
               onChange={(e) => updateFilters({ is_current: e.target.value })}
               className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
             >
               <option value="">{t("common.all")}</option>
-              <option value="true">{t("pages.store.ordersList.activeOnly")}</option>
-              <option value="false">{t("pages.store.ordersList.inactive")}</option>
+              <option value="true">
+                {t("pages.store.ordersList.activeOnly")}
+              </option>
+              <option value="false">
+                {t("pages.store.ordersList.inactive")}
+              </option>
             </select>
           </div>
           {/* Channel */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.channel")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.channel")}
+            </label>
             <select
               value={filters.channel}
               onChange={(e) => updateFilters({ channel: e.target.value })}
@@ -647,7 +804,9 @@ export default function OrdersListPage() {
           </div>
           {/* Date From */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.from")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.from")}
+            </label>
             <input
               type="date"
               value={filters.date_from}
@@ -657,7 +816,9 @@ export default function OrdersListPage() {
           </div>
           {/* Date To */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t("pages.store.ordersList.to")}</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              {t("pages.store.ordersList.to")}
+            </label>
             <input
               type="date"
               value={filters.date_to}
@@ -668,29 +829,56 @@ export default function OrdersListPage() {
         </div>
 
         {/* Active Filters */}
-        {(filters.status || filters.search || filters.year || filters.date_from || filters.date_to || filters.cart_number || filters.public_code || filters.erp_code || filters.is_current || filters.channel) && (
+        {(filters.status ||
+          filters.search ||
+          filters.year ||
+          filters.date_from ||
+          filters.date_to ||
+          filters.cart_number ||
+          filters.public_code ||
+          filters.erp_code ||
+          filters.is_current ||
+          filters.channel) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">{t("pages.store.ordersList.filters")}:</span>
+            <span className="text-xs text-muted-foreground">
+              {t("pages.store.ordersList.filters")}:
+            </span>
             {filters.status && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
                 <span>{filters.status}</span>
-                <button onClick={() => updateFilters({ status: "" })} className="hover:bg-primary/20 rounded-full">
+                <button
+                  onClick={() => updateFilters({ status: "" })}
+                  className="hover:bg-primary/20 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             {filters.is_current && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 rounded-full text-xs">
-                <span>{filters.is_current === "true" ? t("pages.store.ordersList.activeCart") : t("pages.store.ordersList.inactive")}</span>
-                <button onClick={() => updateFilters({ is_current: "" })} className="hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-full">
+                <span>
+                  {filters.is_current === "true"
+                    ? t("pages.store.ordersList.activeCart")
+                    : t("pages.store.ordersList.inactive")}
+                </span>
+                <button
+                  onClick={() => updateFilters({ is_current: "" })}
+                  className="hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             {filters.channel && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 rounded-full text-xs">
-                <span>{channels.find((c) => c.code === filters.channel)?.name || filters.channel}</span>
-                <button onClick={() => updateFilters({ channel: "" })} className="hover:bg-sky-200 dark:hover:bg-sky-500/30 rounded-full">
+                <span>
+                  {channels.find((c) => c.code === filters.channel)?.name ||
+                    filters.channel}
+                </span>
+                <button
+                  onClick={() => updateFilters({ channel: "" })}
+                  className="hover:bg-sky-200 dark:hover:bg-sky-500/30 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -698,7 +886,10 @@ export default function OrdersListPage() {
             {filters.year && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
                 <span>{filters.year}</span>
-                <button onClick={() => updateFilters({ year: "" })} className="hover:bg-primary/20 rounded-full">
+                <button
+                  onClick={() => updateFilters({ year: "" })}
+                  className="hover:bg-primary/20 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -706,7 +897,10 @@ export default function OrdersListPage() {
             {filters.cart_number && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 rounded-full text-xs font-mono">
                 <span>CA/{filters.cart_number}</span>
-                <button onClick={() => updateFilters({ cart_number: "" })} className="hover:bg-amber-200 dark:hover:bg-amber-500/30 rounded-full">
+                <button
+                  onClick={() => updateFilters({ cart_number: "" })}
+                  className="hover:bg-amber-200 dark:hover:bg-amber-500/30 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -714,7 +908,10 @@ export default function OrdersListPage() {
             {filters.public_code && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 rounded-full text-xs font-mono">
                 <span>{filters.public_code}</span>
-                <button onClick={() => updateFilters({ public_code: "" })} className="hover:bg-blue-200 dark:hover:bg-blue-500/30 rounded-full">
+                <button
+                  onClick={() => updateFilters({ public_code: "" })}
+                  className="hover:bg-blue-200 dark:hover:bg-blue-500/30 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -722,15 +919,23 @@ export default function OrdersListPage() {
             {filters.erp_code && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs font-mono">
                 <span>ERP: {filters.erp_code}</span>
-                <button onClick={() => updateFilters({ erp_code: "" })} className="hover:bg-accent rounded-full">
+                <button
+                  onClick={() => updateFilters({ erp_code: "" })}
+                  className="hover:bg-accent rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             {(filters.date_from || filters.date_to) && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
-                <span>{filters.date_from || "..."} → {filters.date_to || "..."}</span>
-                <button onClick={() => updateFilters({ date_from: "", date_to: "" })} className="hover:bg-primary/20 rounded-full">
+                <span>
+                  {filters.date_from || "..."} → {filters.date_to || "..."}
+                </span>
+                <button
+                  onClick={() => updateFilters({ date_from: "", date_to: "" })}
+                  className="hover:bg-primary/20 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -738,13 +943,30 @@ export default function OrdersListPage() {
             {filters.search && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
                 <span>&quot;{filters.search}&quot;</span>
-                <button onClick={() => updateFilters({ search: "" })} className="hover:bg-primary/20 rounded-full">
+                <button
+                  onClick={() => updateFilters({ search: "" })}
+                  className="hover:bg-primary/20 rounded-full"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
             <button
-              onClick={() => updateFilters({ status: "", year: "", search: "", date_from: "", date_to: "", customer_id: "", cart_number: "", public_code: "", erp_code: "", is_current: "", channel: "" })}
+              onClick={() =>
+                updateFilters({
+                  status: "",
+                  year: "",
+                  search: "",
+                  date_from: "",
+                  date_to: "",
+                  customer_id: "",
+                  cart_number: "",
+                  public_code: "",
+                  erp_code: "",
+                  is_current: "",
+                  channel: "",
+                })
+              }
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
               {t("pages.store.ordersList.clearAll")}
@@ -759,7 +981,8 @@ export default function OrdersListPage() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium text-foreground">
-                <span className="font-bold">{selectedOrders.size}</span> {t("pages.store.ordersList.selected")}
+                <span className="font-bold">{selectedOrders.size}</span>{" "}
+                {t("pages.store.ordersList.selected")}
               </div>
               <button
                 onClick={clearSelection}
@@ -836,7 +1059,10 @@ export default function OrdersListPage() {
                     const statusStyle = getStatusBadge(order.status);
                     const StatusIcon = statusStyle.icon;
                     return (
-                      <tr key={order.order_id} className="hover:bg-muted/30 transition">
+                      <tr
+                        key={order.order_id}
+                        className="hover:bg-muted/30 transition"
+                      >
                         <td className="px-4 py-3 text-center">
                           <input
                             type="checkbox"
@@ -874,22 +1100,34 @@ export default function OrdersListPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm font-medium text-foreground">
-                            {(order as Order & { customer_name?: string }).customer_name || order.customer_id}
+                            {(order as Order & { customer_name?: string })
+                              .customer_name || order.customer_id}
                           </div>
                           <div className="flex items-center gap-2 text-xs">
                             {/* Public Code (Primary - most important) */}
-                            {(order as Order & { customer_public_code?: string }).customer_public_code && (
+                            {(
+                              order as Order & { customer_public_code?: string }
+                            ).customer_public_code && (
                               <Link
                                 href={`${tenantPrefix}/b2b/store/customers/${order.customer_id}`}
                                 className="text-primary hover:underline font-mono font-semibold"
                                 title="Public Customer Code"
                               >
-                                {(order as Order & { customer_public_code?: string }).customer_public_code}
+                                {
+                                  (
+                                    order as Order & {
+                                      customer_public_code?: string;
+                                    }
+                                  ).customer_public_code
+                                }
                               </Link>
                             )}
                             {/* ERP Code (Secondary) */}
                             {order.customer_code && (
-                              <span className="text-muted-foreground font-mono" title="ERP Code">
+                              <span
+                                className="text-muted-foreground font-mono"
+                                title="ERP Code"
+                              >
                                 ({order.customer_code})
                               </span>
                             )}
@@ -909,7 +1147,8 @@ export default function OrdersListPage() {
                           </div>
                           {order.total_discount > 0 && (
                             <div className="text-xs text-emerald-600 dark:text-emerald-400">
-                              -{new Intl.NumberFormat("it-IT", {
+                              -
+                              {new Intl.NumberFormat("it-IT", {
                                 style: "currency",
                                 currency: order.currency || "EUR",
                               }).format(order.total_discount)}
@@ -922,9 +1161,11 @@ export default function OrdersListPage() {
                               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusStyle.bg}`}
                             >
                               <StatusIcon className="h-3 w-3" />
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              {order.status.charAt(0).toUpperCase() +
+                                order.status.slice(1)}
                             </span>
-                            {(order as Order & { is_current?: boolean }).is_current && (
+                            {(order as Order & { is_current?: boolean })
+                              .is_current && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                                 <ShoppingCart className="h-2.5 w-2.5" />
                                 {t("pages.store.ordersList.activeCart")}
@@ -934,41 +1175,65 @@ export default function OrdersListPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-xs text-muted-foreground">
-                            {new Date(order.created_at).toLocaleDateString("it-IT", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            {new Date(order.created_at).toLocaleDateString(
+                              "it-IT",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )}
                             <div className="text-xs text-muted-foreground/70">
-                              {new Date(order.created_at).toLocaleTimeString("it-IT", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(order.created_at).toLocaleTimeString(
+                                "it-IT",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           {order.submitted_at ? (
                             <div className="text-xs text-muted-foreground">
-                              {new Date(order.submitted_at).toLocaleDateString("it-IT", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
+                              {new Date(order.submitted_at).toLocaleDateString(
+                                "it-IT",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                },
+                              )}
                               <div className="text-xs text-muted-foreground/70">
-                                {new Date(order.submitted_at).toLocaleTimeString("it-IT", {
+                                {new Date(
+                                  order.submitted_at,
+                                ).toLocaleTimeString("it-IT", {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 })}
                               </div>
                             </div>
                           ) : (
-                            <div className="text-xs text-muted-foreground/50">-</div>
+                            <div className="text-xs text-muted-foreground/50">
+                              -
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="text-xs text-muted-foreground" title={order.updated_at ? new Date(order.updated_at).toLocaleString("it-IT") : ""}>
-                            {order.updated_at ? formatTimeAgo(order.updated_at) : "-"}
+                          <div
+                            className="text-xs text-muted-foreground"
+                            title={
+                              order.updated_at
+                                ? new Date(order.updated_at).toLocaleString(
+                                    "it-IT",
+                                  )
+                                : ""
+                            }
+                          >
+                            {order.updated_at
+                              ? formatTimeAgo(order.updated_at)
+                              : "-"}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -1011,9 +1276,14 @@ export default function OrdersListPage() {
             {pagination.pages > 1 && (
               <div className="border-t border-border px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  {t("common.showing")} {(pagination.page - 1) * pagination.limit + 1} {t("common.to")}{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} {t("common.of")}{" "}
-                  {pagination.total}
+                  {t("common.showing")}{" "}
+                  {(pagination.page - 1) * pagination.limit + 1}{" "}
+                  {t("common.to")}{" "}
+                  {Math.min(
+                    pagination.page * pagination.limit,
+                    pagination.total,
+                  )}{" "}
+                  {t("common.of")} {pagination.total}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1024,7 +1294,8 @@ export default function OrdersListPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <div className="text-sm font-medium text-foreground">
-                    {t("common.page")} {pagination.page} {t("common.of")} {pagination.pages}
+                    {t("common.page")} {pagination.page} {t("common.of")}{" "}
+                    {pagination.pages}
                   </div>
                   <button
                     onClick={() => goToPage(pagination.page + 1)}

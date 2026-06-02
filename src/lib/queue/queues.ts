@@ -44,6 +44,8 @@ export const analyticsQueue = new Queue("analytics-queue", {
 });
 
 // Marketplace sync queue for Solr, eBay, Amazon, etc.
+// Carries INTERACTIVE syncs (single-product publish/edit/unpublish, targeted
+// reindexes). Bulk/background catalog backfills go to `syncBulkQueue` instead.
 export const syncQueue = new Queue("sync-queue", {
   connection,
   defaultJobOptions: {
@@ -54,6 +56,27 @@ export const syncQueue = new Queue("sync-queue", {
     },
     removeOnComplete: {
       count: 200, // Keep more sync job history
+    },
+    removeOnFail: {
+      count: 1000,
+    },
+  },
+});
+
+// Isolated lane for import-triggered BULK/background catalog syncs.
+// Same Redis + retry options as syncQueue, but drained by a separate,
+// low-concurrency worker (see sync-worker.ts) so a huge backfill can never
+// starve or saturate the interactive syncs on `sync-queue`.
+export const syncBulkQueue = new Queue("sync-bulk-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+    removeOnComplete: {
+      count: 200,
     },
     removeOnFail: {
       count: 1000,
@@ -228,6 +251,7 @@ export const QUEUE_NAMES = {
   IMPORT: "import-queue",
   ANALYTICS: "analytics-queue",
   SYNC: "sync-queue",
+  SYNC_BULK: "sync-bulk-queue",
   CLEANUP: "cleanup-queue",
   PIM_VERSION_CLEANUP: "pim-version-cleanup-queue",
   NOTIFICATION: "notification-queue",

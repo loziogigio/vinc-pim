@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
+import {
+  getEnabledLocaleCodes,
+  buildMultilangSearchOr,
+} from "@/lib/search/multilang-search";
 
 /**
  * GET /api/b2b/pim/collections
@@ -16,10 +20,20 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantDb = `vinc-${session.tenantId}`;
-    const { Collection: CollectionModel, PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+    const {
+      Collection: CollectionModel,
+      PIMProduct: PIMProductModel,
+      Language: LanguageModel,
+    } = await connectWithModels(tenantDb);
 
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
+    const search = searchParams.get("search")?.trim();
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(searchParams.get("limit") || "100") || 100),
+    );
 
     // Build query - no wholesaler_id, database provides isolation
     const query: any = {};
@@ -28,9 +42,22 @@ export async function GET(req: NextRequest) {
       query.is_active = true;
     }
 
-    const collections = await CollectionModel.find(query)
-      .sort({ display_order: 1, name: 1 })
-      .lean();
+    // Server-side search across the name + slug.
+    if (search) {
+      const codes = await getEnabledLocaleCodes(LanguageModel);
+      query.$or = buildMultilangSearchOr(search, codes, {
+        plainFields: ["name", "slug"],
+      });
+    }
+
+    const [collections, total] = await Promise.all([
+      CollectionModel.find(query)
+        .sort({ display_order: 1, name: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      CollectionModel.countDocuments(query),
+    ]);
 
     // Update product counts for each collection
     const collectionIds = collections.map((c) => c.collection_id);
@@ -65,12 +92,15 @@ export async function GET(req: NextRequest) {
       product_count: countMap.get(col.collection_id) || 0,
     }));
 
-    return NextResponse.json({ collections: collectionsWithCounts });
+    return NextResponse.json({
+      collections: collectionsWithCounts,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error("Error fetching collections:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -90,12 +120,21 @@ export async function POST(req: NextRequest) {
     const { Collection: CollectionModel } = await connectWithModels(tenantDb);
 
     const body = await req.json();
-    const { name, slug, locale, description, hero_image, mobile_hero_image, seo, display_order } = body;
+    const {
+      name,
+      slug,
+      locale,
+      description,
+      hero_image,
+      mobile_hero_image,
+      seo,
+      display_order,
+    } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
         { error: "Name and slug are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -107,7 +146,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: "A collection with this slug already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -131,7 +170,7 @@ export async function POST(req: NextRequest) {
     console.error("Error creating collection:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
