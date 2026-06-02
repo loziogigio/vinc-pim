@@ -83,6 +83,7 @@ import {
   type IDataModelDefinition,
   type DataModelField,
 } from "./models/data-model-definition";
+import { RoleSchema } from "./models/role";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -91,6 +92,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Order: OrderSchema,
   APIKey: APIKeySchema,
   B2BUser: B2BUserSchema,
+  Role: RoleSchema,
   ImportJob: ImportJobSchema,
   Language: LanguageSchema,
   Brand: BrandSchema,
@@ -207,6 +209,7 @@ export async function getTenantModels(dbName: string) {
     Order: connection.models.Order,
     APIKey: connection.models.APIKey,
     B2BUser: connection.models.B2BUser,
+    Role: connection.models.Role,
     ImportJob: connection.models.ImportJob,
     Language: connection.models.Language,
     Brand: connection.models.Brand,
@@ -294,6 +297,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Order: connection.models.Order,
     APIKey: connection.models.APIKey,
     B2BUser: connection.models.B2BUser,
+    Role: connection.models.Role,
     ImportJob: connection.models.ImportJob,
     Language: connection.models.Language,
     Brand: connection.models.Brand,

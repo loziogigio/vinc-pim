@@ -31,6 +31,8 @@ import { verifyAPIKey } from "./api-key-auth";
 import { validateAccessToken } from "@/lib/sso/tokens";
 import { verifyPortalUserToken } from "./portal-user-token";
 import { getSSOSessionModel } from "@/lib/db/models/sso-session";
+import { resolveAuthorization } from "./authorization";
+import type { AuthorizationContext } from "./permissions/resolve";
 
 // ============================================
 // TYPES
@@ -150,10 +152,11 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
               userType = "b2b_user";
             }
           } catch (err) {
-            console.warn("[authenticateTenant] SSO session lookup failed:", err);
-            // Fallback: SSO users are typically B2B users
-            // If they came through SSO login, they're likely B2B
-            userType = "b2b_user";
+            console.warn("[authenticateTenant] SSO session lookup failed; treating as non-customer:", err);
+            // Fail closed: customer membership could not be verified, so do NOT
+            // grant b2b_user. Leave userType as "portal_user" — consistent with
+            // the not-found / no-customers path below.
+            userType = "portal_user";
           }
 
           console.log("[authenticateTenant] API key + Bearer (SSO token):", {
@@ -218,9 +221,10 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
               userType = "b2b_user";
             }
           } catch (err) {
-            console.warn("[authenticateTenant] SSO session lookup failed (Bearer):", err);
-            // Fallback: SSO users are typically B2B users
-            userType = "b2b_user";
+            console.warn("[authenticateTenant] SSO session lookup failed (Bearer); treating as non-customer:", err);
+            // Fail closed: customer membership could not be verified, so do NOT
+            // grant b2b_user. Leave userType as "portal_user".
+            userType = "portal_user";
           }
 
           console.log("[authenticateTenant] Bearer auth (SSO) success:", {
@@ -302,7 +306,7 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
         tenantDb: `vinc-${session.tenantId}`,
         userId: session.userId,
         email: session.email,
-        userType: "portal_user", // Session = portal user (customer)
+        userType: "b2b_user", // Dashboard cookie session = B2B staff user (RBAC-resolved)
         authMethod: "session",
       };
     }
@@ -358,7 +362,7 @@ export type AuthSuccess = {
   email?: string;
   userType?: UserType;
   authMethod: AuthMethod;
-};
+} & AuthorizationContext;
 
 export type AuthFailure = {
   success: false;
@@ -409,6 +413,8 @@ export async function requireTenantAuth(
     };
   }
 
+  const authz = await resolveAuthorization(auth);
+
   return {
     success: true,
     tenantId: auth.tenantId,
@@ -417,5 +423,11 @@ export async function requireTenantAuth(
     email: auth.email,
     userType: auth.userType,
     authMethod: auth.authMethod!,
+    permissions: authz.permissions,
+    entitledApps: authz.entitledApps,
+    ability: authz.ability,
+    scope: authz.scope,
+    priceAccess: authz.priceAccess,
+    can: authz.can,
   };
 }

@@ -179,6 +179,7 @@ const en = {
     "store-coupons": { name: "Coupons", description: "Coupon and discount code management" },
     "store-customers": { name: "Customers", description: "Customer management" },
     "store-portal-users": { name: "Portal Users", description: "B2B portal users" },
+    team: { name: "Team", description: "Roles & user access" },
     builder: { name: "Builder", description: "Home page builder" },
     "mobile-builder": { name: "Mobile Builder", description: "Build mobile app home screen" },
     notifications: { name: "Notifications", description: "Multi-channel notifications & campaigns" },
@@ -4959,6 +4960,20 @@ const en = {
         statusCircuitOpen: "Circuit Open",
         showing: "Showing {{from}}-{{to}} of {{total}}",
       },
+    },
+    team: {
+      roles: { title: "Roles", subtitle: "Define permission sets and data scope", create: "New role", edit: "Edit role", name: "Name", description: "Description", permissions: "Permissions", scope: "Data scope", system: "System", restoreSystem: "Restore system roles", deleteConfirm: "Soft-delete this role?", scopeAll: "All", scopePerUser: "Per user" },
+      users: { title: "Users", subtitle: "Assign roles and access to staff", role: "Role", active: "Active", priceOverride: "Price access override", channels: "Channels", customers: "Customers", noRole: "No role" },
+    },
+  },
+  rbac: {
+    priceAccess: { label: "Price access", none: "Hidden", view: "View only", edit: "Edit", inherit: "Inherit from role" },
+    perm: {
+      pim: { product: { view: "View products", create: "Create products", edit: "Edit products", delete: "Delete products" } },
+      orders: { view: "View orders", confirm: "Confirm orders", ship: "Ship orders", cancel: "Cancel orders" },
+      customers: { view: "View customers", edit: "Edit customers" },
+      roles: { manage: "Manage roles" },
+      users: { manage: "Manage users" },
     },
   },
   components: {

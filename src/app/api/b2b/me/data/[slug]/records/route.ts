@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (!relationTypeMatches(definition.relation, auth.userType)) {
+    if (!relationTypeMatches(definition.relation, auth)) {
       return NextResponse.json(
         {
           error: `This data model is keyed by ${definition.relation}, but you are signed in as ${auth.userType ?? "unknown"}`,
@@ -91,11 +91,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 function relationTypeMatches(
   relation: "portal_user" | "customer",
-  userType: string | undefined
+  auth: { authMethod?: string; userType?: string }
 ): boolean {
-  // The auth helper labels customer-bound SSO sessions as "b2b_user" (see
-  // tenant-auth.ts: SSO users with `vinc_profile.customers` get userType="b2b_user").
-  // Treat that as the customer relation.
-  if (relation === "customer") return userType === "b2b_user";
-  return userType === "portal_user";
+  // Customer-keyed models belong to real storefront customers: userType
+  // "b2b_user" (an SSO session carrying `vinc_profile.customers`) reached via a
+  // bearer token or API key. Both conditions are required:
+  //   - userType "b2b_user" excludes portal_user bearer tokens (also authMethod
+  //     "bearer") that are NOT customers;
+  //   - authMethod bearer/api-key excludes dashboard cookie sessions (authMethod
+  //     "session"), which are internal staff also tagged "b2b_user".
+  if (relation === "customer") {
+    return auth.userType === "b2b_user" && (auth.authMethod === "bearer" || auth.authMethod === "api-key");
+  }
+  return auth.userType === "portal_user";
 }
