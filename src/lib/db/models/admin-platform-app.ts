@@ -47,7 +47,7 @@ const PlatformAppSchema = new Schema<IPlatformAppDocument>(
   }
 );
 
-PlatformAppSchema.index({ app_id: 1 }, { unique: true });
+// app_id already has a unique index from the field-level `unique: true`
 PlatformAppSchema.index({ is_active: 1, sort_order: 1 });
 
 let PlatformAppModel: Model<IPlatformAppDocument> | null = null;

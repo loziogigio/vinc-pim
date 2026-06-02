@@ -186,7 +186,8 @@ const B2CSitemapSchema = new Schema(
           errors: { type: [String], default: [] },
           last_validated_at: { type: Date },
         },
-        { _id: false }
+        // `errors` is a reserved Mongoose pathname; intentional here as a string[].
+        { _id: false, suppressReservedKeysWarning: true }
       ),
       default: () => ({}),
     },

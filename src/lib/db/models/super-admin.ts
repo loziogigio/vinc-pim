@@ -70,7 +70,7 @@ const SuperAdminSchema = new Schema<ISuperAdminDocument>(
 // INDEXES
 // ============================================
 
-SuperAdminSchema.index({ email: 1 }, { unique: true });
+// email already has a unique index from the field-level `unique: true`
 
 // ============================================
 // METHODS

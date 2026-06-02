@@ -93,6 +93,9 @@ export const PricingRequestLogSchema = new Schema<IPricingRequestLogDoc>(
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
     collection: "pricingrequestlogs",
+    // `errors` is a reserved Mongoose pathname; this model intentionally stores
+    // an `errors` payload and does not rely on the per-document validation accessor.
+    suppressReservedKeysWarning: true,
   }
 );
 

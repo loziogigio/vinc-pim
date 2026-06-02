@@ -99,7 +99,7 @@ const AuthClientSchema = new Schema<IAuthClientDocument>(
 // INDEXES
 // ============================================
 
-AuthClientSchema.index({ client_id: 1 }, { unique: true });
+// client_id already has a unique index from the field-level `unique: true`
 AuthClientSchema.index({ is_active: 1 });
 
 // ============================================

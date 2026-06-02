@@ -33,8 +33,7 @@ const AdminTokenSchema = new Schema<IAdminTokenDocument>(
   }
 );
 
-// Index for token lookup
-AdminTokenSchema.index({ token: 1 });
+// token already has a unique index from the field-level `unique: true`
 AdminTokenSchema.index({ is_active: 1, expires_at: 1 });
 
 let AdminTokenModel: Model<IAdminTokenDocument> | null = null;

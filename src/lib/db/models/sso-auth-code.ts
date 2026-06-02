@@ -129,7 +129,7 @@ const AuthCodeSchema = new Schema<IAuthCodeDocument>(
 // INDEXES
 // ============================================
 
-AuthCodeSchema.index({ code: 1 }, { unique: true });
+// code already has a unique index from the field-level `unique: true`
 AuthCodeSchema.index({ client_id: 1, tenant_id: 1 });
 
 // ============================================
