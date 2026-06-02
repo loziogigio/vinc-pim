@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
   if (!auth.success) return auth.response;
   const { tenantDb } = auth;
   try {
-    const { SynonymDictionary: SynonymDictionaryModel } = await connectWithModels(tenantDb);
+    const { SynonymDictionary: SynonymDictionaryModel } =
+      await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
@@ -19,8 +20,14 @@ export async function GET(req: NextRequest) {
     const includeInactive = searchParams.get("include_inactive") === "true";
     const sortBy = searchParams.get("sort_by") || "display_order";
     const sortOrder = searchParams.get("sort_order") === "desc" ? -1 : 1;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10) || 50));
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get("page") || "1", 10) || 1,
+    );
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20),
+    );
 
     // Build query
     const query: Record<string, unknown> = {};
@@ -48,7 +55,11 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
     const [dictionaries, total] = await Promise.all([
-      SynonymDictionaryModel.find(query).sort(sort).skip(skip).limit(limit).lean(),
+      SynonymDictionaryModel.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       SynonymDictionaryModel.countDocuments(query),
     ]);
 
@@ -65,7 +76,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching synonym dictionaries:", error);
     return NextResponse.json(
       { error: "Failed to fetch synonym dictionaries" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -76,22 +87,20 @@ export async function POST(req: NextRequest) {
   if (!auth.success) return auth.response;
   const { tenantDb } = auth;
   try {
-    const { SynonymDictionary: SynonymDictionaryModel } = await connectWithModels(tenantDb);
+    const { SynonymDictionary: SynonymDictionaryModel } =
+      await connectWithModels(tenantDb);
 
     const body = await req.json();
     const { key, description, terms, locale, is_active, display_order } = body;
 
     if (!key || !key.trim()) {
-      return NextResponse.json(
-        { error: "Key is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Key is required" }, { status: 400 });
     }
 
     if (!locale || !locale.trim()) {
       return NextResponse.json(
         { error: "Locale is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -113,8 +122,10 @@ export async function POST(req: NextRequest) {
 
     if (existingDict) {
       return NextResponse.json(
-        { error: `A dictionary with key "${normalizedKey}" already exists for locale "${normalizedLocale}"` },
-        { status: 409 }
+        {
+          error: `A dictionary with key "${normalizedKey}" already exists for locale "${normalizedLocale}"`,
+        },
+        { status: 409 },
       );
     }
 
@@ -139,13 +150,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { dictionary, message: "Synonym dictionary created successfully" },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating synonym dictionary:", error);
     return NextResponse.json(
       { error: "Failed to create synonym dictionary" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

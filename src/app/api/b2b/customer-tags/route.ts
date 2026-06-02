@@ -7,33 +7,72 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
-import { buildFullTag, isValidPrefix, isValidCode } from "@/lib/constants/customer-tag";
-
-async function getAuth() {
-  const session = await getB2BSession();
-  if (!session?.isLoggedIn || !session.tenantId) return null;
-  return { tenantId: session.tenantId, tenantDb: `vinc-${session.tenantId}` };
-}
+import {
+  buildFullTag,
+  isValidPrefix,
+  isValidCode,
+} from "@/lib/constants/customer-tag";
+import { safeRegexQuery } from "@/lib/security";
+import { getTagAuth } from "./_auth";
 
 /**
  * GET /api/b2b/customer-tags?prefix=categoria-di-sconto
  */
 export async function GET(req: NextRequest) {
-  const auth = await getAuth();
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getTagAuth();
+  if (!auth)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { CustomerTag } = await connectWithModels(auth.tenantDb);
   const { searchParams } = new URL(req.url);
   const prefix = searchParams.get("prefix");
+  const search = searchParams.get("search")?.trim();
 
   const query: Record<string, unknown> = { is_active: true };
   if (prefix) query.prefix = prefix;
+  // Server-side search across code / full tag / description / prefix.
+  if (search) {
+    const rx = safeRegexQuery(search);
+    query.$or = [
+      { code: rx },
+      { full_tag: rx },
+      { description: rx },
+      { prefix: rx },
+    ];
+  }
 
-  const tags = await CustomerTag.find(query).sort({ prefix: 1, code: 1 }).lean();
+  // Tags are rendered grouped by prefix (a bounded vocabulary), so the matching
+  // set is returned in full; the dashboard counts are aggregated server-side
+  // over ALL active tags (not narrowed by the search box).
+  const [tags, statsAgg] = await Promise.all([
+    CustomerTag.find(query).sort({ prefix: 1, code: 1 }).lean(),
+    CustomerTag.aggregate([
+      { $match: { is_active: true } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          totalAssignments: { $sum: { $ifNull: ["$customer_count", 0] } },
+          prefixes: { $addToSet: "$prefix" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          total: 1,
+          totalAssignments: 1,
+          prefixCount: { $size: "$prefixes" },
+        },
+      },
+    ]),
+  ]);
 
-  return NextResponse.json({ success: true, tags });
+  return NextResponse.json({
+    success: true,
+    tags,
+    stats: statsAgg[0] || { total: 0, totalAssignments: 0, prefixCount: 0 },
+  });
 }
 
 /**
@@ -41,8 +80,9 @@ export async function GET(req: NextRequest) {
  * Body: { prefix, code, description, color? }
  */
 export async function POST(req: NextRequest) {
-  const auth = await getAuth();
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getTagAuth();
+  if (!auth)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const { prefix, code, description, color } = body;
@@ -97,8 +137,9 @@ export async function POST(req: NextRequest) {
  * Blocked if any customers are assigned to this tag.
  */
 export async function DELETE(req: NextRequest) {
-  const auth = await getAuth();
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getTagAuth();
+  if (!auth)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const { tag_id } = body;

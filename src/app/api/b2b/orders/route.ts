@@ -8,16 +8,16 @@ import {
   getAccessibleCustomerIds,
   hasCustomerAccess,
 } from "@/lib/auth/portal-user-token";
-
-// Orders that have made it past the confirmation stage. Used for "Orders today/week/month"
-// counts where drafts, pending, cancelled, and deleted should not be considered real sales.
-const CONFIRMED_AND_BEYOND = ["confirmed", "preparing", "shipped", "delivered"];
-
-// Orders that contribute to revenue / short summaries. Drafts (carts), quotations,
-// cancellations, and soft-deleted records are excluded. Pending is kept since it's a
-// real order awaiting confirmation.
-const REVENUE_STATUSES = ["pending", "confirmed", "preparing", "shipped", "delivered"];
 import { safeRegexQuery } from "@/lib/security";
+import {
+  buildOrderStatsScopeKey,
+  getCachedOrderStats,
+  setCachedOrderStats,
+} from "@/lib/services/order-stats-cache";
+import {
+  computeOrderStats,
+  EMPTY_ORDER_STATS,
+} from "@/lib/services/order-stats.service";
 import type { ICustomerAccess } from "@/lib/types/portal-user";
 import { nanoid } from "nanoid";
 import type { CreateOrderRequest } from "@/lib/types/order";
@@ -25,14 +25,22 @@ import {
   findOrCreateCustomer,
   findOrCreateAddress,
 } from "@/lib/services/customer.service";
-import { buildHookCtx, runBeforeHook, updateCtxFromOrder, runOnMergeAfterAuto } from "@/lib/services/windmill-proxy.service";
+import {
+  buildHookCtx,
+  runBeforeHook,
+  updateCtxFromOrder,
+  runOnMergeAfterAuto,
+} from "@/lib/services/windmill-proxy.service";
 
 /**
  * Authenticate request via session or API key
  * Also checks for portal user token and returns customer access restrictions
  * Returns tenant-specific models from connection pool
  */
-async function authenticateRequest(req: NextRequest, scope: string): Promise<{
+async function authenticateRequest(
+  req: NextRequest,
+  scope: string,
+): Promise<{
   authenticated: boolean;
   tenantId?: string;
   tenantDb?: string;
@@ -91,7 +99,7 @@ export async function GET(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
     const tenantId = auth.tenantId!;
@@ -99,7 +107,10 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "20") || 20),
+    );
     const status = searchParams.get("status");
     const year = searchParams.get("year");
     const dateFrom = searchParams.get("date_from");
@@ -111,10 +122,30 @@ export async function GET(req: NextRequest) {
     const isCurrent = searchParams.get("is_current"); // Active cart filter
     const channel = searchParams.get("channel"); // Sales channel filter
     const shippingAddressId = searchParams.get("shipping_address_id"); // Address filter (internal ID)
-    const addressCode = searchParams.get("address_code") || searchParams.get("shipping_address_code"); // Address filter (external_code)
+    const addressCode =
+      searchParams.get("address_code") ||
+      searchParams.get("shipping_address_code"); // Address filter (external_code)
     const search = searchParams.get("search")?.trim(); // Free-text search: order_id / po_reference / customer_id / cart_number / order_number
-    const compare = searchParams.get("compare") === "1" || searchParams.get("compare") === "true"; // Include previous-period comparison
-    const daily = searchParams.get("daily") === "1" || searchParams.get("daily") === "true"; // Include daily revenue series
+    const compare =
+      searchParams.get("compare") === "1" ||
+      searchParams.get("compare") === "true"; // Include previous-period comparison
+    const daily =
+      searchParams.get("daily") === "1" || searchParams.get("daily") === "true"; // Include daily revenue series
+    // List-only mode: callers that only need the order list (e.g. a customer's
+    // Order History) pass stats=0 to skip the heavy stats aggregations entirely.
+    const includeStats = !(
+      searchParams.get("stats") === "0" || searchParams.get("stats") === "false"
+    );
+
+    // Server-side sort (whitelisted). Default: most recent first.
+    const SORT_MAP: Record<string, Record<string, 1 | -1>> = {
+      recent: { created_at: -1 },
+      oldest: { created_at: 1 },
+      total_high: { order_total: -1 },
+      total_low: { order_total: 1 },
+    };
+    const sortSpec =
+      SORT_MAP[searchParams.get("sort") || "recent"] || SORT_MAP.recent;
 
     // Build query - always filter by tenant
     const query: Record<string, unknown> = {
@@ -129,14 +160,20 @@ export async function GET(req: NextRequest) {
 
     if (customerId) {
       // If portal user, verify access to the requested customer
-      if (auth.customerAccess && !hasCustomerAccess(auth.customerAccess, customerId)) {
+      if (
+        auth.customerAccess &&
+        !hasCustomerAccess(auth.customerAccess, customerId)
+      ) {
         return NextResponse.json({ error: "Access denied" }, { status: 403 });
       }
       query.customer_id = customerId;
     }
 
     if (status) {
-      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      const statuses = status
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       query.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
     }
 
@@ -152,14 +189,14 @@ export async function GET(req: NextRequest) {
       // Resolve external_code → customer_id for reliable matching
       const cust = await CustomerModel.findOne(
         { tenant_id: tenantId, external_code: customerCode },
-        { customer_id: 1, addresses: 1 }
+        { customer_id: 1, addresses: 1 },
       ).lean();
       if (!cust) {
         return NextResponse.json({
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, todayValue: 0, thisWeek: 0, thisWeekValue: 0, thisMonth: 0, thisMonthValue: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+          stats: { ...EMPTY_ORDER_STATS },
         });
       }
       query.customer_id = (cust as any).customer_id;
@@ -167,7 +204,7 @@ export async function GET(req: NextRequest) {
       // Resolve address_code → address_id on the same customer
       if (addressCode) {
         const addr = (cust as any).addresses?.find(
-          (a: any) => a.external_code === addressCode
+          (a: any) => a.external_code === addressCode,
         );
         if (addr) {
           query.shipping_address_id = addr.address_id;
@@ -177,7 +214,7 @@ export async function GET(req: NextRequest) {
             success: true,
             orders: [],
             pagination: { page, limit, total: 0, pages: 0 },
-            stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, todayValue: 0, thisWeek: 0, thisWeekValue: 0, thisMonth: 0, thisMonthValue: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+            stats: { ...EMPTY_ORDER_STATS },
           });
         }
       }
@@ -215,7 +252,7 @@ export async function GET(req: NextRequest) {
           success: true,
           orders: [],
           pagination: { page, limit, total: 0, pages: 0 },
-          stats: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0, total: 0, totalValue: 0, valueByStatus: { draft: 0, quotation: 0, pending: 0, confirmed: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0 }, timePeriods: { today: 0, todayValue: 0, thisWeek: 0, thisWeekValue: 0, thisMonth: 0, thisMonthValue: 0 }, avgOrderValue: 0, conversion: { totalDrafts: 0, submittedOrders: 0, conversionRate: 0 } },
+          stats: { ...EMPTY_ORDER_STATS },
         });
       }
     }
@@ -235,11 +272,20 @@ export async function GET(req: NextRequest) {
       }
       // submitted_at: null matches both null and missing, so the fallback only
       // applies to orders that have no submission date at all.
-      const dateOr = [{ submitted_at: range }, { submitted_at: null, created_at: range }];
+      const dateOr = [
+        { submitted_at: range },
+        { submitted_at: null, created_at: range },
+      ];
       query.$and = [...((query.$and as unknown[]) ?? []), { $or: dateOr }];
     }
 
-    // Free-text search across multiple fields (server-side so it works across all pages)
+    // Free-text search across multiple fields. Applied ONLY to the list
+    // (find + count) below — deliberately NOT to the stats aggregations. The
+    // stats describe the current filter *scope* (tenant + date + status + …),
+    // so the typed search box no longer triggers the unanchored po_reference
+    // regex to be scanned three separate times (find, count, AND the stats
+    // facet) on every keystroke.
+    let searchOr: Record<string, unknown>[] | null = null;
     if (search) {
       const orConditions: Record<string, unknown>[] = [
         { order_id: search },
@@ -251,314 +297,86 @@ export async function GET(req: NextRequest) {
         orConditions.push({ cart_number: n });
         orConditions.push({ order_number: n });
       }
-      query.$or = orConditions;
+      searchOr = orConditions;
     }
 
-    // Build base query without status for stats aggregation (include all statuses, deleted included)
+    // Build base query without status for stats aggregation (include all statuses, deleted included).
+    // Note: this is the search-free `query`, so the stats reflect the filter scope, not the search box.
     const baseQuery = { ...query };
     delete baseQuery.status;
 
-    // Compute date boundaries for time-period metrics
-    const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
-    const weekStart = new Date(now);
-    const dow = weekStart.getDay();
-    weekStart.setDate(weekStart.getDate() - (dow === 0 ? 6 : dow - 1));
-    weekStart.setHours(0, 0, 0, 0);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    // The list itself (find + count) IS filtered by the free-text search.
+    const listQuery = searchOr ? { ...query, $or: searchOr } : query;
 
-    // Optional previous-period aggregation. Built upfront so it can run in parallel with the main batch.
-    let prevAggPromise: Promise<unknown[]> = Promise.resolve([]);
-    if (compare && dateFrom && dateTo) {
-      const fromMs = new Date(dateFrom).getTime();
-      const toMs = new Date(dateTo).getTime();
-      if (!Number.isNaN(fromMs) && !Number.isNaN(toMs) && toMs >= fromMs) {
-        const spanMs = toMs - fromMs;
-        const prevFrom = new Date(fromMs - spanMs - 24 * 60 * 60 * 1000);
-        const prevTo = new Date(fromMs - 1);
-        // Drop the current-period date filter from baseQuery; match the previous
-        // window on the effective date (submitted_at, falling back to created_at).
-        const { $and: _omitDateAnd, ...prevBaseQuery } = baseQuery as Record<string, unknown>;
-        prevAggPromise = OrderModel.aggregate([
-          { $addFields: { _eff_date: { $ifNull: ["$submitted_at", "$created_at"] } } },
-          { $match: { ...prevBaseQuery, _eff_date: { $gte: prevFrom, $lte: prevTo } } },
-          {
-            $group: {
-              _id: null,
-              revenueCount: {
-                $sum: { $cond: [{ $in: ["$status", REVENUE_STATUSES] }, 1, 0] },
-              },
-              revenueValue: {
-                $sum: {
-                  $cond: [{ $in: ["$status", REVENUE_STATUSES] }, "$order_total", 0],
-                },
-              },
-              drafts: {
-                $sum: { $cond: [{ $eq: ["$status", "draft"] }, 1, 0] },
-              },
-            },
-          },
-        ]);
-      }
-    }
+    // The heavy stats (status breakdown, time periods, comparison, daily) describe
+    // the filter SCOPE and barely change second-to-second, so they're cached for a
+    // short TTL per (tenant, scope). The orders list + count below stay live.
+    // Stats are computed (and cached) only when the caller wants them.
+    const statsScopeKey = includeStats
+      ? buildOrderStatsScopeKey(baseQuery, { compare, daily })
+      : "";
+    const cachedStats = includeStats
+      ? await getCachedOrderStats(tenantId, statsScopeKey)
+      : null;
 
-    // Optional daily-revenue series for the sparkline. Same as above — parallelizable.
-    const dailyPromise: Promise<Array<{ _id: string; value: number; count: number }>> = daily
-      ? OrderModel.aggregate([
-          { $match: { ...baseQuery, status: { $in: REVENUE_STATUSES } } },
-          { $addFields: { _eff_date: { $ifNull: ["$submitted_at", "$created_at"] } } },
-          {
-            $group: {
-              _id: { $dateToString: { format: "%Y-%m-%d", date: "$_eff_date" } },
-              value: { $sum: "$order_total" },
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { _id: 1 } },
-        ])
-      : Promise.resolve([]);
+    // A separate count is needed when stats are skipped (no byStatus sum to
+    // derive the total from) or when the list is narrowed (status / free-text
+    // search). Otherwise the scope total == the byStatus sum the facet computes.
+    const needsSeparateCount = !includeStats || !!status || !!searchOr;
+    // Compute the heavy aggregations only on list-with-stats requests that miss
+    // the cache; list-only requests and cache hits skip them entirely.
+    const computeStats = includeStats && !cachedStats;
 
-    // Execute queries in parallel: orders page, count, primary stats, previous-period, daily series.
-    const [orders, total, statsAgg, prevAgg, dailySeries] = await Promise.all([
-      OrderModel.find(query)
-        .sort({ created_at: -1 })
+    // Execute queries in parallel. The stats computation (its own aggregations)
+    // runs ONLY on a cache miss, concurrently with the live list + count.
+    const [orders, countResult, computedStats] = await Promise.all([
+      OrderModel.find(listQuery)
+        .sort(sortSpec)
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
-      OrderModel.countDocuments(query),
-      // Aggregate stats with $facet: status breakdown + time periods
-      OrderModel.aggregate([
-        { $match: baseQuery },
-        // Effective date for time-period metrics: submission date, falling back
-        // to creation date for orders that were never submitted.
-        { $addFields: { _eff_date: { $ifNull: ["$submitted_at", "$created_at"] } } },
-        {
-          $facet: {
-            byStatus: [
-              {
-                $group: {
-                  _id: "$status",
-                  count: { $sum: 1 },
-                  value: { $sum: "$order_total" },
-                },
-              },
-            ],
-            timePeriods: [
-              {
-                $group: {
-                  _id: null,
-                  today: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $gte: ["$_eff_date", todayStart] },
-                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
-                          ],
-                        },
-                        1,
-                        0,
-                      ],
-                    },
-                  },
-                  todayValue: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $gte: ["$_eff_date", todayStart] },
-                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
-                          ],
-                        },
-                        "$order_total",
-                        0,
-                      ],
-                    },
-                  },
-                  thisWeek: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $gte: ["$_eff_date", weekStart] },
-                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
-                          ],
-                        },
-                        1,
-                        0,
-                      ],
-                    },
-                  },
-                  thisWeekValue: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $gte: ["$_eff_date", weekStart] },
-                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
-                          ],
-                        },
-                        "$order_total",
-                        0,
-                      ],
-                    },
-                  },
-                  thisMonth: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $gte: ["$_eff_date", monthStart] },
-                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
-                          ],
-                        },
-                        1,
-                        0,
-                      ],
-                    },
-                  },
-                  thisMonthValue: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $gte: ["$_eff_date", monthStart] },
-                            { $in: ["$status", CONFIRMED_AND_BEYOND] },
-                          ],
-                        },
-                        "$order_total",
-                        0,
-                      ],
-                    },
-                  },
-                  nonDraftValue: {
-                    $sum: {
-                      $cond: [{ $in: ["$status", REVENUE_STATUSES] }, "$order_total", 0],
-                    },
-                  },
-                  nonDraftCount: {
-                    $sum: {
-                      $cond: [{ $in: ["$status", REVENUE_STATUSES] }, 1, 0],
-                    },
-                  },
-                },
-              },
-            ],
-          },
-        },
-      ]),
-      prevAggPromise,
-      dailyPromise,
+      needsSeparateCount
+        ? OrderModel.countDocuments(listQuery)
+        : Promise.resolve<number | null>(null),
+      computeStats
+        ? computeOrderStats(OrderModel, baseQuery, {
+            compare,
+            daily,
+            dateFrom,
+            dateTo,
+          })
+        : Promise.resolve<Record<string, unknown> | null>(null),
     ]);
 
-    // Calculate stats from $facet aggregation
-    const facetResult = statsAgg[0] || { byStatus: [], timePeriods: [] };
-    const byStatus = facetResult.byStatus || [];
-    const tp = facetResult.timePeriods?.[0] || {};
-
-    const stats: Record<string, unknown> = {
-      draft: 0,
-      quotation: 0,
-      pending: 0,
-      confirmed: 0,
-      preparing: 0,
-      shipped: 0,
-      delivered: 0,
-      cancelled: 0,
-      deleted: 0,
-      total: 0,
-      totalValue: 0,
-      valueByStatus: {
-        draft: 0, quotation: 0, pending: 0, confirmed: 0,
-        preparing: 0, shipped: 0, delivered: 0, cancelled: 0, deleted: 0,
-      },
-      timePeriods: {
-        today: tp.today || 0,
-        todayValue: tp.todayValue || 0,
-        thisWeek: tp.thisWeek || 0,
-        thisWeekValue: tp.thisWeekValue || 0,
-        thisMonth: tp.thisMonth || 0,
-        thisMonthValue: tp.thisMonthValue || 0,
-      },
-      avgOrderValue:
-        tp.nonDraftCount > 0
-          ? Math.round((tp.nonDraftValue / tp.nonDraftCount) * 100) / 100
-          : 0,
-      conversion: {
-        totalDrafts: 0,
-        submittedOrders: 0,
-        conversionRate: 0,
-      },
-    };
-
-    const statusCounts = stats as Record<string, number>;
-    const valueByStatus = stats.valueByStatus as Record<string, number>;
-    const conversion = stats.conversion as { totalDrafts: number; submittedOrders: number; conversionRate: number };
-
-    byStatus.forEach((s: { _id: string; count: number; value: number }) => {
-      if (s._id in statusCounts && s._id !== "total" && s._id !== "totalValue") {
-        statusCounts[s._id] = s.count;
-      }
-      if (s._id in valueByStatus) {
-        valueByStatus[s._id] = s.value || 0;
-      }
-      // `total` keeps its "all documents in scope" meaning so filter-clear buttons stay correct.
-      statusCounts.total = (statusCounts.total || 0) + s.count;
-      // `totalValue` is the revenue summary: drafts (carts), cancellations, and soft-deleted
-      // records do not contribute. Quotation/pending remain since they may still close.
-      if (REVENUE_STATUSES.includes(s._id)) {
-        statusCounts.totalValue = (statusCounts.totalValue || 0) + (s.value || 0);
-      }
-
-      if (s._id === "draft") {
-        conversion.totalDrafts = s.count;
-      } else if (CONFIRMED_AND_BEYOND.includes(s._id) || s._id === "pending") {
-        conversion.submittedOrders += s.count;
-      }
-    });
-
-    const convTotal = conversion.totalDrafts + conversion.submittedOrders;
-    conversion.conversionRate = convTotal > 0
-      ? Math.round((conversion.submittedOrders / convTotal) * 1000) / 10
-      : 0;
-
-    if (Array.isArray(prevAgg) && prevAgg.length > 0) {
-      const prev = (prevAgg[0] || {}) as {
-        revenueCount?: number;
-        revenueValue?: number;
-        drafts?: number;
-      };
-      const prevAvg = (prev.revenueCount ?? 0) > 0
-        ? Math.round(((prev.revenueValue ?? 0) / (prev.revenueCount ?? 1)) * 100) / 100
-        : 0;
-      const prevConvTotal = (prev.drafts || 0) + (prev.revenueCount || 0);
-      const prevConversionRate = prevConvTotal > 0
-        ? Math.round(((prev.revenueCount || 0) / prevConvTotal) * 1000) / 10
-        : 0;
-      (stats as Record<string, unknown>).previousPeriod = {
-        total: prev.revenueCount || 0,
-        totalValue: prev.revenueValue || 0,
-        avgOrderValue: prevAvg,
-        conversionRate: prevConversionRate,
-      };
+    // Stats: skipped entirely on list-only requests; otherwise reuse the cached
+    // block on a hit, or use the freshly computed one (which only ran on a miss)
+    // and store it for the next callers.
+    let stats: Record<string, unknown>;
+    if (!includeStats) {
+      stats = {};
+    } else if (cachedStats) {
+      stats = cachedStats;
+    } else {
+      stats = computedStats!;
+      await setCachedOrderStats(tenantId, statsScopeKey, stats);
     }
 
-    if (daily) {
-      (stats as Record<string, unknown>).revenueByDay = dailySeries.map((d) => ({
-        date: d._id,
-        value: d.value || 0,
-        count: d.count || 0,
-      }));
-    }
+    // A separate count is only needed when the list is narrowed (status/search);
+    // otherwise the scope total equals the byStatus sum the facet already computed.
+    const total =
+      countResult ?? (Number((stats as Record<string, number>).total) || 0);
 
     // Fetch customer details for all orders (within tenant)
-    const customerIds = [...new Set(orders.map((o) => o.customer_id).filter(Boolean))];
+    const customerIds = [
+      ...new Set(orders.map((o) => o.customer_id).filter(Boolean)),
+    ];
     const customers = await CustomerModel.find({
       tenant_id: tenantId,
       customer_id: { $in: customerIds },
     })
-      .select("customer_id company_name first_name last_name email external_code public_code addresses")
+      .select(
+        "customer_id company_name first_name last_name email external_code public_code addresses",
+      )
       .lean();
 
     // Create a map for quick lookup (include addresses for label backfill)
@@ -576,7 +394,7 @@ export async function GET(req: NextRequest) {
           public_code: c.public_code,
           addresses: (c as any).addresses || [],
         },
-      ])
+      ]),
     );
 
     // Enrich orders with customer info + resolve shipping address
@@ -586,7 +404,7 @@ export async function GET(req: NextRequest) {
       let shippingAddress = null;
       if (order.shipping_address_id && cust) {
         const addr = cust.addresses.find(
-          (a: any) => a.address_id === order.shipping_address_id
+          (a: any) => a.address_id === order.shipping_address_id,
         );
         if (addr) {
           shippingAddress = {
@@ -608,16 +426,18 @@ export async function GET(req: NextRequest) {
       // Build human-readable display reference
       // Draft → CA/{seq}/{year}, non-draft → OR/{seq}/{year}
       const prefix = order.status === "draft" ? "CA" : "OR";
-      const num = order.status !== "draft" && order.order_number
-        ? order.order_number
-        : order.cart_number;
+      const num =
+        order.status !== "draft" && order.order_number
+          ? order.order_number
+          : order.cart_number;
       const display_ref = `${prefix}/${num}/${order.year}`;
 
       return {
         ...order,
         display_ref,
         shipping_address: shippingAddress,
-        shipping_address_code: order.shipping_address_code || shippingAddress?.external_code || null,
+        shipping_address_code:
+          order.shipping_address_code || shippingAddress?.external_code || null,
         customer_code: order.customer_code || cust?.external_code || null,
         customer_name: cust?.customer_name || order.customer_id,
         customer_company: cust?.company_name,
@@ -641,7 +461,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -666,7 +486,7 @@ export async function POST(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
     const tenant_id = auth.tenantId!;
@@ -675,13 +495,25 @@ export async function POST(req: NextRequest) {
     const body: CreateOrderRequest = await req.json();
 
     // Determine if this is a B2C guest order (buyer provided, no customer lookup)
-    const isB2CGuest = !!body.buyer && !body.customer_id && !body.customer_code && !body.customer;
+    const isB2CGuest =
+      !!body.buyer &&
+      !body.customer_id &&
+      !body.customer_code &&
+      !body.customer;
 
     // For non-guest orders, require a customer identifier
-    if (!isB2CGuest && !body.customer_id && !body.customer_code && !body.customer) {
+    if (
+      !isB2CGuest &&
+      !body.customer_id &&
+      !body.customer_code &&
+      !body.customer
+    ) {
       return NextResponse.json(
-        { error: "customer_id, customer_code, customer object, or buyer snapshot is required" },
-        { status: 400 }
+        {
+          error:
+            "customer_id, customer_code, customer object, or buyer snapshot is required",
+        },
+        { status: 400 },
       );
     }
 
@@ -690,8 +522,11 @@ export async function POST(req: NextRequest) {
       const b = body.buyer!;
       if (!b.email || !b.first_name || !b.last_name) {
         return NextResponse.json(
-          { error: "buyer.email, buyer.first_name, and buyer.last_name are required" },
-          { status: 400 }
+          {
+            error:
+              "buyer.email, buyer.first_name, and buyer.last_name are required",
+          },
+          { status: 400 },
         );
       }
     }
@@ -713,22 +548,32 @@ export async function POST(req: NextRequest) {
         console.error("Error finding/creating customer:", error);
         return NextResponse.json(
           { error: "Failed to find or create customer" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       // Portal user access check
-      if (auth.customerAccess && !hasCustomerAccess(auth.customerAccess, customer.customer_id)) {
-        return NextResponse.json({ error: "Access denied to this customer" }, { status: 403 });
+      if (
+        auth.customerAccess &&
+        !hasCustomerAccess(auth.customerAccess, customer.customer_id)
+      ) {
+        return NextResponse.json(
+          { error: "Access denied to this customer" },
+          { status: 403 },
+        );
       }
 
       // Find or create shipping address (if provided)
       shipping_address_id = body.shipping_address_id;
       if (!shipping_address_id && body.shipping_address) {
         try {
-          const address = await findOrCreateAddress(customer, {
-            address: body.shipping_address,
-          }, tenant_id);
+          const address = await findOrCreateAddress(
+            customer,
+            {
+              address: body.shipping_address,
+            },
+            tenant_id,
+          );
           shipping_address_id = address.address_id;
         } catch (error) {
           console.error("Error finding/creating address:", error);
@@ -750,7 +595,8 @@ export async function POST(req: NextRequest) {
     // Determine defaults based on order type
     const orderType = body.order_type || (isB2CGuest ? "b2c" : "b2b");
     const channel = body.channel || (isB2CGuest ? "b2c" : "b2b");
-    const priceListType = body.price_list_type || (orderType === "b2c" ? "retail" : "wholesale");
+    const priceListType =
+      body.price_list_type || (orderType === "b2c" ? "retail" : "wholesale");
 
     // ── BEFORE HOOK: validate with ERP ──
     const hookCtx = buildHookCtx(auth.tenantDb!, tenant_id, "cart.create", {
@@ -761,7 +607,10 @@ export async function POST(req: NextRequest) {
     const before = await runBeforeHook(hookCtx);
     if (before.hooked && !before.allowed) {
       return NextResponse.json(
-        { error: before.message || "Operation rejected by ERP", windmill: { phase: "before", blocked: true } },
+        {
+          error: before.message || "Operation rejected by ERP",
+          windmill: { phase: "before", blocked: true },
+        },
         { status: 422 },
       );
     }
@@ -780,7 +629,8 @@ export async function POST(req: NextRequest) {
       customer_id: customer?.customer_id || null,
       customer_code: customer?.external_code || null,
       shipping_address_id: shipping_address_id || null,
-      billing_address_id: body.billing_address_id || customer?.default_billing_address_id || null,
+      billing_address_id:
+        body.billing_address_id || customer?.default_billing_address_id || null,
 
       // B2C buyer snapshot (embedded on order for all B2C orders)
       buyer: body.buyer || null,
@@ -847,7 +697,9 @@ export async function POST(req: NextRequest) {
 
     // ── ON + AFTER HOOKS ──
     updateCtxFromOrder(hookCtx, order);
-    const on = await runOnMergeAfterAuto(hookCtx, OrderModel, order._id, { orderId: order.order_id });
+    const on = await runOnMergeAfterAuto(hookCtx, OrderModel, order._id, {
+      orderId: order.order_id,
+    });
 
     return NextResponse.json(
       {
@@ -864,16 +716,22 @@ export async function POST(req: NextRequest) {
         windmill: {
           channel,
           before: before.hooked ? { allowed: before.allowed } : undefined,
-          on: on.hooked ? { synced: on.success, timed_out: on.timedOut, message: on.response?.message } : undefined,
+          on: on.hooked
+            ? {
+                synced: on.success,
+                timed_out: on.timedOut,
+                message: on.response?.message,
+              }
+            : undefined,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating order:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

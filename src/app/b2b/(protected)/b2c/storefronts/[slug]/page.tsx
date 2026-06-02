@@ -12,6 +12,7 @@ import { HeaderSection, DEFAULT_B2C_HEADER_CONFIG } from "@/components/b2c/store
 import { FooterSection } from "@/components/b2c/storefront-settings/footer-section";
 import { SeoSection } from "@/components/b2c/storefront-settings/seo-section";
 import { ScriptsSection } from "@/components/b2c/storefront-settings/scripts-section";
+import { CssSection } from "@/components/b2c/storefront-settings/css-section";
 import { SitemapSection } from "@/components/b2c/storefront-settings/sitemap-section";
 import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, IB2CCustomScript, HeaderConfig } from "@/components/b2c/storefront-settings/types";
 
@@ -29,6 +30,7 @@ interface Storefront {
   footer_draft?: IB2CStorefrontFooter;
   meta_tags?: IB2CStorefrontMetaTags;
   custom_scripts?: IB2CCustomScript[];
+  custom_css?: string;
   settings: { default_language?: string; theme?: string };
   created_at: string;
   updated_at: string;
@@ -79,6 +81,9 @@ export default function StorefrontDetailPage({
   // Custom Scripts
   const [customScripts, setCustomScripts] = useState<IB2CCustomScript[]>([]);
 
+  // Custom CSS
+  const [customCss, setCustomCss] = useState("");
+
   // Load storefront
   useEffect(() => {
     fetch(`/api/b2b/b2c/storefronts/${slug}`)
@@ -99,6 +104,7 @@ export default function StorefrontDetailPage({
           setFooterDraft(sf.footer_draft ?? sf.footer ?? {});
           setMetaTags(sf.meta_tags || {});
           setCustomScripts(sf.custom_scripts || []);
+          setCustomCss(sf.custom_css || "");
         }
       })
       .catch(console.error)
@@ -130,6 +136,7 @@ export default function StorefrontDetailPage({
           footer_draft: footerDraft,
           meta_tags: metaTags,
           custom_scripts: customScripts,
+          custom_css: customCss,
           settings: { default_language: defaultLanguage || undefined },
         }),
       });
@@ -323,6 +330,15 @@ export default function StorefrontDetailPage({
           <ScriptsSection
             scripts={customScripts}
             onChange={setCustomScripts}
+            saving={saving}
+            onSave={handleSave}
+          />
+        )}
+
+        {activeSection === "css" && (
+          <CssSection
+            css={customCss}
+            onChange={setCustomCss}
             saving={saving}
             onSave={handleSave}
           />

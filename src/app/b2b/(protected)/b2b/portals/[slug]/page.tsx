@@ -22,6 +22,7 @@ import { HeaderSection, DEFAULT_B2C_HEADER_CONFIG } from "@/components/b2c/store
 import { FooterSection } from "@/components/b2c/storefront-settings/footer-section";
 import { SeoSection } from "@/components/b2c/storefront-settings/seo-section";
 import { ScriptsSection } from "@/components/b2c/storefront-settings/scripts-section";
+import { CssSection } from "@/components/b2c/storefront-settings/css-section";
 import { SitemapSection } from "@/components/b2c/storefront-settings/sitemap-section";
 import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, IB2CCustomScript, HeaderConfig } from "@/components/b2c/storefront-settings/types";
 import type { B2BPortalStatus } from "@/lib/types/b2b-portal";
@@ -40,6 +41,7 @@ interface Portal {
   footer_draft?: IB2CStorefrontFooter;
   meta_tags?: IB2CStorefrontMetaTags;
   custom_scripts?: IB2CCustomScript[];
+  custom_css?: string;
   settings: { default_language?: string; theme?: string };
   created_at: string;
   updated_at: string;
@@ -94,6 +96,9 @@ export default function PortalDetailPage({
   // Custom Scripts
   const [customScripts, setCustomScripts] = useState<IB2CCustomScript[]>([]);
 
+  // Custom CSS
+  const [customCss, setCustomCss] = useState("");
+
   // Load portal
   useEffect(() => {
     fetch(`/api/b2b/b2b/portals/${slug}`)
@@ -116,6 +121,7 @@ export default function PortalDetailPage({
           setFooterDraft(p.footer_draft ?? p.footer ?? {});
           setMetaTags(p.meta_tags || {});
           setCustomScripts(p.custom_scripts || []);
+          setCustomCss(p.custom_css || "");
         }
       })
       .catch(console.error)
@@ -171,6 +177,7 @@ export default function PortalDetailPage({
           footer_draft: footerDraft,
           meta_tags: metaTags,
           custom_scripts: customScripts,
+          custom_css: customCss,
           settings: { default_language: defaultLanguage || undefined },
         },
         "pages.b2bPortal.detail.failedToUpdate"
@@ -367,6 +374,15 @@ export default function PortalDetailPage({
           <ScriptsSection
             scripts={customScripts}
             onChange={setCustomScripts}
+            saving={saving}
+            onSave={handleSave}
+          />
+        )}
+
+        {activeSection === "css" && (
+          <CssSection
+            css={customCss}
+            onChange={setCustomCss}
             saving={saving}
             onSave={handleSave}
           />

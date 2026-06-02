@@ -156,12 +156,26 @@ export class SolrAdapter extends MarketplaceAdapter {
   private solrCore: string;
   private tenantDb?: string;
 
+  /**
+   * Soft-commit window (ms) applied to index/update/delete writes via Solr's
+   * `commitWithin` request param. This replaces the old per-request
+   * `commit=true` hard commit, which forced a searcher reopen on every job and
+   * throttled throughput (the reason the sync limiter was pinned so low).
+   * `commitWithin` lets Solr bucket many writes into one soft commit within
+   * this window — visibility is bounded to ≤ this many ms regardless of the
+   * core's autoSoftCommit, while autoCommit handles durability. Tunable via
+   * SOLR_COMMIT_WITHIN_MS (default 3000, matching the cores' autoSoftCommit).
+   */
+  private readonly commitWithinMs: number;
+
   constructor(config: any, tenantDb?: string) {
     super(config);
     // Config comes from loadAdapterConfigs() - single source of truth
     this.solrUrl = config.custom_config?.solr_url;
     this.solrCore = config.custom_config?.solr_core;
     this.tenantDb = tenantDb;
+    const cw = parseInt(process.env.SOLR_COMMIT_WITHIN_MS || '3000', 10);
+    this.commitWithinMs = Number.isFinite(cw) && cw > 0 ? cw : 3000;
   }
 
   async initialize(): Promise<void> {
@@ -1163,7 +1177,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
 
       // Send to Solr (use array format for Solr 9)
-      const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+      const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commitWithin=${this.commitWithinMs}`;
       const response = await fetch(updateUrl, {
         method: 'POST',
         headers: {
@@ -1218,7 +1232,7 @@ export class SolrAdapter extends MarketplaceAdapter {
     try {
       this.log(`Deleting product from index: ${productId}`);
 
-      const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+      const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commitWithin=${this.commitWithinMs}`;
       const response = await fetch(deleteUrl, {
         method: 'POST',
         headers: {
@@ -1252,7 +1266,7 @@ export class SolrAdapter extends MarketplaceAdapter {
   ): Promise<InventorySyncResult> {
     try {
       // Atomic update of stock_quantity field
-      const updateUrl = `${this.solrUrl}/${this.solrCore}/update/json/docs?commit=true`;
+      const updateUrl = `${this.solrUrl}/${this.solrCore}/update/json/docs?commitWithin=${this.commitWithinMs}`;
       const response = await fetch(updateUrl, {
         method: 'POST',
         headers: {
@@ -1285,7 +1299,7 @@ export class SolrAdapter extends MarketplaceAdapter {
   async syncPrice(sku: string, price: number): Promise<SyncResult> {
     try {
       // Atomic update of price field
-      const updateUrl = `${this.solrUrl}/${this.solrCore}/update/json/docs?commit=true`;
+      const updateUrl = `${this.solrUrl}/${this.solrCore}/update/json/docs?commitWithin=${this.commitWithinMs}`;
       const response = await fetch(updateUrl, {
         method: 'POST',
         headers: {
@@ -1421,7 +1435,7 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
     }
 
-    const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+    const updateUrl = `${this.solrUrl}/${this.solrCore}/update?commitWithin=${this.commitWithinMs}`;
 
     try {
       // Fast path: one batch POST for the whole array.
@@ -1492,6 +1506,11 @@ export class SolrAdapter extends MarketplaceAdapter {
 
   /**
    * Clear entire index (use with caution!)
+   *
+   * Deliberately keeps an explicit hard `commit=true`: this is a rare, manual,
+   * destructive full-wipe (e.g. before a full reindex) where the caller expects
+   * the index to be empty immediately, so the per-request commit is warranted
+   * here (unlike the high-frequency write paths, which use commitWithin).
    */
   async clearIndex(): Promise<void> {
     const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
@@ -1512,7 +1531,7 @@ export class SolrAdapter extends MarketplaceAdapter {
    */
   async deleteByIds(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
-    const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+    const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commitWithin=${this.commitWithinMs}`;
     const CHUNK = 500;
     for (let i = 0; i < ids.length; i += CHUNK) {
       const chunk = ids.slice(i, i + CHUNK);
@@ -1530,7 +1549,7 @@ export class SolrAdapter extends MarketplaceAdapter {
    * Delete documents matching a Solr query
    */
   async deleteByQuery(query: string): Promise<void> {
-    const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commit=true`;
+    const deleteUrl = `${this.solrUrl}/${this.solrCore}/update?commitWithin=${this.commitWithinMs}`;
     const response = await fetch(deleteUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -180,7 +180,10 @@ function scriptBaseName(scriptPath?: string): string | undefined {
   return parts[parts.length - 1];
 }
 
-function buildJobs(
+// Exported for unit testing — the `windmill_jobs` array is an append-only
+// log (see `pushWindmillJobRef`) so the same `job_id` can legitimately
+// appear more than once; the event `id` must stay unique regardless.
+export function buildJobs(
   order: IOrder,
   details: Map<string, WindmillJobDetails>,
   linkCtx: WindmillLinkCtx | null,
@@ -299,7 +302,10 @@ function buildJobs(
     }
 
     return {
-      id: `job:${jobId || `idx-${idx}`}`,
+      // The array index keeps the id unique even when the same `job_id`
+      // appears more than once in the append-only `windmill_jobs` log.
+      // The bare job_id is still surfaced separately via `copyId` below.
+      id: `job:${idx}:${jobId || "nojob"}`,
       at,
       source: "windmill",
       type: "job_run",

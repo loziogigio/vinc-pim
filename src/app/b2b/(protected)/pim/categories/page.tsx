@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import {
   FolderTree,
@@ -58,19 +59,24 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [parentCategory, setParentCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const appliedSearch = useDebouncedValue(searchQuery, 300);
   const [showInactive, setShowInactive] = useState(true);
   const [channelFilter, setChannelFilter] = useState("");
+  const [total, setTotal] = useState(0);
+  const [rootCount, setRootCount] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   useEffect(() => {
@@ -94,13 +100,21 @@ export default function CategoriesPage() {
   async function fetchCategories() {
     setIsLoading(true);
     try {
-      const url = channelFilter
-        ? `/api/b2b/pim/categories?include_inactive=true&channel=${channelFilter}`
-        : "/api/b2b/pim/categories?include_inactive=true";
-      const res = await fetch(url);
+      const params = new URLSearchParams({
+        include_inactive: String(showInactive),
+        limit: "200",
+      });
+      if (appliedSearch) params.set("search", appliedSearch);
+      if (channelFilter) params.set("channel", channelFilter);
+      const res = await fetch(`/api/b2b/pim/categories?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data.categories);
+        setTotal(data.pagination?.total ?? data.categories.length);
+        setRootCount(
+          data.root_count ??
+            data.categories.filter((c: Category) => !c.parent_id).length,
+        );
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -110,10 +124,10 @@ export default function CategoriesPage() {
     }
   }
 
-  // Refetch when channel filter changes
+  // Refetch when channel filter, search, or active toggle changes
   useEffect(() => {
     fetchCategories();
-  }, [channelFilter]);
+  }, [channelFilter, appliedSearch, showInactive]);
 
   function toggleExpand(categoryId: string) {
     setExpandedCategories((prev) => {
@@ -157,7 +171,9 @@ export default function CategoriesPage() {
     }
 
     // Get siblings at the same level
-    const siblings = categories.filter((c) => c.parent_id === activeCategory.parent_id);
+    const siblings = categories.filter(
+      (c) => c.parent_id === activeCategory.parent_id,
+    );
     const oldIndex = siblings.findIndex((c) => c.category_id === active.id);
     const newIndex = siblings.findIndex((c) => c.category_id === over.id);
 
@@ -204,27 +220,36 @@ export default function CategoriesPage() {
   async function handleDelete(category: Category) {
     if (category.product_count > 0) {
       toast.error(
-        t("pages.pim.categories.hasProductsError", { count: category.product_count })
+        t("pages.pim.categories.hasProductsError", {
+          count: category.product_count,
+        }),
       );
       return;
     }
 
-    const childCount = categories.filter((c) => c.parent_id === category.category_id).length;
+    const childCount = categories.filter(
+      (c) => c.parent_id === category.category_id,
+    ).length;
     if (childCount > 0) {
       toast.error(
-        t("pages.pim.categories.hasChildrenError", { count: childCount })
+        t("pages.pim.categories.hasChildrenError", { count: childCount }),
       );
       return;
     }
 
-    if (!confirm(t("pages.pim.categories.deleteConfirm", { name: category.name }))) {
+    if (
+      !confirm(t("pages.pim.categories.deleteConfirm", { name: category.name }))
+    ) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/b2b/pim/categories/${category.category_id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/b2b/pim/categories/${category.category_id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (res.ok) {
         toast.success(t("pages.pim.categories.deleteSuccess"));
@@ -239,27 +264,19 @@ export default function CategoriesPage() {
     }
   }
 
-  // Filter categories based on search and active status
-  const filteredCategories = categories.filter((cat) => {
-    const matchesSearch = cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cat.slug.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesActive = showInactive || cat.is_active;
-    return matchesSearch && matchesActive;
-  });
+  // Server returns the already search/active-filtered dataset.
+  const filteredCategories = categories;
 
-  // Auto-expand categories that match search
+  // Auto-expand parents of the server-returned matches while searching.
   useEffect(() => {
-    if (searchQuery) {
-      const matchingCategories = categories.filter((cat) =>
-        cat.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (appliedSearch) {
       const parentsToExpand = new Set<string>();
-      matchingCategories.forEach((cat) => {
+      categories.forEach((cat) => {
         cat.path.forEach((parentId) => parentsToExpand.add(parentId));
       });
       setExpandedCategories(parentsToExpand);
     }
-  }, [searchQuery, categories]);
+  }, [appliedSearch, categories]);
 
   if (isLoading) {
     return (
@@ -269,8 +286,6 @@ export default function CategoriesPage() {
       </div>
     );
   }
-
-  const rootCategories = filteredCategories.filter((c) => !c.parent_id);
 
   return (
     <>
@@ -285,9 +300,12 @@ export default function CategoriesPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.categories.title")}</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("pages.pim.categories.title")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {categories.length} {t("pages.pim.categories.totalOf")} • {rootCategories.length} {t("pages.pim.categories.rootCategories")}
+              {total} {t("pages.pim.categories.totalOf")} • {rootCount}{" "}
+              {t("pages.pim.categories.rootCategories")}
             </p>
           </div>
           <button
@@ -365,7 +383,9 @@ export default function CategoriesPage() {
             <div className="p-12 text-center">
               <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchQuery ? t("pages.pim.categories.noFound") : t("pages.pim.categories.noYet")}
+                {searchQuery
+                  ? t("pages.pim.categories.noFound")
+                  : t("pages.pim.categories.noYet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchQuery
@@ -455,7 +475,14 @@ function SortableCategoryRow({
   channelInfo?: ChannelInfo;
 }) {
   const { t } = useTranslation();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: category.category_id,
   });
 
@@ -474,7 +501,11 @@ function SortableCategoryRow({
         style={{ paddingLeft: `${level * 24 + 12}px` }}
       >
         {/* Drag Handle */}
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing"
+        >
           <GripVertical className="h-5 w-5 text-muted-foreground" />
         </div>
 
@@ -513,7 +544,9 @@ function SortableCategoryRow({
         {/* Category Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-medium text-foreground truncate">{category.name}</h3>
+            <h3 className="font-medium text-foreground truncate">
+              {category.name}
+            </h3>
             {!category.parent_id && channelInfo && (
               <span
                 className="px-2 py-0.5 rounded text-xs font-medium text-white"
@@ -533,7 +566,9 @@ function SortableCategoryRow({
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground truncate">{category.slug}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {category.slug}
+          </p>
         </div>
 
         {/* Product Count */}
@@ -591,10 +626,14 @@ function buildCategoryTree(
   handleDelete: (cat: Category) => void,
   channelMap: Map<string, ChannelInfo>,
   parentId?: string,
-  level = 0
+  level = 0,
 ): JSX.Element {
-  const children = categories.filter((c) => (parentId ? c.parent_id === parentId : !c.parent_id));
-  const sortedChildren = [...children].sort((a, b) => a.display_order - b.display_order);
+  const children = categories.filter((c) =>
+    parentId ? c.parent_id === parentId : !c.parent_id,
+  );
+  const sortedChildren = [...children].sort(
+    (a, b) => a.display_order - b.display_order,
+  );
 
   const childIds = sortedChildren.map((c) => c.category_id);
 
@@ -602,7 +641,9 @@ function buildCategoryTree(
     <SortableContext items={childIds} strategy={verticalListSortingStrategy}>
       <div>
         {sortedChildren.map((category) => {
-          const hasChildren = categories.some((c) => c.parent_id === category.category_id);
+          const hasChildren = categories.some(
+            (c) => c.parent_id === category.category_id,
+          );
           const isExpanded = expandedCategories.has(category.category_id);
 
           return (
@@ -619,7 +660,11 @@ function buildCategoryTree(
                 }}
                 onEdit={() => setEditingCategory(category)}
                 onDelete={() => handleDelete(category)}
-                channelInfo={!category.parent_id && category.channel_code ? channelMap.get(category.channel_code) : undefined}
+                channelInfo={
+                  !category.parent_id && category.channel_code
+                    ? channelMap.get(category.channel_code)
+                    : undefined
+                }
               />
 
               {/* Render children if expanded */}
@@ -635,7 +680,7 @@ function buildCategoryTree(
                     handleDelete,
                     channelMap,
                     category.category_id,
-                    level + 1
+                    level + 1,
                   )}
                 </div>
               )}

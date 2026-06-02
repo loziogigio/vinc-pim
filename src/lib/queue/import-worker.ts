@@ -17,7 +17,8 @@ import {
 } from "../pim/auto-publish";
 import { detectConflicts } from "../pim/conflict-resolver";
 import { syncProductToSolr } from "../sync/marketplace-sync";
-import { syncQueue } from "./queues";
+import { syncBulkQueue } from "./queues";
+import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 import { nanoid } from "nanoid";
 import { parseBidirectionalFlag } from "../constants/correlation";
 
@@ -975,15 +976,15 @@ async function processImport(job: Job<ImportJobData>) {
             const batchIds = successfulEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
             const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
 
-            await syncQueue.add('bulk-sync-batch', {
+            await syncBulkQueue.add('bulk-sync-batch', {
               product_id: `batch-${job_id}-${batchNumber}`,
               product_ids: batchIds,
               operation: 'bulk-sync',
               channels: ['solr'],
               tenant_id: effectiveTenantId,
-              priority: 'high',
+              priority: 'low',
             }, {
-              priority: 1, // High priority for search indexing
+              priority: SYNC_PRIORITY.LOW, // Background: bulk import → isolated bulk lane
             });
 
             console.log(`   ✓ Queued batch ${batchNumber}/${batchCount} (${batchIds.length} products)`);
@@ -1159,14 +1160,14 @@ async function processBulkUpdate(job: Job<any>) {
         for (let i = 0; i < uniqueCodes.length; i += SYNC_BATCH_SIZE) {
           const batchCodes = uniqueCodes.slice(i, i + SYNC_BATCH_SIZE);
           const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
-          await syncQueue.add('bulk-sync-batch', {
+          await syncBulkQueue.add('bulk-sync-batch', {
             product_id: `bulk-delete-${job_id}-${batchNumber}`,
             product_ids: batchCodes,
             operation: 'delete',
             channels: ['solr'],
             tenant_id: effectiveTenantId,
-            priority: 'high',
-          }, { priority: 1 });
+            priority: 'low',
+          }, { priority: SYNC_PRIORITY.LOW });
         }
         console.log(`📤 Queued Solr delete for ${uniqueCodes.length} products`);
       }
@@ -1268,7 +1269,7 @@ async function processBulkUpdate(job: Job<any>) {
               const batchIds = allEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
               const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
 
-              await syncQueue.add(
+              await syncBulkQueue.add(
                 "bulk-sync-batch",
                 {
                   product_id: `bulk-archive-${job_id}-${batchNumber}`,
@@ -1276,9 +1277,9 @@ async function processBulkUpdate(job: Job<any>) {
                   operation: "delete",
                   channels: targetChannels,
                   tenant_id: effectiveTenantId,
-                  priority: "high",
+                  priority: "low",
                 },
-                { priority: 1 }
+                { priority: SYNC_PRIORITY.LOW }
               );
 
               if (batchNumber % 10 === 0 || batchNumber === batchCount) {
@@ -1327,15 +1328,15 @@ async function processBulkUpdate(job: Job<any>) {
               const batchIds = allEntityCodes.slice(i, i + SYNC_BATCH_SIZE);
               const batchNumber = Math.floor(i / SYNC_BATCH_SIZE) + 1;
 
-              await syncQueue.add('bulk-sync-batch', {
+              await syncBulkQueue.add('bulk-sync-batch', {
                 product_id: `bulk-update-${job_id}-${batchNumber}`,
                 product_ids: batchIds,
                 operation: 'bulk-sync',
                 channels: ['solr'],
                 tenant_id: effectiveTenantId,
-                priority: 'high',
+                priority: 'low',
               }, {
-                priority: 1,
+                priority: SYNC_PRIORITY.LOW,
               });
 
               // Progress: 85-100% range for Solr sync queueing

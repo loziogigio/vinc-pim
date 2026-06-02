@@ -3,6 +3,10 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { nanoid } from "nanoid";
+import {
+  getEnabledLocaleCodes,
+  buildMultilangSearchOr,
+} from "@/lib/search/multilang-search";
 
 /**
  * Authenticate request via session or API key
@@ -21,7 +25,10 @@ async function authenticateRequest(req: NextRequest): Promise<{
   let tenantDb: string;
 
   if (authMethod === "api-key") {
-    const apiKeyResult = await verifyAPIKeyFromRequest(req, "technical-specifications");
+    const apiKeyResult = await verifyAPIKeyFromRequest(
+      req,
+      "technical-specifications",
+    );
     if (!apiKeyResult.authenticated) {
       return {
         authenticated: false,
@@ -61,14 +68,24 @@ export async function GET(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
-    const { TechnicalSpecification, UOM } = auth.models;
+    const {
+      TechnicalSpecification,
+      UOM,
+      Language: LanguageModel,
+    } = auth.models;
 
     const searchParams = req.nextUrl.searchParams;
     const includeInactive = searchParams.get("include_inactive") === "true";
+    const search = searchParams.get("search")?.trim();
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(searchParams.get("limit") || "100") || 100),
+    );
 
     // Build query
     const query: any = {
@@ -79,9 +96,22 @@ export async function GET(req: NextRequest) {
       query.is_active = true;
     }
 
-    const technicalSpecifications = await TechnicalSpecification.find(query)
-      .sort({ display_order: 1, label: 1 })
-      .lean();
+    // Server-side search across the plain label + key fields.
+    if (search) {
+      const codes = await getEnabledLocaleCodes(LanguageModel);
+      query.$or = buildMultilangSearchOr(search, codes, {
+        plainFields: ["label", "key"],
+      });
+    }
+
+    const [technicalSpecifications, total] = await Promise.all([
+      TechnicalSpecification.find(query)
+        .sort({ display_order: 1, label: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      TechnicalSpecification.countDocuments(query),
+    ]);
 
     // Populate UOM data for technical specifications that reference a UOM
     const technicalSpecificationsWithUOM = await Promise.all(
@@ -98,15 +128,18 @@ export async function GET(req: NextRequest) {
           }
         }
         return spec;
-      })
+      }),
     );
 
-    return NextResponse.json({ technical_specifications: technicalSpecificationsWithUOM });
+    return NextResponse.json({
+      technical_specifications: technicalSpecificationsWithUOM,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error("Error fetching technical specifications:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -121,19 +154,28 @@ export async function POST(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
     const { TechnicalSpecification, UOM } = auth.models;
 
     const body = await req.json();
-    const { key, label, type, unit, uom_id, options, default_required, display_order } = body;
+    const {
+      key,
+      label,
+      type,
+      unit,
+      uom_id,
+      options,
+      default_required,
+      display_order,
+    } = body;
 
     if (!key || !label || !type) {
       return NextResponse.json(
         { error: "Key, label, and type are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -141,8 +183,11 @@ export async function POST(req: NextRequest) {
     const keyRegex = /^[a-z0-9_-]+$/;
     if (!keyRegex.test(key)) {
       return NextResponse.json(
-        { error: "Key must contain only lowercase letters, numbers, underscores, and hyphens (no spaces or special characters)" },
-        { status: 400 }
+        {
+          error:
+            "Key must contain only lowercase letters, numbers, underscores, and hyphens (no spaces or special characters)",
+        },
+        { status: 400 },
       );
     }
 
@@ -155,7 +200,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: "A technical specification with this key already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -187,12 +232,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ technical_specification: specResponse }, { status: 201 });
+    return NextResponse.json(
+      { technical_specification: specResponse },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Error creating technical specification:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -211,7 +259,7 @@ export async function DELETE(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
@@ -220,10 +268,17 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { delete_all, technical_specification_ids } = body;
 
-    if (!delete_all && (!technical_specification_ids || !Array.isArray(technical_specification_ids))) {
+    if (
+      !delete_all &&
+      (!technical_specification_ids ||
+        !Array.isArray(technical_specification_ids))
+    ) {
       return NextResponse.json(
-        { error: "Either delete_all: true or technical_specification_ids array is required" },
-        { status: 400 }
+        {
+          error:
+            "Either delete_all: true or technical_specification_ids array is required",
+        },
+        { status: 400 },
       );
     }
 
@@ -231,7 +286,10 @@ export async function DELETE(req: NextRequest) {
     const productTypes = await ProductType.find({}).lean();
     const specsInUse = new Set<string>();
     for (const pt of productTypes) {
-      if (pt.technical_specifications && Array.isArray(pt.technical_specifications)) {
+      if (
+        pt.technical_specifications &&
+        Array.isArray(pt.technical_specifications)
+      ) {
         for (const spec of pt.technical_specifications) {
           if (spec.technical_specification_id) {
             specsInUse.add(spec.technical_specification_id);
@@ -244,13 +302,20 @@ export async function DELETE(req: NextRequest) {
 
     if (delete_all) {
       // Get all technical specification IDs
-      const allSpecs = await TechnicalSpecification.find({}).select("technical_specification_id").lean();
+      const allSpecs = await TechnicalSpecification.find({})
+        .select("technical_specification_id")
+        .lean();
       specsToDelete = allSpecs
-        .map((spec: { technical_specification_id: string }) => spec.technical_specification_id)
+        .map(
+          (spec: { technical_specification_id: string }) =>
+            spec.technical_specification_id,
+        )
         .filter((id: string) => !specsInUse.has(id));
     } else {
       // Filter out technical specifications in use
-      specsToDelete = technical_specification_ids.filter((id: string) => !specsInUse.has(id));
+      specsToDelete = technical_specification_ids.filter(
+        (id: string) => !specsInUse.has(id),
+      );
     }
 
     // Delete technical specifications
@@ -260,19 +325,23 @@ export async function DELETE(req: NextRequest) {
 
     const skipped = delete_all
       ? specsInUse.size
-      : technical_specification_ids.filter((id: string) => specsInUse.has(id)).length;
+      : technical_specification_ids.filter((id: string) => specsInUse.has(id))
+          .length;
 
     return NextResponse.json({
       success: true,
       deleted: result.deletedCount,
       skipped,
-      skipped_reason: skipped > 0 ? "Technical specifications in use by product types" : undefined,
+      skipped_reason:
+        skipped > 0
+          ? "Technical specifications in use by product types"
+          : undefined,
     });
   } catch (error) {
     console.error("Error bulk deleting technical specifications:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

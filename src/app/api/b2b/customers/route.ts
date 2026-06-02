@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
@@ -89,12 +89,20 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "20") || 20),
+    );
     const customerType = searchParams.get("customer_type");
     const isGuest = searchParams.get("is_guest");
     const search = searchParams.get("search");
     const customerCode = searchParams.get("customer_code");
     const addressCode = searchParams.get("address_code");
+    // When set, also return per-type counts (business/private/reseller/guests)
+    // aggregated server-side, for the dashboard stat cards.
+    const includeCounts =
+      searchParams.get("counts") === "1" ||
+      searchParams.get("counts") === "true";
 
     // Build query
     const query: Record<string, unknown> = { tenant_id: tenantId };
@@ -136,18 +144,53 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Per-type counts for the dashboard cards — computed server-side over the
+    // whole tenant scope (NOT narrowed by the type/guest/search filters).
+    const countsMatch: Record<string, unknown> = { tenant_id: tenantId };
+    if (query.customer_id) countsMatch.customer_id = query.customer_id;
+
     // Execute query with pagination
-    const [customers, total] = await Promise.all([
+    const [customers, total, countsAgg] = await Promise.all([
       CustomerModel.find(query)
         .sort({ created_at: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
       CustomerModel.countDocuments(query),
+      includeCounts
+        ? CustomerModel.aggregate([
+            { $match: countsMatch },
+            {
+              $group: {
+                _id: null,
+                business: {
+                  $sum: {
+                    $cond: [{ $eq: ["$customer_type", "business"] }, 1, 0],
+                  },
+                },
+                private: {
+                  $sum: {
+                    $cond: [{ $eq: ["$customer_type", "private"] }, 1, 0],
+                  },
+                },
+                reseller: {
+                  $sum: {
+                    $cond: [{ $eq: ["$customer_type", "reseller"] }, 1, 0],
+                  },
+                },
+                guests: {
+                  $sum: { $cond: [{ $eq: ["$is_guest", true] }, 1, 0] },
+                },
+              },
+            },
+          ])
+        : Promise.resolve<Record<string, number>[]>([]),
     ]);
 
     // Get order stats for each customer
-    const customerIds = customers.map((c: { customer_id: string }) => c.customer_id);
+    const customerIds = customers.map(
+      (c: { customer_id: string }) => c.customer_id,
+    );
     const orderStats = await OrderModel.aggregate([
       { $match: { customer_id: { $in: customerIds } } },
       {
@@ -165,31 +208,51 @@ export async function GET(req: NextRequest) {
 
     // Create a map for quick lookup
     const statsMap = new Map(
-      orderStats.map((s: { _id: string; order_count: number; total_spent: number; last_order_date: Date | null; draft_count: number }) => [
-        s._id,
-        {
-          order_count: s.order_count,
-          total_spent: s.total_spent,
-          last_order_date: s.last_order_date,
-          draft_count: s.draft_count,
-        },
-      ])
+      orderStats.map(
+        (s: {
+          _id: string;
+          order_count: number;
+          total_spent: number;
+          last_order_date: Date | null;
+          draft_count: number;
+        }) => [
+          s._id,
+          {
+            order_count: s.order_count,
+            total_spent: s.total_spent,
+            last_order_date: s.last_order_date,
+            draft_count: s.draft_count,
+          },
+        ],
+      ),
     );
 
     // Enrich customers with order stats
-    const customersWithStats = customers.map((customer: { customer_id: string }) => ({
-      ...customer,
-      order_stats: statsMap.get(customer.customer_id) || {
-        order_count: 0,
-        total_spent: 0,
-        last_order_date: null,
-        draft_count: 0,
-      },
-    }));
+    const customersWithStats = customers.map(
+      (customer: { customer_id: string }) => ({
+        ...customer,
+        order_stats: statsMap.get(customer.customer_id) || {
+          order_count: 0,
+          total_spent: 0,
+          last_order_date: null,
+          draft_count: 0,
+        },
+      }),
+    );
 
     return NextResponse.json({
       success: true,
       customers: customersWithStats,
+      ...(includeCounts
+        ? {
+            counts: (countsAgg[0] as Record<string, number>) || {
+              business: 0,
+              private: 0,
+              reseller: 0,
+              guests: 0,
+            },
+          }
+        : {}),
       pagination: {
         page,
         limit,
@@ -201,7 +264,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching customers:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -216,12 +279,13 @@ export async function POST(req: NextRequest) {
     if (!auth.authenticated || !auth.models) {
       return NextResponse.json(
         { error: auth.error },
-        { status: auth.statusCode || 401 }
+        { status: auth.statusCode || 401 },
       );
     }
 
     const tenant_id = auth.tenantId!;
-    const { Customer: CustomerModel, PortalUser: PortalUserModel } = auth.models;
+    const { Customer: CustomerModel, PortalUser: PortalUserModel } =
+      auth.models;
 
     const body: CreateCustomerRequest = await req.json();
 
@@ -229,7 +293,7 @@ export async function POST(req: NextRequest) {
     if (!body.customer_type) {
       return NextResponse.json(
         { error: "customer_type is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -241,7 +305,7 @@ export async function POST(req: NextRequest) {
     if (body.channel && !isValidChannelCode(body.channel)) {
       return NextResponse.json(
         { error: "Invalid channel code (e.g. B2C, SLOVAKIA)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -254,7 +318,7 @@ export async function POST(req: NextRequest) {
     if (existingCustomer) {
       return NextResponse.json(
         { error: "Customer with this email already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -264,7 +328,7 @@ export async function POST(req: NextRequest) {
       if (!validation.valid) {
         return NextResponse.json(
           { error: "Invalid legal info", details: validation.errors },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -273,7 +337,8 @@ export async function POST(req: NextRequest) {
     const customer_id = nanoid(12);
 
     // Auto-generate public_code if not provided
-    const public_code = body.public_code || await getNextCustomerPublicCode(auth.tenantDb!);
+    const public_code =
+      body.public_code || (await getNextCustomerPublicCode(auth.tenantDb!));
 
     // Process addresses - generate IDs
     const addresses = (body.addresses || []).map((addr) => {
@@ -324,7 +389,12 @@ export async function POST(req: NextRequest) {
 
     // Upsert customer-level tags if provided
     if (body.tags && body.tags.length > 0) {
-      await upsertCustomerTagsBatch(auth.tenantDb!, tenant_id, customer_id, body.tags);
+      await upsertCustomerTagsBatch(
+        auth.tenantDb!,
+        tenant_id,
+        customer_id,
+        body.tags,
+      );
     }
 
     // Auto-assign customer to portal user if they created it
@@ -338,21 +408,26 @@ export async function POST(req: NextRequest) {
               address_access: "all",
             },
           },
-        }
+        },
       );
     }
 
     // Re-fetch to include tags if they were applied
-    const finalCustomer = (body.tags && body.tags.length > 0)
-      ? await CustomerModel.findOne({ customer_id, tenant_id }).lean() || customer
-      : customer;
+    const finalCustomer =
+      body.tags && body.tags.length > 0
+        ? (await CustomerModel.findOne({ customer_id, tenant_id }).lean()) ||
+          customer
+        : customer;
 
-    return NextResponse.json({ success: true, customer: finalCustomer }, { status: 201 });
+    return NextResponse.json(
+      { success: true, customer: finalCustomer },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Error creating customer:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

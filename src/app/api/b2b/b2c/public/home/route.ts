@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
       meta_tags: (storefront as any).meta_tags || {},
       custom_scripts: ((storefront as any).custom_scripts || [])
         .filter((s: any) => s.enabled),
+      custom_css: (storefront as any).custom_css || "",
     };
 
     // 5. Get published home template

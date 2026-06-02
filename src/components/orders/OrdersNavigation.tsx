@@ -5,15 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   ShoppingCart,
   ListOrdered,
-  Clock,
-  CheckCircle,
-  Truck,
-  XCircle,
   BarChart3,
   Users,
-  Building2,
-  User,
-  Store,
   ListFilter,
   KeyRound,
   UserCog,
@@ -27,20 +20,12 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 const orderPaths = [
   { labelKey: "nav.orders.overview", path: "/b2b/store/orders", icon: BarChart3 },
   { labelKey: "nav.orders.allOrders", path: "/b2b/store/orders/list", icon: ListOrdered },
-  { labelKey: "nav.orders.activeCarts", path: "/b2b/store/orders/carts", icon: ShoppingCart },
-  { labelKey: "nav.orders.pending", path: "/b2b/store/orders/pending", icon: Clock },
-  { labelKey: "nav.orders.confirmed", path: "/b2b/store/orders/confirmed", icon: CheckCircle },
-  { labelKey: "nav.orders.shipped", path: "/b2b/store/orders/shipped", icon: Truck },
-  { labelKey: "nav.orders.cancelled", path: "/b2b/store/orders/cancelled", icon: XCircle },
   { labelKey: "nav.orders.coupons", path: "/b2b/store/coupons", icon: Ticket },
 ];
 
 const customerPaths = [
   { labelKey: "nav.customers.overview", path: "/b2b/store/customers", icon: BarChart3 },
   { labelKey: "nav.customers.allCustomers", path: "/b2b/store/customers/list", icon: ListFilter },
-  { labelKey: "nav.customers.business", path: "/b2b/store/customers/business", icon: Building2 },
-  { labelKey: "nav.customers.private", path: "/b2b/store/customers/private", icon: User },
-  { labelKey: "nav.customers.reseller", path: "/b2b/store/customers/reseller", icon: Store },
   { labelKey: "nav.customers.customerTags", path: "/b2b/store/customers/tags", icon: Tags },
 ];
 

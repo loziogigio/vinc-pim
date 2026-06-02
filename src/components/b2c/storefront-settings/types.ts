@@ -16,6 +16,7 @@ export type StorefrontActiveSection =
   | "footer"
   | "seo"
   | "scripts"
+  | "css"
   | "sitemap";
 
 export interface SidebarItemConfig {

@@ -11,6 +11,7 @@ import {
   FileCode2,
   Globe,
   Code2,
+  Paintbrush,
   MapPin,
   FileText,
   Inbox,
@@ -32,6 +33,7 @@ const STOREFRONT_SECTIONS: {
   { key: "footer", icon: FileCode2, labelKey: "nav.b2c.footer" },
   { key: "seo", icon: Globe, labelKey: "nav.b2c.seoMetaTags" },
   { key: "scripts", icon: Code2, labelKey: "nav.b2c.customScripts" },
+  { key: "css", icon: Paintbrush, labelKey: "nav.b2c.customCss" },
   { key: "sitemap", icon: MapPin, labelKey: "nav.b2c.sitemap" },
 ];
 

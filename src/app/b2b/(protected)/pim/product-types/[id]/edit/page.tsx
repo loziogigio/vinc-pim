@@ -60,10 +60,14 @@ export default function EditProductTypePage() {
   });
 
   // Available specifications from the Technical Specifications management page
-  const [availableSpecifications, setAvailableSpecifications] = useState<TechnicalSpecification[]>([]);
+  const [availableSpecifications, setAvailableSpecifications] = useState<
+    TechnicalSpecification[]
+  >([]);
 
   // Selected specifications with overrides
-  const [selectedSpecifications, setSelectedSpecifications] = useState<Map<string, SelectedSpecification>>(new Map());
+  const [selectedSpecifications, setSelectedSpecifications] = useState<
+    Map<string, SelectedSpecification>
+  >(new Map());
 
   useEffect(() => {
     Promise.all([fetchProductType(), fetchSpecifications()]);
@@ -71,10 +75,10 @@ export default function EditProductTypePage() {
 
   async function fetchProductType() {
     try {
-      const res = await fetch(`/api/b2b/pim/product-types?include_inactive=true`);
+      const res = await fetch(`/api/b2b/pim/product-types/${productTypeId}`);
       if (res.ok) {
         const data = await res.json();
-        const productType = data.productTypes.find((pt: ProductType) => pt.product_type_id === productTypeId);
+        const productType = data.productType as ProductType | undefined;
 
         if (productType) {
           setFormData({
@@ -88,9 +92,11 @@ export default function EditProductTypePage() {
 
           // Pre-populate selected specifications
           const selected = new Map<string, SelectedSpecification>();
-          (productType.technical_specifications || []).forEach((s: SelectedSpecification) => {
-            selected.set(s.technical_specification_id, s);
-          });
+          (productType.technical_specifications || []).forEach(
+            (s: SelectedSpecification) => {
+              selected.set(s.technical_specification_id, s);
+            },
+          );
           setSelectedSpecifications(selected);
         } else {
           toast.error(t("pages.pim.productTypes.notFound"));
@@ -106,7 +112,9 @@ export default function EditProductTypePage() {
   async function fetchSpecifications() {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/b2b/pim/technical-specifications?include_inactive=false");
+      const res = await fetch(
+        "/api/b2b/pim/technical-specifications?include_inactive=false",
+      );
       if (res.ok) {
         const data = await res.json();
         setAvailableSpecifications(data.technical_specifications);
@@ -144,7 +152,10 @@ export default function EditProductTypePage() {
     setSelectedSpecifications(newSelected);
   }
 
-  function updateSpecificationOverride(specId: string, updates: Partial<SelectedSpecification>) {
+  function updateSpecificationOverride(
+    specId: string,
+    updates: Partial<SelectedSpecification>,
+  ) {
     const newSelected = new Map(selectedSpecifications);
     const current = newSelected.get(specId);
     if (current) {
@@ -168,7 +179,9 @@ export default function EditProductTypePage() {
         code: formData.code || undefined, // Optional ERP code
         name: { it: formData.name }, // Multilingual: store as object
         slug: formData.slug,
-        description: formData.description ? { it: formData.description } : undefined,
+        description: formData.description
+          ? { it: formData.description }
+          : undefined,
         display_order: formData.display_order,
         is_active: formData.is_active,
         technical_specifications: Array.from(selectedSpecifications.values()),
@@ -196,11 +209,14 @@ export default function EditProductTypePage() {
   }
 
   // Group specifications by type
-  const groupedSpecifications = availableSpecifications.reduce((acc, spec) => {
-    if (!acc[spec.type]) acc[spec.type] = [];
-    acc[spec.type].push(spec);
-    return acc;
-  }, {} as Record<string, TechnicalSpecification[]>);
+  const groupedSpecifications = availableSpecifications.reduce(
+    (acc, spec) => {
+      if (!acc[spec.type]) acc[spec.type] = [];
+      acc[spec.type].push(spec);
+      return acc;
+    },
+    {} as Record<string, TechnicalSpecification[]>,
+  );
 
   const typeLabels: Record<string, string> = {
     text: t("pages.pim.productTypes.specTypeText"),
@@ -224,7 +240,10 @@ export default function EditProductTypePage() {
       <Breadcrumbs
         items={[
           { label: t("pages.pim.breadcrumb"), href: "/b2b/pim" },
-          { label: t("pages.pim.productTypes.title"), href: "/b2b/pim/product-types" },
+          {
+            label: t("pages.pim.productTypes.title"),
+            href: "/b2b/pim/product-types",
+          },
           { label: t("pages.pim.productTypes.editProductType") },
         ]}
       />
@@ -241,7 +260,9 @@ export default function EditProductTypePage() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{t("pages.pim.productTypes.editProductType")}</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                {t("pages.pim.productTypes.editProductType")}
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {t("pages.pim.productTypes.editDescription")}
               </p>
@@ -253,7 +274,9 @@ export default function EditProductTypePage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
           >
             <Save className="h-5 w-5" />
-            {isSaving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
+            {isSaving
+              ? t("pages.pim.common.saving")
+              : t("pages.pim.common.saveChanges")}
           </button>
         </div>
 
@@ -272,14 +295,17 @@ export default function EditProductTypePage() {
               <input
                 type="text"
                 value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, code: e.target.value })
+                }
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 placeholder="e.g., 001, 037"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                {t("pages.pim.productTypes.nameLabel")} <span className="text-red-500">*</span>
+                {t("pages.pim.productTypes.nameLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -299,13 +325,16 @@ export default function EditProductTypePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                {t("pages.pim.productTypes.slugFormLabel")} <span className="text-red-500">*</span>
+                {t("pages.pim.productTypes.slugFormLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, slug: e.target.value })
+                }
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 placeholder="water-meter"
               />
@@ -318,7 +347,9 @@ export default function EditProductTypePage() {
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               rows={3}
               className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               placeholder="Brief description of this product type..."
@@ -333,7 +364,12 @@ export default function EditProductTypePage() {
               <input
                 type="number"
                 value={formData.display_order}
-                onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    display_order: parseInt(e.target.value),
+                  })
+                }
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -342,10 +378,14 @@ export default function EditProductTypePage() {
                 <input
                   type="checkbox"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_active: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
-                <span className="text-sm text-foreground">{t("pages.pim.productTypes.activeForProducts")}</span>
+                <span className="text-sm text-foreground">
+                  {t("pages.pim.productTypes.activeForProducts")}
+                </span>
               </label>
             </div>
           </div>
@@ -354,9 +394,13 @@ export default function EditProductTypePage() {
         {/* Technical Specifications Selection */}
         <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("pages.pim.productTypes.selectTechnicalSpecs")}</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              {t("pages.pim.productTypes.selectTechnicalSpecs")}
+            </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {t("pages.pim.productTypes.selectedCount", { count: selectedSpecifications.size })}
+              {t("pages.pim.productTypes.selectedCount", {
+                count: selectedSpecifications.size,
+              })}
             </p>
           </div>
 
@@ -371,12 +415,18 @@ export default function EditProductTypePage() {
               {Object.entries(groupedSpecifications).map(([type, specs]) => (
                 <div key={type} className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                    {t("pages.pim.productTypes.specGroupHeader", { type: typeLabels[type] })}
+                    {t("pages.pim.productTypes.specGroupHeader", {
+                      type: typeLabels[type],
+                    })}
                   </h3>
                   <div className="space-y-2">
                     {specs.map((spec) => {
-                      const isSelected = selectedSpecifications.has(spec.technical_specification_id);
-                      const selectedData = selectedSpecifications.get(spec.technical_specification_id);
+                      const isSelected = selectedSpecifications.has(
+                        spec.technical_specification_id,
+                      );
+                      const selectedData = selectedSpecifications.get(
+                        spec.technical_specification_id,
+                      );
 
                       return (
                         <div
@@ -399,19 +449,31 @@ export default function EditProductTypePage() {
                                 <span className="font-mono text-sm text-primary bg-primary/10 px-2 py-0.5 rounded">
                                   {spec.key}
                                 </span>
-                                <span className="font-medium text-foreground">{spec.label}</span>
+                                <span className="font-medium text-foreground">
+                                  {spec.label}
+                                </span>
                                 {spec.unit && (
-                                  <span className="text-xs text-muted-foreground">({spec.unit})</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({spec.unit})
+                                  </span>
                                 )}
                                 {spec.default_required && (
                                   <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-                                    {t("pages.pim.productTypes.requiredByDefaultBadge")}
+                                    {t(
+                                      "pages.pim.productTypes.requiredByDefaultBadge",
+                                    )}
                                   </span>
                                 )}
                               </div>
                               {spec.options && spec.options.length > 0 && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {t("pages.pim.productTypes.optionsPreview", { options: spec.options.slice(0, 3).join(", ") + (spec.options.length > 3 ? ` +${spec.options.length - 3} more` : "") })}
+                                  {t("pages.pim.productTypes.optionsPreview", {
+                                    options:
+                                      spec.options.slice(0, 3).join(", ") +
+                                      (spec.options.length > 3
+                                        ? ` +${spec.options.length - 3} more`
+                                        : ""),
+                                  })}
                                 </p>
                               )}
 
@@ -423,23 +485,39 @@ export default function EditProductTypePage() {
                                       type="checkbox"
                                       checked={selectedData.required}
                                       onChange={(e) =>
-                                        updateSpecificationOverride(spec.technical_specification_id, {
-                                          required: e.target.checked,
-                                        })
+                                        updateSpecificationOverride(
+                                          spec.technical_specification_id,
+                                          {
+                                            required: e.target.checked,
+                                          },
+                                        )
                                       }
                                       className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                                     />
-                                    <span className="text-sm text-foreground">{t("pages.pim.productTypes.requiredForThisType")}</span>
+                                    <span className="text-sm text-foreground">
+                                      {t(
+                                        "pages.pim.productTypes.requiredForThisType",
+                                      )}
+                                    </span>
                                   </label>
                                   <div className="flex items-center gap-2">
-                                    <label className="text-sm text-foreground">{t("pages.pim.productTypes.displayOrderInline")}</label>
+                                    <label className="text-sm text-foreground">
+                                      {t(
+                                        "pages.pim.productTypes.displayOrderInline",
+                                      )}
+                                    </label>
                                     <input
                                       type="number"
                                       value={selectedData.display_order}
                                       onChange={(e) =>
-                                        updateSpecificationOverride(spec.technical_specification_id, {
-                                          display_order: parseInt(e.target.value),
-                                        })
+                                        updateSpecificationOverride(
+                                          spec.technical_specification_id,
+                                          {
+                                            display_order: parseInt(
+                                              e.target.value,
+                                            ),
+                                          },
+                                        )
                                       }
                                       className="w-20 rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                                     />
@@ -473,7 +551,9 @@ export default function EditProductTypePage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition disabled:opacity-50"
           >
             <Save className="h-5 w-5" />
-            {isSaving ? t("pages.pim.common.saving") : t("pages.pim.common.saveChanges")}
+            {isSaving
+              ? t("pages.pim.common.saving")
+              : t("pages.pim.common.saveChanges")}
           </button>
         </div>
       </form>

@@ -31,14 +31,22 @@ const statusIcons: Record<string, React.ElementType> = {
   cancelled: XCircle,
 };
 
-export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersStatusListProps) {
+export function OrdersStatusList({
+  status,
+  statusLabel,
+  emptyMessage,
+}: OrdersStatusListProps) {
   const pathname = usePathname();
   // Extract tenant prefix from URL (e.g., "/dfl-eventi-it/b2b/store/orders/confirmed" -> "/dfl-eventi-it")
-  const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
+  const tenantPrefix =
+    pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Debounced value actually sent to the API — search is SERVER-SIDE (the API
+  // applies it across ALL matching orders, not just the current page).
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [pagination, setPagination] = useState({
@@ -48,9 +56,19 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
     pages: 0,
   });
 
+  // Debounce typing into the applied (server-side) search; reset to page 1.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setAppliedSearch(search);
+      setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   useEffect(() => {
     fetchOrders();
-  }, [pagination.page, status, dateFrom, dateTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page, status, dateFrom, dateTo, appliedSearch]);
 
   async function fetchOrders() {
     setIsLoading(true);
@@ -61,22 +79,13 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
       params.set("status", status);
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
+      // Server-side search across all orders (order_id / customer / PO reference).
+      if (appliedSearch) params.set("search", appliedSearch);
 
       const res = await fetch(`/api/b2b/orders?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        let ordersList = data.orders || [];
-
-        // Client-side search filter
-        if (search) {
-          const searchLower = search.toLowerCase();
-          ordersList = ordersList.filter(
-            (o: Order) =>
-              o.order_id.toLowerCase().includes(searchLower) ||
-              o.customer_id?.toLowerCase().includes(searchLower) ||
-              o.po_reference?.toLowerCase().includes(searchLower)
-          );
-        }
+        const ordersList = data.orders || [];
 
         setOrders(ordersList);
         setPagination((prev) => ({
@@ -93,12 +102,14 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
   }
 
   function handleSearch() {
+    // Apply immediately on Enter (bypass the debounce).
+    setAppliedSearch(search);
     setPagination((prev) => ({ ...prev, page: 1 }));
-    fetchOrders();
   }
 
   function clearFilters() {
     setSearch("");
+    setAppliedSearch("");
     setDateFrom("");
     setDateTo("");
     setPagination((prev) => ({ ...prev, page: 1 }));
@@ -115,8 +126,12 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
     <div className="flex h-[50vh] items-center justify-center rounded-[0.428rem] border border-border bg-card shadow-[0_4px_24px_0_rgba(34,41,47,0.08)]">
       <div className="text-center text-foreground">
         <StatusIcon className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-        <p className="text-[1.05rem] font-semibold">No {statusLabel.toLowerCase()} orders</p>
-        <p className="mt-1 text-[0.85rem] text-muted-foreground">{emptyMessage}</p>
+        <p className="text-[1.05rem] font-semibold">
+          No {statusLabel.toLowerCase()} orders
+        </p>
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">
+          {emptyMessage}
+        </p>
       </div>
     </div>
   );
@@ -165,12 +180,17 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
         {/* Active Filters */}
         {hasFilters && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">
+              Active filters:
+            </span>
             {search && (
               <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
                 <span>Search: &quot;{search}&quot;</span>
                 <button
-                  onClick={() => { setSearch(""); fetchOrders(); }}
+                  onClick={() => {
+                    setSearch("");
+                    setAppliedSearch("");
+                  }}
                   className="hover:bg-primary/20 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
@@ -183,7 +203,10 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
                   Date: {dateFrom || "..."} to {dateTo || "..."}
                 </span>
                 <button
-                  onClick={() => { setDateFrom(""); setDateTo(""); }}
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
                   className="hover:bg-primary/20 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
@@ -203,130 +226,136 @@ export function OrdersStatusList({ status, statusLabel, emptyMessage }: OrdersSt
       {/* Table */}
       <div className="rounded-lg bg-card shadow-sm overflow-hidden">
         {isLoading ? (
-        <div className="p-8">
-          <div className="animate-pulse space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-muted rounded"></div>
-            ))}
-          </div>
-        </div>
-      ) : orders.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                    Order ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
-                    Items
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                    Total
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
-                    Date
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {orders.map((order) => (
-                  <tr key={order.order_id} className="hover:bg-muted/30 transition">
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`${tenantPrefix}/b2b/store/orders/${order.order_id}`}
-                        className="font-mono text-sm text-primary hover:underline"
-                      >
-                        {order.order_id}
-                      </Link>
-                      {order.order_number && (
-                        <div className="text-xs text-muted-foreground">
-                          #{order.order_number}/{order.year}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-foreground">
-                        {order.customer_id}
-                      </div>
-                      {order.po_reference && (
-                        <div className="text-xs text-muted-foreground">
-                          PO: {order.po_reference}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                        {order.items?.length || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="font-medium text-foreground">
-                        {new Intl.NumberFormat("it-IT", {
-                          style: "currency",
-                          currency: order.currency || "EUR",
-                        }).format(order.order_total)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString("it-IT", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`${tenantPrefix}/b2b/store/orders/${order.order_id}`}
-                        className="flex items-center justify-end gap-1 text-xs text-primary hover:underline font-medium"
-                      >
-                        <Eye className="h-3 w-3" />
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="border-t border-border px-4 py-3 flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Page {pagination.page} of {pagination.pages}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => goToPage(pagination.page - 1)}
-                  disabled={pagination.page === 1}
-                  className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => goToPage(pagination.page + 1)}
-                  disabled={pagination.page === pagination.pages}
-                  className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+          <div className="p-8">
+            <div className="animate-pulse space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-16 bg-muted rounded"></div>
+              ))}
             </div>
-          )}
-        </>
-      )}
+          </div>
+        ) : orders.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b border-border">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                      Order ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                      Customer
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">
+                      Items
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {orders.map((order) => (
+                    <tr
+                      key={order.order_id}
+                      className="hover:bg-muted/30 transition"
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`${tenantPrefix}/b2b/store/orders/${order.order_id}`}
+                          className="font-mono text-sm text-primary hover:underline"
+                        >
+                          {order.order_id}
+                        </Link>
+                        {order.order_number && (
+                          <div className="text-xs text-muted-foreground">
+                            #{order.order_number}/{order.year}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-foreground">
+                          {order.customer_id}
+                        </div>
+                        {order.po_reference && (
+                          <div className="text-xs text-muted-foreground">
+                            PO: {order.po_reference}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
+                          {order.items?.length || 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="font-medium text-foreground">
+                          {new Intl.NumberFormat("it-IT", {
+                            style: "currency",
+                            currency: order.currency || "EUR",
+                          }).format(order.order_total)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(order.created_at).toLocaleDateString(
+                            "it-IT",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`${tenantPrefix}/b2b/store/orders/${order.order_id}`}
+                          className="flex items-center justify-end gap-1 text-xs text-primary hover:underline font-medium"
+                        >
+                          <Eye className="h-3 w-3" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="border-t border-border px-4 py-3 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Page {pagination.page} of {pagination.pages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => goToPage(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                    className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => goToPage(pagination.page + 1)}
+                    disabled={pagination.page === pagination.pages}
+                    className="p-2 rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

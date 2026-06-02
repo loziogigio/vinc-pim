@@ -82,6 +82,9 @@ export default function CustomerDetailPage({
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  // Backend-provided total for the current filter scope (NOT the fetched page
+  // length) — drives the header count and the "view all N" link.
+  const [orderHistoryTotal, setOrderHistoryTotal] = useState(0);
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
   const [addressStats, setAddressStats] = useState<AddressStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +98,9 @@ export default function CustomerDetailPage({
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(
+    null,
+  );
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [requiresDelivery, setRequiresDelivery] = useState(true);
 
@@ -134,9 +139,12 @@ export default function CustomerDetailPage({
   async function deleteAddress(addressId: string) {
     setDeletingAddressId(addressId);
     try {
-      const res = await fetch(`/api/b2b/customers/${id}/addresses/${addressId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/b2b/customers/${id}/addresses/${addressId}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         fetchCustomer();
       }
@@ -152,7 +160,11 @@ export default function CustomerDetailPage({
     try {
       const params = new URLSearchParams();
       params.set("customer_id", id);
-      params.set("limit", "50");
+      // Preview shows the 10 most recent within the active filters; the true
+      // count + full list come from the backend (pagination.total / list page).
+      params.set("limit", "10");
+      // Order History only needs the list — skip the heavy stats aggregation.
+      params.set("stats", "0");
 
       // Apply date filter
       const filterValue = filter || dateFilter;
@@ -176,7 +188,8 @@ export default function CustomerDetailPage({
       }
 
       // Apply address filter
-      const addressValue = addrFilter !== undefined ? addrFilter : addressFilter;
+      const addressValue =
+        addrFilter !== undefined ? addrFilter : addressFilter;
       if (addressValue !== "all") {
         params.set("shipping_address_id", addressValue);
       }
@@ -185,6 +198,9 @@ export default function CustomerDetailPage({
       if (res.ok) {
         const data = await res.json();
         setOrders(data.orders || []);
+        setOrderHistoryTotal(
+          data.pagination?.total ?? (data.orders?.length || 0),
+        );
       }
     } catch (err) {
       console.error("Error fetching orders:", err);
@@ -206,12 +222,16 @@ export default function CustomerDetailPage({
   function openCreateOrderModal() {
     // Pre-select default delivery address if available
     const defaultAddress = customer?.addresses?.find(
-      (a) => a.is_default && (a.address_type === "delivery" || a.address_type === "both")
+      (a) =>
+        a.is_default &&
+        (a.address_type === "delivery" || a.address_type === "both"),
     );
     const firstDeliveryAddress = customer?.addresses?.find(
-      (a) => a.address_type === "delivery" || a.address_type === "both"
+      (a) => a.address_type === "delivery" || a.address_type === "both",
     );
-    setSelectedAddressId(defaultAddress?.address_id || firstDeliveryAddress?.address_id || "");
+    setSelectedAddressId(
+      defaultAddress?.address_id || firstDeliveryAddress?.address_id || "",
+    );
     setRequiresDelivery(true); // Default to product order
     setShowCreateOrderModal(true);
   }
@@ -226,7 +246,10 @@ export default function CustomerDetailPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customer_id: customer.customer_id,
-          shipping_address_id: requiresDelivery && selectedAddressId ? selectedAddressId : undefined,
+          shipping_address_id:
+            requiresDelivery && selectedAddressId
+              ? selectedAddressId
+              : undefined,
           requires_delivery: requiresDelivery,
         }),
       });
@@ -237,7 +260,9 @@ export default function CustomerDetailPage({
         router.push(`${tenantPrefix}/b2b/store/orders/${data.order.order_id}`);
       } else {
         const error = await res.json();
-        alert(error.error || t("pages.store.customerDetail.failedToCreateOrder"));
+        alert(
+          error.error || t("pages.store.customerDetail.failedToCreateOrder"),
+        );
       }
     } catch (err) {
       console.error("Error creating order:", err);
@@ -260,7 +285,9 @@ export default function CustomerDetailPage({
         router.push(`${tenantPrefix}/b2b/store/customers/list`);
       } else {
         const data = await res.json();
-        alert(data.error || t("pages.store.customerDetail.failedToDeleteCustomer"));
+        alert(
+          data.error || t("pages.store.customerDetail.failedToDeleteCustomer"),
+        );
       }
     } catch (err) {
       console.error("Error deleting customer:", err);
@@ -286,9 +313,12 @@ export default function CustomerDetailPage({
 
   const getTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      business: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-      private: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
-      reseller: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+      business:
+        "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+      private:
+        "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+      reseller:
+        "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
     };
     return styles[type] || "bg-muted text-muted-foreground";
   };
@@ -308,13 +338,30 @@ export default function CustomerDetailPage({
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; icon: React.ElementType }> = {
-      draft: { bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: ShoppingCart },
-      pending: { bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", icon: Clock },
-      confirmed: { bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCircle2 },
-      shipped: { bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300", icon: Truck },
+      draft: {
+        bg: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+        icon: ShoppingCart,
+      },
+      pending: {
+        bg: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+        icon: Clock,
+      },
+      confirmed: {
+        bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+        icon: CheckCircle2,
+      },
+      shipped: {
+        bg: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+        icon: Truck,
+      },
       cancelled: { bg: "bg-muted text-muted-foreground", icon: XCircle },
     };
-    return styles[status] || { bg: "bg-muted text-muted-foreground", icon: ShoppingCart };
+    return (
+      styles[status] || {
+        bg: "bg-muted text-muted-foreground",
+        icon: ShoppingCart,
+      }
+    );
   };
 
   const formatCurrency = (amount: number) => {
@@ -340,7 +387,10 @@ export default function CustomerDetailPage({
       <div className="space-y-6">
         <Breadcrumbs
           items={[
-            { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
+            {
+              label: t("pages.store.customers.title"),
+              href: "/b2b/store/customers",
+            },
             { label: t("common.error") },
           ]}
         />
@@ -361,7 +411,8 @@ export default function CustomerDetailPage({
     );
   }
 
-  const displayName = customer.company_name ||
+  const displayName =
+    customer.company_name ||
     `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
     t("pages.store.customerDetail.unnamedCustomer");
 
@@ -369,7 +420,10 @@ export default function CustomerDetailPage({
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: t("pages.store.customers.title"), href: "/b2b/store/customers" },
+          {
+            label: t("pages.store.customers.title"),
+            href: "/b2b/store/customers",
+          },
           { label: displayName },
         ]}
       />
@@ -384,12 +438,16 @@ export default function CustomerDetailPage({
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Link>
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${getTypeBadge(customer.customer_type)}`}>
+            <div
+              className={`p-3 rounded-lg ${getTypeBadge(customer.customer_type)}`}
+            >
               {getTypeIcon(customer.customer_type)}
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">{displayName}</h1>
+                <h1 className="text-2xl font-bold text-foreground">
+                  {displayName}
+                </h1>
                 {/* Public Code - Most important for administrative purposes */}
                 {customer.public_code && (
                   <span className="px-3 py-1 rounded-lg bg-primary/10 text-primary font-mono font-bold text-sm">
@@ -398,7 +456,9 @@ export default function CustomerDetailPage({
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getTypeBadge(customer.customer_type)}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getTypeBadge(customer.customer_type)}`}
+                >
                   {customer.customer_type}
                 </span>
                 {customer.is_guest && (
@@ -408,7 +468,10 @@ export default function CustomerDetailPage({
                 )}
                 {/* ERP Code - Secondary */}
                 {customer.external_code && (
-                  <span className="text-xs text-muted-foreground font-mono" title={t("pages.store.customerDetail.erpCode")}>
+                  <span
+                    className="text-xs text-muted-foreground font-mono"
+                    title={t("pages.store.customerDetail.erpCode")}
+                  >
                     ERP: {customer.external_code}
                   </span>
                 )}
@@ -444,11 +507,16 @@ export default function CustomerDetailPage({
           <div className="bg-card rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
-              {t("pages.store.customerDetail.createOrderFor").replace("{name}", displayName)}
+              {t("pages.store.customerDetail.createOrderFor").replace(
+                "{name}",
+                displayName,
+              )}
             </h3>
             {/* Order Type Selection */}
             <div className="mb-4">
-              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">{t("pages.store.customerDetail.orderType")}</p>
+              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">
+                {t("pages.store.customerDetail.orderType")}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <label
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
@@ -468,7 +536,9 @@ export default function CustomerDetailPage({
                       <Truck className="h-4 w-4" />
                       {t("pages.store.customerDetail.productOrder")}
                     </span>
-                    <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.requiresDeliveryLabel")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("pages.store.customerDetail.requiresDeliveryLabel")}
+                    </p>
                   </div>
                 </label>
                 <label
@@ -489,7 +559,9 @@ export default function CustomerDetailPage({
                       <Briefcase className="h-4 w-4" />
                       {t("pages.store.customerDetail.serviceOrder")}
                     </span>
-                    <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.noDeliveryNeeded")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("pages.store.customerDetail.noDeliveryNeeded")}
+                    </p>
                   </div>
                 </label>
               </div>
@@ -498,11 +570,21 @@ export default function CustomerDetailPage({
             {/* Address Selection - Only show for Product orders */}
             {requiresDelivery && (
               <>
-                <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">{t("pages.store.customerDetail.deliveryAddress")}</p>
-                {customer.addresses && customer.addresses.filter((a) => a.address_type === "delivery" || a.address_type === "both").length > 0 ? (
+                <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">
+                  {t("pages.store.customerDetail.deliveryAddress")}
+                </p>
+                {customer.addresses &&
+                customer.addresses.filter(
+                  (a) =>
+                    a.address_type === "delivery" || a.address_type === "both",
+                ).length > 0 ? (
                   <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
                     {customer.addresses
-                      .filter((a) => a.address_type === "delivery" || a.address_type === "both")
+                      .filter(
+                        (a) =>
+                          a.address_type === "delivery" ||
+                          a.address_type === "both",
+                      )
                       .map((address: Address) => (
                         <label
                           key={address.address_id}
@@ -517,7 +599,9 @@ export default function CustomerDetailPage({
                             name="address"
                             value={address.address_id}
                             checked={selectedAddressId === address.address_id}
-                            onChange={(e) => setSelectedAddressId(e.target.value)}
+                            onChange={(e) =>
+                              setSelectedAddressId(e.target.value)
+                            }
                             className="mt-1"
                           />
                           <div className="flex-1">
@@ -535,7 +619,8 @@ export default function CustomerDetailPage({
                               {address.street_address}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {address.postal_code} {address.city} ({address.province})
+                              {address.postal_code} {address.city} (
+                              {address.province})
                             </p>
                           </div>
                         </label>
@@ -589,14 +674,24 @@ export default function CustomerDetailPage({
               {t("pages.store.customerDetail.deleteCustomerTitle")}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {t("pages.store.customerDetail.deleteCustomerConfirm").split("{name}")[0]}
+              {
+                t("pages.store.customerDetail.deleteCustomerConfirm").split(
+                  "{name}",
+                )[0]
+              }
               <strong>{displayName}</strong>
-              {t("pages.store.customerDetail.deleteCustomerConfirm").split("{name}")[1]}
+              {
+                t("pages.store.customerDetail.deleteCustomerConfirm").split(
+                  "{name}",
+                )[1]
+              }
             </p>
             {orderStats && orderStats.order_count > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 dark:bg-amber-500/15 dark:border-amber-500/40">
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  {t("pages.store.customerDetail.deleteCustomerWarning").replace("{count}", String(orderStats.order_count))}
+                  {t(
+                    "pages.store.customerDetail.deleteCustomerWarning",
+                  ).replace("{count}", String(orderStats.order_count))}
                 </p>
               </div>
             )}
@@ -641,8 +736,13 @@ export default function CustomerDetailPage({
             <div className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.email")}</p>
-                <a href={`mailto:${customer.email}`} className="text-sm text-primary hover:underline">
+                <p className="text-xs text-muted-foreground">
+                  {t("pages.store.customerDetail.email")}
+                </p>
+                <a
+                  href={`mailto:${customer.email}`}
+                  className="text-sm text-primary hover:underline"
+                >
                   {customer.email}
                 </a>
               </div>
@@ -651,8 +751,13 @@ export default function CustomerDetailPage({
               <div className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.phone")}</p>
-                  <a href={`tel:${customer.phone}`} className="text-sm text-foreground">
+                  <p className="text-xs text-muted-foreground">
+                    {t("pages.store.customerDetail.phone")}
+                  </p>
+                  <a
+                    href={`tel:${customer.phone}`}
+                    className="text-sm text-foreground"
+                  >
                     {customer.phone}
                   </a>
                 </div>
@@ -661,7 +766,9 @@ export default function CustomerDetailPage({
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.customerSince")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("pages.store.customerDetail.customerSince")}
+                </p>
                 <p className="text-sm text-foreground">
                   {new Date(customer.created_at).toLocaleDateString("it-IT", {
                     year: "numeric",
@@ -680,77 +787,122 @@ export default function CustomerDetailPage({
             <FileText className="h-4 w-4" />
             {t("pages.store.customerDetail.legalInfo")}
           </h2>
-          {customer.legal_info && (customer.legal_info.vat_number || customer.legal_info.fiscal_code || customer.legal_info.pec_email || customer.legal_info.sdi_code) ? (
+          {customer.legal_info &&
+          (customer.legal_info.vat_number ||
+            customer.legal_info.fiscal_code ||
+            customer.legal_info.pec_email ||
+            customer.legal_info.sdi_code) ? (
             <div className="space-y-4">
               {customer.legal_info.vat_number && (
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.vatNumber")}</p>
-                  <p className="text-sm font-mono text-foreground">{customer.legal_info.vat_number}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("pages.store.customerDetail.vatNumber")}
+                  </p>
+                  <p className="text-sm font-mono text-foreground">
+                    {customer.legal_info.vat_number}
+                  </p>
                 </div>
               )}
               {customer.legal_info.fiscal_code && (
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.fiscalCode")}</p>
-                  <p className="text-sm font-mono text-foreground">{customer.legal_info.fiscal_code}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("pages.store.customerDetail.fiscalCode")}
+                  </p>
+                  <p className="text-sm font-mono text-foreground">
+                    {customer.legal_info.fiscal_code}
+                  </p>
                 </div>
               )}
               {customer.legal_info.pec_email && (
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.pecEmail")}</p>
-                  <a href={`mailto:${customer.legal_info.pec_email}`} className="text-sm text-primary hover:underline">
+                  <p className="text-xs text-muted-foreground">
+                    {t("pages.store.customerDetail.pecEmail")}
+                  </p>
+                  <a
+                    href={`mailto:${customer.legal_info.pec_email}`}
+                    className="text-sm text-primary hover:underline"
+                  >
                     {customer.legal_info.pec_email}
                   </a>
                 </div>
               )}
               {customer.legal_info.sdi_code && (
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.sdiCode")}</p>
-                  <p className="text-sm font-mono text-foreground">{customer.legal_info.sdi_code}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("pages.store.customerDetail.sdiCode")}
+                  </p>
+                  <p className="text-sm font-mono text-foreground">
+                    {customer.legal_info.sdi_code}
+                  </p>
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">{t("pages.store.customerDetail.noLegalInfo")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("pages.store.customerDetail.noLegalInfo")}
+            </p>
           )}
         </div>
 
         {/* Customer Codes & IDs */}
         <div className="rounded-lg bg-card p-5 shadow-sm">
-          <h2 className="font-semibold text-foreground mb-4">{t("pages.store.customerDetail.identificationCodes")}</h2>
+          <h2 className="font-semibold text-foreground mb-4">
+            {t("pages.store.customerDetail.identificationCodes")}
+          </h2>
           <div className="space-y-4">
             {/* Public Customer Code - Primary */}
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.publicCustomerCode")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.publicCustomerCode")}
+              </p>
               {customer.public_code ? (
-                <p className="text-lg font-mono font-bold text-primary">{customer.public_code}</p>
+                <p className="text-lg font-mono font-bold text-primary">
+                  {customer.public_code}
+                </p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">{t("pages.store.customerDetail.notAssigned")}</p>
+                <p className="text-sm text-muted-foreground italic">
+                  {t("pages.store.customerDetail.notAssigned")}
+                </p>
               )}
             </div>
             {/* ERP Code - Secondary */}
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.customerCodeErp")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.customerCodeErp")}
+              </p>
               {customer.external_code ? (
-                <p className="text-sm font-mono text-foreground">{customer.external_code}</p>
+                <p className="text-sm font-mono text-foreground">
+                  {customer.external_code}
+                </p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">{t("pages.store.customerDetail.notAssigned")}</p>
+                <p className="text-sm text-muted-foreground italic">
+                  {t("pages.store.customerDetail.notAssigned")}
+                </p>
               )}
             </div>
             {/* Internal ID */}
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.internalId")}</p>
-              <p className="text-xs font-mono text-muted-foreground">{customer.customer_id}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.internalId")}
+              </p>
+              <p className="text-xs font-mono text-muted-foreground">
+                {customer.customer_id}
+              </p>
             </div>
             {customer.tenant_id && (
               <div>
-                <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.tenant")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("pages.store.customerDetail.tenant")}
+                </p>
                 <p className="text-sm font-mono bg-primary/10 text-primary px-2 py-0.5 rounded inline-block">
                   {customer.tenant_id}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.lastUpdated")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.lastUpdated")}
+              </p>
               <p className="text-sm text-foreground">
                 {new Date(customer.updated_at).toLocaleDateString("it-IT", {
                   year: "numeric",
@@ -776,7 +928,8 @@ export default function CustomerDetailPage({
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            {t("pages.store.customerDetail.addresses")} ({customer.addresses?.length || 0})
+            {t("pages.store.customerDetail.addresses")} (
+            {customer.addresses?.length || 0})
           </h2>
           <button
             onClick={() => setShowAddAddress(true)}
@@ -789,16 +942,21 @@ export default function CustomerDetailPage({
         {customer.addresses && customer.addresses.length > 0 ? (
           <div className="divide-y divide-border">
             {customer.addresses.map((address: Address) => (
-              <div key={address.address_id} className="p-4 hover:bg-muted/30 transition">
+              <div
+                key={address.address_id}
+                className="p-4 hover:bg-muted/30 transition"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      address.address_type === "delivery"
-                        ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
-                        : address.address_type === "billing"
-                        ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
-                        : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
-                    }`}>
+                    <div
+                      className={`p-2 rounded-lg ${
+                        address.address_type === "delivery"
+                          ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
+                          : address.address_type === "billing"
+                            ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
+                            : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
+                      }`}
+                    >
                       {getAddressIcon(address.address_type)}
                     </div>
                     <div>
@@ -806,13 +964,15 @@ export default function CustomerDetailPage({
                         <p className="font-medium text-foreground">
                           {address.label || address.recipient_name}
                         </p>
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          address.address_type === "delivery"
-                            ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
-                            : address.address_type === "billing"
-                            ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
-                            : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            address.address_type === "delivery"
+                              ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
+                              : address.address_type === "billing"
+                                ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
+                                : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
+                          }`}
+                        >
                           {address.address_type}
                         </span>
                         {address.is_default && (
@@ -821,13 +981,17 @@ export default function CustomerDetailPage({
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-foreground mt-1">{address.recipient_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {address.street_address}
-                        {address.street_address_2 && `, ${address.street_address_2}`}
+                      <p className="text-sm text-foreground mt-1">
+                        {address.recipient_name}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {address.postal_code} {address.city} ({address.province}) - {address.country}
+                        {address.street_address}
+                        {address.street_address_2 &&
+                          `, ${address.street_address_2}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {address.postal_code} {address.city} ({address.province}
+                        ) - {address.country}
                       </p>
                       {address.phone && (
                         <p className="text-sm text-muted-foreground mt-1">
@@ -837,7 +1001,10 @@ export default function CustomerDetailPage({
                       )}
                       {address.external_code && (
                         <p className="text-xs text-muted-foreground mt-1 font-mono">
-                          {t("pages.store.customerDetail.addressCode").replace("{code}", address.external_code)}
+                          {t("pages.store.customerDetail.addressCode").replace(
+                            "{code}",
+                            address.external_code,
+                          )}
                         </p>
                       )}
                       {/* Address Tag Overrides */}
@@ -884,7 +1051,9 @@ export default function CustomerDetailPage({
               <ShoppingCart className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.totalOrders")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.totalOrders")}
+              </p>
               <p className="text-xl font-bold text-foreground">
                 {orderStats?.order_count || 0}
               </p>
@@ -898,7 +1067,9 @@ export default function CustomerDetailPage({
               <Euro className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.totalSpent")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.totalSpent")}
+              </p>
               <p className="text-xl font-bold text-foreground">
                 {formatCurrency(orderStats?.total_spent || 0)}
               </p>
@@ -912,7 +1083,9 @@ export default function CustomerDetailPage({
               <TrendingUp className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.avgOrderValue")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.avgOrderValue")}
+              </p>
               <p className="text-xl font-bold text-foreground">
                 {formatCurrency(orderStats?.avg_order_value || 0)}
               </p>
@@ -926,14 +1099,19 @@ export default function CustomerDetailPage({
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">{t("pages.store.customerDetail.lastOrder")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("pages.store.customerDetail.lastOrder")}
+              </p>
               <p className="text-sm font-medium text-foreground">
                 {orderStats?.last_order_date
-                  ? new Date(orderStats.last_order_date).toLocaleDateString("it-IT", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })
+                  ? new Date(orderStats.last_order_date).toLocaleDateString(
+                      "it-IT",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      },
+                    )
                   : t("pages.store.customerDetail.noOrders")}
               </p>
             </div>
@@ -951,22 +1129,34 @@ export default function CustomerDetailPage({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-x divide-border">
           <div className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last30Days")}</p>
-            <p className="text-2xl font-bold text-foreground">{orderStats?.orders_30d || 0}</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {t("pages.store.customerDetail.last30Days")}
+            </p>
+            <p className="text-2xl font-bold text-foreground">
+              {orderStats?.orders_30d || 0}
+            </p>
             <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
               {formatCurrency(orderStats?.spent_30d || 0)}
             </p>
           </div>
           <div className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last60Days")}</p>
-            <p className="text-2xl font-bold text-foreground">{orderStats?.orders_60d || 0}</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {t("pages.store.customerDetail.last60Days")}
+            </p>
+            <p className="text-2xl font-bold text-foreground">
+              {orderStats?.orders_60d || 0}
+            </p>
             <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
               {formatCurrency(orderStats?.spent_60d || 0)}
             </p>
           </div>
           <div className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">{t("pages.store.customerDetail.last90Days")}</p>
-            <p className="text-2xl font-bold text-foreground">{orderStats?.orders_90d || 0}</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {t("pages.store.customerDetail.last90Days")}
+            </p>
+            <p className="text-2xl font-bold text-foreground">
+              {orderStats?.orders_90d || 0}
+            </p>
             <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
               {formatCurrency(orderStats?.spent_90d || 0)}
             </p>
@@ -974,27 +1164,44 @@ export default function CustomerDetailPage({
         </div>
         {/* Status Breakdown */}
         <div className="p-4 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-3">{t("pages.store.customerDetail.statusBreakdown")}</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            {t("pages.store.customerDetail.statusBreakdown")}
+          </p>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 text-sm">
               <ShoppingCart className="h-3 w-3" />
-              <span>{orderStats?.draft_count || 0} {t("pages.store.customerDetail.draft")}</span>
+              <span>
+                {orderStats?.draft_count || 0}{" "}
+                {t("pages.store.customerDetail.draft")}
+              </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 text-sm">
               <Clock className="h-3 w-3" />
-              <span>{orderStats?.pending_count || 0} {t("pages.store.customerDetail.pending")}</span>
+              <span>
+                {orderStats?.pending_count || 0}{" "}
+                {t("pages.store.customerDetail.pending")}
+              </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 text-sm">
               <CheckCircle2 className="h-3 w-3" />
-              <span>{orderStats?.confirmed_count || 0} {t("pages.store.customerDetail.confirmed")}</span>
+              <span>
+                {orderStats?.confirmed_count || 0}{" "}
+                {t("pages.store.customerDetail.confirmed")}
+              </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300 text-sm">
               <Truck className="h-3 w-3" />
-              <span>{orderStats?.shipped_count || 0} {t("pages.store.customerDetail.shipped")}</span>
+              <span>
+                {orderStats?.shipped_count || 0}{" "}
+                {t("pages.store.customerDetail.shipped")}
+              </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm">
               <XCircle className="h-3 w-3" />
-              <span>{orderStats?.cancelled_count || 0} {t("pages.store.customerDetail.cancelled")}</span>
+              <span>
+                {orderStats?.cancelled_count || 0}{" "}
+                {t("pages.store.customerDetail.cancelled")}
+              </span>
             </div>
           </div>
         </div>
@@ -1011,38 +1218,59 @@ export default function CustomerDetailPage({
           </div>
           <div className="divide-y divide-border">
             {addressStats.map((addrStat) => (
-              <div key={addrStat.address_id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition">
+              <div
+                key={addrStat.address_id}
+                className="p-4 flex items-center justify-between hover:bg-muted/30 transition"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    addrStat.address_type === "delivery"
-                      ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
-                      : addrStat.address_type === "billing"
-                      ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
-                      : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
-                  }`}>
+                  <div
+                    className={`p-2 rounded-lg ${
+                      addrStat.address_type === "delivery"
+                        ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
+                        : addrStat.address_type === "billing"
+                          ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300"
+                          : "bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300"
+                    }`}
+                  >
                     <MapPin className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">{addrStat.address_label}</p>
+                    <p className="font-medium text-foreground">
+                      {addrStat.address_label}
+                    </p>
                     {addrStat.address_city && (
-                      <p className="text-xs text-muted-foreground">{addrStat.address_city}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {addrStat.address_city}
+                      </p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">{t("pages.store.customerDetail.nOrders").replace("{n}", String(addrStat.order_count))}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {t("pages.store.customerDetail.nOrders").replace(
+                        "{n}",
+                        String(addrStat.order_count),
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {addrStat.last_order_date
-                        ? t("pages.store.customerDetail.lastDate").replace("{date}", new Date(addrStat.last_order_date).toLocaleDateString("it-IT", {
-                            month: "short",
-                            day: "numeric",
-                          }))
+                        ? t("pages.store.customerDetail.lastDate").replace(
+                            "{date}",
+                            new Date(
+                              addrStat.last_order_date,
+                            ).toLocaleDateString("it-IT", {
+                              month: "short",
+                              day: "numeric",
+                            }),
+                          )
                         : ""}
                     </p>
                   </div>
                   <div className="text-right min-w-[100px]">
-                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(addrStat.total_spent)}</p>
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(addrStat.total_spent)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1056,7 +1284,7 @@ export default function CustomerDetailPage({
         <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-2">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" />
-            {t("pages.store.customerDetail.orderHistory")} ({orders.length})
+            {t("pages.store.customerDetail.orderHistory")} ({orderHistoryTotal})
           </h2>
           <div className="flex items-center gap-3 flex-wrap">
             {/* Address Filter */}
@@ -1066,10 +1294,15 @@ export default function CustomerDetailPage({
                 onChange={(e) => handleAddressFilterChange(e.target.value)}
                 className="text-sm rounded border border-border bg-background px-3 py-1.5 focus:border-primary focus:outline-none"
               >
-                <option value="all">{t("pages.store.customerDetail.allAddresses")}</option>
+                <option value="all">
+                  {t("pages.store.customerDetail.allAddresses")}
+                </option>
                 {customer.addresses.map((addr: Address) => (
                   <option key={addr.address_id} value={addr.address_id}>
-                    {addr.label || addr.recipient_name || addr.city || addr.address_id}
+                    {addr.label ||
+                      addr.recipient_name ||
+                      addr.city ||
+                      addr.address_id}
                   </option>
                 ))}
               </select>
@@ -1080,10 +1313,18 @@ export default function CustomerDetailPage({
               onChange={(e) => handleDateFilterChange(e.target.value)}
               className="text-sm rounded border border-border bg-background px-3 py-1.5 focus:border-primary focus:outline-none"
             >
-              <option value="all">{t("pages.store.customerDetail.allTime")}</option>
-              <option value="30d">{t("pages.store.customerDetail.last30d")}</option>
-              <option value="60d">{t("pages.store.customerDetail.last60d")}</option>
-              <option value="90d">{t("pages.store.customerDetail.last90d")}</option>
+              <option value="all">
+                {t("pages.store.customerDetail.allTime")}
+              </option>
+              <option value="30d">
+                {t("pages.store.customerDetail.last30d")}
+              </option>
+              <option value="60d">
+                {t("pages.store.customerDetail.last60d")}
+              </option>
+              <option value="90d">
+                {t("pages.store.customerDetail.last90d")}
+              </option>
             </select>
             <Link
               href={`${tenantPrefix}/b2b/store/orders/list?customer_id=${customer.customer_id}`}
@@ -1132,11 +1373,14 @@ export default function CustomerDetailPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {orders.slice(0, 10).map((order) => {
+                {orders.map((order) => {
                   const statusStyle = getStatusBadge(order.status);
                   const StatusIcon = statusStyle.icon;
                   return (
-                    <tr key={order.order_id} className="hover:bg-muted/30 transition">
+                    <tr
+                      key={order.order_id}
+                      className="hover:bg-muted/30 transition"
+                    >
                       <td className="px-4 py-3">
                         <Link
                           href={`${tenantPrefix}/b2b/store/orders/${order.order_id}`}
@@ -1167,7 +1411,10 @@ export default function CustomerDetailPage({
                             )}
                           </div>
                           <span className="text-sm text-foreground">
-                            {t("pages.store.customerDetail.nItems").replace("{n}", String(order.items?.length || 0))}
+                            {t("pages.store.customerDetail.nItems").replace(
+                              "{n}",
+                              String(order.items?.length || 0),
+                            )}
                           </span>
                         </div>
                       </td>
@@ -1181,16 +1428,20 @@ export default function CustomerDetailPage({
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusStyle.bg}`}
                         >
                           <StatusIcon className="h-3 w-3" />
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          {order.status.charAt(0).toUpperCase() +
+                            order.status.slice(1)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-xs text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString("it-IT", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {new Date(order.created_at).toLocaleDateString(
+                            "it-IT",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -1207,13 +1458,17 @@ export default function CustomerDetailPage({
                 })}
               </tbody>
             </table>
-            {orders.length > 10 && (
+            {orderHistoryTotal > 10 && (
               <div className="p-4 border-t border-border text-center">
                 <Link
                   href={`${tenantPrefix}/b2b/store/orders/list?customer_id=${customer.customer_id}`}
                   className="text-sm text-primary hover:underline"
                 >
-                  {t("pages.store.customerDetail.viewAllNOrders").replace("{n}", String(orders.length))} →
+                  {t("pages.store.customerDetail.viewAllNOrders").replace(
+                    "{n}",
+                    String(orderHistoryTotal),
+                  )}{" "}
+                  →
                 </Link>
               </div>
             )}
@@ -1225,7 +1480,10 @@ export default function CustomerDetailPage({
       {(showAddAddress || editingAddress) && customer && (
         <AddAddressModal
           customerId={customer.customer_id}
-          customerName={customer.company_name || [customer.first_name, customer.last_name].filter(Boolean).join(" ")}
+          customerName={
+            customer.company_name ||
+            [customer.first_name, customer.last_name].filter(Boolean).join(" ")
+          }
           address={editingAddress || undefined}
           onClose={() => {
             setShowAddAddress(false);

@@ -66,6 +66,8 @@ export async function GET(req: NextRequest) {
     // metadata, etc.). `children: []` is filled in by buildTree below.
     const shape = (c: any) => ({
       category_id: c.category_id,
+      // ERP group code (e.g. "01A17") used to filter products by erp_group.
+      external_code: c.external_code ?? null,
       name: c.name,
       slug: c.slug,
       description: c.description ?? null,
