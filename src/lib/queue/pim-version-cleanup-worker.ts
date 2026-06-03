@@ -15,10 +15,12 @@ import {
 } from "@/lib/pim/version-retention.service";
 
 export interface PIMVersionCleanupJobData {
-  /** Tenant database name (e.g., "vinc-hidros-it"). */
-  tenant_db: string;
-  /** Tenant ID for logging. */
-  tenant_id: string;
+  /** When true this is the scheduled fan-out tick — enqueue a job per active tenant. */
+  fanOut?: boolean;
+  /** Tenant database name (e.g., "vinc-hidros-it"). Required for per-tenant jobs. */
+  tenant_db?: string;
+  /** Tenant ID for logging. Required for per-tenant jobs. */
+  tenant_id?: string;
   /** Override default retention policy (optional). */
   policy?: Partial<VersionRetentionPolicy>;
   /** Preview only — do not delete. */
@@ -36,7 +38,23 @@ export interface PIMVersionCleanupJobResult {
 async function processJob(
   job: Job<PIMVersionCleanupJobData>
 ): Promise<PIMVersionCleanupJobResult> {
+  // Scheduled fan-out tick (from the daily repeatable cron): enqueue one job per
+  // active tenant onto this same queue, then return.
+  if (job.data.fanOut) {
+    console.log(`\n🗓  PIM version cleanup tick ${job.id} — fanning out to all tenants`);
+    await schedulePIMVersionCleanupForAllTenants(job.data.policy);
+    return { tenant_id: "ALL", dry_run: false };
+  }
+
   const { tenant_db, tenant_id, policy, dry_run = false } = job.data;
+
+  if (!tenant_db || !tenant_id) {
+    return {
+      tenant_id: tenant_id ?? "unknown",
+      dry_run: false,
+      error: "Missing tenant_db/tenant_id on a non-fanOut job",
+    };
+  }
 
   console.log(`\n🗂  Processing PIM version cleanup: ${job.id}`);
   console.log(`   Tenant: ${tenant_id}`);
@@ -141,3 +159,27 @@ export async function schedulePIMVersionCleanupForAllTenants(
     console.log(`  → Scheduled PIM cleanup for ${tenantId}`);
   }
 }
+
+/**
+ * Register the daily repeatable cron that fans the cleanup out to every tenant.
+ * Idempotent (upsert by scheduler id) — safe on every worker start / restart, so
+ * a process restart can never "miss the 3 AM window" (unlike an in-memory timer).
+ * Cron via VINC_PIM_VERSION_CLEANUP_CRON (default "0 3 * * *"); tz via VINC_CRON_TZ.
+ */
+export async function registerPIMVersionCleanupSchedule(): Promise<void> {
+  const { pimVersionCleanupQueue } = await import("./queues");
+  const cron = process.env.VINC_PIM_VERSION_CLEANUP_CRON || "0 3 * * *";
+  const tz = process.env.VINC_CRON_TZ || "Europe/Rome";
+  await pimVersionCleanupQueue.upsertJobScheduler(
+    "pim-version-cleanup-daily",
+    { pattern: cron, tz },
+    { name: "pim-version-cleanup-fanout", data: { fanOut: true } }
+  );
+  console.log(`🗓  PIM version cleanup cron registered (pattern="${cron}", tz="${tz}")`);
+}
+
+// Register the schedule when this worker module loads (i.e. the worker process
+// starts). Upsert is idempotent across restarts and multiple worker processes.
+registerPIMVersionCleanupSchedule().catch((err) =>
+  console.error("Failed to register PIM version cleanup schedule:", err)
+);

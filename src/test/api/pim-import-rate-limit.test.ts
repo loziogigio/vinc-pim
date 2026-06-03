@@ -265,12 +265,29 @@ describe("PIM import rate limit — concurrency cap (per tenant)", () => {
     expect((await acquireImportSlot("acme")).acquired).toBe(true);
   });
 
-  it("is disabled when MAX_CONCURRENT is 0", async () => {
+  it("is disabled only when BOTH per-tenant and global caps are 0", async () => {
     vi.stubEnv("PIM_IMPORT_MAX_CONCURRENT", "0");
+    vi.stubEnv("PIM_IMPORT_MAX_CONCURRENT_GLOBAL", "0");
     const { acquireImportSlot } = await loadFresh();
     for (let i = 0; i < 20; i++) {
       expect((await acquireImportSlot("acme")).acquired).toBe(true);
     }
+  });
+
+  it("enforces the GLOBAL cap across tenants even when per-tenant is generous", async () => {
+    vi.stubEnv("PIM_IMPORT_MAX_CONCURRENT", "100"); // effectively no per-tenant limit
+    vi.stubEnv("PIM_IMPORT_MAX_CONCURRENT_GLOBAL", "2");
+    const { acquireImportSlot } = await loadFresh();
+    const a = await acquireImportSlot("acme");
+    const b = await acquireImportSlot("beta"); // a different tenant
+    const c = await acquireImportSlot("gamma"); // a third tenant
+    expect(a.acquired).toBe(true);
+    expect(b.acquired).toBe(true);
+    expect(c.acquired).toBe(false); // global ceiling of 2 reached
+    expect(c.blockedBy).toBe("global");
+    await a.release();
+    // freed global slot is reusable by any tenant
+    expect((await acquireImportSlot("delta")).acquired).toBe(true);
   });
 
   it("falls back to the default cap when MAX_CONCURRENT is non-numeric (not disabled)", async () => {

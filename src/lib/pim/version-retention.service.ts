@@ -14,9 +14,10 @@
  */
 
 import { connectWithModels } from "@/lib/db/connection";
+import { envInt } from "@/lib/utils/env";
 
 export interface VersionRetentionPolicy {
-  /** Always keep the N most recent versions per product. Default: 20. */
+  /** Always keep the N most recent versions per product. Default: 10. */
   keepLastN: number;
   /** Always keep versions newer than this many days. Default: 180. */
   keepWithinDays: number;
@@ -45,8 +46,10 @@ export interface PrunePreview {
 }
 
 export const DEFAULT_VERSION_RETENTION_POLICY: VersionRetentionPolicy = {
-  keepLastN: parseInt(process.env.VINC_PIM_VERSION_KEEP_LAST_N || "20", 10) || 20,
-  keepWithinDays: parseInt(process.env.VINC_PIM_VERSION_KEEP_DAYS || "180", 10) || 180,
+  // Single source of truth for "how many versions to keep" across the inline cap,
+  // the scheduled worker, and the manual prune route. Default 10.
+  keepLastN: Math.max(1, envInt("VINC_PIM_VERSION_KEEP_LAST_N", 10)),
+  keepWithinDays: envInt("VINC_PIM_VERSION_KEEP_DAYS", 180),
 };
 
 function resolvePolicy(
@@ -54,11 +57,49 @@ function resolvePolicy(
 ): VersionRetentionPolicy {
   return {
     keepLastN: Math.max(1, partial?.keepLastN ?? DEFAULT_VERSION_RETENTION_POLICY.keepLastN),
+    // 0 = no age window (a pure count cap, used by capVersionsForProduct).
     keepWithinDays: Math.max(
-      1,
+      0,
       partial?.keepWithinDays ?? DEFAULT_VERSION_RETENTION_POLICY.keepWithinDays
     ),
   };
+}
+
+/** Minimal per-version metadata used to decide what to prune. */
+export interface VersionMeta {
+  _id: unknown;
+  isCurrent?: boolean;
+  isCurrentPublished?: boolean;
+  created_at?: Date | string | null;
+}
+
+/**
+ * Pure selection (no DB): given a product's versions sorted NEWEST-FIRST (version desc),
+ * return the `_id`s to delete. ALWAYS protects the current doc, the currently-published
+ * doc, and the newest `keepLastN`. When `cutoff` is null the age window is disabled
+ * (pure count cap); otherwise versions newer than `cutoff` are also protected.
+ *
+ * Single source of truth for "what is prunable" — exported for unit tests.
+ */
+export function selectVersionsToDelete(
+  versionsNewestFirst: VersionMeta[],
+  keepLastN: number,
+  cutoff: Date | null
+): unknown[] {
+  const keepN = Math.max(1, keepLastN);
+  const topNIds = new Set(versionsNewestFirst.slice(0, keepN).map((v) => String(v._id)));
+  const ids: unknown[] = [];
+  for (const v of versionsNewestFirst) {
+    if (v.isCurrent) continue;
+    if (v.isCurrentPublished) continue;
+    if (topNIds.has(String(v._id))) continue;
+    if (cutoff && v.created_at) {
+      const createdAt = new Date(v.created_at as unknown as string);
+      if (createdAt >= cutoff) continue;
+    }
+    ids.push(v._id);
+  }
+  return ids;
 }
 
 /**
@@ -70,7 +111,10 @@ export async function pruneVersionsForProduct(
   policyOverride?: Partial<VersionRetentionPolicy>
 ): Promise<ProductPruneResult> {
   const policy = resolvePolicy(policyOverride);
-  const cutoff = new Date(Date.now() - policy.keepWithinDays * 86_400_000);
+  const cutoff =
+    policy.keepWithinDays > 0
+      ? new Date(Date.now() - policy.keepWithinDays * 86_400_000)
+      : null;
 
   const { PIMProduct } = await connectWithModels(tenantDb);
 
@@ -86,21 +130,11 @@ export async function pruneVersionsForProduct(
     return { entity_code, totalBefore: 0, deleted: 0, kept: 0 };
   }
 
-  // Top `keepLastN` versions always survive — they're protected by their position.
-  const topNIds = new Set(versions.slice(0, policy.keepLastN).map((v) => String(v._id)));
-
-  const idsToDelete: unknown[] = [];
-
-  for (const v of versions) {
-    if (v.isCurrent) continue;
-    if (v.isCurrentPublished) continue;
-    if (topNIds.has(String(v._id))) continue;
-
-    const createdAt = v.created_at ? new Date(v.created_at as unknown as string) : null;
-    if (createdAt && createdAt >= cutoff) continue;
-
-    idsToDelete.push(v._id);
-  }
+  const idsToDelete = selectVersionsToDelete(
+    versions as unknown as VersionMeta[],
+    policy.keepLastN,
+    cutoff
+  );
 
   if (idsToDelete.length === 0) {
     return {
@@ -125,6 +159,26 @@ export async function pruneVersionsForProduct(
     deleted: result.deletedCount ?? 0,
     kept: versions.length - (result.deletedCount ?? 0),
   };
+}
+
+/**
+ * CAP-LAST-N: enforce a hard cap of `maxVersions` versions for ONE product,
+ * IGNORING age (count-only). Keeps the newest N (plus isCurrent + isCurrentPublished)
+ * and deletes the rest. Called inline by the importer right after a new current
+ * version is durably created. Default N = VINC_PIM_VERSION_KEEP_LAST_N (10).
+ *
+ * Built on pruneVersionsForProduct with keepWithinDays:0 so the age window does
+ * NOT over-protect — a true count cap, not "keep N or anything younger than a day".
+ */
+export async function capVersionsForProduct(
+  tenantDb: string,
+  entity_code: string,
+  maxVersions: number = DEFAULT_VERSION_RETENTION_POLICY.keepLastN
+): Promise<ProductPruneResult> {
+  return pruneVersionsForProduct(tenantDb, entity_code, {
+    keepLastN: Math.max(1, maxVersions),
+    keepWithinDays: 0,
+  });
 }
 
 /**
@@ -170,7 +224,10 @@ export async function getPrunePreview(
   policyOverride?: Partial<VersionRetentionPolicy>
 ): Promise<PrunePreview> {
   const policy = resolvePolicy(policyOverride);
-  const cutoff = new Date(Date.now() - policy.keepWithinDays * 86_400_000);
+  const cutoff =
+    policy.keepWithinDays > 0
+      ? new Date(Date.now() - policy.keepWithinDays * 86_400_000)
+      : null;
   const { PIMProduct } = await connectWithModels(tenantDb);
 
   const entityCodes: string[] = await PIMProduct.distinct("entity_code");
@@ -184,14 +241,11 @@ export async function getPrunePreview(
       .sort({ version: -1 })
       .lean();
 
-    const topNIds = new Set(versions.slice(0, policy.keepLastN).map((v) => String(v._id)));
-    for (const v of versions) {
-      if (v.isCurrent || v.isCurrentPublished) continue;
-      if (topNIds.has(String(v._id))) continue;
-      const createdAt = v.created_at ? new Date(v.created_at as unknown as string) : null;
-      if (createdAt && createdAt >= cutoff) continue;
-      candidates += 1;
-    }
+    candidates += selectVersionsToDelete(
+      versions as unknown as VersionMeta[],
+      policy.keepLastN,
+      cutoff
+    ).length;
   }
 
   return {

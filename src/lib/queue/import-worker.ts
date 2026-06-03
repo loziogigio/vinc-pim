@@ -1038,12 +1038,54 @@ console.log(`   Concurrency: ${WORKER_CONCURRENCY} jobs`);
 console.log(`   Rate Limit: ${RATE_LIMIT_MAX} jobs per ${RATE_LIMIT_DURATION / 1000}s`);
 console.log(`   Job Timeout: ${JOB_TIMEOUT / 60000} minutes`);
 
+// ── Bulk-op throttling: stop big delete/update loops from saturating Mongo ──
+// (A tight loop of deleteMany/updateMany on a large collection previously pinned
+//  WiredTiger's dirty cache and caused client connection timeouts.)
+const BULK_DELETE_CODE_BATCH = parseInt(process.env.BULK_DELETE_CODE_BATCH || "200");
+const BULK_UPDATE_BATCH = Math.min(500, parseInt(process.env.BULK_UPDATE_BATCH || "500"));
+const BULK_PACE_MS = parseInt(process.env.BULK_PACE_MS || "200");
+// WiredTiger keeps dirty ~5% under normal write load (eviction target) and only
+// stalls near its ~20% eviction trigger. Back off at 15% — climbing toward danger,
+// not the healthy steady state — so we don't pause during normal operation.
+const BULK_DIRTY_PCT_MAX = parseFloat(process.env.BULK_DIRTY_PCT_MAX || "15");
+const BULK_WRITE_QUEUE_MAX = parseInt(process.env.BULK_WRITE_QUEUE_MAX || "10");
+
+const bulkSleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Best-effort adaptive throttle: before a heavy write batch, back off while the
+ * server's WiredTiger dirty cache or write queue is high, so a bulk op yields to
+ * live traffic instead of saturating Mongo. If serverStatus can't be read, it
+ * returns immediately and the per-batch pacing sleep provides baseline protection.
+ */
+async function waitForDbHeadroom(model: any, label: string): Promise<void> {
+  let db: any = null;
+  try { db = model?.db?.db ?? model?.collection?.conn?.db ?? null; } catch { db = null; }
+  if (!db?.admin) return;
+  for (let tries = 0; tries < 40; tries++) {
+    try {
+      const s = await db.admin().serverStatus();
+      const cache = s?.wiredTiger?.cache;
+      const dirty = cache
+        ? (cache["tracked dirty bytes in the cache"] / cache["maximum bytes configured"]) * 100
+        : 0;
+      const wq = s?.globalLock?.currentQueue?.writers ?? 0;
+      if (dirty < BULK_DIRTY_PCT_MAX && wq < BULK_WRITE_QUEUE_MAX) return;
+      console.log(`   ⏸ ${label}: Mongo busy (dirty=${dirty.toFixed(1)}% writeQueue=${wq}) — backing off`);
+      await bulkSleep(3000);
+    } catch {
+      return; // serverStatus unreadable — rely on pacing
+    }
+  }
+}
+
 /**
  * Process bulk update job
  */
 async function processBulkUpdate(job: Job<any>) {
   const { job_id, product_ids, filters, updates, tenant_id, sales_channels } = job.data;
-  const UPDATE_BATCH_SIZE = 5000;
+  // Capped at 500 to keep each find/collect batch small on large collections.
+  const UPDATE_BATCH_SIZE = Math.min(500, parseInt(process.env.UPDATE_BATCH_SIZE || "500"));
   const SYNC_BATCH_SIZE = 50;
 
   const mode = filters ? "filter" : "ids";
@@ -1142,17 +1184,21 @@ async function processBulkUpdate(job: Job<any>) {
         allEntityCodes.push(...docs.map((d: any) => d.entity_code).filter(Boolean));
       }
 
-      // Delete all versions (not just isCurrent) by entity_code
+      // Delete all versions (not just isCurrent) by entity_code. Small code batches
+      // + adaptive throttle + pacing: deleting many versions/code on a large
+      // collection can't saturate Mongo (which previously timed the job out).
       const uniqueCodes = [...new Set(allEntityCodes)];
-      for (let i = 0; i < uniqueCodes.length; i += UPDATE_BATCH_SIZE) {
-        const batch = uniqueCodes.slice(i, i + UPDATE_BATCH_SIZE);
+      for (let i = 0; i < uniqueCodes.length; i += BULK_DELETE_CODE_BATCH) {
+        const batch = uniqueCodes.slice(i, i + BULK_DELETE_CODE_BATCH);
+        await waitForDbHeadroom(PIMProductModel, "bulk-delete");
         const result = await PIMProductModel.deleteMany({ entity_code: { $in: batch } });
         totalMatched += batch.length;
         totalModified += result.deletedCount;
 
         const progress = 5 + Math.round(((i + batch.length) / uniqueCodes.length) * 75);
         await job.updateProgress(progress);
-        console.log(`   Delete batch ${Math.floor(i / UPDATE_BATCH_SIZE) + 1}: deleted ${result.deletedCount}`);
+        console.log(`   Delete batch ${Math.floor(i / BULK_DELETE_CODE_BATCH) + 1}: deleted ${result.deletedCount}`);
+        await bulkSleep(BULK_PACE_MS);
       }
 
       // Queue Solr deletes
@@ -1173,8 +1219,9 @@ async function processBulkUpdate(job: Job<any>) {
       }
     } else {
       // ========== BULK UPDATE ==========
-      for (let i = 0; i < totalProducts; i += UPDATE_BATCH_SIZE) {
-        const batch = targetIds.slice(i, i + UPDATE_BATCH_SIZE);
+      for (let i = 0; i < totalProducts; i += BULK_UPDATE_BATCH) {
+        const batch = targetIds.slice(i, i + BULK_UPDATE_BATCH);
+        await waitForDbHeadroom(PIMProductModel, "bulk-update");
         const result = await PIMProductModel.updateMany(
           { _id: { $in: batch }, isCurrent: true },
           { $set: updateDoc }
@@ -1185,7 +1232,8 @@ async function processBulkUpdate(job: Job<any>) {
         // Progress: 5-80% range for the update phase
         const progress = 5 + Math.round(((i + batch.length) / totalProducts) * 75);
         await job.updateProgress(progress);
-        console.log(`   Batch ${Math.floor(i / UPDATE_BATCH_SIZE) + 1}: updated ${result.modifiedCount}/${result.matchedCount}`);
+        console.log(`   Batch ${Math.floor(i / BULK_UPDATE_BATCH) + 1}: updated ${result.modifiedCount}/${result.matchedCount}`);
+        await bulkSleep(BULK_PACE_MS);
       }
     }
 

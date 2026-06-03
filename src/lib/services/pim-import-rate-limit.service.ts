@@ -54,6 +54,9 @@ const PER_HOUR = envInt("PIM_IMPORT_RATE_PER_HOUR", 6000);
 // it bounds how many heavy imports write at once, independent of arrival rate.
 // 0 disables the concurrency gate.
 const MAX_CONCURRENT = envInt("PIM_IMPORT_MAX_CONCURRENT", 3);
+// Global ceiling across ALL tenants — bounds total in-flight imports so N tenants
+// each at their per-tenant limit can't aggregate into a shared-DB overload. 0 disables.
+const MAX_CONCURRENT_GLOBAL = envInt("PIM_IMPORT_MAX_CONCURRENT_GLOBAL", 8);
 // A holder whose heartbeat is older than this is treated as crashed and evicted,
 // so capacity self-heals. Healthy imports refresh well within this window.
 const SLOT_STALE_SECONDS = envInt("PIM_IMPORT_SLOT_STALE_SECONDS", 120);
@@ -176,10 +179,12 @@ export async function checkImportRateLimit(
 export interface ImportSlot {
   /** Whether a concurrency slot was secured (false = at capacity, send 429). */
   acquired: boolean;
-  /** Concurrent in-flight count for the tenant after this attempt. */
+  /** Concurrent in-flight count for the dimension that decided the result. */
   current: number;
   limit: number;
-  /** Release the slot. Idempotent and safe to call in a `finally`. */
+  /** Which ceiling rejected the request, when acquired=false. */
+  blockedBy?: "tenant" | "global";
+  /** Release the slot(s). Idempotent and safe to call in a `finally`. */
   release: () => Promise<void>;
 }
 
@@ -204,15 +209,20 @@ const NOOP_RELEASE = async () => {};
  *
  * Fails OPEN on Redis errors.
  */
-export async function acquireImportSlot(tenantKey: string): Promise<ImportSlot> {
-  const limit = MAX_CONCURRENT;
+/**
+ * Acquire one concurrency slot on `key`, capped at `limit`. Redis sorted set with
+ * heartbeat refresh + stale eviction (a crashed holder's slot is reclaimed after
+ * SLOT_STALE_SECONDS, so a long import is never mistaken for a crash). Fails OPEN.
+ */
+async function acquireSlot(
+  key: string,
+  limit: number
+): Promise<{ acquired: boolean; current: number; limit: number; release: () => Promise<void> }> {
   if (limit <= 0) {
     return { acquired: true, current: 0, limit, release: NOOP_RELEASE };
   }
-
   try {
     const r = getRedis();
-    const key = `ratelimit:pimimport:${tenantKey}:concurrent`;
     const nowMs = Date.now();
     const member = `${nowMs}-${Math.random().toString(36).slice(2)}`;
     const staleCutoff = nowMs - SLOT_STALE_SECONDS * 1000;
@@ -258,18 +268,40 @@ export async function acquireImportSlot(tenantKey: string): Promise<ImportSlot> 
         await getRedis().zrem(key, member);
       } catch (err) {
         // Non-fatal: the stale window reclaims this slot.
-        console.error(
-          "[pim-import-rate-limit] slot release failed:",
-          (err as Error).message
-        );
+        console.error("[pim-import-rate-limit] slot release failed:", (err as Error).message);
       }
     };
     return { acquired: true, current, limit, release };
   } catch (err) {
-    console.error(
-      "[pim-import-rate-limit] concurrency acquire failed, allowing request:",
-      (err as Error).message
-    );
-    return { acquired: true, current: 0, limit, release: NOOP_RELEASE };
+    console.error("[pim-import-rate-limit] concurrency acquire failed, allowing request:", (err as Error).message);
+    return { acquired: true, current: 0, limit, release: NOOP_RELEASE }; // fail open
   }
+}
+
+/**
+ * Acquire BOTH a per-tenant slot (fairness — a tenant can never exceed its own
+ * share, so one tenant's flood can't starve others) AND a global slot (protects
+ * the shared DB from N tenants aggregating past what Mongo can take). The per-tenant
+ * slot is taken first; if the global ceiling then rejects, the tenant slot is
+ * released so we never hold a slot we can't use. release() frees both.
+ */
+export async function acquireImportSlot(tenantKey: string): Promise<ImportSlot> {
+  const tenantSlot = await acquireSlot(`ratelimit:pimimport:${tenantKey}:concurrent`, MAX_CONCURRENT);
+  if (!tenantSlot.acquired) {
+    return { acquired: false, current: tenantSlot.current, limit: tenantSlot.limit, blockedBy: "tenant", release: NOOP_RELEASE };
+  }
+
+  const globalSlot = await acquireSlot(`ratelimit:pimimport:global:concurrent`, MAX_CONCURRENT_GLOBAL);
+  if (!globalSlot.acquired) {
+    await tenantSlot.release(); // don't hold a tenant slot we can't use
+    return { acquired: false, current: globalSlot.current, limit: globalSlot.limit, blockedBy: "global", release: NOOP_RELEASE };
+  }
+
+  let released = false;
+  const release = async () => {
+    if (released) return;
+    released = true;
+    await Promise.allSettled([tenantSlot.release(), globalSlot.release()]);
+  };
+  return { acquired: true, current: tenantSlot.current, limit: tenantSlot.limit, release };
 }

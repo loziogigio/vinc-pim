@@ -525,6 +525,10 @@ const PIMProductSchema = new Schema<IPIMProduct>(
     isCurrent: { type: Boolean, required: true, default: true },
     isCurrentPublished: { type: Boolean, required: true, default: false },
 
+    // Stable content hash; lets the importer skip a re-import that is byte-identical
+    // to the current version (no flip, no new version, no Solr re-sync).
+    content_hash: { type: String },
+
     status: {
       type: String,
       enum: ["draft", "published", "archived"],

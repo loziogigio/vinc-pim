@@ -78,7 +78,8 @@ async function runScheduler(): Promise<void> {
       if (shouldRunDailyCleanup()) {
         console.log("[Scheduler] Running daily cleanup...");
         await scheduleCleanupForAllTenants();
-        await schedulePIMVersionCleanupForAllTenants();
+        // PIM version cleanup now runs via a BullMQ repeatable cron registered in
+        // pim-version-cleanup-worker.ts (survives restarts) — not this in-memory poll.
         await scheduleImportJobCleanupForAllTenants();
       }
     } catch (error) {

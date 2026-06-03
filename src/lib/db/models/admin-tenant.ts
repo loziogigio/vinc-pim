@@ -51,6 +51,8 @@ export interface ITenantSettings {
     max_orders?: number;
   };
   rate_limit?: ITenantRateLimit;
+  /** PIM version history. Unset/true ⇒ keep (capped) history; false ⇒ in-place update, no versions. */
+  pim_versioning_enabled?: boolean;
 }
 
 /**
@@ -153,6 +155,10 @@ const TenantSettingsSchema = new Schema(
       per_ip_max_concurrent: { type: Number, default: 20 },
       per_ip_allowlist: { type: [String], default: [] },
     },
+    // PIM version history for this tenant. Unset/true ⇒ keep version history
+    // (count-capped); false ⇒ importer updates the current product in place,
+    // creating no new versions (faster, preserves analytics, zero history).
+    pim_versioning_enabled: { type: Boolean },
   },
   { _id: false }
 );

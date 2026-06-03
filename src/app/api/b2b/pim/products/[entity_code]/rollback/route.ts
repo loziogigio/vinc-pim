@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
+import { capVersionsForProduct } from "@/lib/pim/version-retention.service";
 
 /**
  * POST /api/b2b/pim/products/[entity_code]/rollback
@@ -63,10 +64,12 @@ export async function POST(
       );
     }
 
-    // Mark current version as not current
+    // Mark current version as not current. Clear isCurrentPublished too (parity
+    // with the import path) so a superseded-but-published doc isn't left behind
+    // and protected from pruning forever.
     await PIMProductModel.updateOne(
       { _id: currentProduct._id },
-      { $set: { isCurrent: false } }
+      { $set: { isCurrent: false, isCurrentPublished: false } }
     );
 
     // Create new version with data from target version
@@ -89,6 +92,17 @@ export async function POST(
       has_conflict: false,
       conflict_data: [],
     });
+
+    // Cap version history (count-only) after the new current version is durable.
+    // Non-fatal — a prune failure must not fail the rollback.
+    try {
+      await capVersionsForProduct(tenantDb, entity_code);
+    } catch (capErr) {
+      console.error(
+        `⚠️ Version cap prune failed for ${entity_code}:`,
+        capErr instanceof Error ? capErr.message : capErr
+      );
+    }
 
     return NextResponse.json({
       success: true,

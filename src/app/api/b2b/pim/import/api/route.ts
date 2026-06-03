@@ -3,6 +3,10 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { syncBulkQueue } from "@/lib/queue/queues";
 import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
+import { capVersionsForProduct } from "@/lib/pim/version-retention.service";
+import { contentHash } from "@/lib/utils/content-hash";
+import { connectToAdminDatabase } from "@/lib/db/admin-connection";
+import { getTenantModel } from "@/lib/db/models/admin-tenant";
 import {
   checkImportRateLimit,
   acquireImportSlot,
@@ -218,14 +222,17 @@ export async function POST(req: NextRequest) {
     // it bounds how many heavy imports hit MongoDB at once. Released in finally.
     importSlot = await acquireImportSlot(tenantId || tenantDb);
     if (!importSlot.acquired) {
+      const scope = importSlot.blockedBy === "global" ? "global" : "tenant";
       console.warn(
-        `⛔ Import concurrency limit hit for tenant "${tenantId || tenantDb}" ` +
+        `⛔ Import concurrency limit hit (${scope}) for "${tenantId || tenantDb}" ` +
           `(${importSlot.current}/${importSlot.limit} in flight)`
       );
       return NextResponse.json(
         {
-          error: "Too many concurrent imports for this tenant. Retry shortly.",
-          blocked_by: "concurrent",
+          error: scope === "global"
+            ? "Server is at peak import capacity. Retry shortly."
+            : "Too many concurrent imports for this tenant. Retry shortly.",
+          blocked_by: scope === "global" ? "global_concurrent" : "tenant_concurrent",
           retry_after_seconds: 5,
           limits: { max_concurrent: importSlot.limit },
         },
@@ -326,6 +333,22 @@ export async function POST(req: NextRequest) {
     const errors: any[] = [];
     const successfulEntityCodes: string[] = []; // Track for Solr sync
     let debugProductSource: any = null; // For debugging first product
+    let unchanged = 0; // products skipped because their content was byte-identical
+
+    // Per-tenant PIM history toggle (admin Tenant.settings.pim_versioning_enabled):
+    // unset/true ⇒ keep version history (count-capped); false ⇒ update in place (no versions).
+    let pimVersioningEnabled = true;
+    try {
+      await connectToAdminDatabase();
+      const TenantModel = await getTenantModel();
+      const tenantDoc = await TenantModel.findOne({ tenant_id: tenantId })
+        .select("settings.pim_versioning_enabled")
+        .lean();
+      pimVersioningEnabled = (tenantDoc as any)?.settings?.pim_versioning_enabled !== false;
+    } catch (e) {
+      console.warn("[import] tenant versioning flag unreadable, defaulting ON:", e instanceof Error ? e.message : e);
+    }
+    console.log(`   PIM versioning: ${pimVersioningEnabled ? "ON (capped history)" : "OFF (in-place update)"}`);
     const catalogStats = { brandsCreated: 0, productTypesCreated: 0, categoriesCreated: 0 };
 
     for (const productData of products) {
@@ -364,7 +387,10 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const entity_code = mappedData.entity_code || mappedData.sku;
+        // Coerce to string: payloads are arbitrary JSON, so a numeric entity_code
+        // must not reach create()/capVersionsForProduct as a number (would mismatch
+        // the stored string key and silently skip the cap).
+        const entity_code = String(mappedData.entity_code || mappedData.sku || "");
 
         if (!entity_code) {
           errors.push({
@@ -463,47 +489,33 @@ export async function POST(req: NextRequest) {
           autoPublished++;
         }
 
-        // Mark old versions as not current
-        if (latestProduct) {
-          await PIMProductModel.updateMany(
-            {
-              // No wholesaler_id - database provides isolation
-              entity_code,
-              isCurrent: true
-            },
-            { isCurrent: false, isCurrentPublished: false }
-          );
-        }
-
-        // Create new version
+        // Build the import source metadata.
         const productSource: any = {
           source_id: source.source_id,
           source_name: source.source_name,
           job_id: jobId,
           imported_at: new Date(),
         };
-
-        if (batch_id) {
-          productSource.batch_id = batch_id;
-        }
-
-        if (batch_metadata) {
-          productSource.batch_metadata = batch_metadata;
-        }
-
-        // Capture first product source for debugging
+        if (batch_id) productSource.batch_id = batch_id;
+        if (batch_metadata) productSource.batch_metadata = batch_metadata;
         if (!debugProductSource) {
           debugProductSource = JSON.parse(JSON.stringify(productSource));
         }
 
-        await PIMProductModel.create({
+        // Skip unchanged: if the current version's content is byte-identical to this
+        // payload, do nothing — no flip, no new version, no in-place write, no re-sync.
+        const incomingHash = contentHash(finalProductData as any);
+        if (latestProduct && latestProduct.content_hash && latestProduct.content_hash === incomingHash) {
+          unchanged++;
+          continue;
+        }
+
+        const docFields: any = {
           // No wholesaler_id - database provides isolation
           ...finalProductData,
           entity_code,
           sku: finalProductData.sku || entity_code,
-          version: newVersion,
-          isCurrent: true,
-          isCurrentPublished: autoPublishResult.eligible,
+          content_hash: incomingHash,
           status,
           published_at,
           source: productSource,
@@ -511,17 +523,51 @@ export async function POST(req: NextRequest) {
           critical_issues: criticalIssues,
           auto_publish_eligible: autoPublishResult.eligible,
           auto_publish_reason: autoPublishResult.reason,
-          analytics: {
-            views_30d: 0,
-            clicks_30d: 0,
-            add_to_cart_30d: 0,
-            conversions_30d: 0,
-            priority_score: 0,
-          },
-        });
+        };
+        const freshAnalytics = { views_30d: 0, clicks_30d: 0, add_to_cart_30d: 0, conversions_30d: 0, priority_score: 0 };
+
+        if (!latestProduct) {
+          // Brand-new product → version 1 (both history modes).
+          await PIMProductModel.create({
+            ...docFields, version: 1, isCurrent: true,
+            isCurrentPublished: autoPublishResult.eligible, analytics: freshAnalytics,
+          });
+        } else if (pimVersioningEnabled) {
+          // History ON: retire the old current, insert a new version (later capped).
+          await PIMProductModel.updateMany(
+            { entity_code, isCurrent: true },
+            { isCurrent: false, isCurrentPublished: false }
+          );
+          await PIMProductModel.create({
+            ...docFields, version: newVersion, isCurrent: true,
+            isCurrentPublished: autoPublishResult.eligible, analytics: freshAnalytics,
+          });
+        } else {
+          // History OFF: update the current product in place — no new version,
+          // preserves accumulated analytics.
+          await PIMProductModel.updateOne(
+            { entity_code, isCurrent: true },
+            { $set: { ...docFields, isCurrentPublished: autoPublishResult.eligible, updated_at: new Date() } }
+          );
+        }
 
         successfulEntityCodes.push(entity_code);
         successful++;
+
+        // Cap version history at the configured max (count-only). Only EXISTING
+        // products accumulate versions here. Runs AFTER the new current version is
+        // durably created, never inside a transaction, so a failure can never leave
+        // zero-current. Non-fatal: the scheduled cleanup reclaims any miss later.
+        if (latestProduct && pimVersioningEnabled) {
+          try {
+            await capVersionsForProduct(tenantDb, entity_code);
+          } catch (capErr) {
+            console.error(
+              `⚠️ Version cap prune failed for ${entity_code}:`,
+              capErr instanceof Error ? capErr.message : capErr
+            );
+          }
+        }
 
         // Auto-provision standalone Brand / ProductType / Category records
         // from the embedded data on this product (idempotent: insert-if-missing).
@@ -559,11 +605,12 @@ export async function POST(req: NextRequest) {
     const startedAt = job.started_at!;
     const durationSeconds = (completedAt.getTime() - startedAt.getTime()) / 1000;
 
+    console.log(`   Import summary: ${successful} written, ${unchanged} unchanged (skipped), ${failed} failed`);
     await ImportJobModel.findOneAndUpdate(
       { job_id: jobId },
       {
         status: "completed",
-        processed_rows: processed,
+        processed_rows: processed + unchanged,
         successful_rows: successful,
         failed_rows: failed,
         auto_published_count: autoPublished,
@@ -645,10 +692,12 @@ export async function POST(req: NextRequest) {
         first_product_source: debugProductSource,
       },
       summary: {
-        total: processed,
+        total: processed + unchanged,
         successful,
+        unchanged,
         failed,
         auto_published: autoPublished,
+        versioning: pimVersioningEnabled ? "history" : "in-place",
         duration_seconds: durationSeconds,
         sync_batches_queued: syncQueued,
         brands_created: catalogStats.brandsCreated,
@@ -656,7 +705,7 @@ export async function POST(req: NextRequest) {
         categories_created: catalogStats.categoriesCreated,
       },
       errors: errors.slice(0, 100), // Return first 100 errors
-      message: `Imported ${successful} of ${processed} products successfully${syncQueued > 0 ? `, queued ${syncQueued} Solr sync batches` : ''}`,
+      message: `${successful} written, ${unchanged} unchanged, ${failed} failed${syncQueued > 0 ? `, queued ${syncQueued} Solr sync batches` : ''}`,
     });
   } catch (error: any) {
     console.error("Error processing API import:", error);
