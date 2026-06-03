@@ -18,6 +18,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { submitOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { isDeferredPaymentMethod } from "@/lib/constants/payment";
+import { claimableSubmitLockFilter, isSubmitLockActive } from "@/lib/utils/submit-lock";
 import { createOrderNoteSubmission } from "@/lib/services/order-note.service";
 import {
   buildHookCtxFromOrder,
@@ -56,9 +57,12 @@ export async function POST(
       // No body is fine — delivery details are optional
     }
 
-    // Atomically claim the order for submission (prevents double-submit)
+    // Atomically claim the order for submission (prevents double-submit).
+    // submitting_at stamps the claim so a stale lock (handler died before its
+    // finally cleared the flag) can be reclaimed on retry instead of wedging.
     const updateFields: Record<string, unknown> = {
       submitting: true,
+      submitting_at: new Date(),
     };
     if (body.delivery_date) {
       // Handle DD/MM/YYYY (from pickup) and YYYY-MM-DD (from datepicker)
@@ -84,17 +88,19 @@ export async function POST(
     }
 
     const order = await Order.findOneAndUpdate(
-      { order_id: orderId, status: "draft", submitting: { $ne: true } },
+      { order_id: orderId, status: "draft", ...claimableSubmitLockFilter() },
       { $set: updateFields },
       { new: true },
     );
     if (!order) {
-      // Either not found, not draft, or already being submitted
-      const exists = await Order.findOne({ order_id: orderId }).select("status submitting").lean();
+      // Either not found, not draft, or genuinely being submitted right now
+      const exists = await Order.findOne({ order_id: orderId })
+        .select("status submitting submitting_at")
+        .lean();
       if (!exists) {
         return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
-      if (exists.submitting) {
+      if (isSubmitLockActive(exists)) {
         return NextResponse.json({ error: "Order is already being submitted" }, { status: 409 });
       }
       return NextResponse.json(
@@ -301,7 +307,10 @@ export async function POST(
     // Release the submitting lock on every exit path — success, early return,
     // or thrown error. Idempotent with the explicit clears above.
     if (submitClaimed) {
-      await Order.updateOne({ order_id: orderId }, { $set: { submitting: false } }).catch(() => {});
+      await Order.updateOne(
+        { order_id: orderId },
+        { $set: { submitting: false }, $unset: { submitting_at: "" } },
+      ).catch(() => {});
     }
   }
 }

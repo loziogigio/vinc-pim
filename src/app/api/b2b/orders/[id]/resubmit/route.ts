@@ -17,6 +17,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { submitOrder } from "@/lib/services/order-lifecycle.service";
 import { dispatchTrigger } from "@/lib/notifications/trigger-dispatch";
 import { isDeferredPaymentMethod } from "@/lib/constants/payment";
+import { claimableSubmitLockFilter, isSubmitLockActive } from "@/lib/utils/submit-lock";
 import {
   buildHookCtxFromOrder,
   updateCtxFromOrder,
@@ -80,11 +81,12 @@ export async function POST(
       {
         order_id: orderId,
         processing_status: "failed",
-        submitting: { $ne: true },
+        ...claimableSubmitLockFilter(),
       },
       {
         $set: {
           submitting: true,
+          submitting_at: new Date(),
           status: "draft",
           is_current: false, // Not editing — just resubmitting with autofix
         },
@@ -105,12 +107,12 @@ export async function POST(
 
     if (!order) {
       const exists = await Order.findOne({ order_id: orderId })
-        .select("processing_status submitting")
+        .select("processing_status submitting submitting_at")
         .lean();
       if (!exists) {
         return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
-      if (exists.submitting) {
+      if (isSubmitLockActive(exists)) {
         return NextResponse.json(
           { error: "Order is already being resubmitted" },
           { status: 409 },
@@ -271,7 +273,10 @@ export async function POST(
     // async-fallback, or thrown error. Idempotent with the explicit clears
     // inside restoreFailedState / async $set blocks above.
     if (submitClaimed) {
-      await Order.updateOne({ order_id: orderId }, { $set: { submitting: false } }).catch(() => {});
+      await Order.updateOne(
+        { order_id: orderId },
+        { $set: { submitting: false }, $unset: { submitting_at: "" } },
+      ).catch(() => {});
     }
   }
 }

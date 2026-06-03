@@ -131,6 +131,24 @@ export const ADJUSTMENT_REASONS = [
 export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number];
 
 // ============================================
+// SUBMIT CONCURRENCY LOCK
+// ============================================
+
+/**
+ * How long a `submitting: true` claim (set by /submit and /resubmit) is
+ * considered an active in-flight submission. A lock older than this — or one
+ * with no `submitting_at` timestamp at all (legacy rows stuck before this
+ * field existed) — is treated as stale and may be reclaimed by a new submit.
+ *
+ * A legitimate sync hold lasts seconds (the before/on hooks fall back to async
+ * at ~10s, clearing the flag), so this is set well above any real hold to
+ * avoid stealing a lock from a genuinely in-flight request, while still
+ * self-healing a wedged order on the user's next attempt — no cron reaper
+ * needed, since the lock only matters at claim time.
+ */
+export const SUBMIT_LOCK_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
+// ============================================
 // USER ROLES (for transitions)
 // ============================================
 

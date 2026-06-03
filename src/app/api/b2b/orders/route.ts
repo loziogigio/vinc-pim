@@ -234,11 +234,12 @@ export async function GET(req: NextRequest) {
       query.shipping_address_id = shippingAddressId;
     }
 
-    // Public code filter - need to lookup customer_ids first (within tenant)
+    // Public code filter — EXACT match (public_code is a unique customer code,
+    // not a free-text field), so it uses the {tenant_id, public_code} index.
     if (publicCode) {
       const matchingCustomers = await CustomerModel.find({
         tenant_id: tenantId,
-        public_code: safeRegexQuery(publicCode),
+        public_code: publicCode,
       })
         .select("customer_id")
         .lean();

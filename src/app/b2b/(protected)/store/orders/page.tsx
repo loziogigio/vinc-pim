@@ -106,14 +106,10 @@ const compactCurrencyFormat = new Intl.NumberFormat("it-IT", {
   maximumFractionDigits: 0,
 });
 
-// Threshold for flagging an abandoned high-value cart (in EUR).
-const HIGH_VALUE_CART_THRESHOLD = 5000;
 // Hours a confirmed order can wait before showing up in "needs attention".
 const CONFIRMED_STALE_HOURS = 48;
 // Hours a pending order can wait before flagging.
 const PENDING_STALE_HOURS = 24;
-// Hours a draft cart can sit before being treated as abandoned.
-const ABANDONED_CART_HOURS = 48;
 
 // ── Date Preset Helpers ──
 
@@ -170,7 +166,7 @@ type AttentionLevel = "danger" | "warning" | "info";
 
 interface AttentionHint {
   level: AttentionLevel;
-  /** Short tag like "attesa 52h" or "carrello 3 giorni". */
+  /** Short tag like "attesa 52h" showing how long the order has waited. */
   label: string;
   icon: typeof Clock;
 }
@@ -183,32 +179,14 @@ function hoursSince(iso: string): number {
 
 function attentionFor(order: RecentOrder, t: (k: string, p?: Record<string, string | number>) => string): AttentionHint | null {
   const hours = hoursSince(order.created_at);
-  const days = Math.floor(hours / 24);
 
+  // Only stale orders awaiting action count as "needs attention":
+  // confirmed orders sitting > 48h, and pending (In Attesa) orders > 24h.
   if (order.status === "confirmed" && hours >= CONFIRMED_STALE_HOURS) {
     return { level: "danger", label: t("pages.store.orders.waitHours", { hours }), icon: Clock };
   }
   if (order.status === "pending" && hours >= PENDING_STALE_HOURS) {
     return { level: "danger", label: t("pages.store.orders.waitHours", { hours }), icon: Clock };
-  }
-  if (
-    order.status === "draft" &&
-    order.order_total >= HIGH_VALUE_CART_THRESHOLD &&
-    hours >= ABANDONED_CART_HOURS
-  ) {
-    return {
-      level: "warning",
-      label: days > 0
-        ? t("pages.store.orders.cartDays", { days })
-        : t("pages.store.orders.cartHours", { hours }),
-      icon: ShoppingCart,
-    };
-  }
-  if (order.status === "preparing" && hours >= 2) {
-    return { level: "info", label: t("pages.store.orders.readyFor", { hours }), icon: Package };
-  }
-  if (order.status === "pending" && hours < PENDING_STALE_HOURS) {
-    return { level: "info", label: t("pages.store.orders.newOrderHint"), icon: Mail };
   }
   return null;
 }
@@ -852,8 +830,8 @@ export default function OrdersOverviewPage() {
       });
   }, [recentOrders, t]);
 
-  const dangerCount = attentionRows.filter((r) => r.hint.level === "danger").length;
-  const warningCount = attentionRows.filter((r) => r.hint.level === "warning").length;
+  const confirmedStaleCount = attentionRows.filter((r) => r.order.status === "confirmed").length;
+  const pendingStaleCount = attentionRows.filter((r) => r.order.status === "pending").length;
 
   // Filled daily series: API returns only days that had orders. For an honest
   // day-by-day chart we backfill missing days with zero-value entries spanning
@@ -1082,15 +1060,15 @@ export default function OrdersOverviewPage() {
               {t("pages.store.orders.attentionTitle", { count: attentionRows.length })}
             </div>
             <div className="text-xs text-red-800/80 dark:text-red-300/80 mt-0.5">
-              {dangerCount > 0 && (
+              {confirmedStaleCount > 0 && (
                 <span>
-                  {t("pages.store.orders.attentionStaleConfirmed", { count: dangerCount })}
+                  {t("pages.store.orders.attentionStaleConfirmed", { count: confirmedStaleCount })}
                 </span>
               )}
-              {dangerCount > 0 && warningCount > 0 && <span> · </span>}
-              {warningCount > 0 && (
+              {confirmedStaleCount > 0 && pendingStaleCount > 0 && <span> · </span>}
+              {pendingStaleCount > 0 && (
                 <span>
-                  {t("pages.store.orders.attentionAbandonedCart", { count: warningCount })}
+                  {t("pages.store.orders.attentionStalePending", { count: pendingStaleCount })}
                 </span>
               )}
             </div>

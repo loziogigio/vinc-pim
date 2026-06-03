@@ -436,6 +436,12 @@ export interface IOrder extends Document {
    * every exit path (success, early return, thrown error).
    */
   submitting?: boolean;
+  /**
+   * When `submitting` was set. Lets a new submit reclaim a stale lock left by
+   * a handler that died before its finally ran (see `submit-lock.ts` /
+   * SUBMIT_LOCK_TTL_MS). Absent on legacy rows — treated as stale.
+   */
+  submitting_at?: Date;
 
   // Async Processing (Windmill ERP jobs)
   processing_job_id?: string;
@@ -1013,6 +1019,8 @@ const OrderSchema = new Schema<IOrder>(
 
     // Concurrency guard — atomic claim flag for /submit and /resubmit
     submitting: { type: Boolean, default: false },
+    // When the claim was made — lets a new submit reclaim a stale lock
+    submitting_at: { type: Date },
 
     // Async Processing (Windmill ERP jobs)
     processing_job_id: { type: String },
