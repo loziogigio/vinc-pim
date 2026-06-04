@@ -348,6 +348,14 @@ export interface IOrder extends Document {
   order_id: string;
   order_number?: number;
   cart_number?: number; // Sequential cart number per year (assigned on cart creation)
+  /**
+   * Monotonic high-water mark for line_number assignment, advanced atomically
+   * by `reserveLineNumber` on every add. Guarantees concurrent adds get
+   * distinct line numbers (max+10 from a stale in-memory snapshot used to
+   * collide → duplicate rows → ERP duplicate-PK import failure). Never
+   * decreases, so a number is never reused even after its line is deleted.
+   */
+  line_counter?: number;
   year: number;
   status: OrderStatus;
   is_current: boolean; // Only ONE draft per customer+address can be current
@@ -862,6 +870,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     order_number: { type: Number },
     cart_number: { type: Number }, // Sequential cart number per year
+    line_counter: { type: Number }, // Monotonic high-water mark for line_number (see interface)
     year: { type: Number, required: true },
     status: {
       type: String,

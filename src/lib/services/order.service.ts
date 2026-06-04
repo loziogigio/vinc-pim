@@ -261,11 +261,63 @@ export function updateItemPrice(
 }
 
 /**
+ * Atomically reserve a globally-unique `line_number` for an order.
+ *
+ * Why this exists: `getNextLineNumber` derives max+10 from the in-memory
+ * `order.items` snapshot loaded at the start of a request. When two adds to
+ * the same cart overlap (the gap is widened by the Windmill before-hook that
+ * runs between load and save), both read the same max and both compute the
+ * same number; each `order.save()` issues an independent atomic `$push`, so
+ * BOTH items persist with the same line_number. The ERP keys its order rows on
+ * the line number, so the second row collides on a duplicate PK and the whole
+ * order fails to import (incident: order aE-3OxY1HOlS, hidros-it).
+ *
+ * The fix moves number assignment off the stale snapshot and onto an atomic,
+ * document-level operation. A single aggregation-pipeline `findOneAndUpdate`
+ * advances a monotonic `line_counter` to `max(line_counter, max(items)) + 10`
+ * and returns the new value. MongoDB serialises updates to one document, so
+ * concurrent reservations are handed strictly increasing, distinct numbers.
+ * Seeding `line_counter` from the current items max makes it correct for
+ * legacy orders that predate the field, with no migration.
+ *
+ * @returns the reserved line_number, or `null` if the order no longer exists.
+ */
+export async function reserveLineNumber(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Order: any,
+  orderId: string
+): Promise<number | null> {
+  const updated = await Order.findOneAndUpdate(
+    { order_id: orderId },
+    [
+      {
+        $set: {
+          line_counter: {
+            $add: [
+              {
+                $max: [
+                  { $ifNull: ["$line_counter", 0] },
+                  { $ifNull: [{ $max: "$items.line_number" }, 0] },
+                ],
+              },
+              10,
+            ],
+          },
+        },
+      },
+    ],
+    { new: true, projection: { line_counter: 1 } }
+  );
+  return updated?.line_counter ?? null;
+}
+
+/**
  * Create a new line item from request body.
  */
 export function createLineItem(
   order: IOrder,
-  body: AddItemRequest
+  body: AddItemRequest,
+  lineNumber?: number
 ): ILineItem {
   const totals = calculateLineItemTotals(
     body.quantity,
@@ -291,7 +343,10 @@ export function createLineItem(
   const now = new Date();
 
   return {
-    line_number: getNextLineNumber(order.items),
+    // Prefer an atomically-reserved number (reserveLineNumber) to avoid the
+    // concurrent-add race; fall back to the in-memory max+10 for callers that
+    // build items in a single non-concurrent pass (seeds, imports, tests).
+    line_number: lineNumber ?? getNextLineNumber(order.items),
     entity_code: body.entity_code,
     sku: body.sku,
     product_source: body.product_source || "pim",
