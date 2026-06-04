@@ -7,6 +7,7 @@ import {
   findMergeableItem,
   updateItemQuantity,
   createLineItem,
+  reserveLineNumber,
   batchUpdateItems,
   batchRemoveItems,
   collectGiftLineNumbers,
@@ -194,8 +195,14 @@ export async function POST(
       updateItemQuantity(existing.item, body.quantity, pd);
       item = existing.item;
     } else {
-      // Create new line item
-      item = createLineItem(order, body);
+      // Create new line item. Reserve the line_number atomically rather than
+      // deriving max+10 from the loaded snapshot — two concurrent adds to the
+      // same cart would otherwise compute the same number and persist duplicate
+      // line_numbers (each save is an independent $push), which the ERP rejects
+      // on its duplicate line-number PK. See reserveLineNumber().
+      const { Order } = await connectWithModels(auth.tenantDb!);
+      const lineNumber = await reserveLineNumber(Order, order_id);
+      item = createLineItem(order, body, lineNumber ?? undefined);
       order.items.push(item);
     }
 
