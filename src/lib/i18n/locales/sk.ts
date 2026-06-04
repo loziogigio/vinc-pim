@@ -266,6 +266,8 @@ const sk = {
       blockedIPs: "Blokované IP",
       channels: "Kanály",
       dataModels: "Dátové modely",
+      users: "Používatelia",
+      roles: "Roly",
     },
     windmill: {
       title: "Windmill ERP",
@@ -1564,6 +1566,20 @@ const sk = {
       },
       // ── Stránka detailu produktu ──
       productDetail: {
+        relatedProducts: {
+          title: "Súvisiace produkty",
+          description: "Produkty súvisiace s týmto, zobrazené zákazníkom ako návrhy",
+          add: "Pridať súvisiaci",
+          remove: "Odstrániť",
+          empty: "Zatiaľ žiadne súvisiace produkty. Kliknite na \"Pridať súvisiaci\" pre prepojenie produktov.",
+          addModalTitle: "Pridať súvisiace produkty",
+          addModalDescription: "Vyhľadajte a vyberte produkty, ktoré chcete prepojiť s týmto",
+          removeConfirm: "Odstrániť tento súvisiaci produkt?",
+          added: "Pridaných {{count}} súvisiacich produktov",
+          addFailed: "Nepodarilo sa pridať súvisiace produkty",
+          removed: "Súvisiaci produkt odstránený",
+          removeFailed: "Nepodarilo sa odstrániť súvisiaci produkt",
+        },
         loading: "Načítavanie...",
         notFound: "Nenájdené",
         productNotFound: "Produkt nenájdený",
@@ -4933,7 +4949,7 @@ const sk = {
     },
     team: {
       roles: { title: "Roly", subtitle: "Definujte súbory povolení a rozsah údajov", create: "Nová rola", edit: "Upraviť rolu", name: "Názov", description: "Popis", permissions: "Povolenia", scope: "Rozsah údajov", system: "Systém", restoreSystem: "Obnoviť systémové roly", deleteConfirm: "Odstrániť túto rolu?", scopeAll: "Všetko", scopePerUser: "Podľa používateľa" },
-      users: { title: "Používatelia", subtitle: "Priraďte roly a prístup zamestnancom", role: "Rola", active: "Aktívny", priceOverride: "Prepísanie prístupu k cenám", channels: "Kanály", customers: "Zákazníci", noRole: "Žiadna rola" },
+      users: { title: "Používatelia", subtitle: "Priraďte roly a prístup zamestnancom", role: "Rola", active: "Aktívny", priceOverride: "Prepísanie prístupu k cenám", channels: "Kanály", customers: "Zákazníci", noRole: "Žiadna rola", create: "Nový člen", createTitle: "Nový člen tímu", username: "Používateľské meno", email: "Email", companyName: "Spoločnosť", inviteHint: "Členovi bude e-mailom zaslané dočasné heslo.", inviteEmailFailed: "Člen bol vytvorený, ale uvítací e-mail sa nepodarilo odoslať. Pošlite ho znova alebo poskytnite prihlasovacie údaje manuálne.", createFailed: "Nepodarilo sa vytvoriť člena" },
     },
   },
   rbac: {

@@ -265,6 +265,8 @@ const en = {
       blockedIPs: "Blocked IPs",
       channels: "Channels",
       dataModels: "Data models",
+      users: "Users",
+      roles: "Roles",
     },
     windmill: {
       title: "Windmill ERP",
@@ -1588,6 +1590,20 @@ const en = {
       },
       // ── Product Detail Page ──
       productDetail: {
+        relatedProducts: {
+          title: "Related Products",
+          description: "Products related to this one, shown to customers as suggestions",
+          add: "Add Related",
+          remove: "Remove",
+          empty: "No related products yet. Click \"Add Related\" to link products.",
+          addModalTitle: "Add Related Products",
+          addModalDescription: "Search and select products to relate to this one",
+          removeConfirm: "Remove this related product?",
+          added: "Added {{count}} related product(s)",
+          addFailed: "Failed to add related products",
+          removed: "Related product removed",
+          removeFailed: "Failed to remove related product",
+        },
         loading: "Loading...",
         notFound: "Not Found",
         productNotFound: "Product Not Found",
@@ -4960,7 +4976,7 @@ const en = {
     },
     team: {
       roles: { title: "Roles", subtitle: "Define permission sets and data scope", create: "New role", edit: "Edit role", name: "Name", description: "Description", permissions: "Permissions", scope: "Data scope", system: "System", restoreSystem: "Restore system roles", deleteConfirm: "Soft-delete this role?", scopeAll: "All", scopePerUser: "Per user" },
-      users: { title: "Users", subtitle: "Assign roles and access to staff", role: "Role", active: "Active", priceOverride: "Price access override", channels: "Channels", customers: "Customers", noRole: "No role" },
+      users: { title: "Users", subtitle: "Assign roles and access to staff", role: "Role", active: "Active", priceOverride: "Price access override", channels: "Channels", customers: "Customers", noRole: "No role", create: "New member", createTitle: "New team member", username: "Username", email: "Email", companyName: "Company", inviteHint: "A temporary password will be emailed to the member.", inviteEmailFailed: "Member created, but the welcome email failed to send. Resend it or share the credentials manually.", createFailed: "Failed to create member" },
     },
   },
   rbac: {
