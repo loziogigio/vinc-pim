@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { ImageGallery } from "@/components/pim/ImageGallery";
 import { MediaGallery } from "@/components/pim/MediaGallery";
+import { RelatedProductsSection } from "@/components/pim/RelatedProductsSection";
 import { ConflictResolver } from "@/components/pim/ConflictResolver";
 import { ProductTypeSelector } from "@/components/pim/ProductTypeSelector";
 import { CollectionsSelector } from "@/components/pim/CollectionsSelector";
@@ -2880,6 +2881,12 @@ export default function ProductDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Related Products */}
+      <RelatedProductsSection
+        entityCode={entity_code}
+        defaultLanguageCode={defaultLanguageCode}
+      />
 
       {/* Image Gallery */}
       <div className="rounded-lg bg-card p-6 shadow-sm">
