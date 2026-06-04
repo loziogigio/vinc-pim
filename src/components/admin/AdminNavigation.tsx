@@ -9,6 +9,8 @@ import {
   Ban,
   Radio,
   Database,
+  Users,
+  KeyRound,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -22,6 +24,16 @@ export function AdminNavigation() {
         icon={LayoutDashboard}
         label={t("nav.admin.dashboard")}
         exactMatch
+      />
+      <NavLink
+        href="/b2b/admin/users"
+        icon={Users}
+        label={t("nav.admin.users")}
+      />
+      <NavLink
+        href="/b2b/admin/roles"
+        icon={KeyRound}
+        label={t("nav.admin.roles")}
       />
       <NavLink
         href="/b2b/admin/sessions"
