@@ -17,14 +17,22 @@ export function UserEditorDialog({ user, roles, open, onClose, onSaved }: { user
   const [customers, setCustomers] = useState<string[]>([]);
   const [channelOpts, setChannelOpts] = useState<{ id: string; label: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
-    if (!open || !user) return;
-    setRoleId(user.role_id ?? "");
-    setActive(user.isActive);
-    setPrice(user.price_access ?? "inherit");
-    setChannels(Array.isArray(user.scope_values?.channels) ? user.scope_values!.channels : []);
-    setCustomers(Array.isArray(user.scope_values?.customers) ? user.scope_values!.customers : []);
+    if (!open) return;
+    if (user) {
+      setRoleId(user.role_id ?? "");
+      setActive(user.isActive);
+      setPrice(user.price_access ?? "inherit");
+      setChannels(Array.isArray(user.scope_values?.channels) ? user.scope_values!.channels : []);
+      setCustomers(Array.isArray(user.scope_values?.customers) ? user.scope_values!.customers : []);
+    } else {
+      setUsername(""); setEmail(""); setCompanyName("");
+      setRoleId(""); setActive(true); setPrice("inherit"); setChannels([]); setCustomers([]);
+    }
   }, [open, user]);
 
   useEffect(() => {
@@ -34,7 +42,8 @@ export function UserEditorDialog({ user, roles, open, onClose, onSaved }: { user
     });
   }, [open]);
 
-  if (!open || !user) return null;
+  if (!open) return null;
+  const isCreate = !user;
   const role = roles.find((r) => r.role_id === roleId);
   const needsChannels = role?.scope.channels === "per_user";
   const needsCustomers = role?.scope.customers === "per_user";
@@ -46,10 +55,23 @@ export function UserEditorDialog({ user, roles, open, onClose, onSaved }: { user
         role_id: roleId || null,
         isActive: active,
         price_access: price === "inherit" ? null : price,
-        scope_values: { channels: needsChannels ? channels : "all", customers: needsCustomers ? customers : "all", price_lists: "all" },
+        scope_values: { channels: needsChannels ? channels : "all", customers: needsCustomers ? customers : "all", price_lists: "all" as const },
       };
-      const res = await fetch(`/api/b2b/users/${user!._id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error((await res.json()).error || "Save failed");
+      let res: Response;
+      if (isCreate) {
+        res = await fetch("/api/b2b/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, companyName, ...payload }),
+        });
+      } else {
+        res = await fetch(`/api/b2b/users/${user!._id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Save failed");
+      if (isCreate && json?.data?.emailSent === false) {
+        alert(t("pages.team.users.inviteEmailFailed"));
+      }
       onSaved(); onClose();
     } finally { setSaving(false); }
   }
@@ -57,8 +79,17 @@ export function UserEditorDialog({ user, roles, open, onClose, onSaved }: { user
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-lg bg-background p-6 shadow-xl">
-        <h2 className="mb-1 text-lg font-semibold">{user.username}</h2>
-        <p className="mb-4 text-sm text-muted-foreground">{user.email}</p>
+        <h2 className="mb-1 text-lg font-semibold">{isCreate ? t("pages.team.users.createTitle") : user!.username}</h2>
+        {isCreate ? (
+          <div className="mb-4 space-y-2">
+            <input className="w-full rounded border px-2 py-1" placeholder={t("pages.team.users.username")} value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input className="w-full rounded border px-2 py-1" type="email" placeholder={t("pages.team.users.email")} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="w-full rounded border px-2 py-1" placeholder={t("pages.team.users.companyName")} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+            <p className="text-xs text-muted-foreground">{t("pages.team.users.inviteHint")}</p>
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-muted-foreground">{user!.email}</p>
+        )}
 
         <label className="block text-sm font-medium">{t("pages.team.users.role")}</label>
         <select className="mb-3 w-full rounded border px-2 py-1" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
@@ -106,7 +137,7 @@ export function UserEditorDialog({ user, roles, open, onClose, onSaved }: { user
 
         <div className="flex justify-end gap-2">
           <button className="rounded border px-3 py-1" onClick={onClose}>{t("common.cancel")}</button>
-          <button className="rounded bg-primary px-3 py-1 text-primary-foreground disabled:opacity-50" disabled={saving} onClick={save}>{t("common.save")}</button>
+          <button className="rounded bg-primary px-3 py-1 text-primary-foreground disabled:opacity-50" disabled={saving || (isCreate && (username.trim().length < 3 || !email.trim()))} onClick={save}>{t("common.save")}</button>
         </div>
       </div>
     </div>
