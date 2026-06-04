@@ -266,6 +266,8 @@ const it = {
       blockedIPs: "IP Bloccati",
       channels: "Canali",
       dataModels: "Modelli dati",
+      users: "Utenti",
+      roles: "Ruoli",
     },
     windmill: {
       title: "Windmill ERP",
@@ -1588,6 +1590,20 @@ const it = {
       },
       // ── Pagina Dettaglio Prodotto ──
       productDetail: {
+        relatedProducts: {
+          title: "Prodotti Correlati",
+          description: "Prodotti correlati a questo, mostrati ai clienti come suggerimenti",
+          add: "Aggiungi Correlato",
+          remove: "Rimuovi",
+          empty: "Nessun prodotto correlato. Clicca \"Aggiungi Correlato\" per collegare prodotti.",
+          addModalTitle: "Aggiungi Prodotti Correlati",
+          addModalDescription: "Cerca e seleziona i prodotti da correlare a questo",
+          removeConfirm: "Rimuovere questo prodotto correlato?",
+          added: "Aggiunti {{count}} prodotti correlati",
+          addFailed: "Impossibile aggiungere i prodotti correlati",
+          removed: "Prodotto correlato rimosso",
+          removeFailed: "Impossibile rimuovere il prodotto correlato",
+        },
         loading: "Caricamento...",
         notFound: "Non trovato",
         productNotFound: "Prodotto non trovato",
@@ -4957,7 +4973,7 @@ const it = {
     },
     team: {
       roles: { title: "Ruoli", subtitle: "Definisci set di permessi e ambito dati", create: "Nuovo ruolo", edit: "Modifica ruolo", name: "Nome", description: "Descrizione", permissions: "Permessi", scope: "Ambito dati", system: "Sistema", restoreSystem: "Ripristina ruoli di sistema", deleteConfirm: "Eliminare questo ruolo?", scopeAll: "Tutti", scopePerUser: "Per utente" },
-      users: { title: "Utenti", subtitle: "Assegna ruoli e accessi allo staff", role: "Ruolo", active: "Attivo", priceOverride: "Override accesso prezzi", channels: "Canali", customers: "Clienti", noRole: "Nessun ruolo" },
+      users: { title: "Utenti", subtitle: "Assegna ruoli e accessi allo staff", role: "Ruolo", active: "Attivo", priceOverride: "Override accesso prezzi", channels: "Canali", customers: "Clienti", noRole: "Nessun ruolo", create: "Nuovo membro", createTitle: "Nuovo membro del team", username: "Nome utente", email: "Email", companyName: "Azienda", inviteHint: "Una password temporanea verrà inviata via email al membro.", inviteEmailFailed: "Membro creato, ma l'invio dell'email di benvenuto è fallito. Reinvia l'email o comunica le credenziali manualmente." },
     },
   },
   rbac: {

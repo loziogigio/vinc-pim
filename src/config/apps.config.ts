@@ -175,7 +175,7 @@ export const APPS: AppConfig[] = [
     id: "team",
     name: "Team",
     description: "Roles & user access",
-    href: "/b2b/team/roles",
+    href: "/b2b/admin/users",
     icon: Users,
     color: "bg-indigo-500",
     showInLauncher: true,
