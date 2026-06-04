@@ -4973,7 +4973,7 @@ const it = {
     },
     team: {
       roles: { title: "Ruoli", subtitle: "Definisci set di permessi e ambito dati", create: "Nuovo ruolo", edit: "Modifica ruolo", name: "Nome", description: "Descrizione", permissions: "Permessi", scope: "Ambito dati", system: "Sistema", restoreSystem: "Ripristina ruoli di sistema", deleteConfirm: "Eliminare questo ruolo?", scopeAll: "Tutti", scopePerUser: "Per utente" },
-      users: { title: "Utenti", subtitle: "Assegna ruoli e accessi allo staff", role: "Ruolo", active: "Attivo", priceOverride: "Override accesso prezzi", channels: "Canali", customers: "Clienti", noRole: "Nessun ruolo", create: "Nuovo membro", createTitle: "Nuovo membro del team", username: "Nome utente", email: "Email", companyName: "Azienda", inviteHint: "Una password temporanea verrà inviata via email al membro.", inviteEmailFailed: "Membro creato, ma l'invio dell'email di benvenuto è fallito. Reinvia l'email o comunica le credenziali manualmente.", createFailed: "Impossibile creare il membro" },
+      users: { title: "Utenti", subtitle: "Assegna ruoli e accessi allo staff", role: "Ruolo", active: "Attivo", priceOverride: "Override accesso prezzi", channels: "Canali", customers: "Clienti", noRole: "Nessun ruolo", create: "Nuovo membro", createTitle: "Nuovo membro del team", username: "Nome utente", email: "Email", companyName: "Azienda", inviteHint: "Una password temporanea verrà inviata via email al membro.", inviteEmailFailed: "Membro creato, ma l'invio dell'email di benvenuto è fallito. Reinvia l'email o comunica le credenziali manualmente." },
     },
   },
   rbac: {

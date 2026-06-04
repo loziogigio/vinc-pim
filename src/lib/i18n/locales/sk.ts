@@ -4949,7 +4949,7 @@ const sk = {
     },
     team: {
       roles: { title: "Roly", subtitle: "Definujte súbory povolení a rozsah údajov", create: "Nová rola", edit: "Upraviť rolu", name: "Názov", description: "Popis", permissions: "Povolenia", scope: "Rozsah údajov", system: "Systém", restoreSystem: "Obnoviť systémové roly", deleteConfirm: "Odstrániť túto rolu?", scopeAll: "Všetko", scopePerUser: "Podľa používateľa" },
-      users: { title: "Používatelia", subtitle: "Priraďte roly a prístup zamestnancom", role: "Rola", active: "Aktívny", priceOverride: "Prepísanie prístupu k cenám", channels: "Kanály", customers: "Zákazníci", noRole: "Žiadna rola", create: "Nový člen", createTitle: "Nový člen tímu", username: "Používateľské meno", email: "Email", companyName: "Spoločnosť", inviteHint: "Členovi bude e-mailom zaslané dočasné heslo.", inviteEmailFailed: "Člen bol vytvorený, ale uvítací e-mail sa nepodarilo odoslať. Pošlite ho znova alebo poskytnite prihlasovacie údaje manuálne.", createFailed: "Nepodarilo sa vytvoriť člena" },
+      users: { title: "Používatelia", subtitle: "Priraďte roly a prístup zamestnancom", role: "Rola", active: "Aktívny", priceOverride: "Prepísanie prístupu k cenám", channels: "Kanály", customers: "Zákazníci", noRole: "Žiadna rola", create: "Nový člen", createTitle: "Nový člen tímu", username: "Používateľské meno", email: "Email", companyName: "Spoločnosť", inviteHint: "Členovi bude e-mailom zaslané dočasné heslo.", inviteEmailFailed: "Člen bol vytvorený, ale uvítací e-mail sa nepodarilo odoslať. Pošlite ho znova alebo poskytnite prihlasovacie údaje manuálne." },
     },
   },
   rbac: {

@@ -4976,7 +4976,7 @@ const en = {
     },
     team: {
       roles: { title: "Roles", subtitle: "Define permission sets and data scope", create: "New role", edit: "Edit role", name: "Name", description: "Description", permissions: "Permissions", scope: "Data scope", system: "System", restoreSystem: "Restore system roles", deleteConfirm: "Soft-delete this role?", scopeAll: "All", scopePerUser: "Per user" },
-      users: { title: "Users", subtitle: "Assign roles and access to staff", role: "Role", active: "Active", priceOverride: "Price access override", channels: "Channels", customers: "Customers", noRole: "No role", create: "New member", createTitle: "New team member", username: "Username", email: "Email", companyName: "Company", inviteHint: "A temporary password will be emailed to the member.", inviteEmailFailed: "Member created, but the welcome email failed to send. Resend it or share the credentials manually.", createFailed: "Failed to create member" },
+      users: { title: "Users", subtitle: "Assign roles and access to staff", role: "Role", active: "Active", priceOverride: "Price access override", channels: "Channels", customers: "Customers", noRole: "No role", create: "New member", createTitle: "New team member", username: "Username", email: "Email", companyName: "Company", inviteHint: "A temporary password will be emailed to the member.", inviteEmailFailed: "Member created, but the welcome email failed to send. Resend it or share the credentials manually." },
     },
   },
   rbac: {
