@@ -21,6 +21,7 @@ import { SynonymDictionarySelector } from "@/components/pim/SynonymDictionarySel
 import { ChannelSection } from "@/components/pim/ChannelSection";
 import { MultilingualInput } from "@/components/pim/MultilingualInput";
 import { MultilingualTextarea } from "@/components/pim/MultilingualTextarea";
+import { DynamicBlocksEditor } from "@/components/pim/dynamic-blocks/DynamicBlocksEditor";
 import { LanguageSwitcher } from "@/components/pim/LanguageSwitcher";
 import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
 import { PromotionModal } from "@/components/pim/PromotionModal";
@@ -38,6 +39,7 @@ import {
   Promotion,
   DiscountStep,
 } from "@/lib/types/pim";
+import { DynamicBlock } from "@/lib/types/dynamic-blocks";
 import {
   ArrowLeft,
   Save,
@@ -155,6 +157,7 @@ type Product = {
   share_media_with_variants?: boolean;
   variations_sku?: string[];
   variations_entity_code?: string[];
+  dynamic_blocks?: DynamicBlock[];
 };
 
 type FormData = {
@@ -299,6 +302,7 @@ export default function ProductDetailPage({
   const [rawMultilingualAttributes, setRawMultilingualAttributes] = useState<Record<string, any>>({});
   const [tagRefs, setTagRefs] = useState<TagReference[]>([]);
   const [synonymKeys, setSynonymKeys] = useState<string[]>([]);
+  const [dynamicBlocks, setDynamicBlocks] = useState<DynamicBlock[]>([]);
   const [channels, setChannels] = useState<string[]>(["default"]);
   const [channelCategories, setChannelCategories] = useState<{ channel_code: string; category: any }[]>([]);
   const [originalChannels, setOriginalChannels] = useState<string[]>(["default"]);
@@ -313,6 +317,7 @@ export default function ProductDetailPage({
   const [originalCustomAttributes, setOriginalCustomAttributes] = useState<Record<string, any>>({});
   const [originalTagRefs, setOriginalTagRefs] = useState<TagReference[]>([]);
   const [originalSynonymKeys, setOriginalSynonymKeys] = useState<string[]>([]);
+  const [originalDynamicBlocks, setOriginalDynamicBlocks] = useState<DynamicBlock[]>([]);
 
   useEffect(() => {
     if (entity_code) {
@@ -352,6 +357,9 @@ export default function ProductDetailPage({
     // Check if synonym keys changed
     const synonymsChanged = JSON.stringify(synonymKeys) !== JSON.stringify(originalSynonymKeys);
 
+    // Check if dynamic blocks changed
+    const dynamicBlocksChanged = JSON.stringify(dynamicBlocks) !== JSON.stringify(originalDynamicBlocks);
+
     // Check if channels or channel categories changed
     const channelsChanged = JSON.stringify(channels) !== JSON.stringify(originalChannels);
     const channelCategoriesChanged = JSON.stringify(channelCategories) !== JSON.stringify(originalChannelCategories);
@@ -366,6 +374,7 @@ export default function ProductDetailPage({
       attributesChanged ||
       tagsChanged ||
       synonymsChanged ||
+      dynamicBlocksChanged ||
       channelsChanged ||
       channelCategoriesChanged;
 
@@ -389,6 +398,8 @@ export default function ProductDetailPage({
     originalTagRefs,
     synonymKeys,
     originalSynonymKeys,
+    dynamicBlocks,
+    originalDynamicBlocks,
     channels,
     originalChannels,
     channelCategories,
@@ -502,6 +513,12 @@ export default function ProductDetailPage({
         const loadedSynonymKeys = data.product.synonym_keys || [];
         setSynonymKeys(loadedSynonymKeys);
 
+        // Load dynamic blocks
+        const loadedDynamicBlocks: DynamicBlock[] = Array.isArray(data.product.dynamic_blocks)
+          ? data.product.dynamic_blocks
+          : [];
+        setDynamicBlocks(loadedDynamicBlocks);
+
         // Auto-enable JSON view for self-contained data (only if arrays have content)
         if (loadedProductType && ((loadedProductType.hierarchy && loadedProductType.hierarchy.length > 0) || (loadedProductType.inherited_technical_specifications && loadedProductType.inherited_technical_specifications.length > 0))) {
           setShowProductTypeJSON(true);
@@ -528,6 +545,7 @@ export default function ProductDetailPage({
         setOriginalCustomAttributes(loadedAttributes);
         setOriginalTagRefs(loadedTagRefs);
         setOriginalSynonymKeys(loadedSynonymKeys);
+        setOriginalDynamicBlocks(loadedDynamicBlocks);
       } else if (res.status === 404) {
         setProduct(null);
       } else {
@@ -628,6 +646,9 @@ export default function ProductDetailPage({
       // Add synonym keys
       updates.synonym_keys = synonymKeys;
 
+      // Add dynamic blocks
+      updates.dynamic_blocks = dynamicBlocks;
+
       // Add channels & channel categories if changed
       if (JSON.stringify(channels) !== JSON.stringify(originalChannels)) {
         updates.channels = channels;
@@ -697,6 +718,11 @@ export default function ProductDetailPage({
         setRawMultilingualAttributes(updates.attributes);
         setOriginalTagRefs(tagRefs);
         setOriginalSynonymKeys(synonymKeys);
+        setOriginalDynamicBlocks(dynamicBlocks);
+        if (Array.isArray(data.product.dynamic_blocks)) {
+          setDynamicBlocks(data.product.dynamic_blocks);
+          setOriginalDynamicBlocks(data.product.dynamic_blocks);
+        }
         setOriginalChannels(data.product.channels || channels);
         setOriginalChannelCategories(data.product.channel_categories || channelCategories);
 
@@ -1242,6 +1268,7 @@ export default function ProductDetailPage({
       setCustomAttributes(originalCustomAttributes);
       setTagRefs(originalTagRefs);
       setSynonymKeys(originalSynonymKeys);
+      setDynamicBlocks(originalDynamicBlocks);
       setHasChanges(false);
     }
   }
@@ -2911,6 +2938,16 @@ export default function ProductDetailPage({
           onLabelUpdate={handleMediaLabelUpdate}
           onReorder={handleMediaReorder}
           disabled={isSaving}
+        />
+      </div>
+
+      {/* Dynamic Blocks */}
+      <div className="rounded-lg bg-card p-6 shadow-sm">
+        <DynamicBlocksEditor
+          entityCode={entity_code}
+          value={dynamicBlocks}
+          onChange={setDynamicBlocks}
+          disabled={isSaving || isOldVersion}
         />
       </div>
 
