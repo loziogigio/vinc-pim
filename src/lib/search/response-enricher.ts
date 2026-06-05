@@ -879,7 +879,7 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
       loadCollections(tenantDb),
       loadProductTypes(tenantDb),
       loadTags(tenantDb),
-      loadFullProductData(tenantDb, allEntityCodes),
+      loadFullProductData(tenantDb, allEntityCodes, options),
     ]);
 
     // Helper to resolve channel-specific category
@@ -1036,7 +1036,7 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
 /**
  * Load full product data from MongoDB (all fields needed for parent enrichment)
  */
-async function loadFullProductData(tenantDb: string, entityCodes: string[]): Promise<Map<string, any>> {
+async function loadFullProductData(tenantDb: string, entityCodes: string[], options?: { include_dynamic_blocks?: boolean }): Promise<Map<string, any>> {
   if (!entityCodes.length) {
     return new Map();
   }
@@ -1049,9 +1049,12 @@ async function loadFullProductData(tenantDb: string, entityCodes: string[]): Pro
     return new Map();
   }
 
-  const products = await db.collection('pimproducts')
-    .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .toArray();
+  let cursor = db.collection('pimproducts')
+    .find({ entity_code: { $in: entityCodes }, isCurrent: true });
+  if (!options?.include_dynamic_blocks) {
+    cursor = cursor.project({ dynamic_blocks: 0 });
+  }
+  const products = await cursor.toArray();
 
   const map = new Map<string, any>();
   for (const product of products) {
