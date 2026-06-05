@@ -17,6 +17,7 @@ import {
   TagEmbedded,
 } from "@/lib/types/entities";
 import type { MultilingualText, PackagingInfo } from "@/lib/types/pim";
+import type { DynamicBlock } from "@/lib/types/dynamic-blocks";
 import { PRODUCT_KINDS } from "@/lib/constants/booking";
 import type { ProductKind } from "@/lib/constants/booking";
 
@@ -190,6 +191,11 @@ export interface IPIMProduct extends Document {
     is_external_link?: boolean; // true for YouTube/Vimeo/external URLs, false for S3 uploads
     position: number; // Display order (0, 1, 2...)
   }[];
+
+  // Dynamic Blocks (per-product, per-language rich content for the B2B detail page)
+  // Stored in Mongo, EXCLUDED from Solr, attached to the storefront response by the
+  // gated enrichment step. Flat array — blocks of all languages mixed; filtered by `lang`.
+  dynamic_blocks?: DynamicBlock[];
 
   // Inventory
   quantity: number;
@@ -629,6 +635,42 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         uploaded_by: { type: String },
         is_external_link: { type: Boolean, default: false },
         position: { type: Number, required: true, default: 0 },
+      },
+    ],
+
+    // Dynamic Blocks (per-product, per-language rich content for B2B detail page)
+    // Strongly-typed subdocument (NOT Mixed) so accidental shape drift is caught.
+    // Mirrors the IPIMProduct.dynamic_blocks shape; runtime safety enforced by
+    // validateDynamicBlocks() at the importer / PATCH boundaries.
+    dynamic_blocks: [
+      {
+        _id: false,
+        id: { type: String, required: true },
+        lang: { type: String, required: true },
+        title: { type: String },
+        section: { type: Number, enum: [1, 2, 3, 4], required: true },
+        order: { type: Number, required: true, default: 0 },
+        columns: { type: Number, enum: [1, 2, 3, 4, 5, 6, 7, 8], required: true, default: 1 },
+        is_active: { type: Boolean, default: true },
+        elements: [
+          {
+            _id: false,
+            id: { type: String, required: true },
+            kind: { type: String, enum: ["image", "video", "3d", "text"], required: true },
+            text: { type: String },
+            media: {
+              url: { type: String },
+              cdn_key: { type: String },
+              is_external_link: { type: Boolean },
+              alt: { type: String },
+            },
+            link: {
+              href: { type: String },
+              new_tab: { type: Boolean },
+            },
+            description: { type: String },
+          },
+        ],
       },
     ],
 
