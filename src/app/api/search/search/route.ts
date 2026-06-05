@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
       group_variants: body.group_variants ?? false,
       group: body.group, // Grouping options
       facet_fields: body.facet_fields,
+      include_dynamic_blocks: body.include_dynamic_blocks ?? false,
     };
 
     // Build Solr query
@@ -127,12 +128,13 @@ export async function POST(request: NextRequest) {
 
     // Enrich results with fresh data from MongoDB (channel-aware category resolution)
     const channel = searchRequest.channel;
+    const enrichOptions = { include_dynamic_blocks: searchRequest.include_dynamic_blocks };
     if (searchRequest.group_variants) {
       // For variant grouped: fetch parent from MongoDB + enrich all variants
-      response.results = await enrichVariantGroupedResults(tenantDb, response.results, searchRequest.lang, channel);
+      response.results = await enrichVariantGroupedResults(tenantDb, response.results, searchRequest.lang, channel, enrichOptions);
     } else {
       // Standard enrichment
-      response.results = await enrichSearchResults(tenantDb, response.results, searchRequest.lang, channel);
+      response.results = await enrichSearchResults(tenantDb, response.results, searchRequest.lang, channel, enrichOptions);
       response.results = await enrichProductsWithVariants(response.results, searchRequest.lang);
     }
 
@@ -293,6 +295,9 @@ export async function GET(request: NextRequest) {
     const groupSort = searchParams.get('group_sort');
     const groupVariants = searchParams.get('group_variants') === 'true';
 
+    // Dynamic blocks flag
+    const includeDynamicBlocks = searchParams.get('include_dynamic_blocks') === 'true';
+
     // Build filters from query params
     // Supports multiple formats:
     // - Repeated params: ?filter_brand_id=A&filter_brand_id=B
@@ -352,6 +357,7 @@ export async function GET(request: NextRequest) {
             sort: groupSort || undefined,
           }
         : undefined,
+      include_dynamic_blocks: includeDynamicBlocks,
     };
 
     // Build and execute query with tenant-specific Solr collection
@@ -375,12 +381,13 @@ export async function GET(request: NextRequest) {
 
     // Enrich results with fresh data from MongoDB (channel-aware category resolution)
     const getChannel = searchRequest.channel;
+    const getEnrichOptions = { include_dynamic_blocks: searchRequest.include_dynamic_blocks };
     if (groupVariants) {
       // For variant grouped: fetch parent from MongoDB + enrich all variants
-      response.results = await enrichVariantGroupedResults(tenantDb, response.results, lang, getChannel);
+      response.results = await enrichVariantGroupedResults(tenantDb, response.results, lang, getChannel, getEnrichOptions);
     } else {
       // Standard enrichment
-      response.results = await enrichSearchResults(tenantDb, response.results, lang, getChannel);
+      response.results = await enrichSearchResults(tenantDb, response.results, lang, getChannel, getEnrichOptions);
       response.results = await enrichProductsWithVariants(response.results, lang);
     }
 
