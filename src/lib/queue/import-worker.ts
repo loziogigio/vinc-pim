@@ -21,6 +21,7 @@ import { syncBulkQueue } from "./queues";
 import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 import { nanoid } from "nanoid";
 import { parseBidirectionalFlag } from "../constants/correlation";
+import { validateDynamicBlocks } from "../validation/dynamic-blocks";
 
 interface ImportJobData {
   job_id: string;
@@ -434,6 +435,50 @@ async function processCorrelationImport(
 }
 
 /**
+ * Apply imported dynamic_blocks to an UPDATE $set document (spec §3).
+ * Replace-if-present (mirrors `attributes`, NOT media's smart-merge):
+ *  absent -> no-op; present+valid -> set on updateDoc + strip from safeProductData;
+ *  present+invalid -> warn + strip + skip (never throws).
+ */
+export function applyDynamicBlocksToUpdate(
+  updateDoc: Record<string, any>,
+  safeProductData: Record<string, any>,
+  warnings: any[],
+  entity_code: string,
+  rowNumber: number
+): void {
+  if (safeProductData.dynamic_blocks === undefined) return;
+  const candidate = safeProductData.dynamic_blocks;
+  delete safeProductData.dynamic_blocks;
+  const result = validateDynamicBlocks(candidate);
+  if (!result.valid) {
+    warnings.push({ row: rowNumber, entity_code, severity: "warning", field: "dynamic_blocks",
+      error: `Invalid dynamic_blocks skipped: ${result.errors.join("; ")}` });
+    return;
+  }
+  updateDoc.dynamic_blocks = candidate;
+}
+
+/**
+ * Validate dynamic_blocks before a CREATE (spec §3). The field flows into
+ * create() via the `...safeProductData` spread; on invalid input drop it + warn.
+ */
+export function sanitizeDynamicBlocksForCreate(
+  safeProductData: Record<string, any>,
+  warnings: any[],
+  entity_code: string,
+  rowNumber: number
+): void {
+  if (safeProductData.dynamic_blocks === undefined) return;
+  const result = validateDynamicBlocks(safeProductData.dynamic_blocks);
+  if (!result.valid) {
+    warnings.push({ row: rowNumber, entity_code, severity: "warning", field: "dynamic_blocks",
+      error: `Invalid dynamic_blocks skipped: ${result.errors.join("; ")}` });
+    delete safeProductData.dynamic_blocks;
+  }
+}
+
+/**
  * Process import job
  */
 async function processImport(job: Job<ImportJobData>) {
@@ -798,6 +843,9 @@ async function processImport(job: Job<ImportJobData>) {
             delete safeProductData.media;
           }
 
+          // Handle dynamic_blocks: replace-if-present (mirrors `attributes`)
+          applyDynamicBlocksToUpdate(updateDoc, safeProductData, errors, entity_code, processed + 1);
+
           // Copy other fields directly
           for (const [key, value] of Object.entries(safeProductData)) {
             if (value !== undefined) {
@@ -811,6 +859,9 @@ async function processImport(job: Job<ImportJobData>) {
           );
         } else {
           // ========== CREATE NEW PRODUCT ==========
+          // Drop invalid dynamic_blocks before spread into create() payload
+          sanitizeDynamicBlocksForCreate(safeProductData, errors, entity_code, processed + 1);
+
           await PIMProductModel.create({
             entity_code,
             sku: productData.sku || entity_code,
