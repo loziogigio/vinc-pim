@@ -658,6 +658,12 @@ export class SolrAdapter extends MarketplaceAdapter {
       }
     }
 
+    // NOTE: `dynamic_blocks` is DELIBERATELY NOT mapped here — it is Mongo-only
+    // per-product rich content, attached to the storefront response by the gated
+    // enrichment step (see response-enricher.ts) and must never be indexed in
+    // Solr. This is an explicit whitelist (no `...product` spread); do not add
+    // dynamic_blocks. Guarded by src/test/api/solr-dynamic-blocks-exclusion.test.ts.
+
     // Base document with language-independent fields
     const doc: SolrMultilingualDocument = {
       id: product.entity_code,
