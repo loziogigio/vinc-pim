@@ -1,4 +1,3 @@
-// src/lib/types/dynamic-blocks.ts
 /**
  * Dynamic Blocks — per-product rich content attached to a PIM product.
  *
@@ -35,7 +34,7 @@ export interface BlockElementBase {
 }
 
 export interface MediaElement extends BlockElementBase {
-  kind: "image" | "video" | "3d";
+  kind: Exclude<BlockElementKind, "text">;
   media: {
     /** S3/CDN url OR external (YouTube/Vimeo) OR .glb url. */
     url: string;

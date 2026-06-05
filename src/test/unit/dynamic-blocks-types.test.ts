@@ -1,4 +1,10 @@
-// src/test/unit/dynamic-blocks-types.test.ts
+/**
+ * Unit Tests for Dynamic Blocks Types
+ *
+ * Pure type and runtime narrowing tests - no database, no external dependencies.
+ * Tests the data model shape, discriminated union narrowing, and literal type aliases.
+ */
+
 import { describe, it, expect } from "vitest";
 import type {
   BlockElement,
@@ -65,6 +71,9 @@ describe("unit: dynamic-blocks types", () => {
     expect([section, columns, kind, link.new_tab]).toEqual([4, 8, "3d", false]);
   });
 
+  // NOTE: the @ts-expect-error checks below are enforced by `tsc --noEmit`
+  // (project typecheck / CI), not the vitest runtime — esbuild strips types
+  // without checking them. tsc fails here if either mismatch stops being an error.
   it("rejects mismatched element shapes at compile time", () => {
     // @ts-expect-error text element cannot carry media
     const bad1: TextElement = { id: "x", kind: "text", text: "t", media: { url: "u" } };
