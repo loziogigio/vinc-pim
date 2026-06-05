@@ -267,6 +267,9 @@ export async function GET(
 
         const errors = [result?.message || "ERP validation rejected"];
 
+        // ERP rejected — order stays a draft. Keep it `is_current` so it
+        // remains the customer's active cart to fix and resubmit (matches the
+        // sync rejection path, which also leaves the cart active).
         await Order.findOneAndUpdate(
           { order_id: orderId, processing_status: "processing" },
           {
@@ -274,7 +277,6 @@ export async function GET(
               processing_status: "failed",
               processing_completed_at: new Date(),
               processing_errors: errors,
-              is_current: false,
               submitting: false,
             },
             $unset: {

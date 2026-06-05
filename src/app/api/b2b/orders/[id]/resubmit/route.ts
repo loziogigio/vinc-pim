@@ -87,8 +87,13 @@ export async function POST(
         $set: {
           submitting: true,
           submitting_at: new Date(),
+          // submitOrder() requires status "draft" to re-run, so reset it.
+          // Keep `is_current` untouched: this is the customer's active cart
+          // being auto-fixed and resubmitted — it must stay the active cart
+          // while it processes. submitOrder() clears is_current on the real
+          // draft → pending transition; if autofix rejects, it stays active
+          // for another retry.
           status: "draft",
-          is_current: false, // Not editing — just resubmitting with autofix
         },
         $unset: {
           processing_status: "",
@@ -148,7 +153,8 @@ export async function POST(
             processing_status: "processing",
             processing_phase: "before",
             processing_started_at: new Date(),
-            is_current: false,
+            // Keep the cart active while the autofix before-hook processes;
+            // see the claim above. submitOrder() owns clearing is_current.
             submitting: false,
           },
         },

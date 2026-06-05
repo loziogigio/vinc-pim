@@ -99,7 +99,11 @@ import { POST as createOrder, GET as listOrders } from "@/app/api/b2b/orders/rou
 import { GET as getOrder, PATCH as updateOrder, DELETE as deleteOrder } from "@/app/api/b2b/orders/[id]/route";
 import { GET as getActiveCart } from "@/app/api/b2b/orders/active/route";
 import { POST as addItem, PATCH as updateItems, DELETE as removeItems } from "@/app/api/b2b/orders/[id]/items/route";
+import { POST as submitOrderRoute } from "@/app/api/b2b/orders/[id]/submit/route";
+import { POST as resubmitOrderRoute } from "@/app/api/b2b/orders/[id]/resubmit/route";
+import { runBeforeHookWithAsyncFallback } from "@/lib/services/windmill-proxy.service";
 import { CustomerModel } from "@/lib/db/models/customer";
+import { OrderModel } from "@/lib/db/models/order";
 
 // ============================================
 // HELPER: Create test customer
@@ -734,6 +738,107 @@ describe("integration: Orders API", () => {
       expect(data.order.subtotal_net).toBe(1050);
       expect(data.order.total_vat).toBe(201);
       expect(data.order.order_total).toBe(1251);
+    });
+  });
+
+  // ==========================================
+  // POST /api/b2b/orders/[id]/submit — async fallback
+  // ==========================================
+
+  describe("POST /api/b2b/orders/[id]/submit (async fallback)", () => {
+    it("keeps the cart is_current while the before-hook processes async (no depromotion)", async () => {
+      /**
+       * Regression: when the before-hook exceeds the sync timeout and falls
+       * back to async, the order stays a draft and must remain the customer's
+       * active cart (is_current: true). Previously it was depromoted to
+       * is_current: false here, so a later rejection/timeout stranded the cart.
+       * is_current is only cleared by submitOrder() on draft → pending.
+       */
+      // Arrange — a current draft cart
+      await createTestCustomer();
+      const createRes = await createOrder(
+        createRequest("POST", OrderFactory.createPayload({ customer_id: TEST_USER_ID })),
+      );
+      const { order } = await createRes.json();
+      const orderId = order.order_id;
+      await OrderModel.updateOne({ order_id: orderId }, { $set: { is_current: true } });
+
+      // before-hook goes async (simulates "took too long")
+      vi.mocked(runBeforeHookWithAsyncFallback).mockResolvedValueOnce({
+        async: true,
+        jobId: "job-async-1",
+        hooked: true,
+        allowed: true,
+      } as Awaited<ReturnType<typeof runBeforeHookWithAsyncFallback>>);
+
+      // Act
+      const res = await submitOrderRoute(
+        createRequest("POST", {}),
+        createParams({ id: orderId }),
+      );
+      const data = await res.json();
+
+      // Assert — 202 async, and the cart is still active
+      expect(res.status).toBe(202);
+      expect(data.processing).toBe(true);
+      expect(data.processing_phase).toBe("before");
+
+      const after = await OrderModel.findOne({ order_id: orderId }).lean();
+      expect(after?.status).toBe("draft");
+      expect(after?.processing_status).toBe("processing");
+      expect(after?.is_current).toBe(true);
+    });
+  });
+
+  // ==========================================
+  // POST /api/b2b/orders/[id]/resubmit (autofix, async fallback)
+  // ==========================================
+
+  describe("POST /api/b2b/orders/[id]/resubmit (autofix async fallback)", () => {
+    it("keeps the cart is_current when resubmitting with autofix processes async", async () => {
+      /**
+       * Regression: resubmit with autofix resets the order to draft (required
+       * by submitOrder) and runs RisolviAnomalieDocumento, which is slow and
+       * goes async. The order must stay the customer's active cart
+       * (is_current: true) throughout — previously it was depromoted to
+       * is_current: false at both the claim and the async fallback, so it
+       * showed up as a stray Draft.
+       */
+      // Arrange — a current draft order in the failed state (resubmittable)
+      await createTestCustomer();
+      const createRes = await createOrder(
+        createRequest("POST", OrderFactory.createPayload({ customer_id: TEST_USER_ID })),
+      );
+      const { order } = await createRes.json();
+      const orderId = order.order_id;
+      await OrderModel.updateOne(
+        { order_id: orderId },
+        { $set: { is_current: true, processing_status: "failed", processing_errors: ["anomaly"] } },
+      );
+
+      // autofix before-hook goes async (RisolviAnomalieDocumento is slow)
+      vi.mocked(runBeforeHookWithAsyncFallback).mockResolvedValueOnce({
+        async: true,
+        jobId: "job-autofix-1",
+        hooked: true,
+        allowed: true,
+      } as Awaited<ReturnType<typeof runBeforeHookWithAsyncFallback>>);
+
+      // Act
+      const res = await resubmitOrderRoute(
+        createRequest("POST", {}),
+        createParams({ id: orderId }),
+      );
+      const data = await res.json();
+
+      // Assert — 202 async, cart still active, momentarily back in draft
+      expect(res.status).toBe(202);
+      expect(data.processing).toBe(true);
+
+      const after = await OrderModel.findOne({ order_id: orderId }).lean();
+      expect(after?.status).toBe("draft");
+      expect(after?.processing_status).toBe("processing");
+      expect(after?.is_current).toBe(true);
     });
   });
 });

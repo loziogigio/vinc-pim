@@ -125,7 +125,11 @@ export async function POST(
 
     const before = await runBeforeHookWithAsyncFallback(hookCtx);
 
-    // Async fallback — order stays draft, client polls processing-status
+    // Async fallback — order stays draft, client polls processing-status.
+    // Keep the cart `is_current: true` while it processes: it's still the
+    // customer's working cart. `is_current` is only cleared by submitOrder()
+    // when the order actually transitions draft → pending, so if this async
+    // hook later rejects/fails the cart remains active for retry.
     if (before.async && before.jobId) {
       await Order.updateOne(
         { order_id: orderId },
@@ -135,7 +139,6 @@ export async function POST(
             processing_status: "processing",
             processing_phase: "before",
             processing_started_at: new Date(),
-            is_current: false,
             submitting: false,
           },
         },
