@@ -18,6 +18,9 @@ export * from './pim';
 // Search & Faceting types (Solr integration)
 export * from './search';
 
+// Dynamic Blocks (per-product rich content) types
+export * from './dynamic-blocks';
+
 // Order/Cart types
 export * from './order';
 
