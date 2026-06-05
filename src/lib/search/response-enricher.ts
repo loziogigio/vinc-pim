@@ -7,6 +7,7 @@
 
 import { getPooledConnection } from '@/lib/db/connection';
 import type { SolrProduct, PackagingData } from '@/lib/types/search';
+import type { DynamicBlock } from '@/lib/types/dynamic-blocks';
 
 // ============================================
 // CACHE CONFIGURATION
@@ -211,13 +212,18 @@ interface ProductEnrichmentData {
   sold?: number;
   stock_status?: string;
   unit?: string;
+  dynamic_blocks?: DynamicBlock[];
 }
 
 /**
  * Load product data from MongoDB by entity_codes for enrichment
  * Returns Map<entity_code, ProductEnrichmentData>
  */
-export async function loadProductData(tenantDb: string, entityCodes: string[]): Promise<Map<string, ProductEnrichmentData>> {
+export async function loadProductData(
+  tenantDb: string,
+  entityCodes: string[],
+  options?: { include_dynamic_blocks?: boolean }
+): Promise<Map<string, ProductEnrichmentData>> {
   if (!entityCodes.length) {
     return new Map();
   }
@@ -230,9 +236,19 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
     return new Map();
   }
 
+  const projection: Record<string, 1> = {
+    entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1,
+    share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1,
+    packaging_info: 1, promotions: 1, pricing: 1, channel_categories: 1,
+    quantity: 1, sold: 1, stock_status: 1, unit: 1,
+  };
+  if (options?.include_dynamic_blocks) {
+    projection.dynamic_blocks = 1;
+  }
+
   const products = await db.collection('pimproducts')
     .find({ entity_code: { $in: entityCodes }, isCurrent: true })
-    .project({ entity_code: 1, attributes: 1, technical_specifications: 1, images: 1, media: 1, share_images_with_variants: 1, share_media_with_variants: 1, packaging_options: 1, packaging_info: 1, promotions: 1, pricing: 1, channel_categories: 1, quantity: 1, sold: 1, stock_status: 1, unit: 1 })
+    .project(projection)
     .toArray();
 
   const map = new Map<string, ProductEnrichmentData>();
@@ -256,6 +272,7 @@ export async function loadProductData(tenantDb: string, entityCodes: string[]): 
         sold: product.sold,
         stock_status: product.stock_status,
         unit: product.unit,
+        ...(options?.include_dynamic_blocks ? { dynamic_blocks: product.dynamic_blocks } : {}),
       });
     }
   }
@@ -680,8 +697,10 @@ function getLocalizedMedia(media: any[], lang: string): any[] {
  * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
  * @param results - Search results to enrich
  * @param lang - Language code for localized fields (default: 'it')
+ * @param channel - Sales channel for channel-aware category resolution
+ * @param options - Enrichment options
  */
-export async function enrichSearchResults(tenantDb: string, results: any[], lang: string = 'it', channel?: string): Promise<any[]> {
+export async function enrichSearchResults(tenantDb: string, results: any[], lang: string = 'it', channel?: string, options?: { include_dynamic_blocks?: boolean }): Promise<any[]> {
   if (!results?.length) {
     return results;
   }
@@ -708,7 +727,7 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
       loadCollections(tenantDb),
       loadProductTypes(tenantDb),
       loadTags(tenantDb),
-      loadProductData(tenantDb, allEntityCodes),
+      loadProductData(tenantDb, allEntityCodes, options),
     ]);
 
     // Enrich each result
@@ -801,6 +820,10 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
         }
       }
 
+      if (options?.include_dynamic_blocks && productData?.dynamic_blocks) {
+        enrichedResult.dynamic_blocks = productData.dynamic_blocks;
+      }
+
       return enrichedResult;
     });
   } catch (error) {
@@ -821,8 +844,10 @@ export async function enrichSearchResults(tenantDb: string, results: any[], lang
  * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
  * @param results - Results with _needs_parent_enrichment flag and variants array
  * @param lang - Language code for localized fields
+ * @param channel - Sales channel for channel-aware category resolution
+ * @param options - Enrichment options
  */
-export async function enrichVariantGroupedResults(tenantDb: string, results: any[], lang: string = 'it', channel?: string): Promise<any[]> {
+export async function enrichVariantGroupedResults(tenantDb: string, results: any[], lang: string = 'it', channel?: string, options?: { include_dynamic_blocks?: boolean }): Promise<any[]> {
   if (!results?.length) {
     return results;
   }
@@ -969,6 +994,8 @@ export async function enrichVariantGroupedResults(tenantDb: string, results: any
         // Clean up
         gallery: undefined,
         _needs_parent_enrichment: undefined,
+        // Per-product rich content: gated behind include_dynamic_blocks
+        dynamic_blocks: options?.include_dynamic_blocks ? productData.dynamic_blocks : undefined,
       };
     };
 
