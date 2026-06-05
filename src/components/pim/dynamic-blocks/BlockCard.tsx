@@ -25,6 +25,7 @@ import {
   DYNAMIC_BLOCK_MAX_ELEMENTS,
   DYNAMIC_BLOCK_COLUMNS_MIN,
   DYNAMIC_BLOCK_COLUMNS_MAX,
+  DYNAMIC_BLOCK_SECTIONS,
 } from "@/lib/constants/dynamic-blocks";
 import { ElementRow } from "./ElementRow";
 
@@ -123,7 +124,7 @@ export function BlockCard({ entityCode, block, onChange, onDelete, disabled }: B
             disabled={disabled}
             className="rounded border border-border bg-background px-2 py-1 text-xs"
           >
-            {([1, 2, 3, 4] as DynamicBlockSection[]).map((s) => (
+            {DYNAMIC_BLOCK_SECTIONS.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

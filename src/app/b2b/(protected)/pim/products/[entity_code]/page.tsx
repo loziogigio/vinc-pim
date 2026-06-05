@@ -718,11 +718,11 @@ export default function ProductDetailPage({
         setRawMultilingualAttributes(updates.attributes);
         setOriginalTagRefs(tagRefs);
         setOriginalSynonymKeys(synonymKeys);
-        setOriginalDynamicBlocks(dynamicBlocks);
-        if (Array.isArray(data.product.dynamic_blocks)) {
-          setDynamicBlocks(data.product.dynamic_blocks);
-          setOriginalDynamicBlocks(data.product.dynamic_blocks);
-        }
+        const savedDynamicBlocks = Array.isArray(data.product?.dynamic_blocks)
+          ? data.product.dynamic_blocks
+          : dynamicBlocks;
+        setDynamicBlocks(savedDynamicBlocks);
+        setOriginalDynamicBlocks(savedDynamicBlocks);
         setOriginalChannels(data.product.channels || channels);
         setOriginalChannelCategories(data.product.channel_categories || channelCategories);
 

@@ -30,7 +30,7 @@ interface DynamicBlocksEditorProps {
   entityCode: string;
   value: DynamicBlock[];
   onChange: (blocks: DynamicBlock[]) => void;
-  disabled?: boolean;
+  disabled: boolean;
 }
 
 export function DynamicBlocksEditor({ entityCode, value, onChange, disabled }: DynamicBlocksEditorProps) {
