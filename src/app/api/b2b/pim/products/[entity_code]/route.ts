@@ -4,6 +4,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
+import { validateDynamicBlocks } from "@/lib/validation/dynamic-blocks";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -326,6 +327,7 @@ export async function PATCH(
       "has_active_promo",           // Has any active promotion (for filtering)
       "channels",                   // Sales channels (e.g., ["default", "b2c"])
       "channel_categories",         // Per-channel category assignments
+      "dynamic_blocks",             // Per-product rich content blocks (validated below)
     ];
 
     allowedFields.forEach((field) => {
@@ -333,6 +335,17 @@ export async function PATCH(
         updateDoc[field] = updates[field];
       }
     });
+
+    // Validate dynamic_blocks if present (shared validator used by importer + PATCH)
+    if (updateDoc.dynamic_blocks !== undefined) {
+      const { valid, errors } = validateDynamicBlocks(updateDoc.dynamic_blocks);
+      if (!valid) {
+        return NextResponse.json(
+          { error: "Invalid dynamic_blocks", details: errors },
+          { status: 400 }
+        );
+      }
+    }
 
     let sanitizedTagRefs: any[] | null = null;
     if (updates.tag !== undefined) {
