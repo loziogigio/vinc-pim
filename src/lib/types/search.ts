@@ -3,6 +3,8 @@
  * Types for Solr search integration
  */
 
+import type { DynamicBlock } from '@/lib/types/dynamic-blocks';
+
 // ============================================
 // REQUEST TYPES
 // ============================================
@@ -34,6 +36,9 @@ export interface SearchRequest {
   include_faceting?: boolean; // Only products meant for faceting (default: true)
   include_variants?: boolean; // Include variant products (default: true)
   group_variants?: boolean; // Group by parent_entity_code (default: false)
+
+  // Per-product rich content (Mongo-only, gated so the search grid stays lean)
+  include_dynamic_blocks?: boolean; // Attach dynamic_blocks from MongoDB (default: false)
 
   // Grouping options - group results by a specific field
   group?: GroupOptions;
@@ -236,6 +241,9 @@ export interface SolrProduct {
   created_at?: string;
   updated_at?: string;
   published_at?: string;
+
+  // Per-product rich content (NOT indexed in Solr; attached from MongoDB when include_dynamic_blocks is set)
+  dynamic_blocks?: DynamicBlock[];
 }
 
 // Supporting types for enriched response
