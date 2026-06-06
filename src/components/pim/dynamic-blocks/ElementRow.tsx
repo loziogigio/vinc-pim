@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2, Image as ImageIcon, Video, Box, Type, ExternalLink } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { BlockElement, BlockElementKind, MediaElement, TextElement } from "@/lib/types/dynamic-blocks";
+import { normalizeUrl } from "@/lib/validation/dynamic-blocks";
 import { MediaInput } from "./MediaInput";
 
 interface ElementRowProps {
@@ -148,6 +149,9 @@ export function ElementRow({ entityCode, element, onChange, onDelete, disabled }
                 type="text"
                 value={link?.href ?? ""}
                 onChange={(e) => patchLink({ href: e.target.value })}
+                onBlur={() => {
+                  if (link?.href) patchLink({ href: normalizeUrl(link.href) });
+                }}
                 placeholder={t("pages.pim.dynamicBlocks.linkPlaceholder")}
                 disabled={disabled}
                 className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"

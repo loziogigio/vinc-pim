@@ -557,6 +557,7 @@ const en = {
         uploadError: "Failed to upload media. Please try again.",
         external: "External",
         removeMedia: "Remove media",
+        copyUrl: "Copy URL",
         blockCap: "Maximum {{max}} blocks reached",
         elementCap: "Max {{max}}",
         kind: {

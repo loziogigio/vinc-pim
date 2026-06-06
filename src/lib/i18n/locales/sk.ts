@@ -558,6 +558,7 @@ const sk = {
         uploadError: "Nahranie média zlyhalo. Skúste znova.",
         external: "Externé",
         removeMedia: "Odstrániť médium",
+        copyUrl: "Kopírovať URL",
         blockCap: "Dosiahnutý maximálny počet {{max}} blokov",
         elementCap: "Max {{max}}",
         kind: {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, Link as LinkIcon, X, Loader2 } from "lucide-react";
+import { Upload, Link as LinkIcon, X, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { MediaElement } from "@/lib/types/dynamic-blocks";
+import { normalizeUrl } from "@/lib/validation/dynamic-blocks";
 
 interface MediaInputProps {
   entityCode: string;
@@ -24,6 +25,18 @@ export function MediaInput({ entityCode, kind, value, onChange, disabled }: Medi
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [urlDraft, setUrlDraft] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    if (!value?.url) return;
+    try {
+      await navigator.clipboard.writeText(value.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable (e.g. non-secure context) — ignore */
+    }
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -59,7 +72,7 @@ export function MediaInput({ entityCode, kind, value, onChange, disabled }: Medi
   }
 
   function handleAddUrl() {
-    const url = urlDraft.trim();
+    const url = normalizeUrl(urlDraft);
     if (!url) return;
     onChange({ url, is_external_link: true, alt: value?.alt });
     setUrlDraft("");
@@ -79,19 +92,32 @@ export function MediaInput({ entityCode, kind, value, onChange, disabled }: Medi
           ) : (
             <LinkIcon className="h-5 w-5 text-muted-foreground" />
           )}
-          <span className="flex-1 truncate text-xs text-muted-foreground" title={value.url}>
-            {value.url}
-          </span>
-          {value.is_external_link && (
-            <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
-              {t("pages.pim.dynamicBlocks.external")}
-            </span>
-          )}
+          {/* Full, selectable URL — same display whether uploaded or pasted */}
+          <input
+            type="text"
+            readOnly
+            value={value.url}
+            onFocus={(e) => e.currentTarget.select()}
+            title={value.url}
+            className="min-w-0 flex-1 rounded bg-background px-2 py-1 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex-shrink-0 rounded p-1 text-muted-foreground hover:bg-accent"
+            title={t("pages.pim.dynamicBlocks.copyUrl")}
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-green-600" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
           <button
             type="button"
             onClick={handleClear}
             disabled={disabled}
-            className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+            className="flex-shrink-0 p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
             title={t("pages.pim.dynamicBlocks.removeMedia")}
           >
             <X className="h-4 w-4" />
@@ -119,6 +145,13 @@ export function MediaInput({ entityCode, kind, value, onChange, disabled }: Medi
               type="url"
               value={urlDraft}
               onChange={(e) => setUrlDraft(e.target.value)}
+              onBlur={handleAddUrl}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddUrl();
+                }
+              }}
               placeholder={t("pages.pim.dynamicBlocks.urlPlaceholder")}
               disabled={disabled}
               className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"

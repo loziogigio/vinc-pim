@@ -15,10 +15,10 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Layers } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
-import { getEnabledLanguages } from "@/config/languages";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 import { DynamicBlock, DynamicBlockSection } from "@/lib/types/dynamic-blocks";
 import {
   DYNAMIC_BLOCKS_MAX_COUNT,
@@ -35,8 +35,32 @@ interface DynamicBlocksEditorProps {
 
 export function DynamicBlocksEditor({ entityCode, value, onChange, disabled }: DynamicBlocksEditorProps) {
   const { t } = useTranslation();
-  const languages = getEnabledLanguages();
-  const [activeLang, setActiveLang] = useState(languages[0]?.code ?? "it");
+
+  // Language tabs come from the runtime language system (the same source as the
+  // product "Editing Language" selector) — only languages ENABLED in the language
+  // admin are shown, not the full static catalog set.
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const isLoadingLanguages = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const languages = useMemo(
+    () => allLanguages.filter((l) => l.isEnabled),
+    [allLanguages]
+  );
+  const [activeLang, setActiveLang] = useState("it");
+
+  // Load the enabled-language set on mount if it hasn't been fetched yet.
+  useEffect(() => {
+    if (allLanguages.length === 0 && !isLoadingLanguages) {
+      fetchLanguages();
+    }
+  }, [allLanguages.length, isLoadingLanguages, fetchLanguages]);
+
+  // Keep the active tab pinned to an enabled language once the set loads.
+  useEffect(() => {
+    if (languages.length > 0 && !languages.some((l) => l.code === activeLang)) {
+      setActiveLang(languages[0].code);
+    }
+  }, [languages, activeLang]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -115,6 +139,7 @@ export function DynamicBlocksEditor({ entityCode, value, onChange, disabled }: D
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
+              {lang.flag && <span className="mr-1">{lang.flag}</span>}
               {lang.nativeName}
               {count > 0 && (
                 <span className="ml-1 rounded-full bg-muted px-1.5 text-xs text-muted-foreground">{count}</span>

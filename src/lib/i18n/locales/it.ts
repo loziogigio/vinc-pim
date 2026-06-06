@@ -558,6 +558,7 @@ const it = {
         uploadError: "Errore nel caricamento del media. Riprova.",
         external: "Esterno",
         removeMedia: "Rimuovi media",
+        copyUrl: "Copia URL",
         blockCap: "Raggiunto il massimo di {{max}} blocchi",
         elementCap: "Max {{max}}",
         kind: {
