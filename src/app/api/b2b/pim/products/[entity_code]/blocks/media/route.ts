@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getB2BSession } from "@/lib/auth/b2b-session";
-import { uploadMultipleMedia } from "vinc-cdn";
+import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { uploadMultipleImages, uploadMultipleMedia } from "vinc-cdn";
 import { getCdnConfig } from "@/lib/services/cdn-config";
 
 /**
@@ -14,10 +14,11 @@ export async function POST(
   { params }: { params: Promise<{ entity_code: string }> }
 ) {
   try {
-    const session = await getB2BSession();
-    if (!session || !session.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Standard tenant auth integration (session / api-key / bearer) — the same
+    // gate every other B2B route uses. CDN-only route (no tenant DB write), so we
+    // only need a valid auth context, not tenantId specifically.
+    const auth = await requireTenantAuth(req);
+    if (!auth.success) return auth.response;
     const { entity_code } = await params;
     const formData = await req.formData();
     const files = formData.getAll("media") as File[];
@@ -28,9 +29,17 @@ export async function POST(
     if (!config) {
       return NextResponse.json({ error: "CDN not configured" }, { status: 500 });
     }
-    const uploadResults = await uploadMultipleMedia(config, files, `products/${entity_code}/blocks`);
+    // Pick the right uploader by file type: images go through the image pipeline
+    // (uploadMultipleMedia's MEDIA_TYPE_CONFIG only covers document/video/3d-model
+    // and rejects images); videos/3D/documents go through the media pipeline.
+    const folder = `products/${entity_code}/blocks`;
+    const isImage = (files[0]?.type ?? "").startsWith("image/");
+    const uploadResults = isImage
+      ? await uploadMultipleImages(config, files, folder)
+      : await uploadMultipleMedia(config, files, folder);
     const first = uploadResults.successful[0];
     if (!first) {
+      console.error("[blocks/media] upload failed:", JSON.stringify(uploadResults.failed));
       return NextResponse.json({ error: "Media upload failed", failures: uploadResults.failed }, { status: 400 });
     }
     return NextResponse.json({ url: first.url, cdn_key: first.key, is_external_link: false });

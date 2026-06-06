@@ -9,11 +9,18 @@ const { sessionRef, uploadMock } = vi.hoisted(() => {
   return { sessionRef, uploadMock };
 });
 
-vi.mock("@/lib/auth/b2b-session", () => ({ getB2BSession: vi.fn(async () => sessionRef.value ?? { isLoggedIn: false }) }));
+vi.mock("@/lib/auth/tenant-auth", () => ({
+  requireTenantAuth: vi.fn(async () =>
+    sessionRef.value ?? {
+      success: false,
+      response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }),
+    }
+  ),
+}));
 vi.mock("@/lib/services/cdn-config", () => ({
   getCdnConfig: vi.fn(async () => ({ cdnUrl: "https://cdn.example", bucketRegion: "eu-1", bucketName: "bucket", cdnKey: "key", cdnSecret: "secret" })),
 }));
-vi.mock("vinc-cdn", () => ({ uploadMultipleMedia: uploadMock }));
+vi.mock("vinc-cdn", () => ({ uploadMultipleImages: uploadMock, uploadMultipleMedia: uploadMock }));
 
 import { setupTestDatabase, teardownTestDatabase, clearDatabase } from "@/test/conftest";
 import { connectWithModels } from "@/lib/db/connection";
@@ -34,7 +41,7 @@ function uploadReq() {
 describe("POST /api/b2b/pim/products/[entity_code]/blocks/media", () => {
   beforeAll(async () => { await setupTestDatabase(); }, 30000);
   afterAll(async () => { await teardownTestDatabase(); });
-  beforeEach(async () => { await clearDatabase(); sessionRef.value = { isLoggedIn: true, tenantId: "test", userId: "u1" }; uploadMock.mockClear(); });
+  beforeEach(async () => { await clearDatabase(); sessionRef.value = { success: true, tenantId: "test", tenantDb: "vinc-test", userId: "u1" }; uploadMock.mockClear(); });
 
   it("uploads under products/{entity_code}/blocks and returns the descriptor", async () => {
     await seedProduct("536914");
