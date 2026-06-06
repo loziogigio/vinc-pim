@@ -40,6 +40,7 @@ import {
   DiscountStep,
 } from "@/lib/types/pim";
 import { DynamicBlock } from "@/lib/types/dynamic-blocks";
+import { sanitizeDynamicBlocks } from "@/lib/validation/dynamic-blocks";
 import {
   ArrowLeft,
   Save,
@@ -646,8 +647,10 @@ export default function ProductDetailPage({
       // Add synonym keys
       updates.synonym_keys = synonymKeys;
 
-      // Add dynamic blocks
-      updates.dynamic_blocks = dynamicBlocks;
+      // Add dynamic blocks — sanitize first so an in-progress/empty element
+      // (e.g. a freshly-added image with no URL yet) doesn't fail PATCH validation
+      // and wedge the whole product save.
+      updates.dynamic_blocks = sanitizeDynamicBlocks(dynamicBlocks);
 
       // Add channels & channel categories if changed
       if (JSON.stringify(channels) !== JSON.stringify(originalChannels)) {

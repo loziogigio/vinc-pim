@@ -1,6 +1,86 @@
 import { describe, it, expect } from "vitest";
-import { validateDynamicBlocks } from "@/lib/validation/dynamic-blocks";
+import { validateDynamicBlocks, sanitizeDynamicBlocks } from "@/lib/validation/dynamic-blocks";
 import type { DynamicBlock } from "@/lib/types/dynamic-blocks";
+
+describe("unit: sanitizeDynamicBlocks", () => {
+  const block = (elements: any[]): any => ({
+    id: "blk", lang: "it", section: 1, order: 0, columns: 2, is_active: true, elements,
+  });
+
+  it("drops media elements with a blank url and keeps complete ones", () => {
+    const out = sanitizeDynamicBlocks([
+      block([
+        { id: "e1", kind: "image", media: { url: "" } },            // blank -> dropped
+        { id: "e2", kind: "image", media: { url: "  " } },          // whitespace -> dropped
+        { id: "e3", kind: "image", media: { url: "https://cdn/x.png" } }, // kept
+      ]),
+    ]);
+    expect(out[0].elements.map((e) => e.id)).toEqual(["e3"]);
+  });
+
+  it("drops text elements with blank text", () => {
+    const out = sanitizeDynamicBlocks([
+      block([
+        { id: "e1", kind: "text", text: "" },        // dropped
+        { id: "e2", kind: "text", text: "hello" },   // kept
+      ]),
+    ]);
+    expect(out[0].elements.map((e) => e.id)).toEqual(["e2"]);
+  });
+
+  it("strips a blank link but keeps the element", () => {
+    const out = sanitizeDynamicBlocks([
+      block([{ id: "e1", kind: "image", media: { url: "https://cdn/x.png" }, link: { href: "", new_tab: false } }]),
+    ]);
+    expect(out[0].elements).toHaveLength(1);
+    expect((out[0].elements[0] as any).link).toBeUndefined();
+  });
+
+  it("result passes validateDynamicBlocks even when the input had blank elements", () => {
+    const sanitized = sanitizeDynamicBlocks([
+      block([
+        { id: "e1", kind: "image", media: { url: "" } },
+        { id: "e2", kind: "image", media: { url: "https://cdn/x.png" } },
+      ]),
+    ]);
+    expect(validateDynamicBlocks(sanitized)).toEqual({ valid: true, errors: [] });
+  });
+
+  it("returns [] for a non-array input", () => {
+    expect(sanitizeDynamicBlocks(null)).toEqual([]);
+  });
+
+  it("prepends https:// to a scheme-less link href (the reported case) and validates", () => {
+    const out = sanitizeDynamicBlocks([
+      block([
+        {
+          id: "e1",
+          kind: "image",
+          media: { url: "https://cdn/x.png" },
+          link: { href: "efakturuj.sk/it", new_tab: true },
+        },
+      ]),
+    ]);
+    expect((out[0].elements[0] as any).link.href).toBe("https://efakturuj.sk/it");
+    expect(validateDynamicBlocks(out)).toEqual({ valid: true, errors: [] });
+  });
+
+  it("prepends https:// to a scheme-less media url and leaves schemed/relative ones alone", () => {
+    const out = sanitizeDynamicBlocks([
+      block([
+        { id: "e1", kind: "image", media: { url: "cdn.example.com/a.png" } }, // -> https://
+        { id: "e2", kind: "image", media: { url: "https://cdn/keep.png" } }, // unchanged
+        { id: "e3", kind: "image", media: { url: "/uploads/rel.png" } }, // site-relative, unchanged
+      ]),
+    ]);
+    const urls = out[0].elements.map((e) => (e as any).media.url);
+    expect(urls).toEqual([
+      "https://cdn.example.com/a.png",
+      "https://cdn/keep.png",
+      "/uploads/rel.png",
+    ]);
+  });
+});
 import {
   DYNAMIC_BLOCKS_MAX_COUNT,
   DYNAMIC_BLOCK_MAX_ELEMENTS,

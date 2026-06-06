@@ -340,6 +340,7 @@ export async function PATCH(
     if (updateDoc.dynamic_blocks !== undefined) {
       const { valid, errors } = validateDynamicBlocks(updateDoc.dynamic_blocks);
       if (!valid) {
+        console.error("[dynamic_blocks] PATCH validation failed:", errors);
         return NextResponse.json(
           { error: "Invalid dynamic_blocks", details: errors },
           { status: 400 }
