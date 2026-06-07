@@ -31,12 +31,16 @@ import type { DiscoveredFacetField } from "@/lib/search/facet-discovery";
 // Defaults
 // ============================================
 
+// Order mirrors the storefront's DEFAULT_FACET_ORDER (vinc-b2b
+// framework/basic-rest/utils/filters.ts) so "Reset to defaults" reproduces the
+// storefront's no-config render order: promo → novità → brand → category →
+// product type → stock.
 export const DEFAULT_FACET_ENTRIES: IB2BPortalFacetEntry[] = [
-  { field: "category_ancestors", visible: true },
-  { field: "brand_id", visible: true },
-  { field: "product_type_code", visible: true },
   { field: "promo_type", visible: true },
   { field: "attribute_is_new_b", visible: true },
+  { field: "brand_id", visible: true },
+  { field: "category_ancestors", visible: true },
+  { field: "product_type_code", visible: true },
   { field: "stock_status", visible: true },
 ];
 
