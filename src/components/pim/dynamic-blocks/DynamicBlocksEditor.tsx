@@ -25,6 +25,7 @@ import {
   DYNAMIC_BLOCK_SECTIONS,
 } from "@/lib/constants/dynamic-blocks";
 import { BlockCard } from "./BlockCard";
+import { LanguageTabs } from "@/components/common/LanguageTabs";
 
 interface DynamicBlocksEditorProps {
   entityCode: string;
@@ -125,29 +126,12 @@ export function DynamicBlocksEditor({ entityCode, value, onChange, disabled }: D
       </div>
 
       {/* Catalog-language tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-border">
-        {languages.map((lang) => {
-          const count = value.filter((b) => b.lang === lang.code).length;
-          return (
-            <button
-              key={lang.code}
-              type="button"
-              onClick={() => setActiveLang(lang.code)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition ${
-                activeLang === lang.code
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {lang.flag && <span className="mr-1">{lang.flag}</span>}
-              {lang.nativeName}
-              {count > 0 && (
-                <span className="ml-1 rounded-full bg-muted px-1.5 text-xs text-muted-foreground">{count}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <LanguageTabs
+        languages={languages}
+        active={activeLang}
+        onChange={setActiveLang}
+        countFor={(code) => value.filter((b) => b.lang === code).length}
+      />
 
       {/* Sections for the active language */}
       <div className="space-y-6">
