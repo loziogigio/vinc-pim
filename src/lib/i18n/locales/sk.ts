@@ -5014,6 +5014,23 @@ const sk = {
       save: "Uložiť CSS",
       saving: "Ukladá sa...",
     },
+    facetsSection: {
+      title: "Filtre",
+      description:
+        "Vyberte, ktoré filtre sa zobrazia v bočnom paneli a ich poradie.",
+      configured: "Zobrazené filtre",
+      available: "Dostupné filtre",
+      add: "Pridať",
+      remove: "Odstrániť",
+      visible: "Viditeľné",
+      resetDefaults: "Obnoviť predvolené",
+      sourceStatic: "štandard",
+      sourceAttribute: "atribút",
+      sourceSpec: "špecifikácia",
+      loadError:
+        "Nepodarilo sa načítať dynamické filtre; zobrazené len štandardné.",
+      empty: "Žiadne filtre — používajú sa predvolené.",
+    },
     installErpSettings: {
       title: "Inštalovať nastavenia ERP",
       descriptionPrefix: "Vytvorí model",

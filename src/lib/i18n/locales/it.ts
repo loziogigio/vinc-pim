@@ -5038,6 +5038,23 @@ const it = {
       save: "Salva CSS",
       saving: "Salvataggio...",
     },
+    facetsSection: {
+      title: "Filtri",
+      description:
+        "Scegli quali filtri appaiono nella barra laterale e il loro ordine.",
+      configured: "Filtri mostrati",
+      available: "Filtri disponibili",
+      add: "Aggiungi",
+      remove: "Rimuovi",
+      visible: "Visibile",
+      resetDefaults: "Ripristina predefiniti",
+      sourceStatic: "standard",
+      sourceAttribute: "attributo",
+      sourceSpec: "spec",
+      loadError:
+        "Impossibile caricare i filtri dinamici; mostrati solo i filtri standard.",
+      empty: "Nessun filtro configurato — uso i valori predefiniti.",
+    },
     installErpSettings: {
       title: "Installa impostazioni ERP",
       descriptionPrefix: "Crea il modello",

@@ -5041,6 +5041,23 @@ const en = {
       save: "Save CSS",
       saving: "Saving...",
     },
+    facetsSection: {
+      title: "Facets",
+      description:
+        "Choose which filters appear in the storefront sidebar and their order.",
+      configured: "Shown filters",
+      available: "Available filters",
+      add: "Add",
+      remove: "Remove",
+      visible: "Visible",
+      resetDefaults: "Reset to defaults",
+      sourceStatic: "standard",
+      sourceAttribute: "attribute",
+      sourceSpec: "spec",
+      loadError:
+        "Could not load dynamic attribute/spec filters; showing standard filters only.",
+      empty: "No filters configured — using storefront defaults.",
+    },
     installErpSettings: {
       title: "Install ERP Settings",
       descriptionPrefix: "Creates the",
