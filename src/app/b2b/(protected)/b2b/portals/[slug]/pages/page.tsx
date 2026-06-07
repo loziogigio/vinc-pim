@@ -14,7 +14,7 @@
  *     (cleared on the next successful write) instead of a generic error toast.
  */
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -29,6 +29,8 @@ import {
   Home,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { useLanguageStore } from "@/lib/stores/languageStore";
+import { LanguageTabs } from "@/components/common/LanguageTabs";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,7 @@ interface PageItem {
   _id: string;
   slug: string;
   title: string;
+  lang: string;
   status: PageStatus;
   show_in_nav: boolean;
   sort_order: number;
@@ -68,6 +71,23 @@ export default function B2BPagesManagementPage({
   // When create/PATCH/DELETE/duplicate fails because the tenant is not migrated,
   // we show a dedicated hint (run the migration script) instead of a generic error.
   const [notMigrated, setNotMigrated] = useState(false);
+
+  // Language store
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const langsLoading = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const currentLanguage = useLanguageStore((s) => s.currentLanguage);
+  const enabledLanguages = useMemo(() => allLanguages.filter((l) => l.isEnabled), [allLanguages]);
+  const [filterLang, setFilterLang] = useState<string>("");
+  const [newLang, setNewLang] = useState<string>("");
+
+  useEffect(() => {
+    if (allLanguages.length === 0 && !langsLoading) fetchLanguages();
+  }, [allLanguages.length, langsLoading, fetchLanguages]);
+
+  useEffect(() => {
+    if (!newLang && enabledLanguages.length) setNewLang(currentLanguage || enabledLanguages[0].code);
+  }, [enabledLanguages, currentLanguage, newLang]);
 
   // Search filters
   const [filterTitle, setFilterTitle] = useState("");
@@ -127,7 +147,7 @@ export default function B2BPagesManagementPage({
       const res = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle.trim(), slug: newSlug.trim() }),
+        body: JSON.stringify({ title: newTitle.trim(), slug: newSlug.trim(), lang: newLang }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -140,6 +160,7 @@ export default function B2BPagesManagementPage({
       setShowAddDialog(false);
       setNewTitle("");
       setNewSlug("");
+      setNewLang(currentLanguage || "");
       setSuccess(t("pages.b2bPortal.pagesManagement.pageCreated"));
       await fetchPages();
     } catch (err) {
@@ -242,6 +263,7 @@ export default function B2BPagesManagementPage({
   };
 
   const filteredPages = pages.filter((pg) => {
+    if (filterLang && pg.lang !== filterLang) return false;
     if (filterTitle && !pg.title.toLowerCase().includes(filterTitle.toLowerCase())) return false;
     if (filterSlug && !pg.slug.toLowerCase().includes(filterSlug.toLowerCase())) return false;
     if (filterStatus && pg.status !== filterStatus) return false;
@@ -311,6 +333,18 @@ export default function B2BPagesManagementPage({
         <div className="rounded-[0.428rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">
           {success}
         </div>
+      )}
+
+      {/* Language tabs */}
+      {!isLoading && enabledLanguages.length > 1 && (
+        <LanguageTabs
+          languages={enabledLanguages}
+          active={filterLang}
+          onChange={setFilterLang}
+          includeAll
+          allLabel={t("pages.b2bPortal.pagesManagement.allLanguages")}
+          countFor={(code) => pages.filter((p) => p.lang === code).length}
+        />
       )}
 
       {/* Filters */}
@@ -385,6 +419,7 @@ export default function B2BPagesManagementPage({
                 <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2bPortal.pagesManagement.colContent")}</th>
                 <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2bPortal.pagesManagement.colShowInNav")}</th>
                 <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2bPortal.pagesManagement.colLastSaved")}</th>
+                <th className="px-4 py-3 text-left font-medium text-foreground">{t("pages.b2bPortal.pagesManagement.language")}</th>
                 <th className="px-4 py-3 text-right font-medium text-foreground">{t("common.actions")}</th>
               </tr>
             </thead>
@@ -433,6 +468,14 @@ export default function B2BPagesManagementPage({
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {formatDate(pg.last_saved_at || pg.updated_at)}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {(() => {
+                      const lang = enabledLanguages.find((l) => l.code === pg.lang);
+                      return lang
+                        ? <>{lang.flag && <span className="mr-1">{lang.flag}</span>}{lang.nativeName || lang.name}</>
+                        : pg.lang;
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -519,6 +562,20 @@ export default function B2BPagesManagementPage({
                   {t("pages.b2bPortal.pagesManagement.urlPath")}: /{newSlug || "..."}
                 </p>
               </div>
+              <div>
+                <label className="text-sm font-medium text-foreground/90">
+                  {t("pages.b2bPortal.pagesManagement.language")}
+                </label>
+                <select
+                  value={newLang}
+                  onChange={(e) => setNewLang(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-border px-3 text-sm"
+                >
+                  {enabledLanguages.map((l) => (
+                    <option key={l.code} value={l.code}>{l.nativeName || l.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             {notMigrated && (
               <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
@@ -533,6 +590,7 @@ export default function B2BPagesManagementPage({
                   setShowAddDialog(false);
                   setNewTitle("");
                   setNewSlug("");
+                  setNewLang(currentLanguage || "");
                   setNotMigrated(false);
                 }}
               >
@@ -592,6 +650,22 @@ export default function B2BPagesManagementPage({
                       {t("pages.b2bPortal.pagesManagement.slugChangeWarning")}
                     </span>
                   )}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground/90">
+                  {t("pages.b2bPortal.pagesManagement.language")}
+                </label>
+                <Input
+                  value={(() => {
+                    const lang = enabledLanguages.find((l) => l.code === renameTarget.lang);
+                    return lang ? `${lang.flag ? lang.flag + " " : ""}${lang.nativeName || lang.name}` : renameTarget.lang;
+                  })()}
+                  disabled
+                  className="mt-1 cursor-not-allowed opacity-70"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("pages.b2bPortal.pagesManagement.langReadOnly")}
                 </p>
               </div>
             </div>

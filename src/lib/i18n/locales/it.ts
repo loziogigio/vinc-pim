@@ -4710,6 +4710,9 @@ const it = {
         rename: "Rinomina",
         slugChangeWarning: "(cambiare lo slug aggiornerà i riferimenti del template e dei moduli)",
         unpublishedChanges: "Modifiche non pubblicate",
+        language: "Lingua",
+        allLanguages: "Tutte",
+        langReadOnly: "La lingua non è modificabile qui — crea una nuova pagina per un'altra lingua.",
       },
       forms: {
         title: "Moduli",

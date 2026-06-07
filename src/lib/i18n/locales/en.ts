@@ -4713,6 +4713,9 @@ const en = {
         rename: "Rename",
         slugChangeWarning: "(changing slug will update template & form references)",
         unpublishedChanges: "Unpublished changes",
+        language: "Language",
+        allLanguages: "All",
+        langReadOnly: "Language can't be changed here — create a new page for another language.",
       },
       forms: {
         title: "Forms",

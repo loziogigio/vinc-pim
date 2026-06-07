@@ -4686,6 +4686,9 @@ const sk = {
         rename: "Premenovať",
         slugChangeWarning: "(zmena slugu aktualizuje referencie šablóny a formulárov)",
         unpublishedChanges: "Nepublikované zmeny",
+        language: "Jazyk",
+        allLanguages: "Všetky",
+        langReadOnly: "Jazyk tu nie je možné zmeniť — pre iný jazyk vytvorte novú stránku.",
       },
       forms: {
         title: "Formuláre",
