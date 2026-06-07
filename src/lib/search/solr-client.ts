@@ -237,3 +237,46 @@ export function getSolrClient(): SolrClient {
   }
   return solrClientInstance;
 }
+
+// ============================================
+// LUKE HANDLER
+// ============================================
+
+/**
+ * Fetch the field map from Solr's Luke handler for the tenant's collection.
+ * Collection is `vinc-${tenantId}` per the SolrCloud naming convention.
+ * Returns the `fields` object from the Luke response, or `{}` on missing data.
+ */
+export async function fetchSolrLukeFields(
+  tenantId: string,
+): Promise<Record<string, unknown>> {
+  const config = getSolrConfig();
+  const collection = `vinc-${tenantId}`;
+  const url = `${config.url}/${collection}/admin/luke?numTerms=0&wt=json`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new SolrError(
+        `Luke handler failed: ${response.status}`,
+        response.status,
+        await response.text(),
+      );
+    }
+
+    const json = await response.json();
+    return (json.fields ?? {}) as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof SolrError) {
+      throw error;
+    }
+    throw new SolrError(
+      `Luke handler request failed: ${(error as Error).message}`,
+      0,
+      (error as Error).message,
+    );
+  }
+}
