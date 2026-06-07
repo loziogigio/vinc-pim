@@ -10,11 +10,15 @@
  * write-gate as a dedicated hint instead of a generic error.
  */
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Pencil, FileText, Inbox } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { LanguageTabs } from "@/components/common/LanguageTabs";
+import { useLanguageStore } from "@/lib/stores/languageStore";
+import { getDefaultLanguage } from "@/config/languages";
+import { headerPublishPatch, footerPublishPatch } from "@/lib/services/portal-section-lang";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { GeneralSection, parseDomainEntry, formatDomain } from "@/components/b2c/storefront-settings/general-section";
 import { BrandingSection } from "@/components/b2c/storefront-settings/branding-section";
@@ -38,8 +42,12 @@ interface Portal {
   branding: IB2CStorefrontBranding;
   header_config?: HeaderConfig;
   header_config_draft?: HeaderConfig;
+  header_config_by_lang?: Record<string, HeaderConfig>;
+  header_config_draft_by_lang?: Record<string, HeaderConfig>;
   footer: IB2CStorefrontFooter;
   footer_draft?: IB2CStorefrontFooter;
+  footer_by_lang?: Record<string, IB2CStorefrontFooter>;
+  footer_draft_by_lang?: Record<string, IB2CStorefrontFooter>;
   meta_tags?: IB2CStorefrontMetaTags;
   custom_scripts?: IB2CCustomScript[];
   custom_css?: string;
@@ -84,6 +92,19 @@ export default function PortalDetailPage({
   // Branding
   const [branding, setBranding] = useState<IB2CStorefrontBranding>({});
 
+  // Language state (per-language header/footer tabs)
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const langsLoading = useLanguageStore((s) => s.isLoading);
+  const enabledLanguages = useMemo(() => allLanguages.filter((l) => l.isEnabled), [allLanguages]);
+  const DEFAULT_LANG = getDefaultLanguage().code;
+  const [headerLang, setHeaderLang] = useState(DEFAULT_LANG);
+  const [footerLang, setFooterLang] = useState(DEFAULT_LANG);
+  const [headerDraftByLang, setHeaderDraftByLang] = useState<Record<string, HeaderConfig>>({});
+  const [headerPubByLang, setHeaderPubByLang] = useState<Record<string, HeaderConfig>>({});
+  const [footerDraftByLang, setFooterDraftByLang] = useState<Record<string, IB2CStorefrontFooter>>({});
+  const [footerPubByLang, setFooterPubByLang] = useState<Record<string, IB2CStorefrontFooter>>({});
+
   // Header (row/block/widget builder)
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(EMPTY_HEADER_CONFIG);
   const [headerConfigDraft, setHeaderConfigDraft] = useState<HeaderConfig>(EMPTY_HEADER_CONFIG);
@@ -103,6 +124,11 @@ export default function PortalDetailPage({
 
   // Facets
   const [facetConfig, setFacetConfig] = useState<IB2BPortalFacetConfig | undefined>(undefined);
+
+  // Load languages
+  useEffect(() => {
+    if (allLanguages.length === 0 && !langsLoading) fetchLanguages();
+  }, [allLanguages.length, langsLoading, fetchLanguages]);
 
   // Load portal
   useEffect(() => {
@@ -124,6 +150,10 @@ export default function PortalDetailPage({
           setHeaderConfigDraft(p.header_config_draft || p.header_config || DEFAULT_B2C_HEADER_CONFIG);
           setFooter(p.footer || {});
           setFooterDraft(p.footer_draft ?? p.footer ?? {});
+          setHeaderPubByLang(p.header_config_by_lang || {});
+          setHeaderDraftByLang(p.header_config_draft_by_lang || {});
+          setFooterPubByLang(p.footer_by_lang || {});
+          setFooterDraftByLang(p.footer_draft_by_lang || {});
           setMetaTags(p.meta_tags || {});
           setCustomScripts(p.custom_scripts || []);
           setCustomCss(p.custom_css || "");
@@ -161,6 +191,35 @@ export default function PortalDetailPage({
     }
   }
 
+  // Default lang edits the base draft; other langs edit their stored slot, or
+  // fall back to the base draft as the clone-from-default starting point.
+  const activeHeaderDraft = headerLang === DEFAULT_LANG
+    ? headerConfigDraft
+    : headerDraftByLang[headerLang] ?? headerConfigDraft;
+  const activeFooterDraft = footerLang === DEFAULT_LANG
+    ? footerDraft
+    : footerDraftByLang[footerLang] ?? footerDraft;
+
+  // Active published value for the selected language (mirrors the draft
+  // derivation) so the section's "unpublished changes" badge and
+  // "Revert to Published" use the ACTIVE language's published config, not the
+  // default language's. Unconfigured languages fall back to the default base.
+  const activeHeaderPub = headerLang === DEFAULT_LANG
+    ? headerConfig
+    : headerPubByLang[headerLang] ?? headerConfig;
+  const activeFooterPub = footerLang === DEFAULT_LANG
+    ? footer
+    : footerPubByLang[footerLang] ?? footer;
+
+  function handleHeaderDraftChange(next: HeaderConfig) {
+    if (headerLang === DEFAULT_LANG) setHeaderConfigDraft(next);
+    else setHeaderDraftByLang((m) => ({ ...m, [headerLang]: next }));
+  }
+  function handleFooterDraftChange(next: IB2CStorefrontFooter) {
+    if (footerLang === DEFAULT_LANG) setFooterDraft(next);
+    else setFooterDraftByLang((m) => ({ ...m, [footerLang]: next }));
+  }
+
   // Save all current state
   async function handleSave() {
     setSaving(true);
@@ -179,8 +238,12 @@ export default function PortalDetailPage({
           branding,
           header_config: headerConfig,
           header_config_draft: headerConfigDraft,
+          header_config_by_lang: headerPubByLang,
+          header_config_draft_by_lang: headerDraftByLang,
           footer,
           footer_draft: footerDraft,
+          footer_by_lang: footerPubByLang,
+          footer_draft_by_lang: footerDraftByLang,
           meta_tags: metaTags,
           custom_scripts: customScripts,
           custom_css: customCss,
@@ -198,16 +261,19 @@ export default function PortalDetailPage({
     }
   }
 
-  // Publish header: copy draft to published and save
+  // Publish header for the active language: copy draft to published and save.
   async function handlePublishHeader() {
-    setHeaderConfig(headerConfigDraft);
+    const patch = headerPublishPatch(headerLang, activeHeaderDraft, headerPubByLang, headerDraftByLang);
+    if (headerLang === DEFAULT_LANG) {
+      setHeaderConfig(activeHeaderDraft);
+    } else {
+      setHeaderPubByLang((m) => ({ ...m, [headerLang]: activeHeaderDraft }));
+      setHeaderDraftByLang((m) => ({ ...m, [headerLang]: activeHeaderDraft }));
+    }
     setSaving(true);
     setSuccess("");
     try {
-      const ok = await patchPortal(
-        { header_config: headerConfigDraft, header_config_draft: headerConfigDraft },
-        "pages.b2bPortal.detail.failedToPublishHeader"
-      );
+      const ok = await patchPortal(patch, "pages.b2bPortal.detail.failedToPublishHeader");
       if (ok) {
         setSuccess(t("pages.b2bPortal.detail.headerPublished"));
         setTimeout(() => setSuccess(""), 3000);
@@ -217,18 +283,21 @@ export default function PortalDetailPage({
     }
   }
 
-  // Publish footer: copy draft to published and save
+  // Publish footer for the active language: copy draft to published and save.
   async function handlePublishFooter() {
     // When publishing, promote footer_html_draft to footer_html
-    const published = { ...footerDraft, footer_html: footerDraft.footer_html_draft || undefined };
-    setFooter(published);
+    const published = { ...activeFooterDraft, footer_html: activeFooterDraft.footer_html_draft || undefined };
+    const patch = footerPublishPatch(footerLang, published, footerPubByLang, footerDraftByLang);
+    if (footerLang === DEFAULT_LANG) {
+      setFooter(published);
+    } else {
+      setFooterPubByLang((m) => ({ ...m, [footerLang]: published }));
+      setFooterDraftByLang((m) => ({ ...m, [footerLang]: published }));
+    }
     setSaving(true);
     setSuccess("");
     try {
-      const ok = await patchPortal(
-        { footer: published, footer_draft: footerDraft },
-        "pages.b2bPortal.detail.failedToPublishFooter"
-      );
+      const ok = await patchPortal(patch, "pages.b2bPortal.detail.failedToPublishFooter");
       if (ok) {
         setSuccess(t("pages.b2bPortal.detail.footerPublished"));
         setTimeout(() => setSuccess(""), 3000);
@@ -346,26 +415,36 @@ export default function PortalDetailPage({
         )}
 
         {activeSection === "header" && (
-          <HeaderSection
-            headerConfig={headerConfig}
-            headerConfigDraft={headerConfigDraft}
-            onDraftChange={setHeaderConfigDraft}
-            onPublish={handlePublishHeader}
-            saving={saving}
-            onSave={handleSave}
-            channel={channel}
-          />
+          <div className="space-y-4">
+            {enabledLanguages.length > 1 && (
+              <LanguageTabs languages={enabledLanguages} active={headerLang} onChange={setHeaderLang} />
+            )}
+            <HeaderSection
+              headerConfig={activeHeaderPub}
+              headerConfigDraft={activeHeaderDraft}
+              onDraftChange={handleHeaderDraftChange}
+              onPublish={handlePublishHeader}
+              saving={saving}
+              onSave={handleSave}
+              channel={channel}
+            />
+          </div>
         )}
 
         {activeSection === "footer" && (
-          <FooterSection
-            footer={footer}
-            footerDraft={footerDraft}
-            onDraftChange={setFooterDraft}
-            onPublish={handlePublishFooter}
-            saving={saving}
-            onSave={handleSave}
-          />
+          <div className="space-y-4">
+            {enabledLanguages.length > 1 && (
+              <LanguageTabs languages={enabledLanguages} active={footerLang} onChange={setFooterLang} />
+            )}
+            <FooterSection
+              footer={activeFooterPub}
+              footerDraft={activeFooterDraft}
+              onDraftChange={handleFooterDraftChange}
+              onPublish={handlePublishFooter}
+              saving={saving}
+              onSave={handleSave}
+            />
+          </div>
         )}
 
         {activeSection === "seo" && (
