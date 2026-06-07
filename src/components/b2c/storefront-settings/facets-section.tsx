@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -26,6 +27,7 @@ import type {
   IB2BPortalFacetEntry,
 } from "@/lib/types/b2b-portal";
 import type { DiscoveredFacetField } from "@/lib/search/facet-discovery";
+import { fetchFacetFields } from "@/lib/search/facet-fields-client";
 
 // ============================================
 // Defaults
@@ -177,6 +179,13 @@ export function FacetsSection({
   onSave,
 }: FacetsSectionProps) {
   const { t } = useTranslation();
+  const pathname = usePathname() || "";
+  // Tenant is encoded in the admin URL prefix (/{tenant}/b2b/...). The proxy
+  // requires it as the X-Tenant-ID header for session calls to /api/search/*.
+  const tenantId =
+    pathname.match(/^\/([^/]+)\/b2b/)?.[1] ||
+    pathname.match(/^\/([^/]+)\//)?.[1] ||
+    "";
   const [discovered, setDiscovered] = useState<DiscoveredFacetField[]>([]);
   const [loadError, setLoadError] = useState(false);
 
@@ -189,27 +198,19 @@ export function FacetsSection({
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/search/facet-fields", {
-          cache: "no-store",
-        });
-        if (!res.ok) {
-          if (!cancelled) setLoadError(true);
-          return;
-        }
-        const data = await res.json();
+    fetchFacetFields(tenantId)
+      .then(({ fields, degraded }) => {
         if (cancelled) return;
-        setDiscovered(Array.isArray(data.fields) ? data.fields : []);
-        setLoadError(Boolean(data.degraded));
-      } catch {
+        setDiscovered(fields);
+        setLoadError(degraded);
+      })
+      .catch(() => {
         if (!cancelled) setLoadError(true);
-      }
-    })();
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tenantId]);
 
   const entries = facetConfig?.entries ?? [];
 
