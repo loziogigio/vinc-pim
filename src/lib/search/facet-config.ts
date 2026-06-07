@@ -86,6 +86,13 @@ export const FACET_FIELDS_CONFIG: Record<string, FacetFieldConfig> = {
     label: 'Canale',
   },
 
+  // Promotion type (typed list — more precise than the has_active_promo flag).
+  // Rendered on the storefront sidebar; kept discoverable so admins can re-add it.
+  promo_type: {
+    type: 'flat',
+    label: 'Promozione',
+  },
+
   // Boolean facets
   has_active_promo: {
     type: 'boolean',
