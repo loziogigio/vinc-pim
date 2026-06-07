@@ -85,9 +85,16 @@ export default function B2BPagesManagementPage({
     if (allLanguages.length === 0 && !langsLoading) fetchLanguages();
   }, [allLanguages.length, langsLoading, fetchLanguages]);
 
-  useEffect(() => {
-    if (!newLang && enabledLanguages.length) setNewLang(currentLanguage || enabledLanguages[0].code);
-  }, [enabledLanguages, currentLanguage, newLang]);
+  // The create dialog's language follows the active language tab so the two
+  // controls never drift out of sync. On the "All" tab (no filterLang) we fall
+  // back to the UI's current language, then the first enabled language.
+  const defaultNewLang = () =>
+    filterLang || currentLanguage || enabledLanguages[0]?.code || "";
+
+  const openAddDialog = () => {
+    setNewLang(defaultNewLang());
+    setShowAddDialog(true);
+  };
 
   // Search filters
   const [filterTitle, setFilterTitle] = useState("");
@@ -305,7 +312,7 @@ export default function B2BPagesManagementPage({
             {t("pages.b2bPortal.pagesManagement.homeBuilder")}
           </Link>
           <Button
-            onClick={() => setShowAddDialog(true)}
+            onClick={openAddDialog}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
