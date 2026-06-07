@@ -218,6 +218,8 @@ export const TRIGGER_CATEGORY_MAP: Record<NotificationTrigger, NotificationCateg
   // Campaign
   campaign_product: "product",
   campaign_generic: "generic",
+  // PDS
+  pds_subject_invite: "generic",
 };
 
 /**

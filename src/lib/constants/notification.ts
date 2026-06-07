@@ -157,6 +157,8 @@ export const NOTIFICATION_TRIGGERS = [
   "subscription_cancelled",
   "subscription_payment_failed",
   "subscription_expiring",
+  // PDS (eFakturuj / Slovak Finančná správa)
+  "pds_subject_invite",
   // Custom
   "custom",
 ] as const;
@@ -188,6 +190,7 @@ export const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   subscription_cancelled: "Abbonamento Cancellato",
   subscription_payment_failed: "Pagamento Abbonamento Fallito",
   subscription_expiring: "Abbonamento in Scadenza",
+  pds_subject_invite: "PDS Subject Invite (eFakturuj)",
   custom: "Custom Template",
 };
 

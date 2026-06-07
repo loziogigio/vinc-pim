@@ -81,6 +81,7 @@ const TRIGGER_VARIABLES: Record<string, string[]> = {
   newsletter: ["customer_name"],
   campaign_product: ["customer_name"],
   campaign_generic: ["customer_name"],
+  pds_subject_invite: ["customer_name", "company_name", "dic", "login_url", "shop_name"],
   custom: [],
 };
 
