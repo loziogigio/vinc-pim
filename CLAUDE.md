@@ -141,6 +141,17 @@ export function MyComponent() {
 
 `VINC_` prefix for project-specific: `VINC_MONGO_URL`, `VINC_TENANT_ID`, `SOLR_ENABLED`, `SOLR_URL`
 
+**Worker retention knobs** (runtime-only — set on the `vinc-cs-worker` service in the deploy stack; read once at worker start, so a redeploy/restart applies them, no rebuild). `0` for a `KEEP_DAYS` var disables the age window, making the matching `KEEP_LAST_N` a hard count cap:
+
+| Variable | Default | Controls |
+| --- | --- | --- |
+| `VINC_IMPORT_JOB_KEEP_DAYS` | 30 | `importjobs`/`associationjobs` — keep run-records newer than N days (0 = no age window) |
+| `VINC_IMPORT_JOB_KEEP_LAST_N` | 1000 | `importjobs`/`associationjobs` — always keep the newest N records per collection |
+| `VINC_PIM_VERSION_KEEP_DAYS` | 180 | `pimproducts` — keep versions newer than N days (0 = no age window) |
+| `VINC_PIM_VERSION_KEEP_LAST_N` | 10 | `pimproducts` — always keep the newest N versions per product |
+
+To drain a tenant whose `importjobs` have bloated (all recent → never aged out): deploy the worker once with `VINC_IMPORT_JOB_KEEP_DAYS=0` (keeps newest 1000 per collection), then restore to `30` (or e.g. `7`). Pruning these only removes the audit/error history of old import runs — never products or catalog data.
+
 ## Multi-Tenant Database Access
 
 Each tenant has its own database (`vinc-{tenant-id}`).

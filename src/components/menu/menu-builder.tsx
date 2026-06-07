@@ -38,6 +38,7 @@ export interface MenuItem {
   type: string;
   reference_id?: string;
   label?: string;
+  label_i18n?: Record<string, string>;
   url?: string;
   icon?: string;
   rich_text?: string;

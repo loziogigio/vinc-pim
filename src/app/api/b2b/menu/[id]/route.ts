@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { invalidateB2CCache } from "@/lib/cache/redis-client";
+import { normalizeLabelI18n } from "@/lib/utils/menu-i18n";
 
 /**
  * GET /api/b2b/menu/[id]
@@ -112,6 +113,11 @@ export async function PATCH(
         }
       }
     });
+
+    // Per-language label overrides — normalize and clear (null) when empty.
+    if (body.label_i18n !== undefined) {
+      updateData.label_i18n = normalizeLabelI18n(body.label_i18n) ?? null;
+    }
 
     // Handle parent change (moving in hierarchy)
     if (body.parent_id !== undefined && body.parent_id !== menuItem.parent_id) {

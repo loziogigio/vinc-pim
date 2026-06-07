@@ -30,7 +30,8 @@ export interface IMenuItem extends Document {
   reference_id?: string; // ID of the entity (collection_id, category_id, etc.)
 
   // Display settings
-  label?: string; // Custom label (overrides entity name if provided)
+  label?: string; // Custom label (overrides entity name if provided) — default/fallback
+  label_i18n?: Record<string, string>; // Per-language label overrides, keyed by language code
   url?: string; // Custom URL (for type="url") or external link
   icon?: string; // Optional icon class or SVG
   rich_text?: string; // Rich text description (for search, promotions, etc.)
@@ -110,6 +111,12 @@ const MenuItemSchema = new Schema<IMenuItem>(
     label: {
       type: String,
       trim: true,
+    },
+    // Per-language label overrides: { en: "Products", it: "Prodotti", ... }.
+    // Mixed so the public menu endpoint can resolve a label by language code,
+    // falling back to `label` when a translation is missing.
+    label_i18n: {
+      type: Schema.Types.Mixed,
     },
     url: {
       type: String,

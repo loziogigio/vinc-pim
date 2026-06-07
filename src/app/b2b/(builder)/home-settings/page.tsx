@@ -3413,6 +3413,7 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "notifications": Bell,
   "reminders": History,
   "app-launcher": LayoutGrid,
+  "language": Globe,
   "button": Square,
   "social-links": Share2,
   "spacer": Space,

@@ -3,6 +3,7 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { invalidateB2CCache } from "@/lib/cache/redis-client";
 import { MenuLocation } from "@/lib/db/models/menu";
+import { normalizeLabelI18n } from "@/lib/utils/menu-i18n";
 import { nanoid } from "nanoid";
 
 /**
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
       type,
       reference_id,
       label,
+      label_i18n,
       url,
       icon,
       image_url,
@@ -152,6 +154,7 @@ export async function POST(req: NextRequest) {
       type,
       reference_id,
       label,
+      label_i18n: normalizeLabelI18n(label_i18n),
       url,
       icon,
       image_url,

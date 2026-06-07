@@ -329,6 +329,7 @@ export type HeaderWidgetType =
   | "notifications"
   | "reminders"
   | "app-launcher"
+  | "language"
   | "button"
   | "social-links"
   | "spacer"
@@ -430,6 +431,11 @@ export interface SocialLinksWidgetConfig {
   iconSize?: number;
 }
 
+export interface LanguageWidgetConfig {
+  /** Show the native language name next to the code (e.g. "EN Italiano") */
+  showLabel?: boolean;
+}
+
 /** Union type for all widget configurations */
 export type WidgetConfig =
   | LogoWidgetConfig
@@ -444,6 +450,7 @@ export type WidgetConfig =
   | NotificationsWidgetConfig
   | RemindersWidgetConfig
   | SocialLinksWidgetConfig
+  | LanguageWidgetConfig
   | Record<string, unknown>;
 
 /** A single widget in the header */
@@ -500,6 +507,7 @@ export const HEADER_WIDGET_LIBRARY: Record<HeaderWidgetType, WidgetLibraryItem> 
   "notifications": { label: "Notifications", icon: "Bell", description: "Push notifications toggle" },
   "reminders": { label: "Reminders", icon: "History", description: "User reminders and saved items" },
   "app-launcher": { label: "App Launcher", icon: "LayoutGrid", description: "App launcher dropdown" },
+  "language": { label: "Language", icon: "Languages", description: "Language selector (PIM-enabled languages)" },
   "button": { label: "Button", icon: "Square", description: "Custom button/link", allowMultiple: true },
   "social-links": { label: "Social Links", icon: "Share2", description: "Social media icons", allowMultiple: true },
   "spacer": { label: "Spacer", icon: "Space", description: "Flexible space", allowMultiple: true },

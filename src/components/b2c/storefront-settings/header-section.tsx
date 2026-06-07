@@ -41,6 +41,7 @@ import {
   Twitter,
   Linkedin,
   Youtube,
+  Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccordionItem, AccordionGroup } from "@/components/ui/accordion";
@@ -167,6 +168,7 @@ const WIDGET_ICONS: Record<HeaderWidgetType, typeof Image> = {
   "notifications": Bell,
   "reminders": History,
   "app-launcher": LayoutGrid,
+  "language": Languages,
   "button": Square,
   "social-links": Share2,
   "spacer": Space,

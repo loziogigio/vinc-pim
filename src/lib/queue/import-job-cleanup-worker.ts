@@ -9,6 +9,7 @@ import { Worker, Job } from "bullmq";
 import {
   pruneImportJobsForTenant,
   getImportJobPrunePreview,
+  DEFAULT_IMPORT_JOB_RETENTION_POLICY,
   type ImportJobRetentionPolicy,
   type ImportJobPruneResult,
   type ImportJobPrunePreview,
@@ -74,8 +75,15 @@ const WORKER_CONCURRENCY = parseInt(
   process.env.IMPORT_JOB_CLEANUP_WORKER_CONCURRENCY || "1"
 );
 
+const { keepLastN, keepWithinDays } = DEFAULT_IMPORT_JOB_RETENTION_POLICY;
+
 console.log(`🔧 Import-Job Cleanup Worker:`);
 console.log(`   Concurrency: ${WORKER_CONCURRENCY} jobs`);
+console.log(
+  `   Default retention: keepLastN=${keepLastN}, keepWithinDays=${keepWithinDays}` +
+    (keepWithinDays === 0 ? " (age window OFF — keepLastN is a hard cap)" : "") +
+    ` (env: VINC_IMPORT_JOB_KEEP_LAST_N / VINC_IMPORT_JOB_KEEP_DAYS)`
+);
 
 export const importJobCleanupWorker = new Worker(
   "import-job-cleanup-queue",

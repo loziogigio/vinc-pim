@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
 import { MenuLocation } from "@/lib/db/models/menu";
+import { resolveMenuLabel } from "@/lib/utils/menu-i18n";
 
 /**
  * GET /api/public/menu
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location") as MenuLocation | null;
     const channel = searchParams.get("channel") || "default";
+    const lang = searchParams.get("lang");
 
     // Build query - only active items with valid time bounds
     const now = new Date();
@@ -117,7 +119,7 @@ export async function GET(req: NextRequest) {
         .map((item) => ({
           id: item.menu_item_id,
           type: item.type,
-          label: item.label,
+          label: resolveMenuLabel(item, lang),
           reference_id: item.reference_id,
           url: resolveUrl(item),
           icon: item.icon,
