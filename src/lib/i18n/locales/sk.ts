@@ -4689,7 +4689,7 @@ const sk = {
         unpublishedChanges: "Nepublikované zmeny",
         language: "Jazyk",
         allLanguages: "Všetky",
-        langReadOnly: "Jazyk tu nie je možné zmeniť — pre iný jazyk vytvorte novú stránku.",
+        langChangeWarning: "(zmena jazyka presunie túto stránku do nového jazyka a jeho URL)",
       },
       forms: {
         title: "Formuláre",

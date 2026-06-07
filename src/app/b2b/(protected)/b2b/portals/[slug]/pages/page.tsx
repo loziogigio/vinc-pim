@@ -111,6 +111,7 @@ export default function B2BPagesManagementPage({
   const [renameTarget, setRenameTarget] = useState<PageItem | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
   const [renameSlug, setRenameSlug] = useState("");
+  const [renameLang, setRenameLang] = useState<string>("");
   const [isRenaming, setIsRenaming] = useState(false);
 
   // Duplicate
@@ -208,6 +209,9 @@ export default function B2BPagesManagementPage({
       const body: Record<string, string> = { title: renameTitle.trim() };
       if (renameSlug.trim() !== renameTarget.slug) {
         body.slug = renameSlug.trim();
+      }
+      if (renameLang && renameLang !== renameTarget.lang) {
+        body.lang = renameLang;
       }
       const res = await fetch(`${apiBase}/${renameTarget.slug}`, {
         method: "PATCH",
@@ -494,7 +498,7 @@ export default function B2BPagesManagementPage({
                       </Link>
                       <button
                         type="button"
-                        onClick={() => { setRenameTarget(pg); setRenameTitle(pg.title); setRenameSlug(pg.slug); }}
+                        onClick={() => { setRenameTarget(pg); setRenameTitle(pg.title); setRenameSlug(pg.slug); setRenameLang(pg.lang); }}
                         className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                         title={t("pages.b2bPortal.pagesManagement.rename")}
                       >
@@ -663,17 +667,20 @@ export default function B2BPagesManagementPage({
                 <label className="text-sm font-medium text-foreground/90">
                   {t("pages.b2bPortal.pagesManagement.language")}
                 </label>
-                <Input
-                  value={(() => {
-                    const lang = enabledLanguages.find((l) => l.code === renameTarget.lang);
-                    return lang ? `${lang.flag ? lang.flag + " " : ""}${lang.nativeName || lang.name}` : renameTarget.lang;
-                  })()}
-                  disabled
-                  className="mt-1 cursor-not-allowed opacity-70"
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("pages.b2bPortal.pagesManagement.langReadOnly")}
-                </p>
+                <select
+                  value={renameLang}
+                  onChange={(e) => setRenameLang(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-border px-3 text-sm"
+                >
+                  {enabledLanguages.map((l) => (
+                    <option key={l.code} value={l.code}>{l.nativeName || l.name}</option>
+                  ))}
+                </select>
+                {renameLang !== renameTarget.lang && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    {t("pages.b2bPortal.pagesManagement.langChangeWarning")}
+                  </p>
+                )}
               </div>
             </div>
             {notMigrated && (
@@ -695,7 +702,9 @@ export default function B2BPagesManagementPage({
                   isRenaming ||
                   !renameTitle.trim() ||
                   !renameSlug.trim() ||
-                  (renameTitle.trim() === renameTarget.title && renameSlug.trim() === renameTarget.slug)
+                  (renameTitle.trim() === renameTarget.title &&
+                    renameSlug.trim() === renameTarget.slug &&
+                    renameLang === renameTarget.lang)
                 }
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >

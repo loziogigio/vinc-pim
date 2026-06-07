@@ -4716,7 +4716,7 @@ const en = {
         unpublishedChanges: "Unpublished changes",
         language: "Language",
         allLanguages: "All",
-        langReadOnly: "Language can't be changed here — create a new page for another language.",
+        langChangeWarning: "(changing language moves this page to the new language and its URL)",
       },
       forms: {
         title: "Forms",

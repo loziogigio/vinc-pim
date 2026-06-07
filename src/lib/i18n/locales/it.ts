@@ -4713,7 +4713,7 @@ const it = {
         unpublishedChanges: "Modifiche non pubblicate",
         language: "Lingua",
         allLanguages: "Tutte",
-        langReadOnly: "La lingua non è modificabile qui — crea una nuova pagina per un'altra lingua.",
+        langChangeWarning: "(cambiare la lingua sposta questa pagina nella nuova lingua e nel suo URL)",
       },
       forms: {
         title: "Moduli",
