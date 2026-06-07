@@ -82,6 +82,10 @@ export interface IB2BPortal {
   header_config_draft?: HeaderConfig;
   footer: IB2CStorefrontFooter;
   footer_draft?: IB2CStorefrontFooter;
+  header_config_by_lang?: Record<string, HeaderConfig>;
+  header_config_draft_by_lang?: Record<string, HeaderConfig>;
+  footer_by_lang?: Record<string, IB2CStorefrontFooter>;
+  footer_draft_by_lang?: Record<string, IB2CStorefrontFooter>;
   meta_tags: IB2CStorefrontMetaTags;
   custom_scripts: IB2CCustomScript[];
   /** Custom CSS injected into the storefront <head> */

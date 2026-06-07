@@ -68,6 +68,28 @@ export const B2BPortalSchema = new Schema(
       type: B2CStorefrontFooterSchema,
       default: undefined,
     },
+    // Per-language overrides (the base header_config/footer fields above are
+    // the DEFAULT-language version; these maps hold non-default languages).
+    header_config_by_lang: {
+      type: Map,
+      of: HeaderConfigSchema,
+      default: () => ({}),
+    },
+    header_config_draft_by_lang: {
+      type: Map,
+      of: HeaderConfigSchema,
+      default: () => ({}),
+    },
+    footer_by_lang: {
+      type: Map,
+      of: B2CStorefrontFooterSchema,
+      default: () => ({}),
+    },
+    footer_draft_by_lang: {
+      type: Map,
+      of: B2CStorefrontFooterSchema,
+      default: () => ({}),
+    },
     meta_tags: {
       type: B2CStorefrontMetaTagsSchema,
       default: () => ({}),
