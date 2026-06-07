@@ -4,6 +4,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import { B2BPageSchema } from "@/lib/db/models/b2b-page";
 import { HomeTemplateSchema } from "@/lib/db/models/home-template";
 import { B2BFormSubmissionSchema } from "@/lib/db/models/b2b-form-submission";
+import { getDefaultLanguage } from "@/config/languages";
 
 // Provision an in-memory connection and expose it before the module loads
 let mongod: MongoMemoryServer;
@@ -75,6 +76,22 @@ describe("b2b-page.service lang", () => {
   it("updates lang", async () => {
     await createPage(T, P, { slug: "info", title: "Info", lang: "it" });
     const updated = await updatePage(T, P, "info", { lang: "en" });
+    expect(updated.lang).toBe("en");
+  });
+
+  it("coerces an unsupported lang to the default catalog lang on create", async () => {
+    const created = await createPage(T, P, {
+      slug: "promo",
+      title: "Promo",
+      lang: "xx",
+    });
+    expect(created.lang).toBe(getDefaultLanguage().code);
+  });
+
+  it("ignores an unsupported lang on update (does not overwrite stored lang)", async () => {
+    await createPage(T, P, { slug: "news", title: "News", lang: "en" });
+    const updated = await updatePage(T, P, "news", { lang: "xx" });
+    // Invalid value is dropped from the update, so the original lang stands.
     expect(updated.lang).toBe("en");
   });
 });
