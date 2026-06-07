@@ -9,6 +9,7 @@
  */
 
 import { Schema } from "mongoose";
+import { getDefaultLanguage } from "@/config/languages";
 
 // ============================================
 // CONSTANTS
@@ -68,7 +69,7 @@ const B2BPageSchema = new Schema(
       required: true,
       trim: true,
     },
-    lang: { type: String, required: true, default: "it", trim: true, lowercase: true },
+    lang: { type: String, required: true, default: () => getDefaultLanguage().code, trim: true, lowercase: true },
     status: {
       type: String,
       enum: PAGE_STATUSES,

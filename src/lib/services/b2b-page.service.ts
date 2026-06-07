@@ -278,6 +278,7 @@ export async function duplicatePage(
     portal_slug: portalSlug,
     slug: newSlug,
     title: `${sourcePage.title} (Copy)`,
+    lang: sourcePage.lang,
     status: sourcePage.status,
     show_in_nav: false,
     sort_order: sourcePage.sort_order,
