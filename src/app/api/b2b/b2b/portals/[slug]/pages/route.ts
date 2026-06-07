@@ -22,8 +22,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     const limit = parseInt(url.searchParams.get("limit") || "50", 10);
     const status = url.searchParams.get("status") || undefined;
+    const lang = url.searchParams.get("lang") || undefined;
 
-    const result = await listPages(auth.tenantDb, slug, { page, limit, status });
+    const result = await listPages(auth.tenantDb, slug, { page, limit, status, lang });
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("[GET /api/b2b/b2b/portals/[slug]/pages]", error);
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const page = await createPage(auth.tenantDb, slug, {
       slug: body.slug,
       title: body.title,
+      lang: body.lang,
       show_in_nav: body.show_in_nav,
       sort_order: body.sort_order,
     });
