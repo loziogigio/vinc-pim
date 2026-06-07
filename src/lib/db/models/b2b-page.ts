@@ -29,6 +29,8 @@ export interface IB2BPage {
   slug: string;
   /** Display title */
   title: string;
+  /** Catalog language this page belongs to (it/de/en/cs/sk). One page = one language. */
+  lang: string;
   /** Whether page is active */
   status: PageStatus;
   /** Whether to show in portal navigation */
@@ -66,6 +68,7 @@ const B2BPageSchema = new Schema(
       required: true,
       trim: true,
     },
+    lang: { type: String, required: true, default: "it", trim: true, lowercase: true },
     status: {
       type: String,
       enum: PAGE_STATUSES,
