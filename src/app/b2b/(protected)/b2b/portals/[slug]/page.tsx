@@ -24,8 +24,9 @@ import { SeoSection } from "@/components/b2c/storefront-settings/seo-section";
 import { ScriptsSection } from "@/components/b2c/storefront-settings/scripts-section";
 import { CssSection } from "@/components/b2c/storefront-settings/css-section";
 import { SitemapSection } from "@/components/b2c/storefront-settings/sitemap-section";
+import { FacetsSection } from "@/components/b2c/storefront-settings/facets-section";
 import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, IB2CCustomScript, HeaderConfig } from "@/components/b2c/storefront-settings/types";
-import type { B2BPortalStatus } from "@/lib/types/b2b-portal";
+import type { B2BPortalStatus, IB2BPortalFacetConfig } from "@/lib/types/b2b-portal";
 
 interface Portal {
   _id: string;
@@ -42,6 +43,7 @@ interface Portal {
   meta_tags?: IB2CStorefrontMetaTags;
   custom_scripts?: IB2CCustomScript[];
   custom_css?: string;
+  facet_config?: IB2BPortalFacetConfig;
   settings: { default_language?: string; theme?: string };
   created_at: string;
   updated_at: string;
@@ -99,6 +101,9 @@ export default function PortalDetailPage({
   // Custom CSS
   const [customCss, setCustomCss] = useState("");
 
+  // Facets
+  const [facetConfig, setFacetConfig] = useState<IB2BPortalFacetConfig | undefined>(undefined);
+
   // Load portal
   useEffect(() => {
     fetch(`/api/b2b/b2b/portals/${slug}`)
@@ -122,6 +127,7 @@ export default function PortalDetailPage({
           setMetaTags(p.meta_tags || {});
           setCustomScripts(p.custom_scripts || []);
           setCustomCss(p.custom_css || "");
+          setFacetConfig(p.facet_config);
         }
       })
       .catch(console.error)
@@ -178,6 +184,7 @@ export default function PortalDetailPage({
           meta_tags: metaTags,
           custom_scripts: customScripts,
           custom_css: customCss,
+          facet_config: facetConfig,
           settings: { default_language: defaultLanguage || undefined },
         },
         "pages.b2bPortal.detail.failedToUpdate"
@@ -383,6 +390,15 @@ export default function PortalDetailPage({
           <CssSection
             css={customCss}
             onChange={setCustomCss}
+            saving={saving}
+            onSave={handleSave}
+          />
+        )}
+
+        {activeSection === "facets" && (
+          <FacetsSection
+            facetConfig={facetConfig}
+            onChange={setFacetConfig}
             saving={saving}
             onSave={handleSave}
           />

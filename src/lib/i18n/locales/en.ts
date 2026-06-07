@@ -339,6 +339,7 @@ const en = {
       seoMetaTags: "SEO & Meta Tags",
       customScripts: "Custom Scripts",
       customCss: "Custom CSS",
+      facets: "Facets",
       sitemap: "Sitemap",
       pages: "Pages",
       forms: "Forms",

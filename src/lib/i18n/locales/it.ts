@@ -340,6 +340,7 @@ const it = {
       seoMetaTags: "SEO e Meta Tag",
       customScripts: "Script Personalizzati",
       customCss: "CSS Personalizzato",
+      facets: "Filtri",
       sitemap: "Mappa del sito",
       pages: "Pagine",
       forms: "Moduli",

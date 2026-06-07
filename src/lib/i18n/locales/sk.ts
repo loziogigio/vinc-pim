@@ -340,6 +340,7 @@ const sk = {
       seoMetaTags: "SEO a Meta zna\u010dky",
       customScripts: "Vlastn\u00e9 skripty",
       customCss: "Vlastn\u00e9 CSS",
+      facets: "Filtre",
       sitemap: "Mapa str\u00e1nok",
       pages: "Str\u00e1nky",
       forms: "Formul\u00e1re",

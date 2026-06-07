@@ -12,6 +12,7 @@ import {
   Globe,
   Code2,
   Paintbrush,
+  SlidersHorizontal,
   MapPin,
   FileText,
   Inbox,
@@ -38,6 +39,7 @@ const PORTAL_SECTIONS: {
   { key: "seo", icon: Globe, labelKey: "nav.b2c.seoMetaTags" },
   { key: "scripts", icon: Code2, labelKey: "nav.b2c.customScripts" },
   { key: "css", icon: Paintbrush, labelKey: "nav.b2c.customCss" },
+  { key: "facets", icon: SlidersHorizontal, labelKey: "nav.b2c.facets" },
   { key: "sitemap", icon: MapPin, labelKey: "nav.b2c.sitemap" },
 ];
 
