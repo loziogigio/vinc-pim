@@ -54,6 +54,21 @@ export interface IB2BPortalSeoConfig {
   };
 }
 
+/** One configured facet entry on a portal's listing sidebar. */
+export interface IB2BPortalFacetEntry {
+  /** Solr facet field key, e.g. "brand_id", "spec_color_s". */
+  field: string;
+  /** Whether the facet is shown on the storefront sidebar. */
+  visible: boolean;
+  /** Optional label override. Reserved — unused in v1. */
+  label?: string;
+}
+
+/** Per-portal facet sidebar config. Display order = array order of entries. */
+export interface IB2BPortalFacetConfig {
+  entries: IB2BPortalFacetEntry[];
+}
+
 /** Root B2B portal document */
 export interface IB2BPortal {
   _id?: string;
@@ -74,6 +89,8 @@ export interface IB2BPortal {
   settings: IB2CStorefrontSettings;
   /** SEO / routing config consumed by the storefront (category root + robots). */
   seo_config?: IB2BPortalSeoConfig;
+  /** Per-portal facet sidebar config consumed by the storefront. */
+  facet_config?: IB2BPortalFacetConfig;
   created_at: Date;
   updated_at: Date;
 }

@@ -21,6 +21,22 @@ import {
 } from "./b2c-storefront";
 import { B2B_PORTAL_STATUSES } from "@/lib/types/b2b-portal";
 
+const B2BPortalFacetEntrySchema = new Schema(
+  {
+    field: { type: String, required: true },
+    visible: { type: Boolean, required: true, default: true },
+    label: { type: String },
+  },
+  { _id: false },
+);
+
+const B2BPortalFacetConfigSchema = new Schema(
+  {
+    entries: { type: [B2BPortalFacetEntrySchema], default: [] },
+  },
+  { _id: false },
+);
+
 export const B2BPortalSchema = new Schema(
   {
     slug: { type: String, required: true, lowercase: true, trim: true },
@@ -91,6 +107,7 @@ export const B2BPortalSchema = new Schema(
       ),
       default: undefined,
     },
+    facet_config: { type: B2BPortalFacetConfigSchema },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
