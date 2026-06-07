@@ -13,6 +13,9 @@ import {
   deleteAllB2BPageTemplates,
 } from "@/lib/db/b2b-page-templates";
 import type { IB2BPage } from "@/lib/db/models/b2b-page";
+import { isValidLanguageCode, getDefaultLanguage } from "@/config/languages";
+
+const DEFAULT_LANG = getDefaultLanguage().code;
 
 // ============================================
 // TYPES
@@ -21,6 +24,7 @@ import type { IB2BPage } from "@/lib/db/models/b2b-page";
 export interface CreatePageInput {
   slug: string;
   title: string;
+  lang?: string;
   show_in_nav?: boolean;
   sort_order?: number;
 }
@@ -28,6 +32,7 @@ export interface CreatePageInput {
 export interface UpdatePageInput {
   title?: string;
   slug?: string;
+  lang?: string;
   status?: "active" | "inactive";
   show_in_nav?: boolean;
   sort_order?: number;
@@ -36,6 +41,7 @@ export interface UpdatePageInput {
 export interface ListPagesOptions {
   page?: number;
   limit?: number;
+  lang?: string;
   status?: string;
 }
 
@@ -69,6 +75,7 @@ export async function createPage(
     portal_slug: portalSlug,
     slug: input.slug,
     title: input.title,
+    lang: input.lang && isValidLanguageCode(input.lang) ? input.lang : DEFAULT_LANG,
     show_in_nav: input.show_in_nav ?? true,
     sort_order: input.sort_order ?? 0,
   });
@@ -124,6 +131,7 @@ export async function updatePage(
   const updates: Record<string, unknown> = {};
   if (input.title !== undefined) updates.title = input.title;
   if (newSlug && newSlug !== pageSlug) updates.slug = newSlug;
+  if (input.lang !== undefined && isValidLanguageCode(input.lang)) updates.lang = input.lang;
   if (input.status !== undefined) updates.status = input.status;
   if (input.show_in_nav !== undefined) updates.show_in_nav = input.show_in_nav;
   if (input.sort_order !== undefined) updates.sort_order = input.sort_order;
@@ -191,6 +199,7 @@ export async function listPages(
   const skip = (page - 1) * limit;
 
   const filter: Record<string, unknown> = { portal_slug: portalSlug };
+  if (options.lang) filter.lang = options.lang;
   if (options.status) filter.status = options.status;
 
   const [items, total] = await Promise.all([
