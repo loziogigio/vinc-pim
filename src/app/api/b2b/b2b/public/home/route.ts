@@ -3,6 +3,7 @@ import { verifyAPIKey } from "@/lib/auth/api-key-auth";
 import { getPortalBySlug } from "@/lib/services/b2b-portal.service";
 import { connectWithModels } from "@/lib/db/connection";
 import { getHomeSettings } from "@/lib/db/home-settings";
+import { resolveHeaderConfig, resolveFooter } from "@/lib/services/portal-section-lang";
 
 /**
  * GET /api/b2b/b2b/public/home
@@ -69,8 +70,17 @@ export async function GET(req: NextRequest) {
     // and merge onto the portal so storefronts get the tenant's saved value
     // instead of falling back to defaults.
     const homeSettings = await getHomeSettings(tenantDb).catch(() => null);
-    const portalWithCardStyle = {
+
+    // Resolve header/footer for the requested language (PUBLISHED config),
+    // falling back to the default-language base when no override exists.
+    const lang = searchParams.get("lang") || undefined;
+    const langPortal = {
       ...portal,
+      header_config: resolveHeaderConfig(portal, lang),
+      footer: resolveFooter(portal, lang),
+    };
+    const portalWithCardStyle = {
+      ...langPortal,
       ...(homeSettings?.cardStyle ? { cardStyle: homeSettings.cardStyle } : {}),
     };
 
