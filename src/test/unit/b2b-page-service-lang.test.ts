@@ -4,7 +4,12 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import { B2BPageSchema } from "@/lib/db/models/b2b-page";
 import { HomeTemplateSchema } from "@/lib/db/models/home-template";
 import { B2BFormSubmissionSchema } from "@/lib/db/models/b2b-form-submission";
-import { getDefaultLanguage } from "@/config/languages";
+
+// Tenant-aware languages: validate `lang` against this set (mocked for isolation)
+vi.mock("@/lib/services/tenant-languages", () => ({
+  getTenantLanguageCodes: vi.fn(async () => ["it", "en", "fr", "de"]),
+  getTenantDefaultLanguageCode: vi.fn(async () => "it"),
+}));
 
 // Provision an in-memory connection and expose it before the module loads
 let mongod: MongoMemoryServer;
@@ -79,13 +84,23 @@ describe("b2b-page.service lang", () => {
     expect(updated.lang).toBe("en");
   });
 
-  it("coerces an unsupported lang to the default catalog lang on create", async () => {
+  it("coerces an unsupported lang to the tenant default lang on create", async () => {
     const created = await createPage(T, P, {
       slug: "promo",
       title: "Promo",
       lang: "xx",
     });
-    expect(created.lang).toBe(getDefaultLanguage().code);
+    expect(created.lang).toBe("it");
+  });
+
+  it("accepts a tenant-enabled lang on create (validated against tenant languages, not a static list)", async () => {
+    // "fr" is in the tenant's enabled set but would be rejected by the old static list.
+    const created = await createPage(T, P, {
+      slug: "promotions",
+      title: "Promotions",
+      lang: "fr",
+    });
+    expect(created.lang).toBe("fr");
   });
 
   it("ignores an unsupported lang on update (does not overwrite stored lang)", async () => {

@@ -13,9 +13,10 @@ import {
   deleteAllB2BPageTemplates,
 } from "@/lib/db/b2b-page-templates";
 import type { IB2BPage } from "@/lib/db/models/b2b-page";
-import { isValidLanguageCode, getDefaultLanguage } from "@/config/languages";
-
-const DEFAULT_LANG = getDefaultLanguage().code;
+import {
+  getTenantLanguageCodes,
+  getTenantDefaultLanguageCode,
+} from "@/lib/services/tenant-languages";
 
 // ============================================
 // TYPES
@@ -70,12 +71,19 @@ export async function createPage(
     throw new Error(`Page "${input.slug}" already exists for this portal`);
   }
 
+  // Resolve lang against the tenant's enabled languages
+  const [allowedCodes, defaultLang] = await Promise.all([
+    getTenantLanguageCodes(tenantDb),
+    getTenantDefaultLanguageCode(tenantDb),
+  ]);
+  const lang = input.lang && allowedCodes.includes(input.lang) ? input.lang : defaultLang;
+
   // Create page record
   const page = await B2BPage.create({
     portal_slug: portalSlug,
     slug: input.slug,
     title: input.title,
-    lang: input.lang && isValidLanguageCode(input.lang) ? input.lang : DEFAULT_LANG,
+    lang,
     show_in_nav: input.show_in_nav ?? true,
     sort_order: input.sort_order ?? 0,
   });
@@ -131,7 +139,8 @@ export async function updatePage(
   const updates: Record<string, unknown> = {};
   if (input.title !== undefined) updates.title = input.title;
   if (newSlug && newSlug !== pageSlug) updates.slug = newSlug;
-  if (input.lang !== undefined && isValidLanguageCode(input.lang)) updates.lang = input.lang;
+  const allowedCodes = await getTenantLanguageCodes(tenantDb);
+  if (input.lang !== undefined && allowedCodes.includes(input.lang)) updates.lang = input.lang;
   if (input.status !== undefined) updates.status = input.status;
   if (input.show_in_nav !== undefined) updates.show_in_nav = input.show_in_nav;
   if (input.sort_order !== undefined) updates.sort_order = input.sort_order;

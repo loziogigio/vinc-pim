@@ -16,11 +16,15 @@ describe("B2BPage lang", () => {
   beforeEach(async () => { await Page.deleteMany({}); await Page.syncIndexes(); });
   afterAll(async () => { await conn.dropDatabase(); await conn.close(); await mongod.stop(); });
 
-  it("persists lang and defaults it to 'it'", async () => {
+  it("persists the provided lang", async () => {
     const withLang = await Page.create({ portal_slug: "default", slug: "kontakt", title: "Kontakt", lang: "de" });
     expect(withLang.lang).toBe("de");
-    const noLang = await Page.create({ portal_slug: "default", slug: "contatti", title: "Contatti" });
-    expect(noLang.lang).toBe("it");
+  });
+
+  it("requires lang (no static schema default — the service resolves it per tenant)", async () => {
+    await expect(
+      Page.create({ portal_slug: "default", slug: "contatti", title: "Contatti" })
+    ).rejects.toThrow();
   });
 
   it("keeps slug globally unique per portal (so slug-keyed content stays separate)", async () => {
