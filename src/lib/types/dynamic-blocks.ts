@@ -57,7 +57,7 @@ export type BlockElement = MediaElement | TextElement;
 export interface DynamicBlock {
   /** stable uuid. */
   id: string;
-  /** THIS block's catalog language (it/de/en/cs/sk). */
+  /** THIS block's language — one of the tenant's enabled language codes. */
   lang: string;
   /** optional, plain string in `lang`. */
   title?: string;

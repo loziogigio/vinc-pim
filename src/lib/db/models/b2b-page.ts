@@ -29,7 +29,7 @@ export interface IB2BPage {
   slug: string;
   /** Display title */
   title: string;
-  /** Catalog language this page belongs to (it/de/en/cs/sk). One page = one language. */
+  /** Language this page belongs to — one of the tenant's enabled language codes. One page = one language. */
   lang: string;
   /** Whether page is active */
   status: PageStatus;
