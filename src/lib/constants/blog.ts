@@ -2,8 +2,9 @@
 /**
  * Blog module constants & helpers.
  *
- * NOTE: content locales come from src/config/languages.ts (it/de/en/cs).
- * Use isValidLanguageCode / getDefaultLanguage from there — do not redefine here.
+ * NOTE: content locales are per-tenant — resolve them via getTenantLanguageCodes /
+ * getTenantDefaultLanguageCode (src/lib/services/tenant-languages.ts) on the server,
+ * or the languageStore on the client. Do not redefine a static language list here.
  */
 
 export const BLOG_POST_STATUSES = ["draft", "scheduled", "published"] as const;
