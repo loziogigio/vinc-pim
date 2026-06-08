@@ -6,7 +6,7 @@
 import { nanoid } from "nanoid";
 import { connectWithModels } from "@/lib/db/connection";
 import { blogSlugify } from "@/lib/constants/blog";
-import { getDefaultLanguage, isValidLanguageCode } from "@/config/languages";
+import { getTenantLanguageCodes, getTenantDefaultLanguageCode } from "@/lib/services/tenant-languages";
 import type { IBlogPost } from "@/lib/db/models/blog-post";
 
 function httpError(message: string, status: number): Error {
@@ -69,9 +69,13 @@ export async function assertSlugAvailable(
 
 export async function createBlogPost(tenantDb: string, input: CreateBlogPostInput): Promise<IBlogPost> {
   const { BlogPost, BlogPostVersion } = await connectWithModels(tenantDb);
-  const locale = input.default_locale && isValidLanguageCode(input.default_locale)
+  const [allowedCodes, defaultLocale] = await Promise.all([
+    getTenantLanguageCodes(tenantDb),
+    getTenantDefaultLanguageCode(tenantDb),
+  ]);
+  const locale = input.default_locale && allowedCodes.includes(input.default_locale)
     ? input.default_locale
-    : getDefaultLanguage().code;
+    : defaultLocale;
   const slug = blogSlugify(input.slug || input.title);
   if (!slug) throw httpError("A valid slug or title is required", 400);
   await assertSlugAvailable(tenantDb, slug);
@@ -183,7 +187,8 @@ export async function updateBlogPost(
 
   if (patch.translation) {
     const { locale, title, excerpt, scheduled_at } = patch.translation;
-    if (!isValidLanguageCode(locale)) throw httpError("Invalid locale", 400);
+    const allowedCodes = await getTenantLanguageCodes(tenantDb);
+    if (!allowedCodes.includes(locale)) throw httpError("Invalid locale", 400);
     const tr = post.translations.find((t: any) => t.locale === locale);
     if (!tr) {
       post.translations.push({ locale, title: title || "", excerpt, status: "draft", current_version: 1 });

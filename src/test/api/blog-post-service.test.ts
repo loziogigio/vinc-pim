@@ -16,6 +16,14 @@ vi.mock("@/lib/db/connection", () => ({
   connectWithModels: vi.fn(() => Promise.resolve({ BlogPost, BlogPostVersion, SalesChannel })),
 }));
 
+// Tenant-aware languages: locale is validated against this set (mocked for isolation).
+// "fr" is enabled for this tenant but is NOT in the static @/config/languages list,
+// proving validation now comes from the tenant, not the static config.
+vi.mock("@/lib/services/tenant-languages", () => ({
+  getTenantLanguageCodes: vi.fn(async () => ["it", "en", "fr"]),
+  getTenantDefaultLanguageCode: vi.fn(async () => "it"),
+}));
+
 import {
   createBlogPost,
   getBlogPost,
@@ -75,6 +83,25 @@ describe("integration: blog-post.service", () => {
     expect(updated.translations.map((t: any) => t.locale).sort()).toEqual(["en", "it"]);
     const itV1 = await BlogPostVersion.findOne({ post_id: post.post_id, locale: "it", version: 1 }).lean();
     expect(itV1).toBeTruthy();
+  });
+
+  it("accepts a tenant-enabled non-static locale (fr) on create", async () => {
+    // "fr" is enabled for this tenant but absent from the static @/config/languages list.
+    const post = await createBlogPost(DB, { title: "Bonjour", default_locale: "fr" });
+    expect(post.default_locale).toBe("fr");
+    expect(post.translations[0].locale).toBe("fr");
+  });
+
+  it("coerces an unknown locale to the tenant default on create", async () => {
+    const post = await createBlogPost(DB, { title: "Unknown", default_locale: "xx" });
+    expect(post.default_locale).toBe("it"); // tenant default
+  });
+
+  it("rejects an unknown locale when adding a translation with status 400", async () => {
+    const post = await createBlogPost(DB, { title: "Base", default_locale: "en" });
+    await expect(
+      updateBlogPost(DB, post.post_id, { translation: { locale: "xx", title: "Nope" } }),
+    ).rejects.toMatchObject({ status: 400 });
   });
 
   it("delete removes the post and all its versions", async () => {

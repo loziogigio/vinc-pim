@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
-import { getDefaultLanguage } from "@/config/languages";
+import { getTenantDefaultLanguageCode } from "@/lib/services/tenant-languages";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
     const channel = searchParams.get("channel") || "default";
-    const locale = searchParams.get("locale") || getDefaultLanguage().code;
+    const locale = searchParams.get("locale") || (await getTenantDefaultLanguageCode(tenantDb));
 
     const { BlogPost, BlogPostVersion } = await connectWithModels(tenantDb);
     const post: any = await BlogPost.findOne({ slug, channels: channel }).lean();

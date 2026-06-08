@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
-import { getDefaultLanguage } from "@/config/languages";
+import { getTenantDefaultLanguageCode } from "@/lib/services/tenant-languages";
 
 /**
  * GET /api/public/blog/posts — list published posts for a channel + locale.
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const channel = searchParams.get("channel") || "default";
-    const locale = searchParams.get("locale") || getDefaultLanguage().code;
+    const locale = searchParams.get("locale") || (await getTenantDefaultLanguageCode(tenantDb));
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
 
