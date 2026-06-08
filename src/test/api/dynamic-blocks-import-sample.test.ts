@@ -39,7 +39,8 @@ describe("dynamic-blocks import sample (external integrator handout)", () => {
   it("every product's dynamic_blocks passes the real import validator", () => {
     for (const product of payload.products) {
       if (product.dynamic_blocks === undefined) continue;
-      const { valid, errors } = validateDynamicBlocks(product.dynamic_blocks, ["it","de","en","fr","es","pt"]);
+      // Validate against a realistic tenant set (e.g. baseprotection-com: it/en/fr/es/pt).
+      const { valid, errors } = validateDynamicBlocks(product.dynamic_blocks, ["it", "en", "fr", "es", "pt"]);
       expect(valid, `entity ${product.entity_code}: ${errors.join("; ")}`).toBe(true);
     }
   });
