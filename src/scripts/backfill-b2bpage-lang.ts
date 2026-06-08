@@ -11,7 +11,7 @@
 
 import "dotenv/config";
 import { connectWithModels } from "@/lib/db/connection";
-import { getDefaultLanguage } from "@/config/languages";
+import { getTenantDefaultLanguageCode } from "@/lib/services/tenant-languages";
 
 async function main() {
   const tenantDb = process.argv[2];
@@ -23,7 +23,7 @@ async function main() {
   }
 
   const { B2BPage } = await connectWithModels(tenantDb);
-  const defaultLang = getDefaultLanguage().code;
+  const defaultLang = await getTenantDefaultLanguageCode(tenantDb);
 
   const res = await B2BPage.updateMany(
     { $or: [{ lang: { $exists: false } }, { lang: null }, { lang: "" }] },

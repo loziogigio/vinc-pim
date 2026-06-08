@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/config/languages", () => ({
-  getDefaultLanguage: () => ({ code: "it" }),
-  isValidLanguageCode: (c: string) => ["it", "de", "en"].includes(c),
-}));
-
 const { getPortalBySlug } = vi.hoisted(() => ({ getPortalBySlug: vi.fn() }));
 vi.mock("@/lib/services/b2b-portal.service", () => ({ getPortalBySlug }));
 vi.mock("@/lib/auth/api-key-auth", () => ({
