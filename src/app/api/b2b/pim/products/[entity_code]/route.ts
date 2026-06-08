@@ -5,6 +5,7 @@ import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { validateDynamicBlocks } from "@/lib/validation/dynamic-blocks";
+import { getTenantLanguageCodes } from "@/lib/services/tenant-languages";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -338,7 +339,8 @@ export async function PATCH(
 
     // Validate dynamic_blocks if present (shared validator used by importer + PATCH)
     if (updateDoc.dynamic_blocks !== undefined) {
-      const { valid, errors } = validateDynamicBlocks(updateDoc.dynamic_blocks);
+      const allowedLangCodes = await getTenantLanguageCodes(tenantDb);
+      const { valid, errors } = validateDynamicBlocks(updateDoc.dynamic_blocks, allowedLangCodes);
       if (!valid) {
         console.error("[dynamic_blocks] PATCH validation failed:", errors);
         return NextResponse.json(

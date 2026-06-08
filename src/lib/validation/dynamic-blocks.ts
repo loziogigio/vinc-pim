@@ -7,7 +7,6 @@
  *
  * See docs/superpowers/specs/2026-06-05-dynamic-blocks-design.md (§2 Validation).
  */
-import { isValidLanguageCode } from "@/config/languages";
 import type {
   BlockElement,
   DynamicBlock,
@@ -110,7 +109,12 @@ function validateElement(
   }
 }
 
-function validateBlock(block: unknown, idx: number, errors: string[]): void {
+function validateBlock(
+  block: unknown,
+  idx: number,
+  errors: string[],
+  allowedLangCodes: string[]
+): void {
   const where = `block[${idx}]`;
   if (typeof block !== "object" || block === null) {
     errors.push(`${where}: block must be an object`);
@@ -122,8 +126,8 @@ function validateBlock(block: unknown, idx: number, errors: string[]): void {
     errors.push(`${where}: missing/invalid id`);
   }
 
-  if (typeof b.lang !== "string" || !isValidLanguageCode(b.lang)) {
-    errors.push(`${where}: invalid catalog lang "${String(b.lang)}"`);
+  if (typeof b.lang !== "string" || !allowedLangCodes.includes(b.lang)) {
+    errors.push(`${where}: lang "${String(b.lang)}" is not an enabled language for this tenant`);
   }
 
   if (
@@ -168,7 +172,10 @@ function validateBlock(block: unknown, idx: number, errors: string[]): void {
  * Validate a `dynamic_blocks` payload. Returns `{ valid, errors }`; on success
  * `errors` is empty. Never throws.
  */
-export function validateDynamicBlocks(blocks: unknown): ValidateDynamicBlocksResult {
+export function validateDynamicBlocks(
+  blocks: unknown,
+  allowedLangCodes: string[]
+): ValidateDynamicBlocksResult {
   const errors: string[] = [];
 
   if (!Array.isArray(blocks)) {
@@ -179,7 +186,7 @@ export function validateDynamicBlocks(blocks: unknown): ValidateDynamicBlocksRes
     errors.push(`too many blocks (${blocks.length} > ${DYNAMIC_BLOCKS_MAX_COUNT})`);
   }
 
-  blocks.forEach((block, idx) => validateBlock(block, idx, errors));
+  blocks.forEach((block, idx) => validateBlock(block, idx, errors, allowedLangCodes));
 
   return { valid: errors.length === 0, errors };
 }

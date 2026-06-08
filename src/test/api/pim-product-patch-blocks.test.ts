@@ -3,6 +3,9 @@ const sessionRef: { value: Record<string, unknown> | null } = { value: null };
 vi.mock("@/lib/auth/b2b-session", () => ({
   getB2BSession: vi.fn(async () => sessionRef.value ?? { isLoggedIn: false }),
 }));
+vi.mock("@/lib/services/tenant-languages", () => ({
+  getTenantLanguageCodes: vi.fn(async () => ["it","de","en","cs","sk"]),
+}));
 import { setupTestDatabase, teardownTestDatabase, clearDatabase } from "@/test/conftest";
 import { connectWithModels } from "@/lib/db/connection";
 import { NextRequest } from "next/server";

@@ -57,7 +57,7 @@ describe("import-worker dynamic_blocks — UPDATE path", () => {
     const updateDoc: Record<string, any> = {};
     const safeProductData: Record<string, any> = { dynamic_blocks: blocks, name: "X" };
     const warnings: any[] = [];
-    applyDynamicBlocksToUpdate(updateDoc, safeProductData, warnings, "536914", 1);
+    applyDynamicBlocksToUpdate(updateDoc, safeProductData, warnings, "536914", 1, ["it","de","en","cs","sk"]);
     expect(updateDoc.dynamic_blocks).toEqual(blocks);
     expect("dynamic_blocks" in safeProductData).toBe(false);
     expect(warnings).toHaveLength(0);
@@ -67,7 +67,7 @@ describe("import-worker dynamic_blocks — UPDATE path", () => {
     const updateDoc: Record<string, any> = { name: "X" };
     const safeProductData: Record<string, any> = { name: "X" };
     const warnings: any[] = [];
-    applyDynamicBlocksToUpdate(updateDoc, safeProductData, warnings, "536914", 1);
+    applyDynamicBlocksToUpdate(updateDoc, safeProductData, warnings, "536914", 1, ["it","de","en","cs","sk"]);
     expect("dynamic_blocks" in updateDoc).toBe(false);
     expect("dynamic_blocks" in safeProductData).toBe(false);
     expect(warnings).toHaveLength(0);
@@ -78,7 +78,7 @@ describe("import-worker dynamic_blocks — UPDATE path", () => {
     const updateDoc: Record<string, any> = {};
     const safeProductData: Record<string, any> = { dynamic_blocks: bad };
     const warnings: any[] = [];
-    expect(() => applyDynamicBlocksToUpdate(updateDoc, safeProductData, warnings, "536914", 7)).not.toThrow();
+    expect(() => applyDynamicBlocksToUpdate(updateDoc, safeProductData, warnings, "536914", 7, ["it","de","en","cs","sk"])).not.toThrow();
     expect("dynamic_blocks" in updateDoc).toBe(false);
     expect("dynamic_blocks" in safeProductData).toBe(false);
     expect(warnings).toHaveLength(1);
@@ -92,7 +92,7 @@ describe("import-worker dynamic_blocks — CREATE path", () => {
     const blocks = [validBlock()];
     const safeProductData: Record<string, any> = { dynamic_blocks: blocks, name: "X" };
     const warnings: any[] = [];
-    sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 1);
+    sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 1, ["it","de","en","cs","sk"]);
     expect(safeProductData.dynamic_blocks).toEqual(blocks);
     expect(warnings).toHaveLength(0);
   });
@@ -101,7 +101,7 @@ describe("import-worker dynamic_blocks — CREATE path", () => {
     const bad = [{ ...validBlock(), columns: 99 as any }];
     const safeProductData: Record<string, any> = { dynamic_blocks: bad, name: "X" };
     const warnings: any[] = [];
-    expect(() => sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 3)).not.toThrow();
+    expect(() => sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 3, ["it","de","en","cs","sk"])).not.toThrow();
     expect("dynamic_blocks" in safeProductData).toBe(false);
     expect(safeProductData.name).toBe("X");
     expect(warnings).toHaveLength(1);
@@ -111,8 +111,17 @@ describe("import-worker dynamic_blocks — CREATE path", () => {
   it("absent -> no-op, no warning", () => {
     const safeProductData: Record<string, any> = { name: "X" };
     const warnings: any[] = [];
-    sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 1);
+    sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 1, ["it","de","en","cs","sk"]);
     expect("dynamic_blocks" in safeProductData).toBe(false);
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("accepts a tenant-enabled non-static lang (fr) when passed in the codes", () => {
+    const blocks = [{ ...validBlock(), lang: "fr" }];
+    const safeProductData: Record<string, any> = { dynamic_blocks: blocks, name: "X" };
+    const warnings: any[] = [];
+    sanitizeDynamicBlocksForCreate(safeProductData, warnings, "536914", 1, ["it","fr"]);
+    expect(safeProductData.dynamic_blocks).toEqual(blocks);
     expect(warnings).toHaveLength(0);
   });
 });

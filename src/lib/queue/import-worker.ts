@@ -22,6 +22,7 @@ import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
 import { nanoid } from "nanoid";
 import { parseBidirectionalFlag } from "../constants/correlation";
 import { validateDynamicBlocks } from "../validation/dynamic-blocks";
+import { getTenantLanguageCodes } from "../services/tenant-languages";
 
 interface ImportJobData {
   job_id: string;
@@ -445,12 +446,13 @@ export function applyDynamicBlocksToUpdate(
   safeProductData: Record<string, any>,
   warnings: any[],
   entity_code: string,
-  rowNumber: number
+  rowNumber: number,
+  allowedLangCodes: string[]
 ): void {
   if (safeProductData.dynamic_blocks === undefined) return;
   const candidate = safeProductData.dynamic_blocks;
   delete safeProductData.dynamic_blocks;
-  const result = validateDynamicBlocks(candidate);
+  const result = validateDynamicBlocks(candidate, allowedLangCodes);
   if (!result.valid) {
     warnings.push({ row: rowNumber, entity_code, severity: "warning", field: "dynamic_blocks",
       error: `Invalid dynamic_blocks skipped: ${result.errors.join("; ")}` });
@@ -467,10 +469,11 @@ export function sanitizeDynamicBlocksForCreate(
   safeProductData: Record<string, any>,
   warnings: any[],
   entity_code: string,
-  rowNumber: number
+  rowNumber: number,
+  allowedLangCodes: string[]
 ): void {
   if (safeProductData.dynamic_blocks === undefined) return;
-  const result = validateDynamicBlocks(safeProductData.dynamic_blocks);
+  const result = validateDynamicBlocks(safeProductData.dynamic_blocks, allowedLangCodes);
   if (!result.valid) {
     warnings.push({ row: rowNumber, entity_code, severity: "warning", field: "dynamic_blocks",
       error: `Invalid dynamic_blocks skipped: ${result.errors.join("; ")}` });
@@ -517,6 +520,7 @@ async function processImport(job: Job<ImportJobData>) {
   // Fetch language codes from database for multilingual detection
   const languages = await LanguageModel.find({}, { code: 1 }).lean();
   const languageCodes = languages.map((l: any) => l.code);
+  const blockLangCodes = await getTenantLanguageCodes(tenantDb);
 
   try {
     // ========== PHASE 3: HANDLE BATCH METADATA ==========
@@ -844,7 +848,7 @@ async function processImport(job: Job<ImportJobData>) {
           }
 
           // Handle dynamic_blocks: replace-if-present (mirrors `attributes`)
-          applyDynamicBlocksToUpdate(updateDoc, safeProductData, errors, entity_code, processed + 1);
+          applyDynamicBlocksToUpdate(updateDoc, safeProductData, errors, entity_code, processed + 1, blockLangCodes);
 
           // Copy other fields directly
           for (const [key, value] of Object.entries(safeProductData)) {
@@ -860,7 +864,7 @@ async function processImport(job: Job<ImportJobData>) {
         } else {
           // ========== CREATE NEW PRODUCT ==========
           // Drop invalid dynamic_blocks before spread into create() payload
-          sanitizeDynamicBlocksForCreate(safeProductData, errors, entity_code, processed + 1);
+          sanitizeDynamicBlocksForCreate(safeProductData, errors, entity_code, processed + 1, blockLangCodes);
 
           await PIMProductModel.create({
             entity_code,

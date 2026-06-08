@@ -43,7 +43,7 @@ describe("unit: sanitizeDynamicBlocks", () => {
         { id: "e2", kind: "image", media: { url: "https://cdn/x.png" } },
       ]),
     ]);
-    expect(validateDynamicBlocks(sanitized)).toEqual({ valid: true, errors: [] });
+    expect(validateDynamicBlocks(sanitized, ["it","de","en","cs","sk"])).toEqual({ valid: true, errors: [] });
   });
 
   it("returns [] for a non-array input", () => {
@@ -62,7 +62,7 @@ describe("unit: sanitizeDynamicBlocks", () => {
       ]),
     ]);
     expect((out[0].elements[0] as any).link.href).toBe("https://efakturuj.sk/it");
-    expect(validateDynamicBlocks(out)).toEqual({ valid: true, errors: [] });
+    expect(validateDynamicBlocks(out, ["it","de","en","cs","sk"])).toEqual({ valid: true, errors: [] });
   });
 
   it("prepends https:// to a scheme-less media url and leaves schemed/relative ones alone", () => {
@@ -111,16 +111,16 @@ function validBlock(overrides: Partial<DynamicBlock> = {}): DynamicBlock {
 
 describe("unit: validateDynamicBlocks", () => {
   it("accepts a well-formed block array", () => {
-    const res = validateDynamicBlocks([validBlock()]);
+    const res = validateDynamicBlocks([validBlock()], ["it","de","en","cs","sk"]);
     expect(res).toEqual({ valid: true, errors: [] });
   });
 
   it("accepts an empty array", () => {
-    expect(validateDynamicBlocks([])).toEqual({ valid: true, errors: [] });
+    expect(validateDynamicBlocks([], ["it","de","en","cs","sk"])).toEqual({ valid: true, errors: [] });
   });
 
   it("rejects a non-array payload", () => {
-    const res = validateDynamicBlocks({ not: "an array" });
+    const res = validateDynamicBlocks({ not: "an array" }, ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.length).toBeGreaterThan(0);
   });
@@ -129,7 +129,7 @@ describe("unit: validateDynamicBlocks", () => {
     const blocks = Array.from({ length: DYNAMIC_BLOCKS_MAX_COUNT + 1 }, (_, i) =>
       validBlock({ id: `blk_${i}` })
     );
-    const res = validateDynamicBlocks(blocks);
+    const res = validateDynamicBlocks(blocks, ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.includes(String(DYNAMIC_BLOCKS_MAX_COUNT)))).toBe(true);
   });
@@ -140,32 +140,32 @@ describe("unit: validateDynamicBlocks", () => {
       kind: "text" as const,
       text: `t${i}`,
     }));
-    const res = validateDynamicBlocks([validBlock({ elements })]);
+    const res = validateDynamicBlocks([validBlock({ elements })], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.includes(String(DYNAMIC_BLOCK_MAX_ELEMENTS)))).toBe(true);
   });
 
   it("rejects an out-of-range columns value", () => {
-    const res = validateDynamicBlocks([validBlock({ columns: 9 as any })]);
+    const res = validateDynamicBlocks([validBlock({ columns: 9 as any })], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("columns"))).toBe(true);
   });
 
   it("rejects an out-of-range section value", () => {
-    const res = validateDynamicBlocks([validBlock({ section: 5 as any })]);
+    const res = validateDynamicBlocks([validBlock({ section: 5 as any })], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("section"))).toBe(true);
   });
 
   it("rejects an invalid catalog language", () => {
-    const res = validateDynamicBlocks([validBlock({ lang: "fr" })]);
+    const res = validateDynamicBlocks([validBlock({ lang: "fr" })], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("lang"))).toBe(true);
   });
 
   it("accepts all enabled catalog languages", () => {
     for (const lang of ["it", "de", "en", "cs", "sk"]) {
-      expect(validateDynamicBlocks([validBlock({ lang })]).valid).toBe(true);
+      expect(validateDynamicBlocks([validBlock({ lang })], ["it","de","en","cs","sk"]).valid).toBe(true);
     }
   });
 
@@ -177,7 +177,7 @@ describe("unit: validateDynamicBlocks", () => {
           { id: "e1", kind: "image", media: { url: "javascript:alert(1)" } },
         ],
       }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("url"))).toBe(true);
   });
@@ -189,7 +189,7 @@ describe("unit: validateDynamicBlocks", () => {
           { id: "e1", kind: "image", media: { url: "data:text/html;base64,PHN2Zz4=" } },
         ],
       }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
   });
 
@@ -206,7 +206,7 @@ describe("unit: validateDynamicBlocks", () => {
           },
         ],
       }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("href") || e.toLowerCase().includes("link"))).toBe(true);
   });
@@ -215,7 +215,7 @@ describe("unit: validateDynamicBlocks", () => {
     expect(
       validateDynamicBlocks([
         validBlock({ elements: [{ id: "e1", kind: "image", media: { url: "file:///etc/passwd" } }] }),
-      ]).valid
+      ], ["it","de","en","cs","sk"]).valid
     ).toBe(false);
     expect(
       validateDynamicBlocks([
@@ -229,7 +229,7 @@ describe("unit: validateDynamicBlocks", () => {
             },
           ],
         }),
-      ]).valid
+      ], ["it","de","en","cs","sk"]).valid
     ).toBe(false);
   });
 
@@ -245,7 +245,7 @@ describe("unit: validateDynamicBlocks", () => {
           },
         ],
       }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res).toEqual({ valid: true, errors: [] });
   });
 
@@ -259,7 +259,7 @@ describe("unit: validateDynamicBlocks", () => {
         validBlock({
           elements: [{ id: "e1", kind: "video", media: { url, is_external_link: true } }],
         }),
-      ]);
+      ], ["it","de","en","cs","sk"]);
       expect(res.valid).toBe(true);
     }
   });
@@ -271,7 +271,7 @@ describe("unit: validateDynamicBlocks", () => {
           { id: "e1", kind: "text", text: "hi", media: { url: "https://cdn.example/x.png" } } as any,
         ],
       }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("text"))).toBe(true);
   });
@@ -279,14 +279,14 @@ describe("unit: validateDynamicBlocks", () => {
   it("rejects a text element with no text", () => {
     const res = validateDynamicBlocks([
       validBlock({ elements: [{ id: "e1", kind: "text" } as any] }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
   });
 
   it("rejects a media element with no media.url", () => {
     const res = validateDynamicBlocks([
       validBlock({ elements: [{ id: "e1", kind: "image", media: { url: "" } } as any] }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("url"))).toBe(true);
   });
@@ -298,15 +298,22 @@ describe("unit: validateDynamicBlocks", () => {
           { id: "e1", kind: "image", media: { url: "https://cdn.example/x.png" }, text: "nope" } as any,
         ],
       }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
   });
 
   it("rejects an unknown element kind", () => {
     const res = validateDynamicBlocks([
       validBlock({ elements: [{ id: "e1", kind: "audio" } as any] }),
-    ]);
+    ], ["it","de","en","cs","sk"]);
     expect(res.valid).toBe(false);
     expect(res.errors.some((e) => e.toLowerCase().includes("kind"))).toBe(true);
+  });
+
+  it("accepts a lang the tenant enables and rejects one it doesn't", () => {
+    const block = [{ id:"b", lang:"fr", section:1, order:0, columns:1, is_active:true,
+      elements:[{ id:"e", kind:"text", text:"x" }] }];
+    expect(validateDynamicBlocks(block, ["it","fr"]).valid).toBe(true);
+    expect(validateDynamicBlocks(block, ["it","de"]).valid).toBe(false);
   });
 });
