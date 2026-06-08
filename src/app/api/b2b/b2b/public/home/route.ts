@@ -4,6 +4,7 @@ import { getPortalBySlug } from "@/lib/services/b2b-portal.service";
 import { connectWithModels } from "@/lib/db/connection";
 import { getHomeSettings } from "@/lib/db/home-settings";
 import { resolveHeaderConfig, resolveFooter } from "@/lib/services/portal-section-lang";
+import { getTenantLanguageCodes, getTenantDefaultLanguageCode } from "@/lib/services/tenant-languages";
 
 /**
  * GET /api/b2b/b2b/public/home
@@ -74,10 +75,14 @@ export async function GET(req: NextRequest) {
     // Resolve header/footer for the requested language (PUBLISHED config),
     // falling back to the default-language base when no override exists.
     const lang = searchParams.get("lang") || undefined;
+    const [allowedLangCodes, defaultLangCode] = await Promise.all([
+      getTenantLanguageCodes(tenantDb),
+      getTenantDefaultLanguageCode(tenantDb),
+    ]);
     const langPortal = {
       ...portal,
-      header_config: resolveHeaderConfig(portal, lang),
-      footer: resolveFooter(portal, lang),
+      header_config: resolveHeaderConfig(portal, lang, allowedLangCodes, defaultLangCode),
+      footer: resolveFooter(portal, lang, allowedLangCodes, defaultLangCode),
     };
     const portalWithCardStyle = {
       ...langPortal,

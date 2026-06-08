@@ -263,7 +263,7 @@ export default function PortalDetailPage({
 
   // Publish header for the active language: copy draft to published and save.
   async function handlePublishHeader() {
-    const patch = headerPublishPatch(headerLang, activeHeaderDraft, headerPubByLang, headerDraftByLang);
+    const patch = headerPublishPatch(headerLang, activeHeaderDraft, headerPubByLang, headerDraftByLang, DEFAULT_LANG);
     if (headerLang === DEFAULT_LANG) {
       setHeaderConfig(activeHeaderDraft);
     } else {
@@ -287,7 +287,7 @@ export default function PortalDetailPage({
   async function handlePublishFooter() {
     // When publishing, promote footer_html_draft to footer_html
     const published = { ...activeFooterDraft, footer_html: activeFooterDraft.footer_html_draft || undefined };
-    const patch = footerPublishPatch(footerLang, published, footerPubByLang, footerDraftByLang);
+    const patch = footerPublishPatch(footerLang, published, footerPubByLang, footerDraftByLang, DEFAULT_LANG);
     if (footerLang === DEFAULT_LANG) {
       setFooter(published);
     } else {

@@ -15,6 +15,10 @@ vi.mock("@/lib/db/connection", () => ({
 }));
 // Route calls `getHomeSettings(tenantDb).catch(...)`, so it must return a thenable.
 vi.mock("@/lib/db/home-settings", () => ({ getHomeSettings: () => Promise.resolve(null) }));
+vi.mock("@/lib/services/tenant-languages", () => ({
+  getTenantLanguageCodes: async () => ["it", "de", "en"],
+  getTenantDefaultLanguageCode: async () => "it",
+}));
 
 import { GET } from "@/app/api/b2b/b2b/public/home/route";
 
