@@ -17,7 +17,6 @@ import { Pencil, FileText, Inbox } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { LanguageTabs } from "@/components/common/LanguageTabs";
 import { useLanguageStore } from "@/lib/stores/languageStore";
-import { getDefaultLanguage } from "@/config/languages";
 import { headerPublishPatch, footerPublishPatch } from "@/lib/services/portal-section-lang";
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { GeneralSection, parseDomainEntry, formatDomain } from "@/components/b2c/storefront-settings/general-section";
@@ -97,7 +96,7 @@ export default function PortalDetailPage({
   const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
   const langsLoading = useLanguageStore((s) => s.isLoading);
   const enabledLanguages = useMemo(() => allLanguages.filter((l) => l.isEnabled), [allLanguages]);
-  const DEFAULT_LANG = getDefaultLanguage().code;
+  const DEFAULT_LANG = enabledLanguages.find((l) => l.isDefault)?.code || enabledLanguages[0]?.code || "it";
   const [headerLang, setHeaderLang] = useState(DEFAULT_LANG);
   const [footerLang, setFooterLang] = useState(DEFAULT_LANG);
   const [headerDraftByLang, setHeaderDraftByLang] = useState<Record<string, HeaderConfig>>({});

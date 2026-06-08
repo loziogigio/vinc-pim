@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,7 +10,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { blogSlugify } from "@/lib/constants/blog";
-import { isValidLanguageCode, getEnabledLanguages, getDefaultLanguage } from "@/config/languages";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 import type { BlogChannelContext, BlogPostListItem, SalesChannelOption, BlogTaxonomyItem } from "./types";
 import {
   fetchPosts, createPost, updatePost, deletePost, fetchChannels, fetchTaxonomy,
@@ -20,6 +20,11 @@ const PAGE_LIMIT = 20;
 
 export function BlogListView({ context }: { context: BlogChannelContext }) {
   const { t, locale: uiLocale } = useTranslation();
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const isLoadingLanguages = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const enabledLanguages = useMemo(() => allLanguages.filter((l) => l.isEnabled), [allLanguages]);
+  const defaultLang = enabledLanguages.find((l) => l.isDefault)?.code || enabledLanguages[0]?.code || "it";
   const pathname = usePathname() || "";
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
@@ -42,15 +47,15 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newChannels, setNewChannels] = useState<string[]>([context.channel]);
-  const [newLocale, setNewLocale] = useState(getDefaultLanguage().code);
+  const [newLocale, setNewLocale] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   // Settings modal
   const [settingsTarget, setSettingsTarget] = useState<BlogPostListItem | null>(null);
 
   const contentLocaleLabel = useCallback(
-    (code: string) => getEnabledLanguages().find((l) => l.code === code)?.nativeName || code,
-    [],
+    (code: string) => enabledLanguages.find((l) => l.code === code)?.nativeName || code,
+    [enabledLanguages],
   );
 
   const load = useCallback(async () => {
@@ -76,6 +81,14 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
+    if (allLanguages.length === 0 && !isLoadingLanguages) {
+      fetchLanguages();
+    }
+  }, [allLanguages.length, isLoadingLanguages, fetchLanguages]);
+  useEffect(() => {
+    if (!newLocale && defaultLang) setNewLocale(defaultLang);
+  }, [defaultLang, newLocale]);
+  useEffect(() => {
     fetchChannels().then(setChannels).catch(() => {});
     fetchTaxonomy("categories").then(setCategories).catch(() => {});
     fetchTaxonomy("tags").then(setTags).catch(() => {});
@@ -90,7 +103,7 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
         title: newTitle.trim(),
         slug: newSlug.trim() || undefined,
         channels: newChannels.length ? newChannels : [context.channel],
-        default_locale: isValidLanguageCode(newLocale) ? newLocale : getDefaultLanguage().code,
+        default_locale: allLanguages.some((l) => l.isEnabled && l.code === newLocale) ? newLocale : defaultLang,
       });
       setShowAdd(false);
       setNewTitle(""); setNewSlug(""); setNewChannels([context.channel]);
@@ -254,7 +267,7 @@ export function BlogListView({ context }: { context: BlogChannelContext }) {
                 <label className="text-sm font-medium text-foreground">{t("pages.blog.list.fieldLocale")}</label>
                 <select value={newLocale} onChange={(e) => setNewLocale(e.target.value)}
                   className="mt-1 h-10 w-full rounded-lg border border-border px-3 text-sm">
-                  {getEnabledLanguages().map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
+                  {enabledLanguages.map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
                 </select>
               </div>
               <div>

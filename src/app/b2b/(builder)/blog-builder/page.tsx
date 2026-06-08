@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Loader2, Save, Upload, ArrowLeft, Clock } from "lucide-react";
 import { useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import { LivePreview } from "@/components/builder/LivePreview";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { useTranslation } from "@/lib/i18n/useTranslation";
-import { getEnabledLanguages, getDefaultLanguage } from "@/config/languages";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 import { usePageBuilderStore, type DeviceMode } from "@/lib/store/pageBuilderStore";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +28,26 @@ function BlogBuilderContent() {
   const pathname = usePathname() || "";
   const tenantPrefix = pathname.match(/^\/([^/]+)\/b2b/)?.[0]?.replace(/\/b2b$/, "") || "";
 
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const isLoadingLanguages = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const enabledLanguages = useMemo(() => allLanguages.filter((l) => l.isEnabled), [allLanguages]);
+  const defaultLang = enabledLanguages.find((l) => l.isDefault)?.code || enabledLanguages[0]?.code || "it";
+
   const postId = searchParams.get("post");
   const back = searchParams.get("back") || "/b2b/blog";
-  const [locale, setLocale] = useState(searchParams.get("locale") || getDefaultLanguage().code);
+  const [locale, setLocale] = useState(searchParams.get("locale") || "");
+
+  // Load enabled languages on mount, then default the locale once they arrive.
+  useEffect(() => {
+    if (allLanguages.length === 0 && !isLoadingLanguages) {
+      fetchLanguages();
+    }
+  }, [allLanguages.length, isLoadingLanguages, fetchLanguages]);
+
+  useEffect(() => {
+    if (!locale && defaultLang) setLocale(defaultLang);
+  }, [defaultLang, locale]);
 
   const apiBase = `/api/b2b/blog/posts/${postId}/content`;
 
@@ -58,6 +75,7 @@ function BlogBuilderContent() {
   // (Re)load content whenever the locale changes
   useEffect(() => {
     if (!postId) { setIsLoading(false); return; }
+    if (!locale) return;
     let active = true;
     setIsLoading(true);
     fetch(`${apiBase}?locale=${locale}`, { cache: "no-store" })
@@ -142,7 +160,7 @@ function BlogBuilderContent() {
           {t("pages.blog.builder.language")}:
           <select value={locale} onChange={(e) => setLocale(e.target.value)}
             className="h-9 rounded-lg border border-[#ebe9f1] px-2 text-sm">
-            {getEnabledLanguages().map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
+            {enabledLanguages.map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
           </select>
         </label>
 

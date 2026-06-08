@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { blogSlugify } from "@/lib/constants/blog";
-import { getDefaultLanguage } from "@/config/languages";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 import type { BlogTaxonomyItem } from "./types";
 import { fetchTaxonomy, createTaxonomy, updateTaxonomy, deleteTaxonomy } from "./blog-api";
 
 export function BlogTaxonomyManager({ kind }: { kind: "categories" | "tags" }) {
   const { t } = useTranslation();
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const isLoadingLanguages = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const enabledLanguages = useMemo(() => allLanguages.filter((l) => l.isEnabled), [allLanguages]);
+  const defaultLang = enabledLanguages.find((l) => l.isDefault)?.code || enabledLanguages[0]?.code || "it";
   const idKey = kind === "categories" ? "category_id" : "tag_id";
   const [items, setItems] = useState<BlogTaxonomyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,8 +32,14 @@ export function BlogTaxonomyManager({ kind }: { kind: "categories" | "tags" }) {
   }, [kind, t]);
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (allLanguages.length === 0 && !isLoadingLanguages) {
+      fetchLanguages();
+    }
+  }, [allLanguages.length, isLoadingLanguages, fetchLanguages]);
+
   const nameStr = (it: BlogTaxonomyItem) =>
-    typeof it.name === "string" ? it.name : (it.name[getDefaultLanguage().code] || it.name.en || Object.values(it.name)[0] || it.slug);
+    typeof it.name === "string" ? it.name : (it.name[defaultLang] || it.name.en || Object.values(it.name)[0] || it.slug);
 
   const remove = async (it: BlogTaxonomyItem) => {
     if (!confirm(t("pages.blog.taxonomy.deleteConfirm").replace("{name}", nameStr(it)))) return;
@@ -89,6 +100,7 @@ export function BlogTaxonomyManager({ kind }: { kind: "categories" | "tags" }) {
       {editing && (
         <TaxonomyModal
           kind={kind}
+          defaultLang={defaultLang}
           item={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); setSuccess(t("pages.blog.taxonomy.created")); await load(); }}
@@ -99,8 +111,9 @@ export function BlogTaxonomyManager({ kind }: { kind: "categories" | "tags" }) {
   );
 }
 
-function TaxonomyModal({ kind, item, onClose, onSaved, onError }: {
+function TaxonomyModal({ kind, defaultLang, item, onClose, onSaved, onError }: {
   kind: "categories" | "tags";
+  defaultLang: string;
   item: BlogTaxonomyItem | null;
   onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
@@ -118,7 +131,7 @@ function TaxonomyModal({ kind, item, onClose, onSaved, onError }: {
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
-        name: { [getDefaultLanguage().code]: name.trim() },
+        name: { [defaultLang]: name.trim() },
         slug: slug.trim() || undefined,
         is_active: isActive,
         ...(kind === "tags" ? { color: color || undefined } : {}),
