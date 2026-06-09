@@ -14,7 +14,7 @@ import { Schema } from "mongoose";
 // TYPES
 // ============================================
 
-export type DataModelRelation = "portal_user" | "customer";
+export type DataModelRelation = "portal_user" | "customer" | "channel";
 export type DataModelCardinality = "single" | "multiple";
 
 export type DataModelFieldType =
@@ -133,7 +133,7 @@ const DataModelDefinitionSchema = new Schema(
     relation: {
       type: String,
       required: true,
-      enum: ["portal_user", "customer"],
+      enum: ["portal_user", "customer", "channel"],
     },
     cardinality: {
       type: String,
@@ -226,4 +226,40 @@ export function validateFieldsTree(fields: DataModelField[] | undefined): void {
       validateFieldsTree(f.fields);
     }
   }
+}
+
+/**
+ * relation_id stored on every record of a `relation: "channel"` model.
+ * The real scope key for channel models is the record's `channel` field;
+ * relation_id is a constant sentinel so the `single` unique index
+ * `(relation_id, channel)` yields exactly one config record per channel.
+ */
+export const CHANNEL_RELATION_ID = "_channel";
+
+/** True when a definition is scoped to a sales channel rather than an entity. */
+export function isChannelRelation(relation: DataModelRelation): boolean {
+  return relation === "channel";
+}
+
+/**
+ * Normalize a definition create payload for channel models: they are always
+ * `single` cardinality and apply to all channels (channel `"*"`), because the
+ * record's own `channel` field carries the scope. No-op for other relations.
+ */
+export function applyChannelRelationDefaults<
+  T extends { relation: DataModelRelation; cardinality?: DataModelCardinality; channel?: string }
+>(input: T): T {
+  if (input.relation !== "channel") return input;
+  return { ...input, cardinality: "single", channel: "*" };
+}
+
+/**
+ * Resolve the relation_id to persist for a record. Channel models pin it to the
+ * sentinel (ignoring any client-supplied value); other relations use the supplied id.
+ */
+export function resolveRecordRelationId(
+  relation: DataModelRelation,
+  suppliedRelationId: string
+): string {
+  return relation === "channel" ? CHANNEL_RELATION_ID : suppliedRelationId;
 }
