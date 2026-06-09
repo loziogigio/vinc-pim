@@ -73,8 +73,13 @@ function validateObject(
       if (field.required && !partial) {
         throw new ValidationError(here, "is required");
       }
-      // For PATCH semantics, skip absent fields. For object/array_of_objects in
-      // PATCH mode, the caller should pass the full nested payload anyway.
+      // Checkboxes are always materialized as real booleans so absence != false.
+      // On create (non-partial), an unset checkbox stores `false`; on PATCH
+      // (partial), a genuinely-absent checkbox is skipped to avoid clobbering.
+      if (field.type === "checkbox" && !partial) {
+        out[field.slug] = false;
+      }
+      // Other absent fields are skipped (PATCH semantics / optional fields).
       continue;
     }
 
