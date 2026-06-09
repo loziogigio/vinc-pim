@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { resolveRecordRelationId } from "@/lib/db/models/data-model-definition";
 import { loadDefinition } from "@/lib/data-models/load-definition";
 import { parseListQuery } from "@/lib/data-models/parse-filters";
 import {
@@ -83,7 +84,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { definition, RecordModel } = loaded.loaded;
 
     const body = await req.json();
-    const relationId = String(body?.relation_id ?? "").trim();
+    const relationId = resolveRecordRelationId(
+      definition.relation,
+      String(body?.relation_id ?? "").trim()
+    );
     if (!relationId) {
       return NextResponse.json({ error: "relation_id is required" }, { status: 400 });
     }

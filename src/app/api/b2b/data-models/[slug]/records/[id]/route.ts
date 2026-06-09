@@ -64,6 +64,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 });
     }
 
+    // relation_id and channel are the record identity and are never mutated by
+    // PATCH (channel models keep relation_id = CHANNEL_RELATION_ID).
+
     const body = await req.json();
     if (!body?.data || typeof body.data !== "object") {
       return NextResponse.json({ error: "data is required" }, { status: 400 });
