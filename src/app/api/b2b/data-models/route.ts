@@ -11,6 +11,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import {
   RESERVED_SLUGS,
   SLUG_REGEX,
+  applyChannelRelationDefaults,
   findExternalRefField,
   validateFieldsTree,
   type DataModelField,
@@ -54,12 +55,21 @@ export async function POST(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const body = await req.json();
+
+    // Channel models are always single-cardinality and apply to all channels;
+    // the record's own `channel` field carries the per-channel scope.
+    const normalized = applyChannelRelationDefaults({
+      relation: body?.relation,
+      cardinality: body?.cardinality,
+      channel: body?.channel,
+    });
+    const relation = normalized.relation;
+    const cardinality = normalized.cardinality;
+    const channel = normalized.channel;
+
     const {
       name,
       slug: rawSlug,
-      relation,
-      cardinality,
-      channel,
       fields = [],
       readable_by_end_user = true,
       enabled = true,
@@ -68,9 +78,9 @@ export async function POST(req: NextRequest) {
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
-    if (relation !== "portal_user" && relation !== "customer") {
+    if (relation !== "portal_user" && relation !== "customer" && relation !== "channel") {
       return NextResponse.json(
-        { error: "relation must be 'portal_user' or 'customer'" },
+        { error: "relation must be 'portal_user', 'customer', or 'channel'" },
         { status: 400 }
       );
     }
