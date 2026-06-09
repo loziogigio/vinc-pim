@@ -10,7 +10,12 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { DataModelField } from "@/lib/db/models/data-model-definition";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
+import {
+  CHANNEL_RELATION_ID,
+  type DataModelField,
+  type DataModelRelation,
+} from "@/lib/db/models/data-model-definition";
 
 interface RecordFormModalProps {
   open: boolean;
@@ -23,6 +28,8 @@ interface RecordFormModalProps {
   };
   /** Default channel from the definition; when "*" the form requires a value. */
   definitionChannel: string;
+  /** Relation of the parent definition — drives channel-scoped UI. */
+  relation: DataModelRelation;
   busy?: boolean;
   error?: string | null;
   onSubmit: (input: {
@@ -33,12 +40,26 @@ interface RecordFormModalProps {
   onClose: () => void;
 }
 
+function withCheckboxDefaults(
+  fields: DataModelField[],
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const out = { ...data };
+  for (const f of fields) {
+    if (f.type === "checkbox" && (out[f.slug] === undefined || out[f.slug] === null)) {
+      out[f.slug] = false;
+    }
+  }
+  return out;
+}
+
 export function RecordFormModal({
   open,
   title,
   fields,
   initial,
   definitionChannel,
+  relation,
   busy,
   error,
   onSubmit,
@@ -48,14 +69,17 @@ export function RecordFormModal({
   const [channel, setChannel] = useState(
     initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel)
   );
-  const [data, setData] = useState<Record<string, unknown>>(initial?.data ?? {});
+  const [data, setData] = useState<Record<string, unknown>>(
+    withCheckboxDefaults(fields, initial?.data ?? {})
+  );
+  const isChannel = relation === "channel";
 
   useEffect(() => {
     if (!open) return;
     setRelationId(initial?.relation_id ?? "");
     setChannel(initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel));
-    setData(initial?.data ?? {});
-  }, [open, initial, definitionChannel]);
+    setData(withCheckboxDefaults(fields, initial?.data ?? {}));
+  }, [open, initial, definitionChannel, fields]);
 
   if (!open) return null;
 
@@ -77,33 +101,50 @@ export function RecordFormModal({
         </div>
 
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {isChannel ? (
             <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                relation_id <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                value={relationId}
-                onChange={(e) => setRelationId(e.target.value)}
-                placeholder="C-… or PU-…"
-                className="mt-1 font-mono text-xs"
-                disabled={!!initial?.relation_id}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                channel
-                {definitionChannel === "*" && <span className="text-rose-500"> *</span>}
-              </label>
-              <Input
+              <label className="text-xs font-medium text-muted-foreground">channel</label>
+              <ChannelSelect
                 value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-                placeholder="default"
-                className="mt-1 text-xs"
-                disabled={definitionChannel !== "*"}
+                onChange={setChannel}
+                required
+                showLabel={false}
+                disabled={!!initial?.channel}
+                className="mt-1"
               />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                One config record per channel.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  relation_id <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={relationId}
+                  onChange={(e) => setRelationId(e.target.value)}
+                  placeholder="C-… or PU-…"
+                  className="mt-1 font-mono text-xs"
+                  disabled={!!initial?.relation_id}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  channel
+                  {definitionChannel === "*" && <span className="text-rose-500"> *</span>}
+                </label>
+                <Input
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value)}
+                  placeholder="default"
+                  className="mt-1 text-xs"
+                  disabled={definitionChannel !== "*"}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 space-y-3">
             {fields.map((f) => (
@@ -126,8 +167,14 @@ export function RecordFormModal({
             Cancel
           </Button>
           <Button
-            onClick={() => onSubmit({ relation_id: relationId, channel, data })}
-            disabled={busy || !relationId || (definitionChannel === "*" && !channel)}
+            onClick={() =>
+              onSubmit({
+                relation_id: isChannel ? CHANNEL_RELATION_ID : relationId,
+                channel,
+                data,
+              })
+            }
+            disabled={busy || (!isChannel && !relationId) || !channel}
           >
             {busy ? "Saving…" : "Save"}
           </Button>
