@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { loadDefinition } from "@/lib/data-models/load-definition";
+import { resolveRecordRelationId } from "@/lib/db/models/data-model-definition";
 import {
   extractExternalRef,
   validateRecordData,
@@ -87,8 +88,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     for (let i = 0; i < records.length; i++) {
       const r = records[i];
 
-      const relationId =
-        typeof r?.relation_id === "string" ? r.relation_id.trim() : "";
+      // Channel models pin relation_id to the sentinel (the channel code lives
+      // in each record's `channel` field), matching the single-record route.
+      const relationId = resolveRecordRelationId(
+        definition.relation,
+        typeof r?.relation_id === "string" ? r.relation_id.trim() : ""
+      );
       if (!relationId) {
         errors.push({ index: i, error: "relation_id is required" });
         continue;
