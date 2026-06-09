@@ -3,6 +3,7 @@ import {
   Package,
   FolderTree,
   Layers,
+  LayoutGrid,
   BookA,
   Tag,
   Tags as TagsIcon,
@@ -49,6 +50,12 @@ export const PIM_DOC_SECTIONS: PimDocSection[] = [
     title: "Products",
     description: "Create, read, update, publish, and bulk-manage PIM products.",
     icon: Package,
+  },
+  {
+    slug: "dynamic-blocks",
+    title: "Dynamic Blocks",
+    description: "Per-product rich content (image / video / 3D / text grids) on the detail page.",
+    icon: LayoutGrid,
   },
   {
     slug: "categories",

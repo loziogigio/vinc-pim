@@ -1,0 +1,119 @@
+export const metadata = {
+  title: "Dynamic Blocks",
+  description:
+    "Per-product rich content (image / video / 3D / text grids) attached to a product and shown on the B2B detail page.",
+};
+
+# Dynamic Blocks
+
+**Dynamic blocks** are per-product rich content — grids of image, video, 3D, and
+text elements rendered on the B2B product detail page. They are stored on the
+product document as a `dynamic_blocks` array (Mongo only; excluded from the Solr
+index) and attached to the storefront response by a gated enrichment step. Each
+block belongs to **one language**.
+
+<Callout kind="info" title="No dedicated endpoint">
+  Dynamic blocks are an optional <code>dynamic_blocks</code> field on a product.
+  Write them via the product <code>PATCH</code>
+  (<code>/api/b2b/pim/products/:entity_code</code>) or by including the field on a
+  product in an <a href="/developers/pim/import">import</a> payload. They are read
+  back on the product detail response.
+</Callout>
+
+## Where the field goes
+
+On import, add `dynamic_blocks` to any product in the `products[]` array:
+
+```json
+{
+  "source_id": "<your-source-id>",
+  "products": [
+    {
+      "entity_code": "<your-product-code>",
+      "dynamic_blocks": [ /* blocks — see schema below */ ]
+    }
+  ]
+}
+```
+
+## Language rules
+
+<Callout kind="warning" title="lang must be tenant-enabled AND lowercase">
+  <code>lang</code> on each block must be one of the **tenant's enabled languages**
+  (see <a href="/developers/pim/languages">Languages</a> / PIM → Lingue) and written
+  **lowercase**. Validation checks the per-tenant <code>languages</code> collection,
+  not a global list, and the match is **case-sensitive** against the stored lowercase
+  codes — <code>"EN"</code> is rejected, use <code>"en"</code>. A block in a language
+  the tenant hasn't enabled is also rejected. (The storefront filters blocks by the
+  lowercase URL language, so an uppercase code would never render either.)
+</Callout>
+
+## Replace + validation semantics
+
+<Callout kind="danger" title="Full replace, and all-or-nothing per product">
+  <code>dynamic_blocks</code> **fully replaces** a product's existing blocks — it is
+  not merged. Send the complete set each time; omit the field to leave blocks
+  untouched; send <code>[]</code> to clear them.
+
+  Validation is **all-or-nothing per product**: if **any** block or element is invalid
+  (bad <code>lang</code>, <code>section</code>, <code>columns</code>, an unsafe URL, …)
+  the importer **silently drops the entire <code>dynamic_blocks</code> field for that
+  product** and records a <code>field: "dynamic_blocks"</code> warning on the import
+  job — the product still imports, just without blocks. Always check the job's
+  <code>warnings</code>.
+</Callout>
+
+## Block schema
+
+<ParamTable
+  rows={[
+    { name: "id", type: "string", required: true, description: "Stable, non-empty (e.g. a UUID)." },
+    { name: "lang", type: "string", required: true, description: "A tenant-enabled, lowercase language code (see above)." },
+    { name: "title", type: "string", description: "Heading shown above the grid, in `lang`." },
+    { name: "section", type: "1 | 2 | 3 | 4", required: true, description: "Page zone the block renders into." },
+    { name: "order", type: "number", required: true, description: "Sort order within (section, lang)." },
+    { name: "columns", type: "integer 1–8", required: true, description: "Elements per row; the list wraps into rows." },
+    { name: "is_active", type: "boolean", required: true, description: "false hides the block without deleting it." },
+    { name: "elements", type: "BlockElement[]", required: true, description: "Ordered elements, ≤ 24 per block." },
+  ]}
+/>
+
+## Element schema
+
+Every element has `id` (non-empty string) and `kind` (`"image"` | `"video"` |
+`"3d"` | `"text"`), plus:
+
+<ParamTable
+  rows={[
+    { name: "media", type: "object", description: "Required for image/video/3d. { url, cdn_key?, is_external_link?, alt? }. Forbidden on text." },
+    { name: "media.url", type: "string", required: true, description: "Non-empty safe URL: http(s) absolute or site-relative '/…'. No javascript:/data:/'//'." },
+    { name: "text", type: "string", description: "Required for kind 'text' (non-empty). Forbidden on media kinds." },
+    { name: "description", type: "string", description: "Optional caption in the block's lang." },
+    { name: "link", type: "object", description: "Optional { href (safe URL), new_tab (boolean) } wrapping the element." },
+  ]}
+/>
+
+**Limits:** ≤ 20 blocks per product, ≤ 24 elements per block.
+
+## Example
+
+```json
+{
+  "id": "blk-hero-it",
+  "lang": "it",
+  "title": "Caratteristiche",
+  "section": 1,
+  "order": 0,
+  "columns": 2,
+  "is_active": true,
+  "elements": [
+    {
+      "id": "el-img-1",
+      "kind": "image",
+      "media": { "url": "https://cdn.example.com/p/feature-1.jpg", "alt": "Dettaglio" },
+      "link": { "href": "https://www.example.com/scheda", "new_tab": true }
+    },
+    { "id": "el-txt-1", "kind": "text", "text": "Materiali ad alta resistenza." }
+  ]
+}
+```
