@@ -17,6 +17,7 @@ import { RecordsTable, type RecordDoc } from "@/components/data-models/RecordsTa
 import { RecordFormModal } from "@/components/data-models/RecordFormModal";
 import { ImportPanel } from "@/components/data-models/ImportPanel";
 import { ApiDocsPanel } from "@/components/data-models/ApiDocsPanel";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
 import {
   collectFieldSlugs,
   type DataModelField,
@@ -273,6 +274,8 @@ export default function DataModelDetailPage({
 // -----------------------------------------------------------------
 
 function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
+  const isChannel = definition.relation === "channel";
+
   const [records, setRecords] = useState<RecordDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -288,7 +291,11 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: "100" });
-      if (relationFilter.trim()) params.set("relation_id", relationFilter.trim());
+      if (isChannel) {
+        if (relationFilter.trim()) params.set("channel", relationFilter.trim());
+      } else if (relationFilter.trim()) {
+        params.set("relation_id", relationFilter.trim());
+      }
       const res = await fetch(
         `/api/b2b/data-models/${encodeURIComponent(definition.slug)}/records?${params.toString()}`
       );
@@ -301,7 +308,7 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
     } finally {
       setLoading(false);
     }
-  }, [definition.slug, relationFilter]);
+  }, [definition.slug, relationFilter, isChannel]);
 
   useEffect(() => {
     void load();
@@ -357,14 +364,25 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <input
-          value={relationFilter}
-          onChange={(e) => setRelationFilter(e.target.value)}
-          placeholder={`Filter by ${definition.relation} id (e.g. ${
-            definition.relation === "customer" ? "C-…" : "PU-…"
-          })`}
-          className="w-72 rounded-md border border-input bg-background px-3 py-2 text-sm"
-        />
+        {isChannel ? (
+          <div className="w-72">
+            <ChannelSelect
+              value={relationFilter}
+              onChange={setRelationFilter}
+              showLabel={false}
+              label="Filter by channel"
+            />
+          </div>
+        ) : (
+          <input
+            value={relationFilter}
+            onChange={(e) => setRelationFilter(e.target.value)}
+            placeholder={`Filter by ${definition.relation} id (e.g. ${
+              definition.relation === "customer" ? "C-…" : "PU-…"
+            })`}
+            className="w-72 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        )}
         <Button onClick={() => setCreating(true)}>
           <Plus className="mr-1 h-4 w-4" />
           Add record
@@ -387,6 +405,7 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
         <RecordsTable
           fields={(definition.fields ?? []) as DataModelField[]}
           records={records}
+          relation={definition.relation}
           onEdit={(rec) => setEditing(rec)}
           onDelete={deleteRecord}
         />
@@ -396,6 +415,7 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
         open={creating || editing !== null}
         title={editing ? `Edit record · ${editing._id.slice(-8)}` : "Add record"}
         fields={(definition.fields ?? []) as DataModelField[]}
+        relation={definition.relation}
         definitionChannel={definition.channel}
         initial={
           editing
