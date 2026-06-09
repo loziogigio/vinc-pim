@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataModelField } from "@/lib/db/models/data-model-definition";
+import type { DataModelField, DataModelRelation } from "@/lib/db/models/data-model-definition";
 
 export interface RecordDoc {
   _id: string;
@@ -20,6 +20,8 @@ interface RecordsTableProps {
   fields: DataModelField[];
   records: RecordDoc[];
   locale?: string;
+  /** Parent definition relation — channel models hide the relation_id column. */
+  relation?: DataModelRelation;
   onEdit?: (rec: RecordDoc) => void;
   onDelete?: (rec: RecordDoc) => void;
 }
@@ -30,6 +32,7 @@ export function RecordsTable({
   fields,
   records,
   locale = "en",
+  relation,
   onEdit,
   onDelete,
 }: RecordsTableProps) {
@@ -40,12 +43,14 @@ export function RecordsTable({
     .filter((f) => f.type !== "object" && f.type !== "array_of_objects")
     .slice(0, MAX_COLUMNS);
 
+  const isChannel = relation === "channel";
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-3 py-2">Relation</th>
+            {!isChannel && <th className="px-3 py-2">Relation</th>}
             <th className="px-3 py-2">Channel</th>
             {columns.map((c) => (
               <th key={c.slug} className="px-3 py-2">
@@ -59,9 +64,11 @@ export function RecordsTable({
         <tbody className="divide-y divide-border bg-card">
           {records.map((rec) => (
             <tr key={rec._id} className="hover:bg-muted/50">
-              <td className="px-3 py-2 font-mono text-xs text-foreground">
-                {rec.relation_id}
-              </td>
+              {!isChannel && (
+                <td className="px-3 py-2 font-mono text-xs text-foreground">
+                  {rec.relation_id}
+                </td>
+              )}
               <td className="px-3 py-2 text-muted-foreground">{rec.channel}</td>
               {columns.map((c) => (
                 <td key={c.slug} className="px-3 py-2">
@@ -102,7 +109,7 @@ export function RecordsTable({
           {records.length === 0 && (
             <tr>
               <td
-                colSpan={columns.length + 4}
+                colSpan={columns.length + (isChannel ? 3 : 4)}
                 className="px-3 py-8 text-center text-muted-foreground"
               >
                 No records yet.
