@@ -200,6 +200,8 @@ function NewModelModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isChannel = relation === "channel";
+
   useEffect(() => {
     if (!open) {
       setName("");
@@ -225,8 +227,8 @@ function NewModelModal({
           name,
           slug: slug || undefined,
           relation,
-          cardinality,
-          channel,
+          cardinality: isChannel ? "single" : cardinality,
+          channel: isChannel ? "*" : channel,
           readable_by_end_user: readableByEndUser,
           fields: [],
         }),
@@ -287,34 +289,44 @@ function NewModelModal({
               >
                 <option value="customer">customer</option>
                 <option value="portal_user">portal_user</option>
+                <option value="channel">channel</option>
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Cardinality</label>
-              <select
-                value={cardinality}
-                onChange={(e) =>
-                  setCardinality(e.target.value as DataModelCardinality)
-                }
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="multiple">multiple (1:N)</option>
-                <option value="single">single (1:1)</option>
-              </select>
-            </div>
+            {!isChannel && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Cardinality</label>
+                <select
+                  value={cardinality}
+                  onChange={(e) =>
+                    setCardinality(e.target.value as DataModelCardinality)
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="multiple">multiple (1:N)</option>
+                  <option value="single">single (1:1)</option>
+                </select>
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Channel (SalesChannel code, or &quot;*&quot; for any)
-            </label>
-            <Input
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-              placeholder="default"
-              className="mt-1"
-            />
-          </div>
+          {!isChannel ? (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Channel (SalesChannel code, or &quot;*&quot; for any)
+              </label>
+              <Input
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+                placeholder="default"
+                className="mt-1"
+              />
+            </div>
+          ) : (
+            <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+              One static config record per sales channel. You&apos;ll pick the
+              channel when adding records.
+            </p>
+          )}
 
           <label className="flex items-center gap-2 text-sm text-foreground">
             <input
