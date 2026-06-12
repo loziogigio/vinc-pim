@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
 import { MenuLocation } from "@/lib/db/models/menu";
-import { resolveMenuLabel } from "@/lib/utils/menu-i18n";
+import {
+  loadMenuLanguageContext,
+  resolveMenuLanguage,
+  isDefaultMenuLanguage,
+  withMenuLanguage,
+} from "@/lib/utils/menu-language";
 
 /**
  * GET /api/public/menu
@@ -18,36 +23,45 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
+    const { MenuItem: MenuItemModel, Language: LanguageModel } =
+      await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location") as MenuLocation | null;
     const channel = searchParams.get("channel") || "default";
-    const lang = searchParams.get("lang");
+    const langCtx = await loadMenuLanguageContext(LanguageModel);
+    const lang = resolveMenuLanguage(searchParams.get("lang"), langCtx);
 
     // Build query - only active items with valid time bounds
     const now = new Date();
-    const query: any = {
+    const timeBounds = [
+      { start_date: { $exists: false }, end_date: { $exists: false } },
+      { start_date: null, end_date: null },
+      { start_date: { $lte: now }, end_date: { $exists: false } },
+      { start_date: { $lte: now }, end_date: null },
+      { start_date: { $exists: false }, end_date: { $gte: now } },
+      { start_date: null, end_date: { $gte: now } },
+      { start_date: { $lte: now }, end_date: { $gte: now } },
+    ];
+
+    const baseQuery: any = {
       channel,
       is_active: true,
-      $or: [
-        { start_date: { $exists: false }, end_date: { $exists: false } },
-        { start_date: null, end_date: null },
-        { start_date: { $lte: now }, end_date: { $exists: false } },
-        { start_date: { $lte: now }, end_date: null },
-        { start_date: { $exists: false }, end_date: { $gte: now } },
-        { start_date: null, end_date: { $gte: now } },
-        { start_date: { $lte: now }, end_date: { $gte: now } },
-      ],
+      $or: timeBounds,
     };
+    if (location) baseQuery.location = location;
 
-    if (location) {
-      query.location = location;
+    // Resolve the requested language's menu, falling back to the default
+    // language's version when the requested one has no items.
+    const findForLang = (l: string) =>
+      MenuItemModel.find(withMenuLanguage(baseQuery, l, langCtx))
+        .sort({ parent_id: 1, position: 1 })
+        .lean();
+
+    let menuItems = await findForLang(lang);
+    if (menuItems.length === 0 && !isDefaultMenuLanguage(lang, langCtx)) {
+      menuItems = await findForLang(langCtx.defaultCode);
     }
-
-    const menuItems = await MenuItemModel.find(query)
-      .sort({ parent_id: 1, position: 1 })
-      .lean();
 
     // Resolve URLs for entity-based types that only store reference_id
     // Bulk-fetch product slugs for "product" type items
@@ -119,7 +133,7 @@ export async function GET(req: NextRequest) {
         .map((item) => ({
           id: item.menu_item_id,
           type: item.type,
-          label: resolveMenuLabel(item, lang),
+          label: item.label,
           reference_id: item.reference_id,
           url: resolveUrl(item),
           icon: item.icon,

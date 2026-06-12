@@ -66,9 +66,11 @@ Authenticate and receive a JWT token.
 
 **Request:**
 
+The `username` field accepts either the portal user's username **or** their email address.
+
 ```json
 {
-  "username": "your.username",
+  "username": "your.username or your.email@company.com",
   "password": "your-password"
 }
 ```

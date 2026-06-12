@@ -11,7 +11,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
-import { refreshLanguageCache } from "@/services/language.service";
 import { addLanguageFieldsToSolr, ensureBaseFields } from "@/services/solr-schema.service";
 import { syncQueue } from "@/lib/queue/queues";
 import { SYNC_PRIORITY } from "@/lib/constants/sync-priority";
@@ -90,9 +89,6 @@ export async function POST(
     // Enable search indexing
     language.searchEnabled = true;
     await language.save();
-
-    // Refresh cache
-    await refreshLanguageCache();
 
     const result: any = {
       success: true,

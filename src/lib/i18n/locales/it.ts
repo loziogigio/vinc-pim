@@ -5078,6 +5078,9 @@ const it = {
       failedToReorder: "Impossibile riordinare le voci di menu",
       deletedSuccess: "Voce di menu eliminata con successo",
       failedToDelete: "Impossibile eliminare la voce di menu",
+      copyFromDefault: "Copia dalla lingua predefinita",
+      copiedFromDefault: "Copiate {{count}} voci dalla lingua predefinita",
+      failedToCopy: "Impossibile copiare dalla lingua predefinita",
     },
     menuItemForm: {
       labelRequired: "L'etichetta è obbligatoria per questo tipo",

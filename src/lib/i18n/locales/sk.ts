@@ -5054,6 +5054,9 @@ const sk = {
       failedToReorder: "Nepodarilo sa preskupiť položky menu",
       deletedSuccess: "Položka menu bola úspešne odstránená",
       failedToDelete: "Nepodarilo sa odstrániť položku menu",
+      copyFromDefault: "Kopírovať z predvoleného jazyka",
+      copiedFromDefault: "Skopírovaných {{count}} položiek z predvoleného jazyka",
+      failedToCopy: "Nepodarilo sa kopírovať z predvoleného jazyka",
     },
     menuItemForm: {
       labelRequired: "Pre tento typ je popis povinný",

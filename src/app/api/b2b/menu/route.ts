@@ -3,7 +3,12 @@ import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import { invalidateB2CCache } from "@/lib/cache/redis-client";
 import { MenuLocation } from "@/lib/db/models/menu";
-import { normalizeLabelI18n } from "@/lib/utils/menu-i18n";
+import {
+  loadMenuLanguageContext,
+  resolveMenuLanguage,
+  menuLanguageFilter,
+  withMenuLanguage,
+} from "@/lib/utils/menu-language";
 import { nanoid } from "nanoid";
 
 /**
@@ -16,12 +21,15 @@ export async function GET(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const { tenantDb } = auth;
-    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
+    const { MenuItem: MenuItemModel, Language: LanguageModel } =
+      await connectWithModels(tenantDb);
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location") as MenuLocation | null;
     const channel = searchParams.get("channel") || "default";
     const includeInactive = searchParams.get("include_inactive") === "true";
+    // Optional: restrict to one language's version. Absent = all items (legacy).
+    const languageParam = searchParams.get("language");
 
     // Build query - no wholesaler_id needed, database provides isolation
     const query: any = { channel };
@@ -43,7 +51,18 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const menuItems = await MenuItemModel.find(query)
+    // Restrict to one language's version when requested (legacy callers omit it).
+    let finalQuery = query;
+    if (languageParam) {
+      const langCtx = await loadMenuLanguageContext(LanguageModel);
+      finalQuery = withMenuLanguage(
+        query,
+        resolveMenuLanguage(languageParam, langCtx),
+        langCtx,
+      );
+    }
+
+    const menuItems = await MenuItemModel.find(finalQuery)
       .sort({ parent_id: 1, position: 1 })
       .lean();
 
@@ -67,16 +86,17 @@ export async function POST(req: NextRequest) {
     if (!auth.success) return auth.response;
 
     const { tenantDb } = auth;
-    const { MenuItem: MenuItemModel } = await connectWithModels(tenantDb);
+    const { MenuItem: MenuItemModel, Language: LanguageModel } =
+      await connectWithModels(tenantDb);
 
     const body = await req.json();
     const {
       location,
       channel = "default",
+      language: languageInput,
       type,
       reference_id,
       label,
-      label_i18n,
       url,
       icon,
       image_url,
@@ -115,6 +135,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Language version this item belongs to (defaults to the default language).
+    const langCtx = await loadMenuLanguageContext(LanguageModel);
+    const language = resolveMenuLanguage(languageInput, langCtx);
+
     // Calculate level and path
     let level = 0;
     let path: string[] = [];
@@ -136,10 +160,12 @@ export async function POST(req: NextRequest) {
       path = [...parent.path, parent.menu_item_id];
     }
 
-    // Get next position
+    // Get next position (scoped to this channel/location/language version)
     const lastItem = await MenuItemModel.findOne({
+      channel,
       location,
       parent_id: parent_id || null,
+      ...menuLanguageFilter(language, langCtx),
     })
       .sort({ position: -1 })
       .lean();
@@ -150,11 +176,11 @@ export async function POST(req: NextRequest) {
     const menuItem = await MenuItemModel.create({
       menu_item_id: nanoid(12),
       channel,
+      language,
       location,
       type,
       reference_id,
       label,
-      label_i18n: normalizeLabelI18n(label_i18n),
       url,
       icon,
       image_url,

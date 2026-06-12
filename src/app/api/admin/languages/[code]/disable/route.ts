@@ -6,7 +6,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
-import { refreshLanguageCache } from "@/services/language.service";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 
@@ -92,9 +91,6 @@ export async function POST(
     // Disable language
     language.isEnabled = false;
     await language.save();
-
-    // Refresh cache
-    await refreshLanguageCache();
 
     return NextResponse.json({
       success: true,

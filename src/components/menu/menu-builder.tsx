@@ -23,9 +23,13 @@ import {
   ChevronsUp,
   Filter,
   Menu as MenuIcon,
+  Copy,
+  Loader2,
 } from "lucide-react";
 import { MenuItemRow } from "./menu-item-row";
 import { MenuItemForm } from "./menu-item-form";
+import { useLanguageStore } from "@/lib/stores/languageStore";
+import { buildMenuListUrl } from "@/lib/utils/menu-api";
 import { MenuLocation } from "@/lib/db/models/menu";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -38,7 +42,6 @@ export interface MenuItem {
   type: string;
   reference_id?: string;
   label?: string;
-  label_i18n?: Record<string, string>;
   url?: string;
   icon?: string;
   rich_text?: string;
@@ -61,10 +64,12 @@ interface MenuBuilderProps {
   location: MenuLocation;
   channel: string;
   channelName?: string;
+  /** Catalog language code for this menu version (default-language when omitted). */
+  language?: string;
   onSave?: () => void;
 }
 
-export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuilderProps) {
+export function MenuBuilder({ location, channel, channelName, language, onSave }: MenuBuilderProps) {
   const { t } = useTranslation();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +79,20 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
   const [parentItem, setParentItem] = useState<MenuItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
+
+  // Enabled languages drive the default-language fallback for clone-from-default.
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const isLoadingLanguages = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  useEffect(() => {
+    if (allLanguages.length === 0 && !isLoadingLanguages) {
+      fetchLanguages();
+    }
+  }, [allLanguages.length, isLoadingLanguages, fetchLanguages]);
+  const defaultLang =
+    allLanguages.find((l) => l.isEnabled && l.isDefault)?.code ||
+    allLanguages.find((l) => l.isEnabled)?.code ||
+    "it";
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -87,7 +106,7 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
     try {
       setLoading(true);
       const res = await fetch(
-        `/api/b2b/menu?location=${location}&channel=${channel}&include_inactive=true`
+        buildMenuListUrl({ location, channel, language, includeInactive: true })
       );
       if (!res.ok) throw new Error("Failed to fetch menu items");
       const data = await res.json();
@@ -102,7 +121,35 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
 
   useEffect(() => {
     fetchMenuItems();
-  }, [location, channel]);
+  }, [location, channel, language]);
+
+  // Editing a non-default language version → offer cloning from the default.
+  const isNonDefaultLang = !!language && language !== defaultLang;
+  const [cloning, setCloning] = useState(false);
+
+  const handleCloneFromDefault = async () => {
+    try {
+      setCloning(true);
+      const res = await fetch("/api/b2b/menu/clone-language", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, location, targetLanguage: language }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Failed to copy");
+      }
+      const data = await res.json();
+      toast.success(
+        t("components.menuBuilder.copiedFromDefault", { count: data.created })
+      );
+      fetchMenuItems();
+    } catch (e: any) {
+      toast.error(e.message || t("components.menuBuilder.failedToCopy"));
+    } finally {
+      setCloning(false);
+    }
+  };
 
   function toggleExpand(itemId: string) {
     setExpandedItems((prev) => {
@@ -364,18 +411,35 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
                   : `Create your first ${locationTitle.toLowerCase()} menu item`}
               </p>
               {!searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setParentItem(null);
-                    setEditingItem(null);
-                    setShowForm(true);
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
-                >
-                  <Plus className="h-5 w-5" />
-                  Create Menu Item
-                </button>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParentItem(null);
+                      setEditingItem(null);
+                      setShowForm(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+                  >
+                    <Plus className="h-5 w-5" />
+                    Create Menu Item
+                  </button>
+                  {isNonDefaultLang && (
+                    <button
+                      type="button"
+                      onClick={handleCloneFromDefault}
+                      disabled={cloning}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-muted transition disabled:opacity-50"
+                    >
+                      {cloning ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Copy className="h-5 w-5" />
+                      )}
+                      {t("components.menuBuilder.copyFromDefault")}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -405,6 +469,7 @@ export function MenuBuilder({ location, channel, channelName, onSave }: MenuBuil
           location={location}
           channel={channel}
           channelName={channelName}
+          language={language}
           item={editingItem}
           parentItem={parentItem}
           onClose={handleFormClose}

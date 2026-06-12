@@ -2,10 +2,12 @@
 
 import { Breadcrumbs } from "@/components/b2b/Breadcrumbs";
 import { MenuBuilder } from "@/components/menu/menu-builder";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { LanguageTabs } from "@/components/common/LanguageTabs";
+import { useLanguageStore } from "@/lib/stores/languageStore";
 
 interface ChannelOption {
   code: string;
@@ -23,6 +25,36 @@ export default function MenuSettingsPage() {
   const [channels, setChannels] = useState<ChannelOption[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string>(channelParam || "default");
   const [loadingChannels, setLoadingChannels] = useState(true);
+
+  // Enabled languages drive the per-language menu tabs.
+  const allLanguages = useLanguageStore((s) => s.languages);
+  const isLoadingLanguages = useLanguageStore((s) => s.isLoading);
+  const fetchLanguages = useLanguageStore((s) => s.fetchLanguages);
+  const languages = useMemo(
+    () => allLanguages.filter((l) => l.isEnabled),
+    [allLanguages]
+  );
+  const defaultLang =
+    allLanguages.find((l) => l.isEnabled && l.isDefault)?.code ||
+    allLanguages.find((l) => l.isEnabled)?.code ||
+    "it";
+  const [activeLang, setActiveLang] = useState("");
+
+  useEffect(() => {
+    if (allLanguages.length === 0 && !isLoadingLanguages) {
+      fetchLanguages();
+    }
+  }, [allLanguages.length, isLoadingLanguages, fetchLanguages]);
+
+  useEffect(() => {
+    if (!activeLang && defaultLang) setActiveLang(defaultLang);
+  }, [defaultLang, activeLang]);
+
+  useEffect(() => {
+    if (languages.length > 0 && activeLang && !languages.some((l) => l.code === activeLang)) {
+      setActiveLang(languages[0].code);
+    }
+  }, [languages, activeLang]);
 
   useEffect(() => {
     async function fetchChannels() {
@@ -96,6 +128,15 @@ export default function MenuSettingsPage() {
         )}
       </div>
 
+      {/* Language Tabs (only when more than one language is enabled) */}
+      {languages.length > 1 && (
+        <LanguageTabs
+          languages={languages}
+          active={activeLang}
+          onChange={setActiveLang}
+        />
+      )}
+
       {/* Location Tabs */}
       <div className="flex gap-2 border-b border-border">
         <button
@@ -132,10 +173,11 @@ export default function MenuSettingsPage() {
 
       {/* Menu Builder */}
       <MenuBuilder
-        key={`${selectedChannel}-${activeLocation}`}
+        key={`${selectedChannel}-${activeLocation}-${activeLang}`}
         location={activeLocation}
         channel={selectedChannel}
         channelName={channels.find((ch) => ch.code === selectedChannel)?.name || selectedChannel}
+        language={activeLang}
       />
     </div>
   );

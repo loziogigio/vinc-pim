@@ -88,7 +88,10 @@ export async function POST(
           submitting: true,
           submitting_at: new Date(),
           status: "draft",
-          is_current: false, // Not editing — just resubmitting with autofix
+          // Leave is_current untouched: the order stays a draft throughout the
+          // retry and is only depromoted when submitOrder() succeeds. A failed
+          // resubmit must not orphan the cart (whatever active/parked state it
+          // had is preserved).
         },
         $unset: {
           processing_status: "",
@@ -148,7 +151,7 @@ export async function POST(
             processing_status: "processing",
             processing_phase: "before",
             processing_started_at: new Date(),
-            is_current: false,
+            // Still a draft while ERP re-validates async — keep is_current.
             submitting: false,
           },
         },

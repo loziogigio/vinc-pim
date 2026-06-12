@@ -5081,6 +5081,9 @@ const en = {
       failedToReorder: "Failed to reorder menu items",
       deletedSuccess: "Menu item deleted successfully",
       failedToDelete: "Failed to delete menu item",
+      copyFromDefault: "Copy from default language",
+      copiedFromDefault: "Copied {{count}} item(s) from the default language",
+      failedToCopy: "Failed to copy from default language",
     },
     menuItemForm: {
       labelRequired: "Label is required for this type",
