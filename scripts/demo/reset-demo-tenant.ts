@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   }
 
   log("\n✅ Demo reset complete.");
-  log(`Next: re-index Solr →  npx tsx scripts/bulk-sync-to-solr.ts --tenant ${DEMO_TENANT_ID}\n`);
+  log("Solr reindex completed in-process.");
 }
 
 main()

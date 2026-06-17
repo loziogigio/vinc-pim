@@ -3,6 +3,7 @@
  * Idempotent upsert keyed by customerId (the tenant home_settings_customer_id).
  * Usage: npx tsx scripts/demo/configure-demo-branding.ts [--dry-run]
  */
+import { pathToFileURL } from "node:url";
 import { connectToTenantDb, disconnectDb } from "../lib/db-connect.js";
 import { DEMO_TENANT_ID } from "./demo-config.js";
 
@@ -50,4 +51,6 @@ async function main() {
   await connectToTenantDb(DEMO_TENANT_ID);
   try { await applyDemoBranding(); } finally { await disconnectDb(); }
 }
-main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
+}

@@ -61,7 +61,7 @@ export function buildOrderHistoryRecords(now: Date = new Date()): DemoRecord[] {
           pdf_url: `https://cdn.vendereincloud.it/vinc-demo-it/demo/docs/FT-2026-${seq}.pdf` } });
       out.push({ slug: "delivery_note", relation_id: cust, channel: "b2b", external_ref: `DDT/2026/${seq}`,
         data: { numero_ddt: `DDT/2026/${seq}`, numero_documento: `ORD/2026/${seq}`, data: iso(dt),
-          corriere: "Demo Express", totale: total, numero_fattura: `FT/2026/${seq}`, items } });
+          corriere: "Demo Express", totale: total, numero_fattura_collegata: `FT/2026/${seq}`, items } });
     }
     const snap = iso(monthsAgo(now, 1));
     const fido = 5000 + ci * 2000;

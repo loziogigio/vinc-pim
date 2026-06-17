@@ -37,6 +37,7 @@ import {
 import { buildDemoCatalog, DEMO_CATALOG_SIZE } from "./demo-catalog.js";
 import { buildOrderHistoryRecords } from "./demo-order-history.js";
 import { log, seedDemoData } from "./seed-helpers.js";
+import { applyDemoBranding } from "./configure-demo-branding.js";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -113,6 +114,7 @@ async function main(): Promise<void> {
   await connectToTenantDb(DEMO_TENANT_ID);
   try {
     await seedDemoData(pwds, new Date());
+    await applyDemoBranding();
   } finally {
     await disconnectDb();
   }
