@@ -84,6 +84,7 @@ import {
   type DataModelField,
 } from "./models/data-model-definition";
 import { RoleSchema } from "./models/role";
+import { DealSchema } from "./models/deal";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -159,6 +160,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   BlogCategory: BlogCategorySchema,
   BlogTag: BlogTagSchema,
   DataModelDefinition: DataModelDefinitionSchema,
+  Deal: DealSchema,
 };
 
 /**
@@ -276,6 +278,7 @@ export async function getTenantModels(dbName: string) {
     BlogCategory: connection.models.BlogCategory,
     BlogTag: connection.models.BlogTag,
     DataModelDefinition: connection.models.DataModelDefinition,
+    Deal: connection.models.Deal,
   };
 }
 
@@ -361,6 +364,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     BlogCategory: connection.models.BlogCategory,
     BlogTag: connection.models.BlogTag,
     DataModelDefinition: connection.models.DataModelDefinition,
+    Deal: connection.models.Deal,
   };
 }
 
