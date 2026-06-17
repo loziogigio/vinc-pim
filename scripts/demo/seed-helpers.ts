@@ -22,6 +22,7 @@ import {
   type DemoPasswords,
 } from "./demo-config.js";
 import { buildDemoCatalog, DEMO_SOURCE } from "./demo-catalog.js";
+import { buildDemoCategories } from "./demo-categories.js";
 import { DEMO_DISCOUNT_PREFIX } from "./demo-pricing.js";
 
 export const log = (msg: string) => console.log(msg);
@@ -145,6 +146,16 @@ export async function seedCatalog(now: Date): Promise<void> {
   log(`  ✓ removed ${removed.deletedCount ?? 0} prior demo products, inserted ${products.length}`);
 }
 
+export async function seedCategories(): Promise<void> {
+  step("Categories");
+  const { CategoryModel } = await import("../../src/lib/db/models/category.js");
+  const cats = buildDemoCategories();
+  const ids = cats.map((c) => c.category_id);
+  const removed = await CategoryModel.deleteMany({ category_id: { $in: ids } });
+  await CategoryModel.insertMany(cats, { ordered: false });
+  log(`  ✓ removed ${removed.deletedCount ?? 0} prior demo categories, inserted ${cats.length}`);
+}
+
 export async function ensureStorefront(): Promise<void> {
   step("B2C storefront");
   const { createStorefront } = await import("../../src/lib/services/b2c-storefront.service.js");
@@ -178,7 +189,7 @@ export async function seedDemoData(pwds: DemoPasswords, now: Date): Promise<void
   await ensureCustomers();
   await ensurePortalUsers(pwds);
   await seedCatalog(now);
-  // await seedCategories();               // Task 5
+  await seedCategories();                  // Task 5
   await ensureStorefront();
   // await installOrderHistoryDefinitions(); // Task 6
   // await seedOrderHistory(now);           // Task 7
