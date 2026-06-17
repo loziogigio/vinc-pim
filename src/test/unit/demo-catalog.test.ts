@@ -48,3 +48,15 @@ describe("Velia Ferramenta catalog", () => {
     for (const c of DEMO_CATEGORIES) expect(byCat.get(c.code) ?? 0).toBe(10);
   });
 });
+
+describe("demo product images", () => {
+  const products = buildDemoCatalog(new Date("2026-01-01T00:00:00Z"));
+  it("uses the CDN manifest with the DEMO- prefix, never picsum", () => {
+    for (const p of products) {
+      const code = p.entity_code.replace(/^DEMO-/, "");
+      expect(p.images[0].url).not.toContain("picsum.photos");
+      expect(p.images[0].url).toContain(`/demo/DEMO-${code}.jpg`);
+      expect(p.images[0].cdn_key).toBe(`demo/DEMO-${code}.jpg`);
+    }
+  });
+});

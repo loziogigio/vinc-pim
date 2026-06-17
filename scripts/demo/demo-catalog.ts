@@ -14,6 +14,7 @@
  * produce byte-identical catalog state every run (no Math.random / no Date in
  * the product identity fields).
  */
+import { cdnUrlFor } from "./demo-images.js";
 
 export const DEMO_SOURCE = {
   source_id: "demo-seed",
@@ -876,8 +877,8 @@ export function buildDemoCatalog(now: Date = new Date()) {
 
       images: [
         {
-          url: `https://picsum.photos/seed/${entity_code}/800/800`,
-          cdn_key: `demo/${entity_code}.jpg`,
+          url: cdnUrlFor(t.code),
+          cdn_key: `demo/${entity_code}.jpg`, // === demo/DEMO-<code>.jpg
           position: 0,
           uploaded_at: now,
           uploaded_by: "demo-seed",
