@@ -16,6 +16,7 @@
  */
 
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 import {
   connectWithModels,
   closeAllConnections,
@@ -60,7 +61,7 @@ function parseArgs(): Args {
 const SLUG = "historical_order";
 
 // Field definitions — one-for-one with the ERP order history spec §3.
-const FIELDS: DataModelField[] = [
+export const HISTORICAL_ORDER_FIELDS: DataModelField[] = [
   {
     slug: "document_number",
     label: "Numero documento",
@@ -228,13 +229,13 @@ const FIELDS: DataModelField[] = [
   },
 ];
 
-const DEFINITION: Omit<IDataModelDefinition, "_id" | "created_at" | "updated_at"> = {
+export const HISTORICAL_ORDER_DEFINITION: Omit<IDataModelDefinition, "_id" | "created_at" | "updated_at"> = {
   name: "Storico ordini",
   slug: SLUG,
   relation: "customer",
   cardinality: "multiple",
   channel: "b2b",
-  fields: FIELDS,
+  fields: HISTORICAL_ORDER_FIELDS,
   readable_by_end_user: true,
   enabled: true,
 };
@@ -250,16 +251,16 @@ async function main() {
   console.log(`\n📋 Seed historical_order data model`);
   console.log(`   Tenant : ${args.tenant} (database: ${tenantDb})`);
   console.log(`   Slug   : ${SLUG}`);
-  console.log(`   Fields : ${FIELDS.length} top-level (incl. shipping_address, erp_meta, items[])\n`);
+  console.log(`   Fields : ${HISTORICAL_ORDER_FIELDS.length} top-level (incl. shipping_address, erp_meta, items[])\n`);
 
   // Validate the fields tree using the same logic the API uses
-  validateFieldsTree(FIELDS);
-  const externalRefField = findExternalRefField(FIELDS);
+  validateFieldsTree(HISTORICAL_ORDER_FIELDS);
+  const externalRefField = findExternalRefField(HISTORICAL_ORDER_FIELDS);
   console.log(`   external_ref → field "${externalRefField}"`);
 
   if (args.dryRun) {
     console.log("\n🌵 Dry run — would create:");
-    console.log(JSON.stringify({ ...DEFINITION, external_ref_field: externalRefField }, null, 2));
+    console.log(JSON.stringify({ ...HISTORICAL_ORDER_DEFINITION, external_ref_field: externalRefField }, null, 2));
     await closeAllConnections();
     return;
   }
@@ -276,17 +277,17 @@ async function main() {
       await closeAllConnections();
       process.exit(1);
     }
-    existing.name = DEFINITION.name;
-    existing.fields = FIELDS;
+    existing.name = HISTORICAL_ORDER_DEFINITION.name;
+    existing.fields = HISTORICAL_ORDER_FIELDS;
     existing.external_ref_field = externalRefField;
-    existing.readable_by_end_user = DEFINITION.readable_by_end_user;
-    existing.enabled = DEFINITION.enabled;
+    existing.readable_by_end_user = HISTORICAL_ORDER_DEFINITION.readable_by_end_user;
+    existing.enabled = HISTORICAL_ORDER_DEFINITION.enabled;
     existing.markModified("fields");
     await existing.save();
     console.log(`\n✏️  Updated existing definition ${existing._id}`);
   } else {
     const created = await DataModelDefinition.create({
-      ...DEFINITION,
+      ...HISTORICAL_ORDER_DEFINITION,
       external_ref_field: externalRefField,
     });
     console.log(`\n✅ Created definition ${created._id}`);
@@ -295,8 +296,8 @@ async function main() {
   // Materialize the dynamic collection + its indexes
   const RecordModel = await getDataModelRecordModel(tenantDb, {
     slug: SLUG,
-    cardinality: DEFINITION.cardinality,
-    fields: FIELDS,
+    cardinality: HISTORICAL_ORDER_DEFINITION.cardinality,
+    fields: HISTORICAL_ORDER_FIELDS,
     external_ref_field: externalRefField,
   });
   await RecordModel.init();
@@ -323,9 +324,11 @@ async function main() {
   await closeAllConnections();
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("\n❌ Failed:", err);
-    process.exit(1);
-  });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("\n❌ Failed:", err);
+      process.exit(1);
+    });
+}

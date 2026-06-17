@@ -24,6 +24,7 @@ import {
 import { buildDemoCatalog, DEMO_SOURCE } from "./demo-catalog.js";
 import { buildDemoCategories } from "./demo-categories.js";
 import { DEMO_DISCOUNT_PREFIX } from "./demo-pricing.js";
+import { ORDER_HISTORY_DEFINITIONS } from "./demo-order-history.js";
 
 export const log = (msg: string) => console.log(msg);
 export const step = (msg: string) => console.log(`\n▸ ${msg}`);
@@ -171,6 +172,27 @@ export async function ensureStorefront(): Promise<void> {
   }
 }
 
+export async function installOrderHistoryDefinitions(): Promise<void> {
+  step("Order-history data-model definitions");
+  const { connectWithModels } = await import("../../src/lib/db/connection.js");
+  const { getDataModelRecordModel } = await import("../../src/lib/db/model-registry.js");
+  const { findExternalRefField } = await import("../../src/lib/db/models/data-model-definition.js");
+  const { DataModelDefinition } = await connectWithModels(DEMO_DB_NAME);
+  for (const def of ORDER_HISTORY_DEFINITIONS) {
+    const external_ref_field = findExternalRefField(def.fields);
+    await DataModelDefinition.updateOne(
+      { slug: def.slug },
+      { $set: { ...def, external_ref_field } },
+      { upsert: true }
+    );
+    const RecordModel = await getDataModelRecordModel(DEMO_DB_NAME, {
+      slug: def.slug, cardinality: def.cardinality, fields: def.fields, external_ref_field,
+    });
+    await RecordModel.init();
+    log(`  ✓ definition '${def.slug}' (dyn_${def.slug})`);
+  }
+}
+
 /** Wipe visitor-generated carts + orders (same `orders` collection). */
 export async function wipeOrders(): Promise<void> {
   step("Carts & orders");
@@ -191,7 +213,7 @@ export async function seedDemoData(pwds: DemoPasswords, now: Date): Promise<void
   await seedCatalog(now);
   await seedCategories();                  // Task 5
   await ensureStorefront();
-  // await installOrderHistoryDefinitions(); // Task 6
+  await installOrderHistoryDefinitions();    // Task 6
   // await seedOrderHistory(now);           // Task 7
   // await ensureHomeTemplate();            // Task 12
 }
