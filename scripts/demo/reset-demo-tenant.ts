@@ -36,7 +36,7 @@ async function main(): Promise<void> {
     console.log("  2. re-seed fictional catalog (undo product edits)");
     console.log("  3. restore channels, customers, portal users, storefront");
     console.log("  4. install order-history defs + records");
-    console.log("\nThen re-index Solr: npx tsx scripts/bulk-sync-to-solr.ts --tenant demo\n");
+    console.log("  5. reindex Solr");
     return;
   }
 
@@ -47,6 +47,9 @@ async function main(): Promise<void> {
   try {
     await wipeOrders();
     await seedDemoData(pwds, new Date());
+    console.log("\n🔍 Reindexing Solr…");
+    const { reindexDemoSolr } = await import("./reindex-demo-solr.js");
+    await reindexDemoSolr();
   } finally {
     await disconnectDb();
   }
