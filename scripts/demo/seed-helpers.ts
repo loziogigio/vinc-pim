@@ -25,6 +25,7 @@ import { buildDemoCatalog, DEMO_SOURCE } from "./demo-catalog.js";
 import { buildDemoCategories } from "./demo-categories.js";
 import { DEMO_DISCOUNT_PREFIX } from "./demo-pricing.js";
 import { ORDER_HISTORY_DEFINITIONS, buildOrderHistoryRecords } from "./demo-order-history.js";
+import { CANONICAL_HOME_BLOCKS, DEMO_HOME_SEO } from "./demo-home-template.js";
 
 export const log = (msg: string) => console.log(msg);
 export const step = (msg: string) => console.log(`\n▸ ${msg}`);
@@ -225,6 +226,33 @@ export async function seedOrderHistory(now: Date): Promise<void> {
   log(`  ✓ seeded ${n} order-history records for 2 customers`);
 }
 
+export async function ensureHomeTemplate(): Promise<void> {
+  step("B2B home template");
+  const { DEFAULT_PORTAL_SLUG } = await import("../../src/lib/types/b2b-portal.js");
+  const {
+    getHomeTemplate, saveDraftInPortal, publishCurrentInPortal,
+  } = await import("../../src/lib/services/b2b-home-template.service.js");
+
+  const existing = await getHomeTemplate(DEMO_DB_NAME, DEFAULT_PORTAL_SLUG);
+  if (existing.currentPublishedVersion != null) {
+    log(`  • home template already published (v${existing.currentPublishedVersion}) — left as-is`);
+    return;
+  }
+  // Save the canonical blocks as the current draft, then publish it.
+  await saveDraftInPortal(DEMO_DB_NAME, DEFAULT_PORTAL_SLUG, {
+    blocks: CANONICAL_HOME_BLOCKS,
+    seo: DEMO_HOME_SEO,
+  });
+  try {
+    await publishCurrentInPortal(DEMO_DB_NAME, DEFAULT_PORTAL_SLUG, {});
+    log(`  ✓ published canonical home template (portal '${DEFAULT_PORTAL_SLUG}')`);
+  } catch (e: any) {
+    if (/already published/i.test(e?.message ?? "")) {
+      log(`  • home template already published — skipped`);
+    } else { throw e; }
+  }
+}
+
 /** Wipe visitor-generated carts + orders (same `orders` collection). */
 export async function wipeOrders(): Promise<void> {
   step("Carts & orders");
@@ -247,5 +275,5 @@ export async function seedDemoData(pwds: DemoPasswords, now: Date): Promise<void
   await ensureStorefront();
   await installOrderHistoryDefinitions();    // Task 6
   await seedOrderHistory(now);              // Task 7
-  // await ensureHomeTemplate();            // Task 12
+  await ensureHomeTemplate();               // Task 12
 }
