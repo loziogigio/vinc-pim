@@ -24,7 +24,7 @@ import {
 import { buildDemoCatalog, DEMO_SOURCE } from "./demo-catalog.js";
 import { buildDemoCategories } from "./demo-categories.js";
 import { DEMO_DISCOUNT_PREFIX } from "./demo-pricing.js";
-import { ORDER_HISTORY_DEFINITIONS } from "./demo-order-history.js";
+import { ORDER_HISTORY_DEFINITIONS, buildOrderHistoryRecords } from "./demo-order-history.js";
 
 export const log = (msg: string) => console.log(msg);
 export const step = (msg: string) => console.log(`\n▸ ${msg}`);
@@ -193,6 +193,38 @@ export async function installOrderHistoryDefinitions(): Promise<void> {
   }
 }
 
+export async function seedOrderHistory(now: Date): Promise<void> {
+  step("Order-history records");
+  const { getDataModelRecordModel } = await import("../../src/lib/db/model-registry.js");
+  const { findExternalRefField } = await import("../../src/lib/db/models/data-model-definition.js");
+  const defBySlug = new Map(ORDER_HISTORY_DEFINITIONS.map((d) => [d.slug, d]));
+  const records = buildOrderHistoryRecords(now);
+  const codes = ["DEMO-C01", "DEMO-C02"];
+  // Wipe prior demo records per model for the two B2B customers (idempotent).
+  for (const def of ORDER_HISTORY_DEFINITIONS) {
+    const RecordModel = await getDataModelRecordModel(DEMO_DB_NAME, {
+      slug: def.slug, cardinality: def.cardinality, fields: def.fields,
+      external_ref_field: findExternalRefField(def.fields),
+    });
+    await RecordModel.deleteMany({ relation_id: { $in: codes } });
+  }
+  let n = 0;
+  for (const r of records) {
+    const def = defBySlug.get(r.slug)!;
+    const RecordModel = await getDataModelRecordModel(DEMO_DB_NAME, {
+      slug: def.slug, cardinality: def.cardinality, fields: def.fields,
+      external_ref_field: findExternalRefField(def.fields),
+    });
+    await RecordModel.updateOne(
+      { relation_id: r.relation_id, channel: r.channel, external_ref: r.external_ref },
+      { $set: { relation_id: r.relation_id, channel: r.channel, external_ref: r.external_ref, data: r.data, source: "demo-seed", imported_at: now } },
+      { upsert: true }
+    );
+    n++;
+  }
+  log(`  ✓ seeded ${n} order-history records for 2 customers`);
+}
+
 /** Wipe visitor-generated carts + orders (same `orders` collection). */
 export async function wipeOrders(): Promise<void> {
   step("Carts & orders");
@@ -214,6 +246,6 @@ export async function seedDemoData(pwds: DemoPasswords, now: Date): Promise<void
   await seedCategories();                  // Task 5
   await ensureStorefront();
   await installOrderHistoryDefinitions();    // Task 6
-  // await seedOrderHistory(now);           // Task 7
+  await seedOrderHistory(now);              // Task 7
   // await ensureHomeTemplate();            // Task 12
 }
