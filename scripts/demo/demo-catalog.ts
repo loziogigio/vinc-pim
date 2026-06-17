@@ -15,6 +15,7 @@
  * the product identity fields).
  */
 import { cdnUrlFor } from "./demo-images.js";
+import { buildPiecePricing, buildPackPricing } from "./demo-pricing.js";
 
 export const DEMO_SOURCE = {
   source_id: "demo-seed",
@@ -792,42 +793,48 @@ export function buildDemoCatalog(now: Date = new Date()) {
     const entity_code = `DEMO-${t.code}`;
     const slug = { it: slugify(t.name.it), en: slugify(t.name.en) };
 
-    // Default selling unit = single piece.
-    const packaging_options: any[] = [
-      {
-        pkg_id: "1",
-        code: "PZ",
-        label: { it: "Pezzo", en: "Piece" },
-        qty: 1,
-        uom: "PZ",
-        is_default: !t.pack_code,
-        is_smallest: true,
-        is_sellable: true,
-        position: 0,
-        pricing: { list: cents(t.list), retail: cents(t.retail), currency: CURRENCY, vat_included: false },
+    // Single-piece options: one per persona (tag-filtered). Exactly ONE is
+    // is_default:true in the raw doc — the standard tier (fix H). When the
+    // SKU has a bulk pack, the piece tier never wins (the bulk tier is the
+    // group default), so single-piece is_default stays false in that case.
+    const pieceTiers = buildPiecePricing(t.list, t.retail);
+    const packaging_options: any[] = pieceTiers.map((tier, i) => ({
+      pkg_id: `pz-${tier.persona}`,
+      code: "PZ",
+      label: { it: "Pezzo", en: "Piece" },
+      qty: 1,
+      uom: "PZ",
+      is_default: !t.pack_code && tier.is_canonical_default,
+      is_smallest: true,
+      is_sellable: true,
+      position: i,
+      pricing: {
+        list: tier.list, retail: tier.retail,
+        currency: tier.currency, vat_included: tier.vat_included, tag_filter: tier.tag_filter,
       },
-    ];
-    // Optional wholesale bulk packaging with a per-unit discount (B2B tiered pricing).
+    }));
+
+    // Optional bulk pack: one option per persona (tag-filtered, −8%/unit).
+    // Exactly ONE is is_default:true — the standard tier (fix H).
     if (t.pack_code && t.pack_qty) {
-      const unitList = cents(t.list * 0.92); // -8% per unit when buying the bulk pack
-      packaging_options.push({
-        pkg_id: "2",
-        code: t.pack_code,
-        label: { it: `Confezione da ${t.pack_qty}`, en: `Pack of ${t.pack_qty}` },
-        qty: t.pack_qty,
-        uom: "PZ",
-        is_default: true,
-        is_smallest: false,
-        is_sellable: true,
-        position: 1,
-        pricing: {
-          list: cents(unitList * t.pack_qty),
-          retail: cents(t.retail * t.pack_qty),
-          list_unit: unitList,
-          retail_unit: cents(t.retail),
-          currency: CURRENCY,
-          vat_included: false,
-        },
+      const packTiers = buildPackPricing(t.list, t.pack_qty, t.retail);
+      packTiers.forEach((tier, i) => {
+        packaging_options.push({
+          pkg_id: `pack-${tier.persona}`,
+          code: t.pack_code!,
+          label: { it: `Confezione da ${t.pack_qty}`, en: `Pack of ${t.pack_qty}` },
+          qty: t.pack_qty,
+          uom: "PZ",
+          is_default: tier.is_canonical_default,
+          is_smallest: false,
+          is_sellable: true,
+          position: 10 + i,
+          pricing: {
+            list: tier.list, retail: tier.retail,
+            list_unit: tier.list_unit, retail_unit: tier.retail_unit,
+            currency: tier.currency, vat_included: tier.vat_included, tag_filter: tier.tag_filter,
+          },
+        });
       });
     }
 

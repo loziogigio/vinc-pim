@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { DEMO_CATEGORIES, DEMO_BRANDS, buildDemoCatalog, DEMO_CATALOG_SIZE } from "../../../scripts/demo/demo-catalog";
+import { DEMO_TAG_PREMIUM, DEMO_TAG_STANDARD } from "../../../scripts/demo/demo-pricing";
 
 describe("Velia Ferramenta taxonomy", () => {
   it("has the 6 ferramenta categories", () => {
@@ -57,6 +58,23 @@ describe("demo product images", () => {
       expect(p.images[0].url).not.toContain("picsum.photos");
       expect(p.images[0].url).toContain(`/demo/DEMO-${code}.jpg`);
       expect(p.images[0].cdn_key).toBe(`demo/DEMO-${code}.jpg`);
+    }
+  });
+});
+
+describe("per-persona pricing tiers", () => {
+  const products = buildDemoCatalog(new Date("2026-01-01T00:00:00Z"));
+  it("every SKU has a premium and a standard tier", () => {
+    for (const p of products) {
+      const tags = p.packaging_options.flatMap((o: any) => o.pricing?.tag_filter ?? []);
+      expect(tags).toContain(DEMO_TAG_PREMIUM);
+      expect(tags).toContain(DEMO_TAG_STANDARD);
+    }
+  });
+  it("has exactly one is_default option in the raw doc (fix H)", () => {
+    for (const p of products) {
+      const defaults = p.packaging_options.filter((o: any) => o.is_default === true);
+      expect(defaults.length).toBe(1);
     }
   });
 });
