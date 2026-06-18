@@ -15,6 +15,10 @@ import {
   getDemoPasswordsSafe,
   getDemoAccess,
 } from "@/lib/demo/demo-access";
+import { processLead } from "@/lib/leads/pipeline";
+import { emitEvent } from "@/lib/analytics/emit";
+import { EVENTS } from "vinc-analytics";
+import { LEAD_PAGE_SLUGS } from "@/lib/constants/deal";
 
 /** Best-effort: pull a human name out of the submitted fields for the greeting. */
 function extractLeadName(
@@ -74,6 +78,7 @@ export async function POST(req: NextRequest) {
     // 3. Parse body
     const body = await req.json();
     const { page_slug, form_block_id, data } = body;
+    const inboundAttr = (body.__attribution ?? null) as any;
 
     if (!page_slug || !form_block_id || !data || typeof data !== "object") {
       return NextResponse.json(
@@ -81,6 +86,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const isPipelineLead =
+      (LEAD_PAGE_SLUGS as readonly string[]).includes(page_slug) &&
+      authResult.tenantId === process.env.VINC_PIPELINE_TENANT_ID;
 
     // 4. Fetch published page and find the form block
     const template = await getPublishedB2CPageTemplate(storefront.slug, page_slug, tenantDb);
@@ -123,7 +132,7 @@ export async function POST(req: NextRequest) {
 
     // 6. Store submission
     const { FormSubmission } = await connectWithModels(tenantDb);
-    await FormSubmission.create({
+    const submission = await FormSubmission.create({
       storefront_slug: storefront.slug,
       page_slug,
       form_block_id,
@@ -131,6 +140,43 @@ export async function POST(req: NextRequest) {
       submitter_email: submitterEmail,
       demo_request_type: isDemoRequest ? "demo" : undefined,
     });
+
+    // 6b. Lead pipeline (deal + CRM upsert) — gate: pipeline tenant + lead page slugs only
+    let leadContext = undefined;
+    if (isPipelineLead) {
+      try {
+        const { Deal } = await connectWithModels(tenantDb);
+        const buyer =
+          (data.buyer_segment as string) ||
+          (inboundAttr?.buyer_segment as string) ||
+          "unsure";
+        const out = await processLead({
+          models: { Deal },
+          twentyCfg: process.env.VINC_TWENTY_API_KEY
+            ? {
+                baseUrl:
+                  process.env.VINC_TWENTY_BASE_URL ||
+                  "https://vinc.crm.vendereincloud.it",
+                apiKey: process.env.VINC_TWENTY_API_KEY,
+              }
+            : undefined,
+          form_submission_id: String(submission._id),
+          contact: {
+            name: extractLeadName(fieldDefs, sanitizedData),
+            email: submitterEmail,
+            company: sanitizedData["azienda"] as string,
+            phone: sanitizedData["telefono"] as string,
+          },
+          buyer_segment: buyer as any,
+          source_form: isDemoRequest ? "demo" : "audit",
+          page_slug,
+          attribution: inboundAttr ?? undefined,
+        });
+        leadContext = out.leadContext;
+      } catch (err) {
+        console.warn("[form-submit] pipeline processing failed (non-fatal):", err);
+      }
+    }
 
     // 7. Emails (branded, fire-and-forget): team notification + demo handoff.
     if (formConfig.notification_email || isDemoRequest) {
@@ -157,6 +203,7 @@ export async function POST(req: NextRequest) {
             storefrontName: storefront.name,
             fields,
             submitterEmail,
+            leadContext,
           },
         });
 
@@ -194,6 +241,19 @@ export async function POST(req: NextRequest) {
           }).catch((err) => {
             console.warn("[form-submit] Failed to send demo-access email:", err);
           });
+
+          if (isPipelineLead) {
+            emitEvent({
+              event: EVENTS.DEMO_CREDENTIALS_SENT,
+              userId: submitterEmail,
+              anonymousId: inboundAttr?.anonymous_id,
+              properties: {
+                buyer_segment: (data.buyer_segment as string) ?? "unsure",
+                page_slug,
+                deal_submission_id: String(submission._id),
+              },
+            }).catch(() => {});
+          }
         } else {
           console.warn(
             "[form-submit] Demo request but DEMO_*_PASSWORD env not set — skipping demo-access email"
