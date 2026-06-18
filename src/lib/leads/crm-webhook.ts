@@ -4,6 +4,7 @@ import { findByOpportunity, updateDealStage } from "@/lib/services/deal.service"
 import { twentyStageToDealStage, STAGE_EVENT, type DealStage } from "@/lib/constants/deal";
 import { microsToNumber } from "@/lib/services/crm-client";
 import { emitEvent } from "@/lib/analytics/emit";
+import { EVENTS } from "vinc-analytics";
 
 /**
  * Verify a Twenty CRM webhook signature (HMAC-SHA256, timing-safe).
@@ -24,6 +25,9 @@ type Models = { Deal: import("mongoose").Model<any> };
  * Handle a Twenty CRM opportunity webhook event.
  * Maps the raw stage to a DealStage, no-ops if stage unchanged or deal not found,
  * updates the deal, and emits the commercial-fact analytics event.
+ *
+ * Cash-collected and stage-change are independent side-effects:
+ * a payload may trigger both (cash + new stage) or either alone.
  */
 export async function handleOpportunityEvent(
   models: Models,
@@ -38,26 +42,33 @@ export async function handleOpportunityEvent(
   if (!deal) return { applied: false };
 
   const cashCollected = Boolean(record.cashCollected);
+  let cashApplied = false;
 
-  // Cash-collected flag path (independent of stage move).
+  // Fix 3: cash-collected is a side-effect; falls through to stage logic.
+  // Fix 2: use EVENTS.CASH_COLLECTED (single-sourced constant).
   if (cashCollected && !deal.cash_collected_at) {
     await updateDealStage(models, oppId, deal.stage as DealStage, {
       cash_collected_at: new Date(),
       crm_stage: stageRaw,
     });
     await emitEvent({
-      event: "Cash Collected",
+      event: EVENTS.CASH_COLLECTED,
       userId: deal.contact_email,
       anonymousId: deal.anonymous_id,
       properties: buildEventProps(deal),
     });
-    return { applied: true, event: "Cash Collected" };
+    cashApplied = true;
   }
 
   const nextStage: DealStage | null = twentyStageToDealStage(stageRaw);
-  if (!nextStage || nextStage === deal.stage) return { applied: false };
+  if (!nextStage || nextStage === deal.stage) {
+    return { applied: cashApplied, ...(cashApplied ? { event: EVENTS.CASH_COLLECTED } : {}) };
+  }
 
-  const amount = microsToNumber(record.amount?.amountMicros);
+  // Fix 1: fall back to deal.amount when payload omits amountMicros.
+  const payloadAmount = microsToNumber(record.amount?.amountMicros);
+  const amount = payloadAmount ?? deal.amount;
+
   await updateDealStage(models, oppId, nextStage, {
     crm_stage: stageRaw,
     ...(amount != null ? { amount } : {}),
