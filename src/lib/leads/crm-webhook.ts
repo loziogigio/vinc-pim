@@ -31,7 +31,8 @@ type Models = { Deal: import("mongoose").Model<any> };
  */
 export async function handleOpportunityEvent(
   models: Models,
-  payload: any
+  payload: any,
+  rsConfig?: { writeKey?: string; dataPlaneUrl?: string }
 ): Promise<{ applied: boolean; event?: string }> {
   const record = payload?.record ?? {};
   const oppId: string | undefined = record.id;
@@ -51,12 +52,15 @@ export async function handleOpportunityEvent(
       cash_collected_at: new Date(),
       crm_stage: stageRaw,
     });
-    await emitEvent({
-      event: EVENTS.CASH_COLLECTED,
-      userId: deal.contact_email,
-      anonymousId: deal.anonymous_id,
-      properties: buildEventProps(deal),
-    });
+    await emitEvent(
+      {
+        event: EVENTS.CASH_COLLECTED,
+        userId: deal.contact_email,
+        anonymousId: deal.anonymous_id,
+        properties: buildEventProps(deal),
+      },
+      rsConfig
+    );
     cashApplied = true;
   }
 
@@ -77,12 +81,15 @@ export async function handleOpportunityEvent(
 
   const event = STAGE_EVENT[nextStage];
   if (event) {
-    await emitEvent({
-      event,
-      userId: deal.contact_email,
-      anonymousId: deal.anonymous_id,
-      properties: { ...buildEventProps({ ...deal, amount }), stage: nextStage },
-    });
+    await emitEvent(
+      {
+        event,
+        userId: deal.contact_email,
+        anonymousId: deal.anonymous_id,
+        properties: { ...buildEventProps({ ...deal, amount }), stage: nextStage },
+      },
+      rsConfig
+    );
     return { applied: true, event };
   }
   return { applied: true };

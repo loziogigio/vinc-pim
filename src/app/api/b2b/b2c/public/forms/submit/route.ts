@@ -17,6 +17,7 @@ import {
 } from "@/lib/demo/demo-access";
 import { processLead } from "@/lib/leads/pipeline";
 import { emitEvent } from "@/lib/analytics/emit";
+import { resolvePipelineSettings, type PipelineSettings } from "@/lib/leads/pipeline-settings";
 import { EVENTS } from "vinc-analytics";
 import { LEAD_PAGE_SLUGS } from "@/lib/constants/deal";
 
@@ -141,10 +142,14 @@ export async function POST(req: NextRequest) {
       demo_request_type: isDemoRequest ? "demo" : undefined,
     });
 
-    // 6b. Lead pipeline (deal + CRM upsert) — gate: pipeline tenant + lead page slugs only
+    // 6b. Lead pipeline (deal + CRM upsert) — gate: pipeline tenant + lead page slugs only.
+    // Config (Twenty + RudderStack) comes from the dynamic pipeline_settings record
+    // with env fallback (resolvePipelineSettings).
     let leadContext = undefined;
+    let pipelineSettings: PipelineSettings | undefined;
     if (isPipelineLead) {
       try {
+        pipelineSettings = await resolvePipelineSettings();
         const { Deal } = await connectWithModels(tenantDb);
         const buyer =
           (data.buyer_segment as string) ||
@@ -152,13 +157,8 @@ export async function POST(req: NextRequest) {
           "unsure";
         const out = await processLead({
           models: { Deal },
-          twentyCfg: process.env.VINC_TWENTY_API_KEY
-            ? {
-                baseUrl:
-                  process.env.VINC_TWENTY_BASE_URL ||
-                  "https://vinc.crm.vendereincloud.it",
-                apiKey: process.env.VINC_TWENTY_API_KEY,
-              }
+          twentyCfg: pipelineSettings.twentyApiKey
+            ? { baseUrl: pipelineSettings.twentyBaseUrl, apiKey: pipelineSettings.twentyApiKey }
             : undefined,
           form_submission_id: String(submission._id),
           contact: {
@@ -243,16 +243,21 @@ export async function POST(req: NextRequest) {
           });
 
           if (isPipelineLead) {
-            emitEvent({
-              event: EVENTS.DEMO_CREDENTIALS_SENT,
-              userId: submitterEmail,
-              anonymousId: inboundAttr?.anonymous_id,
-              properties: {
-                buyer_segment: (data.buyer_segment as string) ?? "unsure",
-                page_slug,
-                deal_submission_id: String(submission._id),
+            emitEvent(
+              {
+                event: EVENTS.DEMO_CREDENTIALS_SENT,
+                userId: submitterEmail,
+                anonymousId: inboundAttr?.anonymous_id,
+                properties: {
+                  buyer_segment: (data.buyer_segment as string) ?? "unsure",
+                  page_slug,
+                  deal_submission_id: String(submission._id),
+                },
               },
-            }).catch(() => {});
+              pipelineSettings
+                ? { writeKey: pipelineSettings.rudderstackWriteKey, dataPlaneUrl: pipelineSettings.rudderstackDataPlaneUrl }
+                : undefined
+            ).catch(() => {});
           }
         } else {
           console.warn(

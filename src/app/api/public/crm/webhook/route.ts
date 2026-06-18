@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
 import { verifyWebhook, handleOpportunityEvent } from "@/lib/leads/crm-webhook";
+import { resolvePipelineSettings } from "@/lib/leads/pipeline-settings";
 
 /**
  * POST /api/public/crm/webhook
@@ -18,12 +19,14 @@ import { verifyWebhook, handleOpportunityEvent } from "@/lib/leads/crm-webhook";
  */
 export async function POST(req: NextRequest) {
   const raw = await req.text();
-  const secret = process.env.VINC_TWENTY_WEBHOOK_SECRET ?? "";
+  // Webhook secret + RudderStack config come from the dynamic pipeline_settings
+  // record (env fallback). The pipeline tenant id stays env (bootstrap).
+  const pipelineSettings = await resolvePipelineSettings();
   const sig =
     req.headers.get("x-twenty-signature") ??
     new URL(req.url).searchParams.get("s");
 
-  if (!verifyWebhook(raw, sig, secret)) {
+  if (!verifyWebhook(raw, sig, pipelineSettings.twentyWebhookSecret)) {
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
 
@@ -37,7 +40,10 @@ export async function POST(req: NextRequest) {
   const tenantDb = `vinc-${process.env.VINC_PIPELINE_TENANT_ID ?? "vendereincloud-it"}`;
   try {
     const { Deal } = await connectWithModels(tenantDb);
-    const res = await handleOpportunityEvent({ Deal }, payload);
+    const res = await handleOpportunityEvent({ Deal }, payload, {
+      writeKey: pipelineSettings.rudderstackWriteKey,
+      dataPlaneUrl: pipelineSettings.rudderstackDataPlaneUrl,
+    });
     return NextResponse.json({ ok: true, ...res });
   } catch (err) {
     console.error("[crm-webhook]", err);

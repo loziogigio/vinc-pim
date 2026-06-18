@@ -54,6 +54,7 @@ export async function processLead(args: {
     buyer_segment: args.buyer_segment,
     crm_opportunity_id,
     attribution: args.attribution,
+    crmBaseUrl: args.twentyCfg?.baseUrl,
   });
   return { crm_opportunity_id, leadContext };
 }

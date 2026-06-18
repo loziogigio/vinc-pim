@@ -30,6 +30,8 @@ export function buildLeadContext(input: {
   buyer_segment: string;
   crm_opportunity_id?: string;
   attribution?: LeadAttribution;
+  /** Twenty base URL for the deep link; falls back to env, then the default host. */
+  crmBaseUrl?: string;
 }): LeadContext {
   const seg = input.buyer_segment in SEGMENT_LABEL ? input.buyer_segment : "unsure";
   const a = input.attribution;
@@ -56,7 +58,9 @@ export function buildLeadContext(input: {
     segmentLabel: SEGMENT_LABEL[seg],
     demoUrl: SEGMENT_DEMO[seg],
     openingLine: SEGMENT_OPENER[seg],
-    crmUrl: input.crm_opportunity_id ? opportunityUrl(process.env.VINC_TWENTY_BASE_URL ?? "https://vinc.crm.vendereincloud.it", input.crm_opportunity_id) : undefined,
+    crmUrl: input.crm_opportunity_id
+      ? opportunityUrl(input.crmBaseUrl || process.env.VINC_TWENTY_BASE_URL || "https://vinc.crm.vendereincloud.it", input.crm_opportunity_id)
+      : undefined,
     attributionLines: lines,
   };
 }

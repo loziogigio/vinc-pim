@@ -31,9 +31,10 @@ describe("unit: crm-webhook", () => {
     });
     expect(res.applied).toBe(true);
     expect(res.event).toBe("Audit Sold");
-    // Verify emit was actually called with the stage event (not silently dropped)
+    // Verify emit was actually called with the stage event (not silently dropped).
+    // 2nd arg is the rsConfig (undefined here — not threaded in this call).
     expect(emit).toHaveBeenCalled();
-    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ event: "Audit Sold" }));
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ event: "Audit Sold" }), undefined);
     const d = await Deal.findOne({ crm_opportunity_id: "op1" });
     expect(d?.stage).toBe("audit_sold");
     expect(d?.amount).toBe(1900);
@@ -57,10 +58,24 @@ describe("unit: crm-webhook", () => {
       record: { id: "op3", stage: "AUDIT_SOLD" }, // no amount field
     });
     expect(res.applied).toBe(true);
-    expect(emit).toHaveBeenCalledWith(expect.objectContaining({
-      event: "Audit Sold",
-      properties: expect.objectContaining({ amount: 9900 }),
-    }));
+    expect(emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "Audit Sold",
+        properties: expect.objectContaining({ amount: 9900 }),
+      }),
+      undefined
+    );
+  });
+
+  it("threads the rsConfig (dynamic RudderStack settings) into emitEvent", async () => {
+    await Deal.create({ form_submission_id: "fs5", buyer_segment: "b2b", source_form: "demo", page_slug: "richiedi-demo", crm_opportunity_id: "op5", stage: "audit_booked", first_touch: {} });
+    const emit = vi.fn(async () => true);
+    vi.resetModules();
+    vi.doMock("@/lib/analytics/emit", () => ({ emitEvent: emit }));
+    const { handleOpportunityEvent } = await import("@/lib/leads/crm-webhook");
+    const rsConfig = { writeKey: "dyn-wk", dataPlaneUrl: "https://dyn.events" };
+    await handleOpportunityEvent({ Deal } as any, { record: { id: "op5", stage: "AUDIT_SOLD" } }, rsConfig);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ event: "Audit Sold" }), rsConfig);
   });
 
   it("cash + new stage both fire (Fix 3 — no early return drops stage event)", async () => {
