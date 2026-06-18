@@ -6,8 +6,27 @@ import { connectWithModels } from "@/lib/db/connection";
 import { sendEmail } from "@/lib/email";
 import { getHomeSettings } from "@/lib/db/home-settings";
 import { renderFormSubmissionEmail } from "@/lib/email/templates/b2c-form-submission";
+import { renderDemoAccessEmail } from "@/lib/email/templates/demo-access";
 import type { EmailBranding } from "@/lib/email/templates/base";
 import type { FormBlockConfig, FormFieldConfig, PageBlock } from "@/lib/types/blocks";
+import {
+  DEMO_REQUEST_PAGE_SLUG,
+  DEMO_DOMAINS,
+  getDemoPasswordsSafe,
+  getDemoAccess,
+} from "@/lib/demo/demo-access";
+
+/** Best-effort: pull a human name out of the submitted fields for the greeting. */
+function extractLeadName(
+  fields: FormFieldConfig[],
+  data: Record<string, unknown>
+): string | undefined {
+  const nameField = fields.find(
+    (f) => /name|nome/i.test(f.id) || /name|nome/i.test(f.label || "")
+  );
+  const val = nameField ? data[nameField.id] : undefined;
+  return typeof val === "string" && val.trim() ? val.trim() : undefined;
+}
 
 /**
  * POST /api/b2b/b2c/public/forms/submit
@@ -100,6 +119,8 @@ export async function POST(req: NextRequest) {
     const emailField = fieldDefs.find((f) => f.type === "email");
     const submitterEmail = emailField ? (sanitizedData[emailField.id] as string) : undefined;
 
+    const isDemoRequest = page_slug === DEMO_REQUEST_PAGE_SLUG;
+
     // 6. Store submission
     const { FormSubmission } = await connectWithModels(tenantDb);
     await FormSubmission.create({
@@ -108,10 +129,11 @@ export async function POST(req: NextRequest) {
       form_block_id,
       data: sanitizedData,
       submitter_email: submitterEmail,
+      demo_request_type: isDemoRequest ? "demo" : undefined,
     });
 
-    // 7. Send notification email using branded template (fire and forget)
-    if (formConfig.notification_email) {
+    // 7. Emails (branded, fire-and-forget): team notification + demo handoff.
+    if (formConfig.notification_email || isDemoRequest) {
       const settings = await getHomeSettings(tenantDb);
       const branding: EmailBranding = {
         companyName: settings?.branding?.title || "B2C Store",
@@ -121,31 +143,63 @@ export async function POST(req: NextRequest) {
         companyInfo: settings?.company_info,
       };
 
-      const fields = fieldDefs.map((f: FormFieldConfig) => ({
-        label: f.label,
-        value: String(sanitizedData[f.id] ?? "-"),
-      }));
+      // 7a. Team notification (unchanged behaviour, sharper subject for demos)
+      if (formConfig.notification_email) {
+        const fields = fieldDefs.map((f: FormFieldConfig) => ({
+          label: f.label,
+          value: String(sanitizedData[f.id] ?? "-"),
+        }));
 
-      const html = renderFormSubmissionEmail({
-        branding,
-        data: {
-          pageSlug: page_slug,
-          storefrontName: storefront.name,
-          fields,
-          submitterEmail,
-        },
-      });
+        const html = renderFormSubmissionEmail({
+          branding,
+          data: {
+            pageSlug: page_slug,
+            storefrontName: storefront.name,
+            fields,
+            submitterEmail,
+          },
+        });
 
-      sendEmail({
-        to: formConfig.notification_email,
-        subject: `New form submission from /${page_slug}`,
-        html,
-        replyTo: submitterEmail,
-        immediate: true,
-        tenantDb,
-      }).catch((err) => {
-        console.warn("[form-submit] Failed to send notification email:", err);
-      });
+        sendEmail({
+          to: formConfig.notification_email,
+          subject: isDemoRequest
+            ? `New demo request from /${page_slug}`
+            : `New form submission from /${page_slug}`,
+          html,
+          replyTo: submitterEmail,
+          immediate: true,
+          tenantDb,
+        }).catch((err) => {
+          console.warn("[form-submit] Failed to send notification email:", err);
+        });
+      }
+
+      // 7b. Demo-access email to the lead (the lead-gated demo handoff)
+      if (isDemoRequest && submitterEmail) {
+        const pwds = getDemoPasswordsSafe();
+        if (pwds) {
+          const demoHtml = renderDemoAccessEmail({
+            branding,
+            leadName: extractLeadName(fieldDefs, sanitizedData),
+            access: getDemoAccess(pwds),
+            hubUrl: `https://${DEMO_DOMAINS.hub}`,
+          });
+
+          sendEmail({
+            to: submitterEmail,
+            subject: "La tua demo di Vendere in Cloud è pronta",
+            html: demoHtml,
+            immediate: true,
+            tenantDb,
+          }).catch((err) => {
+            console.warn("[form-submit] Failed to send demo-access email:", err);
+          });
+        } else {
+          console.warn(
+            "[form-submit] Demo request but DEMO_*_PASSWORD env not set — skipping demo-access email"
+          );
+        }
+      }
     }
 
     return NextResponse.json({
