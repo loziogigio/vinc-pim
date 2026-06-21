@@ -180,7 +180,8 @@ const CustomerSchema = new Schema<ICustomer>(
     channel: { type: String, default: "default", index: true },
 
     // Contact
-    email: { type: String, required: true },
+    // email is required for portal sign-up but optional for ERP imports
+    email: { type: String, required: false, default: "" },
     phone: { type: String },
     first_name: { type: String },
     last_name: { type: String },
