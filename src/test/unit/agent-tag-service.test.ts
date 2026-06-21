@@ -165,4 +165,46 @@ describe("unit: agent-tag.service (DB)", () => {
     expect(def).toBeTruthy();
     expect(def!.description).toBe("x42");
   });
+
+  it("applyCustomerAgentTags does not throw and assigns agent tag when stored customer has an invalid embedded address (missing required province)", async () => {
+    // Insert via raw driver to bypass Mongoose validation, simulating a legacy
+    // document that would fail customer.save() due to a missing required field.
+    const customer_id = `cust_${nanoid(8)}`;
+    await CustomerModel.collection.insertOne({
+      customer_id,
+      external_code: `EXT-${nanoid(4)}`,
+      tenant_id: TENANT,
+      customer_type: "business",
+      email: "x@y.it",
+      tags: [],
+      addresses: [{
+        address_id: nanoid(8),
+        external_code: "ADDR-X",
+        address_type: "delivery",
+        is_default: true,
+        recipient_name: "r",
+        street_address: "s",
+        city: "c",
+        postal_code: "z",
+        country: "IT",
+        tag_overrides: [],
+        created_at: new Date(),
+        updated_at: new Date(),
+        // province intentionally MISSING — would cause ValidationError on save()
+      }],
+      is_guest: false,
+      channel: "b2b",
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    // With old save()-based implementation this would throw ValidationError.
+    // With updateOne/$set it must succeed.
+    await expect(
+      applyCustomerAgentTags(TENANT_DB, TENANT, customer_id, { agent_code: "M01" }),
+    ).resolves.toBeUndefined();
+
+    const c = await CustomerModel.findOne({ customer_id }).lean();
+    expect(c!.tags.find((t: ICustomerTagRef) => t.full_tag === "agente:m01")).toBeTruthy();
+  });
 });

@@ -96,8 +96,14 @@ async function resolveAgentAction(
 
 /**
  * Apply customer-level and address-level agent assignment/clearing onto a
- * customer document, based on the import payload. Loads the customer once,
- * mutates tags / address tag_overrides, saves once.
+ * customer document, based on the import payload. Uses targeted $set paths
+ * via updateOne — mirrors upsertCustomerTagsBatch / upsertAddressTagOverridesBatch
+ * in tag-pricing.service.ts — so we never trigger Mongoose's full document
+ * validation (which would reject legacy customers with missing required fields).
+ *
+ * NOTE: customertags.customer_count is intentionally NOT maintained for agent
+ * tags — the agent picker computes counts live — so do not trust that field for
+ * the "agente:" prefix.
  */
 export async function applyCustomerAgentTags(
   tenantDb: string,
@@ -112,11 +118,15 @@ export async function applyCustomerAgentTags(
   if (!hasCustomerAgent && addrAgents.length === 0) return;
 
   const { Customer } = await connectWithModels(tenantDb);
-  const customer = await Customer.findOne({
-    customer_id: customerId,
-    tenant_id: tenantId,
-  });
+  // .lean() returns a plain object — avoid customer.save() so we never re-validate
+  // the whole document (mirrors upsertCustomerTagsBatch / upsertAddressTagOverridesBatch).
+  const customer = await Customer.findOne(
+    { customer_id: customerId, tenant_id: tenantId },
+  ).lean();
   if (!customer) return;
+
+  // Build targeted $set paths — only touch the fields we're updating.
+  const set: Record<string, ICustomerTagRef[]> = {};
 
   if (hasCustomerAgent) {
     const action = await resolveAgentAction(
@@ -125,27 +135,28 @@ export async function applyCustomerAgentTags(
       customerData.agent_name,
     );
     if (action !== "skip") {
-      customer.tags = applyAgentToRefs(customer.tags || [], action);
+      set.tags = applyAgentToRefs((customer as { tags?: ICustomerTagRef[] }).tags || [], action);
     }
   }
 
-  if (addrAgents.length > 0) {
-    let addressModified = false;
-    for (const a of addrAgents) {
-      const idx = (customer.addresses || []).findIndex(
-        (ad: { external_code?: string }) => ad.external_code === a.external_code,
-      );
-      if (idx === -1) continue;
-      const action = await resolveAgentAction(tenantDb, a.agent_code, a.agent_name);
-      if (action === "skip") continue;
-      customer.addresses[idx].tag_overrides = applyAgentToRefs(
-        customer.addresses[idx].tag_overrides || [],
-        action,
-      );
-      addressModified = true;
-    }
-    if (addressModified) customer.markModified("addresses");
+  for (const a of addrAgents) {
+    const addresses = (customer as { addresses?: Array<{ external_code?: string; tag_overrides?: ICustomerTagRef[] }> }).addresses || [];
+    const idx = addresses.findIndex(
+      (ad: { external_code?: string }) => ad.external_code === a.external_code,
+    );
+    if (idx === -1) continue;
+    const action = await resolveAgentAction(tenantDb, a.agent_code, a.agent_name);
+    if (action === "skip") continue;
+    set[`addresses.${idx}.tag_overrides`] = applyAgentToRefs(
+      addresses[idx].tag_overrides || [],
+      action,
+    );
   }
 
-  await customer.save();
+  if (Object.keys(set).length > 0) {
+    await Customer.updateOne(
+      { customer_id: customerId, tenant_id: tenantId },
+      { $set: set },
+    );
+  }
 }
