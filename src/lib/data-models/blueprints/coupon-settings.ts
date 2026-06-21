@@ -5,6 +5,8 @@ import type { DataModelBlueprint } from "./types";
 const FIELDS: DataModelField[] = [
   { slug: "enabled", label: "Coupon attivi", type: "checkbox" },
   { slug: "api_url", label: "URL servizio coupon (MyMB)", type: "text" },
+  { slug: "api_user", label: "Utente servizio coupon (MyMB)", type: "text" },
+  { slug: "api_password", label: "Password servizio coupon (MyMB)", type: "text" },
 ];
 
 /**
@@ -14,9 +16,11 @@ const FIELDS: DataModelField[] = [
  * `relation: "channel"` → one config record per sales channel: the definition
  * applies to all channels (channel `"*"`), every record is pinned to the
  * sentinel relation_id `_channel`, and the record's own `channel` field is the
- * scope key. Holds only `enabled` + `api_url`; the MyMB Basic-auth credentials
- * live in the storefront env (COUPON_API_USER / COUPON_API_PASSWORD), never in
- * the record. `readable_by_end_user: false` — server-side only.
+ * scope key. Holds `enabled` + `api_url` + the MyMB Basic-auth credentials
+ * (`api_user` / `api_password`) so the configuration is fully per-tenant and the
+ * storefront container needs no coupon secrets of its own. The storefront still
+ * falls back to COUPON_API_USER / COUPON_API_PASSWORD env when the record omits
+ * the credentials. `readable_by_end_user: false` — server-side only.
  *
  * Seed per channel via src/scripts/seed-data-model-coupon-settings.ts. Note the
  * generic install route is not channel-aware; this blueprint is meant for the

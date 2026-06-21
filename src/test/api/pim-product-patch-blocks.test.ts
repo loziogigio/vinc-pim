@@ -6,15 +6,23 @@ vi.mock("@/lib/auth/b2b-session", () => ({
 vi.mock("@/lib/services/tenant-languages", () => ({
   getTenantLanguageCodes: vi.fn(async () => ["it","de","en","cs","sk"]),
 }));
+vi.mock("@/lib/services/product-channel-sync", () => ({
+  propagateProductEdit: vi.fn(async () => {}),
+}));
 import { setupTestDatabase, teardownTestDatabase, clearDatabase } from "@/test/conftest";
 import { connectWithModels } from "@/lib/db/connection";
 import { NextRequest } from "next/server";
 import { PATCH } from "@/app/api/b2b/pim/products/[entity_code]/route";
+import { propagateProductEdit } from "@/lib/services/product-channel-sync";
 
 const ctx = (entity_code: string) => ({ params: Promise.resolve({ entity_code }) });
 async function seedProduct(entity_code: string) {
   const { PIMProduct } = await connectWithModels("vinc-test");
   await PIMProduct.create({ entity_code, sku: entity_code, version: 1, isCurrent: true });
+}
+async function seedPublished(entity_code: string) {
+  const { PIMProduct } = await connectWithModels("vinc-test");
+  await PIMProduct.create({ entity_code, sku: entity_code, version: 1, isCurrent: true, status: "published" });
 }
 function patchReq(body: unknown) {
   return new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify(body) });
@@ -30,7 +38,7 @@ const validBlocks = [{
 describe("PATCH /api/b2b/pim/products/[entity_code] — dynamic_blocks", () => {
   beforeAll(async () => { await setupTestDatabase(); }, 30000);
   afterAll(async () => { await teardownTestDatabase(); });
-  beforeEach(async () => { await clearDatabase(); sessionRef.value = { isLoggedIn: true, tenantId: "test", userId: "u1" }; });
+  beforeEach(async () => { await clearDatabase(); sessionRef.value = { isLoggedIn: true, tenantId: "test", userId: "u1" }; vi.mocked(propagateProductEdit).mockClear(); });
 
   it("accepts and persists valid dynamic_blocks (200)", async () => {
     await seedProduct("536914");
@@ -56,5 +64,29 @@ describe("PATCH /api/b2b/pim/products/[entity_code] — dynamic_blocks", () => {
     const { PIMProduct } = await connectWithModels("vinc-test");
     const saved = await PIMProduct.findOne({ entity_code: "536915", isCurrent: true }).lean() as any;
     expect(saved.dynamic_blocks ?? []).toHaveLength(0);
+  });
+
+  it("re-syncs channels after a successful edit on a published product", async () => {
+    await seedPublished("700001");
+    const res = await PATCH(patchReq({ promo_code: [], has_active_promo: false }), ctx("700001"));
+    expect(res.status).toBe(200);
+    expect(vi.mocked(propagateProductEdit)).toHaveBeenCalledWith("700001", "test", "vinc-test");
+  });
+
+  it("does not propagate for a draft product", async () => {
+    await seedProduct("700002"); // no status → draft
+    const res = await PATCH(patchReq({ promo_code: [] }), ctx("700002"));
+    expect(res.status).toBe(200);
+    expect(vi.mocked(propagateProductEdit)).not.toHaveBeenCalled();
+  });
+
+  it("still returns 200 when channel propagation throws (the edit must not fail)", async () => {
+    await seedPublished("700003");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(propagateProductEdit).mockRejectedValueOnce(new Error("solr down"));
+    const res = await PATCH(patchReq({ promo_code: [] }), ctx("700003"));
+    expect(res.status).toBe(200);
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });

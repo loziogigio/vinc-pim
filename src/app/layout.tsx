@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Schibsted_Grotesk, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import clsx from "clsx";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// VINC design-system fonts — exposed as CSS variables so surfaces (e.g. the
+// Commerce Suite login) can opt into the brand type without changing the
+// app-wide body font.
+const schibsted = Schibsted_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-schibsted" });
+const instrument = Instrument_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-instrument" });
+const jetbrains = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-jetbrains" });
+
 export const metadata: Metadata = {
   title: "VINC Trade Supply Storefront",
-  description: "Next.js storefront prototype for plumbing and bathroom trade supplies."
+  description: "Next.js storefront prototype for plumbing and bathroom trade supplies.",
+  icons: { icon: "/favicon.png" }
 };
 
 type RootLayoutProps = {
@@ -41,7 +49,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={clsx(schibsted.variable, instrument.variable, jetbrains.variable)}>
       <body className={clsx(inter.className, "bg-background text-foreground")}>
         <Script id="theme-initializer" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {children}

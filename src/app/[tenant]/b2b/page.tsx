@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getB2BSession } from "@/lib/auth/b2b-session";
+import { getHomeNews, listPlatformPages } from "@/lib/services/blog/home-news.service";
 import { TenantAppLauncher } from "@/components/b2b/TenantAppLauncher";
 
 // Force dynamic rendering - uses cookies() for session
@@ -23,5 +24,21 @@ export default async function TenantB2BPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  return <TenantAppLauncher tenant={tenant} />;
+  // Server-fetch the platform feed: chronological news + evergreen static pages
+  // (both from the vendereincloud-it tenant). Both degrade to empty on error.
+  const [news, pages] = await Promise.all([
+    getHomeNews(tenant),
+    listPlatformPages({ viewerTenant: tenant }),
+  ]);
+
+  return (
+    <TenantAppLauncher
+      tenant={tenant}
+      username={session.username}
+      email={session.email}
+      role={session.role}
+      news={news}
+      pages={pages}
+    />
+  );
 }

@@ -33,6 +33,8 @@ export interface IFormSubmission {
   data: Record<string, unknown>;
   /** Email extracted from submission (if any email field) */
   submitter_email?: string;
+  /** Marks a lead-gated demo request (triggers the demo-access email to the lead). */
+  demo_request_type?: "demo";
   /** Whether the submission has been seen/opened by admin */
   seen: boolean;
   created_at: Date;
@@ -81,6 +83,10 @@ const FormSubmissionSchema = new Schema(
       type: String,
       trim: true,
       lowercase: true,
+    },
+    demo_request_type: {
+      type: String,
+      enum: ["demo"],
     },
     seen: {
       type: Boolean,
