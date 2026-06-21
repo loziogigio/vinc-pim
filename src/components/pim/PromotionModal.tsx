@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Tag, Loader2 } from "lucide-react";
+import { X, Tag, Users, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Promotion, PackagingOption, DiscountStep } from "@/lib/types/pim";
@@ -10,6 +10,7 @@ import {
   parseDecimalValue,
   toDecimalInputValue,
 } from "@/lib/utils/decimal-input";
+import { AGENT_TAG_PREFIX, isAgentTag } from "@/lib/constants/customer-tag";
 
 interface CustomerTagEntry {
   tag_id: string;
@@ -18,6 +19,13 @@ interface CustomerTagEntry {
   code: string;
   description?: string;
   color?: string;
+}
+
+interface AgentEntry {
+  full_tag: string;
+  code: string;
+  name: string;
+  customer_count: number;
 }
 
 interface PromotionModalProps {
@@ -71,6 +79,8 @@ export function PromotionModal({
   const [promoInputs, setPromoInputs] = useState<Record<string, string>>({});
   const [availableTags, setAvailableTags] = useState<CustomerTagEntry[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState<AgentEntry[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
   const isEditMode = promotion !== null;
 
   // Fetch customer tags when modal opens
@@ -82,6 +92,18 @@ export function PromotionModal({
         .then((data) => { if (data?.tags) setAvailableTags(data.tags); })
         .catch(() => {})
         .finally(() => setTagsLoading(false));
+    }
+  }, [open]);
+
+  // Fetch assigned agents when modal opens
+  useEffect(() => {
+    if (open && availableAgents.length === 0) {
+      setAgentsLoading(true);
+      fetch("/api/b2b/agent-codes")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => { if (data?.agents) setAvailableAgents(data.agents); })
+        .catch(() => {})
+        .finally(() => setAgentsLoading(false));
     }
   }, [open]);
 
@@ -714,76 +736,154 @@ export function PromotionModal({
             </div>
           </div>
 
-          {/* Customer Tag Filter */}
-          <div className="border-t pt-4">
-            <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              Customer Tags
-            </h4>
-            <p className="text-xs text-muted-foreground mb-3">
-              Restrict this promotion to customers with specific tags. Leave empty to apply to all customers.
-            </p>
+          {/* Customer Tag Filter (non-agent tags only) */}
+          {(() => {
+            const nonAgentTags = availableTags.filter((t) => t.prefix !== AGENT_TAG_PREFIX);
+            const selectedTagFilters = (formData.tag_filter || []).filter((ft) => !isAgentTag(ft));
+            return (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Customer Tags
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Restrict this promotion to customers with specific tags. Leave empty to apply to all customers.
+                </p>
 
-            {tagsLoading ? (
-              <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading tags...
-              </div>
-            ) : availableTags.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">No customer tags defined yet.</p>
-            ) : (
-              <>
-                {/* Selected tags */}
-                {formData.tag_filter && formData.tag_filter.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {formData.tag_filter.map((fullTag) => {
-                      const tagDef = availableTags.find((t) => t.full_tag === fullTag);
-                      return (
-                        <span
-                          key={fullTag}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40"
-                        >
-                          {tagDef ? `${tagDef.prefix}:${tagDef.code}` : fullTag}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = (formData.tag_filter || []).filter((t) => t !== fullTag);
-                              updateField("tag_filter", updated.length > 0 ? updated : undefined);
-                            }}
-                            className="ml-0.5 hover:text-red-600 transition"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
+                {tagsLoading ? (
+                  <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading tags...
                   </div>
-                )}
+                ) : nonAgentTags.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">No customer tags defined yet.</p>
+                ) : (
+                  <>
+                    {selectedTagFilters.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {selectedTagFilters.map((fullTag) => {
+                          const tagDef = nonAgentTags.find((t) => t.full_tag === fullTag);
+                          return (
+                            <span
+                              key={fullTag}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40"
+                            >
+                              {tagDef ? `${tagDef.prefix}:${tagDef.code}` : fullTag}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = (formData.tag_filter || []).filter((t) => t !== fullTag);
+                                  updateField("tag_filter", updated.length > 0 ? updated : undefined);
+                                }}
+                                className="ml-0.5 hover:text-red-600 transition"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                {/* Tag selector */}
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    const current = formData.tag_filter || [];
-                    if (!current.includes(e.target.value)) {
-                      updateField("tag_filter", [...current, e.target.value]);
-                    }
-                  }}
-                  className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">Add a tag filter...</option>
-                  {availableTags
-                    .filter((t) => !(formData.tag_filter || []).includes(t.full_tag))
-                    .map((tag) => (
-                      <option key={tag.tag_id} value={tag.full_tag}>
-                        {tag.full_tag}{tag.description ? ` — ${tag.description}` : ""}
-                      </option>
-                    ))}
-                </select>
-              </>
-            )}
-          </div>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const current = formData.tag_filter || [];
+                        if (!current.includes(e.target.value)) {
+                          updateField("tag_filter", [...current, e.target.value]);
+                        }
+                      }}
+                      className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Add a tag filter...</option>
+                      {nonAgentTags
+                        .filter((t) => !(formData.tag_filter || []).includes(t.full_tag))
+                        .map((tag) => (
+                          <option key={tag.tag_id} value={tag.full_tag}>
+                            {tag.full_tag}{tag.description ? ` — ${tag.description}` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Agent Filter (reserved agent tags) */}
+          {(() => {
+            const selectedAgentFilters = (formData.tag_filter || []).filter((ft) => isAgentTag(ft));
+            return (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Agent
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Restrict this promotion to the customers of specific sales agents. Leave empty to ignore agent.
+                </p>
+
+                {agentsLoading ? (
+                  <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading agents...
+                  </div>
+                ) : availableAgents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">No agents assigned yet.</p>
+                ) : (
+                  <>
+                    {selectedAgentFilters.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {selectedAgentFilters.map((fullTag) => {
+                          const agent = availableAgents.find((a) => a.full_tag === fullTag);
+                          return (
+                            <span
+                              key={fullTag}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/40"
+                            >
+                              {agent ? `${agent.name} (${agent.code})` : fullTag}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = (formData.tag_filter || []).filter((t) => t !== fullTag);
+                                  updateField("tag_filter", updated.length > 0 ? updated : undefined);
+                                }}
+                                className="ml-0.5 hover:text-red-600 transition"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const current = formData.tag_filter || [];
+                        if (!current.includes(e.target.value)) {
+                          updateField("tag_filter", [...current, e.target.value]);
+                        }
+                      }}
+                      className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Add an agent...</option>
+                      {availableAgents
+                        .filter((a) => !(formData.tag_filter || []).includes(a.full_tag))
+                        .map((agent) => (
+                          <option key={agent.full_tag} value={agent.full_tag}>
+                            {agent.name} ({agent.code}) — {agent.customer_count} customer(s)
+                          </option>
+                        ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Flags */}
           <div className="flex gap-6">
