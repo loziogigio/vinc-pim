@@ -105,7 +105,8 @@ describe("unit: customer import — agent tags", () => {
     const c = await CustomerModel.findOne({ external_code: "CUST-2" }).lean();
     expect(c!.tags.find((t: ICustomerTagRef) => t.full_tag === "agente:m01")).toBeTruthy();
     const addr = c!.addresses.find((a: { external_code?: string }) => a.external_code === "ADDR-A");
-    expect(addr.tag_overrides.find((t: ICustomerTagRef) => t.full_tag === "agente:m07")).toBeTruthy();
+    expect(addr).toBeTruthy();
+    expect(addr!.tag_overrides.find((t: ICustomerTagRef) => t.full_tag === "agente:m07")).toBeTruthy();
   });
 
   it("clears the agent on a later import with agent_code: null", async () => {
