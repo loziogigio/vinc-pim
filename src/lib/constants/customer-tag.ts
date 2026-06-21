@@ -76,3 +76,47 @@ export function isValidPrefix(prefix: string): boolean {
 export function isValidCode(code: string): boolean {
   return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(code);
 }
+
+// ============================================
+// AGENT TAGS (reserved prefix, import-managed)
+// ============================================
+
+/**
+ * Reserved tag prefix for sales-agent targeting.
+ * Agent tags (`agente:<code>`) are auto-created and assigned by the customer
+ * import from the ERP agent code; they must NOT be created manually.
+ */
+export const AGENT_TAG_PREFIX = "agente";
+
+/** Human-readable label + description for the reserved agent prefix. */
+export const AGENT_TAG_PREFIX_LABEL = "Agente";
+export const AGENT_TAG_PREFIX_DESCRIPTION =
+  "Agente di vendita assegnato al cliente (sincronizzato dall'ERP)";
+
+/**
+ * Normalize a raw ERP agent code into a valid tag code (lowercase kebab).
+ * Returns null when the input is empty/blank or contains no alphanumerics.
+ */
+export function normalizeAgentCode(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const slug = String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug.length > 0 ? slug : null;
+}
+
+/**
+ * Build the full agent tag (`agente:<code>`) from a raw agent code.
+ * Returns null when the code normalizes to nothing.
+ */
+export function agentFullTag(raw: string | null | undefined): string | null {
+  const code = normalizeAgentCode(raw);
+  return code ? buildFullTag(AGENT_TAG_PREFIX, code) : null;
+}
+
+/** True when a full_tag belongs to the reserved agent prefix. */
+export function isAgentTag(fullTag: string): boolean {
+  return fullTag.startsWith(`${AGENT_TAG_PREFIX}:`);
+}
