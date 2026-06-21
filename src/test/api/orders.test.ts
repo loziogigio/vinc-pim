@@ -684,6 +684,61 @@ describe("integration: Orders API", () => {
     });
   });
 
+  describe("GET /api/b2b/orders/[id] item ordering", () => {
+    it("returns items in line_number (creation) order by default, and editing a line does not reshuffle", async () => {
+      /**
+       * Regression: editing a cart line used to bubble it to the top because the
+       * GET default sorted by updated_at. Items must stay in creation order so the
+       * cart/checkout never reshuffles on edit.
+       */
+      // Arrange — create a cart and add three items in order A, B, C.
+      const cartRes = await getActiveCart(
+        createRequest("GET", undefined, "http://localhost:3000/api/b2b/orders/active")
+      );
+      const { order } = await cartRes.json();
+
+      const lineNumbers: number[] = [];
+      for (const code of ["PROD-A", "PROD-B", "PROD-C"]) {
+        const addRes = await addItem(
+          createRequest("POST", LineItemFactory.createPayload({ entity_code: code })),
+          createParams({ id: order.order_id })
+        );
+        const addData = await addRes.json();
+        lineNumbers.push(addData.item.line_number);
+      }
+      const [lineA, lineB, lineC] = lineNumbers;
+
+      // Act — edit the MIDDLE line (newest updated_at) then refetch with no sort.
+      await updateItems(
+        createRequest("PATCH", { items: [{ line_number: lineB, quantity: 25 }] }),
+        createParams({ id: order.order_id })
+      );
+      const getRes = await getOrder(
+        createRequest("GET", undefined, `http://localhost:3000/api/b2b/orders/${order.order_id}`),
+        createParams({ id: order.order_id })
+      );
+      const getData = await getRes.json();
+
+      // Assert — still creation order [A, B, C], not bubbled by updated_at.
+      expect(getRes.status).toBe(200);
+      expect(
+        getData.order.items.map((i: { line_number: number }) => i.line_number)
+      ).toEqual([lineA, lineB, lineC]);
+
+      // The explicit ?sort=updated option still works (edited line first).
+      const updatedRes = await getOrder(
+        createRequest(
+          "GET",
+          undefined,
+          `http://localhost:3000/api/b2b/orders/${order.order_id}?sort=updated`
+        ),
+        createParams({ id: order.order_id })
+      );
+      const updatedData = await updatedRes.json();
+      expect(updatedData.order.items[0].line_number).toBe(lineB);
+    });
+  });
+
   // ==========================================
   // Order Totals Calculation
   // ==========================================

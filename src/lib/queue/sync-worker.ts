@@ -420,6 +420,13 @@ async function processSyncJob(job: Job<SyncJobData>): Promise<SyncJobResult> {
           console.error(`  ✗ ${adapter.name}: ${result.message || 'Failed'}`);
         }
 
+        // Stamp solr_indexed_at when Solr acked this single-product sync, so the
+        // gap/consolidation job doesn't treat an already-indexed product as stale.
+        // (The bulk paths already do this; this closes the single-product gap.)
+        if (channel === 'solr' && result.success && product_id) {
+          await markSolrIndexed(PIMProductModel as any, [product_id]);
+        }
+
         results.push({
           channel,
           success: result.success,

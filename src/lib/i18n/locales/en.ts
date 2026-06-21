@@ -170,6 +170,13 @@ const en = {
     switchToLight: "Switch to light mode",
     switchToDark: "Switch to dark mode",
     noApps: "No apps available",
+    searchPlaceholder: "Search apps, orders, products…",
+    openModuleCenter: "Go to Module Center",
+    noModulesFound: "No modules found",
+    moduleCenter: "Module Center",
+    search: "Search",
+    logout: "Log out",
+    notifications: "Notifications",
   },
   apps: {
     home: { name: "Home", description: "Main dashboard" },

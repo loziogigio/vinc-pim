@@ -17,6 +17,7 @@
  */
 
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 import {
   connectWithModels,
   closeAllConnections,
@@ -60,7 +61,7 @@ function parseArgs(): Args {
 
 const SLUG = "credit_exposure";
 
-const FIELDS: DataModelField[] = [
+export const CREDIT_EXPOSURE_FIELDS: DataModelField[] = [
   {
     slug: "snapshot_date",
     label: "Data snapshot",
@@ -128,13 +129,13 @@ const FIELDS: DataModelField[] = [
   },
 ];
 
-const DEFINITION: Omit<IDataModelDefinition, "_id" | "created_at" | "updated_at"> = {
+export const CREDIT_EXPOSURE_DEFINITION: Omit<IDataModelDefinition, "_id" | "created_at" | "updated_at"> = {
   name: "Esposizione",
   slug: SLUG,
   relation: "customer",
   cardinality: "multiple",
   channel: "b2b",
-  fields: FIELDS,
+  fields: CREDIT_EXPOSURE_FIELDS,
   readable_by_end_user: true,
   enabled: true,
 };
@@ -150,16 +151,16 @@ async function main() {
   console.log(`\n📋 Seed credit_exposure data model`);
   console.log(`   Tenant : ${args.tenant} (database: ${tenantDb})`);
   console.log(`   Slug   : ${SLUG}`);
-  console.log(`   Fields : ${FIELDS.length} top-level\n`);
+  console.log(`   Fields : ${CREDIT_EXPOSURE_FIELDS.length} top-level\n`);
 
-  validateFieldsTree(FIELDS);
-  const externalRefField = findExternalRefField(FIELDS);
+  validateFieldsTree(CREDIT_EXPOSURE_FIELDS);
+  const externalRefField = findExternalRefField(CREDIT_EXPOSURE_FIELDS);
   console.log(`   external_ref → field "${externalRefField}"`);
 
   if (args.dryRun) {
     console.log("\n🌵 Dry run — would create:");
     console.log(
-      JSON.stringify({ ...DEFINITION, external_ref_field: externalRefField }, null, 2)
+      JSON.stringify({ ...CREDIT_EXPOSURE_DEFINITION, external_ref_field: externalRefField }, null, 2)
     );
     await closeAllConnections();
     return;
@@ -177,17 +178,17 @@ async function main() {
       await closeAllConnections();
       process.exit(1);
     }
-    existing.name = DEFINITION.name;
-    existing.fields = FIELDS;
+    existing.name = CREDIT_EXPOSURE_DEFINITION.name;
+    existing.fields = CREDIT_EXPOSURE_FIELDS;
     existing.external_ref_field = externalRefField;
-    existing.readable_by_end_user = DEFINITION.readable_by_end_user;
-    existing.enabled = DEFINITION.enabled;
+    existing.readable_by_end_user = CREDIT_EXPOSURE_DEFINITION.readable_by_end_user;
+    existing.enabled = CREDIT_EXPOSURE_DEFINITION.enabled;
     existing.markModified("fields");
     await existing.save();
     console.log(`\n✏️  Updated existing definition ${existing._id}`);
   } else {
     const created = await DataModelDefinition.create({
-      ...DEFINITION,
+      ...CREDIT_EXPOSURE_DEFINITION,
       external_ref_field: externalRefField,
     });
     console.log(`\n✅ Created definition ${created._id}`);
@@ -195,8 +196,8 @@ async function main() {
 
   const RecordModel = await getDataModelRecordModel(tenantDb, {
     slug: SLUG,
-    cardinality: DEFINITION.cardinality,
-    fields: FIELDS,
+    cardinality: CREDIT_EXPOSURE_DEFINITION.cardinality,
+    fields: CREDIT_EXPOSURE_FIELDS,
     external_ref_field: externalRefField,
   });
   await RecordModel.init();
@@ -222,9 +223,11 @@ async function main() {
   await closeAllConnections();
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("\n❌ Failed:", err);
-    process.exit(1);
-  });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("\n❌ Failed:", err);
+      process.exit(1);
+    });
+}

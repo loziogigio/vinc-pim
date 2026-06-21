@@ -16,6 +16,7 @@
  */
 
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 import {
   connectWithModels,
   closeAllConnections,
@@ -59,7 +60,7 @@ function parseArgs(): Args {
 
 const SLUG = "invoice";
 
-const FIELDS: DataModelField[] = [
+export const INVOICE_FIELDS: DataModelField[] = [
   {
     // The legal fiscal number — unique per tenant per fiscal year. Composite
     // string from the pusher, e.g. "2026/1234" or "FT/2026/1234". This is the
@@ -279,13 +280,13 @@ const FIELDS: DataModelField[] = [
   },
 ];
 
-const DEFINITION: Omit<IDataModelDefinition, "_id" | "created_at" | "updated_at"> = {
+export const INVOICE_DEFINITION: Omit<IDataModelDefinition, "_id" | "created_at" | "updated_at"> = {
   name: "Fatture",
   slug: SLUG,
   relation: "customer",
   cardinality: "multiple",
   channel: "b2b",
-  fields: FIELDS,
+  fields: INVOICE_FIELDS,
   readable_by_end_user: true,
   enabled: true,
 };
@@ -301,16 +302,16 @@ async function main() {
   console.log(`\n📋 Seed invoice data model`);
   console.log(`   Tenant : ${args.tenant} (database: ${tenantDb})`);
   console.log(`   Slug   : ${SLUG}`);
-  console.log(`   Fields : ${FIELDS.length} top-level\n`);
+  console.log(`   Fields : ${INVOICE_FIELDS.length} top-level\n`);
 
-  validateFieldsTree(FIELDS);
-  const externalRefField = findExternalRefField(FIELDS);
+  validateFieldsTree(INVOICE_FIELDS);
+  const externalRefField = findExternalRefField(INVOICE_FIELDS);
   console.log(`   external_ref → field "${externalRefField}"`);
 
   if (args.dryRun) {
     console.log("\n🌵 Dry run — would create:");
     console.log(
-      JSON.stringify({ ...DEFINITION, external_ref_field: externalRefField }, null, 2)
+      JSON.stringify({ ...INVOICE_DEFINITION, external_ref_field: externalRefField }, null, 2)
     );
     await closeAllConnections();
     return;
@@ -328,17 +329,17 @@ async function main() {
       await closeAllConnections();
       process.exit(1);
     }
-    existing.name = DEFINITION.name;
-    existing.fields = FIELDS;
+    existing.name = INVOICE_DEFINITION.name;
+    existing.fields = INVOICE_FIELDS;
     existing.external_ref_field = externalRefField;
-    existing.readable_by_end_user = DEFINITION.readable_by_end_user;
-    existing.enabled = DEFINITION.enabled;
+    existing.readable_by_end_user = INVOICE_DEFINITION.readable_by_end_user;
+    existing.enabled = INVOICE_DEFINITION.enabled;
     existing.markModified("fields");
     await existing.save();
     console.log(`\n✏️  Updated existing definition ${existing._id}`);
   } else {
     const created = await DataModelDefinition.create({
-      ...DEFINITION,
+      ...INVOICE_DEFINITION,
       external_ref_field: externalRefField,
     });
     console.log(`\n✅ Created definition ${created._id}`);
@@ -346,8 +347,8 @@ async function main() {
 
   const RecordModel = await getDataModelRecordModel(tenantDb, {
     slug: SLUG,
-    cardinality: DEFINITION.cardinality,
-    fields: FIELDS,
+    cardinality: INVOICE_DEFINITION.cardinality,
+    fields: INVOICE_FIELDS,
     external_ref_field: externalRefField,
   });
   await RecordModel.init();
@@ -373,9 +374,11 @@ async function main() {
   await closeAllConnections();
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("\n❌ Failed:", err);
-    process.exit(1);
-  });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("\n❌ Failed:", err);
+      process.exit(1);
+    });
+}

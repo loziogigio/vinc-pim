@@ -2,7 +2,7 @@
  * Centralized App Registry
  *
  * Single source of truth for all B2B applications.
- * Used by: AppLauncherDropdown, TenantAppLauncher, DashboardHeader
+ * Used by: AppLauncherDropdown, TenantAppLauncher, SuiteHeader
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -354,7 +354,7 @@ export function getHeaderApps(): AppConfig[] {
 }
 
 /**
- * Get current section info for DashboardHeader
+ * Get current section info for SuiteHeader
  * Returns the app matching the current path, or Home as default
  */
 export function getCurrentSection(pathname: string): {

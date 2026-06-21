@@ -666,11 +666,11 @@ export function PromotionModal({
                   Minimum Quantity
                 </label>
                 <Input
-                  type="number"
-                  min="1"
-                  value={formData.min_quantity || ""}
-                  onChange={(e) => updateField("min_quantity", e.target.value ? parseInt(e.target.value) : undefined)}
-                  placeholder="e.g., 3"
+                  type="text"
+                  inputMode="decimal"
+                  value={promoInputs.min_quantity ?? toDecimalInputValue(formData.min_quantity)}
+                  onChange={(e) => updatePromoInput("min_quantity", e.target.value)}
+                  placeholder="e.g., 0.125, 3"
                 />
               </div>
               <div>

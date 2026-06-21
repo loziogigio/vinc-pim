@@ -94,6 +94,9 @@ export async function GET(
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
     const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "20")));
     const search = searchParams.get("search")?.toLowerCase() || "";
+    // Server-side line sort (whitelisted). Default: creation order (line_number
+    // ascending) so the cart/checkout never reshuffles when a line is edited.
+    const sortKey = searchParams.get("sort") || "line_asc";
 
     // Fetch order (with tenant filter for security)
     const order = await OrderModel.findOne({ order_id, tenant_id: tenantId }).lean<IOrder>();
@@ -124,6 +127,21 @@ export async function GET(
     }
 
     const filteredCount = filteredItems.length;
+
+    // Sort lines server-side before pagination (items are an embedded array,
+    // already fully loaded — no DB index needed). Whitelisted keys only.
+    const lineTimestamp = (item: ILineItem): number => {
+      const value = item.updated_at ?? item.added_at;
+      const ms = value ? new Date(value).getTime() : 0;
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+    const LINE_SORT: Record<string, (a: ILineItem, b: ILineItem) => number> = {
+      updated: (a, b) => lineTimestamp(b) - lineTimestamp(a), // latest changed first
+      line_desc: (a, b) => b.line_number - a.line_number, // highest line number first
+      line_asc: (a, b) => a.line_number - b.line_number, // lowest line number first (default — creation order)
+    };
+    const sorter = LINE_SORT[sortKey] ?? LINE_SORT.line_asc;
+    filteredItems = [...filteredItems].sort(sorter);
 
     // Paginate items
     const skip = (page - 1) * limit;

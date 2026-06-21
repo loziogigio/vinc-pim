@@ -21,7 +21,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="vinc-login min-h-screen">
       {/* Desktop: split screen. Mobile/tablet: compact hero stacked above form. */}
       <div className="lg:hidden">
         <LoginHero compact />

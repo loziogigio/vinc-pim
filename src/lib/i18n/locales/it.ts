@@ -171,6 +171,13 @@ const it = {
     switchToLight: "Passa al tema chiaro",
     switchToDark: "Passa al tema scuro",
     noApps: "Nessuna app disponibile",
+    searchPlaceholder: "Cerca app, ordini, prodotti…",
+    openModuleCenter: "Vai al Centro Moduli",
+    noModulesFound: "Nessun modulo trovato",
+    moduleCenter: "Centro Moduli",
+    search: "Cerca",
+    logout: "Esci",
+    notifications: "Notifiche",
   },
   apps: {
     home: { name: "Home", description: "Dashboard principale" },

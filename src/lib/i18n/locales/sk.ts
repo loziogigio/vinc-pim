@@ -171,6 +171,13 @@ const sk = {
     switchToLight: "Prepn\u00fa\u0165 na svetl\u00fd re\u017eim",
     switchToDark: "Prepn\u00fa\u0165 na tmav\u00fd re\u017eim",
     noApps: "\u017diadne aplik\u00e1cie k dispoz\u00edcii",
+    searchPlaceholder: "H\u013eada\u0165 aplik\u00e1cie, objedn\u00e1vky, produkty\u2026",
+    openModuleCenter: "Prejs\u0165 do Centra modulov",
+    noModulesFound: "Nena\u0161li sa \u017eiadne moduly",
+    moduleCenter: "Centrum modulov",
+    search: "H\u013eada\u0165",
+    logout: "Odhl\u00e1si\u0165 sa",
+    notifications: "Notifik\u00e1cie",
   },
   apps: {
     home: { name: "Domov", description: "Hlavn\u00fd dashboard" },

@@ -40,7 +40,8 @@ const ProductCardStyleSchema = new Schema(
       default: "lg"
     },
     backgroundColor: { type: String, default: "#ffffff" },
-    hoverBackgroundColor: { type: String }
+    hoverBackgroundColor: { type: String },
+    priceDecimals: { type: Number, default: 2, min: 0, max: 4 }
   },
   { _id: false }
 );
