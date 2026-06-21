@@ -65,6 +65,7 @@ describe("unit: customer import — agent tags", () => {
     const res = await runImport([
       {
         external_code: "CUST-1",
+        email: "cust1@example.com",
         company_name: "Acme",
         agent_code: "M01",
         agent_name: "Mario Rossi",
@@ -84,6 +85,7 @@ describe("unit: customer import — agent tags", () => {
     await runImport([
       {
         external_code: "CUST-2",
+        email: "cust2@example.com",
         company_name: "Beta",
         agent_code: "M01",
         addresses: [
@@ -107,7 +109,7 @@ describe("unit: customer import — agent tags", () => {
   });
 
   it("clears the agent on a later import with agent_code: null", async () => {
-    await runImport([{ external_code: "CUST-3", company_name: "Gamma", agent_code: "M01" }]);
+    await runImport([{ external_code: "CUST-3", email: "cust3@example.com", company_name: "Gamma", agent_code: "M01" }]);
     await runImport([{ external_code: "CUST-3", company_name: "Gamma", agent_code: null }]);
     const c = await CustomerModel.findOne({ external_code: "CUST-3" }).lean();
     expect(c!.tags.find((t: ICustomerTagRef) => t.prefix === "agente")).toBeUndefined();
