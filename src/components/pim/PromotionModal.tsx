@@ -824,6 +824,35 @@ export function PromotionModal({
                   Restrict this promotion to the customers of specific sales agents. Leave empty to ignore agent.
                 </p>
 
+                {/* Selected agent chips — always rendered so saved filters are visible/removable
+                    even when the live agent list is empty or still loading */}
+                {selectedAgentFilters.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {selectedAgentFilters.map((fullTag) => {
+                      const agent = availableAgents.find((a) => a.full_tag === fullTag);
+                      return (
+                        <span
+                          key={fullTag}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/40"
+                        >
+                          {agent ? `${agent.name} (${agent.code})` : fullTag}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (formData.tag_filter || []).filter((t) => t !== fullTag);
+                              updateField("tag_filter", updated.length > 0 ? updated : undefined);
+                            }}
+                            className="ml-0.5 hover:text-red-600 transition"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Loading / empty-state / selector — gated on agent list availability */}
                 {agentsLoading ? (
                   <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -832,54 +861,26 @@ export function PromotionModal({
                 ) : availableAgents.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-2">No agents assigned yet.</p>
                 ) : (
-                  <>
-                    {selectedAgentFilters.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {selectedAgentFilters.map((fullTag) => {
-                          const agent = availableAgents.find((a) => a.full_tag === fullTag);
-                          return (
-                            <span
-                              key={fullTag}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/40"
-                            >
-                              {agent ? `${agent.name} (${agent.code})` : fullTag}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = (formData.tag_filter || []).filter((t) => t !== fullTag);
-                                  updateField("tag_filter", updated.length > 0 ? updated : undefined);
-                                }}
-                                className="ml-0.5 hover:text-red-600 transition"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        if (!e.target.value) return;
-                        const current = formData.tag_filter || [];
-                        if (!current.includes(e.target.value)) {
-                          updateField("tag_filter", [...current, e.target.value]);
-                        }
-                      }}
-                      className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="">Add an agent...</option>
-                      {availableAgents
-                        .filter((a) => !(formData.tag_filter || []).includes(a.full_tag))
-                        .map((agent) => (
-                          <option key={agent.full_tag} value={agent.full_tag}>
-                            {agent.name} ({agent.code}) — {agent.customer_count} customer(s)
-                          </option>
-                        ))}
-                    </select>
-                  </>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const current = formData.tag_filter || [];
+                      if (!current.includes(e.target.value)) {
+                        updateField("tag_filter", [...current, e.target.value]);
+                      }
+                    }}
+                    className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Add an agent...</option>
+                    {availableAgents
+                      .filter((a) => !(formData.tag_filter || []).includes(a.full_tag))
+                      .map((agent) => (
+                        <option key={agent.full_tag} value={agent.full_tag}>
+                          {agent.name} ({agent.code}) — {agent.customer_count} customer(s)
+                        </option>
+                      ))}
+                  </select>
                 )}
               </div>
             );
