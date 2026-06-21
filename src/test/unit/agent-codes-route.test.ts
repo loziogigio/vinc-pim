@@ -82,4 +82,29 @@ describe("unit: GET /api/b2b/agent-codes", () => {
     expect(body.success).toBe(true);
     expect(body.agents).toEqual([]);
   });
+
+  it("counts a customer once when the same agent appears in both customer tags and address tag_overrides", async () => {
+    await CustomerTagModel.create({
+      prefix: "agente", code: "m01", full_tag: "agente:m01", description: "Mario",
+    });
+    await CustomerModel.create({
+      customer_id: `cust_${nanoid(8)}`, tenant_id: "test-tenant", external_code: "C_DEDUP",
+      customer_type: "business", email: "dedup@x.it",
+      tags: [agentRef("m01")],
+      addresses: [{
+        address_id: nanoid(8), external_code: "A_DEDUP", address_type: "delivery", is_default: true,
+        recipient_name: "x", street_address: "s", city: "c", province: "p", postal_code: "z",
+        country: "IT", tag_overrides: [agentRef("m01")], created_at: new Date(), updated_at: new Date(),
+      }],
+    });
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(body.success).toBe(true);
+    expect(body.agents).toHaveLength(1);
+    const m01 = body.agents.find((a: { code: string }) => a.code === "m01");
+    expect(m01).toBeDefined();
+    expect(m01.customer_count).toBe(1);
+  });
 });
