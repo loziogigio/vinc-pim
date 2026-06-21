@@ -132,4 +132,37 @@ describe("unit: agent-tag.service (DB)", () => {
     const c = await CustomerModel.findOne({ customer_id: id }).lean();
     expect(c!.addresses[0].tag_overrides.find((t: ICustomerTagRef) => t.full_tag === "agente:m09")).toBeTruthy();
   });
+
+  it("applyCustomerAgentTags with unmatched address external_code does not throw and leaves addresses unchanged", async () => {
+    const existingTag = tagRef("agente", "m01");
+    const id = await seedCustomer({
+      tags: [existingTag],
+      addresses: [{
+        address_id: nanoid(8), external_code: "ADDR-KNOWN", address_type: "delivery",
+        is_default: true, recipient_name: "x", street_address: "s", city: "c",
+        province: "p", postal_code: "z", country: "IT", tag_overrides: [],
+        created_at: new Date(), updated_at: new Date(),
+      }],
+    });
+    // Provide an address whose external_code does NOT exist on the customer
+    await expect(
+      applyCustomerAgentTags(TENANT_DB, TENANT, id, {
+        addresses: [{ external_code: "ADDR-DOES-NOT-EXIST", agent_code: "M99" }],
+      }),
+    ).resolves.toBeUndefined();
+    const c = await CustomerModel.findOne({ customer_id: id }).lean();
+    // existing customer-level tags untouched
+    expect(c!.tags.find((t: ICustomerTagRef) => t.full_tag === "agente:m01")).toBeTruthy();
+    // existing address tag_overrides untouched (still empty)
+    expect(c!.addresses[0].tag_overrides).toHaveLength(0);
+  });
+
+  it("ensureAgentTagDef with no name sets description to the normalized code", async () => {
+    const ref = await ensureAgentTagDef(TENANT_DB, "X42");
+    expect(ref).not.toBeNull();
+    expect(ref!.code).toBe("x42");
+    const def = await CustomerTagModel.findOne({ full_tag: "agente:x42" }).lean();
+    expect(def).toBeTruthy();
+    expect(def!.description).toBe("x42");
+  });
 });

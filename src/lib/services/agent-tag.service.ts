@@ -130,6 +130,7 @@ export async function applyCustomerAgentTags(
   }
 
   if (addrAgents.length > 0) {
+    let addressModified = false;
     for (const a of addrAgents) {
       const idx = (customer.addresses || []).findIndex(
         (ad: { external_code?: string }) => ad.external_code === a.external_code,
@@ -141,8 +142,9 @@ export async function applyCustomerAgentTags(
         customer.addresses[idx].tag_overrides || [],
         action,
       );
+      addressModified = true;
     }
-    customer.markModified("addresses");
+    if (addressModified) customer.markModified("addresses");
   }
 
   await customer.save();
