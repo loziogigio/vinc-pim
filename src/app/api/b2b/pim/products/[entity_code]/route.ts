@@ -3,6 +3,7 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
+import { embedPromotionsInPackaging } from "@/lib/pim/embed-promotions";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { validateDynamicBlocks } from "@/lib/validation/dynamic-blocks";
 import { getTenantLanguageCodes } from "@/lib/services/tenant-languages";
@@ -212,16 +213,14 @@ export async function GET(
       }
     }
 
-    // Compute per-packaging promotions from product-level promotions
-    if (product.promotions?.length && product.packaging_options?.length) {
-      for (const pkg of product.packaging_options) {
-        pkg.promotions = product.promotions.filter((promo: any) => {
-          if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
-            return pkg.is_sellable !== false;
-          }
-          return promo.target_pkg_ids.includes(pkg.pkg_id);
-        });
-      }
+    // Project product-level promotions onto packagings. Explicit packaging-level
+    // promotions (e.g. sync-set agent/customer tag_filter) take precedence — see
+    // embedPromotionsInPackaging.
+    if (product.packaging_options?.length) {
+      product.packaging_options = embedPromotionsInPackaging(
+        product.packaging_options,
+        product.promotions,
+      );
     }
 
     const response: any = { product };

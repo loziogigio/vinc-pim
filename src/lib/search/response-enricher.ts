@@ -8,6 +8,7 @@
 import { getPooledConnection } from '@/lib/db/connection';
 import type { SolrProduct, PackagingData } from '@/lib/types/search';
 import type { DynamicBlock } from '@/lib/types/dynamic-blocks';
+import { embedPromotionsInPackaging } from '@/lib/pim/embed-promotions';
 
 // ============================================
 // CACHE CONFIGURATION
@@ -280,28 +281,11 @@ export async function loadProductData(
   return map;
 }
 
-/**
- * Compute per-packaging promotions from product-level promotions.
- * Each packaging option gets the promotions that target it:
- * - target_pkg_ids empty/undefined → all sellable packaging (is_sellable !== false)
- * - target_pkg_ids set → only those specific pkg_ids
- */
-export function embedPromotionsInPackaging(
-  packagingOptions: PackagingData[] | undefined,
-  promotions: any[] | undefined
-): PackagingData[] | undefined {
-  if (!packagingOptions?.length || !promotions?.length) return packagingOptions;
-
-  return packagingOptions.map((pkg: any) => ({
-    ...pkg,
-    promotions: promotions.filter((promo: any) => {
-      if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
-        return pkg.is_sellable !== false;
-      }
-      return promo.target_pkg_ids.includes(pkg.pkg_id);
-    }),
-  }));
-}
+// Per-packaging promotion projection now lives in a shared, dependency-free helper
+// (@/lib/pim/embed-promotions) so the detail GET, this search enricher, and the
+// Solr indexer all agree. Imported at the top; re-exported here for existing
+// import paths (e.g. the embed-promotions unit test).
+export { embedPromotionsInPackaging };
 
 // ============================================
 // ENTITY ENRICHERS
