@@ -45,6 +45,18 @@ function toRecipientList(addresses) {
         return undefined;
     return list.map((addr) => ({ emailAddress: { address: addr.trim() } }));
 }
+function toGraphAttachments(attachments) {
+    if (!attachments?.length)
+        return undefined;
+    return attachments.map((att) => ({
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        name: att.filename,
+        contentType: att.contentType ?? "application/octet-stream",
+        contentBytes: typeof att.content === "string"
+            ? Buffer.from(att.content).toString("base64")
+            : att.content.toString("base64"),
+    }));
+}
 // ============================================
 // SEND
 // ============================================
@@ -82,6 +94,9 @@ export async function sendEmailViaGraph(cfg, msg) {
         if (msg.replyTo) {
             graphMessage.replyTo = [{ emailAddress: { address: msg.replyTo } }];
         }
+        const graphAttachments = toGraphAttachments(msg.attachments);
+        if (graphAttachments)
+            graphMessage.attachments = graphAttachments;
         const sendMailUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(senderEmail)}/sendMail`;
         const response = await fetch(sendMailUrl, {
             method: "POST",

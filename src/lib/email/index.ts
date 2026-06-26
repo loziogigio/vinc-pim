@@ -525,9 +525,10 @@ async function sendEmailNow(
       // Package requires non-optional html; default to empty string when text-only
       html: emailLog.html ?? "",
       text: emailLog.text,
-      // NOTE: vinc-notifications transports do not yet support file attachments.
-      // Attachments passed via emailLog._attachments are silently dropped here.
-      // TODO: extend EmailMessage in vinc-notifications to carry attachments (future task).
+      // Transient attachments set at call time (not persisted to MongoDB).
+      // Available on the immediate-send path only; queued emails lose attachments
+      // because _attachments is never written to the emailLog document.
+      attachments: (emailLog as any)._attachments as Array<{ filename: string; content: Buffer | string; contentType?: string }> | undefined,
     };
 
     const sendResult =

@@ -28,6 +28,7 @@ export async function sendEmailViaSmtp(cfg, msg) {
             subject: msg.subject,
             html: msg.html,
             text: msg.text,
+            attachments: msg.attachments,
         })
             .then((info) => ({ ok: true, providerMessageId: info.messageId }), (err) => ({ ok: false, error: err instanceof Error ? err.message : String(err) }));
     }
