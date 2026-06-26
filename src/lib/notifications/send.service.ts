@@ -66,6 +66,8 @@ export interface SendNotificationOptions {
   targetUserType?: NotificationUserType;
   /** Typed payload for in-app/mobile notifications (generic, product, order, price) */
   payload?: NotificationPayload;
+  /** Sales-channel code for per-channel email config resolution (default: "default") */
+  channel?: string;
 }
 
 export interface SendNotificationResult {
@@ -167,6 +169,7 @@ export async function sendNotification(
       replyTo,
       immediate,
       tenantDb,
+      channel: options.channel,
     });
 
     if (result.success) {

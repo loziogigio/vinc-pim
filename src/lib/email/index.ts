@@ -275,6 +275,8 @@ export interface SendEmailOptions {
   metadata?: Record<string, any>;
   /** Tenant database name for multi-tenant support (e.g., 'vinc-hidros-it') */
   tenantDb?: string;
+  /** Sales-channel code for per-channel email config resolution (default: "default") */
+  channel?: string;
   /** Campaign ID for linking email to campaign stats */
   campaign_id?: string;
   /** File attachments (e.g., PDF documents) */
@@ -364,8 +366,8 @@ export function addTrackingToHtml(
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const emailId = nanoid(12);
 
-  // Fetch tenant email config (transport type + settings)
-  const tenantConfig = await fetchTenantEmailConfig(options.tenantDb);
+  // Fetch tenant email config (transport type + settings) — keyed by channel
+  const tenantConfig = await fetchTenantEmailConfig(options.tenantDb, options.channel ?? "default");
 
   // Check if email is configured based on transport type
   const isConfigured =
@@ -444,6 +446,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     tags: options.tags,
     metadata: options.metadata,
     tenant_db: tenantDb,
+    channel: options.channel ?? "default",
     campaign_id: options.campaign_id,
   });
 
