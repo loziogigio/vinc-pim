@@ -4,15 +4,16 @@
  * Includes open and click tracking
  */
 
-import nodemailer from "nodemailer";
 import { nanoid } from "nanoid";
 import type { IEmailLog, EmailStatus } from "@/lib/db/models/email-log";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { createNotificationLog, markLogAsSent, markLogAsFailed } from "@/lib/notifications/notification-log.service";
-import { sendViaGraph, isGraphConfigured } from "./graph-transport";
+import { isGraphConfigured } from "./graph-transport";
 import type { GraphSettings, EmailTransport } from "@/lib/types/home-settings";
+import { sendEmailViaSmtp, sendEmailViaGraph } from "vinc-notifications/server";
+import type { EmailConfig as PkgEmailConfig } from "vinc-notifications";
 
 // ============================================
 // CONFIGURATION
@@ -211,40 +212,37 @@ function sanitizeEmailHeader(value: string): string {
 }
 
 // ============================================
-// TRANSPORTER
+// PACKAGE CONFIG MAPPER
 // ============================================
 
-let transporter: nodemailer.Transporter | null = null;
-let transporterConfigHash: string = "";
-
-function getConfigHash(config: EmailConfig): string {
-  return `${config.host}:${config.port}:${config.secure}:${config.user}:${config.password}`;
-}
-
-function getTransporter(config: EmailConfig): nodemailer.Transporter {
-  const hash = getConfigHash(config);
-
-  // Recreate transporter if config changed
-  if (!transporter || transporterConfigHash !== hash) {
-    // Build transport options - skip auth for localhost without credentials
-    const transportOptions: nodemailer.TransportOptions = {
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-    } as nodemailer.TransportOptions;
-
-    // Only add auth if credentials are provided
-    if (config.user && config.password) {
-      (transportOptions as { auth?: { user: string; pass: string } }).auth = {
-        user: config.user,
-        pass: config.password,
-      };
-    }
-
-    transporter = nodemailer.createTransport(transportOptions);
-    transporterConfigHash = hash;
-  }
-  return transporter;
+/**
+ * Build a vinc-notifications EmailConfig (camelCase) from the CS TenantEmailConfig (snake_case).
+ * Exported for Task 12 (per-channel config threading).
+ */
+export function toPkgEmailConfig(tc: TenantEmailConfig): PkgEmailConfig {
+  return {
+    enabled: true,
+    transport: tc.transport,
+    from: sanitizeEmailHeader(tc.smtp.from ?? tc.graph?.sender_email ?? ""),
+    fromName: sanitizeEmailHeader(tc.smtp.fromName ?? tc.graph?.sender_name ?? ""),
+    smtp: {
+      host: tc.smtp.host,
+      port: tc.smtp.port,
+      secure: tc.smtp.secure,
+      user: tc.smtp.user,
+      password: tc.smtp.password,
+    },
+    graph: tc.graph
+      ? {
+          azureTenantId: tc.graph.azure_tenant_id,
+          clientId: tc.graph.client_id,
+          clientSecret: tc.graph.client_secret,
+          senderEmail: tc.graph.sender_email,
+          senderName: tc.graph.sender_name,
+          saveToSentItems: tc.graph.save_to_sent_items,
+        }
+      : undefined,
+  };
 }
 
 // ============================================
@@ -514,52 +512,33 @@ async function sendEmailNow(
   try {
     let messageId: string | undefined;
 
-    if (tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)) {
-      // ---- GRAPH API TRANSPORT ----
-      const result = await sendViaGraph(tenantConfig.graph!, {
-        to: emailLog.to,
-        subject: emailLog.subject,
-        html: emailLog.html,
-        text: emailLog.text,
-        cc: emailLog.cc,
-        bcc: emailLog.bcc,
-        from: emailLog.from,
-        fromName: emailLog.from_name,
-        replyTo: emailLog.reply_to,
-        attachments: (emailLog as any)._attachments || undefined,
-      });
+    // Build package EmailConfig from tenant settings
+    const pkgCfg = toPkgEmailConfig(tenantConfig);
 
-      if (!result.success) {
-        throw new Error(result.error || "Graph API send failed");
-      }
-      messageId = result.messageId;
-    } else {
-      // ---- SMTP TRANSPORT ----
-      const smtpTransport = getTransporter(tenantConfig.smtp);
+    // Pre-sanitize message headers to prevent injection before delegating to the package
+    const pkgMsg = {
+      to: emailLog.to,
+      cc: emailLog.cc,
+      bcc: emailLog.bcc,
+      replyTo: emailLog.reply_to ? sanitizeEmailHeader(emailLog.reply_to) : undefined,
+      subject: sanitizeEmailHeader(emailLog.subject),
+      // Package requires non-optional html; default to empty string when text-only
+      html: emailLog.html ?? "",
+      text: emailLog.text,
+      // NOTE: vinc-notifications transports do not yet support file attachments.
+      // Attachments passed via emailLog._attachments are silently dropped here.
+      // TODO: extend EmailMessage in vinc-notifications to carry attachments (future task).
+    };
 
-      const result = await smtpTransport.sendMail({
-        from: emailLog.from_name
-          ? `"${sanitizeEmailHeader(emailLog.from_name)}" <${sanitizeEmailHeader(emailLog.from)}>`
-          : sanitizeEmailHeader(emailLog.from),
-        to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
-        cc: emailLog.cc
-          ? Array.isArray(emailLog.cc)
-            ? emailLog.cc.join(", ")
-            : emailLog.cc
-          : undefined,
-        bcc: emailLog.bcc
-          ? Array.isArray(emailLog.bcc)
-            ? emailLog.bcc.join(", ")
-            : emailLog.bcc
-          : undefined,
-        replyTo: emailLog.reply_to ? sanitizeEmailHeader(emailLog.reply_to) : undefined,
-        subject: sanitizeEmailHeader(emailLog.subject),
-        html: emailLog.html,
-        text: emailLog.text,
-        attachments: (emailLog as any)._attachments || undefined,
-      });
-      messageId = result.messageId;
+    const sendResult =
+      tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)
+        ? await sendEmailViaGraph(pkgCfg, pkgMsg)
+        : await sendEmailViaSmtp(pkgCfg, pkgMsg);
+
+    if (!sendResult.ok) {
+      throw new Error(sendResult.error || `${tenantConfig.transport} send failed`);
     }
+    messageId = sendResult.providerMessageId;
 
     // Update log with success (same for both transports)
     emailLog.status = "sent";

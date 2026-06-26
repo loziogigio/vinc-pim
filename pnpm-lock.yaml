@@ -226,6 +226,9 @@ importers:
       vinc-cdn:
         specifier: ^1.0.0
         version: 1.0.0(@aws-sdk/client-s3@3.986.0)
+      vinc-notifications:
+        specifier: file:vendor/vinc-notifications
+        version: file:vendor/vinc-notifications
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -6319,6 +6322,9 @@ packages:
     resolution: {integrity: sha512-CZPNQnFERyqwyYE2DSHsDmh/7+R0jf0TfXeUQW0TE22t72ZRIC6FqflvcltQ91+iInU3PoYhtmNXHsPsQ0IvFw==}
     peerDependencies:
       '@aws-sdk/client-s3': ^3.0.0
+
+  vinc-notifications@file:vendor/vinc-notifications:
+    resolution: {directory: vendor/vinc-notifications, type: directory}
 
   vite-node@5.2.0:
     resolution: {integrity: sha512-7UT39YxUukIA97zWPXUGb0SGSiLexEGlavMwU3HDE6+d/HJhKLjLqu4eX2qv6SQiocdhKLRcusroDwXHQ6CnRQ==}
@@ -14376,6 +14382,15 @@ snapshots:
   vinc-cdn@1.0.0(@aws-sdk/client-s3@3.986.0):
     dependencies:
       '@aws-sdk/client-s3': 3.986.0
+
+  vinc-notifications@file:vendor/vinc-notifications:
+    dependencies:
+      firebase-admin: 13.6.0
+      nodemailer: 7.0.11
+      web-push: 3.6.7
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   vite-node@5.2.0(@types/node@20.19.21)(jiti@2.6.1)(tsx@4.20.6):
     dependencies:

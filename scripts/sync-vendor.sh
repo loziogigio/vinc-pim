@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 # CS repo root sits TWO levels under vendereincloud-app (vendereincloud-it/vinc-commerce-suite),
 # vs vinc-www/site which is three — so the path differs from vinc-www's script.
 PKGS_DIR="$(cd ../../packages && pwd)"
-PACKAGES=(vinc-analytics)
+PACKAGES=(vinc-analytics vinc-notifications)
 for p in "${PACKAGES[@]}"; do
   echo "── $p"
   (cd "$PKGS_DIR/$p" && pnpm install --silent && rm -rf dist && pnpm build)
