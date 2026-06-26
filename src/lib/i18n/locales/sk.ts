@@ -5665,6 +5665,13 @@ const sk = {
     },
     recordFormModal: {
       secretKeepPlaceholder: "Nechajte prázdne pre zachovanie aktuálnej hodnoty",
+      test: "Test",
+      testPanel: "Odoslať testovacie oznámenie",
+      testToPlaceholder: "Príjemca (email / telefón / FCM token)",
+      testSend: "Odoslať",
+      testSent: "Test odoslaný úspešne",
+      testFailed: "Test zlyhal",
+      testSkipped: "Preskočené",
     },
   },
   errors: {

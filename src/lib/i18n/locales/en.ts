@@ -5692,6 +5692,13 @@ const en = {
     },
     recordFormModal: {
       secretKeepPlaceholder: "Leave blank to keep current value",
+      test: "Test",
+      testPanel: "Send a test notification",
+      testToPlaceholder: "Recipient (email / phone / FCM token)",
+      testSend: "Send",
+      testSent: "Test sent successfully",
+      testFailed: "Test failed",
+      testSkipped: "Skipped",
     },
   },
   errors: {

@@ -31,6 +31,7 @@ export const NOTIFICATION_SETTINGS_BLUEPRINT: DataModelBlueprint = {
     fields: FIELDS,
     readable_by_end_user: false,
     enabled: true,
+    test_action: "/api/b2b/notifications/test-send",
   },
   defaultRecord: {
     relationId: CHANNEL_RELATION_ID,

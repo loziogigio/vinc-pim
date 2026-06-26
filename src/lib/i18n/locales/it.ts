@@ -5689,6 +5689,13 @@ const it = {
     },
     recordFormModal: {
       secretKeepPlaceholder: "Lascia vuoto per non modificare il valore",
+      test: "Test",
+      testPanel: "Invia una notifica di test",
+      testToPlaceholder: "Destinatario (email / telefono / token FCM)",
+      testSend: "Invia",
+      testSent: "Test inviato con successo",
+      testFailed: "Test fallito",
+      testSkipped: "Saltato",
     },
   },
   errors: {

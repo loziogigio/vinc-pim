@@ -69,6 +69,12 @@ export interface IDataModelDefinition {
   /** When true, the b2b storefront `/me` read endpoints expose this model */
   readable_by_end_user: boolean;
   enabled: boolean;
+  /**
+   * Optional URL (e.g. "/api/b2b/notifications/test-send") that the admin UI
+   * renders as a "Test" action button on the record form. When set, the form
+   * POSTs `{ channel, deliveryChannel, to }` to this endpoint and shows the result.
+   */
+  test_action?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -146,6 +152,7 @@ const DataModelDefinitionSchema = new Schema(
     external_ref_field: { type: String },
     readable_by_end_user: { type: Boolean, default: true },
     enabled: { type: Boolean, default: true },
+    test_action: { type: String },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

@@ -34,6 +34,12 @@ interface RecordFormModalProps {
   relation: DataModelRelation;
   busy?: boolean;
   error?: string | null;
+  /**
+   * Optional endpoint (e.g. "/api/b2b/notifications/test-send") from the
+   * definition's `test_action` field. When provided a "Test" button is shown
+   * that lets the user fire a live test notification via the saved config.
+   */
+  testAction?: string;
   onSubmit: (input: {
     relation_id: string;
     channel: string;
@@ -73,6 +79,8 @@ function withSecretDefaults(
   return out;
 }
 
+type DeliveryChannel = "email" | "sms" | "fcm";
+
 export function RecordFormModal({
   open,
   title,
@@ -82,6 +90,7 @@ export function RecordFormModal({
   relation,
   busy,
   error,
+  testAction,
   onSubmit,
   onClose,
 }: RecordFormModalProps) {
@@ -94,12 +103,44 @@ export function RecordFormModal({
   );
   const isChannel = relation === "channel";
 
+  // Test action state
+  const [testOpen, setTestOpen] = useState(false);
+  const [testDelivery, setTestDelivery] = useState<DeliveryChannel>("email");
+  const [testTo, setTestTo] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; skipped?: boolean; error?: string } | null>(null);
+
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (!open) return;
     setRelationId(initial?.relation_id ?? "");
     setChannel(initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel));
     setData(withSecretDefaults(fields, withCheckboxDefaults(fields, initial?.data ?? {})));
+    // reset test panel when modal re-opens
+    setTestOpen(false);
+    setTestResult(null);
+    setTestTo("");
   }, [open, initial, definitionChannel, fields]);
+
+  const runTest = async () => {
+    if (!testAction || !channel || !testTo) return;
+    setTestBusy(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(testAction, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, deliveryChannel: testDelivery, to: testTo }),
+      });
+      const json = await res.json();
+      setTestResult(json);
+    } catch (e) {
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTestBusy(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -183,9 +224,61 @@ export function RecordFormModal({
           )}
         </div>
 
+        {/* Test action panel — shown only when definition has test_action and user clicked Test */}
+        {testAction && testOpen && (
+          <div className="border-t border-border px-5 py-4 bg-muted/30">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {t("components.recordFormModal.testPanel")}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={testDelivery}
+                onChange={(e) => setTestDelivery(e.target.value as DeliveryChannel)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="email">email</option>
+                <option value="sms">sms</option>
+                <option value="fcm">fcm</option>
+              </select>
+              <Input
+                value={testTo}
+                onChange={(e) => setTestTo(e.target.value)}
+                placeholder={t("components.recordFormModal.testToPlaceholder")}
+                className="flex-1 text-xs"
+              />
+              <Button
+                variant="outline"
+                onClick={runTest}
+                disabled={testBusy || !testTo || !channel}
+                className="shrink-0"
+              >
+                {testBusy ? t("common.sending") : t("components.recordFormModal.testSend")}
+              </Button>
+            </div>
+            {testResult && (
+              <p className={`mt-2 text-xs ${testResult.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                {testResult.ok
+                  ? t("components.recordFormModal.testSent")
+                  : testResult.skipped
+                    ? `${t("components.recordFormModal.testSkipped")}: ${testResult.error ?? ""}`
+                    : `${t("components.recordFormModal.testFailed")}: ${testResult.error ?? ""}`}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
+          {testAction && (
+            <Button
+              variant="outline"
+              onClick={() => { setTestOpen((v) => !v); setTestResult(null); }}
+              disabled={busy}
+            >
+              {t("components.recordFormModal.test")}
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             onClick={() => {
@@ -205,7 +298,7 @@ export function RecordFormModal({
             }}
             disabled={busy || (!isChannel && !relationId) || !channel}
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </div>

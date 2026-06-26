@@ -417,6 +417,7 @@ function RecordsTab({ definition }: { definition: IDataModelDefinition }) {
         fields={(definition.fields ?? []) as DataModelField[]}
         relation={definition.relation}
         definitionChannel={definition.channel}
+        testAction={definition.test_action}
         initial={
           editing
             ? {
