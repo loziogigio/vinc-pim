@@ -46,17 +46,20 @@ export async function sendFcm(cfg, msg) {
                 imageUrl: msg.image,
             },
             data: Object.keys(dataMap).length > 0 ? dataMap : undefined,
-            android: {
+        };
+        // Android block — only for android tokens (iOS uses apns, web uses webpush)
+        if (msg.platform === "android") {
+            message.android = {
                 priority: msg.priority === "high" ? "high" : "normal",
                 ttl: msg.ttl !== undefined ? msg.ttl * 1000 : undefined,
                 notification: {
-                    icon: cfg.defaultIcon,
+                    icon: msg.icon ?? cfg.defaultIcon,
                     color: cfg.defaultColor,
                     channelId: msg.channelId || "default",
                     clickAction: msg.action_url || "FLUTTER_NOTIFICATION_CLICK",
                 },
-            },
-        };
+            };
+        }
         // iOS apns block — matches CS fcm/index.ts:164-178
         if (msg.platform === "ios") {
             message.apns = {

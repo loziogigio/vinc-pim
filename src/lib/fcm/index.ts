@@ -139,6 +139,7 @@ async function sendToToken(
     title: payload.title,
     body: payload.body,
     platform,
+    icon: payload.icon,
     image: payload.image,
     action_url: payload.action_url,
     data: payload.data,

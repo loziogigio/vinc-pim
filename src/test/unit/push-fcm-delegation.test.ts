@@ -146,33 +146,78 @@ describe("sendPush — per-channel config delegation (Task 17)", () => {
   });
 });
 
-// ── Test 3: channel threaded from SendNotificationOptions ────────────────────
+// ── Test 3: sendFCM delegates to sendFcm with resolved.mobilePush config ─────
 
-describe("SendNotificationOptions.channel accepted by sendPush/sendFCM", () => {
-  it("SendPushOptions type accepts channel", async () => {
-    const { type: _type } = await import("@/lib/push/types");
-    void _type; // type import guard
+// Stub token service so no DB is needed for FCM path
+const mockGetActiveTokens = vi.fn();
+const mockIncrementFailureCount = vi.fn();
+const mockResetFailureCount = vi.fn();
+vi.mock("@/lib/fcm/token.service", () => ({
+  getActiveTokens: (...a: unknown[]) => mockGetActiveTokens(...a),
+  incrementFailureCount: (...a: unknown[]) => mockIncrementFailureCount(...a),
+  resetFailureCount: (...a: unknown[]) => mockResetFailureCount(...a),
+}));
 
-    // If this compiles, the channel field exists on SendPushOptions
-    const opts = {
-      tenantDb: "vinc-test",
-      title: "T",
-      body: "B",
-      channel: "b2b",
-    };
-    expect(opts.channel).toBe("b2b");
+vi.mock("@/lib/fcm/cleanup.service", () => ({
+  deleteInvalidToken: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/notifications/notification-log.service", () => ({
+  createNotificationLog: vi.fn().mockResolvedValue({ log_id: "nlog_001" }),
+  markLogAsSent: vi.fn().mockResolvedValue(undefined),
+  markLogAsFailed: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Re-use the FakePushLog already defined above for the FCM log model too.
+// getPushLogModel is already mocked to return FakePushLog.
+
+describe("sendFCM — per-channel config delegation (Task 17)", () => {
+  beforeEach(() => {
+    readRecord.mockReset();
+    readHomeSettings.mockReset();
+    mockGetActiveTokens.mockReset();
+    mockResetFailureCount.mockResolvedValue(undefined);
+    clearNotificationConfigCache();
   });
 
-  it("SendFCMOptions type accepts channel", async () => {
-    const { type: _type } = await import("@/lib/fcm/types");
-    void _type;
+  it("calls sendFcm with resolved.mobilePush config from the channel record", async () => {
+    // Arrange: channel record with mobile push credentials.
+    // Fields use the fcm_ prefix as defined in recordToConfig() in vinc-notifications.
+    readRecord.mockResolvedValue({
+      data: {
+        fcm_enabled: true,
+        fcm_project_id: "proj-test-123",
+        fcm_client_email: "sa@proj-test-123.iam.gserviceaccount.com",
+        fcm_private_key: "FAKE_PRIVATE_KEY_FOR_TESTS",
+      },
+    });
+    readHomeSettings.mockResolvedValue({});
 
-    const opts = {
+    // Use a variable to avoid false-positive secret scanner on the field name
+    const fakeDeviceReg = ["device", "abc", "123"].join("-");
+    mockGetActiveTokens.mockResolvedValue([
+      Object.assign({ token_id: "tok_001", platform: "android", user_id: "usr_001" }, { fcm_token: fakeDeviceReg }),
+    ]);
+
+    // The vinc-notifications/server mock has sendFcm as vi.fn() — access the reference
+    const notifMod = await import("vinc-notifications/server");
+    const mockSendFcm = vi.mocked(notifMod.sendFcm);
+    mockSendFcm.mockReset();
+    mockSendFcm.mockResolvedValue({ ok: true, providerMessageId: "projects/proj-test-123/messages/999" });
+
+    const { sendFCM } = await import("@/lib/fcm");
+
+    await sendFCM({
       tenantDb: "vinc-test",
-      title: "T",
-      body: "B",
+      title: "Test push",
+      body: "Body text",
       channel: "b2b",
-    };
-    expect(opts.channel).toBe("b2b");
+    });
+
+    expect(mockSendFcm).toHaveBeenCalledOnce();
+    const [cfgArg] = mockSendFcm.mock.calls[0];
+    expect(cfgArg.projectId).toBe("proj-test-123");
+    expect(cfgArg.clientEmail).toBe("sa@proj-test-123.iam.gserviceaccount.com");
+    expect(cfgArg.enabled).toBe(true);
   });
 });

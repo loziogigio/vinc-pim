@@ -18,6 +18,8 @@ export interface FcmMessage {
     channelId?: string;
     /** Time-to-live in seconds */
     ttl?: number;
+    /** Android notification small-icon drawable name; falls back to cfg.defaultIcon */
+    icon?: string;
 }
 export declare function sendFcm(cfg: MobilePushConfig, msg: FcmMessage): Promise<SendResult>;
 //# sourceMappingURL=fcm.d.ts.map
