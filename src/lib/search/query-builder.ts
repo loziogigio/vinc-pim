@@ -51,9 +51,13 @@ const PHRASE_MATCH_FILTER_FIELDS: Record<string, true> = {
 export function buildSearchQuery(request: SearchRequest): SolrJsonQuery {
   const config = getSolrConfig();
   const lang = request.lang || 'it';
+  // Language whose text fields the full-text query matches against.
+  // Falls back to `lang`; the caller may set match_lang to the tenant default
+  // when the requested language has no populated content (see executeSearchWithFallback).
+  const matchLang = request.match_lang || lang;
 
   // Build main query with fuzzy options (like dfl-api)
-  const query = buildMainQuery(request.text, lang, {
+  const query = buildMainQuery(request.text, matchLang, {
     fuzzy: request.fuzzy,
     fuzzyNum: request.fuzzy_num,
   });
@@ -682,10 +686,11 @@ function calculateGap(ranges: { from?: number; to?: number }[]): number {
 export function buildQueryParams(request: SearchRequest): Record<string, string | string[]> {
   const config = getSolrConfig();
   const lang = request.lang || 'it';
+  const matchLang = request.match_lang || lang;
   const params: Record<string, string | string[]> = {};
 
   // Main query
-  params.q = buildMainQuery(request.text, lang);
+  params.q = buildMainQuery(request.text, matchLang);
 
   // Filter queries
   const fq = buildFilterQueries(request.filters, request);

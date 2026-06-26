@@ -9,8 +9,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SolrError } from '@/lib/search/solr-client';
-import { buildSearchQuery } from '@/lib/search/query-builder';
-import { transformSearchResponse, enrichFacetResults, enrichProductsWithVariants } from '@/lib/search/response-transformer';
+import { executeSearchWithFallback } from '@/lib/search/execute-search';
+import { enrichFacetResults, enrichProductsWithVariants } from '@/lib/search/response-transformer';
 import { enrichSearchResults, enrichVariantGroupedResults } from '@/lib/search/response-enricher';
 import { SearchRequest } from '@/lib/types/search';
 import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
@@ -105,26 +105,10 @@ export async function POST(request: NextRequest) {
       include_dynamic_blocks: body.include_dynamic_blocks ?? false,
     };
 
-    // Build Solr query
-    const solrQuery = buildSearchQuery(searchRequest);
-
-    // Execute search with tenant-specific core
-    const { SolrClient } = await import('@/lib/search/solr-client');
-    const solrClient = new SolrClient(config.url, tenantDb);
-    const solrResponse = await solrClient.search(solrQuery);
-
-    // Transform response (pass group field if grouping is enabled)
-    // group_variants: true → uses parent_entity_code grouping with variant structure
-    const groupField = searchRequest.group_variants
-      ? 'parent_entity_code'
-      : searchRequest.group?.field;
-
-    const response = transformSearchResponse(
-      solrResponse,
-      searchRequest.lang,
-      groupField,
-      searchRequest.group_variants
-    );
+    // Execute search with tenant-specific core.
+    // Falls back to the tenant's default language for full-text matching when
+    // the requested language yields no results (sparsely-translated catalogs).
+    const { response } = await executeSearchWithFallback(searchRequest, tenantDb);
 
     // Enrich results with fresh data from MongoDB (channel-aware category resolution)
     const channel = searchRequest.channel;
@@ -360,24 +344,10 @@ export async function GET(request: NextRequest) {
       include_dynamic_blocks: includeDynamicBlocks,
     };
 
-    // Build and execute query with tenant-specific Solr collection
-    const solrQuery = buildSearchQuery(searchRequest);
-    const { SolrClient } = await import('@/lib/search/solr-client');
-    const solrClient = new SolrClient(config.url, tenantDb);
-    const solrResponse = await solrClient.search(solrQuery);
-
-    // Transform response
-    // group_variants: true → uses parent_entity_code grouping with variant structure
-    const effectiveGroupField = groupVariants
-      ? 'parent_entity_code'
-      : groupField || undefined;
-
-    const response = transformSearchResponse(
-      solrResponse,
-      lang,
-      effectiveGroupField,
-      groupVariants
-    );
+    // Build and execute query with tenant-specific Solr collection.
+    // Falls back to the tenant's default language for full-text matching when
+    // the requested language yields no results (sparsely-translated catalogs).
+    const { response } = await executeSearchWithFallback(searchRequest, tenantDb);
 
     // Enrich results with fresh data from MongoDB (channel-aware category resolution)
     const getChannel = searchRequest.channel;
