@@ -53,10 +53,7 @@ describe("unit: Notification Template Constants", () => {
       const Model = TemplateChannelsSchema.obj as Record<string, unknown>;
       // Check the schema declares an sms path
       expect(TemplateChannelsSchema.path("sms")).toBeDefined();
-      // Cast the sub-document via the schema to verify fields survive
-      const cast = (TemplateChannelsSchema as unknown as { cast: (obj: unknown) => unknown }).cast
-        ? undefined
-        : raw; // Mongoose Schema.cast is internal; verify via paths instead
+      // Verify via paths instead of schema.cast (which is internal to Mongoose)
       const smsPath = TemplateChannelsSchema.path("sms");
       expect(smsPath).toBeTruthy();
       // The sms sub-schema should have enabled and body paths
