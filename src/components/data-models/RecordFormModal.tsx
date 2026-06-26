@@ -16,6 +16,8 @@ import {
   type DataModelField,
   type DataModelRelation,
 } from "@/lib/db/models/data-model-definition";
+import { mergeSecretOnSave } from "@/components/data-models/secret-utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface RecordFormModalProps {
   open: boolean;
@@ -53,6 +55,24 @@ function withCheckboxDefaults(
   return out;
 }
 
+/**
+ * Always initialize secret fields to "" in the form state. This ensures the
+ * password input starts empty and `mergeSecretOnSave` can correctly preserve
+ * the stored value when the field is left blank on submit.
+ */
+function withSecretDefaults(
+  fields: DataModelField[],
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const out = { ...data };
+  for (const f of fields) {
+    if (f.type === "secret") {
+      out[f.slug] = "";
+    }
+  }
+  return out;
+}
+
 export function RecordFormModal({
   open,
   title,
@@ -70,7 +90,7 @@ export function RecordFormModal({
     initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel)
   );
   const [data, setData] = useState<Record<string, unknown>>(
-    withCheckboxDefaults(fields, initial?.data ?? {})
+    withSecretDefaults(fields, withCheckboxDefaults(fields, initial?.data ?? {}))
   );
   const isChannel = relation === "channel";
 
@@ -78,7 +98,7 @@ export function RecordFormModal({
     if (!open) return;
     setRelationId(initial?.relation_id ?? "");
     setChannel(initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel));
-    setData(withCheckboxDefaults(fields, initial?.data ?? {}));
+    setData(withSecretDefaults(fields, withCheckboxDefaults(fields, initial?.data ?? {})));
   }, [open, initial, definitionChannel, fields]);
 
   if (!open) return null;
@@ -153,6 +173,7 @@ export function RecordFormModal({
                 field={f}
                 value={data[f.slug]}
                 onChange={(v) => setField(f.slug, v)}
+                existingHasValue={f.type === "secret" ? !!initial?.data?.[f.slug] : false}
               />
             ))}
           </div>
@@ -167,13 +188,21 @@ export function RecordFormModal({
             Cancel
           </Button>
           <Button
-            onClick={() =>
+            onClick={() => {
+              const secretSlugs = fields
+                .filter((f) => f.type === "secret")
+                .map((f) => f.slug);
+              const mergedData = mergeSecretOnSave(
+                data,
+                initial?.data ?? {},
+                secretSlugs
+              );
               onSubmit({
                 relation_id: isChannel ? CHANNEL_RELATION_ID : relationId,
                 channel,
-                data,
-              })
-            }
+                data: mergedData,
+              });
+            }}
             disabled={busy || (!isChannel && !relationId) || !channel}
           >
             {busy ? "Saving…" : "Save"}
@@ -188,14 +217,40 @@ function FieldInput({
   field,
   value,
   onChange,
+  existingHasValue = false,
 }: {
   field: DataModelField;
   value: unknown;
   onChange: (v: unknown) => void;
+  /** For secret fields: true when the stored record already has a value. */
+  existingHasValue?: boolean;
 }) {
+  const { t } = useTranslation();
   const label = field.label || field.slug;
 
   switch (field.type) {
+    case "secret":
+      return (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">
+            {label}
+            {field.required && <span className="text-rose-500"> *</span>}
+          </label>
+          <Input
+            type="password"
+            autoComplete="new-password"
+            value={(value as string) ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={
+              existingHasValue
+                ? `•••••• — ${t("components.recordFormModal.secretKeepPlaceholder")}`
+                : ""
+            }
+            className="mt-1 text-sm"
+          />
+        </div>
+      );
+
     case "text":
     case "email":
       return (

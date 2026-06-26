@@ -3,20 +3,10 @@ import { CHANNEL_RELATION_ID } from "@/lib/db/models/data-model-definition";
 import type { DataModelBlueprint } from "./types";
 import { NOTIFICATION_SETTINGS_FIELDS } from "vinc-notifications";
 
-/**
- * Maps a vinc-notifications field type to a CS DataModelFieldType.
- * "secret" is not in DataModelFieldType until Task 14 — until then fall back
- * to "text" so the admin form can render and persist the value.
- * TODO Task 14: change "secret" mapping to `"secret" as DataModelFieldType`.
- */
-function toCsType(t: string): DataModelFieldType {
-  return t === "secret" ? "text" : (t as DataModelFieldType);
-}
-
 const FIELDS: DataModelField[] = NOTIFICATION_SETTINGS_FIELDS.map((f) => ({
   slug: f.slug,
   label: f.label,
-  type: toCsType(f.type),
+  type: f.type as DataModelFieldType,
   ...(f.options
     ? { options: f.options.map((o) => ({ value: o.value, label: o.label })) }
     : {}),
@@ -28,8 +18,8 @@ const FIELDS: DataModelField[] = NOTIFICATION_SETTINGS_FIELDS.map((f) => ({
  *
  * Covers email (SMTP / Microsoft Graph), SMS (Brevo/Twilio/Vonage), web push
  * (VAPID), and mobile push (FCM). `readable_by_end_user: false` — server-side only.
- * Secret fields (passwords, keys) are stored as plain text until Task 14 adds the
- * masked "secret" input type to the CS admin form.
+ * Secret fields (passwords, API keys) use the "secret" type so the admin form
+ * renders a masked password input and preserves the stored value when left blank.
  */
 export const NOTIFICATION_SETTINGS_BLUEPRINT: DataModelBlueprint = {
   id: "notification_settings",

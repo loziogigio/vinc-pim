@@ -126,6 +126,9 @@ function renderCell(value: unknown, field: DataModelField, locale: string) {
   if (value === undefined || value === null || value === "") {
     return <span className="text-muted-foreground/50">—</span>;
   }
+  if (field.type === "secret") {
+    return <span className="text-muted-foreground tracking-widest">••••••</span>;
+  }
   if (field.type === "select") {
     const opt = field.options?.find((o) => o.value === value);
     if (!opt) return String(value);

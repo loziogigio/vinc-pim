@@ -5663,6 +5663,9 @@ const sk = {
       noteText: "Pôvodný obrázok sa vždy nahrá v plnej kvalite. Verzie sú zmenené kópie s predponou pred názvom súboru (napr.",
       noteTextEnd: "). Predvolené verzie (main, gallery) nie je možné odstrániť, ale ich rozmery je možné upraviť.",
     },
+    recordFormModal: {
+      secretKeepPlaceholder: "Nechajte prázdne pre zachovanie aktuálnej hodnoty",
+    },
   },
   errors: {
     b2bPortal: {

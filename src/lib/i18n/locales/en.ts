@@ -5690,6 +5690,9 @@ const en = {
       noteText: "The original image is always uploaded at full quality. Versions are resized copies with the prefix prepended to the filename (e.g.,",
       noteTextEnd: "). Default versions (main, gallery) cannot be removed but their dimensions can be adjusted.",
     },
+    recordFormModal: {
+      secretKeepPlaceholder: "Leave blank to keep current value",
+    },
   },
   errors: {
     b2bPortal: {

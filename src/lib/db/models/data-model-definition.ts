@@ -26,7 +26,8 @@ export type DataModelFieldType =
   | "number"
   | "date"
   | "object"
-  | "array_of_objects";
+  | "array_of_objects"
+  | "secret";
 
 export interface DataModelFieldOption {
   label: string;

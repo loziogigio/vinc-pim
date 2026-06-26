@@ -5687,6 +5687,9 @@ const it = {
       noteText: "L'immagine originale viene sempre caricata in qualità originale. Le versioni sono copie ridimensionate con il prefisso anteposto al nome del file (es.",
       noteTextEnd: "). Le versioni predefinite (main, gallery) non possono essere rimosse ma le dimensioni possono essere modificate.",
     },
+    recordFormModal: {
+      secretKeepPlaceholder: "Lascia vuoto per non modificare il valore",
+    },
   },
   errors: {
     b2bPortal: {
