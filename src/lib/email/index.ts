@@ -501,7 +501,7 @@ async function sendEmailNow(
   notificationLogId?: string,
   prefetchedConfig?: TenantEmailConfig
 ): Promise<SendEmailResult> {
-  const tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db);
+  const tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db, emailLog.channel ?? "default");
 
   try {
     let messageId: string | undefined;
@@ -887,3 +887,10 @@ export async function getEmailStats(filter?: {
     clickRate: stats.sent > 0 ? (stats.clicked / stats.sent) * 100 : 0,
   };
 }
+
+// ============================================
+// TEST-ONLY EXPORTS (not part of public API)
+// ============================================
+
+/** @internal Exposed for unit tests only — do not use in application code. */
+export { sendEmailNow as _sendEmailNow };
