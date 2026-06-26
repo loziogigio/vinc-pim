@@ -3046,6 +3046,7 @@ const sk = {
         colorYellow: "Žltá",
         colorRed: "Červená",
         colorTeal: "Tyrkysová",
+        notifications: "Notifikácie",
       },
     },
     payments: {
@@ -5047,6 +5048,15 @@ const sk = {
       install: "Inštalovať",
       installing: "Inštaluje sa…",
       error: "Inštalácia nastavení ERP zlyhala",
+    },
+    installNotificationSettings: {
+      title: "Inštalovať nastavenia notifikácií",
+      descriptionPrefix: "Vytvorí model",
+      descriptionMiddle: "a vytvorí jeho predvolený konfiguračný záznam",
+      descriptionSuffix: ".",
+      install: "Inštalovať",
+      installing: "Inštaluje sa…",
+      error: "Inštalácia nastavení notifikácií zlyhala",
     },
     channelSelect: {
       loading: "Načítavajú sa kanály...",

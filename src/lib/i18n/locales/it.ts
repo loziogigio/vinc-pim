@@ -3070,6 +3070,7 @@ const it = {
         colorYellow: "Giallo",
         colorRed: "Rosso",
         colorTeal: "Teal",
+        notifications: "Notifiche",
       },
     },
     payments: {
@@ -5071,6 +5072,15 @@ const it = {
       install: "Installa",
       installing: "Installazione…",
       error: "Installazione delle impostazioni ERP non riuscita",
+    },
+    installNotificationSettings: {
+      title: "Installa impostazioni notifiche",
+      descriptionPrefix: "Crea il modello",
+      descriptionMiddle: "e inizializza il suo record di configurazione",
+      descriptionSuffix: " predefinito.",
+      install: "Installa",
+      installing: "Installazione…",
+      error: "Installazione delle impostazioni notifiche non riuscita",
     },
     channelSelect: {
       loading: "Caricamento canali...",

@@ -3073,6 +3073,7 @@ const en = {
         colorYellow: "Yellow",
         colorRed: "Red",
         colorTeal: "Teal",
+        notifications: "Notifications",
       },
     },
     payments: {
@@ -5074,6 +5075,15 @@ const en = {
       install: "Install",
       installing: "Installing…",
       error: "Failed to install ERP settings",
+    },
+    installNotificationSettings: {
+      title: "Install Notification Settings",
+      descriptionPrefix: "Creates the",
+      descriptionMiddle: "model and seeds its default",
+      descriptionSuffix: " config record.",
+      install: "Install",
+      installing: "Installing…",
+      error: "Failed to install notification settings",
     },
     channelSelect: {
       loading: "Loading channels...",
