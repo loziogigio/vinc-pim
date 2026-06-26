@@ -6,7 +6,7 @@ vi.mock("@/lib/notifications/resolve-config-io", () => ({
   readNotificationRecord: (...a: unknown[]) => readRecord(...a),
   readHomeSettings: (...a: unknown[]) => readHomeSettings(...a),
 }));
-vi.mock("@/lib/email", () => ({
+vi.mock("@/lib/email/env-config", () => ({
   getEmailConfigFromEnv: () => ({ host: "env-host", port: 25 }),
 }));
 

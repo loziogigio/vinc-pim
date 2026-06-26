@@ -53,6 +53,8 @@ export interface IEmailLog extends Document {
   campaign_id?: string;
   // Tenant info (for queue processing)
   tenant_db?: string;
+  // Sales-channel code (links email to a notification channel config)
+  channel?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -148,6 +150,8 @@ export const EmailLogSchema = new Schema<IEmailLog>(
     },
     // Tenant info (for queue processing)
     tenant_db: String,
+    // Sales-channel code (links email to a notification channel config)
+    channel: { type: String, index: true },
   },
   {
     timestamps: {

@@ -14,55 +14,30 @@ import { isGraphConfigured } from "./graph-transport";
 import type { GraphSettings, EmailTransport } from "@/lib/types/home-settings";
 import { sendEmailViaSmtp, sendEmailViaGraph } from "vinc-notifications/server";
 import type { EmailConfig as PkgEmailConfig } from "vinc-notifications";
+import { resolveNotificationConfig } from "@/lib/notifications/resolve-config";
+// Re-export from the leaf module so external callers continue to import from "@/lib/email"
+export type { EmailConfig } from "./env-config";
+export { getEmailConfigFromEnv } from "./env-config";
+import { getEmailConfigFromEnv, type EmailConfig } from "./env-config";
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
-export interface EmailConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  password: string;
-  from: string;
-  fromName: string;
-}
-
-// Cached config from database
-let cachedDbConfig: EmailConfig | null = null;
-let configLastFetched: number = 0;
-const CONFIG_CACHE_TTL = 60000; // 1 minute
+// EmailConfig and getEmailConfigFromEnv are imported from ./env-config
+// and re-exported above — no duplicate definitions here.
 
 /**
- * Get email config from environment variables (fallback)
- */
-export function getEmailConfigFromEnv(): EmailConfig {
-  return {
-    host: process.env.MAIL_HOST || "smtp.hostinger.com",
-    port: parseInt(process.env.MAIL_PORT || "587", 10),
-    secure: process.env.MAIL_SECURE === "true",
-    user: process.env.MAIL_USER || "",
-    password: process.env.MAIL_PASSWORD || "",
-    from: process.env.MAIL_FROM || "",
-    fromName: process.env.MAIL_FROM_NAME || "VINC Commerce",
-  };
-}
-
-/**
- * Get email config - prefers database settings, falls back to env
+ * Get email config - returns env config synchronously.
+ * Use fetchTenantEmailConfig for async DB/channel-scoped config.
  */
 export function getEmailConfig(): EmailConfig {
-  // Return cached config if fresh
-  if (cachedDbConfig && Date.now() - configLastFetched < CONFIG_CACHE_TTL) {
-    return cachedDbConfig;
-  }
-  // Return env config synchronously
   return getEmailConfigFromEnv();
 }
 
 /**
- * Fetch email config from database (async)
+ * Fetch email config from database (async, legacy SMTP-only path).
+ * Prefer fetchTenantEmailConfig for multi-transport + per-channel support.
  */
 export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailConfig> {
   try {
@@ -71,7 +46,7 @@ export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailCo
     const settings = await getHomeSettings(tenantDb);
 
     if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
-      cachedDbConfig = {
+      return {
         host: settings.smtp_settings.host,
         port: settings.smtp_settings.port || 587,
         secure: settings.smtp_settings.secure || false,
@@ -80,8 +55,6 @@ export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailCo
         from: settings.smtp_settings.from,
         fromName: settings.smtp_settings.from_name || "VINC Commerce",
       };
-      configLastFetched = Date.now();
-      return cachedDbConfig;
     }
   } catch (error) {
     console.warn("[Email] Failed to fetch SMTP config from DB:", error);
@@ -111,7 +84,7 @@ export async function isEmailEnabledAsync(tenantDb?: string): Promise<boolean> {
 }
 
 // ============================================
-// TENANT EMAIL CONFIG (multi-transport)
+// TENANT EMAIL CONFIG (multi-transport, per-channel)
 // ============================================
 
 export interface TenantEmailConfig {
@@ -120,35 +93,53 @@ export interface TenantEmailConfig {
   graph?: GraphSettings;
 }
 
+const configCache = new Map<string, { cfg: TenantEmailConfig; at: number }>();
+const CONFIG_CACHE_TTL = 60_000; // 1 minute
+
+/** Invalidate all cached tenant email configs (test seam + post-settings-save). */
+export function clearEmailConfigCache(): void {
+  configCache.clear();
+}
+
 /**
- * Fetch full email transport config from database (async)
- * Returns transport type + relevant settings for each transport
+ * Fetch full email transport config for a tenant and optional sales channel.
+ * Delegates to resolveNotificationConfig and caches per (tenantDb, channel).
  */
-export async function fetchTenantEmailConfig(tenantDb?: string): Promise<TenantEmailConfig> {
-  const { getHomeSettings } = await import("@/lib/db/home-settings");
-  const settings = await getHomeSettings(tenantDb);
+export async function fetchTenantEmailConfig(
+  tenantDb?: string,
+  channelCode: string = "default",
+): Promise<TenantEmailConfig> {
+  const key = `${tenantDb ?? "_"}::${channelCode}`;
+  const hit = configCache.get(key);
+  if (hit && Date.now() - hit.at < CONFIG_CACHE_TTL) return hit.cfg;
 
-  const transport: EmailTransport = settings?.email_transport || "smtp";
+  const resolved = await resolveNotificationConfig(tenantDb ?? "", channelCode);
 
-  // Build SMTP config (always needed as fallback)
-  let smtpConfig: EmailConfig = getEmailConfigFromEnv();
-  if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
-    smtpConfig = {
-      host: settings.smtp_settings.host,
-      port: settings.smtp_settings.port || 587,
-      secure: settings.smtp_settings.secure || false,
-      user: settings.smtp_settings.user || "",
-      password: settings.smtp_settings.password || "",
-      from: settings.smtp_settings.from,
-      fromName: settings.smtp_settings.from_name || "VINC Commerce",
-    };
-  }
-
-  return {
-    transport,
-    smtp: smtpConfig,
-    graph: settings?.graph_settings ?? undefined,
+  const cfg: TenantEmailConfig = {
+    transport: resolved.email?.transport ?? "smtp",
+    smtp: {
+      host: resolved.email?.smtp?.host ?? "",
+      port: resolved.email?.smtp?.port ?? 587,
+      secure: resolved.email?.smtp?.secure ?? false,
+      user: resolved.email?.smtp?.user ?? "",
+      password: resolved.email?.smtp?.password ?? "",
+      from: resolved.email?.from ?? "",
+      fromName: resolved.email?.fromName ?? "VINC Commerce",
+    },
+    graph: resolved.email?.graph
+      ? {
+          azure_tenant_id: resolved.email.graph.azureTenantId,
+          client_id: resolved.email.graph.clientId,
+          client_secret: resolved.email.graph.clientSecret,
+          sender_email: resolved.email.graph.senderEmail,
+          sender_name: resolved.email.graph.senderName,
+          save_to_sent_items: resolved.email.graph.saveToSentItems,
+        }
+      : undefined,
   };
+
+  configCache.set(key, { cfg, at: Date.now() });
+  return cfg;
 }
 
 // ============================================

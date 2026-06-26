@@ -1,5 +1,5 @@
 import { recordToConfig, type NotificationChannelConfig } from "vinc-notifications";
-import { getEmailConfigFromEnv } from "@/lib/email";
+import { getEmailConfigFromEnv } from "@/lib/email/env-config";
 import { readNotificationRecord, readHomeSettings } from "./resolve-config-io";
 
 // ============================================
