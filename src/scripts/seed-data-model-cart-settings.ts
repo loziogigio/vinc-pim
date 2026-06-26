@@ -40,6 +40,7 @@ interface Args {
   channel: string;
   lineNote: boolean;
   headNote: boolean;
+  pickup: boolean;
   dryRun: boolean;
   force: boolean;
 }
@@ -50,6 +51,9 @@ function parseArgs(): Args {
     channel: "b2b",
     lineNote: false,
     headNote: false,
+    // Pickup defaults ON (it was always shown before this flag existed); pass
+    // --hide-pickup to seed it OFF.
+    pickup: true,
     dryRun: false,
     force: false,
   };
@@ -67,6 +71,9 @@ function parseArgs(): Args {
         break;
       case "--head-note":
         out.headNote = true;
+        break;
+      case "--hide-pickup":
+        out.pickup = false;
         break;
       case "--dry-run":
         out.dryRun = true;
@@ -91,7 +98,7 @@ async function main() {
   const args = parseArgs();
   if (!args.tenant) {
     console.error(
-      "Usage: --tenant <id> [--channel <code>] [--line-note] [--head-note] [--dry-run] [--force]"
+      "Usage: --tenant <id> [--channel <code>] [--line-note] [--head-note] [--hide-pickup] [--dry-run] [--force]"
     );
     process.exit(1);
   }
@@ -105,6 +112,7 @@ async function main() {
   const recordData = {
     show_line_note: args.lineNote,
     show_head_note: args.headNote,
+    show_pickup: args.pickup,
   };
 
   console.log(`\n📋 Seed cart_settings data model`);
@@ -113,7 +121,8 @@ async function main() {
   console.log(`   Relation      : channel (definition channel: "*")`);
   console.log(`   Record        : relation_id="${CHANNEL_RELATION_ID}", channel="${channel}"`);
   console.log(`   show_line_note: ${recordData.show_line_note}`);
-  console.log(`   show_head_note: ${recordData.show_head_note}\n`);
+  console.log(`   show_head_note: ${recordData.show_head_note}`);
+  console.log(`   show_pickup   : ${recordData.show_pickup}\n`);
 
   validateFieldsTree(FIELDS);
   const externalRefField = findExternalRefField(FIELDS); // undefined — single cardinality
