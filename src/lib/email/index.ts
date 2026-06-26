@@ -11,6 +11,7 @@ import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { createNotificationLog, markLogAsSent, markLogAsFailed } from "@/lib/notifications/notification-log.service";
 import { isGraphConfigured } from "./graph-transport";
+export { isGraphConfigured };
 import type { GraphSettings, EmailTransport } from "@/lib/types/home-settings";
 import { sendEmailViaSmtp, sendEmailViaGraph } from "vinc-notifications/server";
 import type { EmailConfig as PkgEmailConfig } from "vinc-notifications";
@@ -70,8 +71,8 @@ export function isEmailEnabled(): boolean {
   return !!(config.host && config.from && (hasAuth || isLocalhost));
 }
 
-export async function isEmailEnabledAsync(tenantDb?: string): Promise<boolean> {
-  const tenantConfig = await fetchTenantEmailConfig(tenantDb);
+export async function isEmailEnabledAsync(tenantDb?: string, channelCode?: string): Promise<boolean> {
+  const tenantConfig = await fetchTenantEmailConfig(tenantDb, channelCode ?? "default");
 
   if (tenantConfig.transport === "graph") {
     return isGraphConfigured(tenantConfig.graph);

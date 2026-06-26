@@ -23,9 +23,12 @@ export async function GET(req: NextRequest) {
 
     const tenantDb = `vinc-${session.tenantId}`;
 
+    // Optional ?channel= param for per-channel email config lookup (default: "default")
+    const channelCode = req.nextUrl.searchParams.get("channel") ?? undefined;
+
     // Check each channel's availability
     const [emailEnabled, fcmEnabled] = await Promise.all([
-      isEmailEnabledAsync(tenantDb),
+      isEmailEnabledAsync(tenantDb, channelCode),
       isFCMEnabled(tenantDb),
     ]);
 

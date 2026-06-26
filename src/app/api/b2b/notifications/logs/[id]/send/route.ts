@@ -7,16 +7,25 @@
  * It updates the existing log with the new status and attempt count.
  * Supports both SMTP and Microsoft Graph transports based on tenant config.
  *
+ * Config resolution order:
+ *   1. emailLog.metadata.transport_config (stored at queue time, avoids stale DB fallback)
+ *   2. fetchTenantEmailConfig(tenantDb, emailLog.channel) (channel-aware live re-fetch)
+ *
  * Email logs are stored in vinc-admin database for centralized tracking.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { sendEmailViaSmtp, sendEmailViaGraph } from "vinc-notifications/server";
 import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
-import { fetchTenantEmailConfig } from "@/lib/email";
-import { sendViaGraph, isGraphConfigured } from "@/lib/email/graph-transport";
+import {
+  fetchTenantEmailConfig,
+  toPkgEmailConfig,
+  isGraphConfigured,
+  getEmailConfigFromEnv,
+  type TenantEmailConfig,
+} from "@/lib/email";
 
 export async function POST(
   req: NextRequest,
@@ -57,8 +66,23 @@ export async function POST(
       );
     }
 
-    // Fetch full tenant email config (transport type + settings)
-    const tenantConfig = await fetchTenantEmailConfig(tenantDb);
+    // Resolve transport config:
+    //   1. Prefer transport_config stored in log metadata (set at queue time).
+    //   2. Re-fetch by the log's channel (channel-aware) when no stored config.
+    const storedConfig = (emailLog.metadata as Record<string, unknown>)?.transport_config as
+      | { transport?: string; smtp?: ReturnType<typeof getEmailConfigFromEnv>; graph?: TenantEmailConfig["graph"] }
+      | undefined;
+
+    let tenantConfig: TenantEmailConfig;
+    if (storedConfig?.transport) {
+      tenantConfig = {
+        transport: storedConfig.transport as TenantEmailConfig["transport"],
+        smtp: storedConfig.smtp ?? getEmailConfigFromEnv(),
+        graph: storedConfig.graph,
+      };
+    } else {
+      tenantConfig = await fetchTenantEmailConfig(tenantDb, emailLog.channel ?? "default");
+    }
 
     // Check if email is configured based on transport type
     const isConfigured =
@@ -84,66 +108,30 @@ export async function POST(
     await emailLog.save();
 
     try {
-      let messageId: string | undefined;
+      // Build package config + message, then dispatch via the shared package transport.
+      // No duplicate nodemailer/Graph code here — the package owns transport logic.
+      const pkgCfg = toPkgEmailConfig(tenantConfig);
+      const pkgMsg = {
+        to: emailLog.to,
+        cc: emailLog.cc,
+        bcc: emailLog.bcc,
+        replyTo: emailLog.reply_to,
+        subject: emailLog.subject,
+        // emailLog.html may be undefined for text-only emails; package expects string
+        html: emailLog.html ?? "",
+        text: emailLog.text,
+      };
 
-      if (tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)) {
-        // ---- GRAPH API TRANSPORT ----
-        const result = await sendViaGraph(tenantConfig.graph!, {
-          to: emailLog.to,
-          subject: emailLog.subject,
-          html: emailLog.html,
-          text: emailLog.text,
-          cc: emailLog.cc,
-          bcc: emailLog.bcc,
-          from: emailLog.from,
-          fromName: emailLog.from_name,
-          replyTo: emailLog.reply_to,
-        });
+      const result =
+        tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)
+          ? await sendEmailViaGraph(pkgCfg, pkgMsg)
+          : await sendEmailViaSmtp(pkgCfg, pkgMsg);
 
-        if (!result.success) {
-          throw new Error(result.error || "Graph API send failed");
-        }
-        messageId = result.messageId;
-      } else {
-        // ---- SMTP TRANSPORT ----
-        const config = tenantConfig.smtp;
-        const transportOptions: nodemailer.TransportOptions = {
-          host: config.host,
-          port: config.port,
-          secure: config.secure,
-        } as nodemailer.TransportOptions;
-
-        if (config.user && config.password) {
-          (transportOptions as { auth?: { user: string; pass: string } }).auth = {
-            user: config.user,
-            pass: config.password,
-          };
-        }
-
-        const transporter = nodemailer.createTransport(transportOptions);
-
-        const result = await transporter.sendMail({
-          from: emailLog.from_name
-            ? `"${emailLog.from_name}" <${emailLog.from}>`
-            : emailLog.from,
-          to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
-          cc: emailLog.cc
-            ? Array.isArray(emailLog.cc)
-              ? emailLog.cc.join(", ")
-              : emailLog.cc
-            : undefined,
-          bcc: emailLog.bcc
-            ? Array.isArray(emailLog.bcc)
-              ? emailLog.bcc.join(", ")
-              : emailLog.bcc
-            : undefined,
-          replyTo: emailLog.reply_to,
-          subject: emailLog.subject,
-          html: emailLog.html,
-          text: emailLog.text,
-        });
-        messageId = result.messageId;
+      if (!result.ok) {
+        throw new Error(result.error || `${tenantConfig.transport} send failed`);
       }
+
+      const messageId = result.providerMessageId;
 
       // Mark as sent
       emailLog.status = "sent";
