@@ -3,6 +3,7 @@ import { COUPON_SETTINGS_BLUEPRINT } from "./coupon-settings";
 import { PIPELINE_SETTINGS_BLUEPRINT } from "./pipeline-settings";
 import { CART_SETTINGS_BLUEPRINT } from "./cart-settings";
 import { CATALOG_SETTINGS_BLUEPRINT } from "./catalog-settings";
+import { NOTIFICATION_SETTINGS_BLUEPRINT } from "./notification-settings";
 import type { DataModelBlueprint } from "./types";
 
 export type { DataModelBlueprint } from "./types";
@@ -14,6 +15,7 @@ export const BLUEPRINTS: Record<string, DataModelBlueprint> = {
   [PIPELINE_SETTINGS_BLUEPRINT.id]: PIPELINE_SETTINGS_BLUEPRINT,
   [CART_SETTINGS_BLUEPRINT.id]: CART_SETTINGS_BLUEPRINT,
   [CATALOG_SETTINGS_BLUEPRINT.id]: CATALOG_SETTINGS_BLUEPRINT,
+  [NOTIFICATION_SETTINGS_BLUEPRINT.id]: NOTIFICATION_SETTINGS_BLUEPRINT,
 };
 
 export function getBlueprint(id: string): DataModelBlueprint | undefined {
