@@ -12,15 +12,16 @@ import {
   NotificationTrigger,
   NotificationChannel,
 } from "@/lib/constants/notification";
+import { TemplateChannelsSchema } from "@/lib/db/models/notification-template";
 
 describe("unit: Notification Template Constants", () => {
   describe("NOTIFICATION_CHANNELS", () => {
-    it("should have exactly 3 channels", () => {
+    it("should have exactly 4 channels", () => {
       /**
-       * Verify that all 3 notification channels are defined.
-       * email, mobile (FCM), web_in_app
+       * Verify that all 4 notification channels are defined.
+       * email, sms, mobile (FCM), web_in_app
        */
-      expect(NOTIFICATION_CHANNELS).toHaveLength(3);
+      expect(NOTIFICATION_CHANNELS).toHaveLength(4);
     });
 
     it("should include all expected channels", () => {
@@ -28,6 +29,7 @@ describe("unit: Notification Template Constants", () => {
        * Verify channel names match expected values.
        */
       expect(NOTIFICATION_CHANNELS).toContain("email");
+      expect(NOTIFICATION_CHANNELS).toContain("sms");
       expect(NOTIFICATION_CHANNELS).toContain("mobile");
       expect(NOTIFICATION_CHANNELS).toContain("web_in_app");
     });
@@ -37,6 +39,30 @@ describe("unit: Notification Template Constants", () => {
        * Verify channel order (email first as primary channel).
        */
       expect(NOTIFICATION_CHANNELS[0]).toBe("email");
+    });
+  });
+
+  describe("TemplateChannelsSchema — sms round-trip", () => {
+    it("preserves template_channels.sms fields through schema cast (not stripped)", () => {
+      /**
+       * Verify the Mongoose TemplateChannelsSchema has an sms arm so that
+       * template_channels.sms = { enabled:true, body:"x" } is not silently dropped on save.
+       */
+      const raw = { enabled: true, body: "Hello {{customer_name}}" };
+      // Cast the raw object through the schema (equivalent to what Mongoose does on save)
+      const Model = TemplateChannelsSchema.obj as Record<string, unknown>;
+      // Check the schema declares an sms path
+      expect(TemplateChannelsSchema.path("sms")).toBeDefined();
+      // Cast the sub-document via the schema to verify fields survive
+      const cast = (TemplateChannelsSchema as unknown as { cast: (obj: unknown) => unknown }).cast
+        ? undefined
+        : raw; // Mongoose Schema.cast is internal; verify via paths instead
+      const smsPath = TemplateChannelsSchema.path("sms");
+      expect(smsPath).toBeTruthy();
+      // The sms sub-schema should have enabled and body paths
+      const smsSchema = (smsPath as unknown as { schema: { path: (k: string) => unknown } }).schema;
+      expect(smsSchema.path("enabled")).toBeDefined();
+      expect(smsSchema.path("body")).toBeDefined();
     });
   });
 

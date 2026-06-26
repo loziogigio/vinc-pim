@@ -17,6 +17,8 @@ import { sendPush, isWebPushEnabled } from "@/lib/push";
 import { sendFCM, isFCMEnabled } from "@/lib/fcm";
 import type { SendFCMResult } from "@/lib/fcm/types";
 import { createInAppNotification } from "./in-app.service";
+import { sendSms } from "@/lib/sms";
+import type { SendSmsResult } from "@/lib/sms";
 import type { IB2CStorefront } from "@/lib/db/models/b2c-storefront";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import type { NotificationTrigger } from "@/lib/db/models/notification-template";
@@ -68,6 +70,8 @@ export interface SendNotificationOptions {
   payload?: NotificationPayload;
   /** Sales-channel code for per-channel email config resolution (default: "default") */
   channel?: string;
+  /** Recipient phone number for SMS dispatch (E.164 format, e.g. "+39333...") */
+  smsTo?: string;
 }
 
 export interface SendNotificationResult {
@@ -81,6 +85,8 @@ export interface SendNotificationResult {
   fcmResult?: SendFCMResult;
   /** In-app notification ID if created */
   inAppNotificationId?: string;
+  /** SMS log ID if SMS was dispatched */
+  smsLogId?: string;
 }
 
 // ============================================
@@ -126,6 +132,7 @@ export async function sendNotification(
     targetUserId,
     targetUserType = "b2b_user",
     payload,
+    smsTo,
   } = options;
 
   try {
@@ -303,6 +310,40 @@ export async function sendNotification(
       }
     }
 
+    // 8. Send SMS if template_channels.sms is enabled and a recipient phone was provided
+    let smsLogId: string | undefined;
+
+    const smsChannel = template.template_channels?.sms;
+    if (smsChannel?.enabled && smsTo) {
+      try {
+        // Replace variables in SMS body
+        let smsBody = smsChannel.body || "";
+
+        for (const [key, value] of Object.entries(variables)) {
+          const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+          smsBody = smsBody.replace(pattern, value);
+        }
+
+        const smsResult: SendSmsResult = await sendSms({
+          to: smsTo,
+          body: smsBody,
+          tenantDb,
+          channel: options.channel,
+          immediate,
+        });
+
+        if (smsResult.ok) {
+          smsLogId = smsResult.logId;
+          console.log(`[Notifications] SMS ${trigger} ${immediate ? "sent" : "queued"} to ${smsTo}`);
+        } else {
+          console.warn(`[Notifications] SMS ${trigger} failed: ${smsResult.error}`);
+        }
+      } catch (smsError) {
+        console.error(`[Notifications] SMS error for ${trigger}:`, smsError);
+        // Don't fail the overall notification if SMS fails
+      }
+    }
+
     return {
       success: result.success,
       emailId: result.emailId,
@@ -311,6 +352,7 @@ export async function sendNotification(
       pushResult,
       fcmResult,
       inAppNotificationId,
+      smsLogId,
     };
   } catch (error) {
     console.error(`[Notifications] Error sending ${trigger}:`, error);

@@ -81,11 +81,12 @@ export type RecipientType = (typeof RECIPIENT_TYPES)[number];
 // CHANNELS (simplified to 3)
 // ============================================
 
-export const NOTIFICATION_CHANNELS = ["email", "mobile", "web_in_app"] as const;
+export const NOTIFICATION_CHANNELS = ["email", "sms", "mobile", "web_in_app"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
 export const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   email: "Email",
+  sms: "SMS",
   mobile: "Mobile App",
   web_in_app: "Web Push / In-App",
 };
@@ -101,6 +102,13 @@ export const CHANNEL_UI_CONFIG: Record<
     bgColor: "bg-blue-50",
     textColor: "text-blue-600",
     borderColor: "#3b82f6",
+  },
+  sms: {
+    label: "SMS",
+    color: "violet",
+    bgColor: "bg-violet-50",
+    textColor: "text-violet-600",
+    borderColor: "#7c3aed",
   },
   mobile: {
     label: "Mobile App",
@@ -220,9 +228,17 @@ export interface IWebInAppChannel {
   action_url?: string;
 }
 
-/** Simplified 3-channel structure */
+/** SMS channel - text message */
+export interface ISmsChannel {
+  enabled: boolean;
+  /** Plain-text body; supports {{variable}} substitution */
+  body?: string;
+}
+
+/** Simplified 4-channel structure */
 export interface ITemplateChannels {
   email?: IEmailChannel;
+  sms?: ISmsChannel;
   mobile?: IMobileChannel;
   web_in_app?: IWebInAppChannel;
 }

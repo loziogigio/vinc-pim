@@ -30,6 +30,7 @@ export {
   type IEmailChannel,
   type IMobileChannel,
   type IWebInAppChannel,
+  type ISmsChannel,
   type ITemplateChannels,
   type ITemplateProduct,
 } from "@/lib/constants/notification";
@@ -151,9 +152,18 @@ const NewWebInAppChannelSchema = new Schema(
   { _id: false }
 );
 
-const TemplateChannelsSchema = new Schema(
+const NewSmsChannelSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    body: { type: String }
+  },
+  { _id: false }
+);
+
+export const TemplateChannelsSchema = new Schema(
   {
     email: { type: NewEmailChannelSchema },
+    sms: { type: NewSmsChannelSchema },
     mobile: { type: NewMobileChannelSchema },
     web_in_app: { type: NewWebInAppChannelSchema }
   },
