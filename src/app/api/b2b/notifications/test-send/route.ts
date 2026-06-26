@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const cfg = await resolveNotificationConfig(tenantDb, channel as string);
-
   try {
+    const cfg = await resolveNotificationConfig(tenantDb, channel as string);
+
     if (deliveryChannel === "email") {
       const email = cfg.email;
       if (!email?.enabled) {

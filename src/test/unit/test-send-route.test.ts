@@ -6,10 +6,11 @@ vi.mock("@/lib/auth/tenant-auth", () => ({
 const resolve = vi.fn();
 vi.mock("@/lib/notifications/resolve-config", () => ({ resolveNotificationConfig: (...a: unknown[]) => resolve(...a) }));
 const smtp = vi.fn();
+const smsSend = vi.fn();
 vi.mock("vinc-notifications/server", () => ({
   sendEmailViaSmtp: (...a: unknown[]) => smtp(...a),
   sendEmailViaGraph: vi.fn(),
-  createSmsSender: () => ({ send: vi.fn().mockResolvedValue({ ok: true }) }),
+  createSmsSender: () => ({ send: (...a: unknown[]) => smsSend(...a) }),
   sendWebPush: vi.fn(), sendFcm: vi.fn(),
 }));
 
@@ -20,7 +21,7 @@ function req(body: unknown) {
 }
 
 describe("POST /api/b2b/notifications/test-send", () => {
-  beforeEach(() => { resolve.mockReset(); smtp.mockReset(); });
+  beforeEach(() => { resolve.mockReset(); smtp.mockReset(); smsSend.mockReset(); });
 
   it("sends a test email via the resolved channel config", async () => {
     resolve.mockResolvedValue({ channel: "b2b", email: { enabled: true, transport: "smtp", from: "s@x.it", smtp: { host: "h", port: 587 } } });
@@ -56,5 +57,14 @@ describe("POST /api/b2b/notifications/test-send", () => {
     resolve.mockResolvedValue({});
     const res = await POST(req({ channel: "b2b", deliveryChannel: "carrier-pigeon", to: "somewhere" }));
     expect((res as Response).status).toBe(400);
+  });
+
+  it("sends a test SMS via the resolved channel config", async () => {
+    resolve.mockResolvedValue({ channel: "b2b", sms: { enabled: true, provider: "brevo", apiKey: "k", senderId: "ACME" } });
+    smsSend.mockResolvedValue({ ok: true });
+    const res = await POST(req({ channel: "b2b", deliveryChannel: "sms", to: "+39333" }));
+    const json = await (res as Response).json();
+    expect(json.ok).toBe(true);
+    expect(smsSend).toHaveBeenCalled();
   });
 });
