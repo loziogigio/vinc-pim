@@ -59,6 +59,10 @@ export interface SendResult {
     providerMessageId?: string;
     error?: string;
     skipped?: boolean;
+    /** HTTP status code returned by the push service (e.g. 410 = subscription expired) */
+    statusCode?: number;
+    /** true when the token/subscription is permanently invalid and should be deleted */
+    permanentlyInvalid?: boolean;
 }
 export interface SmsMessage {
     to: string;

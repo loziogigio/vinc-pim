@@ -3,19 +3,21 @@
  *
  * Main service for sending push notifications to native mobile apps (iOS/Android).
  * Handles both immediate sending and queue-based delivery.
+ *
+ * Config is now resolved per sales-channel via resolveNotificationConfig
+ * and the actual send is delegated to sendFcm from vinc-notifications/server.
  */
 
-import * as admin from "firebase-admin";
+import { sendFcm } from "vinc-notifications/server";
+import type { MobilePushConfig } from "vinc-notifications";
 import { Queue } from "bullmq";
 import { nanoid } from "nanoid";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { getPushLogModel, type IPushLogDocument } from "@/lib/db/models/push-log";
-import { getFirebaseMessaging, getFCMSettings, isFCMEnabled } from "./fcm.service";
+import { resolveNotificationConfig } from "@/lib/notifications/resolve-config";
 import { getActiveTokens, incrementFailureCount, resetFailureCount } from "./token.service";
 import {
   deleteInvalidToken,
-  isPermanentlyInvalidToken,
-  PERMANENTLY_INVALID_ERROR_CODES,
 } from "./cleanup.service";
 import {
   createNotificationLog,
@@ -28,7 +30,6 @@ import type {
   FCMPayload,
   FCMJobData,
   CreateFCMLogInput,
-  FCMPlatform
 } from "./types";
 
 // ============================================
@@ -116,78 +117,15 @@ async function updateFCMLogStatus(
 // ============================================
 
 /**
- * Build FCM message for a specific platform
- */
-function buildFCMMessage(
-  fcmToken: string,
-  platform: FCMPlatform,
-  payload: FCMPayload,
-  options: {
-    badge?: number;
-    channelId?: string;
-    ttl?: number;
-    priority?: "normal" | "high";
-    settings?: {
-      default_icon?: string;
-      default_color?: string;
-    };
-  }
-): admin.messaging.Message {
-  const message: admin.messaging.Message = {
-    token: fcmToken,
-    notification: {
-      title: payload.title,
-      body: payload.body,
-      imageUrl: payload.image
-    },
-    data: {
-      ...payload.data,
-      action_url: payload.action_url || "",
-      click_action: payload.action_url || ""
-    }
-  };
-
-  // Platform-specific configuration
-  if (platform === "android") {
-    message.android = {
-      priority: options.priority === "high" ? "high" : "normal",
-      ttl: options.ttl ? options.ttl * 1000 : undefined,
-      notification: {
-        icon: payload.icon || options.settings?.default_icon,
-        color: options.settings?.default_color,
-        channelId: options.channelId || "default",
-        clickAction: payload.action_url || "FLUTTER_NOTIFICATION_CLICK"
-      }
-    };
-  }
-
-  if (platform === "ios") {
-    message.apns = {
-      headers: {
-        "apns-priority": options.priority === "high" ? "10" : "5"
-      },
-      payload: {
-        aps: {
-          badge: options.badge,
-          sound: "default",
-          contentAvailable: true,
-          mutableContent: true
-        }
-      }
-    };
-  }
-
-  return message;
-}
-
-/**
- * Send FCM notification to a single token
+ * Send FCM notification to a single token using the package transport.
+ * Config is passed in from the caller (resolved per channel).
  */
 async function sendToToken(
+  cfg: MobilePushConfig,
   tenantDb: string,
   tokenId: string,
   fcmToken: string,
-  platform: FCMPlatform,
+  platform: "ios" | "android",
   payload: FCMPayload,
   options: {
     badge?: number;
@@ -196,66 +134,56 @@ async function sendToToken(
     priority?: "normal" | "high";
   }
 ): Promise<{ success: boolean; error?: string; deleted?: boolean }> {
-  try {
-    const messaging = await getFirebaseMessaging(tenantDb);
-    if (!messaging) {
-      return { success: false, error: "FCM not configured" };
-    }
+  const result = await sendFcm(cfg, {
+    token: fcmToken,
+    title: payload.title,
+    body: payload.body,
+    platform,
+    image: payload.image,
+    action_url: payload.action_url,
+    data: payload.data,
+    priority: options.priority,
+    badge: options.badge,
+    channelId: options.channelId,
+    ttl: options.ttl,
+  });
 
-    const settings = await getFCMSettings(tenantDb);
-
-    const message = buildFCMMessage(fcmToken, platform, payload, {
-      ...options,
-      settings: {
-        default_icon: settings?.default_icon,
-        default_color: settings?.default_color
-      }
-    });
-
-    await messaging.send(message);
-
+  if (result.ok) {
     // Reset failure count on success
     await resetFailureCount(tenantDb, tokenId);
-
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    // Handle Firebase messaging errors
-    if (error instanceof Error && "code" in error) {
-      const firebaseError = error as { code: string };
-
-      // Best practice: Immediately delete permanently invalid tokens
-      // These tokens will NEVER work again, so delete them right away
-      // instead of just incrementing failure count
-      if (isPermanentlyInvalidToken(firebaseError.code)) {
-        // Delete the token immediately - it will never work again
-        await deleteInvalidToken(tenantDb, tokenId);
-        return {
-          success: false,
-          error: `Token permanently invalid (${firebaseError.code}) - deleted`,
-          deleted: true,
-        };
-      }
-    }
-
-    // For other errors (network issues, rate limits, etc.),
-    // increment failure count - these might recover
-    await incrementFailureCount(tenantDb, tokenId);
-
-    return { success: false, error: errorMessage };
   }
+
+  // Best practice: immediately delete permanently invalid tokens
+  // These tokens will NEVER work again, so delete them right away
+  if (result.permanentlyInvalid) {
+    await deleteInvalidToken(tenantDb, tokenId);
+    return {
+      success: false,
+      error: `Token permanently invalid - deleted`,
+      deleted: true,
+    };
+  }
+
+  // For other errors (network issues, rate limits, etc.),
+  // increment failure count - these might recover
+  await incrementFailureCount(tenantDb, tokenId);
+
+  return { success: false, error: result.error || "Unknown error" };
 }
 
 /**
  * Send FCM notifications to multiple tokens
  */
 export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
-  const { tenantDb, queue = false } = options;
+  const { tenantDb, queue = false, channel } = options;
 
-  // Check if FCM is enabled
-  const enabled = await isFCMEnabled(tenantDb);
-  if (!enabled) {
+  // Resolve per-channel config (falls back to global homesettings, then env)
+  const resolved = await resolveNotificationConfig(tenantDb, channel);
+  const cfg = resolved.mobilePush;
+
+  // Check if FCM is enabled for this channel
+  if (!cfg?.enabled || !cfg?.projectId || !cfg?.clientEmail || !cfg?.privateKey) {
     return {
       success: false,
       sent: 0,
@@ -263,9 +191,6 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
       errors: [{ tokenId: "", error: "FCM not enabled for this tenant" }]
     };
   }
-
-  // Get FCM settings for defaults
-  const settings = await getFCMSettings(tenantDb);
 
   // Get target tokens
   const tokens = await getActiveTokens(tenantDb, {
@@ -295,7 +220,7 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
         tenant_db: tenantDb,
         title: options.title,
         body: options.body,
-        icon: options.icon || settings?.default_icon,
+        icon: options.icon || cfg.defaultIcon,
         image: options.image,
         action_url: options.action_url,
         data: options.data,
@@ -328,7 +253,7 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
         payload: {
           title: options.title,
           body: options.body,
-          icon: options.icon || settings?.default_icon,
+          icon: options.icon || cfg.defaultIcon,
           image: options.image,
           action_url: options.action_url,
           data: {
@@ -341,7 +266,8 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
         priority: options.priority,
         badge: options.badge,
         channelId: options.channelId,
-        ttl: options.ttl
+        ttl: options.ttl,
+        channel,
       };
 
       await fcmQ.add("send-fcm", {
@@ -375,7 +301,7 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
       tenant_db: tenantDb,
       title: options.title,
       body: options.body,
-      icon: options.icon || settings?.default_icon,
+      icon: options.icon || cfg.defaultIcon,
       image: options.image,
       action_url: options.action_url,
       data: options.data,
@@ -402,7 +328,7 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
     const payload: FCMPayload = {
       title: options.title,
       body: options.body,
-      icon: options.icon || settings?.default_icon,
+      icon: options.icon || cfg.defaultIcon,
       image: options.image,
       action_url: options.action_url,
       data: {
@@ -412,6 +338,7 @@ export async function sendFCM(options: SendFCMOptions): Promise<SendFCMResult> {
     };
 
     const result = await sendToToken(
+      cfg,
       tenantDb,
       token.token_id,
       token.fcm_token,
@@ -465,10 +392,24 @@ export async function processQueuedFCM(
     badge,
     channelId,
     ttl,
-    priority
+    priority,
+    channel,
   } = jobData;
 
+  // Re-resolve config (cached for 60 s, so this is cheap)
+  const resolved = await resolveNotificationConfig(tenantDb, channel);
+  const cfg = resolved.mobilePush;
+
+  if (!cfg?.enabled || !cfg?.projectId || !cfg?.clientEmail || !cfg?.privateKey) {
+    await updateFCMLogStatus(fcmLogId, "failed", "FCM not configured");
+    if (notificationLogId) {
+      await markLogAsFailed(notificationLogId, "FCM not configured");
+    }
+    return false;
+  }
+
   const result = await sendToToken(
+    cfg,
     tenantDb,
     tokenId,
     fcmToken,
