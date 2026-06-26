@@ -42,6 +42,14 @@ function emailEmpty(e?: NotificationChannelConfig["email"]): boolean {
   return !e || !e.enabled || (!e.smtp?.host && !e.graph?.azureTenantId);
 }
 
+function webPushEmpty(w?: NotificationChannelConfig["webPush"]): boolean {
+  return !w || !w.enabled || !w.vapidPublicKey || !w.vapidPrivateKey;
+}
+
+function mobilePushEmpty(m?: NotificationChannelConfig["mobilePush"]): boolean {
+  return !m || !m.enabled || !m.projectId || !m.clientEmail || !m.privateKey;
+}
+
 // ============================================
 // RESOLVER
 // ============================================
@@ -108,7 +116,7 @@ export async function resolveNotificationConfig(
   }
 
   // Web push fallback
-  if (!cfg.webPush?.enabled) {
+  if (webPushEmpty(cfg.webPush)) {
     const w = (home.web_push_settings as Record<string, unknown>) ?? {};
     if (w.vapid_public_key) {
       cfg.webPush = {
@@ -123,7 +131,7 @@ export async function resolveNotificationConfig(
   }
 
   // Mobile push (FCM) fallback
-  if (!cfg.mobilePush?.enabled) {
+  if (mobilePushEmpty(cfg.mobilePush)) {
     const f = (home.fcm_settings as Record<string, unknown>) ?? {};
     if (f.project_id) {
       cfg.mobilePush = {

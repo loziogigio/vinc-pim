@@ -51,4 +51,32 @@ describe("resolveNotificationConfig", () => {
     await resolveNotificationConfig("vinc-acme", "b2c"); // different channel re-reads
     expect(readRecord).toHaveBeenCalledTimes(2);
   });
+
+  it("falls back to homesettings for webPush when record has webpush_enabled:true but no VAPID keys", async () => {
+    readRecord.mockResolvedValue({ data: { webpush_enabled: true } });
+    readHomeSettings.mockResolvedValue({
+      web_push_settings: {
+        enabled: true,
+        vapid_public_key: "home-vapid-pub",
+        vapid_private_key: "home-vapid-priv",
+        vapid_subject: "mailto:admin@acme.it",
+      },
+    });
+    const cfg = await resolveNotificationConfig("vinc-acme", "b2b");
+    expect(cfg.webPush?.vapidPublicKey).toBe("home-vapid-pub");
+  });
+
+  it("falls back to homesettings for mobilePush when record has fcm_enabled:true but no FCM creds", async () => {
+    readRecord.mockResolvedValue({ data: { fcm_enabled: true } });
+    readHomeSettings.mockResolvedValue({
+      fcm_settings: {
+        enabled: true,
+        project_id: "home-project",
+        client_email: "firebase@home.iam.gserviceaccount.com",
+        private_key: "home-private-key",
+      },
+    });
+    const cfg = await resolveNotificationConfig("vinc-acme", "b2b");
+    expect(cfg.mobilePush?.projectId).toBe("home-project");
+  });
 });
