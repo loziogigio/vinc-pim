@@ -18,6 +18,7 @@
  */
 
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 import { connectWithModels, closeAllConnections } from "@/lib/db/connection";
 import { getDataModelRecordModel } from "@/lib/db/model-registry";
 import {
@@ -200,7 +201,7 @@ async function main() {
   console.log("\n✨ Done.\n");
 }
 
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(async (err) => {
     console.error("\n💥 Seed failed:", err);
     await closeAllConnections();
