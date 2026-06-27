@@ -115,6 +115,23 @@ export async function resolveNotificationConfig(
     };
   }
 
+  // Email secret backfill — a migrated record can carry the host/user but not the
+  // secret (e.g. tenants whose SMTP key lives in env, not in the record or homesettings).
+  // emailEmpty() above treats a host-bearing block as "complete", so without this the
+  // mere presence of a record would suppress the homesettings/env fallback and silently
+  // break sends. Record-supplied secrets always win (only empty ones are backfilled).
+  if (cfg.email?.enabled) {
+    const s = (home.smtp_settings as Record<string, unknown>) ?? {};
+    const g = (home.graph_settings as Record<string, unknown>) ?? {};
+    if (cfg.email.smtp && !cfg.email.smtp.password) {
+      cfg.email.smtp.password =
+        (s.password as string) || getEmailConfigFromEnv().password || undefined;
+    }
+    if (cfg.email.graph && !cfg.email.graph.clientSecret) {
+      cfg.email.graph.clientSecret = (g.client_secret as string) || undefined;
+    }
+  }
+
   // Web push fallback
   if (webPushEmpty(cfg.webPush)) {
     const w = (home.web_push_settings as Record<string, unknown>) ?? {};
