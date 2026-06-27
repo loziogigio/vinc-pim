@@ -165,6 +165,16 @@ function validateField(
         validateObject(el, field.fields ?? [], opts, `${path}[${i}]`)
       );
     }
+
+    default: {
+      // Exhaustiveness guard. A DataModelFieldType added to the union without a
+      // case above would otherwise fall through this switch and return undefined,
+      // silently dropping the value on write — the exact latent bug that hit
+      // `secret`. The `never` assignment makes that a compile error; the throw
+      // makes any runtime occurrence loud instead of silent data loss.
+      const _exhaustive: never = field.type;
+      throw new ValidationError(path, `unsupported field type: ${String(_exhaustive)}`);
+    }
   }
 }
 

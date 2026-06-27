@@ -40,15 +40,34 @@ describe("unit: validateRecordData secret fields", () => {
   const apiKey: DataModelField = { slug: "api_key", label: "API key", type: "secret" };
 
   it("persists a secret value as a string (does not silently drop it)", () => {
-    const out = validateRecordData({ api_key: "xsmtpsib-abc123" }, [apiKey], { strict: true });
-    expect(out.api_key).toBe("xsmtpsib-abc123");
+    const out = validateRecordData({ api_key: "tok123" }, [apiKey], { strict: true });
+    expect(out.api_key).toBe("tok123");
   });
 
   it("keeps a secret stored inside a nested object", () => {
     const fields: DataModelField[] = [
       { slug: "cfg", label: "Cfg", type: "object", fields: [apiKey] },
     ];
-    const out = validateRecordData({ cfg: { api_key: "s3cr3t" } }, fields, { strict: true });
-    expect((out.cfg as Record<string, unknown>).api_key).toBe("s3cr3t");
+    const out = validateRecordData({ cfg: { api_key: "n3sted" } }, fields, { strict: true });
+    expect((out.cfg as Record<string, unknown>).api_key).toBe("n3sted");
+  });
+
+  it("coerces a non-string secret (e.g. numeric) to a string", () => {
+    const out = validateRecordData({ api_key: 12345 }, [apiKey], { strict: true });
+    expect(out.api_key).toBe("12345");
+  });
+
+  it("drops a blank secret so a partial (PATCH) merge preserves the stored value", () => {
+    const out = validateRecordData({ api_key: "" }, [apiKey], { strict: true, partial: true });
+    expect("api_key" in out).toBe(false);
+  });
+});
+
+describe("unit: validateRecordData exhaustiveness", () => {
+  it("throws on an unsupported field type instead of silently dropping the value", () => {
+    const bogus = { slug: "x", label: "X", type: "bogus" } as unknown as DataModelField;
+    expect(() => validateRecordData({ x: "v" }, [bogus], { strict: true })).toThrow(
+      /unsupported field type/
+    );
   });
 });
