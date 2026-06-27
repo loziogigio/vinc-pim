@@ -7,7 +7,7 @@ vi.mock("@/lib/notifications/resolve-config-io", () => ({
   readHomeSettings: (...a: unknown[]) => readHomeSettings(...a),
 }));
 vi.mock("@/lib/email/env-config", () => ({
-  getEmailConfigFromEnv: () => ({ host: "env-host", port: 25, password: "env-secret" }),
+  getEmailConfigFromEnv: () => ({ host: "env-host", port: 25, password: "envpw" }),
 }));
 
 import { resolveNotificationConfig, clearNotificationConfigCache } from "@/lib/notifications/resolve-config";
@@ -87,24 +87,24 @@ describe("resolveNotificationConfig", () => {
       data: { email_enabled: true, email_transport: "smtp", smtp_host: "smtp-relay.brevo.com", smtp_user: "u@smtp-brevo.com" },
     });
     readHomeSettings.mockResolvedValue({
-      smtp_settings: { host: "smtp-relay.brevo.com", user: "u@smtp-brevo.com", password: "home-secret" },
+      smtp_settings: { host: "smtp-relay.brevo.com", user: "u@smtp-brevo.com", password: "homepw" },
     });
     const cfg = await resolveNotificationConfig("vinc-acme", "default");
     expect(cfg.email?.smtp?.host).toBe("smtp-relay.brevo.com"); // record host preserved
-    expect(cfg.email?.smtp?.password).toBe("home-secret");      // secret backfilled, not dropped
+    expect(cfg.email?.smtp?.password).toBe("homepw");      // secret backfilled, not dropped
   });
 
   it("backfills a missing smtp password from env when neither record nor homesettings has it", async () => {
     readRecord.mockResolvedValue({ data: { email_enabled: true, smtp_host: "rec-host" } });
     readHomeSettings.mockResolvedValue({});
     const cfg = await resolveNotificationConfig("vinc-acme", "default");
-    expect(cfg.email?.smtp?.password).toBe("env-secret");
+    expect(cfg.email?.smtp?.password).toBe("envpw");
   });
 
   it("does NOT override a password explicitly stored in the record", async () => {
-    readRecord.mockResolvedValue({ data: { email_enabled: true, smtp_host: "rec-host", smtp_password: "rec-secret" } });
-    readHomeSettings.mockResolvedValue({ smtp_settings: { password: "home-secret" } });
+    readRecord.mockResolvedValue({ data: { email_enabled: true, smtp_host: "rec-host", smtp_password: "recpw" } });
+    readHomeSettings.mockResolvedValue({ smtp_settings: { password: "homepw" } });
     const cfg = await resolveNotificationConfig("vinc-acme", "b2b");
-    expect(cfg.email?.smtp?.password).toBe("rec-secret"); // record secret wins
+    expect(cfg.email?.smtp?.password).toBe("recpw"); // record secret wins
   });
 });

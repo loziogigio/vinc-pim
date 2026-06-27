@@ -99,7 +99,9 @@ export async function resolveNotificationConfig(
           port: (s.port as number) ?? env.port,
           secure: (s.secure as boolean) ?? env.secure,
           user: (s.user as string) ?? env.user,
-          password: (s.password as string) ?? env.password,
+          // `||` not `??`: an empty-string homesettings password must fall through
+          // to env (matches the secret-backfill below); `??` would keep the "".
+          password: (s.password as string) || env.password,
         },
         graph: g.client_id
           ? {
@@ -132,7 +134,13 @@ export async function resolveNotificationConfig(
     }
   }
 
-  // Web push fallback
+  // Web push / FCM fallback — whole-block, NOT per-field like email above.
+  // Email needs per-field secret backfill because its secret (SMTP password /
+  // Graph client_secret) commonly lives in env, separate from the record and
+  // homesettings (e.g. the efakturuj case). Web-push (VAPID) and FCM key material
+  // is atomic — public + private are generated as a pair and have no env source —
+  // so an enabled-but-incomplete record has nowhere to backfill a lone secret
+  // from; falling back to the whole homesettings block is the only useful action.
   if (webPushEmpty(cfg.webPush)) {
     const w = (home.web_push_settings as Record<string, unknown>) ?? {};
     if (w.vapid_public_key) {
@@ -162,6 +170,9 @@ export async function resolveNotificationConfig(
     }
   }
 
+  // The cached value is shared by reference for the TTL window. Callers MUST treat
+  // the returned config as read-only — all current consumers copy values out rather
+  // than mutating `resolved.*`. Mutating a sub-object here would poison every caller.
   cache.set(k, { cfg, at: Date.now() });
   return cfg;
 }
