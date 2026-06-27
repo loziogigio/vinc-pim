@@ -9,6 +9,7 @@
  *   npx ts-node src/scripts/manage-languages.ts set-default de
  */
 
+import { pathToFileURL } from "node:url";
 import mongoose from "mongoose";
 import { LanguageModel } from "../lib/db/models/language";
 import { addLanguageFieldsToSolr, removeLanguageFieldsFromSolr } from "../services/solr-schema.service";
@@ -228,7 +229,7 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().then(() => process.exit(0));
 }
 
