@@ -12,6 +12,7 @@ import { authenticateTenant } from "@/lib/auth/tenant-auth";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { safeRegexQuery } from "@/lib/security";
+import { redactEmailLogSecrets } from "@/lib/email/log-redaction";
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,7 +75,8 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
-      logs,
+      // Never serialize the snapshotted transport credentials to the client.
+      logs: logs.map(redactEmailLogSecrets),
       pagination: {
         page,
         limit,
