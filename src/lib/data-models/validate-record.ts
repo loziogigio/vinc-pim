@@ -98,6 +98,7 @@ function validateField(
   switch (field.type) {
     case "text":
     case "textarea":
+    case "secret":
       return coerceString(value, path);
 
     case "email": {

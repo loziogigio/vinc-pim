@@ -35,3 +35,20 @@ describe("unit: validateRecordData checkbox materialization", () => {
     expect((out.cfg as Record<string, unknown>).flag).toBe(false);
   });
 });
+
+describe("unit: validateRecordData secret fields", () => {
+  const apiKey: DataModelField = { slug: "api_key", label: "API key", type: "secret" };
+
+  it("persists a secret value as a string (does not silently drop it)", () => {
+    const out = validateRecordData({ api_key: "xsmtpsib-abc123" }, [apiKey], { strict: true });
+    expect(out.api_key).toBe("xsmtpsib-abc123");
+  });
+
+  it("keeps a secret stored inside a nested object", () => {
+    const fields: DataModelField[] = [
+      { slug: "cfg", label: "Cfg", type: "object", fields: [apiKey] },
+    ];
+    const out = validateRecordData({ cfg: { api_key: "s3cr3t" } }, fields, { strict: true });
+    expect((out.cfg as Record<string, unknown>).api_key).toBe("s3cr3t");
+  });
+});
