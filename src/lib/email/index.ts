@@ -237,6 +237,62 @@ export function toPkgEmailConfig(tc: TenantEmailConfig): PkgEmailConfig {
   };
 }
 
+/**
+ * Build the transport_config snapshot stored on an email log WITHOUT credentials.
+ * The secret (smtp.password / graph.client_secret) is intentionally omitted so it is
+ * never persisted in logs (which live in the shared admin DB and feed the logs UI).
+ * sendEmailNow re-resolves the secret from tenant config at send time when missing.
+ */
+export function redactTransportConfig(tc: TenantEmailConfig) {
+  return {
+    transport: tc.transport,
+    smtp:
+      tc.transport === "smtp" && tc.smtp
+        ? {
+            host: tc.smtp.host,
+            port: tc.smtp.port,
+            secure: tc.smtp.secure,
+            user: tc.smtp.user,
+            from: tc.smtp.from,
+            fromName: tc.smtp.fromName,
+          }
+        : undefined,
+    graph:
+      tc.transport === "graph" && tc.graph
+        ? {
+            azure_tenant_id: tc.graph.azure_tenant_id,
+            client_id: tc.graph.client_id,
+            sender_email: tc.graph.sender_email,
+            sender_name: tc.graph.sender_name,
+            save_to_sent_items: tc.graph.save_to_sent_items,
+          }
+        : undefined,
+  };
+}
+
+/**
+ * Re-resolve the transport secret when the provided config lacks it. The credential
+ * is no longer persisted in the email-log transport_config snapshot, so the queued /
+ * retry path (which replays that redacted snapshot) arrives here without a password;
+ * fetch it fresh from tenant config. No-op (and no extra fetch) when the secret is
+ * already present, e.g. the immediate-send path that passes a freshly-resolved config.
+ */
+async function ensureTransportSecret(
+  cfg: TenantEmailConfig,
+  emailLog: IEmailLog
+): Promise<TenantEmailConfig> {
+  const needsSmtp = cfg.transport === "smtp" && !!cfg.smtp && !cfg.smtp.password;
+  const needsGraph = cfg.transport === "graph" && !!cfg.graph && !cfg.graph.client_secret;
+  if (!needsSmtp && !needsGraph) return cfg;
+  const fresh = await fetchTenantEmailConfig(emailLog.tenant_db, emailLog.channel ?? "default");
+  return {
+    ...cfg,
+    smtp: needsSmtp && cfg.smtp ? { ...cfg.smtp, password: fresh.smtp?.password ?? "" } : cfg.smtp,
+    graph:
+      needsGraph && cfg.graph ? { ...cfg.graph, client_secret: fresh.graph?.client_secret } : cfg.graph,
+  };
+}
+
 // ============================================
 // EMAIL QUEUE (centralized in @/lib/queue/queues)
 // ============================================
@@ -471,11 +527,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   emailLog.metadata = {
     ...emailLog.metadata,
     notification_log_id: notificationLog.log_id,
-    transport_config: {
-      transport: tenantConfig.transport,
-      smtp: tenantConfig.transport === "smtp" ? tenantConfig.smtp : undefined,
-      graph: tenantConfig.transport === "graph" ? tenantConfig.graph : undefined,
-    },
+    // Credentials are intentionally omitted from this snapshot — see redactTransportConfig.
+    transport_config: redactTransportConfig(tenantConfig),
   };
   await emailLog.save();
 
@@ -502,7 +555,10 @@ async function sendEmailNow(
   notificationLogId?: string,
   prefetchedConfig?: TenantEmailConfig
 ): Promise<SendEmailResult> {
-  const tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db, emailLog.channel ?? "default");
+  let tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db, emailLog.channel ?? "default");
+  // The transport secret is no longer stored in the log snapshot; re-resolve it here
+  // when a replayed (queued/retry) config arrives without one.
+  tenantConfig = await ensureTransportSecret(tenantConfig, emailLog);
 
   try {
     let messageId: string | undefined;

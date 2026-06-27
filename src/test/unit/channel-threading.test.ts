@@ -40,7 +40,7 @@ vi.mock("@/lib/notifications/notification-log.service", () => ({
 
 // ─── Imports that depend on mocks ─────────────────────────────────────────────
 
-import { sendEmail, clearEmailConfigCache, _sendEmailNow } from "@/lib/email";
+import { sendEmail, clearEmailConfigCache, _sendEmailNow, redactTransportConfig } from "@/lib/email";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -163,5 +163,45 @@ describe("channel threading — sendEmailNow fallback passes emailLog.channel", 
     await _sendEmailNow(log, undefined, prefetched);
     // No resolve needed — prefetched config is used directly
     expect(mockResolveNotif).not.toHaveBeenCalled();
+  });
+
+  it("re-resolves the secret when prefetchedConfig has no password (redacted-snapshot replay)", async () => {
+    // Mirrors the queued/retry path: the replayed transport_config no longer carries
+    // the password, so sendEmailNow must re-fetch it and still send successfully.
+    mockResolveNotif.mockResolvedValue(configuredResolved); // provides smtp.password "p"
+    mockSendViaSmtp.mockResolvedValue({ ok: true, providerMessageId: "mid-3" });
+    const log = makeEmailLog("b2b");
+    const prefetchedNoSecret = {
+      transport: "smtp" as const,
+      smtp: { host: "smtp.acme.it", port: 587, secure: false, user: "u", password: "", from: "noreply@acme.it", fromName: "Acme" },
+    };
+    await _sendEmailNow(log, undefined, prefetchedNoSecret);
+    expect(mockResolveNotif).toHaveBeenCalledWith("vinc-acme", "b2b"); // backfill fetch happened
+    const sentPkgCfg = mockSendViaSmtp.mock.calls[0][0] as { smtp: { password: string } };
+    expect(sentPkgCfg.smtp.password).toBe("p"); // re-resolved secret used for the actual send
+  });
+});
+
+describe("redactTransportConfig — no credentials in the stored snapshot", () => {
+  it("omits smtp.password but keeps non-secret transport fields", () => {
+    const tc = {
+      transport: "smtp" as const,
+      smtp: { host: "h", port: 587, secure: false, user: "u", password: "pw", from: "f@acme.it", fromName: "Acme" },
+    } as unknown as Parameters<typeof redactTransportConfig>[0];
+    const out = redactTransportConfig(tc) as { smtp: Record<string, unknown> };
+    expect(out.smtp.host).toBe("h");
+    expect(out.smtp.user).toBe("u");
+    expect("password" in out.smtp).toBe(false);
+  });
+
+  it("omits graph.client_secret but keeps non-secret graph fields", () => {
+    const tc = {
+      transport: "graph" as const,
+      smtp: { host: "", port: 587, secure: false, user: "", password: "" },
+      graph: { azure_tenant_id: "t", client_id: "c", client_secret: "cs", sender_email: "s@acme.it", sender_name: "Acme", save_to_sent_items: true },
+    } as unknown as Parameters<typeof redactTransportConfig>[0];
+    const out = redactTransportConfig(tc) as { graph: Record<string, unknown> };
+    expect(out.graph.client_id).toBe("c");
+    expect("client_secret" in out.graph).toBe(false);
   });
 });
