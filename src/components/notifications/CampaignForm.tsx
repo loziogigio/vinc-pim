@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Mail,
+  MessageSquare,
   Smartphone,
   Bell,
   Users,
@@ -31,9 +32,11 @@ import {
 } from "@/lib/constants/notification";
 import type { ChannelAvailability } from "@/hooks/useCampaignForm";
 
-// Icon mapping for channels
-const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
+// Icon mapping for channels — must cover every NOTIFICATION_CHANNELS entry
+// (guarded by notification-channel-maps.test.ts; tsc is not enforced in this repo).
+export const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
   email: Mail,
+  sms: MessageSquare,
   mobile: Smartphone,
   web_in_app: Bell,
 };
