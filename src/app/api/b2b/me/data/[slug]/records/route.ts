@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { loadDefinition } from "@/lib/data-models/load-definition";
 import { parseListQuery } from "@/lib/data-models/parse-filters";
+import { redactRecordSecrets } from "@/lib/data-models/redact-secrets";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -73,7 +74,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       success: true,
       data: {
-        items,
+        // End-user reads must never expose credentials (secret-typed fields).
+        items: items.map((r) => redactRecordSecrets(r, definition.fields)),
         pagination: {
           page: list.page,
           limit: list.limit,

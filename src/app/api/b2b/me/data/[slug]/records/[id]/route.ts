@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { loadDefinition } from "@/lib/data-models/load-definition";
+import { redactRecordSecrets } from "@/lib/data-models/redact-secrets";
 
 type RouteParams = { params: Promise<{ slug: string; id: string }> };
 
@@ -50,7 +51,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: doc });
+    // End-user reads must never expose credentials (secret-typed fields).
+    return NextResponse.json({ success: true, data: redactRecordSecrets(doc, definition.fields) });
   } catch (error) {
     console.error("[GET /api/b2b/me/data/:slug/records/:id]", error);
     const message = error instanceof Error ? error.message : "Failed to read record";
