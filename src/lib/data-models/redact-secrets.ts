@@ -42,3 +42,62 @@ export function redactRecordSecrets<T extends { data?: unknown }>(
 ): T {
   return { ...record, data: redactSecretFields(record.data, fields) };
 }
+
+/**
+ * Sentinel returned to admin editors in place of a stored secret. It lets the form
+ * show a "configured" state without receiving the real credential, and is treated
+ * as "keep the existing value" when it round-trips back on save.
+ */
+export const SECRET_MASK = "__VINC_SECRET_SET__";
+
+/**
+ * Mask (rather than remove) set top-level secret values with {@link SECRET_MASK} so
+ * an admin editor can tell a credential IS configured without ever receiving it.
+ * Unset/empty secrets are left absent. Secrets are top-level credential config in
+ * practice (e.g. notification_settings); nested secrets are not part of this contract.
+ */
+export function maskSecretFields(
+  data: unknown,
+  fields: DataModelField[]
+): Record<string, unknown> {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return {};
+  const out: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+  for (const field of fields) {
+    if (field.type === "secret" && out[field.slug]) out[field.slug] = SECRET_MASK;
+  }
+  return out;
+}
+
+/** Mask the `data` payload of a lean record document for admin reads/responses. */
+export function maskRecordSecrets<T extends { data?: unknown }>(
+  record: T,
+  fields: DataModelField[]
+): T {
+  return { ...record, data: maskSecretFields(record.data, fields) };
+}
+
+/**
+ * Server-side secret preservation. Mutates `incoming`: for each top-level secret
+ * field whose incoming value is blank/absent OR still the {@link SECRET_MASK}
+ * sentinel (an unchanged field round-tripped from a masked GET), restore the
+ * previously stored value rather than overwriting it. With no prior value, the
+ * blank/sentinel field is dropped so it is never persisted as the mask string.
+ */
+export function preserveSecrets(
+  incoming: Record<string, unknown>,
+  existing: Record<string, unknown> | null | undefined,
+  fields: DataModelField[]
+): void {
+  for (const field of fields) {
+    if (field.type !== "secret") continue;
+    const v = incoming[field.slug];
+    if (v === undefined || v === null || v === "" || v === SECRET_MASK) {
+      const prev = existing?.[field.slug];
+      if (prev !== undefined && prev !== null && prev !== "") {
+        incoming[field.slug] = prev;
+      } else {
+        delete incoming[field.slug];
+      }
+    }
+  }
+}

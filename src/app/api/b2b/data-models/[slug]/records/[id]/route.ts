@@ -13,6 +13,7 @@ import {
   validateRecordData,
   ValidationError,
 } from "@/lib/data-models/validate-record";
+import { maskRecordSecrets, preserveSecrets } from "@/lib/data-models/redact-secrets";
 
 type RouteParams = { params: Promise<{ slug: string; id: string }> };
 
@@ -32,12 +33,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     const loaded = await loadDefinition(auth.tenantDb, slug, { requireEnabled: false });
     if (!loaded.ok) return loaded.response;
+    const { definition, RecordModel } = loaded.loaded;
 
-    const doc = await loaded.loaded.RecordModel.findById(id).lean();
+    const doc = await RecordModel.findById(id).lean();
     if (!doc) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: doc });
+    // Never return raw credentials; mask secrets (preserved server-side on save).
+    return NextResponse.json({ success: true, data: maskRecordSecrets(doc, definition.fields) });
   } catch (error) {
     console.error("[GET .../records/:id]", error);
     const message = error instanceof Error ? error.message : "Failed to read record";
@@ -87,6 +90,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       throw e;
     }
 
+    // Preserve stored secrets: a blank/sentinel secret (an unchanged field that
+    // round-tripped from the masked GET) must not overwrite the real credential.
+    preserveSecrets(coerced, (existing.data as Record<string, unknown>) ?? null, definition.fields);
+
     // Merge into existing data (shallow at top level — nested objects are replaced as whole values)
     const merged: Record<string, unknown> = { ...(existing.data ?? {}), ...coerced };
     existing.data = merged;
@@ -102,7 +109,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (typeof body.source === "string") existing.source = body.source;
 
     await existing.save();
-    return NextResponse.json({ success: true, data: existing.toObject() });
+    return NextResponse.json({ success: true, data: maskRecordSecrets(existing.toObject(), definition.fields) });
   } catch (error) {
     console.error("[PATCH .../records/:id]", error);
     const message = error instanceof Error ? error.message : "Failed to update record";
