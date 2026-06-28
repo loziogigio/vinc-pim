@@ -97,9 +97,16 @@ export default function NotificationSettingsPage() {
       </div>
 
       {loading && !data ? (
-        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> …</div>
+        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> {t("common.loading")}</div>
       ) : (
         <div className="space-y-4">
+          {data && !data.record && Object.values(data.status).every((s) => s.state === "off") && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-300">
+              <Link href="/b2b/admin/data-models" className="underline">
+                {t("pages.notifications.settings.modelNotInstalled")}
+              </Link>
+            </div>
+          )}
           {CARDS.map(({ kind, icon: Icon, nameKey, descKey }) => {
             const st = data?.status[kind]?.state ?? "off";
             return (
