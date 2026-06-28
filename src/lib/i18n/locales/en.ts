@@ -3365,7 +3365,7 @@ const en = {
         notConfigured: "Not configured",
         configure: "Configure",
         multiChannelTitle: "Multi-Channel Support",
-        multiChannelDesc: "Email and Mobile Push (FCM) channels are available. Web Push and SMS channels are planned for future releases. Templates are designed to support all channels - configure each channel and enable it in your templates.",
+        multiChannelDesc: "Email, SMS and Mobile Push (FCM) channels are available. Web Push is planned for an upcoming release. Templates are designed to support all channels - configure each channel and enable it in your templates.",
         statusOff: "Off",
         statusIncomplete: "Incomplete",
         statusConfigured: "Configured",

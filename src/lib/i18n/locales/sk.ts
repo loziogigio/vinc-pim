@@ -3338,7 +3338,7 @@ const sk = {
         notConfigured: "Nenakonfigurované",
         configure: "Konfigurovať",
         multiChannelTitle: "Viackanálová podpora",
-        multiChannelDesc: "Email a Mobile Push (FCM) kanály sú dostupné. Web Push a SMS kanály sú plánované pre budúce verzie. Šablóny sú navrhnuté na podporu všetkých kanálov - nakonfigurujte každý kanál a povoľte ho vo svojich šablónach.",
+        multiChannelDesc: "Kanály Email, SMS a Mobile Push (FCM) sú dostupné. Web Push je plánovaný pre budúcu verziu. Šablóny sú navrhnuté na podporu všetkých kanálov - nakonfigurujte každý kanál a povoľte ho vo svojich šablónach.",
         statusOff: "Vypnuté",
         statusIncomplete: "Neúplné",
         statusConfigured: "Nastavené",
