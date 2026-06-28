@@ -36,4 +36,11 @@ describe("enforceCustomSendCap", () => {
     const r = await enforceCustomSendCap("acme");
     expect(r.allowed).toBe(true);
   });
+
+  it("allows the call at exactly the limit (count === limit)", async () => {
+    process.env.CUSTOM_NOTIFICATION_RATE_PER_MIN = "2";
+    incr.mockResolvedValue(2);
+    const r = await enforceCustomSendCap("acme");
+    expect(r.allowed).toBe(true);
+  });
 });
