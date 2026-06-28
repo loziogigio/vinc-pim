@@ -45,7 +45,7 @@ export function ChannelConfigDrawer({
   async function save() {
     setBusy(true); setMsg(null);
     try {
-      const data = mergeSecretOnSave(form, recordData, secretSlugs);
+      const data = mergeSecretOnSave({ ...recordData, ...form }, recordData, secretSlugs);
       const res = await fetch("/api/b2b/data-models/notification_settings/records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

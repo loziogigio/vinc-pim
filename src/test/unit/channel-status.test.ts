@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { channelFieldGroups, channelStatus } from "@/lib/notifications/channel-status";
 import { SECRET_MASK } from "@/lib/data-models/redact-secrets";
+import { NOTIFICATION_SETTINGS_FIELDS } from "vinc-notifications";
 
 describe("channelFieldGroups", () => {
   it("partitions every field into exactly one channel group", () => {
@@ -12,7 +13,7 @@ describe("channelFieldGroups", () => {
     expect(g.sms.some((f) => f.slug === "sms_api_key")).toBe(true);
     expect(g.webpush.some((f) => f.slug === "webpush_vapid_private_key")).toBe(true);
     expect(g.fcm.some((f) => f.slug === "fcm_private_key")).toBe(true);
-    expect(total).toBeGreaterThanOrEqual(24);
+    expect(total).toBe(NOTIFICATION_SETTINGS_FIELDS.length);
   });
 });
 
