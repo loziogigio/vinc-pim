@@ -31,4 +31,15 @@ describe("validateCustomRequest", () => {
     const r = validateCustomRequest({ ...base, immediate: false });
     expect(r.ok && r.value.immediate).toBe(false);
   });
+  it("rejects fcm without user_ids (independent of webpush)", () => {
+    expect(validateCustomRequest({ channels: ["fcm"], message: { title: "T", body: "B" } }).ok).toBe(false);
+  });
+  it("rejects webpush/fcm when user_ids is an empty array", () => {
+    expect(validateCustomRequest({ channels: ["webpush"], user_ids: [], message: { title: "T", body: "B" } }).ok).toBe(false);
+  });
+  it("does not throw on a non-object body and rejects it", () => {
+    expect(() => validateCustomRequest("evil string")).not.toThrow();
+    expect(validateCustomRequest("evil string").ok).toBe(false);
+    expect(validateCustomRequest(null).ok).toBe(false);
+  });
 });
