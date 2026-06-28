@@ -62,3 +62,59 @@ export function validateCustomRequest(
     },
   };
 }
+
+import { sendEmail } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
+import { sendPush } from "@/lib/push";
+import { sendFCM } from "@/lib/fcm";
+
+export interface CustomChannelResult {
+  ok: boolean;
+  logId?: string;
+  messageId?: string;
+  sent?: number;
+  error?: string;
+}
+
+export interface CustomSendResult {
+  ok: boolean;
+  results: Partial<Record<CustomChannel, CustomChannelResult>>;
+}
+
+export async function sendCustomNotification(
+  input: CustomSendInput & { tenantDb: string },
+): Promise<CustomSendResult> {
+  const { tenantDb, channel, channels, to, sms_to, user_ids, immediate, message } = input;
+  const results: Partial<Record<CustomChannel, CustomChannelResult>> = {};
+
+  for (const ch of channels) {
+    try {
+      if (ch === "email") {
+        const r = await sendEmail({
+          to: to!, subject: message.subject!, html: message.html, text: message.text,
+          immediate, tenantDb, channel,
+        });
+        results.email = { ok: r.success, logId: r.emailId, messageId: r.messageId, error: r.error };
+      } else if (ch === "sms") {
+        const r = await sendSms({ to: sms_to!, body: message.text!, tenantDb, channel, immediate });
+        results.sms = { ok: r.ok, logId: r.logId, error: r.error };
+      } else if (ch === "webpush") {
+        const r = await sendPush({
+          tenantDb, title: message.title!, body: message.body!, action_url: message.url, userIds: user_ids,
+        });
+        results.webpush = { ok: r.success, sent: r.sent, error: r.errors?.[0]?.error };
+      } else if (ch === "fcm") {
+        const r = await sendFCM({
+          tenantDb, title: message.title!, body: message.body!, action_url: message.url,
+          userIds: user_ids, queue: !immediate,
+        });
+        results.fcm = { ok: r.success, sent: r.sent, error: r.errors?.[0]?.error };
+      }
+    } catch (err) {
+      results[ch] = { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const ok = Object.values(results).every((r) => r?.ok);
+  return { ok, results };
+}
