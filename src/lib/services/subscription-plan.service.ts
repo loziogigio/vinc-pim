@@ -211,7 +211,8 @@ export async function listSubscriptionPlans(
   if (filters.status) query.status = filters.status;
   if (filters.channel) query.channel = filters.channel.trim().toLowerCase();
   if (filters.search) {
-    query.code = new RegExp(filters.search, "i");
+    const escaped = filters.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    query.code = new RegExp(escaped, "i");
   }
 
   const [items, total] = await Promise.all([

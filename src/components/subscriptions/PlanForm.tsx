@@ -28,7 +28,7 @@ const LOCALES = [
 ];
 
 type LangMap = Record<string, string>;
-interface BillingRow { interval: string; base_price: string }
+interface BillingRow { interval: string; interval_count: number; base_price: string }
 interface MetricRow {
   metric_key: string;
   included_quantity: string;
@@ -64,6 +64,7 @@ export function PlanForm({ existing }: { existing?: ISubscriptionPlan }) {
   const [billing, setBilling] = useState<BillingRow[]>(
     (existing?.billing_options ?? [{ interval: "month", interval_count: 1, base_price: 0 }]).map((o) => ({
       interval: o.interval,
+      interval_count: o.interval_count ?? 1,
       base_price: toDecimalInputValue(o.base_price),
     }))
   );
@@ -108,7 +109,7 @@ export function PlanForm({ existing }: { existing?: ISubscriptionPlan }) {
         currency,
         billing_options: billing.map((b) => ({
           interval: b.interval,
-          interval_count: 1,
+          interval_count: b.interval_count ?? 1,
           base_price: parseDecimalValue(b.base_price) ?? 0,
         })),
         metrics: metrics.map((m) => ({
@@ -231,7 +232,7 @@ export function PlanForm({ existing }: { existing?: ISubscriptionPlan }) {
             )}
           </div>
         ))}
-        <Button variant="outline" size="sm" onClick={() => setBilling([...billing, { interval: "year", base_price: "" }])}>
+        <Button variant="outline" size="sm" onClick={() => setBilling([...billing, { interval: "year", interval_count: 1, base_price: "" }])}>
           <Plus className="h-4 w-4 mr-1" />
           {t("pages.store.subscriptionForm.addBillingOption")}
         </Button>

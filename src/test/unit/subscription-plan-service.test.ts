@@ -79,6 +79,22 @@ describe("unit: subscription-plan.service", () => {
     expect(res.data!.pagination.total).toBe(1);
   });
 
+  it("listSubscriptionPlans resolves without throwing when search contains unescaped regex special chars", async () => {
+    // "(unclosed" is an invalid regex — without escaping this would throw / reject
+    const res = await listSubscriptionPlans(TENANT_DB, { search: "(unclosed" });
+    expect(res.success).toBe(true);
+    expect(Array.isArray(res.data!.items)).toBe(true);
+  });
+
+  it("listSubscriptionPlans matches literal special-char code exactly", async () => {
+    await createSubscriptionPlan(TENANT_DB, { ...validPlan(), code: "promo(x)" });
+    await createSubscriptionPlan(TENANT_DB, { ...validPlan(), code: "promox" });
+    const res = await listSubscriptionPlans(TENANT_DB, { search: "promo(x)" });
+    expect(res.success).toBe(true);
+    expect(res.data!.items).toHaveLength(1);
+    expect(res.data!.items[0].code).toBe("promo(x)");
+  });
+
   it("updates and deletes a plan", async () => {
     const created = await createSubscriptionPlan(TENANT_DB, validPlan());
     const id = created.data!.plan_id;
