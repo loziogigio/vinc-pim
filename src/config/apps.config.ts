@@ -150,6 +150,17 @@ export const APPS: AppConfig[] = [
     hasNavigation: true,
   },
   {
+    id: "store-subscriptions",
+    name: "Subscriptions",
+    description: "Piani di abbonamento e fatturazione ricorrente",
+    href: "/b2b/store/subscriptions",
+    icon: CreditCard,
+    color: "bg-cyan-500",
+    showInLauncher: false,
+    showInHeader: false,
+    hasNavigation: true,
+  },
+  {
     id: "store-customers",
     name: "Customers",
     description: "Gestione clienti",
