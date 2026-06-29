@@ -17,10 +17,12 @@
  * Usage:
  *   pnpm tsx src/scripts/seed-data-model-catalog-settings.ts --tenant <id> --channel b2b
  *   pnpm tsx src/scripts/seed-data-model-catalog-settings.ts --tenant <id> --channel b2b --view list --open detail_page
+ *   pnpm tsx src/scripts/seed-data-model-catalog-settings.ts --tenant <id> --channel b2b --availability exact --force
  *   pnpm tsx src/scripts/seed-data-model-catalog-settings.ts --tenant <id> --channel b2b --dry-run
  *   pnpm tsx src/scripts/seed-data-model-catalog-settings.ts --tenant <id> --channel b2b --force
  *
- * Defaults: --view grid, --open modal (matches the previous hardcoded behaviour).
+ * Defaults: --view grid, --open modal, --availability in_out (matches the previous
+ * hardcoded behaviour).
  */
 
 import "dotenv/config";
@@ -37,12 +39,14 @@ import { CATALOG_SETTINGS_BLUEPRINT } from "@/lib/data-models/blueprints/catalog
 
 type View = "grid" | "list";
 type OpenMode = "modal" | "detail_page";
+type AvailabilityDisplay = "in_out" | "exact";
 
 interface Args {
   tenant?: string;
   channel: string;
   view: View;
   open: OpenMode;
+  availability: AvailabilityDisplay;
   dryRun: boolean;
   force: boolean;
 }
@@ -53,6 +57,7 @@ function parseArgs(): Args {
     channel: "b2b",
     view: "grid",
     open: "modal",
+    availability: "in_out",
     dryRun: false,
     force: false,
   };
@@ -81,6 +86,17 @@ function parseArgs(): Args {
           process.exit(1);
         }
         out.open = v;
+        break;
+      }
+      case "--availability": {
+        const v = argv[++i];
+        if (v !== "in_out" && v !== "exact") {
+          console.error(
+            `--availability must be 'in_out' or 'exact' (got "${v}")`
+          );
+          process.exit(1);
+        }
+        out.availability = v;
         break;
       }
       case "--dry-run":
@@ -120,15 +136,17 @@ async function main() {
   const recordData = {
     default_view: args.view,
     product_open_mode: args.open,
+    availability_display: args.availability,
   };
 
   console.log(`\n📋 Seed catalog_settings data model`);
-  console.log(`   Tenant           : ${args.tenant} (database: ${tenantDb})`);
-  console.log(`   Slug             : ${SLUG}`);
-  console.log(`   Relation         : channel (definition channel: "*")`);
-  console.log(`   Record           : relation_id="${CHANNEL_RELATION_ID}", channel="${channel}"`);
-  console.log(`   default_view     : ${recordData.default_view}`);
-  console.log(`   product_open_mode: ${recordData.product_open_mode}\n`);
+  console.log(`   Tenant              : ${args.tenant} (database: ${tenantDb})`);
+  console.log(`   Slug                : ${SLUG}`);
+  console.log(`   Relation            : channel (definition channel: "*")`);
+  console.log(`   Record              : relation_id="${CHANNEL_RELATION_ID}", channel="${channel}"`);
+  console.log(`   default_view        : ${recordData.default_view}`);
+  console.log(`   product_open_mode   : ${recordData.product_open_mode}`);
+  console.log(`   availability_display: ${recordData.availability_display}\n`);
 
   validateFieldsTree(FIELDS);
   const externalRefField = findExternalRefField(FIELDS); // undefined — single cardinality

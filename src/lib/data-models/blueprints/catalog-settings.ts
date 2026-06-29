@@ -21,6 +21,15 @@ const FIELDS: DataModelField[] = [
       { value: "detail_page", label: "Pagina prodotto" },
     ],
   },
+  {
+    slug: "availability_display",
+    label: "Visualizzazione disponibilità",
+    type: "select",
+    options: [
+      { value: "in_out", label: "Solo stato (Disponibile / Non disponibile)" },
+      { value: "exact", label: "Numero esatto disponibilità" },
+    ],
+  },
 ];
 
 /**
@@ -30,11 +39,14 @@ const FIELDS: DataModelField[] = [
  * Mirrors coupon_settings / cart_settings: `relation: "channel"` → one config
  * record per sales channel (definition channel `"*"`, every record pinned to the
  * sentinel relation_id `_channel`, the record's own `channel` field is the scope
- * key). Holds two enums that drive the time-theme catalog listing:
+ * key). Holds three enums that drive the time-theme catalog listing:
  *   • `default_view` (grid|list) — initial layout when the shopper hasn't chosen
  *   • `product_open_mode` (modal|detail_page) — single/simple product click goes
  *     to the PRODUCT_VIEW modal or the product detail page; multi-variant always
  *     opens the variants quick-view modal.
+ *   • `availability_display` (in_out|exact) — how the time theme renders stock:
+ *     just the Disponibile/Non disponibile pill, or the pill plus the exact stock
+ *     quantity with its dynamic UOM ("Disponibile · 47 PZ").
  *
  * `readable_by_end_user: false` — read server-side by the storefront resolver
  * (Redis-cached) and re-exposed through the b2b `/api/b2b/catalog-settings`
@@ -56,6 +68,10 @@ export const CATALOG_SETTINGS_BLUEPRINT: DataModelBlueprint = {
   },
   defaultRecord: {
     relationId: CHANNEL_RELATION_ID,
-    data: { default_view: "grid", product_open_mode: "modal" },
+    data: {
+      default_view: "grid",
+      product_open_mode: "modal",
+      availability_display: "in_out",
+    },
   },
 };
