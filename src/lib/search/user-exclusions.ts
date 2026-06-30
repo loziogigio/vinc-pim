@@ -9,6 +9,8 @@
  * v1 supports a single user_field source: "address_country".
  */
 
+import type { UserExclusion } from "@/lib/types/search";
+
 export interface UserExclusionRule {
   enabled?: boolean;
   /** Logical source CS knows how to resolve (closed enum). v1: "address_country". */
@@ -17,11 +19,6 @@ export interface UserExclusionRule {
   solr_field?: string;
   /** Optional admin note. */
   label?: string;
-}
-
-export interface ResolvedExclusion {
-  solr_field: string;
-  value: string;
 }
 
 interface ExclusionAddress {
@@ -66,10 +63,10 @@ export function resolveUserExclusions(
   rules: UserExclusionRule[] | undefined,
   customer: ExclusionCustomerCtx | null,
   addressCode?: string
-): ResolvedExclusion[] {
+): UserExclusion[] {
   if (!customer || !rules?.length) return [];
 
-  const out: ResolvedExclusion[] = [];
+  const out: UserExclusion[] = [];
   for (const rule of rules) {
     if (rule.enabled === false) continue;
     const solrField = rule.solr_field?.trim();

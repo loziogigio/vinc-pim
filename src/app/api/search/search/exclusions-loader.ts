@@ -45,5 +45,5 @@ export async function loadUserExclusionsForSearch(
   ).lean()) as { addresses?: Array<{ external_code?: string; country?: string; is_default?: boolean }> } | null;
 
   if (!customer) return [];
-  return resolveUserExclusions(rules, customer, addressCode) as UserExclusion[];
+  return resolveUserExclusions(rules, customer, addressCode);
 }
