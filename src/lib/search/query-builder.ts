@@ -439,6 +439,7 @@ function buildFilterQueries(
     const field = ex.solr_field?.trim();
     const value = ex.value?.trim();
     if (!field || !value) continue;
+    if (!/^[A-Za-z0-9_]+$/.test(field)) continue; // skip malformed solr_field (admin config typo) rather than emit an invalid fq
     fq.push(`-${field}:${escapeQueryChars(value)}`);
   }
 

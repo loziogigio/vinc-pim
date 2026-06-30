@@ -55,4 +55,15 @@ describe("buildFilterQueries: user_exclusions → negative fq", () => {
     });
     expect(out.some((c) => c.startsWith("-"))).toBe(false);
   });
+
+  it("skips an exclusion whose solr_field name is malformed (contains space or meta-char)", () => {
+    const out = fq({
+      ...base,
+      user_exclusions: [
+        { solr_field: "attribute x", value: "IT" },
+        { solr_field: "a:b", value: "IT" },
+      ],
+    });
+    expect(out.some((c) => c.startsWith("-"))).toBe(false);
+  });
 });
