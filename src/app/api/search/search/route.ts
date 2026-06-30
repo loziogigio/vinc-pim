@@ -18,6 +18,7 @@ import { getB2BSession } from '@/lib/auth/b2b-session';
 import { verifyAPIKeyFromRequest } from '@/lib/auth/api-key-auth';
 import { connectWithModels } from '@/lib/db/connection';
 import { resolveEffectiveTags } from '@/lib/services/tag-pricing.service';
+import { loadUserExclusionsForSearch } from './exclusions-loader';
 
 export async function POST(request: NextRequest) {
   try {
@@ -104,6 +105,16 @@ export async function POST(request: NextRequest) {
       facet_fields: body.facet_fields,
       include_dynamic_blocks: body.include_dynamic_blocks ?? false,
     };
+
+    // Feature 1: resolve per-channel user-attribute exclusions server-side and
+    // attach them so buildSearchQuery emits negative fq clauses. Guests / no
+    // channel → []. Must run before executeSearchWithFallback.
+    searchRequest.user_exclusions = await loadUserExclusionsForSearch(
+      tenantDb,
+      searchRequest.channel,
+      body.customer_code,
+      body.address_code,
+    );
 
     // Execute search with tenant-specific core.
     // Falls back to the tenant's default language for full-text matching when
@@ -343,6 +354,14 @@ export async function GET(request: NextRequest) {
         : undefined,
       include_dynamic_blocks: includeDynamicBlocks,
     };
+
+    // Feature 1: per-channel user-attribute exclusions (see POST handler).
+    searchRequest.user_exclusions = await loadUserExclusionsForSearch(
+      tenantDb,
+      searchRequest.channel,
+      searchParams.get('customer_code') || undefined,
+      searchParams.get('address_code') || undefined,
+    );
 
     // Build and execute query with tenant-specific Solr collection.
     // Falls back to the tenant's default language for full-text matching when
