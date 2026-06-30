@@ -52,6 +52,19 @@ export interface SearchRequest {
 
   // Inline facets
   facet_fields?: string[]; // Return facets inline with search results
+
+  /**
+   * Server-resolved negative-filter exclusions (Feature 1: per-channel
+   * user-attribute search exclusion). Each becomes a Solr `-<solr_field>:<value>`
+   * fq clause. Resolved in the search route from catalog_settings rules + the
+   * customer record; never sent by the browser.
+   */
+  user_exclusions?: UserExclusion[];
+}
+
+export interface UserExclusion {
+  solr_field: string;
+  value: string;
 }
 
 export interface GroupOptions {

@@ -431,6 +431,17 @@ function buildFilterQueries(
     fq.push(`channels:${request.channel}`);
   }
 
+  // User-attribute exclusions (Feature 1): negative fq per resolved rule.
+  // AND-combined with all other clauses; empty field/value pairs are skipped.
+  // Placed BEFORE the `if (!filters) return fq` guard so exclusions apply even
+  // when the request carries no other filters (the common case).
+  for (const ex of request?.user_exclusions ?? []) {
+    const field = ex.solr_field?.trim();
+    const value = ex.value?.trim();
+    if (!field || !value) continue;
+    fq.push(`-${field}:${escapeQueryChars(value)}`);
+  }
+
   if (!filters) {
     return fq;
   }
