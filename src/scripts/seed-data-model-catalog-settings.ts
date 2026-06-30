@@ -137,6 +137,7 @@ async function main() {
     default_view: args.view,
     product_open_mode: args.open,
     availability_display: args.availability,
+    user_exclusion_rules: [],
   };
 
   console.log(`\n📋 Seed catalog_settings data model`);

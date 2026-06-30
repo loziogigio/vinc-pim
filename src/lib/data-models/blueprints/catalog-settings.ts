@@ -30,6 +30,36 @@ const FIELDS: DataModelField[] = [
       { value: "exact", label: "Numero esatto disponibilità" },
     ],
   },
+  {
+    slug: "user_exclusion_rules",
+    label: "Regole di esclusione utente",
+    type: "array_of_objects",
+    fields: [
+      {
+        slug: "enabled",
+        label: "Attiva",
+        type: "checkbox",
+      },
+      {
+        slug: "user_field",
+        label: "Attributo utente",
+        type: "select",
+        options: [
+          { value: "address_country", label: "Paese indirizzo di consegna" },
+        ],
+      },
+      {
+        slug: "solr_field",
+        label: "Campo Solr di esclusione",
+        type: "text",
+      },
+      {
+        slug: "label",
+        label: "Nota (facoltativa)",
+        type: "text",
+      },
+    ],
+  },
 ];
 
 /**
@@ -72,6 +102,7 @@ export const CATALOG_SETTINGS_BLUEPRINT: DataModelBlueprint = {
       default_view: "grid",
       product_open_mode: "modal",
       availability_display: "in_out",
+      user_exclusion_rules: [],
     },
   },
 };
