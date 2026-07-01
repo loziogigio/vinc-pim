@@ -6,6 +6,15 @@ const FIELDS: DataModelField[] = [
   { slug: "show_line_note", label: "Mostra nota di riga (carrello)", type: "checkbox" },
   { slug: "show_head_note", label: "Mostra nota di testata (ordine)", type: "checkbox" },
   { slug: "show_pickup", label: "Mostra ritiro (consegna)", type: "checkbox" },
+  {
+    slug: "order_success_pages",
+    label: "Pagine di conferma ordine (redirect per lingua)",
+    type: "array_of_objects",
+    fields: [
+      { slug: "lang", label: "Lingua (es. it, en, fr)", type: "text" },
+      { slug: "slug", label: "Slug pagina CMS", type: "text" },
+    ],
+  },
 ];
 
 /**
@@ -18,8 +27,9 @@ const FIELDS: DataModelField[] = [
  * is the scope key). Holds three booleans that toggle the per-line note input
  * (`show_line_note`), the order head note textarea (`show_head_note`), and the
  * "Ritiro" (pickup) delivery option (`show_pickup`) in the time-theme
- * cart/checkout, so the storefront can switch them on/off per channel without a
- * redeploy.
+ * cart/checkout, plus `order_success_pages` — a per-language list of CMS page
+ * slugs the storefront redirects to after a plain (sync) order submit instead of
+ * the built-in complete-order page. All switchable per channel without a redeploy.
  *
  * `readable_by_end_user: false` — read server-side by the storefront resolver
  * (Redis-cached) and re-exposed through the b2b `/api/b2b/cart-settings` route;
