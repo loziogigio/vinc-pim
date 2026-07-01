@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Filter, FilterX } from "lucide-react";
 import { useLanguageStore } from "@/lib/stores/languageStore";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Attribute = {
   slug: string;
@@ -10,6 +11,7 @@ type Attribute = {
   value: Record<string, string> | string;  // Multilingual or simple string
   uom?: string;  // UOM stays language-independent
   hide_in_commerce?: boolean;  // Hide from commerce storefront (default: false)
+  hide_in_facets?: boolean;  // Hide from search facets/filters (default: false)
 };
 
 type Props = {
@@ -20,6 +22,7 @@ type Props = {
 
 export function AttributesEditor({ value, onChange, disabled }: Props) {
   const { currentLanguage } = useLanguageStore();
+  const { t } = useTranslation();
   const currentLangCode = currentLanguage || 'en';
 
   // Helper function to extract text for current language
@@ -62,6 +65,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
           value: val.value || '',
           uom: val.uom || undefined,
           hide_in_commerce: val.hide_in_commerce ?? false,
+          hide_in_facets: val.hide_in_facets ?? false,
         };
       }
       // Legacy: Handle simple values (convert to new structure)
@@ -71,6 +75,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
         value: String(val),
         uom: undefined,
         hide_in_commerce: false,
+        hide_in_facets: false,
       };
     })
   );
@@ -95,6 +100,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
             value: val.value || '',
             uom: val.uom || undefined,
             hide_in_commerce: val.hide_in_commerce ?? false,
+            hide_in_facets: val.hide_in_facets ?? false,
           };
         }
         // Legacy: Handle simple values (convert to new structure)
@@ -104,13 +110,14 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
           value: String(val),
           uom: undefined,
           hide_in_commerce: false,
+          hide_in_facets: false,
         };
       })
     );
   }, [value]);
 
   function handleAdd() {
-    const newAttributes = [...attributesArray, { slug: "", label: "", value: "", uom: undefined, hide_in_commerce: false }];
+    const newAttributes = [...attributesArray, { slug: "", label: "", value: "", uom: undefined, hide_in_commerce: false, hide_in_facets: false }];
     setAttributesArray(newAttributes);
     updateAttributes(newAttributes);
   }
@@ -156,6 +163,13 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
     updateAttributes(newAttributes);
   }
 
+  function handleHideInFacetsChange(index: number, newValue: boolean) {
+    const newAttributes = [...attributesArray];
+    newAttributes[index].hide_in_facets = newValue;
+    setAttributesArray(newAttributes);
+    updateAttributes(newAttributes);
+  }
+
   function updateAttributes(attrs: Attribute[]) {
     // Convert array back to object, filtering out empty slugs
     // Store using slug as key, with label, value, and uom in the object
@@ -176,6 +190,7 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
           value: processedValue,
           ...(attr.uom && attr.uom.trim() ? { uom: attr.uom.trim() } : {}),
           ...(attr.hide_in_commerce !== undefined ? { hide_in_commerce: attr.hide_in_commerce } : {}),
+          ...(attr.hide_in_facets !== undefined ? { hide_in_facets: attr.hide_in_facets } : {}),
         };
       }
     });
@@ -268,6 +283,27 @@ export function AttributesEditor({ value, onChange, disabled }: Props) {
                     <EyeOff className="h-4 w-4" />
                   ) : (
                     <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
+              {/* Hide in Facets Toggle */}
+              <div className="flex items-center justify-center w-10">
+                <button
+                  type="button"
+                  onClick={() => handleHideInFacetsChange(index, !attr.hide_in_facets)}
+                  disabled={disabled}
+                  className={`p-2 rounded transition ${
+                    attr.hide_in_facets
+                      ? 'text-purple-600 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/15 dark:hover:bg-purple-500/25 dark:text-purple-400'
+                      : 'text-muted-foreground hover:bg-accent'
+                  } disabled:opacity-50`}
+                  title={attr.hide_in_facets ? t("pages.pim.attributes.editor.hiddenInFacets") : t("pages.pim.attributes.editor.visibleInFacets")}
+                >
+                  {attr.hide_in_facets ? (
+                    <FilterX className="h-4 w-4" />
+                  ) : (
+                    <Filter className="h-4 w-4" />
                   )}
                 </button>
               </div>
