@@ -577,7 +577,7 @@ function getLocalizedString(value: any, lang: string): string | undefined {
  * Extract attributes for the requested language
  * MongoDB stores: { it: [...], en: [...] } or flat { slug: { label, value, order } }
  */
-function getLocalizedAttributes(attributes: any, lang: string): any {
+export function getLocalizedAttributes(attributes: any, lang: string): any {
   if (!attributes) return undefined;
 
   // Check if it's language-keyed format: { it: [...], en: [...] }
@@ -639,7 +639,7 @@ function getLocalizedTechnicalSpecs(specs: any, lang: string): any[] | undefined
  * Filter attributes to remove those marked hide_in_commerce
  * Only visible attributes (hide_in_commerce !== true) are returned
  */
-function filterVisibleAttributes(attributes: any): any {
+export function filterVisibleAttributes(attributes: any): any {
   if (!attributes || typeof attributes !== 'object') return attributes;
 
   const filtered: any = {};
@@ -654,8 +654,9 @@ function filterVisibleAttributes(attributes: any): any {
     const hideInCommerce = (attrData as any).hide_in_commerce ?? false;
 
     if (!hideInCommerce) {
-      // Remove hide_in_commerce from output (internal PIM only)
-      const { hide_in_commerce, ...cleanAttr } = attrData as any;
+      // Remove internal PIM-only flags from output (never ship them to the client).
+      // hide_in_facets only affects index-time facet emission, not display.
+      const { hide_in_commerce, hide_in_facets, ...cleanAttr } = attrData as any;
       filtered[slug] = cleanAttr;
     }
   }
