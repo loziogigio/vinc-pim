@@ -602,6 +602,8 @@ const it = {
         loading3dViewer: "Caricamento visualizzatore 3D...",
         loading3dModel: "Caricamento modello 3D...",
         upload: "Carica",
+        visibleToAll: "Visibile a tutti — clicca per nascondere al pubblico",
+        hiddenFromPublic: "Nascosto al pubblico — clicca per rendere visibile",
       },
       conflictResolver: {
         resolveError: "Errore nella risoluzione dei conflitti. Riprova.",

@@ -601,6 +601,8 @@ const en = {
         loading3dViewer: "Loading 3D viewer...",
         loading3dModel: "Loading 3D model...",
         upload: "Upload",
+        visibleToAll: "Visible to all — click to hide from public",
+        hiddenFromPublic: "Hidden from public — click to make visible",
       },
       conflictResolver: {
         resolveError: "Failed to resolve conflicts. Please try again.",

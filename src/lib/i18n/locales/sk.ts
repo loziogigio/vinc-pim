@@ -602,6 +602,8 @@ const sk = {
         loading3dViewer: "Načítava sa 3D prehliadač...",
         loading3dModel: "Načítava sa 3D model...",
         upload: "Nahrať",
+        visibleToAll: "Viditeľné pre všetkých — kliknutím skryjete pred verejnosťou",
+        hiddenFromPublic: "Skryté pred verejnosťou — kliknutím zobrazíte",
       },
       conflictResolver: {
         resolveError: "Chyba pri riešení konfliktov. Skúste znova.",
