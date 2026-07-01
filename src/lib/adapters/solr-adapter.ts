@@ -931,6 +931,8 @@ export class SolrAdapter extends MarketplaceAdapter {
         // Creates: attribute_{slug}_s, attribute_{slug}_f, attribute_{slug}_ss, etc.
         for (const [attrKey, attrData] of Object.entries(langAttrs)) {
           if (attrData && typeof attrData === 'object') {
+            // Skip emitting the facet/filter field when this attribute is hidden from facets
+            if ((attrData as any).hide_in_facets === true) continue;
             const value = (attrData as any).value;
             if (value !== undefined && value !== null && value !== '') {
               const { suffix, value: typedValue } = this.getAttributeTypeSuffix(value);
