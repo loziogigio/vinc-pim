@@ -1226,6 +1226,10 @@ const sk = {
       },
       // Stránka Atribúty — Schéma & Mapovanie
       attributes: {
+        editor: {
+          hiddenInFacets: "Skryté vo filtroch",
+          visibleInFacets: "Viditeľné vo filtroch",
+        },
         title: "Atribúty — Schéma & Mapovanie",
         subtitle: "Mapovať polia externých zdrojov na váš štandardný produktový schemat",
         exportTemplate: "Exportovať šablónu",

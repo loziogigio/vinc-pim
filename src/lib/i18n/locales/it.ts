@@ -1226,6 +1226,10 @@ const it = {
       },
       // Pagina Attributi — Schema & Mapping
       attributes: {
+        editor: {
+          hiddenInFacets: "Nascosto dai filtri",
+          visibleInFacets: "Visibile nei filtri",
+        },
         title: "Attributi — Schema & Mapping",
         subtitle: "Mappa i campi delle sorgenti esterne al tuo schema prodotto standard",
         exportTemplate: "Esporta Template",

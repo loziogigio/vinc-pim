@@ -1225,6 +1225,10 @@ const en = {
       },
       // Attributes — Schema & Mapping page
       attributes: {
+        editor: {
+          hiddenInFacets: "Hidden in facets",
+          visibleInFacets: "Visible in facets",
+        },
         title: "Attributes — Schema & Mapping",
         subtitle: "Map external source fields to your standard product schema",
         exportTemplate: "Export Template",
