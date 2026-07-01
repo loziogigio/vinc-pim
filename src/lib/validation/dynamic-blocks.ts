@@ -107,6 +107,11 @@ function validateElement(
       }
     }
   }
+
+  // Optional public-visibility flag (applies to every kind).
+  if ("is_public" in e && e.is_public !== undefined && typeof e.is_public !== "boolean") {
+    errors.push(`${where}: is_public must be a boolean`);
+  }
 }
 
 function validateBlock(

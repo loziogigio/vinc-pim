@@ -31,6 +31,8 @@ export interface BlockElementBase {
   link?: BlockLink;
   /** optional caption, plain string in the block's lang. */
   description?: string;
+  /** false → hidden from anonymous/public visitors; default true. */
+  is_public?: boolean;
 }
 
 export interface MediaElement extends BlockElementBase {
