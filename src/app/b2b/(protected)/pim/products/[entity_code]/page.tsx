@@ -1194,6 +1194,30 @@ export default function ProductDetailPage({
     }
   }
 
+  async function handleMediaVisibilityUpdate(cdn_key: string, is_public: boolean) {
+    const res = await fetch(`/api/b2b/pim/products/${entity_code}/media/visibility`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ cdn_key, is_public }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with updated media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
+    } else {
+      const error = await res.json();
+      throw new Error(error.error || "Visibility update failed");
+    }
+  }
+
   async function handleResolveConflicts(resolutions: Record<string, "manual" | "api">) {
     const res = await fetch(
       `/api/b2b/pim/products/${entity_code}/resolve-conflicts`,
@@ -2952,6 +2976,7 @@ export default function ProductDetailPage({
           onDelete={handleMediaDelete}
           onLabelUpdate={handleMediaLabelUpdate}
           onReorder={handleMediaReorder}
+          onVisibilityUpdate={handleMediaVisibilityUpdate}
           disabled={isSaving}
         />
       </div>
