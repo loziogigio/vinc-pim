@@ -526,6 +526,7 @@ export type FlatAttribute = {
   value: any;
   uom?: string;
   hide_in_commerce?: boolean; // Hide from commerce storefront (default: false)
+  hide_in_facets?: boolean; // Hide from search facets/filters at index time (default: false)
 };
 
 /**
@@ -538,6 +539,7 @@ export type MultilingualAttribute = {
   value: any;
   uom?: string;
   hide_in_commerce?: boolean; // Hide from commerce storefront (default: false)
+  hide_in_facets?: boolean; // Hide from search facets/filters at index time (default: false)
 };
 
 /**
@@ -576,6 +578,7 @@ export function extractAttributesForLanguage(
             value: attr.value,
             ...(attr.uom && { uom: attr.uom }),
             ...(attr.hide_in_commerce !== undefined && { hide_in_commerce: attr.hide_in_commerce }),
+            ...(attr.hide_in_facets !== undefined && { hide_in_facets: attr.hide_in_facets }),
           };
         }
       }
@@ -608,6 +611,7 @@ export function mergeAttributesToMultilingual(
         value: attrData.value,
         ...(attrData.uom && { uom: attrData.uom }),
         ...(attrData.hide_in_commerce !== undefined && { hide_in_commerce: attrData.hide_in_commerce }),
+        ...(attrData.hide_in_facets !== undefined && { hide_in_facets: attrData.hide_in_facets }),
       };
     }
   }
