@@ -544,6 +544,8 @@ const en = {
         addElement: "Add element",
         deleteBlock: "Delete block",
         deleteElement: "Delete element",
+        visibleToAll: "Visible to all — click to hide from public",
+        hiddenFromPublic: "Hidden from public — click to make visible",
         noBlocks: "No blocks for this section yet",
         noElements: "No elements yet",
         section: "Section",

@@ -545,6 +545,8 @@ const sk = {
         addElement: "Pridať prvok",
         deleteBlock: "Odstrániť blok",
         deleteElement: "Odstrániť prvok",
+        visibleToAll: "Viditeľné pre všetkých — kliknutím skryjete pred verejnosťou",
+        hiddenFromPublic: "Skryté pred verejnosťou — kliknutím zobrazíte",
         noBlocks: "Zatiaľ žiadne bloky pre túto sekciu",
         noElements: "Zatiaľ žiadne prvky",
         section: "Sekcia",

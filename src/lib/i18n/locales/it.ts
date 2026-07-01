@@ -545,6 +545,8 @@ const it = {
         addElement: "Aggiungi elemento",
         deleteBlock: "Elimina blocco",
         deleteElement: "Elimina elemento",
+        visibleToAll: "Visibile a tutti — clicca per nascondere al pubblico",
+        hiddenFromPublic: "Nascosto al pubblico — clicca per rendere visibile",
         noBlocks: "Nessun blocco per questa sezione",
         noElements: "Nessun elemento",
         section: "Sezione",
