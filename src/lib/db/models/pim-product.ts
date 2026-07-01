@@ -190,6 +190,7 @@ export interface IPIMProduct extends Document {
     uploaded_by?: string;
     is_external_link?: boolean; // true for YouTube/Vimeo/external URLs, false for S3 uploads
     position: number; // Display order (0, 1, 2...)
+    is_public?: boolean; // false → hidden from anonymous/public; default true
   }[];
 
   // Dynamic Blocks (per-product, per-language rich content for the B2B detail page)
@@ -635,6 +636,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
         uploaded_by: { type: String },
         is_external_link: { type: Boolean, default: false },
         position: { type: Number, required: true, default: 0 },
+        is_public: { type: Boolean, default: true },
       },
     ],
 
@@ -669,6 +671,7 @@ const PIMProductSchema = new Schema<IPIMProduct>(
               new_tab: { type: Boolean },
             },
             description: { type: String },
+            is_public: { type: Boolean, default: true },
           },
         ],
       },
