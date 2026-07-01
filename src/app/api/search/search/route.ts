@@ -19,6 +19,7 @@ import { verifyAPIKeyFromRequest } from '@/lib/auth/api-key-auth';
 import { connectWithModels } from '@/lib/db/connection';
 import { resolveEffectiveTags } from '@/lib/services/tag-pricing.service';
 import { loadUserExclusionsForSearch } from './exclusions-loader';
+import { stripNonPublicForGuests } from '@/lib/search/strip-non-public';
 
 export async function POST(request: NextRequest) {
   try {
@@ -157,6 +158,11 @@ export async function POST(request: NextRequest) {
     } else if (effectiveTags.length) {
       response.results = filterResultsByTags(response.results, effectiveTags);
     }
+
+    // Hard, leak-proof per-element visibility gate. Authenticated iff the
+    // request carries customer context or an explicit authenticated flag.
+    const isAuthenticated = body.authenticated === true || !!body.customer_code;
+    response.results = stripNonPublicForGuests(response.results, isAuthenticated);
 
     return NextResponse.json({
       success: true,
@@ -406,6 +412,11 @@ export async function GET(request: NextRequest) {
     } else if (effectiveTags.length) {
       response.results = filterResultsByTags(response.results, effectiveTags);
     }
+
+    // Hard, leak-proof per-element visibility gate (mirror of POST).
+    const isAuthenticated =
+      searchParams.get('authenticated') === 'true' || !!searchParams.get('customer_code');
+    response.results = stripNonPublicForGuests(response.results, isAuthenticated);
 
     return NextResponse.json({
       success: true,
