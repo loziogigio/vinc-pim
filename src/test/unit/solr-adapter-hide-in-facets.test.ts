@@ -56,3 +56,25 @@ describe("SolrAdapter attribute faceting respects hide_in_facets", () => {
     expect(doc["attribute_both_s"]).toBeUndefined();
   });
 });
+
+describe("re-index payload fully omits hidden-in-facets attribute fields", () => {
+  it("emits no attribute_<slug>_* key for a hide_in_facets attribute (any suffix)", async () => {
+    const adapter = new SolrAdapter({ custom_config: { solr_url: "http://x", solr_core: "vinc-test" } });
+    const doc: any = await adapter.transformProduct(
+      {
+        entity_code: "P9",
+        sku: "P9",
+        status: "active",
+        attributes: {
+          it: {
+            // numeric value would otherwise produce attribute_peso_f
+            peso: { key: "peso", label: "Peso", value: 12.5, hide_in_facets: true },
+          },
+        },
+      } as any,
+      { language: "it" }
+    );
+    const hiddenKeys = Object.keys(doc).filter((k) => k.startsWith("attribute_peso_"));
+    expect(hiddenKeys).toEqual([]);
+  });
+});
