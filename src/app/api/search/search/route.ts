@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
 
     // Hard, leak-proof per-element visibility gate. Authenticated iff the
     // request carries customer context or an explicit authenticated flag.
+    // Deliberately coarse: presence of customer context / authenticated flag = "not a guest". This is a visibility gate for anonymous vs logged-in, NOT per-customer authorization.
     const isAuthenticated = body.authenticated === true || !!body.customer_code;
     response.results = stripNonPublicForGuests(response.results, isAuthenticated);
 
@@ -414,6 +415,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Hard, leak-proof per-element visibility gate (mirror of POST).
+    // Deliberately coarse: presence of customer context / authenticated flag = "not a guest". This is a visibility gate for anonymous vs logged-in, NOT per-customer authorization.
     const isAuthenticated =
       searchParams.get('authenticated') === 'true' || !!searchParams.get('customer_code');
     response.results = stripNonPublicForGuests(response.results, isAuthenticated);
