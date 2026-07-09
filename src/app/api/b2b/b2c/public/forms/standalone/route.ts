@@ -5,6 +5,7 @@ import { connectWithModels } from "@/lib/db/connection";
 import { sendEmail } from "@/lib/email";
 import { getHomeSettings } from "@/lib/db/home-settings";
 import { renderFormSubmissionEmail } from "@/lib/email/templates/b2c-form-submission";
+import { extractFormSubmissionIp } from "@/lib/utils/form-submission-ip";
 import type { EmailBranding } from "@/lib/email/templates/base";
 import type { FormFieldConfig } from "@/lib/types/blocks";
 
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
     // 3. Parse body
     const body = await req.json();
     const { form_definition_slug, data } = body;
+    const ipAddress = extractFormSubmissionIp(req, body);
 
     if (!form_definition_slug || !data || typeof data !== "object") {
       return NextResponse.json(
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest) {
       form_definition_slug,
       data: sanitizedData,
       submitter_email: submitterEmail,
+      ip_address: ipAddress,
       seen: false,
     });
 

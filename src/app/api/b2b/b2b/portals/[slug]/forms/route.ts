@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
 import { connectWithModels } from "@/lib/db/connection";
+import { safeRegexQuery } from "@/lib/security";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -19,12 +20,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const limit = parseInt(url.searchParams.get("limit") || "25", 10);
     const pageSlug = url.searchParams.get("page_slug") || undefined;
     const formType = url.searchParams.get("form_type") || undefined;
+    const ip = url.searchParams.get("ip")?.trim() || undefined;
 
     const { B2BFormSubmission } = await connectWithModels(auth.tenantDb);
 
     const filter: Record<string, unknown> = { portal_slug: slug };
     if (pageSlug) filter.page_slug = pageSlug;
     if (formType) filter.form_type = formType;
+    if (ip) filter.ip_address = safeRegexQuery(ip);
 
     const skip = (page - 1) * limit;
 

@@ -5,6 +5,7 @@ import { getPublishedB2BPageTemplate } from "@/lib/db/b2b-page-templates";
 import { connectWithModels } from "@/lib/db/connection";
 import { sendEmail } from "@/lib/email";
 import { renderFormSubmissionEmail } from "@/lib/email/templates/b2c-form-submission";
+import { extractFormSubmissionIp } from "@/lib/utils/form-submission-ip";
 import type { EmailBranding } from "@/lib/email/templates/base";
 import type { FormBlockConfig, FormFieldConfig, PageBlock } from "@/lib/types/blocks";
 
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
     // 3. Parse body
     const body = await req.json();
     const { page_slug, form_block_id, data } = body;
+    const ipAddress = extractFormSubmissionIp(req, body);
 
     if (!page_slug || !form_block_id || !data || typeof data !== "object") {
       return NextResponse.json(
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
       form_type: "page_form",
       data: sanitizedData,
       submitter_email: submitterEmail,
+      ip_address: ipAddress,
       seen: false,
     });
 

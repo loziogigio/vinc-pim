@@ -27,6 +27,7 @@ interface FormSubmission {
   order_id?: string;
   data: Record<string, unknown>;
   submitter_email?: string;
+  ip_address?: string;
   seen: boolean;
   created_at: string;
 }
@@ -54,6 +55,7 @@ export default function FormsPage({
   // Filters
   const [filterPage, setFilterPage] = useState("");
   const [filterEmail, setFilterEmail] = useState("");
+  const [filterIp, setFilterIp] = useState("");
   const [filterSeen, setFilterSeen] = useState<"" | "seen" | "unseen">("");
   const [filterType, setFilterType] = useState<"" | "page_form" | "standalone">("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
@@ -66,6 +68,7 @@ export default function FormsPage({
       setIsLoading(true);
       let url = `${apiBase}?page=${p}&limit=25`;
       if (filterType) url += `&form_type=${filterType}`;
+      if (filterIp.trim()) url += `&ip=${encodeURIComponent(filterIp.trim())}`;
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load submissions");
       const json = await res.json();
@@ -84,7 +87,7 @@ export default function FormsPage({
   useEffect(() => {
     if (activeTab === "submissions") fetchSubmissions(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, filterType]);
+  }, [activeTab, filterType, filterIp]);
 
   const handleDelete = async (id: string) => {
     if (!confirm(t("pages.b2c.formSubmissions.deleteConfirm"))) return;
@@ -125,6 +128,8 @@ export default function FormsPage({
     if (filterPage && !(sub.page_slug || "").toLowerCase().includes(filterPage.toLowerCase()))
       return false;
     if (filterEmail && !(sub.submitter_email || "").toLowerCase().includes(filterEmail.toLowerCase()))
+      return false;
+    if (filterIp && !(sub.ip_address || "").toLowerCase().includes(filterIp.toLowerCase()))
       return false;
     if (filterSeen === "seen" && !sub.seen) return false;
     if (filterSeen === "unseen" && sub.seen) return false;
@@ -218,6 +223,16 @@ export default function FormsPage({
                   className="h-9 w-44 rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={filterIp}
+                  onChange={(e) => setFilterIp(e.target.value)}
+                  placeholder="Filter by IP"
+                  className="h-9 w-44 rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as "" | "page_form" | "standalone")}
@@ -294,6 +309,9 @@ export default function FormsPage({
                         {t("common.email")}
                       </th>
                       <th className="px-4 py-3 text-left font-medium text-foreground">
+                        IP
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium text-foreground">
                         {t("pages.b2c.formSubmissions.colSubmitted")}
                       </th>
                       <th className="px-4 py-3 text-right font-medium text-foreground">
@@ -324,6 +342,7 @@ export default function FormsPage({
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{sub.submitter_email || "—"}</td>
+                        <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{sub.ip_address || "—"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.created_at)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-3">
@@ -410,6 +429,11 @@ export default function FormsPage({
               {selectedSubmission.submitter_email && (
                 <p className="mt-4 text-sm text-muted-foreground">
                   {t("pages.b2c.formSubmissions.submitterEmail")}: {selectedSubmission.submitter_email}
+                </p>
+              )}
+              {selectedSubmission.ip_address && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  IP: {selectedSubmission.ip_address}
                 </p>
               )}
             </div>

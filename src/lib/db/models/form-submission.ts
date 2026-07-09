@@ -33,6 +33,8 @@ export interface IFormSubmission {
   data: Record<string, unknown>;
   /** Email extracted from submission (if any email field) */
   submitter_email?: string;
+  /** Client IP resolved by the storefront proxy/backend edge. */
+  ip_address?: string;
   /** Marks a lead-gated demo request (triggers the demo-access email to the lead). */
   demo_request_type?: "demo";
   /** Whether the submission has been seen/opened by admin */
@@ -84,6 +86,10 @@ const FormSubmissionSchema = new Schema(
       trim: true,
       lowercase: true,
     },
+    ip_address: {
+      type: String,
+      trim: true,
+    },
     demo_request_type: {
       type: String,
       enum: ["demo"],
@@ -105,6 +111,7 @@ const FormSubmissionSchema = new Schema(
 
 FormSubmissionSchema.index({ storefront_slug: 1, page_slug: 1 });
 FormSubmissionSchema.index({ storefront_slug: 1, form_type: 1 });
+FormSubmissionSchema.index({ ip_address: 1, created_at: -1 });
 FormSubmissionSchema.index({ created_at: -1 });
 
 export { FormSubmissionSchema };

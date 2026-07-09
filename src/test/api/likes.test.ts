@@ -162,6 +162,24 @@ describe("api: Likes", () => {
     expect(body.data.total_likes).toBe(0);
   });
 
+  it("should remove a like with sku query param", async () => {
+    const addReq = new NextRequest("http://localhost/api/b2b/likes", {
+      method: "POST",
+      body: JSON.stringify({ sku: "PROD-QS" }),
+    });
+    await addLikeRoute(addReq);
+
+    const delReq = new NextRequest("http://localhost/api/b2b/likes?sku=PROD-QS", {
+      method: "DELETE",
+    });
+    const res = await removeLikeRoute(delReq);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.data.removed).toBe(true);
+    expect(body.data.total_likes).toBe(0);
+  });
+
   it("should return 404 when removing non-existent like", async () => {
     const req = new NextRequest("http://localhost/api/b2b/likes", {
       method: "DELETE",

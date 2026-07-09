@@ -18,6 +18,7 @@ import {
 import { processLead } from "@/lib/leads/pipeline";
 import { emitEvent } from "@/lib/analytics/emit";
 import { resolvePipelineSettings, type PipelineSettings } from "@/lib/leads/pipeline-settings";
+import { extractFormSubmissionIp } from "@/lib/utils/form-submission-ip";
 import { EVENTS } from "vinc-analytics";
 import { LEAD_PAGE_SLUGS } from "@/lib/constants/deal";
 
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { page_slug, form_block_id, data } = body;
     const inboundAttr = (body.__attribution ?? null) as any;
+    const ipAddress = extractFormSubmissionIp(req, body);
 
     if (!page_slug || !form_block_id || !data || typeof data !== "object") {
       return NextResponse.json(
@@ -139,6 +141,7 @@ export async function POST(req: NextRequest) {
       form_block_id,
       data: sanitizedData,
       submitter_email: submitterEmail,
+      ip_address: ipAddress,
       demo_request_type: isDemoRequest ? "demo" : undefined,
     });
 

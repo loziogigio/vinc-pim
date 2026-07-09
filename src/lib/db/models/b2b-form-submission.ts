@@ -33,6 +33,8 @@ export interface IB2BFormSubmission {
   data: Record<string, unknown>;
   /** Email extracted from submission (if any email field) */
   submitter_email?: string;
+  /** Client IP resolved by the storefront proxy/backend edge. */
+  ip_address?: string;
   /** Whether the submission has been seen/opened by admin */
   seen: boolean;
   created_at: Date;
@@ -82,6 +84,10 @@ const B2BFormSubmissionSchema = new Schema(
       trim: true,
       lowercase: true,
     },
+    ip_address: {
+      type: String,
+      trim: true,
+    },
     seen: {
       type: Boolean,
       default: false,
@@ -99,6 +105,7 @@ const B2BFormSubmissionSchema = new Schema(
 
 B2BFormSubmissionSchema.index({ portal_slug: 1, page_slug: 1 });
 B2BFormSubmissionSchema.index({ portal_slug: 1, form_type: 1 });
+B2BFormSubmissionSchema.index({ ip_address: 1, created_at: -1 });
 B2BFormSubmissionSchema.index({ created_at: -1 });
 
 export { B2BFormSubmissionSchema };

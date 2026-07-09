@@ -52,6 +52,25 @@ export interface TenantAuthResult {
   error?: string;
 }
 
+function isUserType(value: string | null): value is UserType {
+  return value === "portal_user" || value === "b2b_user";
+}
+
+function getTrustedApiKeyUser(req: NextRequest): { userId: string; userType: UserType } | null {
+  const userType = req.headers.get("x-user-type");
+  if (!isUserType(userType)) return null;
+
+  // `x-user-id` is the canonical trusted user hint. `x-customer-id` is kept as
+  // a compatibility alias for older B2B/mobile clients.
+  const userId =
+    req.headers.get("x-user-id") ||
+    (userType === "b2b_user" ? req.headers.get("x-customer-id") : null);
+
+  if (!userId) return null;
+
+  return { userId, userType };
+}
+
 // ============================================
 // MAIN AUTH FUNCTION
 // ============================================
@@ -82,9 +101,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
   const apiKeyId = req.headers.get("x-api-key-id");
   const apiSecret = req.headers.get("x-api-secret");
 
-  // Debug logging
-  console.log("[authenticateTenant] Auth method:", authMethodHeader || "auto");
-
   // 1. If explicit API key auth requested, use it directly
   if (authMethodHeader === "api-key") {
     if (!apiKeyId || !apiSecret) {
@@ -102,22 +118,16 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
       };
     }
 
-    // Check for B2B user identification headers
-    // B2B mobile apps send: x-user-type: b2b_user + x-customer-id: <customer_id>
-    const b2bUserType = req.headers.get("x-user-type");
-    const customerId = req.headers.get("x-customer-id");
-
-    if (b2bUserType === "b2b_user" && customerId) {
-      console.log("[authenticateTenant] API key + B2B user:", {
-        tenant: result.tenantId,
-        customerId,
-      });
+    // Check for trusted user identification headers. These are only accepted
+    // after the tenant API key has been verified above.
+    const trustedUser = getTrustedApiKeyUser(req);
+    if (trustedUser) {
       return {
         authenticated: true,
         tenantId: result.tenantId,
         tenantDb: `vinc-${result.tenantId}`,
-        userId: customerId, // Use customer_id as userId for B2B users
-        userType: "b2b_user",
+        userId: trustedUser.userId,
+        userType: trustedUser.userType,
         authMethod: "api-key",
       };
     }
@@ -143,11 +153,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
           try {
             const SSOSession = await getSSOSessionModel();
             const session = await SSOSession.findBySessionId(ssoPayload.session_id);
-            console.log("[authenticateTenant] SSO session lookup:", {
-              sessionId: ssoPayload.session_id,
-              found: !!session,
-              hasCustomers: session?.vinc_profile?.customers?.length || 0
-            });
             if (session?.vinc_profile?.customers?.length > 0) {
               userType = "b2b_user";
             }
@@ -159,20 +164,11 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
             userType = "portal_user";
           }
 
-          console.log("[authenticateTenant] API key + Bearer (SSO token):", {
-            tenant: result.tenantId,
-            userId,
-            userType
-          });
         } else {
           // Try portal user token (legacy or custom auth)
           const portalPayload = await verifyPortalUserToken(bearerToken);
           if (portalPayload && portalPayload.tenantId === result.tenantId) {
             userId = portalPayload.portalUserId;
-            console.log("[authenticateTenant] API key + Bearer (portal user):", {
-              tenant: result.tenantId,
-              userId
-            });
           } else if (ssoPayload || portalPayload) {
             // Token valid but tenant mismatch
             console.warn("[authenticateTenant] Bearer token tenant mismatch:", {
@@ -184,7 +180,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
       }
     }
 
-    console.log("[authenticateTenant] API key auth success:", { tenant: result.tenantId, userId, userType });
     return {
       authenticated: true,
       tenantId: result.tenantId,
@@ -212,11 +207,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
           try {
             const SSOSession = await getSSOSessionModel();
             const session = await SSOSession.findBySessionId(payload.session_id);
-            console.log("[authenticateTenant] SSO session lookup (Bearer):", {
-              sessionId: payload.session_id,
-              found: !!session,
-              hasCustomers: session?.vinc_profile?.customers?.length || 0
-            });
             if (session?.vinc_profile?.customers?.length > 0) {
               userType = "b2b_user";
             }
@@ -227,11 +217,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
             userType = "portal_user";
           }
 
-          console.log("[authenticateTenant] Bearer auth (SSO) success:", {
-            tenant: payload.tenant_id,
-            userId: payload.sub,
-            userType
-          });
           return {
             authenticated: true,
             tenantId: payload.tenant_id,
@@ -249,10 +234,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
       // Try Portal User token (used by mobile apps)
       const portalPayload = await verifyPortalUserToken(token);
       if (portalPayload) {
-        console.log("[authenticateTenant] Bearer auth (portal user) success:", {
-          tenant: portalPayload.tenantId,
-          userId: portalPayload.portalUserId,
-        });
         return {
           authenticated: true,
           tenantId: portalPayload.tenantId,
@@ -263,7 +244,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
         };
       }
 
-      console.log("[authenticateTenant] Bearer token invalid - neither SSO nor portal user");
       return {
         authenticated: false,
         error: "Invalid or expired token",
@@ -282,7 +262,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
       };
     }
 
-    console.log("[authenticateTenant] API key auth (implicit) success:", { tenant: result.tenantId });
     return {
       authenticated: true,
       tenantId: result.tenantId,
@@ -295,11 +274,9 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
 
   // 4. Fallback to B2B Session authentication
   try {
-    console.log("[authenticateTenant] Trying session auth...");
     const session = await getB2BSession();
 
     if (session?.isLoggedIn && session?.tenantId) {
-      console.log("[authenticateTenant] Session auth success:", { tenant: session.tenantId, userId: session.userId });
       return {
         authenticated: true,
         tenantId: session.tenantId,
@@ -311,7 +288,6 @@ export async function authenticateTenant(req: NextRequest): Promise<TenantAuthRe
       };
     }
 
-    console.log("[authenticateTenant] No valid session found");
     return {
       authenticated: false,
       error: "Authentication required",
