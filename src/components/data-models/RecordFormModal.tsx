@@ -10,7 +10,14 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { DataModelField } from "@/lib/db/models/data-model-definition";
+import { ChannelSelect } from "@/components/shared/ChannelSelect";
+import {
+  CHANNEL_RELATION_ID,
+  type DataModelField,
+  type DataModelRelation,
+} from "@/lib/db/models/data-model-definition";
+import { mergeSecretOnSave } from "@/components/data-models/secret-utils";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface RecordFormModalProps {
   open: boolean;
@@ -23,8 +30,16 @@ interface RecordFormModalProps {
   };
   /** Default channel from the definition; when "*" the form requires a value. */
   definitionChannel: string;
+  /** Relation of the parent definition — drives channel-scoped UI. */
+  relation: DataModelRelation;
   busy?: boolean;
   error?: string | null;
+  /**
+   * Optional endpoint (e.g. "/api/b2b/notifications/test-send") from the
+   * definition's `test_action` field. When provided a "Test" button is shown
+   * that lets the user fire a live test notification via the saved config.
+   */
+  testAction?: string;
   onSubmit: (input: {
     relation_id: string;
     channel: string;
@@ -33,14 +48,49 @@ interface RecordFormModalProps {
   onClose: () => void;
 }
 
+function withCheckboxDefaults(
+  fields: DataModelField[],
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const out = { ...data };
+  for (const f of fields) {
+    if (f.type === "checkbox" && (out[f.slug] === undefined || out[f.slug] === null)) {
+      out[f.slug] = false;
+    }
+  }
+  return out;
+}
+
+/**
+ * Always initialize secret fields to "" in the form state. This ensures the
+ * password input starts empty and `mergeSecretOnSave` can correctly preserve
+ * the stored value when the field is left blank on submit.
+ */
+function withSecretDefaults(
+  fields: DataModelField[],
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const out = { ...data };
+  for (const f of fields) {
+    if (f.type === "secret") {
+      out[f.slug] = "";
+    }
+  }
+  return out;
+}
+
+type DeliveryChannel = "email" | "sms" | "fcm";
+
 export function RecordFormModal({
   open,
   title,
   fields,
   initial,
   definitionChannel,
+  relation,
   busy,
   error,
+  testAction,
   onSubmit,
   onClose,
 }: RecordFormModalProps) {
@@ -48,14 +98,49 @@ export function RecordFormModal({
   const [channel, setChannel] = useState(
     initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel)
   );
-  const [data, setData] = useState<Record<string, unknown>>(initial?.data ?? {});
+  const [data, setData] = useState<Record<string, unknown>>(
+    withSecretDefaults(fields, withCheckboxDefaults(fields, initial?.data ?? {}))
+  );
+  const isChannel = relation === "channel";
+
+  // Test action state
+  const [testOpen, setTestOpen] = useState(false);
+  const [testDelivery, setTestDelivery] = useState<DeliveryChannel>("email");
+  const [testTo, setTestTo] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; skipped?: boolean; error?: string } | null>(null);
+
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!open) return;
     setRelationId(initial?.relation_id ?? "");
     setChannel(initial?.channel ?? (definitionChannel === "*" ? "" : definitionChannel));
-    setData(initial?.data ?? {});
-  }, [open, initial, definitionChannel]);
+    setData(withSecretDefaults(fields, withCheckboxDefaults(fields, initial?.data ?? {})));
+    // reset test panel when modal re-opens
+    setTestOpen(false);
+    setTestResult(null);
+    setTestTo("");
+  }, [open, initial, definitionChannel, fields]);
+
+  const runTest = async () => {
+    if (!testAction || !channel || !testTo) return;
+    setTestBusy(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(testAction, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, deliveryChannel: testDelivery, to: testTo }),
+      });
+      const json = await res.json();
+      setTestResult(json);
+    } catch (e) {
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTestBusy(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -77,33 +162,50 @@ export function RecordFormModal({
         </div>
 
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {isChannel ? (
             <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                relation_id <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                value={relationId}
-                onChange={(e) => setRelationId(e.target.value)}
-                placeholder="C-… or PU-…"
-                className="mt-1 font-mono text-xs"
-                disabled={!!initial?.relation_id}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                channel
-                {definitionChannel === "*" && <span className="text-rose-500"> *</span>}
-              </label>
-              <Input
+              <label className="text-xs font-medium text-muted-foreground">channel</label>
+              <ChannelSelect
                 value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-                placeholder="default"
-                className="mt-1 text-xs"
-                disabled={definitionChannel !== "*"}
+                onChange={setChannel}
+                required
+                showLabel={false}
+                disabled={!!initial?.channel}
+                className="mt-1"
               />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                One config record per channel.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  relation_id <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={relationId}
+                  onChange={(e) => setRelationId(e.target.value)}
+                  placeholder="C-… or PU-…"
+                  className="mt-1 font-mono text-xs"
+                  disabled={!!initial?.relation_id}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  channel
+                  {definitionChannel === "*" && <span className="text-rose-500"> *</span>}
+                </label>
+                <Input
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value)}
+                  placeholder="default"
+                  className="mt-1 text-xs"
+                  disabled={definitionChannel !== "*"}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 space-y-3">
             {fields.map((f) => (
@@ -112,6 +214,7 @@ export function RecordFormModal({
                 field={f}
                 value={data[f.slug]}
                 onChange={(v) => setField(f.slug, v)}
+                existingHasValue={f.type === "secret" ? !!initial?.data?.[f.slug] : false}
               />
             ))}
           </div>
@@ -121,15 +224,81 @@ export function RecordFormModal({
           )}
         </div>
 
+        {/* Test action panel — shown only when definition has test_action and user clicked Test */}
+        {testAction && testOpen && (
+          <div className="border-t border-border px-5 py-4 bg-muted/30">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {t("components.recordFormModal.testPanel")}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={testDelivery}
+                onChange={(e) => setTestDelivery(e.target.value as DeliveryChannel)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="email">email</option>
+                <option value="sms">sms</option>
+                <option value="fcm">fcm</option>
+              </select>
+              <Input
+                value={testTo}
+                onChange={(e) => setTestTo(e.target.value)}
+                placeholder={t("components.recordFormModal.testToPlaceholder")}
+                className="flex-1 text-xs"
+              />
+              <Button
+                variant="outline"
+                onClick={runTest}
+                disabled={testBusy || !testTo || !channel}
+                className="shrink-0"
+              >
+                {testBusy ? t("common.sending") : t("components.recordFormModal.testSend")}
+              </Button>
+            </div>
+            {testResult && (
+              <p className={`mt-2 text-xs ${testResult.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                {testResult.ok
+                  ? t("components.recordFormModal.testSent")
+                  : testResult.skipped
+                    ? `${t("components.recordFormModal.testSkipped")}: ${testResult.error ?? ""}`
+                    : `${t("components.recordFormModal.testFailed")}: ${testResult.error ?? ""}`}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
+          {testAction && (
+            <Button
+              variant="outline"
+              onClick={() => { setTestOpen((v) => !v); setTestResult(null); }}
+              disabled={busy}
+            >
+              {t("components.recordFormModal.test")}
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
-            onClick={() => onSubmit({ relation_id: relationId, channel, data })}
-            disabled={busy || !relationId || (definitionChannel === "*" && !channel)}
+            onClick={() => {
+              const secretSlugs = fields
+                .filter((f) => f.type === "secret")
+                .map((f) => f.slug);
+              const mergedData = mergeSecretOnSave(
+                data,
+                initial?.data ?? {},
+                secretSlugs
+              );
+              onSubmit({
+                relation_id: isChannel ? CHANNEL_RELATION_ID : relationId,
+                channel,
+                data: mergedData,
+              });
+            }}
+            disabled={busy || (!isChannel && !relationId) || !channel}
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </div>
@@ -141,14 +310,40 @@ function FieldInput({
   field,
   value,
   onChange,
+  existingHasValue = false,
 }: {
   field: DataModelField;
   value: unknown;
   onChange: (v: unknown) => void;
+  /** For secret fields: true when the stored record already has a value. */
+  existingHasValue?: boolean;
 }) {
+  const { t } = useTranslation();
   const label = field.label || field.slug;
 
   switch (field.type) {
+    case "secret":
+      return (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">
+            {label}
+            {field.required && <span className="text-rose-500"> *</span>}
+          </label>
+          <Input
+            type="password"
+            autoComplete="new-password"
+            value={(value as string) ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={
+              existingHasValue
+                ? `•••••• — ${t("components.recordFormModal.secretKeepPlaceholder")}`
+                : ""
+            }
+            className="mt-1 text-sm"
+          />
+        </div>
+      );
+
     case "text":
     case "email":
       return (

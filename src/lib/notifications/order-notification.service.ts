@@ -69,6 +69,7 @@ export async function dispatchOrderNotification(
     to: email,
     variables,
     immediate: false,
+    channel: order.channel ?? "default",
     targetUserId: extra?.portalUserId,
     targetUserType: extra?.userType || "portal_user",
     pushUserIds: extra?.portalUserId ? [extra.portalUserId] : undefined,

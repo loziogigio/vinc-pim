@@ -220,9 +220,15 @@ importers:
       tailwind-merge:
         specifier: ^2.2.1
         version: 2.6.0
+      vinc-analytics:
+        specifier: file:vendor/vinc-analytics
+        version: file:vendor/vinc-analytics(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       vinc-cdn:
         specifier: ^1.0.0
         version: 1.0.0(@aws-sdk/client-s3@3.986.0)
+      vinc-notifications:
+        specifier: file:vendor/vinc-notifications
+        version: file:vendor/vinc-notifications
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -6301,10 +6307,24 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
+  vinc-analytics@file:vendor/vinc-analytics:
+    resolution: {directory: vendor/vinc-analytics, type: directory}
+    peerDependencies:
+      next: '>=15'
+      react: '>=18'
+    peerDependenciesMeta:
+      next:
+        optional: true
+      react:
+        optional: true
+
   vinc-cdn@1.0.0:
     resolution: {integrity: sha512-CZPNQnFERyqwyYE2DSHsDmh/7+R0jf0TfXeUQW0TE22t72ZRIC6FqflvcltQ91+iInU3PoYhtmNXHsPsQ0IvFw==}
     peerDependencies:
       '@aws-sdk/client-s3': ^3.0.0
+
+  vinc-notifications@file:vendor/vinc-notifications:
+    resolution: {directory: vendor/vinc-notifications, type: directory}
 
   vite-node@5.2.0:
     resolution: {integrity: sha512-7UT39YxUukIA97zWPXUGb0SGSiLexEGlavMwU3HDE6+d/HJhKLjLqu4eX2qv6SQiocdhKLRcusroDwXHQ6CnRQ==}
@@ -14354,9 +14374,23 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
+  vinc-analytics@file:vendor/vinc-analytics(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4):
+    optionalDependencies:
+      next: 16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+
   vinc-cdn@1.0.0(@aws-sdk/client-s3@3.986.0):
     dependencies:
       '@aws-sdk/client-s3': 3.986.0
+
+  vinc-notifications@file:vendor/vinc-notifications:
+    dependencies:
+      firebase-admin: 13.6.0
+      nodemailer: 7.0.11
+      web-push: 3.6.7
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   vite-node@5.2.0(@types/node@20.19.21)(jiti@2.6.1)(tsx@4.20.6):
     dependencies:

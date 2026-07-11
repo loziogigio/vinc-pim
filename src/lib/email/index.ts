@@ -4,64 +4,41 @@
  * Includes open and click tracking
  */
 
-import nodemailer from "nodemailer";
 import { nanoid } from "nanoid";
 import type { IEmailLog, EmailStatus } from "@/lib/db/models/email-log";
 import { EmailLogSchema } from "@/lib/db/models/email-log";
 import { connectWithModels, connectToDatabase } from "@/lib/db/connection";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { createNotificationLog, markLogAsSent, markLogAsFailed } from "@/lib/notifications/notification-log.service";
-import { sendViaGraph, isGraphConfigured } from "./graph-transport";
+import { isGraphConfigured } from "./graph-transport";
+export { isGraphConfigured };
 import type { GraphSettings, EmailTransport } from "@/lib/types/home-settings";
+import { sendEmailViaSmtp, sendEmailViaGraph } from "vinc-notifications/server";
+import type { EmailConfig as PkgEmailConfig } from "vinc-notifications";
+import { resolveNotificationConfig } from "@/lib/notifications/resolve-config";
+// Re-export from the leaf module so external callers continue to import from "@/lib/email"
+export type { EmailConfig } from "./env-config";
+export { getEmailConfigFromEnv } from "./env-config";
+import { getEmailConfigFromEnv, type EmailConfig } from "./env-config";
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
-export interface EmailConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  password: string;
-  from: string;
-  fromName: string;
-}
-
-// Cached config from database
-let cachedDbConfig: EmailConfig | null = null;
-let configLastFetched: number = 0;
-const CONFIG_CACHE_TTL = 60000; // 1 minute
+// EmailConfig and getEmailConfigFromEnv are imported from ./env-config
+// and re-exported above — no duplicate definitions here.
 
 /**
- * Get email config from environment variables (fallback)
- */
-export function getEmailConfigFromEnv(): EmailConfig {
-  return {
-    host: process.env.MAIL_HOST || "smtp.hostinger.com",
-    port: parseInt(process.env.MAIL_PORT || "587", 10),
-    secure: process.env.MAIL_SECURE === "true",
-    user: process.env.MAIL_USER || "",
-    password: process.env.MAIL_PASSWORD || "",
-    from: process.env.MAIL_FROM || "",
-    fromName: process.env.MAIL_FROM_NAME || "VINC Commerce",
-  };
-}
-
-/**
- * Get email config - prefers database settings, falls back to env
+ * Get email config - returns env config synchronously.
+ * Use fetchTenantEmailConfig for async DB/channel-scoped config.
  */
 export function getEmailConfig(): EmailConfig {
-  // Return cached config if fresh
-  if (cachedDbConfig && Date.now() - configLastFetched < CONFIG_CACHE_TTL) {
-    return cachedDbConfig;
-  }
-  // Return env config synchronously
   return getEmailConfigFromEnv();
 }
 
 /**
- * Fetch email config from database (async)
+ * Fetch email config from database (async, legacy SMTP-only path).
+ * Prefer fetchTenantEmailConfig for multi-transport + per-channel support.
  */
 export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailConfig> {
   try {
@@ -70,7 +47,7 @@ export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailCo
     const settings = await getHomeSettings(tenantDb);
 
     if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
-      cachedDbConfig = {
+      return {
         host: settings.smtp_settings.host,
         port: settings.smtp_settings.port || 587,
         secure: settings.smtp_settings.secure || false,
@@ -79,8 +56,6 @@ export async function fetchEmailConfigFromDb(tenantDb?: string): Promise<EmailCo
         from: settings.smtp_settings.from,
         fromName: settings.smtp_settings.from_name || "VINC Commerce",
       };
-      configLastFetched = Date.now();
-      return cachedDbConfig;
     }
   } catch (error) {
     console.warn("[Email] Failed to fetch SMTP config from DB:", error);
@@ -96,8 +71,8 @@ export function isEmailEnabled(): boolean {
   return !!(config.host && config.from && (hasAuth || isLocalhost));
 }
 
-export async function isEmailEnabledAsync(tenantDb?: string): Promise<boolean> {
-  const tenantConfig = await fetchTenantEmailConfig(tenantDb);
+export async function isEmailEnabledAsync(tenantDb?: string, channelCode?: string): Promise<boolean> {
+  const tenantConfig = await fetchTenantEmailConfig(tenantDb, channelCode ?? "default");
 
   if (tenantConfig.transport === "graph") {
     return isGraphConfigured(tenantConfig.graph);
@@ -110,7 +85,7 @@ export async function isEmailEnabledAsync(tenantDb?: string): Promise<boolean> {
 }
 
 // ============================================
-// TENANT EMAIL CONFIG (multi-transport)
+// TENANT EMAIL CONFIG (multi-transport, per-channel)
 // ============================================
 
 export interface TenantEmailConfig {
@@ -119,35 +94,53 @@ export interface TenantEmailConfig {
   graph?: GraphSettings;
 }
 
+const configCache = new Map<string, { cfg: TenantEmailConfig; at: number }>();
+const CONFIG_CACHE_TTL = 60_000; // 1 minute
+
+/** Invalidate all cached tenant email configs (test seam + post-settings-save). */
+export function clearEmailConfigCache(): void {
+  configCache.clear();
+}
+
 /**
- * Fetch full email transport config from database (async)
- * Returns transport type + relevant settings for each transport
+ * Fetch full email transport config for a tenant and optional sales channel.
+ * Delegates to resolveNotificationConfig and caches per (tenantDb, channel).
  */
-export async function fetchTenantEmailConfig(tenantDb?: string): Promise<TenantEmailConfig> {
-  const { getHomeSettings } = await import("@/lib/db/home-settings");
-  const settings = await getHomeSettings(tenantDb);
+export async function fetchTenantEmailConfig(
+  tenantDb?: string,
+  channelCode: string = "default",
+): Promise<TenantEmailConfig> {
+  const key = `${tenantDb ?? "_"}::${channelCode}`;
+  const hit = configCache.get(key);
+  if (hit && Date.now() - hit.at < CONFIG_CACHE_TTL) return hit.cfg;
 
-  const transport: EmailTransport = settings?.email_transport || "smtp";
+  const resolved = await resolveNotificationConfig(tenantDb ?? "", channelCode);
 
-  // Build SMTP config (always needed as fallback)
-  let smtpConfig: EmailConfig = getEmailConfigFromEnv();
-  if (settings?.smtp_settings?.host && settings?.smtp_settings?.from) {
-    smtpConfig = {
-      host: settings.smtp_settings.host,
-      port: settings.smtp_settings.port || 587,
-      secure: settings.smtp_settings.secure || false,
-      user: settings.smtp_settings.user || "",
-      password: settings.smtp_settings.password || "",
-      from: settings.smtp_settings.from,
-      fromName: settings.smtp_settings.from_name || "VINC Commerce",
-    };
-  }
-
-  return {
-    transport,
-    smtp: smtpConfig,
-    graph: settings?.graph_settings ?? undefined,
+  const cfg: TenantEmailConfig = {
+    transport: resolved.email?.transport ?? "smtp",
+    smtp: {
+      host: resolved.email?.smtp?.host ?? "",
+      port: resolved.email?.smtp?.port ?? 587,
+      secure: resolved.email?.smtp?.secure ?? false,
+      user: resolved.email?.smtp?.user ?? "",
+      password: resolved.email?.smtp?.password ?? "",
+      from: resolved.email?.from ?? "",
+      fromName: resolved.email?.fromName ?? "VINC Commerce",
+    },
+    graph: resolved.email?.graph
+      ? {
+          azure_tenant_id: resolved.email.graph.azureTenantId,
+          client_id: resolved.email.graph.clientId,
+          client_secret: resolved.email.graph.clientSecret,
+          sender_email: resolved.email.graph.senderEmail,
+          sender_name: resolved.email.graph.senderName,
+          save_to_sent_items: resolved.email.graph.saveToSentItems,
+        }
+      : undefined,
   };
+
+  configCache.set(key, { cfg, at: Date.now() });
+  return cfg;
 }
 
 // ============================================
@@ -211,40 +204,93 @@ function sanitizeEmailHeader(value: string): string {
 }
 
 // ============================================
-// TRANSPORTER
+// PACKAGE CONFIG MAPPER
 // ============================================
 
-let transporter: nodemailer.Transporter | null = null;
-let transporterConfigHash: string = "";
-
-function getConfigHash(config: EmailConfig): string {
-  return `${config.host}:${config.port}:${config.secure}:${config.user}:${config.password}`;
+/**
+ * Build a vinc-notifications EmailConfig (camelCase) from the CS TenantEmailConfig (snake_case).
+ * Exported for Task 12 (per-channel config threading).
+ */
+export function toPkgEmailConfig(tc: TenantEmailConfig): PkgEmailConfig {
+  return {
+    enabled: true,
+    transport: tc.transport,
+    from: sanitizeEmailHeader(tc.smtp.from ?? tc.graph?.sender_email ?? ""),
+    fromName: sanitizeEmailHeader(tc.smtp.fromName ?? tc.graph?.sender_name ?? ""),
+    smtp: {
+      host: tc.smtp.host,
+      port: tc.smtp.port,
+      secure: tc.smtp.secure,
+      user: tc.smtp.user,
+      password: tc.smtp.password,
+    },
+    graph: tc.graph
+      ? {
+          azureTenantId: tc.graph.azure_tenant_id,
+          clientId: tc.graph.client_id,
+          clientSecret: tc.graph.client_secret,
+          senderEmail: tc.graph.sender_email,
+          senderName: tc.graph.sender_name,
+          saveToSentItems: tc.graph.save_to_sent_items,
+        }
+      : undefined,
+  };
 }
 
-function getTransporter(config: EmailConfig): nodemailer.Transporter {
-  const hash = getConfigHash(config);
+/**
+ * Build the transport_config snapshot stored on an email log WITHOUT credentials.
+ * The secret (smtp.password / graph.client_secret) is intentionally omitted so it is
+ * never persisted in logs (which live in the shared admin DB and feed the logs UI).
+ * sendEmailNow re-resolves the secret from tenant config at send time when missing.
+ */
+export function redactTransportConfig(tc: TenantEmailConfig) {
+  return {
+    transport: tc.transport,
+    smtp:
+      tc.transport === "smtp" && tc.smtp
+        ? {
+            host: tc.smtp.host,
+            port: tc.smtp.port,
+            secure: tc.smtp.secure,
+            user: tc.smtp.user,
+            from: tc.smtp.from,
+            fromName: tc.smtp.fromName,
+          }
+        : undefined,
+    graph:
+      tc.transport === "graph" && tc.graph
+        ? {
+            azure_tenant_id: tc.graph.azure_tenant_id,
+            client_id: tc.graph.client_id,
+            sender_email: tc.graph.sender_email,
+            sender_name: tc.graph.sender_name,
+            save_to_sent_items: tc.graph.save_to_sent_items,
+          }
+        : undefined,
+  };
+}
 
-  // Recreate transporter if config changed
-  if (!transporter || transporterConfigHash !== hash) {
-    // Build transport options - skip auth for localhost without credentials
-    const transportOptions: nodemailer.TransportOptions = {
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-    } as nodemailer.TransportOptions;
-
-    // Only add auth if credentials are provided
-    if (config.user && config.password) {
-      (transportOptions as { auth?: { user: string; pass: string } }).auth = {
-        user: config.user,
-        pass: config.password,
-      };
-    }
-
-    transporter = nodemailer.createTransport(transportOptions);
-    transporterConfigHash = hash;
-  }
-  return transporter;
+/**
+ * Re-resolve the transport secret when the provided config lacks it. The credential
+ * is no longer persisted in the email-log transport_config snapshot, so the queued /
+ * retry path (which replays that redacted snapshot) arrives here without a password;
+ * fetch it fresh from tenant config. No-op (and no extra fetch) when the secret is
+ * already present, e.g. the immediate-send path that passes a freshly-resolved config.
+ */
+async function ensureTransportSecret(
+  cfg: TenantEmailConfig,
+  emailLog: IEmailLog
+): Promise<TenantEmailConfig> {
+  const needsSmtp = cfg.transport === "smtp" && !!cfg.smtp && !cfg.smtp.password;
+  const needsGraph = cfg.transport === "graph" && !!cfg.graph && !cfg.graph.client_secret;
+  if (!needsSmtp && !needsGraph) return cfg;
+  const fresh = await fetchTenantEmailConfig(emailLog.tenant_db, emailLog.channel ?? "default");
+  return {
+    ...cfg,
+    smtp: needsSmtp && cfg.smtp ? { ...cfg.smtp, password: fresh.smtp?.password ?? "" } : cfg.smtp,
+    graph:
+      needsGraph && cfg.graph ? { ...cfg.graph, client_secret: fresh.graph?.client_secret } : cfg.graph,
+  };
 }
 
 // ============================================
@@ -286,6 +332,8 @@ export interface SendEmailOptions {
   metadata?: Record<string, any>;
   /** Tenant database name for multi-tenant support (e.g., 'vinc-hidros-it') */
   tenantDb?: string;
+  /** Sales-channel code for per-channel email config resolution (default: "default") */
+  channel?: string;
   /** Campaign ID for linking email to campaign stats */
   campaign_id?: string;
   /** File attachments (e.g., PDF documents) */
@@ -375,8 +423,8 @@ export function addTrackingToHtml(
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const emailId = nanoid(12);
 
-  // Fetch tenant email config (transport type + settings)
-  const tenantConfig = await fetchTenantEmailConfig(options.tenantDb);
+  // Fetch tenant email config (transport type + settings) — keyed by channel
+  const tenantConfig = await fetchTenantEmailConfig(options.tenantDb, options.channel ?? "default");
 
   // Check if email is configured based on transport type
   const isConfigured =
@@ -455,6 +503,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     tags: options.tags,
     metadata: options.metadata,
     tenant_db: tenantDb,
+    channel: options.channel ?? "default",
     campaign_id: options.campaign_id,
   });
 
@@ -478,11 +527,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   emailLog.metadata = {
     ...emailLog.metadata,
     notification_log_id: notificationLog.log_id,
-    transport_config: {
-      transport: tenantConfig.transport,
-      smtp: tenantConfig.transport === "smtp" ? tenantConfig.smtp : undefined,
-      graph: tenantConfig.transport === "graph" ? tenantConfig.graph : undefined,
-    },
+    // Credentials are intentionally omitted from this snapshot — see redactTransportConfig.
+    transport_config: redactTransportConfig(tenantConfig),
   };
   await emailLog.save();
 
@@ -509,57 +555,42 @@ async function sendEmailNow(
   notificationLogId?: string,
   prefetchedConfig?: TenantEmailConfig
 ): Promise<SendEmailResult> {
-  const tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db);
+  let tenantConfig = prefetchedConfig ?? await fetchTenantEmailConfig(emailLog.tenant_db, emailLog.channel ?? "default");
+  // The transport secret is no longer stored in the log snapshot; re-resolve it here
+  // when a replayed (queued/retry) config arrives without one.
+  tenantConfig = await ensureTransportSecret(tenantConfig, emailLog);
 
   try {
     let messageId: string | undefined;
 
-    if (tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)) {
-      // ---- GRAPH API TRANSPORT ----
-      const result = await sendViaGraph(tenantConfig.graph!, {
-        to: emailLog.to,
-        subject: emailLog.subject,
-        html: emailLog.html,
-        text: emailLog.text,
-        cc: emailLog.cc,
-        bcc: emailLog.bcc,
-        from: emailLog.from,
-        fromName: emailLog.from_name,
-        replyTo: emailLog.reply_to,
-        attachments: (emailLog as any)._attachments || undefined,
-      });
+    // Build package EmailConfig from tenant settings
+    const pkgCfg = toPkgEmailConfig(tenantConfig);
 
-      if (!result.success) {
-        throw new Error(result.error || "Graph API send failed");
-      }
-      messageId = result.messageId;
-    } else {
-      // ---- SMTP TRANSPORT ----
-      const smtpTransport = getTransporter(tenantConfig.smtp);
+    // Pre-sanitize message headers to prevent injection before delegating to the package
+    const pkgMsg = {
+      to: emailLog.to,
+      cc: emailLog.cc,
+      bcc: emailLog.bcc,
+      replyTo: emailLog.reply_to ? sanitizeEmailHeader(emailLog.reply_to) : undefined,
+      subject: sanitizeEmailHeader(emailLog.subject),
+      // Package requires non-optional html; default to empty string when text-only
+      html: emailLog.html ?? "",
+      text: emailLog.text,
+      // Transient attachments set at call time (not persisted to MongoDB).
+      // Available on the immediate-send path only; queued emails lose attachments
+      // because _attachments is never written to the emailLog document.
+      attachments: (emailLog as any)._attachments as Array<{ filename: string; content: Buffer | string; contentType?: string }> | undefined,
+    };
 
-      const result = await smtpTransport.sendMail({
-        from: emailLog.from_name
-          ? `"${sanitizeEmailHeader(emailLog.from_name)}" <${sanitizeEmailHeader(emailLog.from)}>`
-          : sanitizeEmailHeader(emailLog.from),
-        to: Array.isArray(emailLog.to) ? emailLog.to.join(", ") : emailLog.to,
-        cc: emailLog.cc
-          ? Array.isArray(emailLog.cc)
-            ? emailLog.cc.join(", ")
-            : emailLog.cc
-          : undefined,
-        bcc: emailLog.bcc
-          ? Array.isArray(emailLog.bcc)
-            ? emailLog.bcc.join(", ")
-            : emailLog.bcc
-          : undefined,
-        replyTo: emailLog.reply_to ? sanitizeEmailHeader(emailLog.reply_to) : undefined,
-        subject: sanitizeEmailHeader(emailLog.subject),
-        html: emailLog.html,
-        text: emailLog.text,
-        attachments: (emailLog as any)._attachments || undefined,
-      });
-      messageId = result.messageId;
+    const sendResult =
+      tenantConfig.transport === "graph" && isGraphConfigured(tenantConfig.graph)
+        ? await sendEmailViaGraph(pkgCfg, pkgMsg)
+        : await sendEmailViaSmtp(pkgCfg, pkgMsg);
+
+    if (!sendResult.ok) {
+      throw new Error(sendResult.error || `${tenantConfig.transport} send failed`);
     }
+    messageId = sendResult.providerMessageId;
 
     // Update log with success (same for both transports)
     emailLog.status = "sent";
@@ -913,3 +944,10 @@ export async function getEmailStats(filter?: {
     clickRate: stats.sent > 0 ? (stats.clicked / stats.sent) * 100 : 0,
   };
 }
+
+// ============================================
+// TEST-ONLY EXPORTS (not part of public API)
+// ============================================
+
+/** @internal Exposed for unit tests only — do not use in application code. */
+export { sendEmailNow as _sendEmailNow };

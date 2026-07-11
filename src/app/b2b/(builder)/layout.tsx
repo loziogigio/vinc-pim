@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Public_Sans } from "next/font/google";
 import { getB2BSession } from "@/lib/auth/b2b-session";
-import { DashboardHeader } from "@/components/b2b/DashboardHeader";
+import { SuiteHeader } from "@/components/b2b/SuiteHeader";
 import type { B2BSessionData } from "@/lib/types/b2b";
 import { cn } from "@/components/ui/utils";
 
@@ -17,7 +17,7 @@ const publicSans = Public_Sans({
 
 /**
  * Layout for builder pages (home-builder, home-settings)
- * Includes DashboardHeader for consistent navigation
+ * Includes SuiteHeader for consistent navigation
  */
 export default async function BuilderLayout({
   children,
@@ -61,7 +61,7 @@ export default async function BuilderLayout({
 
   return (
     <div className={cn(publicSans.className, "min-h-screen bg-[#f5f6fa] text-[#5e5873]")}>
-      <DashboardHeader session={sessionData} />
+      <SuiteHeader tenant={sessionData.tenantId!} username={sessionData.username} email={sessionData.email} role={sessionData.role} companyName={sessionData.companyName} />
       {children}
     </div>
   );

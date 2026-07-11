@@ -5,6 +5,10 @@ bug-report/
 .next/
 out/
 dist/
+# vendor/ ships its own dist/ — don't exclude it
+!vendor/
+!vendor/**/
+!vendor/**
 exports/
 *-exports/
 mongodb-exports/

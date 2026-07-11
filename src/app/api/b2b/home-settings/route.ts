@@ -37,6 +37,11 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Resolve the tenant DB the same robust way GET does, so the write always
+    // targets the tenant the read came from (and not a different DB or none).
+    const auth = await authenticateTenant(request);
+    const tenantDb = auth.authenticated ? auth.tenantDb : undefined;
+
     const body = await request.json();
     const { branding, defaultCardVariant, cardStyle, cdn_credentials, smtp_settings, email_transport, graph_settings, company_info, footerHtml, footerHtmlDraft, headerConfig, headerConfigDraft, meta_tags, image_versions, lastModifiedBy } = body;
 
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
       meta_tags,
       image_versions,
       lastModifiedBy
-    });
+    }, tenantDb);
 
     if (!settings) {
       return NextResponse.json(
@@ -81,6 +86,9 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await authenticateTenant(request);
+    const tenantDb = auth.authenticated ? auth.tenantDb : undefined;
+
     const body = await request.json();
     const { companyTitle } = body;
 
@@ -91,7 +99,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const settings = await initializeHomeSettings(companyTitle);
+    const settings = await initializeHomeSettings(companyTitle, tenantDb);
 
     if (!settings) {
       return NextResponse.json(

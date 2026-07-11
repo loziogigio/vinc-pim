@@ -12,6 +12,7 @@ import {
   buildFullTag,
   isValidPrefix,
   isValidCode,
+  AGENT_TAG_PREFIX,
 } from "@/lib/constants/customer-tag";
 import { safeRegexQuery } from "@/lib/security";
 import { getTagAuth } from "./_auth";
@@ -90,6 +91,16 @@ export async function POST(req: NextRequest) {
   if (!prefix || !code || !description) {
     return NextResponse.json(
       { error: "prefix, code, and description are required" },
+      { status: 400 },
+    );
+  }
+
+  if (prefix === AGENT_TAG_PREFIX) {
+    return NextResponse.json(
+      {
+        error:
+          "The 'agente' prefix is reserved for sales-agent tags managed by the customer import and cannot be created manually.",
+      },
       { status: 400 },
     );
   }

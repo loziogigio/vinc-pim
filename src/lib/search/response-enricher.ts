@@ -8,6 +8,7 @@
 import { getPooledConnection } from '@/lib/db/connection';
 import type { SolrProduct, PackagingData } from '@/lib/types/search';
 import type { DynamicBlock } from '@/lib/types/dynamic-blocks';
+import { embedPromotionsInPackaging } from '@/lib/pim/embed-promotions';
 
 // ============================================
 // CACHE CONFIGURATION
@@ -280,28 +281,11 @@ export async function loadProductData(
   return map;
 }
 
-/**
- * Compute per-packaging promotions from product-level promotions.
- * Each packaging option gets the promotions that target it:
- * - target_pkg_ids empty/undefined → all sellable packaging (is_sellable !== false)
- * - target_pkg_ids set → only those specific pkg_ids
- */
-export function embedPromotionsInPackaging(
-  packagingOptions: PackagingData[] | undefined,
-  promotions: any[] | undefined
-): PackagingData[] | undefined {
-  if (!packagingOptions?.length || !promotions?.length) return packagingOptions;
-
-  return packagingOptions.map((pkg: any) => ({
-    ...pkg,
-    promotions: promotions.filter((promo: any) => {
-      if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
-        return pkg.is_sellable !== false;
-      }
-      return promo.target_pkg_ids.includes(pkg.pkg_id);
-    }),
-  }));
-}
+// Per-packaging promotion projection now lives in a shared, dependency-free helper
+// (@/lib/pim/embed-promotions) so the detail GET, this search enricher, and the
+// Solr indexer all agree. Imported at the top; re-exported here for existing
+// import paths (e.g. the embed-promotions unit test).
+export { embedPromotionsInPackaging };
 
 // ============================================
 // ENTITY ENRICHERS
@@ -593,7 +577,7 @@ function getLocalizedString(value: any, lang: string): string | undefined {
  * Extract attributes for the requested language
  * MongoDB stores: { it: [...], en: [...] } or flat { slug: { label, value, order } }
  */
-function getLocalizedAttributes(attributes: any, lang: string): any {
+export function getLocalizedAttributes(attributes: any, lang: string): any {
   if (!attributes) return undefined;
 
   // Check if it's language-keyed format: { it: [...], en: [...] }
@@ -655,7 +639,7 @@ function getLocalizedTechnicalSpecs(specs: any, lang: string): any[] | undefined
  * Filter attributes to remove those marked hide_in_commerce
  * Only visible attributes (hide_in_commerce !== true) are returned
  */
-function filterVisibleAttributes(attributes: any): any {
+export function filterVisibleAttributes(attributes: any): any {
   if (!attributes || typeof attributes !== 'object') return attributes;
 
   const filtered: any = {};
@@ -670,8 +654,9 @@ function filterVisibleAttributes(attributes: any): any {
     const hideInCommerce = (attrData as any).hide_in_commerce ?? false;
 
     if (!hideInCommerce) {
-      // Remove hide_in_commerce from output (internal PIM only)
-      const { hide_in_commerce, ...cleanAttr } = attrData as any;
+      // Remove internal PIM-only flags from output (never ship them to the client).
+      // hide_in_facets only affects index-time facet emission, not display.
+      const { hide_in_commerce, hide_in_facets, ...cleanAttr } = attrData as any;
       filtered[slug] = cleanAttr;
     }
   }

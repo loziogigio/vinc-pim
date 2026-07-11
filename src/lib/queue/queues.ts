@@ -246,6 +246,24 @@ export const emailQueue = new Queue("email", {
   },
 });
 
+// SMS queue (outbound text messages via Brevo or other SMS providers)
+export const smsQueue = new Queue("sms", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+    removeOnComplete: {
+      count: 100,
+    },
+    removeOnFail: {
+      count: 500,
+    },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
@@ -260,4 +278,5 @@ export const QUEUE_NAMES = {
   CUSTOMER_IMPORT: "customer-import-queue",
   PORTAL_USER_IMPORT: "portal-user-import-queue",
   EMAIL: "email",
+  SMS: "sms",
 } as const;

@@ -67,7 +67,7 @@ export function B2BLoginForm({ tenant: initialTenant }: B2BLoginFormProps) {
         <UILanguageSwitcher />
       </div>
       <div className="space-y-1">
-        <h1 className="text-[1.625rem] font-semibold tracking-tight text-foreground">
+        <h1 className="display text-[1.75rem] font-bold tracking-tight text-foreground">
           {t("login.welcomeBack")}
         </h1>
         <p className="text-sm text-muted-foreground">

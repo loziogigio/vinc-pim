@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, Image as ImageIcon, Video, Box, Type, ExternalLink } from "lucide-react";
+import { GripVertical, Trash2, Image as ImageIcon, Video, Box, Type, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { BlockElement, BlockElementKind, MediaElement, TextElement } from "@/lib/types/dynamic-blocks";
 import { normalizeUrl } from "@/lib/validation/dynamic-blocks";
@@ -31,6 +31,11 @@ function changeKind(element: BlockElement, kind: BlockElementKind): BlockElement
   }
   const media = element.kind === "text" ? { url: "" } : element.media;
   return { ...base, kind, media };
+}
+
+/** Resolve an element's public visibility (missing flag → public). */
+export function resolveElementIsPublic(element: BlockElement): boolean {
+  return element.is_public !== false;
 }
 
 export function ElementRow({ entityCode, element, onChange, onDelete, disabled }: ElementRowProps) {
@@ -169,6 +174,24 @@ export function ElementRow({ entityCode, element, onChange, onDelete, disabled }
             </label>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => onChange({ ...element, is_public: !resolveElementIsPublic(element) })}
+          disabled={disabled}
+          className="mt-1 p-1 text-muted-foreground hover:bg-accent rounded disabled:opacity-50"
+          title={
+            resolveElementIsPublic(element)
+              ? t("pages.pim.dynamicBlocks.visibleToAll")
+              : t("pages.pim.dynamicBlocks.hiddenFromPublic")
+          }
+        >
+          {resolveElementIsPublic(element) ? (
+            <Eye className="h-4 w-4" />
+          ) : (
+            <EyeOff className="h-4 w-4 text-amber-600" />
+          )}
+        </button>
 
         <button
           type="button"

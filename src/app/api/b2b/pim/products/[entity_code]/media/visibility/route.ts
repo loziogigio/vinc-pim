@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getB2BSession } from "@/lib/auth/b2b-session";
+import { connectWithModels } from "@/lib/db/connection";
+
+/** Validate the PATCH body. Returns null on any invalid shape. */
+export function parseVisibilityBody(
+  body: any,
+): { mediaIdentifier: string; is_public: boolean } | null {
+  const mediaIdentifier = body?.media_id || body?.cdn_key;
+  if (!mediaIdentifier || typeof mediaIdentifier !== "string") return null;
+  if (typeof body?.is_public !== "boolean") return null;
+  return { mediaIdentifier, is_public: body.is_public };
+}
+
+/**
+ * PATCH /api/b2b/pim/products/[entity_code]/media/visibility
+ * Toggle a media item's public visibility (is_public)
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ entity_code: string }> }
+) {
+  try {
+    // Auth check
+    const session = await getB2BSession();
+    if (!session || !session.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { entity_code } = await params;
+    const parsed = parseVisibilityBody(await req.json());
+
+    if (!parsed) {
+      return NextResponse.json(
+        { error: "media_id (or cdn_key) and a boolean is_public are required" },
+        { status: 400 }
+      );
+    }
+
+    const { mediaIdentifier, is_public } = parsed;
+
+    // Connect to tenant database
+    const tenantDb = `vinc-${session.tenantId}`;
+    const { PIMProduct: PIMProductModel } = await connectWithModels(tenantDb);
+
+    // Get current product
+    const product = await PIMProductModel.findOne({
+      entity_code,
+      // No wholesaler_id - database provides isolation
+      isCurrent: true,
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Find and update the media item by _id (primary) or cdn_key (fallback)
+    const media = product.media || [];
+    const mediaIndex = media.findIndex((m: any) =>
+      m._id?.toString() === mediaIdentifier || m.cdn_key === mediaIdentifier
+    );
+
+    if (mediaIndex === -1) {
+      return NextResponse.json({ error: "Media file not found" }, { status: 404 });
+    }
+
+    // Update the visibility flag
+    media[mediaIndex].is_public = is_public;
+
+    // Save and return updated product
+    const updatedProduct = await PIMProductModel.findOneAndUpdate(
+      {
+        _id: product._id,
+      },
+      {
+        $set: {
+          media,
+          updated_at: new Date(),
+          last_updated_by: "manual",
+        },
+      },
+      { new: true }
+    ).lean();
+
+    return NextResponse.json({
+      success: true,
+      message: "Visibility updated successfully",
+      media_id: mediaIdentifier,
+      is_public,
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Error updating media visibility:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to update media visibility",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}

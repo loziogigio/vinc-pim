@@ -3,15 +3,18 @@
  *
  * Main service for sending web push notifications.
  * Handles both immediate sending and queue-based delivery.
+ *
+ * Config is now resolved per sales-channel via resolveNotificationConfig
+ * and the actual send is delegated to sendWebPush from vinc-notifications/server.
  */
 
-import * as webpush from "web-push";
-import { WebPushError } from "web-push";
+import { sendWebPush } from "vinc-notifications/server";
+import type { WebPushConfig } from "vinc-notifications";
 import { Queue } from "bullmq";
 import { nanoid } from "nanoid";
 import { connectToAdminDatabase } from "@/lib/db/admin-connection";
 import { getPushLogModel, type IPushLogDocument } from "@/lib/db/models/push-log";
-import { getConfiguredWebPush, getWebPushSettings, isWebPushEnabled } from "./vapid.service";
+import { resolveNotificationConfig } from "@/lib/notifications/resolve-config";
 import { getActiveSubscriptions, incrementFailureCount, resetFailureCount } from "./subscription.service";
 import type {
   SendPushOptions,
@@ -98,61 +101,56 @@ async function updatePushLogStatus(
 // ============================================
 
 /**
- * Send push notification to a single subscription
+ * Send push notification to a single subscription using the package transport.
+ * Config is passed in from the caller (resolved per channel).
  */
 async function sendToSubscription(
+  cfg: WebPushConfig,
   tenantDb: string,
   subscriptionId: string,
   endpoint: string,
   keys: { p256dh: string; auth: string },
-  payload: PushPayload,
-  pushLogId?: string
+  payload: PushPayload
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const wp = await getConfiguredWebPush(tenantDb);
-    if (!wp) {
-      return { success: false, error: "Web push not configured" };
-    }
+  const result = await sendWebPush(cfg, { endpoint, keys }, {
+    title: payload.title,
+    body: payload.body,
+    icon: payload.icon,
+    badge: payload.badge,
+    action_url: payload.action_url,
+    push_id: payload.push_id,
+    timestamp: payload.timestamp,
+    data: payload.data,
+  });
 
-    const subscription: webpush.PushSubscription = {
-      endpoint,
-      keys
-    };
-
-    await wp.sendNotification(subscription, JSON.stringify(payload));
-
+  if (result.ok) {
     // Reset failure count on success
     await resetFailureCount(tenantDb, subscriptionId);
-
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    // Handle specific web push errors
-    if (error instanceof WebPushError) {
-      // 410 Gone or 404 Not Found = subscription expired
-      if (error.statusCode === 410 || error.statusCode === 404) {
-        await incrementFailureCount(tenantDb, subscriptionId);
-        return { success: false, error: "Subscription expired" };
-      }
-    }
-
-    // Increment failure count
-    await incrementFailureCount(tenantDb, subscriptionId);
-
-    return { success: false, error: errorMessage };
   }
+
+  // 410 Gone or 404 Not Found → subscription expired; package sets permanentlyInvalid
+  await incrementFailureCount(tenantDb, subscriptionId);
+
+  if (result.permanentlyInvalid) {
+    return { success: false, error: "Subscription expired" };
+  }
+
+  return { success: false, error: result.error || "Unknown error" };
 }
 
 /**
  * Send push notifications to multiple subscriptions
  */
 export async function sendPush(options: SendPushOptions): Promise<SendPushResult> {
-  const { tenantDb, queue = false } = options;
+  const { tenantDb, queue = false, channel } = options;
 
-  // Check if web push is enabled
-  const enabled = await isWebPushEnabled(tenantDb);
-  if (!enabled) {
+  // Resolve per-channel config (falls back to global homesettings, then env)
+  const resolved = await resolveNotificationConfig(tenantDb, channel);
+  const cfg = resolved.webPush;
+
+  // Check if web push is enabled for this channel
+  if (!cfg?.enabled || !cfg?.vapidPublicKey || !cfg?.vapidPrivateKey) {
     return {
       success: false,
       sent: 0,
@@ -160,9 +158,6 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
       errors: [{ subscriptionId: "", error: "Web push not enabled for this tenant" }]
     };
   }
-
-  // Get web push settings for defaults
-  const settings = await getWebPushSettings(tenantDb);
 
   // Get target subscriptions
   const subscriptions = await getActiveSubscriptions(tenantDb, {
@@ -182,7 +177,7 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
 
   // If queue mode, add to queue
   if (queue) {
-    const pushQueue = getPushQueue();
+    const pushQ = getPushQueue();
     let queued = 0;
 
     for (const sub of subscriptions) {
@@ -192,8 +187,8 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
         tenant_db: tenantDb,
         title: options.title,
         body: options.body,
-        icon: options.icon || settings?.default_icon,
-        badge: options.badge || settings?.default_badge,
+        icon: options.icon || cfg.defaultIcon,
+        badge: options.badge || cfg.defaultBadge,
         action_url: options.action_url,
         data: options.data,
         template_id: options.templateId,
@@ -202,7 +197,7 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
       });
 
       // Add to queue
-      await pushQueue.add(
+      await pushQ.add(
         "send-push",
         {
           pushLogId: log.push_id,
@@ -210,12 +205,13 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
           subscriptionId: sub.subscription_id,
           endpoint: sub.endpoint,
           keys: sub.keys,
+          channel,
           payload: {
             push_id: log.push_id,
             title: options.title,
             body: options.body,
-            icon: options.icon || settings?.default_icon,
-            badge: options.badge || settings?.default_badge,
+            icon: options.icon || cfg.defaultIcon,
+            badge: options.badge || cfg.defaultBadge,
             action_url: options.action_url,
             data: options.data,
             timestamp: Date.now()
@@ -249,8 +245,8 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
       tenant_db: tenantDb,
       title: options.title,
       body: options.body,
-      icon: options.icon || settings?.default_icon,
-      badge: options.badge || settings?.default_badge,
+      icon: options.icon || cfg.defaultIcon,
+      badge: options.badge || cfg.defaultBadge,
       action_url: options.action_url,
       data: options.data,
       template_id: options.templateId,
@@ -262,20 +258,20 @@ export async function sendPush(options: SendPushOptions): Promise<SendPushResult
       push_id: log.push_id,
       title: options.title,
       body: options.body,
-      icon: options.icon || settings?.default_icon,
-      badge: options.badge || settings?.default_badge,
+      icon: options.icon || cfg.defaultIcon,
+      badge: options.badge || cfg.defaultBadge,
       action_url: options.action_url,
       data: options.data,
       timestamp: Date.now()
     };
 
     const result = await sendToSubscription(
+      cfg,
       tenantDb,
       sub.subscription_id,
       sub.endpoint,
       sub.keys,
-      payload,
-      log.push_id
+      payload
     );
 
     if (result.success) {
@@ -309,17 +305,20 @@ export async function processQueuedPush(jobData: {
   endpoint: string;
   keys: { p256dh: string; auth: string };
   payload: PushPayload;
+  channel?: string;
 }): Promise<boolean> {
-  const { pushLogId, tenantDb, subscriptionId, endpoint, keys, payload } = jobData;
+  const { pushLogId, tenantDb, subscriptionId, endpoint, keys, payload, channel } = jobData;
 
-  const result = await sendToSubscription(
-    tenantDb,
-    subscriptionId,
-    endpoint,
-    keys,
-    payload,
-    pushLogId
-  );
+  // Re-resolve config (cached for 60 s, so this is cheap)
+  const resolved = await resolveNotificationConfig(tenantDb, channel);
+  const cfg = resolved.webPush;
+
+  if (!cfg?.enabled || !cfg?.vapidPublicKey || !cfg?.vapidPrivateKey) {
+    await updatePushLogStatus(pushLogId, "failed", "Web push not configured");
+    return false;
+  }
+
+  const result = await sendToSubscription(cfg, tenantDb, subscriptionId, endpoint, keys, payload);
 
   await updatePushLogStatus(pushLogId, result.success ? "sent" : "failed", result.error);
 

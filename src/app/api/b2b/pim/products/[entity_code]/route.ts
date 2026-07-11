@@ -3,9 +3,11 @@ import { getB2BSession } from "@/lib/auth/b2b-session";
 import { connectWithModels } from "@/lib/db/connection";
 import { SolrAdapter, loadAdapterConfigs } from "@/lib/adapters";
 import { calculateCompletenessScore, findCriticalIssues } from "@/lib/pim/scorer";
+import { embedPromotionsInPackaging } from "@/lib/pim/embed-promotions";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
 import { validateDynamicBlocks } from "@/lib/validation/dynamic-blocks";
 import { getTenantLanguageCodes } from "@/lib/services/tenant-languages";
+import { propagateProductEdit } from "@/lib/services/product-channel-sync";
 
 /**
  * GET /api/b2b/pim/products/[entity_code]?version=X
@@ -211,16 +213,14 @@ export async function GET(
       }
     }
 
-    // Compute per-packaging promotions from product-level promotions
-    if (product.promotions?.length && product.packaging_options?.length) {
-      for (const pkg of product.packaging_options) {
-        pkg.promotions = product.promotions.filter((promo: any) => {
-          if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
-            return pkg.is_sellable !== false;
-          }
-          return promo.target_pkg_ids.includes(pkg.pkg_id);
-        });
-      }
+    // Project product-level promotions onto packagings. Explicit packaging-level
+    // promotions (e.g. sync-set agent/customer tag_filter) take precedence — see
+    // embedPromotionsInPackaging.
+    if (product.packaging_options?.length) {
+      product.packaging_options = embedPromotionsInPackaging(
+        product.packaging_options,
+        product.promotions,
+      );
     }
 
     const response: any = { product };
@@ -253,6 +253,7 @@ export async function PATCH(
     // Check for API key authentication first
     const authMethod = req.headers.get("x-auth-method");
     let tenantDb: string;
+    let tenantId: string;
 
     if (authMethod === "api-key") {
       const apiKeyResult = await verifyAPIKeyFromRequest(req, "write");
@@ -262,13 +263,15 @@ export async function PATCH(
           { status: apiKeyResult.statusCode || 401 }
         );
       }
+      tenantId = apiKeyResult.tenantId!;
       tenantDb = apiKeyResult.tenantDb!;
     } else {
       const session = await getB2BSession();
       if (!session || !session.tenantId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      tenantDb = `vinc-${session.tenantId}`;
+      tenantId = session.tenantId;
+      tenantDb = `vinc-${tenantId}`;
     }
 
     const { PIMProduct: PIMProductModel, Tag: TagModel, Brand: BrandModel } = await connectWithModels(tenantDb);
@@ -503,6 +506,18 @@ export async function PATCH(
       tags: product.tags,
       synonym_keys: product.synonym_keys,
     });
+
+    // Propagate the edit downstream so the storefront reflects it: Solr synchronously
+    // (so /search/search is fresh immediately), every other enabled channel via the
+    // sync queue. Best-effort — a channel failure must never fail the edit; the Solr
+    // gap/consolidation job is the backstop.
+    if (product.status === "published") {
+      try {
+        await propagateProductEdit(entity_code, tenantId, tenantDb);
+      } catch (e) {
+        console.error(`[PATCH] channel sync failed for ${entity_code}`, e);
+      }
+    }
 
     return NextResponse.json({
       success: true,

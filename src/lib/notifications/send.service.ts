@@ -13,10 +13,12 @@ import {
   previewTemplate,
 } from "./template.service";
 import { sendEmail } from "@/lib/email";
-import { sendPush, isWebPushEnabled } from "@/lib/push";
-import { sendFCM, isFCMEnabled } from "@/lib/fcm";
+import { sendPush } from "@/lib/push";
+import { sendFCM } from "@/lib/fcm";
 import type { SendFCMResult } from "@/lib/fcm/types";
 import { createInAppNotification } from "./in-app.service";
+import { sendSms } from "@/lib/sms";
+import type { SendSmsResult } from "@/lib/sms";
 import type { IB2CStorefront } from "@/lib/db/models/b2c-storefront";
 import { DEFAULT_CHANNEL } from "@/lib/constants/channel";
 import type { NotificationTrigger } from "@/lib/db/models/notification-template";
@@ -66,6 +68,10 @@ export interface SendNotificationOptions {
   targetUserType?: NotificationUserType;
   /** Typed payload for in-app/mobile notifications (generic, product, order, price) */
   payload?: NotificationPayload;
+  /** Sales-channel code for per-channel email config resolution (default: "default") */
+  channel?: string;
+  /** Recipient phone number for SMS dispatch (E.164 format, e.g. "+39333...") */
+  smsTo?: string;
 }
 
 export interface SendNotificationResult {
@@ -79,6 +85,8 @@ export interface SendNotificationResult {
   fcmResult?: SendFCMResult;
   /** In-app notification ID if created */
   inAppNotificationId?: string;
+  /** SMS log ID if SMS was dispatched */
+  smsLogId?: string;
 }
 
 // ============================================
@@ -124,6 +132,7 @@ export async function sendNotification(
     targetUserId,
     targetUserType = "b2b_user",
     payload,
+    smsTo,
   } = options;
 
   try {
@@ -167,6 +176,7 @@ export async function sendNotification(
       replyTo,
       immediate,
       tenantDb,
+      channel: options.channel,
     });
 
     if (result.success) {
@@ -178,39 +188,36 @@ export async function sendNotification(
 
     if (template.channels?.web_push?.enabled) {
       try {
-        const pushEnabled = await isWebPushEnabled(tenantDb);
+        // Replace variables in push content
+        let pushTitle = template.channels.web_push.title || "";
+        let pushBody = template.channels.web_push.body || "";
+        let pushActionUrl = template.channels.web_push.action_url || "";
 
-        if (pushEnabled) {
-          // Replace variables in push content
-          let pushTitle = template.channels.web_push.title || "";
-          let pushBody = template.channels.web_push.body || "";
-          let pushActionUrl = template.channels.web_push.action_url || "";
+        for (const [key, value] of Object.entries(variables)) {
+          const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+          pushTitle = pushTitle.replace(pattern, value);
+          pushBody = pushBody.replace(pattern, value);
+          pushActionUrl = pushActionUrl.replace(pattern, value);
+        }
 
-          for (const [key, value] of Object.entries(variables)) {
-            const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
-            pushTitle = pushTitle.replace(pattern, value);
-            pushBody = pushBody.replace(pattern, value);
-            pushActionUrl = pushActionUrl.replace(pattern, value);
-          }
+        pushResult = await sendPush({
+          tenantDb,
+          title: pushTitle,
+          body: pushBody,
+          icon: template.channels.web_push.icon,
+          action_url: pushActionUrl || undefined,
+          userIds: pushUserIds,
+          preferenceType: pushPreferenceType,
+          templateId: template.template_id,
+          trigger,
+          queue: queuePush,
+          channel: options.channel,
+        });
 
-          pushResult = await sendPush({
-            tenantDb,
-            title: pushTitle,
-            body: pushBody,
-            icon: template.channels.web_push.icon,
-            action_url: pushActionUrl || undefined,
-            userIds: pushUserIds,
-            preferenceType: pushPreferenceType,
-            templateId: template.template_id,
-            trigger,
-            queue: queuePush,
-          });
-
-          if (pushResult.sent || pushResult.queued) {
-            console.log(
-              `[Notifications] Push ${trigger}: ${pushResult.queued ? `queued ${pushResult.queued}` : `sent ${pushResult.sent}`}`
-            );
-          }
+        if (pushResult.sent || pushResult.queued) {
+          console.log(
+            `[Notifications] Push ${trigger}: ${pushResult.queued ? `queued ${pushResult.queued}` : `sent ${pushResult.sent}`}`
+          );
         }
       } catch (pushError) {
         console.error(`[Notifications] Push error for ${trigger}:`, pushError);
@@ -223,39 +230,36 @@ export async function sendNotification(
 
     if (template.channels?.mobile?.enabled) {
       try {
-        const fcmEnabled = await isFCMEnabled(tenantDb);
+        // Replace variables in mobile content
+        let mobileTitle = template.channels.mobile.title || "";
+        let mobileBody = template.channels.mobile.body || "";
+        let mobileActionUrl = template.channels.mobile.action_url || "";
 
-        if (fcmEnabled) {
-          // Replace variables in mobile content
-          let mobileTitle = template.channels.mobile.title || "";
-          let mobileBody = template.channels.mobile.body || "";
-          let mobileActionUrl = template.channels.mobile.action_url || "";
+        for (const [key, value] of Object.entries(variables)) {
+          const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+          mobileTitle = mobileTitle.replace(pattern, value);
+          mobileBody = mobileBody.replace(pattern, value);
+          mobileActionUrl = mobileActionUrl.replace(pattern, value);
+        }
 
-          for (const [key, value] of Object.entries(variables)) {
-            const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
-            mobileTitle = mobileTitle.replace(pattern, value);
-            mobileBody = mobileBody.replace(pattern, value);
-            mobileActionUrl = mobileActionUrl.replace(pattern, value);
-          }
+        fcmResult = await sendFCM({
+          tenantDb,
+          title: mobileTitle,
+          body: mobileBody,
+          icon: template.channels.mobile.icon,
+          action_url: mobileActionUrl || undefined,
+          userIds: pushUserIds,
+          preferenceType: pushPreferenceType,
+          templateId: template.template_id,
+          trigger,
+          queue: queuePush,
+          channel: options.channel,
+        });
 
-          fcmResult = await sendFCM({
-            tenantDb,
-            title: mobileTitle,
-            body: mobileBody,
-            icon: template.channels.mobile.icon,
-            action_url: mobileActionUrl || undefined,
-            userIds: pushUserIds,
-            preferenceType: pushPreferenceType,
-            templateId: template.template_id,
-            trigger,
-            queue: queuePush,
-          });
-
-          if (fcmResult.sent || fcmResult.queued) {
-            console.log(
-              `[Notifications] FCM ${trigger}: ${fcmResult.queued ? `queued ${fcmResult.queued}` : `sent ${fcmResult.sent}`}`
-            );
-          }
+        if (fcmResult.sent || fcmResult.queued) {
+          console.log(
+            `[Notifications] FCM ${trigger}: ${fcmResult.queued ? `queued ${fcmResult.queued}` : `sent ${fcmResult.sent}`}`
+          );
         }
       } catch (fcmError) {
         console.error(`[Notifications] FCM error for ${trigger}:`, fcmError);
@@ -300,6 +304,40 @@ export async function sendNotification(
       }
     }
 
+    // 8. Send SMS if template_channels.sms is enabled and a recipient phone was provided
+    let smsLogId: string | undefined;
+
+    const smsChannel = template.template_channels?.sms;
+    if (smsChannel?.enabled && smsTo) {
+      try {
+        // Replace variables in SMS body
+        let smsBody = smsChannel.body || "";
+
+        for (const [key, value] of Object.entries(variables)) {
+          const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+          smsBody = smsBody.replace(pattern, value);
+        }
+
+        const smsResult: SendSmsResult = await sendSms({
+          to: smsTo,
+          body: smsBody,
+          tenantDb,
+          channel: options.channel,
+          immediate,
+        });
+
+        if (smsResult.ok) {
+          smsLogId = smsResult.logId;
+          console.log(`[Notifications] SMS ${trigger} ${immediate ? "sent" : "queued"} to ${smsTo}`);
+        } else {
+          console.warn(`[Notifications] SMS ${trigger} failed: ${smsResult.error}`);
+        }
+      } catch (smsError) {
+        console.error(`[Notifications] SMS error for ${trigger}:`, smsError);
+        // Don't fail the overall notification if SMS fails
+      }
+    }
+
     return {
       success: result.success,
       emailId: result.emailId,
@@ -308,6 +346,7 @@ export async function sendNotification(
       pushResult,
       fcmResult,
       inAppNotificationId,
+      smsLogId,
     };
   } catch (error) {
     console.error(`[Notifications] Error sending ${trigger}:`, error);

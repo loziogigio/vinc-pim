@@ -1,0 +1,1 @@
+{"version":3,"file":"email-graph.d.ts","sourceRoot":"","sources":["../../src/transports/email-graph.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,WAAW,EAAE,UAAU,EAAE,MAAM,aAAa,CAAC;AAC3D,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,iBAAiB,CAAC;AA2FpD,wBAAsB,iBAAiB,CACrC,GAAG,EAAE,WAAW,EAChB,GAAG,EAAE,YAAY,GAChB,OAAO,CAAC,UAAU,CAAC,CAwErB"}

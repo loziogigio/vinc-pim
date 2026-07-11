@@ -1,0 +1,40 @@
+export const NOTIFICATION_SETTINGS_FIELDS = [
+    // email
+    { slug: "email_enabled", label: "Email attive", type: "checkbox" },
+    { slug: "email_transport", label: "Trasporto email", type: "select",
+        options: [{ value: "smtp", label: "SMTP" }, { value: "graph", label: "Microsoft Graph" }] },
+    { slug: "email_from", label: "Mittente (email)", type: "text" },
+    { slug: "email_from_name", label: "Mittente (nome)", type: "text" },
+    { slug: "smtp_host", label: "Host SMTP", type: "text" },
+    { slug: "smtp_port", label: "Porta SMTP", type: "number" },
+    { slug: "smtp_secure", label: "SMTP sicuro (TLS)", type: "checkbox" },
+    { slug: "smtp_user", label: "Utente SMTP", type: "text" },
+    { slug: "smtp_password", label: "Password SMTP", type: "secret", secret: true },
+    { slug: "graph_azure_tenant_id", label: "Azure Tenant ID", type: "text" },
+    { slug: "graph_client_id", label: "Graph Client ID", type: "text" },
+    { slug: "graph_client_secret", label: "Graph Client Secret", type: "secret", secret: true },
+    { slug: "graph_sender_email", label: "Graph mittente (email)", type: "text" },
+    { slug: "graph_sender_name", label: "Graph mittente (nome)", type: "text" },
+    // sms
+    { slug: "sms_enabled", label: "SMS attivi", type: "checkbox" },
+    { slug: "sms_provider", label: "Provider SMS", type: "select",
+        options: [{ value: "brevo", label: "Brevo" }, { value: "twilio", label: "Twilio" }, { value: "vonage", label: "Vonage" }] },
+    { slug: "sms_sender_id", label: "Mittente SMS", type: "text" },
+    { slug: "sms_api_key", label: "API key SMS", type: "secret", secret: true },
+    { slug: "sms_api_secret", label: "API secret SMS", type: "secret", secret: true },
+    // web push
+    { slug: "webpush_enabled", label: "Web push attive", type: "checkbox" },
+    { slug: "webpush_vapid_public_key", label: "VAPID public key", type: "text" },
+    { slug: "webpush_vapid_private_key", label: "VAPID private key", type: "secret", secret: true },
+    { slug: "webpush_vapid_subject", label: "VAPID subject (mailto: o URL)", type: "text" },
+    { slug: "webpush_default_icon", label: "Icona default", type: "text" },
+    { slug: "webpush_default_badge", label: "Badge default", type: "text" },
+    // mobile push (FCM)
+    { slug: "fcm_enabled", label: "Push mobile attive", type: "checkbox" },
+    { slug: "fcm_project_id", label: "FCM project ID", type: "text" },
+    { slug: "fcm_client_email", label: "FCM client email", type: "text" },
+    { slug: "fcm_private_key", label: "FCM private key", type: "secret", secret: true },
+    { slug: "fcm_default_icon", label: "Icona default", type: "text" },
+    { slug: "fcm_default_color", label: "Colore default", type: "text" },
+];
+//# sourceMappingURL=fields.js.map

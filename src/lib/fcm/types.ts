@@ -102,6 +102,8 @@ export interface SendFCMOptions {
   channelId?: string;
   /** Time-to-live in seconds */
   ttl?: number;
+  /** Sales-channel code for per-channel config resolution (default: "default") */
+  channel?: string;
 }
 
 export interface SendFCMResult {
@@ -141,6 +143,8 @@ export interface FCMJobData {
   badge?: number;
   channelId?: string;
   ttl?: number;
+  /** Sales-channel code for per-channel config resolution in the worker */
+  channel?: string;
 }
 
 // ============================================

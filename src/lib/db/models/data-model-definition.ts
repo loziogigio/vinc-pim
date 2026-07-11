@@ -14,7 +14,7 @@ import { Schema } from "mongoose";
 // TYPES
 // ============================================
 
-export type DataModelRelation = "portal_user" | "customer";
+export type DataModelRelation = "portal_user" | "customer" | "channel";
 export type DataModelCardinality = "single" | "multiple";
 
 export type DataModelFieldType =
@@ -26,7 +26,8 @@ export type DataModelFieldType =
   | "number"
   | "date"
   | "object"
-  | "array_of_objects";
+  | "array_of_objects"
+  | "secret";
 
 export interface DataModelFieldOption {
   label: string;
@@ -68,6 +69,12 @@ export interface IDataModelDefinition {
   /** When true, the b2b storefront `/me` read endpoints expose this model */
   readable_by_end_user: boolean;
   enabled: boolean;
+  /**
+   * Optional URL (e.g. "/api/b2b/notifications/test-send") that the admin UI
+   * renders as a "Test" action button on the record form. When set, the form
+   * POSTs `{ channel, deliveryChannel, to }` to this endpoint and shows the result.
+   */
+  test_action?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -133,7 +140,7 @@ const DataModelDefinitionSchema = new Schema(
     relation: {
       type: String,
       required: true,
-      enum: ["portal_user", "customer"],
+      enum: ["portal_user", "customer", "channel"],
     },
     cardinality: {
       type: String,
@@ -145,6 +152,7 @@ const DataModelDefinitionSchema = new Schema(
     external_ref_field: { type: String },
     readable_by_end_user: { type: Boolean, default: true },
     enabled: { type: Boolean, default: true },
+    test_action: { type: String },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -226,4 +234,40 @@ export function validateFieldsTree(fields: DataModelField[] | undefined): void {
       validateFieldsTree(f.fields);
     }
   }
+}
+
+/**
+ * relation_id stored on every record of a `relation: "channel"` model.
+ * The real scope key for channel models is the record's `channel` field;
+ * relation_id is a constant sentinel so the `single` unique index
+ * `(relation_id, channel)` yields exactly one config record per channel.
+ */
+export const CHANNEL_RELATION_ID = "_channel";
+
+/** True when a definition is scoped to a sales channel rather than an entity. */
+export function isChannelRelation(relation: DataModelRelation): boolean {
+  return relation === "channel";
+}
+
+/**
+ * Normalize a definition create payload for channel models: they are always
+ * `single` cardinality and apply to all channels (channel `"*"`), because the
+ * record's own `channel` field carries the scope. No-op for other relations.
+ */
+export function applyChannelRelationDefaults<
+  T extends { relation: DataModelRelation; cardinality?: DataModelCardinality; channel?: string }
+>(input: T): T {
+  if (input.relation !== "channel") return input;
+  return { ...input, cardinality: "single", channel: "*" };
+}
+
+/**
+ * Resolve the relation_id to persist for a record. Channel models pin it to the
+ * sentinel (ignoring any client-supplied value); other relations use the supplied id.
+ */
+export function resolveRecordRelationId(
+  relation: DataModelRelation,
+  suppliedRelationId: string
+): string {
+  return relation === "channel" ? CHANNEL_RELATION_ID : suppliedRelationId;
 }

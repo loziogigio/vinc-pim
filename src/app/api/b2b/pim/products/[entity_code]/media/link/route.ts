@@ -119,6 +119,7 @@ export async function POST(
       uploaded_by: session.userId,
       is_external_link: true,
       position: maxPosition + 1,
+      is_public: true,
     };
 
     // Update product with new media link

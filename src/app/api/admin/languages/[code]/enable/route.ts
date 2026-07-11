@@ -6,7 +6,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
-import { refreshLanguageCache } from "@/services/language.service";
 import { addLanguageFieldsToSolr } from "@/services/solr-schema.service";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { verifyAPIKeyFromRequest } from "@/lib/auth/api-key-auth";
@@ -73,9 +72,6 @@ export async function POST(
     // Enable language
     language.isEnabled = true;
     await language.save();
-
-    // Refresh cache
-    await refreshLanguageCache();
 
     const result: any = {
       success: true,

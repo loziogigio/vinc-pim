@@ -61,6 +61,7 @@ import { PaymentTransactionSchema } from "./models/payment-transaction";
 import { TenantPaymentConfigSchema } from "./models/tenant-payment-config";
 import { RecurringContractSchema } from "./models/recurring-contract";
 import { SalesChannelSchema } from "./models/sales-channel";
+import { SubscriptionPlanSchema } from "./models/subscription-plan";
 import { BatchSyncLogSchema } from "./models/batch-sync-log";
 import { B2CPageSchema } from "./models/b2c-page";
 import { FormSubmissionSchema } from "./models/form-submission";
@@ -84,6 +85,8 @@ import {
   type DataModelField,
 } from "./models/data-model-definition";
 import { RoleSchema } from "./models/role";
+import { DealSchema } from "./models/deal";
+import { SmsLogSchema } from "./models/sms-log";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -141,6 +144,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   TenantPaymentConfig: TenantPaymentConfigSchema,
   RecurringContract: RecurringContractSchema,
   SalesChannel: SalesChannelSchema,
+  SubscriptionPlan: SubscriptionPlanSchema,
   BatchSyncLog: BatchSyncLogSchema,
   B2CPage: B2CPageSchema,
   FormSubmission: FormSubmissionSchema,
@@ -159,6 +163,8 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   BlogCategory: BlogCategorySchema,
   BlogTag: BlogTagSchema,
   DataModelDefinition: DataModelDefinitionSchema,
+  Deal: DealSchema,
+  SmsLog: SmsLogSchema,
 };
 
 /**
@@ -258,6 +264,7 @@ export async function getTenantModels(dbName: string) {
     TenantPaymentConfig: connection.models.TenantPaymentConfig,
     RecurringContract: connection.models.RecurringContract,
     SalesChannel: connection.models.SalesChannel,
+    SubscriptionPlan: connection.models.SubscriptionPlan,
     BatchSyncLog: connection.models.BatchSyncLog,
     B2CPage: connection.models.B2CPage,
     FormSubmission: connection.models.FormSubmission,
@@ -276,6 +283,8 @@ export async function getTenantModels(dbName: string) {
     BlogCategory: connection.models.BlogCategory,
     BlogTag: connection.models.BlogTag,
     DataModelDefinition: connection.models.DataModelDefinition,
+    Deal: connection.models.Deal,
+    SmsLog: connection.models.SmsLog,
   };
 }
 
@@ -343,6 +352,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     TenantPaymentConfig: connection.models.TenantPaymentConfig,
     RecurringContract: connection.models.RecurringContract,
     SalesChannel: connection.models.SalesChannel,
+    SubscriptionPlan: connection.models.SubscriptionPlan,
     BatchSyncLog: connection.models.BatchSyncLog,
     B2CPage: connection.models.B2CPage,
     FormSubmission: connection.models.FormSubmission,
@@ -361,6 +371,8 @@ export function getModelRegistry(connection: mongoose.Connection) {
     BlogCategory: connection.models.BlogCategory,
     BlogTag: connection.models.BlogTag,
     DataModelDefinition: connection.models.DataModelDefinition,
+    Deal: connection.models.Deal,
+    SmsLog: connection.models.SmsLog,
   };
 }
 

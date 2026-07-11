@@ -12,7 +12,14 @@ import type { DynamicBlock } from '@/lib/types/dynamic-blocks';
 export interface SearchRequest {
   // Full-text search
   text?: string;
-  lang: string; // Language code (it, de, en...)
+  lang: string; // Language code (it, de, en...) — used for filters, sort and display
+  /**
+   * Language whose `_text_{lang}` / `_sort_{lang}` fields the full-text query
+   * matches against. Defaults to `lang`. Set to the tenant's default language
+   * to fall back when the requested language has no populated text fields
+   * (avoids zero-result searches for sparsely-translated catalogs).
+   */
+  match_lang?: string;
   channel?: string; // Sales channel code (e.g., "b2c", "b2b")
 
   // Pagination
@@ -45,6 +52,19 @@ export interface SearchRequest {
 
   // Inline facets
   facet_fields?: string[]; // Return facets inline with search results
+
+  /**
+   * Server-resolved negative-filter exclusions (Feature 1: per-channel
+   * user-attribute search exclusion). Each becomes a Solr `-<solr_field>:<value>`
+   * fq clause. Resolved in the search route from catalog_settings rules + the
+   * customer record; never sent by the browser.
+   */
+  user_exclusions?: UserExclusion[];
+}
+
+export interface UserExclusion {
+  solr_field: string;
+  value: string;
 }
 
 export interface GroupOptions {

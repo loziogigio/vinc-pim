@@ -18,6 +18,9 @@ RUN npm install -g pnpm@${PNPM_VERSION}
 # Install dependencies (cached by lockfile)
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
+# Vendored local packages referenced via `file:vendor/*` in package.json must be
+# present before install, or pnpm fails with: ENOENT scandir /app/vendor/<pkg>
+COPY vendor/ ./vendor/
 # Skip Puppeteer's bundled Chrome download — system Chromium is used at runtime
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Use BuildKit cache for the pnpm store for faster repeated builds

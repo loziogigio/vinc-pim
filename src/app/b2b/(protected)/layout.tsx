@@ -4,7 +4,7 @@ import { Public_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import { getB2BSession } from "@/lib/auth/b2b-session";
 import { getDashboardAuthorization } from "@/lib/auth/dashboard-authorization";
-import { DashboardHeader } from "@/components/b2b/DashboardHeader";
+import { SuiteHeader } from "@/components/b2b/SuiteHeader";
 import { MainContent } from "@/components/b2b/MainContent";
 import { PermissionsProvider } from "@/components/b2b/permissions/permissions-context";
 import type { B2BSessionData } from "@/lib/types/b2b";
@@ -65,7 +65,7 @@ export default async function B2BProtectedLayout({
     <div className={cn(publicSans.className, "min-h-screen bg-muted text-foreground dark:bg-background")}>
       <Toaster position="top-right" richColors theme="system" />
       <PermissionsProvider value={permissions}>
-        <DashboardHeader session={sessionData} />
+        <SuiteHeader tenant={sessionData.tenantId!} username={sessionData.username} email={sessionData.email} role={sessionData.role} companyName={sessionData.companyName} />
         <MainContent>
           {children}
         </MainContent>

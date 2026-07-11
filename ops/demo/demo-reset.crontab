@@ -1,0 +1,8 @@
+# VINC demo reset — install to /etc/cron.d/vinc-demo on vinc-2.
+# /etc/cron.d format: m h dom mon dow USER command. Times are server-local.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+VINC_CS_DIR=/CONFIRM/ON/VINC-2   # ← replace in Step 3 with the real CS repo path
+# Soft reset nightly 03:30 (Mon–Sat); hard reset Sunday 04:00.
+30 3 * * 1-6 root /CONFIRM/ON/VINC-2/ops/demo/demo-reset.sh soft
+0  4 * * 0   root /CONFIRM/ON/VINC-2/ops/demo/demo-reset.sh hard

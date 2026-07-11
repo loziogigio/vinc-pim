@@ -659,23 +659,23 @@ function PipelineCard({ icon: Icon, label, count, amount, href, tone, highlight,
   return (
     <Link
       href={href}
-      className={`relative rounded-lg bg-card border ${
-        highlight ? "border-violet-300 dark:border-violet-500/40" : "border-border"
-      } p-3 shadow-sm hover:shadow-md hover:border-foreground/20 transition`}
+      className={`relative rounded-2xl bg-card border ${
+        highlight ? "border-[color:color-mix(in_oklab,var(--vinc-accent)_45%,transparent)]" : "border-border"
+      } p-4 shadow-sm hover:shadow-md hover:border-foreground/20 transition`}
     >
       {badge ? (
-        <span className="absolute -top-2 right-2 rounded-full bg-violet-600 text-white text-[9px] font-medium px-2 py-0.5 tracking-wider">
+        <span className="mono absolute -top-2 right-3 rounded-md bg-[var(--vinc-accent)] text-white text-[9px] font-bold px-2 py-0.5 tracking-[0.08em] uppercase">
           {badge}
         </span>
       ) : null}
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${palette.bg}`}>
-          <Icon className={`h-3.5 w-3.5 ${palette.text}`} />
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${palette.bg}`}>
+          <Icon className={`h-[18px] w-[18px] ${palette.text}`} />
         </div>
-        <span className="text-[11px] text-muted-foreground truncate">{label}</span>
+        <span className="text-sm text-muted-foreground truncate">{label}</span>
       </div>
-      <div className="text-xl font-semibold text-foreground leading-tight">{count}</div>
-      <div className="text-[11px] text-muted-foreground">
+      <div className="mono text-3xl font-bold tnum text-foreground leading-tight">{count}</div>
+      <div className="mono text-xs tnum text-muted-foreground mt-1">
         {compactCurrencyFormat.format(amount)}
       </div>
     </Link>
@@ -691,10 +691,10 @@ interface KpiTileProps {
 
 function KpiTile({ label, value, delta, caption }: KpiTileProps) {
   return (
-    <div className="rounded-lg bg-card border border-border p-3 shadow-sm">
+    <div className="rounded-2xl bg-card border border-border p-4 shadow-sm">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="flex items-baseline gap-2 mt-1">
-        <div className="text-xl font-semibold text-foreground">{value}</div>
+        <div className="mono text-xl font-bold tnum text-foreground">{value}</div>
         {delta}
       </div>
       {caption ? <div className="text-[10px] text-muted-foreground/80 mt-0.5">{caption}</div> : null}
@@ -971,10 +971,10 @@ export default function OrdersOverviewPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground sm:text-[2.5rem]">
             {t("pages.store.orders.dashboard")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="mt-1.5 text-[1rem] text-muted-foreground">
             {t("pages.store.orders.subtitle")}
           </p>
         </div>
@@ -1085,10 +1085,10 @@ export default function OrdersOverviewPage() {
 
       {/* Pipeline */}
       <section className="space-y-2">
-        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="mono text-[0.66rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
           {t("pages.store.orders.pipelineLabel")}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {pipeline.map((card) => (
             <PipelineCard key={card.label} {...card} />
           ))}
@@ -1096,12 +1096,12 @@ export default function OrdersOverviewPage() {
       </section>
 
       {/* Revenue — full width with trend sparkline */}
-      <section className="rounded-lg bg-card border border-border p-4 shadow-sm">
-        <div className="text-xs text-muted-foreground">
+      <section className="rounded-2xl bg-card border border-border p-5 shadow-sm">
+        <div className="text-[13px] text-muted-foreground">
           {t("pages.store.orders.revenueRange")}
         </div>
         <div className="flex items-baseline gap-3 mt-1 mb-3 flex-wrap">
-          <div className="text-3xl font-semibold text-foreground">
+          <div className="mono text-3xl font-bold tnum text-foreground sm:text-[2.75rem]">
             {currencyFormat.format(totalRevenue)}
           </div>
           <Delta
@@ -1168,7 +1168,7 @@ export default function OrdersOverviewPage() {
       </div>
 
       {/* Day-by-day orders chart (full width) */}
-      <section className="rounded-lg bg-card border border-border p-4 shadow-sm">
+      <section className="rounded-2xl bg-card border border-border p-5 shadow-sm">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="text-sm font-semibold text-foreground">
             {t("pages.store.orders.dailyOrdersTitle")}
@@ -1183,7 +1183,7 @@ export default function OrdersOverviewPage() {
       {/* Da gestire */}
       <section
         id="da-gestire"
-        className="rounded-lg bg-card border border-border shadow-sm"
+        className="rounded-2xl bg-card border border-border shadow-sm"
       >
         <div className="flex items-center justify-between gap-2 flex-wrap p-4 border-b border-border">
           <div className="flex items-center gap-2 min-w-0">

@@ -35,6 +35,8 @@ import {
   GripVertical,
   ExternalLink,
   Link as LinkIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 type MediaType = "document" | "video" | "3d-model";
@@ -50,6 +52,7 @@ interface MediaItem {
   uploaded_at: string;
   is_external_link?: boolean; // true for URLs, false for uploads
   position: number; // Order within type group
+  is_public?: boolean; // false → hidden from anonymous/public; default true
 }
 
 /**
@@ -60,12 +63,18 @@ function getMediaId(media: MediaItem): string {
   return media.cdn_key || media._id || media.url;
 }
 
+/** Resolve a media item's public visibility (missing flag → public). */
+export function resolveMediaIsPublic(media: MediaItem): boolean {
+  return media.is_public !== false;
+}
+
 interface MediaGalleryProps {
   media: MediaItem[];
   onUpload: (files: File[], type: MediaType) => Promise<void>;
   onAddLink: (url: string, type: MediaType, label?: string) => Promise<void>;
   onDelete: (cdn_key: string) => Promise<void>;
   onLabelUpdate?: (cdn_key: string, newLabel: string) => Promise<void>;
+  onVisibilityUpdate?: (cdn_key: string, is_public: boolean) => Promise<void>;
   onReorder?: (type: MediaType, newOrder: string[]) => Promise<void>;
   disabled?: boolean;
 }
@@ -127,11 +136,13 @@ function MediaFileItem({
   media,
   onDelete,
   onLabelUpdate,
+  onVisibilityUpdate,
   disabled,
 }: {
   media: MediaItem;
   onDelete: (cdn_key: string) => void;
   onLabelUpdate?: (cdn_key: string, newLabel: string) => void;
+  onVisibilityUpdate?: (cdn_key: string, is_public: boolean) => void;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
@@ -532,6 +543,26 @@ function MediaFileItem({
             </>
           )}
 
+          {onVisibilityUpdate && (
+            <button
+              type="button"
+              onClick={() => onVisibilityUpdate(getMediaId(media), !resolveMediaIsPublic(media))}
+              disabled={disabled}
+              className="p-2 text-muted-foreground hover:bg-accent rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title={
+                resolveMediaIsPublic(media)
+                  ? t("pages.pim.mediaGallery.visibleToAll")
+                  : t("pages.pim.mediaGallery.hiddenFromPublic")
+              }
+            >
+              {resolveMediaIsPublic(media) ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-amber-600" />
+              )}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => onDelete(getMediaId(media))}
@@ -682,6 +713,7 @@ export function MediaGallery({
   onAddLink,
   onDelete,
   onLabelUpdate,
+  onVisibilityUpdate,
   onReorder,
   disabled = false,
 }: MediaGalleryProps) {
@@ -889,6 +921,7 @@ export function MediaGallery({
                     media={item}
                     onDelete={handleDelete}
                     onLabelUpdate={onLabelUpdate}
+                    onVisibilityUpdate={onVisibilityUpdate}
                     disabled={disabled || uploading || deleting === getMediaId(item)}
                   />
                 ))}

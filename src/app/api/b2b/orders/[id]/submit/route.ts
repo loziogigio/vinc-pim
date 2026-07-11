@@ -135,7 +135,10 @@ export async function POST(
             processing_status: "processing",
             processing_phase: "before",
             processing_started_at: new Date(),
-            is_current: false,
+            // Keep is_current: the order is still a draft while ERP validates
+            // async. It's only depromoted once submitOrder() moves it out of
+            // draft on success — a failed/in-flight sync must not orphan the
+            // user's active cart.
             submitting: false,
           },
         },

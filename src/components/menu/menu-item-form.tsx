@@ -10,23 +10,25 @@ import { ImageUpload } from "./ImageUpload";
 import { FullScreenModal } from "@/components/shared/FullScreenModal";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { buildMenuListUrl } from "@/lib/utils/menu-api";
 
 interface MenuItemFormProps {
   location: MenuLocation;
   channel: string;
   channelName?: string;
+  /** Catalog language code for this menu version (stamped on created items). */
+  language?: string;
   item: MenuItem | null; // null = create, otherwise edit
   parentItem?: MenuItem | null; // Pre-selected parent
   onClose: () => void;
 }
 
-export function MenuItemForm({ location, channel, channelName, item, parentItem, onClose }: MenuItemFormProps) {
+export function MenuItemForm({ location, channel, channelName, language, item, parentItem, onClose }: MenuItemFormProps) {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     type: item?.type || "collection",
     reference_id: item?.reference_id || "",
     label: item?.label || "",
-    label_i18n: (item?.label_i18n || {}) as Record<string, string>,
     url: item?.url || "",
     icon: item?.icon || "",
     rich_text: item?.rich_text || "",
@@ -46,44 +48,13 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
   const [availableParents, setAvailableParents] = useState<MenuItem[]>([]);
   const [searchProducts, setSearchProducts] = useState<SearchPreviewProduct[]>([]);
   const [searchLimit, setSearchLimit] = useState(10);
-  const [enabledLanguages, setEnabledLanguages] = useState<
-    { code: string; name: string; nativeName?: string }[]
-  >([]);
-
-  // Load the tenant's enabled languages so the label can be translated per language.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const res = await fetch(
-          "/api/admin/languages?status=enabled&limit=100&sortBy=order&sortOrder=asc"
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (active && Array.isArray(data?.data)) {
-          setEnabledLanguages(
-            data.data.map((l: any) => ({
-              code: String(l.code).toLowerCase(),
-              name: l.name || l.code,
-              nativeName: l.nativeName,
-            }))
-          );
-        }
-      } catch {
-        // Non-fatal — the form still works with the default label only.
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   // Fetch available parent items
   useEffect(() => {
     const fetchParents = async () => {
       try {
         const res = await fetch(
-          `/api/b2b/menu?location=${location}&channel=${channel}&include_inactive=true`
+          buildMenuListUrl({ location, channel, language, includeInactive: true })
         );
         if (!res.ok) throw new Error("Failed to fetch menu items");
         const data = await res.json();
@@ -105,7 +76,7 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
     };
 
     fetchParents();
-  }, [location, item]);
+  }, [location, channel, language, item]);
 
   // Types without an entity name — label is required
   const labelRequired = ["url", "page", "search", "text"].includes(formData.type);
@@ -145,10 +116,10 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
       const payload: any = {
         location,
         channel,
+        language,
         type: formData.type,
         reference_id: formData.reference_id || undefined,
         label: formData.label || undefined,
-        label_i18n: formData.label_i18n,
         url: formData.url || undefined,
         // For image fields, send empty string explicitly to clear them (not undefined)
         icon: formData.icon,
@@ -266,43 +237,6 @@ export function MenuItemForm({ location, channel, channelName, item, parentItem,
                 </p>
               )}
             </div>
-
-            {/* Per-language label translations */}
-            {formData.type !== "divider" && enabledLanguages.length > 0 && (
-              <div className="rounded border border-border bg-background p-4">
-                <p className="text-sm font-medium text-foreground mb-1">
-                  Label translations (Optional)
-                </p>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Override the label per language. Leave a language empty to fall
-                  back to the default label above.
-                </p>
-                <div className="space-y-2">
-                  {enabledLanguages.map((l) => (
-                    <div key={l.code} className="flex items-center gap-2">
-                      <span className="w-10 shrink-0 text-xs font-semibold uppercase text-muted-foreground">
-                        {l.code}
-                      </span>
-                      <input
-                        type="text"
-                        value={formData.label_i18n[l.code] || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            label_i18n: {
-                              ...formData.label_i18n,
-                              [l.code]: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder={l.nativeName || l.name}
-                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Type */}
             <div>

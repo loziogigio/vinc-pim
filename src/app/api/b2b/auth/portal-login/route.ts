@@ -3,7 +3,7 @@
  *
  * POST /api/b2b/auth/portal-login
  *
- * Authenticates a portal user with username/password.
+ * Authenticates a portal user with username (or email)/password.
  * Requires valid API key authentication (app-level auth).
  */
 
@@ -39,11 +39,12 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse request body
     const body = await req.json();
+    // `username` accepts either a username or an email address
     const { username, password, channel } = body;
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Username (or email) and password are required" },
         { status: 400 }
       );
     }
@@ -77,11 +78,11 @@ export async function POST(req: NextRequest) {
     // 6. Connect to tenant database and get models
     const { PortalUser: PortalUserModel, Customer: CustomerModel } = await connectWithModels(tenantDb);
 
-    // 7. Find portal user by username (prefer channel-specific match)
+    // 7. Find portal user by username OR email (prefer channel-specific match)
     const baseQuery: Record<string, unknown> = {
       tenant_id: tenantId,
-      username: identifier,
       is_active: true,
+      $or: [{ username: identifier }, { email: identifier }],
     };
     let user = channel
       ? await PortalUserModel.findOne({ ...baseQuery, channel })

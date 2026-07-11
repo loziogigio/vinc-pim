@@ -13,6 +13,7 @@ import {
   TransformOptions,
 } from './types';
 import { getEffectivePrice } from '@/lib/utils/packaging';
+import { embedPromotionsInPackaging } from '@/lib/pim/embed-promotions';
 
 /**
  * Solr multilingual document structure
@@ -789,19 +790,11 @@ export class SolrAdapter extends MarketplaceAdapter {
       attributes_json: product.attributes ? JSON.stringify(product.attributes) : undefined,
       promotions_json: product.promotions ? JSON.stringify(product.promotions) : undefined,
       product_type_technical_specifications_json: product.product_type?.technical_specifications ? JSON.stringify(product.product_type.technical_specifications) : undefined,
+      // Embed per-packaging promotions; explicit packaging-level promotions
+      // (incl. their tag_filter) win over the product-level projection so agent /
+      // customer targeting is preserved in the index — see embedPromotionsInPackaging.
       packaging_json: product.packaging_options ? JSON.stringify(
-        // Embed per-packaging promotions from product-level promotions
-        product.promotions?.length
-          ? product.packaging_options.map((pkg: any) => ({
-              ...pkg,
-              promotions: product.promotions!.filter((promo: any) => {
-                if (!promo.target_pkg_ids || promo.target_pkg_ids.length === 0) {
-                  return pkg.is_sellable !== false;
-                }
-                return promo.target_pkg_ids.includes(pkg.pkg_id);
-              }),
-            }))
-          : product.packaging_options
+        embedPromotionsInPackaging(product.packaging_options, product.promotions)
       ) : undefined,
 
       // Relationship objects with multilingual content (stored as JSON)
@@ -938,6 +931,8 @@ export class SolrAdapter extends MarketplaceAdapter {
         // Creates: attribute_{slug}_s, attribute_{slug}_f, attribute_{slug}_ss, etc.
         for (const [attrKey, attrData] of Object.entries(langAttrs)) {
           if (attrData && typeof attrData === 'object') {
+            // Skip emitting the facet/filter field when this attribute is hidden from facets
+            if ((attrData as any).hide_in_facets === true) continue;
             const value = (attrData as any).value;
             if (value !== undefined && value !== null && value !== '') {
               const { suffix, value: typedValue } = this.getAttributeTypeSuffix(value);

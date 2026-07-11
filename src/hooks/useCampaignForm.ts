@@ -11,6 +11,7 @@ import type { SelectedUser } from "@/components/notifications/UserSelector";
 
 export interface ChannelAvailability {
   email: boolean;
+  sms: boolean;
   mobile: boolean;
   web_in_app: boolean;
 }

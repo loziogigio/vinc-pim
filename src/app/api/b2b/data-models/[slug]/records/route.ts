@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { resolveRecordRelationId } from "@/lib/db/models/data-model-definition";
 import { loadDefinition } from "@/lib/data-models/load-definition";
 import { parseListQuery } from "@/lib/data-models/parse-filters";
 import {
@@ -16,6 +17,7 @@ import {
   validateRecordData,
   ValidationError,
 } from "@/lib/data-models/validate-record";
+import { maskRecordSecrets, preserveSecrets } from "@/lib/data-models/redact-secrets";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -56,7 +58,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       success: true,
       data: {
-        items,
+        // Never return raw credentials; secrets are masked with a sentinel so the
+        // editor sees "configured" without receiving the value (preserved on save).
+        items: items.map((r) => maskRecordSecrets(r, definition.fields)),
         pagination: {
           page: list.page,
           limit: list.limit,
@@ -83,7 +87,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { definition, RecordModel } = loaded.loaded;
 
     const body = await req.json();
-    const relationId = String(body?.relation_id ?? "").trim();
+    const relationId = resolveRecordRelationId(
+      definition.relation,
+      String(body?.relation_id ?? "").trim()
+    );
     if (!relationId) {
       return NextResponse.json({ error: "relation_id is required" }, { status: 400 });
     }
@@ -124,6 +131,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         matchFilter.external_ref = externalRef;
       }
 
+      // Preserve stored secrets: a blank/sentinel secret (unchanged field from a
+      // masked GET) must not overwrite the real credential on this full-data upsert.
+      const prior = await RecordModel.findOne(matchFilter).lean();
+      preserveSecrets(coerced, (prior?.data as Record<string, unknown>) ?? null, definition.fields);
+
       const doc = await RecordModel.findOneAndUpdate(
         matchFilter,
         {
@@ -138,10 +150,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         },
         { new: true, upsert: true, setDefaultsOnInsert: true }
       );
-      return NextResponse.json({ success: true, data: doc }, { status: 201 });
+      return NextResponse.json(
+        { success: true, data: maskRecordSecrets(doc!.toObject(), definition.fields) },
+        { status: 201 }
+      );
     }
 
     // 1:N without external_ref — plain insert
+    preserveSecrets(coerced, null, definition.fields);
     const doc = await RecordModel.create({
       relation_id: relationId,
       channel: channel.value,
@@ -150,7 +166,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       source: typeof body?.source === "string" ? body.source : undefined,
       imported_at: body?.imported_at ? new Date(body.imported_at) : undefined,
     });
-    return NextResponse.json({ success: true, data: doc }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: maskRecordSecrets(doc.toObject(), definition.fields) },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[POST .../records]", error);
     const message = error instanceof Error ? error.message : "Failed to create record";

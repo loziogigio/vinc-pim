@@ -274,7 +274,9 @@ export async function GET(
               processing_status: "failed",
               processing_completed_at: new Date(),
               processing_errors: errors,
-              is_current: false,
+              // Order stays a draft on validation rejection — do NOT depromote.
+              // The cart must remain active so the user can fix the anomalies
+              // and resubmit. is_current only flips false on a successful submit.
               submitting: false,
             },
             $unset: {

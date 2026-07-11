@@ -9,8 +9,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SolrError } from '@/lib/search/solr-client';
-import { buildSearchQuery } from '@/lib/search/query-builder';
-import { transformSearchResponse, enrichFacetResults, enrichProductsWithVariants } from '@/lib/search/response-transformer';
+import { executeSearchWithFallback } from '@/lib/search/execute-search';
+import { enrichFacetResults, enrichProductsWithVariants } from '@/lib/search/response-transformer';
 import { enrichSearchResults, enrichVariantGroupedResults } from '@/lib/search/response-enricher';
 import { SearchRequest } from '@/lib/types/search';
 import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
@@ -18,6 +18,8 @@ import { getB2BSession } from '@/lib/auth/b2b-session';
 import { verifyAPIKeyFromRequest } from '@/lib/auth/api-key-auth';
 import { connectWithModels } from '@/lib/db/connection';
 import { resolveEffectiveTags } from '@/lib/services/tag-pricing.service';
+import { loadUserExclusionsForSearch } from './exclusions-loader';
+import { stripNonPublicForGuests } from '@/lib/search/strip-non-public';
 
 export async function POST(request: NextRequest) {
   try {
@@ -105,26 +107,20 @@ export async function POST(request: NextRequest) {
       include_dynamic_blocks: body.include_dynamic_blocks ?? false,
     };
 
-    // Build Solr query
-    const solrQuery = buildSearchQuery(searchRequest);
-
-    // Execute search with tenant-specific core
-    const { SolrClient } = await import('@/lib/search/solr-client');
-    const solrClient = new SolrClient(config.url, tenantDb);
-    const solrResponse = await solrClient.search(solrQuery);
-
-    // Transform response (pass group field if grouping is enabled)
-    // group_variants: true → uses parent_entity_code grouping with variant structure
-    const groupField = searchRequest.group_variants
-      ? 'parent_entity_code'
-      : searchRequest.group?.field;
-
-    const response = transformSearchResponse(
-      solrResponse,
-      searchRequest.lang,
-      groupField,
-      searchRequest.group_variants
+    // Feature 1: resolve per-channel user-attribute exclusions server-side and
+    // attach them so buildSearchQuery emits negative fq clauses. Guests / no
+    // channel → []. Must run before executeSearchWithFallback.
+    searchRequest.user_exclusions = await loadUserExclusionsForSearch(
+      tenantDb,
+      searchRequest.channel,
+      body.customer_code,
+      body.address_code,
     );
+
+    // Execute search with tenant-specific core.
+    // Falls back to the tenant's default language for full-text matching when
+    // the requested language yields no results (sparsely-translated catalogs).
+    const { response } = await executeSearchWithFallback(searchRequest, tenantDb);
 
     // Enrich results with fresh data from MongoDB (channel-aware category resolution)
     const channel = searchRequest.channel;
@@ -162,6 +158,12 @@ export async function POST(request: NextRequest) {
     } else if (effectiveTags.length) {
       response.results = filterResultsByTags(response.results, effectiveTags);
     }
+
+    // Hard, leak-proof per-element visibility gate. Authenticated iff the
+    // request carries customer context or an explicit authenticated flag.
+    // Deliberately coarse: presence of customer context / authenticated flag = "not a guest". This is a visibility gate for anonymous vs logged-in, NOT per-customer authorization.
+    const isAuthenticated = body.authenticated === true || !!body.customer_code;
+    response.results = stripNonPublicForGuests(response.results, isAuthenticated);
 
     return NextResponse.json({
       success: true,
@@ -360,24 +362,18 @@ export async function GET(request: NextRequest) {
       include_dynamic_blocks: includeDynamicBlocks,
     };
 
-    // Build and execute query with tenant-specific Solr collection
-    const solrQuery = buildSearchQuery(searchRequest);
-    const { SolrClient } = await import('@/lib/search/solr-client');
-    const solrClient = new SolrClient(config.url, tenantDb);
-    const solrResponse = await solrClient.search(solrQuery);
-
-    // Transform response
-    // group_variants: true → uses parent_entity_code grouping with variant structure
-    const effectiveGroupField = groupVariants
-      ? 'parent_entity_code'
-      : groupField || undefined;
-
-    const response = transformSearchResponse(
-      solrResponse,
-      lang,
-      effectiveGroupField,
-      groupVariants
+    // Feature 1: per-channel user-attribute exclusions (see POST handler).
+    searchRequest.user_exclusions = await loadUserExclusionsForSearch(
+      tenantDb,
+      searchRequest.channel,
+      searchParams.get('customer_code') || undefined,
+      searchParams.get('address_code') || undefined,
     );
+
+    // Build and execute query with tenant-specific Solr collection.
+    // Falls back to the tenant's default language for full-text matching when
+    // the requested language yields no results (sparsely-translated catalogs).
+    const { response } = await executeSearchWithFallback(searchRequest, tenantDb);
 
     // Enrich results with fresh data from MongoDB (channel-aware category resolution)
     const getChannel = searchRequest.channel;
@@ -417,6 +413,12 @@ export async function GET(request: NextRequest) {
     } else if (effectiveTags.length) {
       response.results = filterResultsByTags(response.results, effectiveTags);
     }
+
+    // Hard, leak-proof per-element visibility gate (mirror of POST).
+    // Deliberately coarse: presence of customer context / authenticated flag = "not a guest". This is a visibility gate for anonymous vs logged-in, NOT per-customer authorization.
+    const isAuthenticated =
+      searchParams.get('authenticated') === 'true' || !!searchParams.get('customer_code');
+    response.results = stripNonPublicForGuests(response.results, isAuthenticated);
 
     return NextResponse.json({
       success: true,

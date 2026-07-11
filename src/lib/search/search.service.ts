@@ -3,9 +3,9 @@
  * Core search function for direct use (no HTTP overhead)
  */
 
-import { getSolrClient, SolrClient, SolrError } from './solr-client';
-import { buildSearchQuery } from './query-builder';
-import { transformSearchResponse, enrichFacetResults } from './response-transformer';
+import { SolrError } from './solr-client';
+import { executeSearchWithFallback } from './execute-search';
+import { enrichFacetResults } from './response-transformer';
 import { enrichSearchResults } from './response-enricher';
 import { SearchRequest, SearchResponse } from '@/lib/types/search';
 import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
@@ -61,22 +61,9 @@ export async function searchProducts(params: SearchParams): Promise<SearchResult
     facet_fields: params.facet_fields,
   };
 
-  // Build and execute query
-  const solrQuery = buildSearchQuery(searchRequest);
-
-  // Create tenant-specific Solr client if tenantDb is provided
-  // Otherwise use singleton (for backward compatibility)
-  const solrClient = params.tenantDb
-    ? new SolrClient(config.url, params.tenantDb)
-    : getSolrClient();
-  const solrResponse = await solrClient.search(solrQuery);
-
-  // Transform response
-  const response = transformSearchResponse(
-    solrResponse,
-    searchRequest.lang,
-    searchRequest.group?.field
-  );
+  // Build and execute query. When a tenantDb is provided, an empty full-text
+  // result transparently retries against the tenant's default language.
+  const { response } = await executeSearchWithFallback(searchRequest, params.tenantDb);
 
   // Enrich results with fresh data from MongoDB
   if (params.tenantDb) {

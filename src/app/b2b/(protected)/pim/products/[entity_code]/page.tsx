@@ -27,6 +27,7 @@ import { PackagingOptionModal } from "@/components/pim/PackagingOptionModal";
 import { PromotionModal } from "@/components/pim/PromotionModal";
 import { useLanguageStore } from "@/lib/stores/languageStore";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { usePriceDecimals } from "@/hooks/usePriceDecimals";
 import { calculateUnitPrice, calculatePackagePrice, ensurePackagingIds, ensurePromoRows, syncPackagingFlags } from "@/lib/utils/packaging";
 import { normalizeDecimalInput, parseDecimalValue } from "@/lib/utils/decimal-input";
 import {
@@ -233,6 +234,9 @@ export default function ProductDetailPage({
   const { languages } = useLanguageStore();
   const defaultLanguage = languages.find(lang => lang.isDefault) || languages.find(lang => lang.code === "it");
   const defaultLanguageCode = defaultLanguage?.code || "it";
+
+  // Tenant-configured price decimal places (B2B Settings → Product cards).
+  const priceDecimals = usePriceDecimals();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1190,6 +1194,30 @@ export default function ProductDetailPage({
     }
   }
 
+  async function handleMediaVisibilityUpdate(cdn_key: string, is_public: boolean) {
+    const res = await fetch(`/api/b2b/pim/products/${entity_code}/media/visibility`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ cdn_key, is_public }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Update local state with updated media without reloading page
+      if (data.product && product) {
+        setProduct({
+          ...product,
+          media: data.product.media,
+        });
+      }
+    } else {
+      const error = await res.json();
+      throw new Error(error.error || "Visibility update failed");
+    }
+  }
+
   async function handleResolveConflicts(resolutions: Record<string, "manual" | "api">) {
     const res = await fetch(
       `/api/b2b/pim/products/${entity_code}/resolve-conflicts`,
@@ -1804,7 +1832,7 @@ export default function ProductDetailPage({
                           <div className="p-3 bg-muted/50 rounded-lg border">
                             <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.listPrice")}</div>
                             <div className="text-lg font-semibold text-foreground">
-                              {currency === "EUR" ? "€" : currency}{displayPricing.list?.toFixed(2)}
+                              {currency === "EUR" ? "€" : currency}{displayPricing.list?.toFixed(priceDecimals)}
                             </div>
                           </div>
                         )}
@@ -1812,7 +1840,7 @@ export default function ProductDetailPage({
                           <div className="p-3 bg-muted/50 rounded-lg border">
                             <div className="text-xs text-muted-foreground mb-1">{t("pages.pim.productDetail.retailMsrp")}</div>
                             <div className="text-lg font-semibold text-foreground">
-                              {currency === "EUR" ? "€" : currency}{displayPricing.retail?.toFixed(2)}
+                              {currency === "EUR" ? "€" : currency}{displayPricing.retail?.toFixed(priceDecimals)}
                             </div>
                           </div>
                         )}
@@ -1820,7 +1848,7 @@ export default function ProductDetailPage({
                           <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg border border-emerald-200 dark:border-emerald-500/30">
                             <div className="text-xs text-emerald-700 dark:text-emerald-400 mb-1">{t("pages.pim.productDetail.salePrice")}</div>
                             <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-                              {currency === "EUR" ? "€" : currency}{displayPricing.sale?.toFixed(2)}
+                              {currency === "EUR" ? "€" : currency}{displayPricing.sale?.toFixed(priceDecimals)}
                             </div>
                           </div>
                         )}
@@ -1901,7 +1929,11 @@ export default function ProductDetailPage({
                                   <input
                                     className="w-20 px-2 py-1 text-xs border border-border rounded bg-background text-right"
                                     value={packagingInfoForm.qty}
-                                    onChange={(e) => setPackagingInfoForm((f) => ({ ...f, qty: e.target.value }))}
+                                    onChange={(e) => {
+                                      const normalized = normalizeDecimalInput(e.target.value);
+                                      if (normalized === null) return;
+                                      setPackagingInfoForm((f) => ({ ...f, qty: normalized }));
+                                    }}
                                     placeholder="12"
                                     inputMode="decimal"
                                     type="text"
@@ -1929,8 +1961,8 @@ export default function ProductDetailPage({
                                           toast.error(t("pages.pim.productDetail.codeQtyUomRequired"));
                                           return;
                                         }
-                                        const qty = parseFloat(packagingInfoForm.qty);
-                                        if (isNaN(qty)) { toast.error(t("pages.pim.productDetail.invalidQty")); return; }
+                                        const qty = parseDecimalValue(packagingInfoForm.qty);
+                                        if (qty === undefined || isNaN(qty)) { toast.error(t("pages.pim.productDetail.invalidQty")); return; }
                                         const current = [...(product.packaging_info || [])];
                                         // Enforce uniqueness — only one default, one smallest
                                         if (packagingInfoForm.is_default) {
@@ -2062,7 +2094,11 @@ export default function ProductDetailPage({
                                 <input
                                   className="w-20 px-2 py-1 text-xs border border-border rounded bg-background text-right"
                                   value={packagingInfoForm.qty}
-                                  onChange={(e) => setPackagingInfoForm((f) => ({ ...f, qty: e.target.value }))}
+                                  onChange={(e) => {
+                                    const normalized = normalizeDecimalInput(e.target.value);
+                                    if (normalized === null) return;
+                                    setPackagingInfoForm((f) => ({ ...f, qty: normalized }));
+                                  }}
                                   placeholder="12"
                                   inputMode="decimal"
                                   type="text"
@@ -2090,8 +2126,8 @@ export default function ProductDetailPage({
                                         toast.error(t("pages.pim.productDetail.codeQtyUomRequired"));
                                         return;
                                       }
-                                      const qty = parseFloat(packagingInfoForm.qty);
-                                      if (isNaN(qty)) { toast.error(t("pages.pim.productDetail.invalidQty")); return; }
+                                      const qty = parseDecimalValue(packagingInfoForm.qty);
+                                      if (qty === undefined || isNaN(qty)) { toast.error(t("pages.pim.productDetail.invalidQty")); return; }
                                       const existing = [...(product.packaging_info || [])];
                                       // Enforce uniqueness — only one default, one smallest
                                       if (packagingInfoForm.is_default) {
@@ -2210,9 +2246,9 @@ export default function ProductDetailPage({
                                   const pkgPrice = unitPrice ? calculatePackagePrice(unitPrice, pkg.qty) : undefined;
                                   return unitPrice ? (
                                     <div>
-                                      <div>€{unitPrice.toFixed(2)}</div>
+                                      <div>€{unitPrice.toFixed(priceDecimals)}</div>
                                       {pkg.qty !== 1 && pkgPrice && (
-                                        <div className="text-xs text-muted-foreground">×{pkg.qty} = €{pkgPrice.toFixed(2)}</div>
+                                        <div className="text-xs text-muted-foreground">×{pkg.qty} = €{pkgPrice.toFixed(priceDecimals)}</div>
                                       )}
                                     </div>
                                   ) : "—";
@@ -2224,9 +2260,9 @@ export default function ProductDetailPage({
                                   const pkgPrice = unitPrice ? calculatePackagePrice(unitPrice, pkg.qty) : undefined;
                                   return unitPrice ? (
                                     <div>
-                                      <div>€{unitPrice.toFixed(2)}</div>
+                                      <div>€{unitPrice.toFixed(priceDecimals)}</div>
                                       {pkg.qty !== 1 && pkgPrice && (
-                                        <div className="text-xs text-muted-foreground">×{pkg.qty} = €{pkgPrice.toFixed(2)}</div>
+                                        <div className="text-xs text-muted-foreground">×{pkg.qty} = €{pkgPrice.toFixed(priceDecimals)}</div>
                                       )}
                                     </div>
                                   ) : "—";
@@ -2238,9 +2274,9 @@ export default function ProductDetailPage({
                                   const pkgPrice = unitPrice ? calculatePackagePrice(unitPrice, pkg.qty) : undefined;
                                   return unitPrice ? (
                                     <div>
-                                      <div>€{unitPrice.toFixed(2)}</div>
+                                      <div>€{unitPrice.toFixed(priceDecimals)}</div>
                                       {pkg.qty !== 1 && pkgPrice && (
-                                        <div className="text-xs text-muted-foreground font-normal">×{pkg.qty} = €{pkgPrice.toFixed(2)}</div>
+                                        <div className="text-xs text-muted-foreground font-normal">×{pkg.qty} = €{pkgPrice.toFixed(priceDecimals)}</div>
                                       )}
                                     </div>
                                   ) : "—";
@@ -2432,7 +2468,7 @@ export default function ProductDetailPage({
                                   {promo.discount_percentage
                                     ? `-${promo.discount_percentage}%`
                                     : promo.discount_amount
-                                    ? `-€${promo.discount_amount.toFixed(2)}`
+                                    ? `-€${promo.discount_amount.toFixed(priceDecimals)}`
                                     : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right text-foreground">
@@ -2450,7 +2486,7 @@ export default function ProductDetailPage({
                                       >
                                         varies
                                       </button>
-                                    : promo.promo_price ? `€${promo.promo_price.toFixed(2)}` : "—"}
+                                    : promo.promo_price ? `€${promo.promo_price.toFixed(priceDecimals)}` : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-muted-foreground">
                                   {promo.start_date ? new Date(promo.start_date).toLocaleDateString() : "—"}
@@ -2940,6 +2976,7 @@ export default function ProductDetailPage({
           onDelete={handleMediaDelete}
           onLabelUpdate={handleMediaLabelUpdate}
           onReorder={handleMediaReorder}
+          onVisibilityUpdate={handleMediaVisibilityUpdate}
           disabled={isSaving}
         />
       </div>

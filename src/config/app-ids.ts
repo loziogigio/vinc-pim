@@ -15,6 +15,7 @@ export const APP_IDS = [
   "data-models",
   "store-orders",
   "store-coupons",
+  "store-subscriptions",
   "store-customers",
   "store-portal-users",
   "builder",

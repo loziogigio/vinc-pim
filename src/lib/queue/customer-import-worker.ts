@@ -22,6 +22,7 @@ import {
   upsertCustomerTagsBatch,
   upsertAddressTagOverridesBatch,
 } from "../services/tag-pricing.service";
+import { applyCustomerAgentTags } from "../services/agent-tag.service";
 import { DEFAULT_CHANNEL } from "../constants/channel";
 
 // ============================================
@@ -43,6 +44,10 @@ export interface CustomerImportAddress {
   phone?: string;
   delivery_notes?: string;
   tag_overrides?: string[];
+  /** ERP sales-agent code for this address (overrides the customer agent). */
+  agent_code?: string | null;
+  /** Optional agent display name (used as the agent tag description). */
+  agent_name?: string;
 }
 
 export interface CustomerImportItem {
@@ -62,6 +67,10 @@ export interface CustomerImportItem {
     sdi_code?: string;
   };
   tags?: string[];
+  /** ERP sales-agent code for this customer. null = clear; omitted = unchanged. */
+  agent_code?: string | null;
+  /** Optional agent display name (used as the agent tag description). */
+  agent_name?: string;
   addresses?: CustomerImportAddress[];
 }
 
@@ -406,6 +415,11 @@ export async function processCustomerImportData(
             }
           }
         }
+
+        // Apply ERP agent assignment (customer-level + per-address overrides)
+        await applyCustomerAgentTags(
+          tenantDb, tenant_id, existing.customer_id, customerData,
+        );
       } else {
         // ========== CREATE NEW CUSTOMER ==========
         const customer_id = `cust_${nanoid(12)}`;
@@ -463,6 +477,11 @@ export async function processCustomerImportData(
             }
           }
         }
+
+        // Apply ERP agent assignment (customer-level + per-address overrides)
+        await applyCustomerAgentTags(
+          tenantDb, tenant_id, customer_id, customerData,
+        );
       }
 
       successful++;

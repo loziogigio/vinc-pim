@@ -137,8 +137,9 @@ export function PackagingOptionModal({
 
   if (!open) return null;
 
-  // Parse qty from input string, default to 1 if invalid
-  const parsedQty = parseFloat(qtyInput) || 1;
+  // Parse qty from input string (comma- and dot-aware), default to 1 if invalid.
+  // Supports fractional quantities (e.g. 0.125) for sub-unit purchasable steps.
+  const parsedQty = parseDecimalValue(qtyInput) || 1;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,8 +359,12 @@ export function PackagingOptionModal({
                 type="text"
                 inputMode="decimal"
                 value={qtyInput}
-                onChange={(e) => setQtyInput(e.target.value)}
-                placeholder="e.g., 1, 6, 0.75"
+                onChange={(e) => {
+                  const normalized = normalizeDecimalInput(e.target.value);
+                  if (normalized === null) return; // ignore invalid keystroke
+                  setQtyInput(normalized);
+                }}
+                placeholder="e.g., 1, 6, 0.125"
                 required
               />
             </div>

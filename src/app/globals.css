@@ -10,19 +10,20 @@
     --card-foreground: 224 71.4% 3.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 3.1%;
-    --primary: 158 78% 38%;
+    /* Brand: petrol #0c7f8e (HSL 189 84% 30%) — VINC Commerce Suite master accent */
+    --primary: 189 84% 30%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 221.2 83.2% 12.1%;
     --muted: 220 14.3% 95.9%;
     --muted-foreground: 220 8.9% 46.1%;
-    --accent: 156 70% 94%;
-    --accent-foreground: 158 78% 32%;
+    --accent: 189 60% 94%;
+    --accent-foreground: 189 80% 26%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 158 78% 38%;
+    --ring: 189 84% 30%;
     --radius: 0.95rem;
   }
 
@@ -33,19 +34,20 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 47.4% 14%;
     --popover-foreground: 210 40% 98%;
-    --primary: 158 76% 42%;
+    /* Brand: petrol, lightened for dark surfaces */
+    --primary: 189 70% 44%;
     --primary-foreground: 0 0% 100%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 213 31% 71%;
-    --accent: 158 60% 22%;
-    --accent-foreground: 158 90% 90%;
+    --accent: 189 55% 24%;
+    --accent-foreground: 189 70% 86%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 158 76% 42%;
+    --ring: 189 70% 44%;
   }
 
   * {
@@ -85,4 +87,311 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* =====================================================================
+   VINC Commerce Suite — Login (petrol split-panel)
+   Scoped under .vinc-login. Uses --vinc-* tokens so it never collides
+   with the shadcn HSL theme tokens (--accent, --border, ...).
+   Petrol #0c7f8e master accent.
+   ===================================================================== */
+.vinc-login {
+  --vinc-accent:  #0c7f8e;
+  --vinc-deep:    #06222a;
+  --vinc-paper:   #f8fafb;
+  --vinc-ink:     #0d1b20;
+  --vinc-surface: #ffffff;
+  --vinc-line:    rgba(13, 27, 32, 0.10);
+  font-family: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  color: var(--vinc-ink);
+  background: var(--vinc-paper);
+}
+.dark .vinc-login {
+  --vinc-paper:   #0b1417;
+  --vinc-ink:     #e7eef0;
+  --vinc-surface: #121e22;
+  --vinc-line:    rgba(255, 255, 255, 0.12);
+}
+.vinc-login .display,
+.vinc-login h1,
+.vinc-login h2 {
+  font-family: var(--font-schibsted), "Schibsted Grotesk", ui-sans-serif, sans-serif;
+  letter-spacing: -0.02em;
+}
+.vinc-login .mono { font-family: var(--font-jetbrains), ui-monospace, monospace; }
+.vinc-login ::selection { background: var(--vinc-accent); color: #fff; }
+
+/* color helpers (replace Tailwind text-ink/xx + text-accent inside scope) */
+.vinc-login .c-accent { color: var(--vinc-accent); }
+.vinc-login .c-ink    { color: var(--vinc-ink); }
+.vinc-login .c-ink-60 { color: color-mix(in oklab, var(--vinc-ink) 60%, transparent); }
+.vinc-login .c-ink-50 { color: color-mix(in oklab, var(--vinc-ink) 50%, transparent); }
+.vinc-login .c-ink-45 { color: color-mix(in oklab, var(--vinc-ink) 45%, transparent); }
+.vinc-login .c-ink-40 { color: color-mix(in oklab, var(--vinc-ink) 40%, transparent); }
+.vinc-login .c-ink-25 { color: color-mix(in oklab, var(--vinc-ink) 25%, transparent); }
+.vinc-login .bd-line  { border-color: var(--vinc-line); }
+.vinc-login .hover-accent:hover { color: var(--vinc-accent); }
+
+.vinc-login .eyebrow {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--vinc-accent);
+}
+
+.vinc-login .iconbtn {
+  display: grid; place-items: center; height: 36px; width: 36px; border-radius: 9px;
+  color: color-mix(in oklab, var(--vinc-ink) 58%, transparent);
+  border: 1px solid transparent; transition: background .18s, color .18s;
+}
+.vinc-login .iconbtn:hover { background: color-mix(in oklab, var(--vinc-accent) 10%, var(--vinc-surface)); color: var(--vinc-accent); }
+
+/* brand panel */
+.vinc-login .brand {
+  position: relative; overflow: hidden;
+  background: linear-gradient(155deg,
+    color-mix(in oklab, var(--vinc-accent) 88%, #fff) 0%,
+    var(--vinc-accent) 30%,
+    color-mix(in oklab, var(--vinc-accent) 40%, var(--vinc-deep)) 100%);
+}
+.vinc-login .brand::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.5px);
+  background-size: 24px 24px; opacity: .45; mix-blend-mode: soft-light; pointer-events: none;
+}
+.vinc-login .brand-card {
+  background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); border-radius: 14px;
+  backdrop-filter: blur(2px); transition: background .2s, border-color .2s, transform .2s;
+}
+.vinc-login .brand-card:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.32); transform: translateY(-2px); }
+.vinc-login .bicon {
+  height: 38px; width: 38px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.22);
+}
+
+/* form fields */
+.vinc-login .field {
+  display: flex; align-items: center; gap: .65rem; width: 100%;
+  border: 1px solid var(--vinc-line); background: var(--vinc-surface); border-radius: 12px;
+  padding: .85rem 1rem; transition: border-color .18s, box-shadow .18s;
+}
+.vinc-login .field:focus-within {
+  border-color: var(--vinc-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--vinc-accent) 16%, transparent);
+}
+.vinc-login .field input {
+  flex: 1; border: none; outline: none; background: transparent; color: var(--vinc-ink); font-size: .95rem;
+}
+.vinc-login .field input::placeholder { color: color-mix(in oklab, var(--vinc-ink) 42%, transparent); }
+
+.vinc-login .btn-accedi {
+  display: flex; align-items: center; justify-content: center; gap: .55rem; width: 100%;
+  background: var(--vinc-accent); color: #fff; font-weight: 700; font-size: 1rem;
+  padding: .95rem 1rem; border-radius: 12px;
+  box-shadow: 0 16px 34px -18px color-mix(in oklab, var(--vinc-accent) 70%, transparent);
+  transition: filter .15s, transform .15s;
+}
+.vinc-login .btn-accedi:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.vinc-login .btn-accedi:disabled { opacity: .65; cursor: not-allowed; transform: none; filter: none; }
+
+.vinc-login .pulse-dot { animation: vincPulseDot 1.8s ease-in-out infinite; }
+@keyframes vincPulseDot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .vinc-login .pulse-dot { animation: none; } }
+
+/* ---- VINC Commerce Suite — internal Home (app launcher) helpers ---- */
+.vinc-login .appbar {
+  background: color-mix(in oklab, var(--vinc-paper) 80%, #fff);
+  backdrop-filter: blur(10px);
+}
+.vinc-login .card {
+  background: var(--vinc-surface);
+  border: 1px solid var(--vinc-line);
+  border-radius: 14px;
+  transition: border-color .25s, box-shadow .25s, transform .25s;
+}
+.vinc-login a.card:hover,
+.vinc-login button.card:hover {
+  border-color: color-mix(in oklab, var(--vinc-accent) 45%, transparent);
+  box-shadow: 0 14px 34px -20px rgba(6, 34, 42, .35);
+  transform: translateY(-2px);
+}
+.vinc-login .mic {
+  height: 42px; width: 42px; border-radius: 11px;
+  display: grid; place-items: center; flex: none;
+  background: color-mix(in oklab, var(--vinc-accent) 13%, var(--vinc-surface));
+  color: var(--vinc-accent);
+  border: 1px solid color-mix(in oklab, var(--vinc-accent) 22%, transparent);
+}
+.vinc-login a.card:hover .mic { background: var(--vinc-accent); color: #fff; border-color: transparent; }
+
+/* ======================================================================
+   VINC Commerce Suite — internal Home + Moduli (petrol app shell)
+   All scoped to .vinc-login (the design-system scope).
+   ====================================================================== */
+.vinc-login.suite-bg {
+  background:
+    radial-gradient(900px 480px at 12% -8%, color-mix(in oklab, var(--vinc-accent) 9%, transparent), transparent 60%),
+    radial-gradient(820px 460px at 105% 4%, color-mix(in oklab, var(--vinc-accent) 7%, transparent), transparent 58%),
+    var(--vinc-paper);
+  background-attachment: fixed;
+}
+.vinc-login .badge-dot {
+  position: absolute; top: 6px; right: 7px; height: 8px; width: 8px; border-radius: 999px;
+  background: var(--vinc-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--vinc-paper) 82%, #fff);
+}
+
+/* featured news */
+.vinc-login .feat {
+  position: relative; overflow: hidden; border-radius: 20px; color: #fff;
+  background: linear-gradient(135deg, var(--vinc-accent), color-mix(in oklab, var(--vinc-accent) 42%, var(--vinc-deep)) 92%);
+}
+.vinc-login .feat::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);
+  background-size: 22px 22px; opacity: .5; mix-blend-mode: soft-light; pointer-events: none;
+}
+.vinc-login .ntag {
+  display: inline-flex; align-items: center; gap: .4rem; font-family: var(--font-jetbrains), monospace;
+  font-size: .6rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: .22rem .55rem; border-radius: 6px;
+}
+.vinc-login .ntag-rel { background: color-mix(in oklab, var(--vinc-accent) 13%, #fff); color: var(--vinc-accent); }
+.vinc-login .ntag-avv { background: #fff4e3; color: #b9651b; }
+.vinc-login .ntag-gui { background: color-mix(in oklab, var(--vinc-ink) 7%, #fff); color: color-mix(in oklab, var(--vinc-ink) 62%, transparent); }
+.vinc-login .ntag-app { background: color-mix(in oklab, var(--vinc-deep) 9%, #fff); color: var(--vinc-deep); }
+
+.vinc-login .post { display: grid; grid-template-columns: 230px 1fr; gap: 1.25rem; padding: 1.1rem; }
+@media (max-width: 640px) { .vinc-login .post { grid-template-columns: 1fr; } }
+.vinc-login .post .thumb {
+  border-radius: 13px; overflow: hidden; width: 100%; height: 150px;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--vinc-accent) 10%, var(--vinc-surface)) 0 10px, var(--vinc-surface) 10px 20px);
+  display: grid; place-items: center;
+}
+.vinc-login .post:hover .post-title { color: var(--vinc-accent); }
+.vinc-login .avatar-xs {
+  display: grid; place-items: center; height: 24px; width: 24px; border-radius: 999px;
+  background: var(--vinc-deep); color: #fff; font-size: .6rem; font-weight: 700; font-family: var(--font-schibsted), sans-serif;
+}
+
+.vinc-login .kpi { display: flex; flex-direction: column; gap: .15rem; padding: .1rem 1.1rem; border-left: 1px solid var(--vinc-line); }
+.vinc-login .kpi:first-child { border-left: 0; padding-left: 0; }
+.vinc-login .tnum { font-variant-numeric: tabular-nums; }
+
+/* module rail (home aside) */
+.vinc-login .mrow { display: flex; align-items: center; gap: .7rem; padding: .55rem .6rem; border-radius: 11px; transition: background .15s; }
+.vinc-login .mrow:hover { background: color-mix(in oklab, var(--vinc-accent) 8%, var(--vinc-surface)); }
+.vinc-login .mrow .mric {
+  flex: none; height: 34px; width: 34px; border-radius: 9px; display: grid; place-items: center;
+  background: color-mix(in oklab, var(--vinc-accent) 12%, var(--vinc-surface)); color: var(--vinc-accent);
+  border: 1px solid color-mix(in oklab, var(--vinc-accent) 20%, transparent);
+}
+.vinc-login .pill-on {
+  font-family: var(--font-jetbrains), monospace; font-size: .56rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: #1f9d6b; display: inline-flex; align-items: center; gap: .3rem;
+}
+.vinc-login .pill-on::before { content: ""; height: 6px; width: 6px; border-radius: 999px; background: #1f9d6b; }
+
+.vinc-login .stat-dot { height: 8px; width: 8px; border-radius: 999px; flex: none; }
+.vinc-login .stat-ok { background: #1f9d6b; }
+.vinc-login .stat-warn { background: #d99411; }
+
+/* Moduli: sidebar nav */
+.vinc-login .navlabel {
+  font-family: var(--font-jetbrains), monospace; font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--vinc-ink) 42%, transparent); padding: 0 .65rem;
+}
+.vinc-login .navitem {
+  display: flex; align-items: center; gap: .65rem; padding: .55rem .65rem; border-radius: 10px; font-size: .88rem; font-weight: 500;
+  white-space: nowrap; color: color-mix(in oklab, var(--vinc-ink) 65%, transparent); transition: background .15s, color .15s;
+}
+.vinc-login .navitem:hover { background: color-mix(in oklab, var(--vinc-ink) 4%, transparent); color: var(--vinc-ink); }
+.vinc-login .navitem.active { background: color-mix(in oklab, var(--vinc-accent) 12%, var(--vinc-surface)); color: var(--vinc-accent); font-weight: 600; }
+.vinc-login .navitem .nbadge {
+  margin-left: auto; font-family: var(--font-jetbrains), monospace; font-size: .62rem; font-weight: 700;
+  background: color-mix(in oklab, var(--vinc-ink) 7%, #fff); color: color-mix(in oklab, var(--vinc-ink) 55%, transparent);
+  border-radius: 6px; padding: .1rem .4rem;
+}
+.vinc-login .navitem.active .nbadge { background: color-mix(in oklab, var(--vinc-accent) 16%, #fff); color: var(--vinc-accent); }
+
+/* Moduli: module cards */
+.vinc-login .mcard {
+  position: relative; display: flex; flex-direction: column;
+  background: var(--vinc-surface); border: 1px solid var(--vinc-line); border-radius: 16px; padding: 1.25rem;
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+.vinc-login .mcard:hover { border-color: color-mix(in oklab, var(--vinc-accent) 45%, transparent); box-shadow: 0 16px 34px -22px rgba(6,34,42,.5); transform: translateY(-2px); }
+.vinc-login .mcard .mic { height: 46px; width: 46px; border-radius: 13px; }
+.vinc-login .mcard:hover .mic { background: var(--vinc-accent); color: #fff; border-color: var(--vinc-accent); }
+
+/* ======================================================================
+   VINC Commerce Suite — in-app reader (news article / static page body)
+   Editorial typography for sanitized rich-text blocks. Scoped to .vinc-login.
+   ====================================================================== */
+.vinc-login .reader-prose {
+  font-family: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  color: color-mix(in oklab, var(--vinc-ink) 80%, transparent);
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+.vinc-login .reader-prose > * + * { margin-top: 1.5rem; }
+/* The reader sets each block's width from its `layout` (container / full-width) on the
+   wrapper div. Neutralize ContentSection's OWN width/padding wrapper (one level deeper)
+   so the block's layout is the single source of truth, not the rich-text width knob. */
+.vinc-login .reader-prose > div > div { max-width: none; margin-inline: 0; padding-top: 0; padding-bottom: 0; }
+.vinc-login .reader-prose > div:first-child :first-child { margin-top: 0; }
+.vinc-login .reader-prose h1,
+.vinc-login .reader-prose h2,
+.vinc-login .reader-prose h3,
+.vinc-login .reader-prose h4 {
+  font-family: var(--font-schibsted), "Schibsted Grotesk", ui-sans-serif, sans-serif;
+  color: var(--vinc-ink); font-weight: 700; letter-spacing: -0.02em; line-height: 1.18;
+}
+.vinc-login .reader-prose h2 { font-size: 1.55rem; margin-top: 2em; }
+.vinc-login .reader-prose h3 { font-size: 1.22rem; margin-top: 1.7em; }
+.vinc-login .reader-prose h4 { font-size: 1.05rem; margin-top: 1.5em; }
+.vinc-login .reader-prose > h2:first-child,
+.vinc-login .reader-prose > h3:first-child { margin-top: 0; }
+.vinc-login .reader-prose p { color: color-mix(in oklab, var(--vinc-ink) 78%, transparent); }
+.vinc-login .reader-prose strong { color: var(--vinc-ink); font-weight: 700; }
+.vinc-login .reader-prose a {
+  color: var(--vinc-accent); font-weight: 600;
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2.5px;
+  transition: color .15s;
+}
+.vinc-login .reader-prose a:hover { color: var(--vinc-deep); }
+.vinc-login .reader-prose ul,
+.vinc-login .reader-prose ol { padding-left: 1.3em; color: color-mix(in oklab, var(--vinc-ink) 78%, transparent); }
+.vinc-login .reader-prose ul { list-style: disc; }
+.vinc-login .reader-prose ol { list-style: decimal; }
+.vinc-login .reader-prose li { margin-top: .4em; }
+.vinc-login .reader-prose li::marker { color: var(--vinc-accent); }
+.vinc-login .reader-prose blockquote {
+  border-left: 3px solid var(--vinc-accent); padding: .15rem 0 .15rem 1.1rem; margin-left: 0;
+  color: color-mix(in oklab, var(--vinc-ink) 66%, transparent); font-style: italic;
+}
+.vinc-login .reader-prose img { border-radius: 14px; border: 1px solid var(--vinc-line); }
+.vinc-login .reader-prose hr { border: 0; border-top: 1px solid var(--vinc-line); margin: 2.2em 0; }
+.vinc-login .reader-prose code {
+  font-family: var(--font-jetbrains), ui-monospace, monospace; font-size: .88em;
+  background: color-mix(in oklab, var(--vinc-ink) 6%, var(--vinc-surface));
+  border: 1px solid var(--vinc-line); border-radius: 6px; padding: .12em .4em;
+}
+.vinc-login .status {
+  display: inline-flex; align-items: center; gap: .4rem; font-family: var(--font-jetbrains), monospace; font-size: .6rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; border-radius: 7px; padding: .25rem .5rem;
+}
+.vinc-login .status-on { background: color-mix(in oklab, #1f9d6b 13%, #fff); color: #1f8a5e; }
+.vinc-login .status-on::before { content: ""; height: 6px; width: 6px; border-radius: 999px; background: #1f9d6b; }
+.vinc-login .status-off { background: color-mix(in oklab, var(--vinc-ink) 6%, #fff); color: color-mix(in oklab, var(--vinc-ink) 48%, transparent); }
+.vinc-login .btn-open { display: inline-flex; align-items: center; gap: .4rem; font-size: .82rem; font-weight: 600; color: var(--vinc-accent); }
+.vinc-login .sumcard { display: flex; flex-direction: column; gap: .15rem; padding: 1rem 1.15rem; background: var(--vinc-surface); border: 1px solid var(--vinc-line); border-radius: 14px; }
+
+/* search inputs in the suite shell — strip the @tailwindcss/forms border/ring
+   so only the rounded container's hairline (accent on focus) shows. */
+.vinc-login .vinc-search,
+.vinc-login .vinc-search:focus {
+  border: 0; outline: none; box-shadow: none; background: transparent;
+  --tw-ring-shadow: 0 0 #0000; --tw-ring-offset-shadow: 0 0 #0000;
 }

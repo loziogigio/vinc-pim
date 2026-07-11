@@ -51,9 +51,13 @@ const PHRASE_MATCH_FILTER_FIELDS: Record<string, true> = {
 export function buildSearchQuery(request: SearchRequest): SolrJsonQuery {
   const config = getSolrConfig();
   const lang = request.lang || 'it';
+  // Language whose text fields the full-text query matches against.
+  // Falls back to `lang`; the caller may set match_lang to the tenant default
+  // when the requested language has no populated content (see executeSearchWithFallback).
+  const matchLang = request.match_lang || lang;
 
   // Build main query with fuzzy options (like dfl-api)
-  const query = buildMainQuery(request.text, lang, {
+  const query = buildMainQuery(request.text, matchLang, {
     fuzzy: request.fuzzy,
     fuzzyNum: request.fuzzy_num,
   });
@@ -427,6 +431,18 @@ function buildFilterQueries(
     fq.push(`channels:${request.channel}`);
   }
 
+  // User-attribute exclusions (Feature 1): negative fq per resolved rule.
+  // AND-combined with all other clauses; empty field/value pairs are skipped.
+  // Placed BEFORE the `if (!filters) return fq` guard so exclusions apply even
+  // when the request carries no other filters (the common case).
+  for (const ex of request?.user_exclusions ?? []) {
+    const field = ex.solr_field?.trim();
+    const value = ex.value?.trim();
+    if (!field || !value) continue;
+    if (!/^[A-Za-z0-9_]+$/.test(field)) continue; // skip malformed solr_field (admin config typo) rather than emit an invalid fq
+    fq.push(`-${field}:${escapeQueryChars(value)}`);
+  }
+
   if (!filters) {
     return fq;
   }
@@ -682,10 +698,11 @@ function calculateGap(ranges: { from?: number; to?: number }[]): number {
 export function buildQueryParams(request: SearchRequest): Record<string, string | string[]> {
   const config = getSolrConfig();
   const lang = request.lang || 'it';
+  const matchLang = request.match_lang || lang;
   const params: Record<string, string | string[]> = {};
 
   // Main query
-  params.q = buildMainQuery(request.text, lang);
+  params.q = buildMainQuery(request.text, matchLang);
 
   // Filter queries
   const fq = buildFilterQueries(request.filters, request);

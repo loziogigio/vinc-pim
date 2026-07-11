@@ -103,6 +103,7 @@ export async function POST(
       uploaded_by: session.userId,
       is_external_link: false,
       position: maxPosition + 1 + index,
+      is_public: true,
     }));
 
     // Update product with new media

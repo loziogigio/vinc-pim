@@ -22,6 +22,10 @@ export interface IMenuItem extends Document {
   // Sales channel (e.g., "default", "b2c", "b2b")
   channel: string;
 
+  // Catalog language code (e.g., "it", "en"). Absent = default-language version
+  // (backward compatible with pre-i18n menu items).
+  language?: string;
+
   // Menu location
   location: MenuLocation;
 
@@ -30,8 +34,7 @@ export interface IMenuItem extends Document {
   reference_id?: string; // ID of the entity (collection_id, category_id, etc.)
 
   // Display settings
-  label?: string; // Custom label (overrides entity name if provided) — default/fallback
-  label_i18n?: Record<string, string>; // Per-language label overrides, keyed by language code
+  label?: string; // Custom label (overrides entity name if provided)
   url?: string; // Custom URL (for type="url") or external link
   icon?: string; // Optional icon class or SVG
   rich_text?: string; // Rich text description (for search, promotions, etc.)
@@ -81,6 +84,13 @@ const MenuItemSchema = new Schema<IMenuItem>(
       lowercase: true,
       index: true,
     },
+    // Catalog language code; absent means the default-language version.
+    language: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
     location: {
       type: String,
       enum: ["header", "footer", "mobile", "mega_menu"],
@@ -111,12 +121,6 @@ const MenuItemSchema = new Schema<IMenuItem>(
     label: {
       type: String,
       trim: true,
-    },
-    // Per-language label overrides: { en: "Products", it: "Prodotti", ... }.
-    // Mixed so the public menu endpoint can resolve a label by language code,
-    // falling back to `label` when a translation is missing.
-    label_i18n: {
-      type: Schema.Types.Mixed,
     },
     url: {
       type: String,
@@ -199,6 +203,7 @@ const MenuItemSchema = new Schema<IMenuItem>(
 
 // Compound indexes - wholesaler_id removed, database provides isolation
 MenuItemSchema.index({ channel: 1, location: 1, parent_id: 1, position: 1 });
+MenuItemSchema.index({ channel: 1, location: 1, language: 1, parent_id: 1, position: 1 });
 MenuItemSchema.index({ is_active: 1, start_date: 1, end_date: 1 });
 MenuItemSchema.index({ type: 1, reference_id: 1 });
 

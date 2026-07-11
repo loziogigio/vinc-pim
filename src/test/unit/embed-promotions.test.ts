@@ -248,4 +248,51 @@ describe("unit: embedPromotionsInPackaging", () => {
     expect(embedded.min_quantity).toBe(3);
     expect(embedded.tag_filter).toEqual(["tipo:gold"]);
   });
+
+  // ===========================================
+  // Explicit packaging-level promotions take precedence
+  // (sync-set agent/customer tag_filter must survive)
+  // ===========================================
+
+  it("should keep a packaging's own promotions instead of overwriting with product-level", () => {
+    const pkgs = [
+      makePkg({
+        pkg_id: "1-01",
+        promotions: [{ promo_code: "022", promo_row: 2, tag_filter: ["agente:pg1"] }] as any,
+      }),
+      makePkg({ pkg_id: "1-02" }),
+    ];
+    // Product-level promo with the SAME code but no tag_filter — must NOT clobber 1-01.
+    const promos = [makePromo({ promo_code: "022", target_pkg_ids: [] })];
+
+    const result = embedPromotionsInPackaging(pkgs, promos)!;
+
+    // pkg with its own promotions keeps them (incl. the agent tag_filter)
+    expect(result[0].promotions).toHaveLength(1);
+    expect(result[0].promotions![0].promo_code).toBe("022");
+    expect(result[0].promotions![0].tag_filter).toEqual(["agente:pg1"]);
+    // pkg WITHOUT its own promotions still receives the product-level projection
+    expect(result[1].promotions).toHaveLength(1);
+    expect(result[1].promotions![0].promo_code).toBe("022");
+    expect(result[1].promotions![0].tag_filter).toBeUndefined();
+  });
+
+  it("should preserve a packaging promotion's agent tag_filter (sync-driven targeting)", () => {
+    const pkgs = [
+      makePkg({
+        pkg_id: "1-02",
+        promotions: [{ promo_code: "022", tag_filter: ["agente:pg1"] }] as any,
+      }),
+    ];
+    const result = embedPromotionsInPackaging(pkgs, [makePromo({ promo_code: "022" })])!;
+    expect(result[0].promotions![0].tag_filter).toEqual(["agente:pg1"]);
+  });
+
+  it("should leave a packaging's own promotions untouched when there are no product-level promotions", () => {
+    const pkgs = [
+      makePkg({ pkg_id: "1-02", promotions: [{ promo_code: "022", tag_filter: ["agente:pg1"] }] as any }),
+    ];
+    const result = embedPromotionsInPackaging(pkgs, [])!;
+    expect(result[0].promotions![0].tag_filter).toEqual(["agente:pg1"]);
+  });
 });

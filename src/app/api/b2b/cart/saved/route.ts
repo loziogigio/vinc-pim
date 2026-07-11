@@ -31,7 +31,9 @@ export async function GET(req: NextRequest) {
       customer_code: customerCode,
       status: "draft",
       is_current: { $ne: true },
-      processing_status: { $nin: ["processing", "failed"] },
+      // Show parked carts regardless of processing_status — including ones whose
+      // last submit hit ERP/sync errors (processing_status: "failed"), so the
+      // user can find and recover them instead of them vanishing from view.
     };
 
     if (addressCode) {

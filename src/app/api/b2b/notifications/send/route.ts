@@ -37,6 +37,8 @@ interface SendNotificationPayload {
   reply_to?: string;
   /** Portal user ID for in-app/push notifications */
   portal_user_id?: string;
+  /** Recipient phone number (E.164, e.g. "+39333…") — triggers SMS when the template's SMS channel is enabled */
+  sms_to?: string;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -214,6 +216,7 @@ export async function POST(req: NextRequest) {
       bcc: bcc.value,
       variables: payload.variables || {},
       replyTo: payload.reply_to,
+      smsTo: payload.sms_to,
       targetUserId: payload.portal_user_id || userId,
       targetUserType: "portal_user",
     });

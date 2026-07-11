@@ -112,6 +112,8 @@ export interface SendPushOptions {
   queue?: boolean;
   /** Priority (1-10, higher = more important) */
   priority?: number;
+  /** Sales-channel code for per-channel config resolution (default: "default") */
+  channel?: string;
 }
 
 export interface SendPushResult {

@@ -2,7 +2,7 @@
  * Centralized App Registry
  *
  * Single source of truth for all B2B applications.
- * Used by: AppLauncherDropdown, TenantAppLauncher, DashboardHeader
+ * Used by: AppLauncherDropdown, TenantAppLauncher, SuiteHeader
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -145,6 +145,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/store/coupons",
     icon: Store,
     color: "bg-amber-500",
+    showInLauncher: false,
+    showInHeader: false,
+    hasNavigation: true,
+  },
+  {
+    id: "store-subscriptions",
+    name: "Subscriptions",
+    description: "Piani di abbonamento e fatturazione ricorrente",
+    href: "/b2b/store/subscriptions",
+    icon: CreditCard,
+    color: "bg-cyan-500",
     showInLauncher: false,
     showInHeader: false,
     hasNavigation: true,
@@ -354,7 +365,7 @@ export function getHeaderApps(): AppConfig[] {
 }
 
 /**
- * Get current section info for DashboardHeader
+ * Get current section info for SuiteHeader
  * Returns the app matching the current path, or Home as default
  */
 export function getCurrentSection(pathname: string): {

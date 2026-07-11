@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Radio,
   Plus,
@@ -9,6 +10,7 @@ import {
   Loader2,
   X,
   Star,
+  Bell,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -286,6 +288,13 @@ export default function ChannelsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/b2b/admin/data-models/notification_settings?channel=${channel.code}`}
+                        className="p-1.5 text-muted-foreground hover:text-foreground rounded transition-colors inline-flex items-center"
+                        title={t("pages.admin.channels.notifications")}
+                      >
+                        <Bell className="w-4 h-4" />
+                      </Link>
                       <button
                         onClick={() => openEdit(channel)}
                         className="p-1.5 text-muted-foreground hover:text-foreground rounded transition-colors"
