@@ -16,10 +16,143 @@ import { SearchRequest } from '@/lib/types/search';
 import { getSolrConfig, isSolrEnabled } from '@/config/project.config';
 import { getB2BSession } from '@/lib/auth/b2b-session';
 import { verifyAPIKeyFromRequest } from '@/lib/auth/api-key-auth';
+import { validateAccessToken } from '@/lib/sso/tokens';
+import { getSession } from '@/lib/sso/session';
+import { resolveLivePortalAccess } from '@/lib/sso/live-portal-access';
 import { connectWithModels } from '@/lib/db/connection';
 import { resolveEffectiveTags } from '@/lib/services/tag-pricing.service';
 import { loadUserExclusionsForSearch } from './exclusions-loader';
 import { stripNonPublicForGuests } from '@/lib/search/strip-non-public';
+
+interface VerifiedUserContext {
+  customers: Array<{
+    customerCode: string;
+    addressCodes: Set<string>;
+  }>;
+}
+
+type SearchSelection =
+  | {
+      allowed: true;
+      customerCode?: string;
+      addressCode?: string;
+    }
+  | { allowed: false };
+
+/**
+ * Validate the end-user bearer independently from the tenant API key. Proxy
+ * headers are deliberately not trusted here: any API-key holder can set them.
+ */
+async function resolveVerifiedUserContext(
+  request: NextRequest,
+  expectedTenantId: string,
+  tenantDb: string,
+): Promise<VerifiedUserContext | null> {
+  const authorization = request.headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) return null;
+
+  const token = authorization.slice(7).trim();
+  if (!token || token === 'null') return null;
+
+  try {
+    const payload = await validateAccessToken(token);
+    if (!payload || payload.tenant_id !== expectedTenantId) return null;
+
+    const session = await getSession(payload.session_id);
+    if (
+      !session ||
+      session.tenant_id !== expectedTenantId ||
+      session.user_id !== payload.sub
+    ) {
+      return null;
+    }
+
+    const liveAccess = await resolveLivePortalAccess(
+      tenantDb,
+      expectedTenantId,
+      payload.sub,
+      session.vinc_profile,
+    );
+    if (!liveAccess) return null;
+
+    return {
+      customers: (liveAccess.profile?.customers ?? [])
+        .filter(
+          (customer) =>
+            typeof customer.erp_customer_id === 'string' &&
+            customer.erp_customer_id.length > 0,
+        )
+        .map((customer) => ({
+          customerCode: customer.erp_customer_id,
+          addressCodes: new Set(
+            (customer.addresses ?? [])
+              .map((address) => address.erp_address_id)
+              .filter(
+                (addressCode): addressCode is string =>
+                  typeof addressCode === 'string' && addressCode.length > 0,
+              ),
+          ),
+        })),
+    };
+  } catch (error) {
+    console.warn(
+      '[Search API] bearer validation failed:',
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+/**
+ * Browser customer/address values are selection hints. For API-key requests,
+ * accept a complete pair only when the validated SSO profile owns both. A
+ * Suite session is tenant-admin context and may select a tenant customer.
+ */
+function resolveSearchSelection(
+  authMethod: string | null,
+  userContext: VerifiedUserContext | null,
+  requestedCustomer: unknown,
+  requestedAddress: unknown,
+): SearchSelection {
+  const customerCode =
+    typeof requestedCustomer === 'string' ? requestedCustomer.trim() : '';
+  const addressCode =
+    typeof requestedAddress === 'string' ? requestedAddress.trim() : '';
+
+  if (authMethod === 'session') {
+    return {
+      allowed: true,
+      ...(customerCode ? { customerCode } : {}),
+      ...(addressCode ? { addressCode } : {}),
+    };
+  }
+
+  if (!userContext) return { allowed: true };
+
+  const ownedCustomer = customerCode
+    ? userContext.customers.find(
+        (customer) => customer.customerCode === customerCode,
+      )
+    : undefined;
+
+  if (customerCode && !ownedCustomer) return { allowed: false };
+  if (
+    addressCode &&
+    (!ownedCustomer || !ownedCustomer.addressCodes.has(addressCode))
+  ) {
+    return { allowed: false };
+  }
+
+  if (ownedCustomer && addressCode) {
+    return {
+      allowed: true,
+      customerCode: ownedCustomer.customerCode,
+      addressCode,
+    };
+  }
+
+  return { allowed: true };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +183,8 @@ export async function POST(request: NextRequest) {
     // Determine tenant database based on auth method
     const authMethod = request.headers.get('x-auth-method');
     let tenantDb = request.headers.get('x-resolved-tenant-db');
+    let hasAuthenticatedUser = false;
+    let verifiedUserContext: VerifiedUserContext | null = null;
 
     // For session auth, verify B2B session and get tenant from session
     if (authMethod === 'session') {
@@ -61,6 +196,7 @@ export async function POST(request: NextRequest) {
         );
       }
       tenantDb = `vinc-${session.tenantId}`;
+      hasAuthenticatedUser = true;
     } else if (authMethod === 'api-key') {
       // Verify API key
       const apiKeyResult = await verifyAPIKeyFromRequest(request, 'read');
@@ -71,6 +207,14 @@ export async function POST(request: NextRequest) {
         );
       }
       tenantDb = apiKeyResult.tenantDb!;
+      verifiedUserContext = apiKeyResult.tenantId
+        ? await resolveVerifiedUserContext(
+            request,
+            apiKeyResult.tenantId,
+            tenantDb,
+          )
+        : null;
+      hasAuthenticatedUser = verifiedUserContext !== null;
     }
 
     if (!tenantDb) {
@@ -83,6 +227,19 @@ export async function POST(request: NextRequest) {
           },
         },
         { status: 400 }
+      );
+    }
+
+    const selection = resolveSearchSelection(
+      authMethod,
+      verifiedUserContext,
+      body.customer_code,
+      body.address_code,
+    );
+    if (!selection.allowed) {
+      return NextResponse.json(
+        { error: 'Forbidden customer context' },
+        { status: 403 },
       );
     }
 
@@ -113,8 +270,8 @@ export async function POST(request: NextRequest) {
     searchRequest.user_exclusions = await loadUserExclusionsForSearch(
       tenantDb,
       searchRequest.channel,
-      body.customer_code,
-      body.address_code,
+      selection.customerCode,
+      selection.addressCode,
     );
 
     // Execute search with tenant-specific core.
@@ -139,31 +296,33 @@ export async function POST(request: NextRequest) {
       response.facet_results = await enrichFacetResults(response.facet_results, searchRequest.lang, tenantDb, channel);
     }
 
-    // Filter packaging/promotions by tags
-    // Priority: explicit tag_filter > customer+address resolved tags > strip all
-    const explicitTagFilter: string[] | undefined = body.tag_filter;
+    // Filter packaging/promotions by a server-authorized pricing context.
+    const explicitTagFilter = Array.isArray(body.tag_filter)
+      ? body.tag_filter
+          .filter((tag: unknown): tag is string => typeof tag === 'string')
+          .map((tag: string) => tag.trim())
+          .filter(Boolean)
+      : [];
     let effectiveTags: string[] | null;
 
-    if (Array.isArray(explicitTagFilter)) {
-      // Explicit tag_filter overrides customer resolution (B2C guest, storefront override)
+    if (authMethod === 'session' && explicitTagFilter.length > 0) {
+      // Explicit tag selection is reserved for a verified Suite session.
       effectiveTags = explicitTagFilter;
     } else {
       effectiveTags = await resolveEffectiveTagsForSearch(
-        tenantDb, body.customer_code, body.address_code
+        tenantDb, selection.customerCode, selection.addressCode
       );
     }
 
     if (effectiveTags === null) {
       response.results = stripPackagingFromResults(response.results);
-    } else if (effectiveTags.length) {
+    } else {
       response.results = filterResultsByTags(response.results, effectiveTags);
     }
 
-    // Hard, leak-proof per-element visibility gate. Authenticated iff the
-    // request carries customer context or an explicit authenticated flag.
-    // Deliberately coarse: presence of customer context / authenticated flag = "not a guest". This is a visibility gate for anonymous vs logged-in, NOT per-customer authorization.
-    const isAuthenticated = body.authenticated === true || !!body.customer_code;
-    response.results = stripNonPublicForGuests(response.results, isAuthenticated);
+    // Hard per-element visibility gate. End-user auth comes from a verified
+    // Suite session or bearer above, never from body or proxy-header hints.
+    response.results = stripNonPublicForGuests(response.results, hasAuthenticatedUser);
 
     return NextResponse.json({
       success: true,
@@ -241,6 +400,8 @@ export async function GET(request: NextRequest) {
     // Determine tenant database based on auth method
     const authMethod = request.headers.get('x-auth-method');
     let tenantDb = request.headers.get('x-resolved-tenant-db');
+    let hasAuthenticatedUser = false;
+    let verifiedUserContext: VerifiedUserContext | null = null;
 
     // For session auth, verify B2B session and get tenant from session
     if (authMethod === 'session') {
@@ -252,6 +413,7 @@ export async function GET(request: NextRequest) {
         );
       }
       tenantDb = `vinc-${session.tenantId}`;
+      hasAuthenticatedUser = true;
     } else if (authMethod === 'api-key') {
       // Verify API key
       const apiKeyResult = await verifyAPIKeyFromRequest(request, 'read');
@@ -262,6 +424,14 @@ export async function GET(request: NextRequest) {
         );
       }
       tenantDb = apiKeyResult.tenantDb!;
+      verifiedUserContext = apiKeyResult.tenantId
+        ? await resolveVerifiedUserContext(
+            request,
+            apiKeyResult.tenantId,
+            tenantDb,
+          )
+        : null;
+      hasAuthenticatedUser = verifiedUserContext !== null;
     }
 
     if (!tenantDb) {
@@ -299,6 +469,19 @@ export async function GET(request: NextRequest) {
 
     // Dynamic blocks flag
     const includeDynamicBlocks = searchParams.get('include_dynamic_blocks') === 'true';
+
+    const selection = resolveSearchSelection(
+      authMethod,
+      verifiedUserContext,
+      searchParams.get('customer_code'),
+      searchParams.get('address_code'),
+    );
+    if (!selection.allowed) {
+      return NextResponse.json(
+        { error: 'Forbidden customer context' },
+        { status: 403 },
+      );
+    }
 
     // Build filters from query params
     // Supports multiple formats:
@@ -366,8 +549,8 @@ export async function GET(request: NextRequest) {
     searchRequest.user_exclusions = await loadUserExclusionsForSearch(
       tenantDb,
       searchRequest.channel,
-      searchParams.get('customer_code') || undefined,
-      searchParams.get('address_code') || undefined,
+      selection.customerCode,
+      selection.addressCode,
     );
 
     // Build and execute query with tenant-specific Solr collection.
@@ -392,33 +575,30 @@ export async function GET(request: NextRequest) {
       response.facet_results = await enrichFacetResults(response.facet_results, lang, tenantDb, getChannel);
     }
 
-    // Filter packaging/promotions by tags
-    // Priority: explicit tag_filter > customer+address resolved tags > strip all
-    const customerCode = searchParams.get('customer_code') || undefined;
-    const addressCode = searchParams.get('address_code') || undefined;
-    const tagFilterParam = searchParams.get('tag_filter');
+    // Filter packaging/promotions by a server-authorized pricing context.
+    const explicitTagFilter = (searchParams.get('tag_filter') || '')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
     let effectiveTags: string[] | null;
 
-    if (tagFilterParam) {
-      // Explicit tag_filter overrides customer resolution (B2C guest, storefront override)
-      effectiveTags = tagFilterParam.split(',').map(t => t.trim()).filter(Boolean);
+    if (authMethod === 'session' && explicitTagFilter.length > 0) {
+      // Explicit tag selection is reserved for a verified Suite session.
+      effectiveTags = explicitTagFilter;
     } else {
       effectiveTags = await resolveEffectiveTagsForSearch(
-        tenantDb, customerCode, addressCode
+        tenantDb, selection.customerCode, selection.addressCode
       );
     }
 
     if (effectiveTags === null) {
       response.results = stripPackagingFromResults(response.results);
-    } else if (effectiveTags.length) {
+    } else {
       response.results = filterResultsByTags(response.results, effectiveTags);
     }
 
-    // Hard, leak-proof per-element visibility gate (mirror of POST).
-    // Deliberately coarse: presence of customer context / authenticated flag = "not a guest". This is a visibility gate for anonymous vs logged-in, NOT per-customer authorization.
-    const isAuthenticated =
-      searchParams.get('authenticated') === 'true' || !!searchParams.get('customer_code');
-    response.results = stripNonPublicForGuests(response.results, isAuthenticated);
+    // Mirror POST: query flags/customer codes do not establish end-user auth.
+    response.results = stripNonPublicForGuests(response.results, hasAuthenticatedUser);
 
     return NextResponse.json({
       success: true,
@@ -475,8 +655,8 @@ export async function GET(request: NextRequest) {
 
 /**
  * Resolve effective tags for search filtering.
- * Looks up customer by external_code, finds address by external_code,
- * then resolves effective tags (customer tags + address overrides).
+ * Looks up a customer/address by ERP code or internal fallback ID, then
+ * resolves effective tags (customer tags + address overrides).
  * Returns null if customer_code/address_code not provided (= strip packaging).
  */
 async function resolveEffectiveTagsForSearch(
@@ -488,14 +668,25 @@ async function resolveEffectiveTagsForSearch(
 
   const { Customer } = await connectWithModels(tenantDb);
   const customer = await Customer.findOne(
-    { external_code: customerCode },
+    {
+      $or: [
+        { external_code: customerCode },
+        { customer_id: customerCode },
+      ],
+    },
     { tags: 1, addresses: 1 }
   ).lean();
   if (!customer) return null;
 
   const address = (customer as any).addresses?.find(
-    (a: any) => a.external_code === addressCode
+    (a: any) =>
+      a.external_code === addressCode || a.address_id === addressCode
   ) || null;
+
+  // A caller must provide an address that belongs to this customer. Falling
+  // back to customer-level tags for an unknown address leaks that customer's
+  // price tier through a spoofed pair.
+  if (!address) return null;
 
   return resolveEffectiveTags(customer as any, address);
 }
@@ -504,17 +695,26 @@ async function resolveEffectiveTagsForSearch(
  * Strip packaging_options from all results (anonymous search, no customer context).
  */
 function stripPackagingFromResults(results: any[]): any[] {
-  return results.map((product: any) => {
+  function stripProduct(product: any): any {
     const { packaging_options, ...rest } = product;
+    if (rest.pricing?.tag_filter?.length) {
+      delete rest.pricing;
+    }
+    if (Array.isArray(rest.promotions)) {
+      rest.promotions = filterPromotionsForTags(
+        rest.promotions,
+        new Set<string>(),
+      );
+    }
+    Object.assign(rest, buildPromotionMetadata(rest.promotions, []));
     // Also strip from variants (grouped results)
     if (rest.variants?.length) {
-      rest.variants = rest.variants.map((v: any) => {
-        const { packaging_options: _, ...vRest } = v;
-        return vRest;
-      });
+      rest.variants = rest.variants.map((variant: any) => stripProduct(variant));
     }
     return rest;
-  });
+  }
+
+  return results.map((product: any) => stripProduct(product));
 }
 
 /**
@@ -528,7 +728,31 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
   const tagSet = new Set(customerTags);
 
   function filterProduct(product: any): any {
-    if (!product.packaging_options?.length) return product;
+    const filteredProductPromotions = Array.isArray(product.promotions)
+      ? filterPromotionsForTags(product.promotions, tagSet)
+      : product.promotions;
+    const topLevelTagFilter = product.pricing?.tag_filter;
+    let resolvedPricing =
+      !topLevelTagFilter?.length ||
+      topLevelTagFilter.some((tag: string) => tagSet.has(tag))
+        ? product.pricing
+        : undefined;
+
+    if (!product.packaging_options?.length) {
+      const filteredProduct =
+        resolvedPricing === product.pricing &&
+        filteredProductPromotions === product.promotions
+        ? product
+        : {
+            ...product,
+            pricing: resolvedPricing,
+            promotions: filteredProductPromotions,
+          };
+      return {
+        ...filteredProduct,
+        ...buildPromotionMetadata(filteredProductPromotions, []),
+      };
+    }
 
     const filteredPackaging = product.packaging_options
       .filter((pkg: any) => {
@@ -538,17 +762,16 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
       })
       .map((pkg: any) => {
         if (!pkg.promotions?.length) return pkg;
-        const filteredPromos = pkg.promotions.filter((promo: any) => {
-          if (!promo.tag_filter?.length) return true;
-          return promo.tag_filter.some((tag: string) => tagSet.has(tag));
-        });
+        const filteredPromos = filterPromotionsForTags(
+          pkg.promotions,
+          tagSet,
+        );
         return { ...pkg, promotions: filteredPromos };
       });
 
     // Rewrite product-level `pricing` from the matched tier's packaging so the
     // storefront's `product.pricing.list` reflects what the customer actually pays,
     // not the universal default that the sync writes for anonymous browsers.
-    let resolvedPricing = product.pricing;
     if (filteredPackaging.length > 0) {
       const winner =
         filteredPackaging.find((pkg: any) => pkg.is_default) ??
@@ -565,8 +788,10 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
         const retail = pp.retail ?? (pp.retail_unit != null ? pp.retail_unit * qty : undefined);
         const sale   = pp.sale   ?? (pp.sale_unit   != null ? pp.sale_unit   * qty : undefined);
 
+        const { tag_filter: _oldTagFilter, ...basePricing } =
+          resolvedPricing ?? {};
         resolvedPricing = {
-          ...(product.pricing ?? {}),
+          ...basePricing,
           ...(list   != null ? { list,   list_unit:   list   / qty } : {}),
           ...(retail != null ? { retail, retail_unit: retail / qty } : {}),
           ...(sale   != null ? { sale,   sale_unit:   sale   / qty } : {}),
@@ -575,7 +800,19 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
       }
     }
 
-    return { ...product, pricing: resolvedPricing, packaging_options: filteredPackaging };
+    const filteredProduct = {
+      ...product,
+      pricing: resolvedPricing,
+      promotions: filteredProductPromotions,
+      packaging_options: filteredPackaging,
+    };
+    return {
+      ...filteredProduct,
+      ...buildPromotionMetadata(
+        filteredProductPromotions,
+        filteredPackaging,
+      ),
+    };
   }
 
   return results.map((product: any) => {
@@ -586,4 +823,64 @@ function filterResultsByTags(results: any[], customerTags: string[]): any[] {
     }
     return filtered;
   });
+}
+
+function filterPromotionsForTags(
+  promotions: any[],
+  tagSet: ReadonlySet<string>,
+): any[] {
+  return promotions.filter((promotion: any) => {
+    const tagFilter = promotion?.tag_filter;
+    if (!Array.isArray(tagFilter) || tagFilter.length === 0) return true;
+    return tagFilter.some(
+      (tag: unknown) => typeof tag === 'string' && tagSet.has(tag),
+    );
+  });
+}
+
+function buildPromotionMetadata(
+  productPromotions: any,
+  packagingOptions: any[],
+): {
+  promo_code: string[];
+  promo_codes: string[];
+  promo_type: string[];
+  has_active_promo: boolean;
+} {
+  const promotions = [
+    ...(Array.isArray(productPromotions) ? productPromotions : []),
+    ...packagingOptions.flatMap((packaging: any) =>
+      Array.isArray(packaging?.promotions) ? packaging.promotions : [],
+    ),
+  ];
+  const activePromotions = promotions.filter(
+    (promotion: any) => promotion?.is_active !== false,
+  );
+  const promoCodes = Array.from(
+    new Set(
+      activePromotions
+        .map((promotion: any) => promotion?.promo_code)
+        .filter(
+          (code: unknown): code is string =>
+            typeof code === 'string' && code.length > 0,
+        ),
+    ),
+  );
+  const promoTypes = Array.from(
+    new Set(
+      activePromotions
+        .map((promotion: any) => promotion?.promo_type)
+        .filter(
+          (type: unknown): type is string =>
+            typeof type === 'string' && type.length > 0,
+        ),
+    ),
+  );
+
+  return {
+    promo_code: promoCodes,
+    promo_codes: promoCodes,
+    promo_type: promoTypes,
+    has_active_promo: activePromotions.length > 0,
+  };
 }

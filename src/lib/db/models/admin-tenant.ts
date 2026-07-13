@@ -7,6 +7,13 @@
 
 import { Schema, Model, Document } from "mongoose";
 import { connectToAdminDatabase } from "../admin-connection";
+import {
+  B2B_PRICING_SOURCE_IDS,
+  B2B_STOREFRONT_TEMPLATE_IDS,
+  DEFAULT_B2B_STOREFRONT_TEMPLATE,
+  type B2BPricingSource,
+  type B2BStorefrontTemplate,
+} from "@/lib/constants/b2b-storefront";
 
 // ============================================
 // CONSTANTS
@@ -78,6 +85,8 @@ export interface ITenantDomain {
 export interface ITenantApiConfig {
   pim_api_url?: string;
   b2b_api_url?: string;
+  /** Optional direct ERP/MyMB connection used by vinc-b2b ERP routes. */
+  erp_url?: string;
   api_key_id?: string;
   api_secret?: string;
 }
@@ -88,6 +97,16 @@ export interface ITenantApiConfig {
 export interface ITenantDbConfig {
   mongo_url?: string;
   mongo_db?: string;
+}
+
+/**
+ * Runtime storefront feature configuration consumed directly by vinc-b2b.
+ * This is intentionally separate from settings.features, which is the legacy
+ * array of Commerce Suite feature flags.
+ */
+export interface ITenantFeatures {
+  pricing_source?: B2BPricingSource;
+  is_demo?: boolean;
 }
 
 export interface ITenant {
@@ -112,7 +131,8 @@ export interface ITenant {
   require_login?: boolean;
   home_settings_customer_id?: string;
   builder_url?: string;
-  b2b_theme?: string;
+  b2b_theme?: B2BStorefrontTemplate;
+  features?: ITenantFeatures;
   vetrina?: ITenantVetrina;
   enabled_apps?: string[];
   /** RBAC (Phase 0B): module apps (apps.config ids) this tenant may use. Unset ⇒ all. */
@@ -177,6 +197,7 @@ const TenantApiConfigSchema = new Schema(
   {
     pim_api_url: { type: String },
     b2b_api_url: { type: String },
+    erp_url: { type: String },
     api_key_id: { type: String },
     api_secret: { type: String },
   },
@@ -187,6 +208,29 @@ const TenantDbConfigSchema = new Schema(
   {
     mongo_url: { type: String },
     mongo_db: { type: String },
+  },
+  { _id: false }
+);
+
+const TenantFeaturesSchema = new Schema<ITenantFeatures>(
+  {
+    pricing_source: {
+      type: String,
+      validate: {
+        validator: function (this: any, value: unknown) {
+          if (B2B_PRICING_SOURCE_IDS.includes(value as B2BPricingSource)) {
+            return true;
+          }
+          const owner = this.ownerDocument?.() ?? this;
+          return (
+            owner.isNew === false &&
+            owner.isModified?.("features.pricing_source") === false
+          );
+        },
+        message: `pricing_source must be one of: ${B2B_PRICING_SOURCE_IDS.join(", ")}`,
+      },
+    },
+    is_demo: { type: Boolean },
   },
   { _id: false }
 );
@@ -269,6 +313,21 @@ export const TenantSchema = new Schema<ITenantDocument>(
       type: String,
       trim: true,
       lowercase: true,
+      validate: {
+        validator: function (this: any, value: unknown) {
+          return (
+            B2B_STOREFRONT_TEMPLATE_IDS.includes(
+              value as B2BStorefrontTemplate,
+            ) ||
+            (this.isNew === false && this.isModified?.("b2b_theme") === false)
+          );
+        },
+        message: `b2b_theme must be one of: ${B2B_STOREFRONT_TEMPLATE_IDS.join(", ")}`,
+      },
+      default: DEFAULT_B2B_STOREFRONT_TEMPLATE,
+    },
+    features: {
+      type: TenantFeaturesSchema,
     },
     vetrina: TenantVetrinaSchema,
     enabled_apps: {

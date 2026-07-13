@@ -8,8 +8,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { validateAccessToken, type TokenPayload } from "@/lib/sso/tokens";
-import { validateSession, getSession } from "@/lib/sso/session";
+import { validateAccessToken } from "@/lib/sso/tokens";
+import { validateSession } from "@/lib/sso/session";
+import { resolveLivePortalAccess } from "@/lib/sso/live-portal-access";
 
 interface ValidateRequest {
   access_token?: string;
@@ -83,6 +84,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const liveAccess = await resolveLivePortalAccess(
+      `vinc-${payload.tenant_id}`,
+      payload.tenant_id,
+      payload.sub,
+      session.vinc_profile
+    );
+    if (!liveAccess) {
+      return NextResponse.json(
+        { active: false, reason: "Portal user is inactive or no longer exists" },
+        { status: 200 }
+      );
+    }
+
     // Build token info response (RFC 7662 compliant)
     const tokenInfo: TokenInfo = {
       active: true,
@@ -152,16 +166,29 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const liveAccess = await resolveLivePortalAccess(
+      `vinc-${payload.tenant_id}`,
+      payload.tenant_id,
+      payload.sub,
+      session.vinc_profile
+    );
+    if (!liveAccess) {
+      return NextResponse.json(
+        { authenticated: false },
+        { status: 200 }
+      );
+    }
+
     // Return full user profile from session if available
-    const user = session.vinc_profile ? {
-      id: session.vinc_profile.id,
-      email: session.vinc_profile.email,
-      name: session.vinc_profile.name,
-      role: session.vinc_profile.role,
-      supplier_id: session.vinc_profile.supplier_id,
-      supplier_name: session.vinc_profile.supplier_name,
-      customers: session.vinc_profile.customers,
-      has_password: session.vinc_profile.has_password,
+    const user = liveAccess.profile ? {
+      id: liveAccess.profile.id,
+      email: liveAccess.profile.email,
+      name: liveAccess.profile.name,
+      role: liveAccess.profile.role,
+      supplier_id: liveAccess.profile.supplier_id,
+      supplier_name: liveAccess.profile.supplier_name,
+      customers: liveAccess.profile.customers,
+      has_password: liveAccess.profile.has_password,
     } : {
       id: payload.sub,
       email: payload.email,

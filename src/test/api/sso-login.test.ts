@@ -339,6 +339,115 @@ describe("api: SSO Login", () => {
       );
     });
 
+    it("stores only explicitly accessible addresses in the direct-token profile", async () => {
+      setupSuccessfulLogin(
+        {
+          customer_access: [
+            { customer_id: "cust-001", address_access: ["addr-allowed"] },
+          ],
+        },
+        {
+          addresses: [
+            {
+              address_id: "addr-allowed",
+              external_code: "ERP-ALLOWED",
+              label: "Allowed",
+            },
+            {
+              address_id: "addr-denied",
+              external_code: "ERP-DENIED",
+              label: "Denied",
+            },
+          ],
+        }
+      );
+
+      const response = await POST(
+        createRequest({
+          email: "test@example.com",
+          password: "password123",
+          tenant_id: "test-tenant",
+        })
+      );
+      const data = await response.json();
+
+      expect(data.user.customers[0].addresses).toEqual([
+        expect.objectContaining({
+          id: "addr-allowed",
+          erp_address_id: "ERP-ALLOWED",
+        }),
+      ]);
+      expect(createSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vinc_profile: expect.objectContaining({
+            customers: [
+              expect.objectContaining({
+                addresses: [
+                  expect.objectContaining({
+                    id: "addr-allowed",
+                    erp_address_id: "ERP-ALLOWED",
+                  }),
+                ],
+              }),
+            ],
+          }),
+        })
+      );
+    });
+
+    it("keeps every customer address when address access is all", async () => {
+      setupSuccessfulLogin(
+        {
+          customer_access: [
+            { customer_id: "cust-001", address_access: "all" },
+          ],
+        },
+        {
+          addresses: [
+            {
+              address_id: "addr-one",
+              external_code: "ERP-ONE",
+              label: "One",
+            },
+            {
+              address_id: "addr-two",
+              external_code: "ERP-TWO",
+              label: "Two",
+            },
+          ],
+        }
+      );
+
+      const response = await POST(
+        createRequest({
+          email: "test@example.com",
+          password: "password123",
+          tenant_id: "test-tenant",
+        })
+      );
+      const data = await response.json();
+
+      expect(
+        data.user.customers[0].addresses.map(
+          (address: { id: string }) => address.id
+        )
+      ).toEqual(["addr-one", "addr-two"]);
+      expect(createSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vinc_profile: expect.objectContaining({
+            customers: [
+              expect.objectContaining({
+                addresses: [
+                  expect.objectContaining({ id: "addr-one" }),
+                  expect.objectContaining({ id: "addr-two" }),
+                ],
+              }),
+            ],
+          }),
+        })
+      );
+    });
+
     it("should return 401 when user not found", async () => {
       mockFindOne.mockResolvedValue(null);
 

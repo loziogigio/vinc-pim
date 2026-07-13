@@ -26,6 +26,10 @@ import {
 import { initializeHomeSettings } from "../db/home-settings";
 import { regenerateB2BConfig, regenerateB2CConfigDebounced } from "./traefik-config.service";
 import { ensureSystemRoles } from "@/lib/auth/permissions/seed-system-roles";
+import {
+  DEFAULT_B2B_PRICING_SOURCE,
+  DEFAULT_B2B_STOREFRONT_TEMPLATE,
+} from "@/lib/constants/b2b-storefront";
 
 // ============================================
 // TYPES
@@ -529,6 +533,11 @@ export async function createTenant(input: CreateTenantInput): Promise<TenantProv
     require_login: input.require_login,
     home_settings_customer_id: input.home_settings_customer_id,
     builder_url: input.builder_url,
+    // New tenants receive explicit runtime defaults. Existing registry rows
+    // without these paths keep their current vinc-b2b theme/env fallback until
+    // a super-admin deliberately chooses and saves an override.
+    b2b_theme: DEFAULT_B2B_STOREFRONT_TEMPLATE,
+    features: { pricing_source: DEFAULT_B2B_PRICING_SOURCE },
   });
 
   const accessUrl = `${BASE_URL}/${tenant_id}/api/b2b`;
@@ -653,6 +662,7 @@ export async function updateTenant(
     | "home_settings_customer_id"
     | "builder_url"
     | "b2b_theme"
+    | "features"
     | "vetrina"
     | "enabled_apps"
     | "enabled_modules"
@@ -673,12 +683,35 @@ export async function updateTenant(
   if (updates.project_code !== undefined) tenant.project_code = updates.project_code;
   const domainsChanged = updates.domains !== undefined;
   if (domainsChanged) tenant.domains = updates.domains;
-  if (updates.api !== undefined) tenant.api = updates.api;
+  // Merge API fields individually so a partial PATCH (for example clearing
+  // only erp_url) cannot erase the PIM URL, API key, or secret.
+  if (updates.api !== undefined) {
+    const apiFields: Array<keyof ITenantApiConfig> = [
+      "pim_api_url",
+      "b2b_api_url",
+      "erp_url",
+      "api_key_id",
+      "api_secret",
+    ];
+    for (const field of apiFields) {
+      if (updates.api[field] !== undefined) {
+        tenant.set(`api.${field}`, updates.api[field]);
+      }
+    }
+  }
   if (updates.database !== undefined) tenant.database = updates.database;
   if (updates.require_login !== undefined) tenant.require_login = updates.require_login;
   if (updates.home_settings_customer_id !== undefined) tenant.home_settings_customer_id = updates.home_settings_customer_id;
   if (updates.builder_url !== undefined) tenant.builder_url = updates.builder_url;
   if (updates.b2b_theme !== undefined) tenant.b2b_theme = updates.b2b_theme;
+  // Update known feature paths individually. This preserves other flags such
+  // as features.is_demo when super-admin only changes the pricing source.
+  if (updates.features?.pricing_source !== undefined) {
+    tenant.set("features.pricing_source", updates.features.pricing_source);
+  }
+  if (updates.features?.is_demo !== undefined) {
+    tenant.set("features.is_demo", updates.features.is_demo);
+  }
   if (updates.vetrina !== undefined) tenant.vetrina = updates.vetrina;
   if (updates.enabled_apps !== undefined) tenant.enabled_apps = updates.enabled_apps;
   if (updates.enabled_modules !== undefined) tenant.enabled_modules = updates.enabled_modules;

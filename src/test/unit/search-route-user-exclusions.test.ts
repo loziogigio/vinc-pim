@@ -67,6 +67,33 @@ describe("loadUserExclusionsForSearch", () => {
     ]);
   });
 
+  it("resolves an address by internal ID when no ERP address code exists", async () => {
+    recFindOne.mockResolvedValue({ data: { user_exclusion_rules: RULES } });
+    custFindOne.mockResolvedValue({
+      addresses: [{ address_id: "ADDR-ID", country: "SK" }],
+    });
+
+    const out = await loadUserExclusionsForSearch(
+      "vinc-acme-it",
+      "b2b",
+      "CUSTOMER-ID",
+      "ADDR-ID",
+    );
+
+    expect(out).toEqual([
+      { solr_field: "attribute_erp_user_country_exclude_ss", value: "SK" },
+    ]);
+    expect(custFindOne).toHaveBeenCalledWith(
+      {
+        $or: [
+          { external_code: "CUSTOMER-ID" },
+          { customer_id: "CUSTOMER-ID" },
+        ],
+      },
+      { addresses: 1 },
+    );
+  });
+
   it("returns [] when the customer is not found", async () => {
     recFindOne.mockResolvedValue({ data: { user_exclusion_rules: RULES } });
     custFindOne.mockResolvedValue(null);

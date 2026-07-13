@@ -246,12 +246,23 @@ export async function POST(req: NextRequest) {
       .map((ca: any) => {
         const cust = customerMap.get(ca.customer_id);
         if (!cust) return null;
+        const customerAddresses = Array.isArray((cust as any).addresses)
+          ? (cust as any).addresses
+          : [];
+        const accessibleAddresses =
+          ca.address_access === "all"
+            ? customerAddresses
+            : customerAddresses.filter(
+                (address: any) =>
+                  Array.isArray(ca.address_access) &&
+                  ca.address_access.includes(address.address_id)
+              );
         return {
           id: ca.customer_id,
           erp_customer_id: (cust as any).external_code || ca.customer_id,
           name: (cust as any).company_name || `${(cust as any).first_name || ""} ${(cust as any).last_name || ""}`.trim() || undefined,
           business_name: (cust as any).company_name || undefined,
-          addresses: ((cust as any).addresses || []).map((a: any) => ({
+          addresses: accessibleAddresses.map((a: any) => ({
             id: a.address_id,
             erp_address_id: a.external_code || a.address_id,
             label: a.label || `${a.city || ""} (${a.province || ""})`.trim(),
@@ -284,20 +295,20 @@ export async function POST(req: NextRequest) {
       identifier, ip, tenant_id, true, undefined, deviceInfo, client_id
     );
 
+    const vincProfile = {
+      id: profile.id,
+      email: profile.email,
+      name: profile.name,
+      role: profile.role,
+      status: profile.status,
+      supplier_id: profile.supplier_id,
+      supplier_name: profile.supplier_name,
+      customers: profile.customers,
+      has_password: profile.has_password,
+    };
+
     // 8. Handle OAuth flow vs direct token
     if (response_type === "code" && client_id && redirect_uri) {
-      const vincProfile = {
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: profile.role,
-        status: profile.status,
-        supplier_id: profile.supplier_id,
-        supplier_name: profile.supplier_name,
-        customers: profile.customers,
-        has_password: profile.has_password,
-      };
-
       const code = await createAuthCode({
         client_id,
         tenant_id,
@@ -352,6 +363,7 @@ export async function POST(req: NextRequest) {
         user_email: profile.email,
         user_role: profile.role,
         company_name: companyName,
+        vinc_profile: vincProfile,
         client_app: clientApp,
         ip_address: ip,
         user_agent: userAgent,

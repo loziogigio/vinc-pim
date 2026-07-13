@@ -60,6 +60,7 @@ interface ITenant {
   api?: {
     pim_api_url?: string;      // PIM API endpoint
     b2b_api_url?: string;      // B2B API endpoint
+    erp_url?: string;          // Optional direct ERP/MyMB endpoint
     api_key_id?: string;       // Format: ak_{tenant-id}_{12-hex-chars}
     api_secret?: string;       // Format: sk_{32-hex-chars}
   };
@@ -71,6 +72,10 @@ interface ITenant {
 
   // Feature flags
   require_login?: boolean;     // Require authentication for access
+  b2b_theme?: "default" | "time";
+  features?: {
+    pricing_source?: "inline" | "erp" | "hybrid";
+  };
 
   // Infrastructure (legacy)
   solr_core: string;
@@ -445,11 +450,14 @@ export function invalidateTenantCache(hostname: string) {
 | `is_active`           | `isActive`           |
 | `pim_api_url`         | `pimApiUrl`          |
 | `b2b_api_url`         | `b2bApiUrl`          |
+| `erp_url`             | `erpUrl`             |
 | `api_key_id`          | `apiKeyId`           |
 | `api_secret`          | `apiSecret`          |
 | `mongo_url`           | `mongoUrl`           |
 | `mongo_db`            | `mongoDb`            |
 | `require_login`       | `requireLogin`       |
+| `b2b_theme`           | `b2bTheme`           |
+| `features.pricing_source` | `features.pricingSource` |
 
 ### API Key Formats
 

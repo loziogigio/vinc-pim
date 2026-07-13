@@ -22,6 +22,7 @@ export interface UserExclusionRule {
 }
 
 interface ExclusionAddress {
+  address_id?: string;
   external_code?: string;
   country?: string;
   is_default?: boolean;
@@ -38,7 +39,10 @@ function pickAddress(
 ): ExclusionAddress | null {
   const addresses = customer.addresses ?? [];
   if (addressCode) {
-    const selected = addresses.find((a) => a.external_code === addressCode);
+    const selected = addresses.find(
+      (a) =>
+        a.external_code === addressCode || a.address_id === addressCode
+    );
     if (selected) return selected;
   }
   return addresses.find((a) => a.is_default === true) ?? null;

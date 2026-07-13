@@ -12,10 +12,18 @@ import {
   getTenant,
   updateTenant,
   deleteTenant,
-  suspendTenant,
-  activateTenant,
 } from "@/lib/services/admin-tenant.service";
+import {
+  TENANT_STATUSES,
+  type TenantStatus,
+} from "@/lib/db/models/admin-tenant";
 import { isAppId } from "@/config/app-ids";
+import {
+  B2B_PRICING_SOURCE_IDS,
+  B2B_STOREFRONT_TEMPLATE_IDS,
+  isB2BPricingSource,
+  isB2BStorefrontTemplate,
+} from "@/lib/constants/b2b-storefront";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -66,11 +74,13 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
  * - settings: { features?: string[], limits?: { max_products?, max_users?, max_orders? } }
  * - project_code: string - Project identifier
  * - domains: Array<{ hostname, is_primary?, is_active? }> - Domain mappings
- * - api: { pim_api_url, b2b_api_url, api_key_id, api_secret } - API configuration
+ * - api: { pim_api_url, b2b_api_url, erp_url, api_key_id, api_secret } - API configuration
  * - database: { mongo_url, mongo_db } - Database override
  * - require_login: boolean - Whether login is required
  * - home_settings_customer_id: string - Home settings customer ID
  * - builder_url: string - Builder/preview URL
+ * - b2b_theme: "default" | "time" - Compiled vinc-b2b storefront template
+ * - features: { pricing_source: "inline" | "erp" | "hybrid" } - Storefront price source
  */
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const auth = await verifyAdminAuth(req);
@@ -94,31 +104,15 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       home_settings_customer_id,
       builder_url,
       b2b_theme,
+      features,
       vetrina,
       enabled_apps,
       enabled_modules,
     } = body;
 
-    // Handle status changes with special functions
-    if (status === "suspended") {
-      const tenant = await suspendTenant(id);
-      return NextResponse.json({
-        success: true,
-        tenant: tenant.toObject(),
-        message: `Tenant '${id}' has been suspended`,
-      });
-    }
-
-    if (status === "active") {
-      const tenant = await activateTenant(id);
-      return NextResponse.json({
-        success: true,
-        tenant: tenant.toObject(),
-        message: `Tenant '${id}' has been activated`,
-      });
-    }
-
-    // General update - include all valid fields
+    // Build one update so status changes do not silently discard configuration
+    // fields sent in the same PATCH. updateTenant performs the save, cache
+    // notification, and Traefik refresh once for the complete change.
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;
     if (settings !== undefined) updates.settings = settings;
@@ -129,7 +123,39 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     if (require_login !== undefined) updates.require_login = require_login;
     if (home_settings_customer_id !== undefined) updates.home_settings_customer_id = home_settings_customer_id;
     if (builder_url !== undefined) updates.builder_url = builder_url;
-    if (b2b_theme !== undefined) updates.b2b_theme = b2b_theme;
+    if (b2b_theme !== undefined) {
+      if (!isB2BStorefrontTemplate(b2b_theme)) {
+        return NextResponse.json(
+          {
+            error: `Invalid b2b_theme. Expected one of: ${B2B_STOREFRONT_TEMPLATE_IDS.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+      updates.b2b_theme = b2b_theme;
+    }
+    if (features !== undefined) {
+      if (!features || typeof features !== "object" || Array.isArray(features)) {
+        return NextResponse.json(
+          { error: "features must be an object" },
+          { status: 400 }
+        );
+      }
+
+      const pricingSource = features.pricing_source;
+      if (!isB2BPricingSource(pricingSource)) {
+        return NextResponse.json(
+          {
+            error: `Invalid features.pricing_source. Expected one of: ${B2B_PRICING_SOURCE_IDS.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Only expose pricing_source through this endpoint. updateTenant merges
+      // the nested path so unrelated flags (for example is_demo) survive.
+      updates.features = { pricing_source: pricingSource };
+    }
     if (vetrina !== undefined) updates.vetrina = vetrina;
     if (enabled_apps !== undefined) {
       const { getPlatformAppModel } = await import("@/lib/db/models/admin-platform-app");
@@ -150,6 +176,21 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       updates.enabled_modules = enabled_modules.filter((id: string) => isAppId(id));
     }
 
+    if (status !== undefined) {
+      if (
+        typeof status !== "string" ||
+        !TENANT_STATUSES.includes(status as TenantStatus)
+      ) {
+        return NextResponse.json(
+          {
+            error: `Invalid status. Expected one of: ${TENANT_STATUSES.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+      updates.status = status;
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update" },
@@ -159,9 +200,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
     const tenant = await updateTenant(id, updates);
 
+    const message =
+      status === "suspended"
+        ? `Tenant '${id}' has been suspended`
+        : status === "active"
+          ? `Tenant '${id}' has been activated`
+          : undefined;
+
     return NextResponse.json({
       success: true,
       tenant: tenant.toObject(),
+      ...(message ? { message } : {}),
     });
   } catch (error) {
     console.error("Update tenant error:", error);

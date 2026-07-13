@@ -40,9 +40,14 @@ export async function loadUserExclusionsForSearch(
 
   const { Customer } = await connectWithModels(tenantDb);
   const customer = (await Customer.findOne(
-    { external_code: customerCode },
+    {
+      $or: [
+        { external_code: customerCode },
+        { customer_id: customerCode },
+      ],
+    },
     { addresses: 1 },
-  ).lean()) as { addresses?: Array<{ external_code?: string; country?: string; is_default?: boolean }> } | null;
+  ).lean()) as { addresses?: Array<{ address_id?: string; external_code?: string; country?: string; is_default?: boolean }> } | null;
 
   if (!customer) return [];
   return resolveUserExclusions(rules, customer, addressCode);

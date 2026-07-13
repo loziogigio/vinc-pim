@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import PlatformAppsCard from "./components/platform-apps-card";
+import {
+  B2B_PRICING_SOURCES,
+  B2B_STOREFRONT_TEMPLATES,
+  isB2BPricingSource,
+  isB2BStorefrontTemplate,
+  type B2BPricingSource,
+  type B2BStorefrontTemplate,
+} from "@/lib/constants/b2b-storefront";
 
 interface RateLimitSettings {
   enabled: boolean;
@@ -47,6 +55,7 @@ interface TenantDomain {
 interface TenantApiConfig {
   pim_api_url: string;
   b2b_api_url: string;
+  erp_url: string;
   api_key_id: string;
   api_secret: string;
 }
@@ -55,6 +64,9 @@ interface TenantDbConfig {
   mongo_url: string;
   mongo_db: string;
 }
+
+type PricingSourceSelection = B2BPricingSource | "inherit";
+type StorefrontTemplateSelection = B2BStorefrontTemplate | "inherit";
 
 interface Tenant {
   _id: string;
@@ -85,6 +97,10 @@ interface Tenant {
   home_settings_customer_id?: string;
   builder_url?: string;
   b2b_theme?: string;
+  features?: {
+    pricing_source?: B2BPricingSource;
+    is_demo?: boolean;
+  };
   vetrina?: {
     is_listed: boolean;
   };
@@ -127,6 +143,7 @@ export default function TenantDetailPage() {
   const [apiConfig, setApiConfig] = useState<TenantApiConfig>({
     pim_api_url: "",
     b2b_api_url: "",
+    erp_url: "",
     api_key_id: "",
     api_secret: "",
   });
@@ -138,7 +155,10 @@ export default function TenantDetailPage() {
   const [requireLogin, setRequireLogin] = useState(false);
   const [homeSettingsCustomerId, setHomeSettingsCustomerId] = useState("");
   const [builderUrl, setBuilderUrl] = useState("");
-  const [b2bTheme, setB2bTheme] = useState("default");
+  const [b2bTheme, setB2bTheme] =
+    useState<StorefrontTemplateSelection>("inherit");
+  const [pricingSource, setPricingSource] =
+    useState<PricingSourceSelection>("inherit");
   const [vetrinaListed, setVetrinaListed] = useState(false);
   const [multiTenantLoading, setMultiTenantLoading] = useState(false);
 
@@ -232,13 +252,37 @@ export default function TenantDetailPage() {
         require_login: requireLogin,
         home_settings_customer_id: homeSettingsCustomerId,
         builder_url: builderUrl,
-        b2b_theme: b2bTheme,
         vetrina: { is_listed: vetrinaListed },
       };
 
-      // Only include api config if at least one field is filled
-      if (apiConfig.pim_api_url || apiConfig.b2b_api_url || apiConfig.api_key_id) {
-        updates.api = apiConfig;
+      if (b2bTheme !== "inherit") {
+        updates.b2b_theme = b2bTheme;
+      }
+
+      // Preserve legacy tenants that do not yet have an explicit source. New
+      // tenants are provisioned with inline; existing ones are migrated only
+      // when a super-admin deliberately selects a source.
+      if (pricingSource !== "inherit") {
+        updates.features = { pricing_source: pricingSource };
+      }
+
+      // Send only changed connection fields. Empty strings remain intentional
+      // clears, while omitted credentials are preserved by the API merge.
+      const apiPatch: Partial<TenantApiConfig> = {};
+      const apiFields = [
+        "pim_api_url",
+        "b2b_api_url",
+        "erp_url",
+        "api_key_id",
+        "api_secret",
+      ] as const;
+      for (const field of apiFields) {
+        if (apiConfig[field] !== (tenant?.api?.[field] || "")) {
+          apiPatch[field] = apiConfig[field];
+        }
+      }
+      if (Object.keys(apiPatch).length > 0) {
+        updates.api = apiPatch;
       }
 
       // Only include database config if at least one field is filled
@@ -350,13 +394,30 @@ export default function TenantDetailPage() {
 
       // Load multi-tenant config
       if (data.tenant.domains) setDomains(data.tenant.domains);
-      if (data.tenant.api) setApiConfig(data.tenant.api);
+      if (data.tenant.api) {
+        setApiConfig({
+          pim_api_url: data.tenant.api.pim_api_url || "",
+          b2b_api_url: data.tenant.api.b2b_api_url || "",
+          erp_url: data.tenant.api.erp_url || "",
+          api_key_id: data.tenant.api.api_key_id || "",
+          api_secret: data.tenant.api.api_secret || "",
+        });
+      }
       if (data.tenant.database) setDbConfig(data.tenant.database);
       if (data.tenant.project_code) setProjectCode(data.tenant.project_code);
       if (data.tenant.require_login) setRequireLogin(data.tenant.require_login);
       if (data.tenant.home_settings_customer_id) setHomeSettingsCustomerId(data.tenant.home_settings_customer_id);
       if (data.tenant.builder_url) setBuilderUrl(data.tenant.builder_url);
-      if (data.tenant.b2b_theme) setB2bTheme(data.tenant.b2b_theme);
+      if (isB2BStorefrontTemplate(data.tenant.b2b_theme)) {
+        setB2bTheme(data.tenant.b2b_theme);
+      } else {
+        setB2bTheme("inherit");
+      }
+      if (isB2BPricingSource(data.tenant.features?.pricing_source)) {
+        setPricingSource(data.tenant.features.pricing_source);
+      } else {
+        setPricingSource("inherit");
+      }
       if (data.tenant.vetrina?.is_listed) setVetrinaListed(data.tenant.vetrina.is_listed);
     } catch {
       setError("Network error");
@@ -635,6 +696,22 @@ export default function TenantDetailPage() {
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs text-slate-400 mb-1">
+                    Direct ERP URL (optional)
+                  </label>
+                  <input
+                    type="password"
+                    value={apiConfig.erp_url}
+                    onChange={(e) => setApiConfig({ ...apiConfig, erp_url: e.target.value })}
+                    placeholder="https://user:password@erp.example.com/service"
+                    autoComplete="off"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Server-side connection used by vinc-b2b direct ERP routes. Credentials may be embedded in the URL.
+                  </p>
+                </div>
                 <div>
                   <label className="block text-xs text-slate-400 mb-1">API Key ID</label>
                   <input
@@ -731,18 +808,90 @@ export default function TenantDetailPage() {
               </button>
             </div>
 
-            {/* B2B Theme */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">B2B Storefront Theme</label>
-              <select
-                value={b2bTheme}
-                onChange={(e) => setB2bTheme(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="default">Default</option>
-                <option value="time">Time</option>
-              </select>
-              <p className="text-xs text-slate-500 mt-1">Controls the B2B storefront look & feel for this tenant</p>
+            {/* B2B Storefront Runtime */}
+            <div className="rounded-lg border border-slate-700 bg-slate-900/30 p-4 space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-white">B2B Storefront</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Runtime defaults read directly by vinc-b2b from the tenant registry.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">
+                    Storefront theme (compiled template)
+                  </label>
+                  <select
+                    value={b2bTheme}
+                    onChange={(e) => {
+                      if (isB2BStorefrontTemplate(e.target.value)) {
+                        setB2bTheme(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none"
+                  >
+                    {b2bTheme === "inherit" && (
+                      <option value="inherit">
+                        Existing: {tenant?.b2b_theme || "unset"} (not changed)
+                      </option>
+                    )}
+                    {B2B_STOREFRONT_TEMPLATES.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {b2bTheme === "inherit"
+                      ? "This tenant has an unset or nonstandard legacy value. Select a supported template to migrate it deliberately."
+                      : B2B_STOREFRONT_TEMPLATES.find(({ id }) => id === b2bTheme)?.description}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">
+                    Price information source
+                  </label>
+                  <select
+                    value={pricingSource}
+                    onChange={(e) => {
+                      if (isB2BPricingSource(e.target.value)) {
+                        setPricingSource(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none"
+                  >
+                    {pricingSource === "inherit" && (
+                      <option value="inherit">Existing B2B fallback (not set)</option>
+                    )}
+                    {B2B_PRICING_SOURCES.map((source) => (
+                      <option key={source.id} value={source.id}>
+                        {source.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {pricingSource === "inherit"
+                      ? "No registry override. The existing theme/deployment fallback remains active until a source is selected."
+                      : B2B_PRICING_SOURCES.find(({ id }) => id === pricingSource)?.description}
+                  </p>
+                </div>
+              </div>
+
+              {(pricingSource === "erp" || pricingSource === "hybrid") &&
+                !apiConfig.erp_url &&
+                !apiConfig.b2b_api_url && (
+                  <p className="text-xs text-amber-300 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                    ERP pricing needs either a Direct ERP URL or a compatible legacy B2B API URL.
+                  </p>
+                )}
+              {(pricingSource === "erp" || pricingSource === "hybrid") &&
+                b2bTheme === "default" && (
+                  <p className="text-xs text-slate-400">
+                    The Default theme currently uses the legacy B2B API route for ERP pricing; the Time theme uses the direct ERP route.
+                  </p>
+                )}
             </div>
 
             {/* Vetrina Listing Toggle */}
