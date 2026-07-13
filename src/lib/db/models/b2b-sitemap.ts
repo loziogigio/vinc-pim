@@ -11,6 +11,7 @@
  */
 
 import { Schema } from "mongoose";
+import { DEFAULT_SEO_ROBOTS_DISALLOW } from "@/lib/types/b2b-portal";
 
 // ============================================
 // CONSTANTS
@@ -128,35 +129,7 @@ const B2BSitemapSchema = new Schema(
           custom_rules: { type: String, default: "" },
           disallow: {
             type: [String],
-            default: [
-              // API & internal
-              "/api/",
-              "/admin/",
-              "/preview/",
-              // Search (dynamic, query-dependent)
-              "/search",
-              // Auth pages
-              "/pages/login",
-              "/pages/register",
-              "/pages/forgot-password",
-              "/pages/update-password",
-              "/pages/confirm-subscription",
-              // Account (auth-protected)
-              "/pages/account",
-              "/pages/address",
-              "/pages/change-password",
-              "/pages/orders",
-              "/pages/profile",
-              "/pages/reminders",
-              "/pages/wishlist",
-              // Checkout & payment
-              "/pages/cart",
-              "/pages/pay",
-              "/pages/payment-success",
-              "/pages/payment-failed",
-              // Guest order (token-protected)
-              "/public/orders/",
-            ],
+            default: () => [...DEFAULT_SEO_ROBOTS_DISALLOW],
           },
         },
         { _id: false }

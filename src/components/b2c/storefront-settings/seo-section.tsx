@@ -3,6 +3,7 @@
 import { Save, Loader2 } from "lucide-react";
 import { SectionCard } from "./section-card";
 import type { IB2CStorefrontMetaTags } from "./types";
+import type { IB2BPortalSeoConfig } from "@/lib/types/b2b-portal";
 
 const inputClass =
   "w-full rounded-lg border border-border px-4 py-2.5 text-sm text-foreground bg-background focus:border-primary focus:ring-1 focus:ring-primary";
@@ -10,16 +11,149 @@ const inputClass =
 export function SeoSection({
   metaTags,
   onChange,
+  channelSeo,
+  onChannelSeoChange,
+  languages = [],
   saving,
   onSave,
 }: {
   metaTags: IB2CStorefrontMetaTags;
   onChange: (key: keyof IB2CStorefrontMetaTags, value: string) => void;
+  /** B2B-only URL/robots settings. Omit the change callback on B2C screens. */
+  channelSeo?: IB2BPortalSeoConfig;
+  onChannelSeoChange?: (value: IB2BPortalSeoConfig) => void;
+  languages?: Array<{ code: string; name: string; nativeName?: string }>;
   saving: boolean;
   onSave: () => void;
 }) {
+  const updateCategoryRoot = (locale: string, value: string) => {
+    if (!onChannelSeoChange) return;
+    onChannelSeoChange({
+      ...channelSeo,
+      category_root: {
+        ...(channelSeo?.category_root || {}),
+        [locale]: value,
+      },
+    });
+  };
+
+  const updateRobots = (
+    patch: Partial<NonNullable<IB2BPortalSeoConfig["robots"]>>,
+  ) => {
+    if (!onChannelSeoChange) return;
+    onChannelSeoChange({
+      ...channelSeo,
+      robots: { ...(channelSeo?.robots || {}), ...patch },
+    });
+  };
+
+  const toLines = (values: string[] | undefined) => (values || []).join("\n");
+  const fromLines = (value: string) =>
+    value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
   return (
     <div className="space-y-6">
+      {onChannelSeoChange && (
+        <SectionCard
+          title="B2B Channel SEO & Routing"
+          description="Canonical category paths and robots rules used by the B2B storefront, product pages, and sitemap."
+        >
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Default category URL segment
+                </label>
+                <input
+                  type="text"
+                  value={channelSeo?.category_root?.default || ""}
+                  onChange={(event) =>
+                    updateCategoryRoot("default", event.target.value)
+                  }
+                  placeholder="categorie"
+                  className={inputClass}
+                />
+                <p className="text-xs text-muted-foreground">
+                  One URL segment only, without slashes (for example: categorie or catalogo).
+                </p>
+              </div>
+
+              {languages.map((language) => (
+                <div key={language.code} className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {language.nativeName || language.name} ({language.code}) override
+                  </label>
+                  <input
+                    type="text"
+                    value={channelSeo?.category_root?.[language.code] || ""}
+                    onChange={(event) =>
+                      updateCategoryRoot(language.code, event.target.value)
+                    }
+                    placeholder={channelSeo?.category_root?.default || "categorie"}
+                    className={inputClass}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-border pt-5 space-y-4">
+              <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
+                <input
+                  type="checkbox"
+                  checked={channelSeo?.robots?.noindex === true}
+                  onChange={(event) => updateRobots({ noindex: event.target.checked })}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Prevent search-engine indexing
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Emits Disallow: / for the entire B2B channel. Use this for staging or private portals.
+                  </span>
+                </span>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Robots allow paths
+                  </label>
+                  <textarea
+                    value={toLines(channelSeo?.robots?.allow)}
+                    onChange={(event) =>
+                      updateRobots({ allow: fromLines(event.target.value) })
+                    }
+                    rows={6}
+                    placeholder="/"
+                    className={`${inputClass} font-mono text-xs`}
+                  />
+                  <p className="text-xs text-muted-foreground">One path per line.</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Robots disallow paths
+                  </label>
+                  <textarea
+                    value={toLines(channelSeo?.robots?.disallow)}
+                    onChange={(event) =>
+                      updateRobots({ disallow: fromLines(event.target.value) })
+                    }
+                    rows={6}
+                    placeholder={"/api/\n/account/\n/checkout/"}
+                    className={`${inputClass} font-mono text-xs`}
+                  />
+                  <p className="text-xs text-muted-foreground">One path per line.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
       {/* Basic SEO */}
       <SectionCard title="Basic SEO" description="Essential meta tags for search engines">
         <div className="grid gap-4 sm:grid-cols-2">

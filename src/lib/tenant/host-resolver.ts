@@ -8,7 +8,10 @@
 
 import { getRedis } from "@/lib/cache/redis-client";
 import { getTenantModel } from "@/lib/db/models/admin-tenant";
-import { hostFromRequest, type RequestLike } from "@/lib/tenant/request-host";
+import {
+  hostCandidatesFromRequest,
+  type RequestLike,
+} from "@/lib/tenant/request-host";
 
 const HOST_CACHE_TTL = 300; // 5 minutes
 const NEGATIVE_CACHE_TTL = 60; // shorter — unknown hosts may get registered later
@@ -18,30 +21,32 @@ const NEGATIVE_SENTINEL = "__none__";
 export async function resolveTenantIdByHost(
   req: RequestLike,
 ): Promise<string | null> {
-  const host = hostFromRequest(req);
-  if (!host) return null;
+  const hosts = hostCandidatesFromRequest(req);
+  if (hosts.length === 0) return null;
 
   const r = getRedis();
-  const cacheKey = `${CACHE_KEY_PREFIX}${host}`;
-  const cached = await r.get(cacheKey);
-  if (cached !== null) {
-    return cached === NEGATIVE_SENTINEL ? null : cached;
+  for (const host of hosts) {
+    const cacheKey = `${CACHE_KEY_PREFIX}${host}`;
+    const cached = await r.get(cacheKey);
+    if (cached !== null && cached !== NEGATIVE_SENTINEL) return cached;
+
+    try {
+      const Tenant = await getTenantModel();
+      const tenant = await Tenant.findByDomain(host);
+      const tenantId = tenant?.tenant_id ?? null;
+      await r.setex(
+        cacheKey,
+        tenantId ? HOST_CACHE_TTL : NEGATIVE_CACHE_TTL,
+        tenantId ?? NEGATIVE_SENTINEL,
+      );
+      if (tenantId) return tenantId;
+    } catch (err) {
+      console.warn("[host-resolver] lookup failed", { host, err: String(err) });
+      return null;
+    }
   }
 
-  try {
-    const Tenant = await getTenantModel();
-    const tenant = await Tenant.findByDomain(host);
-    const tenantId = tenant?.tenant_id ?? null;
-    await r.setex(
-      cacheKey,
-      tenantId ? HOST_CACHE_TTL : NEGATIVE_CACHE_TTL,
-      tenantId ?? NEGATIVE_SENTINEL,
-    );
-    return tenantId;
-  } catch (err) {
-    console.warn("[host-resolver] lookup failed", { host, err: String(err) });
-    return null;
-  }
+  return null;
 }
 
 /**

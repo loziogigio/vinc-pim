@@ -53,6 +53,19 @@ function categoryAncestorsFromCategory(category?: {
   return ancestors.filter(Boolean);
 }
 
+function categoryForChannel(
+  product: Record<string, any>,
+  channel?: string,
+): { category_id?: string; path?: string[] } | undefined {
+  if (channel && Array.isArray(product.channel_categories)) {
+    const assignment = product.channel_categories.find(
+      (entry: any) => entry?.channel_code === channel && entry?.category,
+    );
+    if (assignment?.category) return assignment.category;
+  }
+  return product.category;
+}
+
 /**
  * Slug-filtered PIM search (primary path).
  * Returns the first matching product or null. Never throws — a Solr failure
@@ -62,6 +75,7 @@ async function resolveViaSearch(
   tenantDb: string,
   slug: string,
   lang: string,
+  channel?: string,
 ): Promise<SolrProduct | null> {
   if (!isSolrEnabled()) return null;
 
@@ -75,6 +89,7 @@ async function resolveViaSearch(
       start: 0,
       rows: 1,
       filters: { slug, status: "published" },
+      ...(channel ? { channel } : {}),
     };
 
     const solrQuery = buildSearchQuery(searchRequest);
@@ -100,38 +115,62 @@ async function resolveViaMongo(
   tenantDb: string,
   slug: string,
   lang: string,
+  channel?: string,
+  exactSku?: string,
 ): Promise<ResolvedProduct | null> {
   const { PIMProduct } = await connectWithModels(tenantDb);
 
-  const baseScope = { status: "published", isCurrent: true };
+  const baseScope: Record<string, unknown> = {
+    status: "published",
+    isCurrent: true,
+    not_visible: { $ne: true },
+  };
+  if (channel) {
+    baseScope.$or = [
+      { channels: channel },
+      { "channel_categories.channel_code": channel },
+    ];
+  }
 
-  // Exact locale slug (indexed by the `slug.$**` wildcard index).
-  let doc = (await PIMProduct.findOne({
-    ...baseScope,
-    [`slug.${lang}`]: slug,
-  }).lean()) as Record<string, any> | null;
+  // Search hits are hydrated by their immutable product identity, not by a
+  // potentially colliding localized slug. Direct storefront requests use the
+  // locale slug first (indexed by the `slug.$**` wildcard index).
+  let doc = exactSku
+    ? ((await PIMProduct.findOne({
+        ...baseScope,
+        sku: exactSku,
+      }).lean()) as Record<string, any> | null)
+    : ((await PIMProduct.findOne({
+        ...baseScope,
+        [`slug.${lang}`]: slug,
+      }).lean()) as Record<string, any> | null);
 
   // SKU fallback: the sitemap emits each product as `canonicalProductSlug`
   // (`slug?.[locale] || sku`), so products without a human slug are reachable
   // at /{lang}/{sku}. Without this they'd 404 despite being in the sitemap.
-  if (!doc) {
+  if (!doc && !exactSku) {
+    const escapedSku = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     doc = (await PIMProduct.findOne({
       ...baseScope,
-      sku: slug,
+      sku: { $regex: `^${escapedSku}$`, $options: "i" },
     }).lean()) as Record<string, any> | null;
   }
 
   if (!doc) return null;
 
   const name = doc.name?.[lang] ?? firstValue(doc.name) ?? doc.sku ?? "";
-  const resolvedSlug = doc.slug?.[lang] ?? firstValue(doc.slug) ?? slug;
+  // Canonicals must match the sitemap's exact-locale contract. Never borrow a
+  // slug from another language: that URL would not resolve for this locale.
+  const resolvedSlug = doc.slug?.[lang] ?? doc.sku ?? slug;
 
   return {
     sku: doc.sku,
     parentSku: doc.parent_sku ?? null,
     name,
     slug: resolvedSlug,
-    categoryAncestors: categoryAncestorsFromCategory(doc.category),
+    categoryAncestors: categoryAncestorsFromCategory(
+      categoryForChannel(doc, channel),
+    ),
     found: true,
   };
 }
@@ -158,7 +197,10 @@ function fromSearchHit(
     parentSku: hit.parent_sku ?? null,
     name: hit.name ?? hit.sku ?? "",
     slug: hit.slug ?? slug,
-    categoryAncestors: categoryAncestorsFromCategory(hit.category),
+    categoryAncestors:
+      hit.category_ancestors?.length
+        ? hit.category_ancestors
+        : categoryAncestorsFromCategory(hit.category),
     found: true,
   };
 }
@@ -171,14 +213,27 @@ export async function resolveProductBySlug(
   tenantDb: string,
   slug: string,
   lang: string,
+  channel?: string,
 ): Promise<ResolveProductResult> {
   const trimmedSlug = (slug || "").trim();
   if (!trimmedSlug) return { found: false };
 
-  const hit = await resolveViaSearch(tenantDb, trimmedSlug, lang);
-  if (hit) return fromSearchHit(hit, lang, trimmedSlug);
+  const hit = await resolveViaSearch(tenantDb, trimmedSlug, lang, channel);
+  if (hit) {
+    // Hydrate from Mongo when possible so per-channel category assignments are
+    // returned in their correct root→leaf order (Solr merges all assignments).
+    const hydrated = await resolveViaMongo(
+      tenantDb,
+      hit.slug || trimmedSlug,
+      lang,
+      channel,
+      hit.sku,
+    );
+    if (hydrated) return hydrated;
+    return fromSearchHit(hit, lang, trimmedSlug);
+  }
 
-  const viaMongo = await resolveViaMongo(tenantDb, trimmedSlug, lang);
+  const viaMongo = await resolveViaMongo(tenantDb, trimmedSlug, lang, channel);
   if (viaMongo) return viaMongo;
 
   return { found: false };
@@ -187,5 +242,6 @@ export async function resolveProductBySlug(
 // Exported for unit testing.
 export const __test = {
   categoryAncestorsFromCategory,
+  categoryForChannel,
   firstValue,
 };

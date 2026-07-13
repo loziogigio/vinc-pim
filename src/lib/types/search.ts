@@ -194,6 +194,11 @@ export interface SolrProduct {
   // Taxonomy (parsed from JSON - full objects)
   brand?: BrandData;
   category?: CategoryData;
+  /** All category IDs the product belongs to, including each assigned leaf.
+   * This is merged across primary + per-channel category assignments in Solr. */
+  category_ancestors?: string[];
+  /** Cumulative localized category slug paths used for URL breadcrumbs. */
+  category_slug_path?: string[];
   product_type?: ProductTypeData;
   collections?: CollectionData[];
   tags?: TagData[];

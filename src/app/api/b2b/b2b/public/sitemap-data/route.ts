@@ -2,34 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAPIKey } from "@/lib/auth/api-key-auth";
 import { connectWithModels } from "@/lib/db/connection";
 import type { IB2BSitemap } from "@/lib/db/models/b2b-sitemap";
+import { DEFAULT_SEO_ROBOTS_DISALLOW } from "@/lib/types/b2b-portal";
 
 /**
  * Default paths to disallow in robots.txt for B2B portals.
  * Mirrors the defaults in the B2BSitemapSchema and B2C sitemap service.
  */
-export const DEFAULT_ROBOTS_DISALLOW = [
-  "/api/",
-  "/admin/",
-  "/preview/",
-  "/search",
-  "/pages/login",
-  "/pages/register",
-  "/pages/forgot-password",
-  "/pages/update-password",
-  "/pages/confirm-subscription",
-  "/pages/account",
-  "/pages/address",
-  "/pages/change-password",
-  "/pages/orders",
-  "/pages/profile",
-  "/pages/reminders",
-  "/pages/wishlist",
-  "/pages/cart",
-  "/pages/pay",
-  "/pages/payment-success",
-  "/pages/payment-failed",
-  "/public/orders/",
-];
+export const DEFAULT_ROBOTS_DISALLOW = [...DEFAULT_SEO_ROBOTS_DISALLOW];
 
 /**
  * GET /api/b2b/b2b/public/sitemap-data

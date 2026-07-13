@@ -29,7 +29,13 @@ import { CssSection } from "@/components/b2c/storefront-settings/css-section";
 import { SitemapSection } from "@/components/b2c/storefront-settings/sitemap-section";
 import { FacetsSection } from "@/components/b2c/storefront-settings/facets-section";
 import type { StorefrontActiveSection, DomainEntry, IB2CStorefrontBranding, IB2CStorefrontFooter, IB2CStorefrontMetaTags, IB2CCustomScript, HeaderConfig } from "@/components/b2c/storefront-settings/types";
-import type { B2BPortalStatus, IB2BPortalFacetConfig } from "@/lib/types/b2b-portal";
+import {
+  DEFAULT_CATEGORY_ROOT,
+  DEFAULT_SEO_ROBOTS_DISALLOW,
+  type B2BPortalStatus,
+  type IB2BPortalFacetConfig,
+  type IB2BPortalSeoConfig,
+} from "@/lib/types/b2b-portal";
 
 interface Portal {
   _id: string;
@@ -50,6 +56,7 @@ interface Portal {
   meta_tags?: IB2CStorefrontMetaTags;
   custom_scripts?: IB2CCustomScript[];
   custom_css?: string;
+  seo_config?: IB2BPortalSeoConfig;
   facet_config?: IB2BPortalFacetConfig;
   settings: { default_language?: string; theme?: string };
   created_at: string;
@@ -59,6 +66,14 @@ interface Portal {
 }
 
 const EMPTY_HEADER_CONFIG: HeaderConfig = { rows: [] };
+const DEFAULT_CHANNEL_SEO: IB2BPortalSeoConfig = {
+  category_root: { default: DEFAULT_CATEGORY_ROOT },
+  robots: {
+    noindex: false,
+    allow: ["/"],
+    disallow: [...DEFAULT_SEO_ROBOTS_DISALLOW],
+  },
+};
 
 export default function PortalDetailPage({
   params,
@@ -114,6 +129,9 @@ export default function PortalDetailPage({
 
   // SEO
   const [metaTags, setMetaTags] = useState<IB2CStorefrontMetaTags>({});
+  const [seoConfig, setSeoConfig] = useState<IB2BPortalSeoConfig>(
+    DEFAULT_CHANNEL_SEO,
+  );
 
   // Custom Scripts
   const [customScripts, setCustomScripts] = useState<IB2CCustomScript[]>([]);
@@ -154,6 +172,16 @@ export default function PortalDetailPage({
           setFooterPubByLang(p.footer_by_lang || {});
           setFooterDraftByLang(p.footer_draft_by_lang || {});
           setMetaTags(p.meta_tags || {});
+          setSeoConfig({
+            category_root: {
+              ...DEFAULT_CHANNEL_SEO.category_root,
+              ...(p.seo_config?.category_root || {}),
+            },
+            robots: {
+              ...DEFAULT_CHANNEL_SEO.robots,
+              ...(p.seo_config?.robots || {}),
+            },
+          });
           setCustomScripts(p.custom_scripts || []);
           setCustomCss(p.custom_css || "");
           setFacetConfig(p.facet_config);
@@ -244,6 +272,7 @@ export default function PortalDetailPage({
           footer_by_lang: footerPubByLang,
           footer_draft_by_lang: footerDraftByLang,
           meta_tags: metaTags,
+          seo_config: seoConfig,
           custom_scripts: customScripts,
           custom_css: customCss,
           facet_config: facetConfig,
@@ -450,6 +479,9 @@ export default function PortalDetailPage({
           <SeoSection
             metaTags={metaTags}
             onChange={handleMetaTagChange}
+            channelSeo={seoConfig}
+            onChannelSeoChange={setSeoConfig}
+            languages={enabledLanguages}
             saving={saving}
             onSave={handleSave}
           />
@@ -461,6 +493,7 @@ export default function PortalDetailPage({
             onChange={setCustomScripts}
             saving={saving}
             onSave={handleSave}
+            scriptUploadEndpoint={`/api/b2b/b2b/portals/${encodeURIComponent(slug)}/scripts/upload`}
           />
         )}
 
@@ -486,6 +519,7 @@ export default function PortalDetailPage({
           <SitemapSection
             storefrontSlug={slug}
             apiBasePath={`/api/b2b/b2b/portals/${slug}/sitemap`}
+            robotsManagedInSeo
           />
         )}
       </div>

@@ -22,6 +22,8 @@ import type {
 import type { IB2BPortal } from "@/lib/types/b2b-portal";
 import { DEFAULT_PORTAL_SLUG } from "@/lib/types/b2b-portal";
 
+const DEFAULT_B2B_CATALOG_CHANNEL = "b2b";
+
 // ============================================================================
 // Private mapping helpers
 // ============================================================================
@@ -47,9 +49,7 @@ function mapBranding(
 /**
  * Map MetaTags (camelCase) to IB2CStorefrontMetaTags (snake_case).
  */
-function mapMetaTags(
-  src: MetaTags | undefined,
-): IB2CStorefrontMetaTags {
+function mapMetaTags(src: MetaTags | undefined): IB2CStorefrontMetaTags {
   if (!src) return {};
   return {
     title: src.title,
@@ -87,8 +87,12 @@ function mapFooter(
 ): IB2CStorefrontFooter {
   return {
     footer_html: footerHtml,
-    ...(branding?.footerBackgroundColor ? { bg_color: branding.footerBackgroundColor } : {}),
-    ...(branding?.footerTextColor ? { text_color: branding.footerTextColor } : {}),
+    ...(branding?.footerBackgroundColor
+      ? { bg_color: branding.footerBackgroundColor }
+      : {}),
+    ...(branding?.footerTextColor
+      ? { text_color: branding.footerTextColor }
+      : {}),
   };
 }
 
@@ -103,6 +107,28 @@ function mapFooterDraft(
   return {
     footer_html_draft: footerHtmlDraft,
   };
+}
+
+/**
+ * Preserve the catalog channel already selected by the legacy category-menu
+ * widget. Older settings without that widget belong to the B2B catalog, so
+ * use `b2b` instead of the generic `default` channel (which commonly has no
+ * products/categories and produces an empty sitemap after migration).
+ */
+function inferPortalChannel(settings: HomeSettings): string {
+  for (const row of settings.headerConfig?.rows ?? []) {
+    for (const block of row.blocks ?? []) {
+      for (const widget of block.widgets ?? []) {
+        if (widget.type !== "category-menu") continue;
+        const channel = (widget.config as { channel?: unknown }).channel;
+        if (typeof channel === "string" && channel.trim()) {
+          return channel.trim();
+        }
+      }
+    }
+  }
+
+  return DEFAULT_B2B_CATALOG_CHANNEL;
 }
 
 // ============================================================================
@@ -126,9 +152,7 @@ export function buildPortalFromHomeSettings(
   tenantDisplayName: string,
 ): IB2BPortal {
   const shopUrl = settings.branding?.shopUrl;
-  const domains = shopUrl
-    ? [{ domain: shopUrl, is_primary: true }]
-    : [];
+  const domains = shopUrl ? [{ domain: shopUrl, is_primary: true }] : [];
 
   const headerConfig = settings.headerConfig
     ? { ...settings.headerConfig }
@@ -144,12 +168,14 @@ export function buildPortalFromHomeSettings(
   return {
     slug: DEFAULT_PORTAL_SLUG,
     name: tenantDisplayName,
-    channel: "default",
+    channel: inferPortalChannel(settings),
     domains,
     status: "active",
     branding: mapBranding(settings.branding),
     header_config: headerConfig,
-    ...(headerConfigDraft !== undefined && { header_config_draft: headerConfigDraft }),
+    ...(headerConfigDraft !== undefined && {
+      header_config_draft: headerConfigDraft,
+    }),
     footer,
     ...(footerDraft !== undefined && { footer_draft: footerDraft }),
     meta_tags: mapMetaTags(settings.meta_tags),

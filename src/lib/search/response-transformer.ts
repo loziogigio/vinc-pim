@@ -690,6 +690,16 @@ export function transformDocument(
     // Taxonomy - full objects with hierarchies
     brand,
     category,
+    category_ancestors: Array.isArray(doc.category_ancestors)
+      ? doc.category_ancestors.map(String)
+      : doc.category_ancestors
+        ? [String(doc.category_ancestors)]
+        : [],
+    category_slug_path: Array.isArray(doc[`category_slug_path_${lang}`])
+      ? doc[`category_slug_path_${lang}`].map(String)
+      : doc[`category_slug_path_${lang}`]
+        ? [String(doc[`category_slug_path_${lang}`])]
+        : [],
     product_type: productType,
     collections,
     tags,

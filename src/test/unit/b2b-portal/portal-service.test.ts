@@ -112,6 +112,41 @@ describe("b2b-portal.service", () => {
     expect(p?.name).toBe("New");
   });
 
+  it("updatePortal persists B2B SEO config but ignores immutable fields", async () => {
+    await createPortal(TEST_DB, { slug: "default", name: "Old", channel: "b2b" });
+    const p = await updatePortal(TEST_DB, "default", {
+      slug: "hijacked",
+      seo_config: {
+        category_root: { default: "catalogo", it: "prodotti" },
+        robots: { noindex: false, allow: ["/"], disallow: ["/account/"] },
+      },
+    });
+    expect(p?.slug).toBe("default");
+    expect(p?.seo_config?.category_root?.it).toBe("prodotti");
+  });
+
+  it("updatePortal rejects invalid category roots and script URLs", async () => {
+    await createPortal(TEST_DB, { slug: "default", name: "Old", channel: "b2b" });
+    await expect(
+      updatePortal(TEST_DB, "default", {
+        seo_config: { category_root: { default: "catalog/root" } },
+      }),
+    ).rejects.toThrow(/one URL segment/i);
+    await expect(
+      updatePortal(TEST_DB, "default", {
+        custom_scripts: [
+          {
+            label: "Unsafe",
+            src: "http://example.com/script.js",
+            placement: "head",
+            loading_strategy: "async",
+            enabled: true,
+          },
+        ],
+      }),
+    ).rejects.toThrow(/HTTPS URL/i);
+  });
+
   it("deletePortal removes the row", async () => {
     await createPortal(TEST_DB, { slug: "default", name: "X", channel: "default" });
     await deletePortal(TEST_DB, "default");

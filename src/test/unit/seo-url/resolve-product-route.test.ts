@@ -8,11 +8,15 @@ vi.mock("@/lib/tenant/host-resolver", () => ({
 vi.mock("@/lib/services/b2b-product-resolver.service", () => ({
   resolveProductBySlug: vi.fn(),
 }));
+vi.mock("@/lib/services/b2b-portal.service", () => ({
+  getPortalBySlug: vi.fn(),
+}));
 
 const { GET } = await import("@/app/api/public/b2b/resolve-product/route");
 const { resolveTenantIdByHost } = await import("@/lib/tenant/host-resolver");
 const { resolveProductBySlug } =
   await import("@/lib/services/b2b-product-resolver.service");
+const { getPortalBySlug } = await import("@/lib/services/b2b-portal.service");
 
 function req(path: string, host = "shop.example.com") {
   return new NextRequest(`http://localhost${path}`, {
@@ -23,6 +27,11 @@ function req(path: string, host = "shop.example.com") {
 describe("GET /api/public/b2b/resolve-product", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getPortalBySlug).mockResolvedValue({
+      slug: "default",
+      status: "active",
+      channel: "b2b",
+    } as never);
   });
 
   it("returns 200 with the resolved product shape", async () => {
@@ -54,6 +63,7 @@ describe("GET /api/public/b2b/resolve-product", () => {
       "vinc-tenant-a",
       "trapano",
       "it",
+      "b2b",
     );
   });
 
@@ -92,6 +102,46 @@ describe("GET /api/public/b2b/resolve-product", () => {
       "vinc-tenant-a",
       "x",
       "it",
+      "b2b",
     );
+  });
+
+  it("uses the requested portal's channel", async () => {
+    vi.mocked(resolveTenantIdByHost).mockResolvedValue("tenant-a");
+    vi.mocked(getPortalBySlug).mockResolvedValue({
+      slug: "trade",
+      status: "active",
+      channel: "wholesale",
+    } as never);
+    vi.mocked(resolveProductBySlug).mockResolvedValue({ found: false });
+
+    await GET(
+      req("/api/public/b2b/resolve-product?slug=x&lang=en&portal=trade"),
+    );
+
+    expect(getPortalBySlug).toHaveBeenCalledWith(
+      "vinc-tenant-a",
+      "trade",
+      "tenant-a",
+    );
+    expect(resolveProductBySlug).toHaveBeenCalledWith(
+      "vinc-tenant-a",
+      "x",
+      "en",
+      "wholesale",
+    );
+  });
+
+  it("does not expose products for a missing or inactive portal", async () => {
+    vi.mocked(resolveTenantIdByHost).mockResolvedValue("tenant-a");
+    vi.mocked(getPortalBySlug).mockResolvedValue(null);
+
+    const res = await GET(
+      req("/api/public/b2b/resolve-product?slug=trapano&lang=it"),
+    );
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ found: false });
+    expect(resolveProductBySlug).not.toHaveBeenCalled();
   });
 });

@@ -9,10 +9,10 @@ import type { CdnConfig } from "vinc-cdn";
 import { getHomeSettings } from "@/lib/db/home-settings";
 import type { CDNCredentials } from "@/lib/types/home-settings";
 
-// Cache for CDN config to avoid repeated DB calls
-let cachedConfig: CdnConfig | null = null;
-let configCacheTime: number = 0;
+// Keep tenant configurations isolated when multiple tenants share one process.
+const cachedConfigs = new Map<string, { config: CdnConfig; cachedAt: number }>();
 const CONFIG_CACHE_TTL = 60000; // 1 minute cache
+const AUTO_DETECTED_TENANT_CACHE_KEY = "__auto_detected_tenant__";
 
 /**
  * Load CDN configuration from MongoDB homeSettings
@@ -21,15 +21,17 @@ const CONFIG_CACHE_TTL = 60000; // 1 minute cache
  *
  * @returns CdnConfig if configured, null otherwise
  */
-export async function getCdnConfig(): Promise<CdnConfig | null> {
+export async function getCdnConfig(tenantDb?: string): Promise<CdnConfig | null> {
   // Check cache first
   const now = Date.now();
-  if (cachedConfig && now - configCacheTime < CONFIG_CACHE_TTL) {
-    return cachedConfig;
+  const cacheKey = tenantDb || AUTO_DETECTED_TENANT_CACHE_KEY;
+  const cached = cachedConfigs.get(cacheKey);
+  if (cached && now - cached.cachedAt < CONFIG_CACHE_TTL) {
+    return cached.config;
   }
 
   try {
-    const settings = await getHomeSettings();
+    const settings = await getHomeSettings(tenantDb);
     const creds = settings?.cdn_credentials as CDNCredentials | undefined;
 
     if (
@@ -42,7 +44,7 @@ export async function getCdnConfig(): Promise<CdnConfig | null> {
       return null;
     }
 
-    cachedConfig = {
+    const config: CdnConfig = {
       endpoint: creds.cdn_url,
       region: creds.bucket_region,
       bucket: creds.bucket_name,
@@ -51,9 +53,9 @@ export async function getCdnConfig(): Promise<CdnConfig | null> {
       folder: creds.folder_name,
       deleteEnabled: creds.delete_from_cloud ?? false,
     };
-    configCacheTime = now;
+    cachedConfigs.set(cacheKey, { config, cachedAt: now });
 
-    return cachedConfig;
+    return config;
   } catch (error) {
     console.error("[cdn-config] Failed to load config from DB:", error);
     return null;
@@ -63,8 +65,8 @@ export async function getCdnConfig(): Promise<CdnConfig | null> {
 /**
  * Check if CDN is configured
  */
-export async function isCdnConfigured(): Promise<boolean> {
-  const config = await getCdnConfig();
+export async function isCdnConfigured(tenantDb?: string): Promise<boolean> {
+  const config = await getCdnConfig(tenantDb);
   return config !== null;
 }
 
@@ -73,7 +75,11 @@ export async function isCdnConfigured(): Promise<boolean> {
  *
  * Call this when CDN settings are updated in the admin panel.
  */
-export function clearCdnConfigCache(): void {
-  cachedConfig = null;
-  configCacheTime = 0;
+export function clearCdnConfigCache(tenantDb?: string): void {
+  if (tenantDb) {
+    cachedConfigs.delete(tenantDb);
+    return;
+  }
+
+  cachedConfigs.clear();
 }

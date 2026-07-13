@@ -18,11 +18,8 @@
  *            • { action: "update_robots_rules", custom_rules: string }
  *                Persists custom robots.txt rules. Migration gate applies.
  *            • { action: "regenerate" } / { action: "validate" }
- *                NOT YET SUPPORTED — there is no B2B sitemap *generator*
- *                service (the B2C one is hard-coded to B2C storefront data
- *                models). Returns 501 with a clear message rather than 404.
- *                See SitemapSection: until a generator exists, the B2B portal
- *                detail page shows "no sitemap generated yet".
+ *                Generates the authoritative B2B URL set or validates the
+ *                currently persisted result.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -33,37 +30,15 @@ import {
   NOT_MIGRATED_RESPONSE_BODY,
 } from "@/lib/services/b2b-portal-migration-flag.service";
 import type { IB2BSitemap, ISitemapUrl } from "@/lib/db/models/b2b-sitemap";
+import { DEFAULT_SEO_ROBOTS_DISALLOW } from "@/lib/types/b2b-portal";
+import {
+  generateB2BSitemap,
+  validateB2BSitemap,
+} from "@/lib/services/b2b-sitemap.service";
+import { invalidateB2BCache } from "@/lib/cache/redis-client";
 
 /** Default disallow paths for B2B portal robots.txt */
-const DEFAULT_ROBOTS_DISALLOW = [
-  // API & internal
-  "/api/",
-  "/admin/",
-  "/preview/",
-  // Search (dynamic, query-dependent)
-  "/search",
-  // Auth pages
-  "/pages/login",
-  "/pages/register",
-  "/pages/forgot-password",
-  "/pages/update-password",
-  "/pages/confirm-subscription",
-  // Account (auth-protected)
-  "/pages/account",
-  "/pages/address",
-  "/pages/change-password",
-  "/pages/orders",
-  "/pages/profile",
-  "/pages/reminders",
-  "/pages/wishlist",
-  // Checkout & payment
-  "/pages/cart",
-  "/pages/pay",
-  "/pages/payment-success",
-  "/pages/payment-failed",
-  // Guest order (token-protected)
-  "/public/orders/",
-];
+const DEFAULT_ROBOTS_DISALLOW = [...DEFAULT_SEO_ROBOTS_DISALLOW];
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -221,7 +196,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
  *       Persists custom robots.txt rules on robots_config.custom_rules.
  *       Migration gate: 409 NOT_MIGRATED for unmigrated tenants.
  *   - { action: "regenerate" } | { action: "validate" }
- *       501 Not Implemented — see file header.
+ *       Regenerates the portal sitemap or validates its current persisted data.
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
   try {
@@ -280,19 +255,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         return NextResponse.json({ success: true });
       }
 
-      case "regenerate":
+      case "regenerate": {
+        if (!(await isTenantMigrated(tenantId))) {
+          return NextResponse.json(NOT_MIGRATED_RESPONSE_BODY, { status: 409 });
+        }
+        const result = await generateB2BSitemap(tenantDb, slug);
+        void invalidateB2BCache(tenantId, "sitemap");
+        return NextResponse.json({ success: true, data: result });
+      }
+
       case "validate": {
-        // No B2B sitemap generator service exists yet (the B2C one is hard-coded
-        // to B2C storefront/page/product/category data models). Surface a clear
-        // 501 rather than a confusing 404 so SitemapSection can show the error.
-        return NextResponse.json(
-          {
-            error:
-              "Sitemap generation is not yet supported for B2B portals. Configure robots.txt rules manually for now.",
-            code: "NOT_SUPPORTED",
-          },
-          { status: 501 }
-        );
+        if (!(await isTenantMigrated(tenantId))) {
+          return NextResponse.json(NOT_MIGRATED_RESPONSE_BODY, { status: 409 });
+        }
+        const validation = await validateB2BSitemap(tenantDb, slug);
+        return NextResponse.json({ success: true, data: validation });
       }
 
       default:

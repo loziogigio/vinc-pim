@@ -45,9 +45,14 @@ vi.mock("@/lib/auth/tenant-auth", () => ({
       tenantId: TEST_TENANT,
       tenantDb: TEST_DB,
       userId: "test-user",
+      userType: "b2b_user",
       authMethod: "session",
     })
   ),
+}));
+
+vi.mock("@/lib/auth/home-builder-access", () => ({
+  hasHomeBuilderAccess: vi.fn(() => Promise.resolve(true)),
 }));
 
 // Import modules AFTER mocks are set up
@@ -108,6 +113,7 @@ beforeEach(async () => {
     tenantId: TEST_TENANT,
     tenantDb: TEST_DB,
     userId: "test-user",
+    userType: "b2b_user",
     authMethod: "session",
   });
 
@@ -187,6 +193,57 @@ describe("PATCH /api/b2b/b2b/portals/[slug]", () => {
     const req = buildAuthedRequest("PATCH", `/api/b2b/b2b/portals/default`, TEST_TENANT, { name: "X" });
     const res = await PATCH(req, ctx);
     expect(res.status).toBe(404);
+  });
+
+  it("requires a tenant-bound builder session to write custom scripts", async () => {
+    const { B2BPortal } = await connectWithModels(TEST_DB);
+    await B2BPortal.create({ slug: "default", name: "Old", channel: "default" });
+    await markTenantMigrated(TEST_TENANT);
+
+    const { requireTenantAuth } = await import("@/lib/auth/tenant-auth");
+    const { hasHomeBuilderAccess } = await import(
+      "@/lib/auth/home-builder-access"
+    );
+    vi.mocked(requireTenantAuth).mockResolvedValueOnce({
+      success: true,
+      tenantId: TEST_TENANT,
+      tenantDb: TEST_DB,
+      userId: "api-user",
+      userType: "b2b_user",
+      authMethod: "api-key",
+    } as never);
+
+    const apiKeyReq = buildAuthedRequest(
+      "PATCH",
+      `/api/b2b/b2b/portals/default`,
+      TEST_TENANT,
+      {
+        custom_scripts: [
+          { label: "Injected", inline_code: "window.injected=true" },
+        ],
+      },
+    );
+    const apiKeyResponse = await PATCH(apiKeyReq, ctx);
+    expect(apiKeyResponse.status).toBe(403);
+    expect(hasHomeBuilderAccess).not.toHaveBeenCalled();
+
+    vi.mocked(hasHomeBuilderAccess).mockResolvedValueOnce(false);
+    const noBuilderReq = buildAuthedRequest(
+      "PATCH",
+      `/api/b2b/b2b/portals/default`,
+      TEST_TENANT,
+      {
+        custom_scripts: [
+          { label: "Injected", inline_code: "window.injected=true" },
+        ],
+      },
+    );
+    const noBuilderResponse = await PATCH(noBuilderReq, ctx);
+    expect(noBuilderResponse.status).toBe(403);
+    expect(hasHomeBuilderAccess).toHaveBeenCalledWith(TEST_TENANT);
+
+    const saved = await B2BPortal.findOne({ slug: "default" }).lean();
+    expect(saved?.custom_scripts).toEqual([]);
   });
 });
 

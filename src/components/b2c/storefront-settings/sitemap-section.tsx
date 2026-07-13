@@ -75,6 +75,7 @@ interface UrlBrowseResult {
 export function SitemapSection({
   storefrontSlug,
   apiBasePath,
+  robotsManagedInSeo = false,
 }: {
   storefrontSlug: string;
   /**
@@ -84,6 +85,8 @@ export function SitemapSection({
    * POST actions) are built off this base.
    */
   apiBasePath?: string;
+  /** B2B portals keep their authoritative robots rules in portal.seo_config. */
+  robotsManagedInSeo?: boolean;
 }) {
   const sitemapApi = apiBasePath ?? `/api/b2b/b2c/storefronts/${storefrontSlug}/sitemap`;
   const [data, setData] = useState<SitemapData | null>(null);
@@ -381,6 +384,17 @@ export function SitemapSection({
       </SectionCard>
 
       {/* Card 2: robots.txt */}
+      {robotsManagedInSeo ? (
+        <SectionCard
+          title="robots.txt"
+          description="Crawler rules share the same source of truth as the public B2B storefront."
+        >
+          <p className="text-sm text-muted-foreground">
+            Manage allow, disallow, and site-wide indexing in the SEO &amp; Meta Tags section.
+            Those settings are used directly by the storefront&apos;s robots.txt endpoint.
+          </p>
+        </SectionCard>
+      ) : (
       <SectionCard title="robots.txt" description="Configure crawler access rules">
         {/* Preview */}
         <div>
@@ -423,6 +437,7 @@ export function SitemapSection({
           {savingRules ? "Saving..." : "Save Rules"}
         </button>
       </SectionCard>
+      )}
 
       {/* Card 3: Validation */}
       <SectionCard title="Validation" description="Check sitemap configuration for issues">

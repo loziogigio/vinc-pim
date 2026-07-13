@@ -94,9 +94,10 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  const { B2BSitemap, B2BPortal } = await connectWithModels(TEST_DB);
+  const { B2BSitemap, B2BPortal, Language } = await connectWithModels(TEST_DB);
   await B2BSitemap.deleteMany({});
   await B2BPortal.deleteMany({});
+  await Language.deleteMany({});
   await clearTenantMigrationFlag(TEST_TENANT);
 
   vi.clearAllMocks();
@@ -384,17 +385,50 @@ describe("POST /api/b2b/b2b/portals/[slug]/sitemap", () => {
     expect(res.status).toBe(400);
   });
 
-  it("regenerate / validate are not yet supported — 501", async () => {
+  it("regenerates and validates the authoritative B2B sitemap", async () => {
     await markTenantMigrated(TEST_TENANT);
-    for (const action of ["regenerate", "validate"]) {
-      const req = buildAuthedRequest("POST", `/api/b2b/b2b/portals/default/sitemap`, TEST_TENANT, {
-        action,
-      });
-      const res = await POST(req, ctx);
-      expect(res.status).toBe(501);
-      const body = await res.json();
-      expect(body.code).toBe("NOT_SUPPORTED");
-    }
+    const { B2BPortal, Language } = await connectWithModels(TEST_DB);
+    await B2BPortal.create({
+      slug: "default",
+      name: "Default Portal",
+      channel: "b2b",
+      domains: [{ domain: "portal.example.com", is_primary: true }],
+      status: "active",
+      settings: { default_language: "it" },
+    });
+    await Language.create({
+      code: "it",
+      name: "Italian",
+      nativeName: "Italiano",
+      isDefault: false,
+      isEnabled: true,
+    });
+
+    const regenerateReq = buildAuthedRequest(
+      "POST",
+      `/api/b2b/b2b/portals/default/sitemap`,
+      TEST_TENANT,
+      { action: "regenerate" },
+    );
+    const regenerateRes = await POST(regenerateReq, ctx);
+    expect(regenerateRes.status).toBe(200);
+    const regenerateBody = await regenerateRes.json();
+    expect(regenerateBody.success).toBe(true);
+    expect(regenerateBody.data.stats.homepage_urls).toBe(1);
+    expect(regenerateBody.data.stats.total_urls).toBeGreaterThanOrEqual(2);
+
+    const validateReq = buildAuthedRequest(
+      "POST",
+      `/api/b2b/b2b/portals/default/sitemap`,
+      TEST_TENANT,
+      { action: "validate" },
+    );
+    const validateRes = await POST(validateReq, ctx);
+    expect(validateRes.status).toBe(200);
+    const validateBody = await validateRes.json();
+    expect(validateBody.success).toBe(true);
+    expect(Array.isArray(validateBody.data.warnings)).toBe(true);
+    expect(validateBody.data.errors).toEqual([]);
   });
 
   it("rejects an unknown action with 400", async () => {

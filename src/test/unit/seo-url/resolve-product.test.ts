@@ -131,7 +131,10 @@ describe("resolveProductBySlug (Mongo fallback path)", () => {
 
     const bySku = await resolveProductBySlug(TEST_DB, "SKU-3", "it");
     expect(bySku.found).toBe(true);
-    if (bySku.found) expect(bySku.sku).toBe("SKU-3");
+    if (bySku.found) {
+      expect(bySku.sku).toBe("SKU-3");
+      expect(bySku.slug).toBe("SKU-3");
+    }
   });
 
   it("does not resolve a draft (unpublished) product", async () => {
@@ -151,6 +154,74 @@ describe("resolveProductBySlug (Mongo fallback path)", () => {
 
     const res = await resolveProductBySlug(TEST_DB, "bozza", "it");
     expect(res.found).toBe(false);
+  });
+
+  it("scopes resolution to the portal channel and returns its leaf ancestry", async () => {
+    await seedProduct({
+      sku: "B2B-ONLY",
+      channels: ["b2b"],
+      slug: { it: "articolo-b2b" },
+      name: { it: "Articolo B2B" },
+      category: { category_id: "retail-leaf", path: ["retail-root"] },
+      channel_categories: [
+        {
+          channel_code: "b2b",
+          category: {
+            category_id: "b2b-leaf",
+            path: ["b2b-root", "b2b-branch"],
+          },
+        },
+      ],
+    });
+    await seedProduct({
+      sku: "RETAIL-ONLY",
+      channels: ["retail"],
+      slug: { it: "articolo-retail" },
+      name: { it: "Articolo Retail" },
+    });
+
+    const b2b = await resolveProductBySlug(
+      TEST_DB,
+      "articolo-b2b",
+      "it",
+      "b2b",
+    );
+    expect(b2b.found).toBe(true);
+    if (b2b.found) {
+      expect(b2b.categoryAncestors).toEqual([
+        "b2b-root",
+        "b2b-branch",
+        "b2b-leaf",
+      ]);
+    }
+
+    expect(
+      (
+        await resolveProductBySlug(
+          TEST_DB,
+          "articolo-retail",
+          "it",
+          "b2b",
+        )
+      ).found,
+    ).toBe(false);
+  });
+
+  it("resolves SKU fallback case-insensitively", async () => {
+    await seedProduct({
+      sku: "Mixed-Case-SKU",
+      channels: ["b2b"],
+      name: { it: "Fallback" },
+    });
+
+    const res = await resolveProductBySlug(
+      TEST_DB,
+      "mixed-case-sku",
+      "it",
+      "b2b",
+    );
+    expect(res.found).toBe(true);
+    if (res.found) expect(res.sku).toBe("Mixed-Case-SKU");
   });
 
   it("returns found:false for an empty slug", async () => {

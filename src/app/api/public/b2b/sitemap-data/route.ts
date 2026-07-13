@@ -27,12 +27,12 @@ export async function GET(req: NextRequest) {
 
     const tenantId = await resolveTenantIdByHost(req);
     if (!tenantId) {
-      // Unknown host → empty sitemap (consumer falls back to local generation).
-      return NextResponse.json({
-        baseUrl: `https://${host}`,
-        langs: [],
-        entries: [],
-      });
+      // A non-2xx response tells vinc-b2b this is unavailable, rather than an
+      // authoritative empty sitemap (which is reserved for inactive portals).
+      return NextResponse.json(
+        { error: "Tenant not found" },
+        { status: 404 },
+      );
     }
 
     const tenantDb = `vinc-${tenantId}`;
@@ -40,10 +40,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("[GET /api/public/b2b/sitemap-data]", error);
-    return NextResponse.json({
-      baseUrl: `https://${host}`,
-      langs: [],
-      entries: [],
-    });
+    return NextResponse.json(
+      { error: "B2B sitemap is temporarily unavailable" },
+      { status: 503 },
+    );
   }
 }

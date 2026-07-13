@@ -1,5 +1,5 @@
 /**
- * GET /api/public/b2b/resolve-product?slug={slug}&lang={lang}
+ * GET /api/public/b2b/resolve-product?slug={slug}&lang={lang}&portal={portal}
  *
  * Public, domain/tenant-aware endpoint (seo-url spec §5.1). Resolves a published
  * PIM product from its (per-locale) URL slug, scoped to the tenant identified by
@@ -17,6 +17,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveTenantIdByHost } from "@/lib/tenant/host-resolver";
 import { resolveProductBySlug } from "@/lib/services/b2b-product-resolver.service";
+import { getPortalBySlug } from "@/lib/services/b2b-portal.service";
+import { DEFAULT_PORTAL_SLUG } from "@/lib/types/b2b-portal";
 
 // Cacheable per spec §5.1 (revalidate + tenant tag handled by the consumer's fetch).
 export const revalidate = 300;
@@ -26,6 +28,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const slug = (searchParams.get("slug") || "").trim();
     const lang = (searchParams.get("lang") || "it").trim();
+    const portalSlug =
+      (searchParams.get("portal") || DEFAULT_PORTAL_SLUG).trim() ||
+      DEFAULT_PORTAL_SLUG;
 
     if (!slug) {
       return NextResponse.json({ found: false }, { status: 404 });
@@ -37,7 +42,17 @@ export async function GET(req: NextRequest) {
     }
 
     const tenantDb = `vinc-${tenantId}`;
-    const result = await resolveProductBySlug(tenantDb, slug, lang);
+    const portal = await getPortalBySlug(tenantDb, portalSlug, tenantId);
+    if (!portal || portal.status !== "active" || !portal.channel) {
+      return NextResponse.json({ found: false }, { status: 404 });
+    }
+
+    const result = await resolveProductBySlug(
+      tenantDb,
+      slug,
+      lang,
+      portal.channel,
+    );
 
     if (!result.found) {
       return NextResponse.json({ found: false }, { status: 404 });

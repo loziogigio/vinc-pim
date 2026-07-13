@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveTenantIdByHost } from "@/lib/tenant/host-resolver";
 import {
   getSeoConfig,
-  buildSeoConfig,
+  buildNoindexSeoConfig,
 } from "@/lib/services/b2b-seo-config.service";
 import { hostFromRequest } from "@/lib/tenant/request-host";
 
@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
 
     const tenantId = await resolveTenantIdByHost(req);
     if (!tenantId) {
-      // Unknown host → return safe defaults (consumer falls back gracefully).
-      return NextResponse.json(buildSeoConfig(undefined, host));
+      // Unknown hosts must never become indexable through permissive defaults.
+      return NextResponse.json(buildNoindexSeoConfig(host));
     }
 
     const tenantDb = `vinc-${tenantId}`;
@@ -40,6 +40,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(config);
   } catch (error) {
     console.error("[GET /api/public/b2b/seo-config]", error);
-    return NextResponse.json(buildSeoConfig(undefined, host));
+    return NextResponse.json(buildNoindexSeoConfig(host));
   }
 }

@@ -14,6 +14,143 @@ import type { IB2BPortal, IB2BPortalSynthesized } from "@/lib/types/b2b-portal";
 import { DEFAULT_PORTAL_SLUG } from "@/lib/types/b2b-portal";
 import { connectWithModels } from "@/lib/db/connection";
 import { buildPortalFromHomeSettings } from "./b2b-portal-migration.service";
+import { normalizeCategoryRootSegment } from "./b2b-seo-config.service";
+
+export class B2BPortalValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "B2BPortalValidationError";
+  }
+}
+
+const MUTABLE_PORTAL_FIELDS = new Set<keyof IB2BPortal>([
+  "name",
+  "channel",
+  "domains",
+  "status",
+  "branding",
+  "header_config",
+  "header_config_draft",
+  "header_config_by_lang",
+  "header_config_draft_by_lang",
+  "footer",
+  "footer_draft",
+  "footer_by_lang",
+  "footer_draft_by_lang",
+  "meta_tags",
+  "custom_scripts",
+  "custom_css",
+  "settings",
+  "seo_config",
+  "facet_config",
+]);
+
+function sanitizeSeoConfig(value: IB2BPortal["seo_config"]): IB2BPortal["seo_config"] {
+  if (!value || typeof value !== "object") return undefined;
+  const categoryRoot: Record<string, string> = {};
+  for (const [locale, rawSegment] of Object.entries(value.category_root || {})) {
+    if (rawSegment === undefined || rawSegment === "") continue;
+    const segment = normalizeCategoryRootSegment(rawSegment);
+    if (!segment) {
+      throw new B2BPortalValidationError(
+        `Category root for "${locale}" must be one URL segment without slashes`,
+      );
+    }
+    categoryRoot[locale] = segment;
+  }
+
+  const validatePaths = (paths: unknown, field: string): string[] | undefined => {
+    if (paths === undefined) return undefined;
+    if (!Array.isArray(paths) || paths.length > 100) {
+      throw new B2BPortalValidationError(`${field} must be an array of at most 100 paths`);
+    }
+    const normalized = paths.map((path) => String(path).trim()).filter(Boolean);
+    if (normalized.some((path) => !path.startsWith("/") || /[\r\n]/.test(path))) {
+      throw new B2BPortalValidationError(`${field} entries must start with /`);
+    }
+    return [...new Set(normalized)];
+  };
+
+  const robots = value.robots
+    ? {
+        noindex: value.robots.noindex === true,
+        allow: validatePaths(value.robots.allow, "Robots allow"),
+        disallow: validatePaths(value.robots.disallow, "Robots disallow"),
+      }
+    : undefined;
+
+  return {
+    ...(Object.keys(categoryRoot).length > 0 ? { category_root: categoryRoot } : {}),
+    ...(robots ? { robots } : {}),
+  };
+}
+
+function sanitizeCustomScripts(
+  scripts: IB2BPortal["custom_scripts"],
+): IB2BPortal["custom_scripts"] {
+  if (!Array.isArray(scripts)) {
+    throw new B2BPortalValidationError("Custom scripts must be an array");
+  }
+  if (scripts.length > 20) {
+    throw new B2BPortalValidationError("Maximum 20 custom scripts allowed");
+  }
+
+  return scripts.map((script) => {
+    const label = script.label?.trim();
+    const src = script.src?.trim() || undefined;
+    const inlineCode = script.inline_code?.trim() || undefined;
+    if (!label) throw new B2BPortalValidationError("Each script must have a label");
+    if (!src && !inlineCode) {
+      throw new B2BPortalValidationError(
+        `Script "${label}" needs either an HTTPS URL or inline code`,
+      );
+    }
+    if (src) {
+      try {
+        if (new URL(src).protocol !== "https:") throw new Error("not https");
+      } catch {
+        throw new B2BPortalValidationError(
+          `Script "${label}" URL must be a valid HTTPS URL`,
+        );
+      }
+    }
+    if (inlineCode && inlineCode.length > 100_000) {
+      throw new B2BPortalValidationError(`Script "${label}" inline code is too large`);
+    }
+    return {
+      label,
+      ...(src ? { src } : {}),
+      ...(inlineCode ? { inline_code: inlineCode } : {}),
+      placement: script.placement,
+      loading_strategy: script.loading_strategy,
+      enabled: script.enabled !== false,
+    };
+  });
+}
+
+export function sanitizePortalPatch(
+  patch: Partial<IB2BPortal>,
+): Partial<IB2BPortal> {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+    throw new B2BPortalValidationError("Portal patch must be an object");
+  }
+  const sanitized: Partial<IB2BPortal> = {};
+  for (const [rawKey, value] of Object.entries(patch)) {
+    const key = rawKey as keyof IB2BPortal;
+    if (!MUTABLE_PORTAL_FIELDS.has(key) || value === undefined) continue;
+    (sanitized as Record<string, unknown>)[key] = value;
+  }
+
+  if (sanitized.name !== undefined) sanitized.name = sanitized.name.trim();
+  if (sanitized.channel !== undefined) sanitized.channel = sanitized.channel.trim();
+  if (sanitized.custom_scripts !== undefined) {
+    sanitized.custom_scripts = sanitizeCustomScripts(sanitized.custom_scripts);
+  }
+  if (sanitized.seo_config !== undefined) {
+    sanitized.seo_config = sanitizeSeoConfig(sanitized.seo_config);
+  }
+  return sanitized;
+}
 
 interface ListOptions {
   page?: number;
@@ -99,10 +236,11 @@ export async function updatePortal(
   patch: Partial<IB2BPortal>,
 ): Promise<IB2BPortal | null> {
   const { B2BPortal } = await connectWithModels(dbName);
+  const sanitized = sanitizePortalPatch(patch);
   const doc = await B2BPortal.findOneAndUpdate(
     { slug },
-    { $set: patch },
-    { new: true },
+    { $set: sanitized },
+    { new: true, runValidators: true },
   ).lean<IB2BPortal | null>();
   return doc;
 }

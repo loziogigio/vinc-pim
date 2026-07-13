@@ -28,7 +28,7 @@ const TEST_DB = "vinc-b2b-sitemap-test";
 const HOST = "portal.example.com";
 
 async function seed() {
-  const { B2BPortal, PIMProduct, Category, B2BPage, Language } =
+  const { B2BPortal, PIMProduct, Category, B2BPage, HomeTemplate, Language } =
     await connectWithModels(TEST_DB);
 
   // Note: isDefault is left false to avoid the Language pre("save") hook, which
@@ -87,6 +87,7 @@ async function seed() {
     slug: "root",
     level: 0,
     path: [],
+    channel_code: "b2b",
     is_active: true,
   });
 
@@ -94,8 +95,20 @@ async function seed() {
     portal_slug: "default",
     slug: "about",
     title: "About",
+    lang: "it",
     status: "active",
     show_in_nav: true,
+  });
+  await HomeTemplate.create({
+    templateId: "b2b-default-page-about",
+    name: "About",
+    version: 1,
+    blocks: [],
+    status: "published",
+    isCurrent: true,
+    isCurrentPublished: true,
+    createdAt: new Date(),
+    lastSavedAt: new Date(),
   });
 }
 
@@ -114,13 +127,14 @@ describe("buildB2BSitemapData", () => {
   });
 
   beforeEach(async () => {
-    const { B2BPortal, PIMProduct, Category, B2BPage, Language } =
+    const { B2BPortal, PIMProduct, Category, B2BPage, HomeTemplate, Language } =
       await connectWithModels(TEST_DB);
     await Promise.all([
       B2BPortal.deleteMany({}),
       PIMProduct.deleteMany({}),
       Category.deleteMany({}),
       B2BPage.deleteMany({}),
+      HomeTemplate.deleteMany({}),
       Language.deleteMany({}),
     ]);
   });
@@ -130,6 +144,25 @@ describe("buildB2BSitemapData", () => {
     const data = await buildB2BSitemapData(TEST_DB, HOST);
     expect(data.baseUrl).toBe(`https://${HOST}`);
     expect(data.langs.sort()).toEqual(["en", "it"]);
+  });
+
+  it("uses the portal primary domain as the canonical base URL", async () => {
+    await seed();
+    const { B2BPortal } = await connectWithModels(TEST_DB);
+    await B2BPortal.updateOne(
+      { slug: "default" },
+      {
+        $set: {
+          domains: [
+            { domain: "preview.example.com", is_primary: false },
+            { domain: "shop.example.com", is_primary: true },
+          ],
+        },
+      },
+    );
+
+    const data = await buildB2BSitemapData(TEST_DB, "localhost:3001");
+    expect(data.baseUrl).toBe("https://shop.example.com");
   });
 
   it("emits products as flat slug URLs per locale", async () => {
@@ -146,6 +179,54 @@ describe("buildB2BSitemapData", () => {
     expect(new Date(products[0].lastmod as string).toString()).not.toBe(
       "Invalid Date",
     );
+  });
+
+  it("includes channel-category assignments and excludes other channels", async () => {
+    await seed();
+    const { PIMProduct } = await connectWithModels(TEST_DB);
+    await PIMProduct.create([
+      {
+        entity_code: "P2",
+        sku: "SKU-2",
+        status: "published",
+        isCurrent: true,
+        version: 1,
+        quantity: 0,
+        sold: 0,
+        unit: "pcs",
+        channels: ["retail"],
+        channel_categories: [
+          { channel_code: "b2b", category: { category_id: "cat-leaf" } },
+        ],
+        slug: { it: "assegnato-b2b" },
+      },
+      {
+        entity_code: "P3",
+        sku: "SKU-3",
+        status: "published",
+        isCurrent: true,
+        version: 1,
+        quantity: 0,
+        sold: 0,
+        unit: "pcs",
+        channels: ["retail"],
+        slug: { it: "solo-retail" },
+      },
+    ]);
+
+    const data = await buildB2BSitemapData(TEST_DB, HOST);
+    const products = data.entries
+      .filter((entry) => entry.type === "product")
+      .map((entry) => entry.loc);
+    expect(products).toContain("/it/assegnato-b2b");
+    expect(products).not.toContain("/it/solo-retail");
+  });
+
+  it("does not leak tenant-wide content for a missing portal", async () => {
+    await seed();
+    await expect(
+      buildB2BSitemapData(TEST_DB, HOST, "missing"),
+    ).rejects.toThrow('Portal "missing" not found');
   });
 
   it("emits categories under the per-locale category root with hierarchical path", async () => {
@@ -165,6 +246,29 @@ describe("buildB2BSitemapData", () => {
     expect(cats).toContain("/en/products");
   });
 
+  it("encodes each category path segment", async () => {
+    await seed();
+    const { Category } = await connectWithModels(TEST_DB);
+    await Category.create({
+      category_id: "cat-spaced",
+      name: "Lampade LED",
+      slug: "lampade led",
+      level: 1,
+      path: ["cat-root"],
+      is_active: true,
+    });
+
+    const data = await buildB2BSitemapData(TEST_DB, HOST);
+    expect(data.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          loc: "/it/categorie/lampade%20led",
+          type: "category",
+        }),
+      ]),
+    );
+  });
+
   it("emits CMS pages and static routes", async () => {
     await seed();
     const data = await buildB2BSitemapData(TEST_DB, HOST);
@@ -172,6 +276,7 @@ describe("buildB2BSitemapData", () => {
       .filter((e) => e.type === "page")
       .map((p) => p.loc);
     expect(pages).toContain("/it/about");
+    expect(pages).not.toContain("/en/about");
 
     const statics = data.entries
       .filter((e) => e.type === "static")
@@ -179,6 +284,19 @@ describe("buildB2BSitemapData", () => {
     expect(statics).toContain("/it");
     expect(statics).toContain("/it/search");
     expect(statics).toContain("/en/search");
+  });
+
+  it("deduplicates flat slug collisions with the same CMS-first precedence as routing", async () => {
+    await seed();
+    const { PIMProduct } = await connectWithModels(TEST_DB);
+    await PIMProduct.updateOne(
+      { sku: "SKU-1" },
+      { $set: { "slug.it": "about" } },
+    );
+    const data = await buildB2BSitemapData(TEST_DB, HOST);
+    const collisions = data.entries.filter((entry) => entry.loc === "/it/about");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].type).toBe("page");
   });
 
   it("falls back to portal default language when no Language docs exist", async () => {

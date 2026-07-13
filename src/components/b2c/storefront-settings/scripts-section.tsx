@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, ChevronRight, ClipboardPaste, AlertCircle, CheckCircle2, ArrowUp, ArrowDown } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, ChevronRight, ClipboardPaste, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Upload } from "lucide-react";
+import { useState, type ChangeEvent } from "react";
 import { SectionCard } from "./section-card";
 import type { IB2CCustomScript } from "./types";
 import type { ScriptPlacement, ScriptLoadingStrategy } from "@/lib/db/models/b2c-storefront";
@@ -185,6 +185,100 @@ function validateScript(script: IB2CCustomScript): string[] {
 }
 
 // ============================================
+// SCRIPT ASSET UPLOAD
+// ============================================
+
+function ScriptAssetUpload({
+  endpoint,
+  onUploaded,
+}: {
+  endpoint: string;
+  onUploaded: (url: string, fileName: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState("");
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError("");
+    setUploadedFileName("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+      const body = await response.json().catch(() => ({})) as {
+        error?: string;
+        url?: string;
+        fileName?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(body.error || "JavaScript upload failed");
+      }
+      if (!body.url || !body.url.startsWith("https://")) {
+        throw new Error("Upload did not return a secure JavaScript URL");
+      }
+
+      const fileName = body.fileName || file.name;
+      onUploaded(body.url, fileName);
+      setUploadedFileName(fileName);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "JavaScript upload failed",
+      );
+    } finally {
+      setUploading(false);
+      input.value = "";
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-background/60 p-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-foreground">Upload JavaScript asset</p>
+          <p className="text-xs text-muted-foreground">
+            .js, maximum 1MB. The secure CDN URL becomes the external URL.
+          </p>
+        </div>
+        <label className={`inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors ${uploading ? "cursor-not-allowed opacity-50" : "cursor-pointer text-foreground hover:border-primary hover:text-primary"}`}>
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {uploading ? "Uploading..." : "Upload file"}
+          <input
+            type="file"
+            accept=".js,text/javascript,application/javascript"
+            disabled={uploading}
+            onChange={handleFileChange}
+            aria-label="Upload JavaScript file"
+            className="sr-only"
+          />
+        </label>
+      </div>
+      {uploadError && (
+        <p role="alert" className="flex items-center gap-1 text-xs text-red-500 dark:text-red-400">
+          <AlertCircle className="h-3 w-3" /> {uploadError}
+        </p>
+      )}
+      {uploadedFileName && (
+        <p className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 className="h-3 w-3" /> {uploadedFileName} uploaded and linked
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ============================================
 // SCRIPT ENTRY COMPONENT
 // ============================================
 
@@ -196,6 +290,7 @@ function ScriptEntry({
   onRemove,
   onMove,
   onParsedMultiple,
+  uploadEndpoint,
 }: {
   script: IB2CCustomScript;
   index: number;
@@ -204,6 +299,7 @@ function ScriptEntry({
   onRemove: (index: number) => void;
   onMove: (index: number, direction: "up" | "down") => void;
   onParsedMultiple: (index: number, entries: IB2CCustomScript[]) => void;
+  uploadEndpoint?: string;
 }) {
   const hasContent = !!script.src || !!script.inline_code?.trim();
   const [expanded, setExpanded] = useState(!hasContent);
@@ -361,6 +457,24 @@ function ScriptEntry({
             />
           </div>
 
+          {uploadEndpoint && (
+            <ScriptAssetUpload
+              endpoint={uploadEndpoint}
+              onUploaded={(url, fileName) => {
+                const fallbackLabel = fileName
+                  .replace(/\.js$/i, "")
+                  .replace(/[-_]+/g, " ")
+                  .trim();
+                update({
+                  src: url,
+                  label: script.label.trim() || fallbackLabel || "Uploaded Script",
+                });
+                setShowPaste(false);
+                setParseError("");
+              }}
+            />
+          )}
+
           {/* Paste Snippet area */}
           {showPaste ? (
             <div className="space-y-2">
@@ -502,11 +616,13 @@ export function ScriptsSection({
   onChange,
   saving,
   onSave,
+  scriptUploadEndpoint,
 }: {
   scripts: IB2CCustomScript[];
   onChange: (scripts: IB2CCustomScript[]) => void;
   saving: boolean;
   onSave: () => void;
+  scriptUploadEndpoint?: string;
 }) {
   function handleScriptChange(index: number, updated: IB2CCustomScript) {
     const next = [...scripts];
@@ -559,6 +675,7 @@ export function ScriptsSection({
               onRemove={handleRemove}
               onMove={handleMove}
               onParsedMultiple={handleParsedMultiple}
+              uploadEndpoint={scriptUploadEndpoint}
             />
           ))}
 

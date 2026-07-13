@@ -15,9 +15,43 @@ describe("buildPortalFromHomeSettings", () => {
     expect(portal.slug).toBe(DEFAULT_PORTAL_SLUG);
     expect(portal.name).toBe("Acme Corp");
     expect(portal.branding.title).toBe("Acme");
-    expect(portal.channel).toBe("default");
+    expect(portal.channel).toBe("b2b");
     expect(portal.status).toBe("active");
     expect(portal.domains).toEqual([]);
+  });
+
+  it("preserves the channel configured by the legacy category menu", () => {
+    const portal = buildPortalFromHomeSettings(
+      {
+        branding: { title: "Acme" },
+        headerConfig: {
+          rows: [
+            {
+              id: "nav",
+              enabled: true,
+              fixed: false,
+              layout: "full",
+              blocks: [
+                {
+                  id: "main",
+                  alignment: "left",
+                  widgets: [
+                    {
+                      id: "categories",
+                      type: "category-menu",
+                      config: { channel: " wholesale " },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      } as any,
+      "Acme",
+    );
+
+    expect(portal.channel).toBe("wholesale");
   });
 
   it("seeds domains from branding.shopUrl when present", () => {
@@ -57,10 +91,14 @@ describe("buildPortalFromHomeSettings", () => {
       } as any,
       "X",
     );
-    expect(portal.header_config_draft).toEqual({ rows: [{ id: "r1", blocks: [] }] });
+    expect(portal.header_config_draft).toEqual({
+      rows: [{ id: "r1", blocks: [] }],
+    });
     expect(portal.footer.footer_html).toBe("<footer>Published</footer>");
     expect(portal.footer_draft).toBeDefined();
-    expect(portal.footer_draft!.footer_html_draft).toBe("<footer>Draft</footer>");
+    expect(portal.footer_draft!.footer_html_draft).toBe(
+      "<footer>Draft</footer>",
+    );
   });
 
   it("maps branding camelCase fields to IB2CStorefrontBranding snake_case fields", () => {
@@ -79,7 +117,9 @@ describe("buildPortalFromHomeSettings", () => {
     );
     expect(portal.branding.title).toBe("Shop");
     expect(portal.branding.logo_url).toBe("https://cdn.example.com/logo.png");
-    expect(portal.branding.favicon_url).toBe("https://cdn.example.com/favicon.ico");
+    expect(portal.branding.favicon_url).toBe(
+      "https://cdn.example.com/favicon.ico",
+    );
     expect(portal.branding.primary_color).toBe("#ff0000");
     expect(portal.branding.secondary_color).toBe("#00ff00");
     expect(portal.branding.accent_color).toBe("#0000ff");
@@ -121,7 +161,9 @@ describe("buildPortalFromHomeSettings", () => {
     expect(portal.meta_tags.twitter_card).toBe("summary_large_image");
     expect(portal.meta_tags.twitter_site).toBe("@myshop");
     expect(portal.meta_tags.twitter_creator).toBe("@creator");
-    expect(portal.meta_tags.twitter_image).toBe("https://cdn.example.com/tw.jpg");
+    expect(portal.meta_tags.twitter_image).toBe(
+      "https://cdn.example.com/tw.jpg",
+    );
     expect(portal.meta_tags.theme_color).toBe("#009f7f");
     expect(portal.meta_tags.google_site_verification).toBe("abc123");
     expect(portal.meta_tags.bing_site_verification).toBe("xyz789");

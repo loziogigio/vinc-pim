@@ -23,6 +23,15 @@ export async function getHomeBuilderSession(): Promise<HomeBuilderSession | null
   return null;
 }
 
-export async function hasHomeBuilderAccess(): Promise<boolean> {
-  return (await getHomeBuilderSession()) !== null;
+export async function hasHomeBuilderAccess(
+  tenantId?: string,
+): Promise<boolean> {
+  const builder = await getHomeBuilderSession();
+  if (!builder) return false;
+
+  // Global admins may manage any tenant. A B2B manager/admin session must be
+  // bound to the same tenant as the authenticated write request; otherwise a
+  // second stale cookie could authorize executable code in another tenant.
+  if (!tenantId || builder.type === "admin") return true;
+  return builder.session.tenantId === tenantId;
 }

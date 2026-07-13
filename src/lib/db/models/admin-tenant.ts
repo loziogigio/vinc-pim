@@ -26,13 +26,6 @@ export type TenantStatus = (typeof TENANT_STATUSES)[number];
 // INTERFACE
 // ============================================
 
-export interface ITenantDomain {
-  hostname: string;
-  protocol: string;
-  is_primary: boolean;
-  is_active: boolean;
-}
-
 export interface ITenantRateLimit {
   enabled: boolean;
   requests_per_minute: number;
@@ -125,7 +118,6 @@ export interface ITenant {
 
   // Multi-tenant support fields (optional for backwards compatibility)
   project_code?: string;
-  domains?: ITenantDomain[];
   api?: ITenantApiConfig;
   database?: ITenantDbConfig;
   require_login?: boolean;
@@ -294,7 +286,6 @@ export const TenantSchema = new Schema<ITenantDocument>(
       type: String,
       trim: true,
     },
-    domains: [TenantDomainSchema],
     api: TenantApiConfigSchema,
     database: TenantDbConfigSchema,
     require_login: {

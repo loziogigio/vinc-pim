@@ -20,10 +20,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAuth } from "@/lib/auth/tenant-auth";
+import { hasHomeBuilderAccess } from "@/lib/auth/home-builder-access";
 import {
   getPortalBySlug,
   updatePortal,
   deletePortal,
+  B2BPortalValidationError,
 } from "@/lib/services/b2b-portal.service";
 import {
   isTenantMigrated,
@@ -75,24 +77,56 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (!auth.success) return auth.response;
 
     const { slug } = await ctx.params;
+    const patch = await req.json();
+
+    const writesCustomScripts =
+      patch !== null &&
+      typeof patch === "object" &&
+      !Array.isArray(patch) &&
+      Object.prototype.hasOwnProperty.call(patch, "custom_scripts");
+
+    // Executable storefront code is a portal-administration capability. Do
+    // not allow API keys or customer/portal-user credentials to inject it.
+    if (
+      writesCustomScripts &&
+      (!auth.userId ||
+        auth.authMethod !== "session" ||
+        auth.userType !== "b2b_user" ||
+        !(await hasHomeBuilderAccess(auth.tenantId)))
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Migration gate — must be checked BEFORE performing the write.
     if (!(await isTenantMigrated(auth.tenantId))) {
       return NextResponse.json(NOT_MIGRATED_RESPONSE_BODY, { status: 409 });
     }
 
-    const patch = await req.json();
     const portal = await updatePortal(auth.tenantDb, slug, patch);
     if (!portal) {
       return NextResponse.json({ error: "Portal not found" }, { status: 404 });
     }
 
-    // Branding/header/footer/meta/scripts all feed the b2b "home-settings" tag.
-    void invalidateB2BCache(auth.tenantId, "home-settings");
+    // Branding/header/footer/meta/scripts feed home-settings. Routing/channel
+    // changes also affect the generated sitemap contract consumed by vinc-b2b.
+    const cacheNames = ["home-settings"];
+    if (
+      patch.seo_config !== undefined ||
+      patch.channel !== undefined ||
+      patch.domains !== undefined ||
+      patch.status !== undefined ||
+      patch.settings?.default_language !== undefined
+    ) {
+      cacheNames.push("sitemap");
+    }
+    void invalidateB2BCache(auth.tenantId, cacheNames);
 
     return NextResponse.json({ success: true, data: portal });
   } catch (error) {
     console.error("[PATCH /api/b2b/b2b/portals/[slug]]", error);
+    if (error instanceof B2BPortalValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to update portal" }, { status: 500 });
   }
 }
