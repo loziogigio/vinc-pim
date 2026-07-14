@@ -88,6 +88,8 @@ import { RoleSchema } from "./models/role";
 import { DealSchema } from "./models/deal";
 import { SmsLogSchema } from "./models/sms-log";
 import { FeedDestinationSchema } from "./models/feed-destination";
+import { FeedRunSchema } from "./models/feed-run";
+import { FeedItemStateSchema } from "./models/feed-item-state";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -167,6 +169,8 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   Deal: DealSchema,
   SmsLog: SmsLogSchema,
   FeedDestination: FeedDestinationSchema,
+  FeedRun: FeedRunSchema,
+  FeedItemState: FeedItemStateSchema,
 };
 
 /**
@@ -179,7 +183,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
  */
 export async function getModel<T extends mongoose.Document>(
   dbName: string,
-  modelName: string
+  modelName: string,
 ): Promise<mongoose.Model<T>> {
   const connection = await getPooledConnection(dbName);
 
@@ -191,7 +195,9 @@ export async function getModel<T extends mongoose.Document>(
   // Get schema and register model
   const schema = MODEL_SCHEMAS[modelName];
   if (!schema) {
-    throw new Error(`Unknown model: ${modelName}. Add it to MODEL_SCHEMAS in model-registry.ts`);
+    throw new Error(
+      `Unknown model: ${modelName}. Add it to MODEL_SCHEMAS in model-registry.ts`,
+    );
   }
 
   return connection.model<T>(modelName, schema);
@@ -288,6 +294,8 @@ export async function getTenantModels(dbName: string) {
     Deal: connection.models.Deal,
     SmsLog: connection.models.SmsLog,
     FeedDestination: connection.models.FeedDestination,
+    FeedRun: connection.models.FeedRun,
+    FeedItemState: connection.models.FeedItemState,
   };
 }
 
@@ -377,6 +385,8 @@ export function getModelRegistry(connection: mongoose.Connection) {
     Deal: connection.models.Deal,
     SmsLog: connection.models.SmsLog,
     FeedDestination: connection.models.FeedDestination,
+    FeedRun: connection.models.FeedRun,
+    FeedItemState: connection.models.FeedItemState,
   };
 }
 
@@ -408,7 +418,7 @@ export async function getDataModelRecordModel(
   definition: Pick<
     IDataModelDefinition,
     "slug" | "cardinality" | "fields" | "external_ref_field"
-  >
+  >,
 ): Promise<mongoose.Model<mongoose.Document>> {
   const connection = await getPooledConnection(dbName);
   const modelName = `DynRecord_${definition.slug}`;
@@ -429,7 +439,7 @@ export async function getDataModelRecordModel(
       timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
       collection: `dyn_${definition.slug}`,
       strict: false,
-    }
+    },
   );
 
   schema.index({ relation_id: 1, channel: 1, _id: -1 });
@@ -443,8 +453,10 @@ export async function getDataModelRecordModel(
       { relation_id: 1, channel: 1, external_ref: 1 },
       {
         unique: true,
-        partialFilterExpression: { external_ref: { $exists: true, $type: "string" } },
-      }
+        partialFilterExpression: {
+          external_ref: { $exists: true, $type: "string" },
+        },
+      },
     );
   }
 
