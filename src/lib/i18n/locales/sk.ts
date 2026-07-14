@@ -3941,6 +3941,7 @@ const sk = {
       lastRun: "Posledné spustenie",
       never: "nikdy",
       empty: "Zatiaľ žiadne ciele.",
+      loadError: "Ciele sa nepodarilo načítať",
       status: { active: "Aktívny", paused: "Pozastavený", error: "Chyba" },
       fields: {
         type: "Typ", name: "Názov", channel: "Predajný kanál", lang: "Jazyk",

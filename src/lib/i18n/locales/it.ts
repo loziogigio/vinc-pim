@@ -3965,6 +3965,7 @@ const it = {
       lastRun: "Ultima esecuzione",
       never: "mai",
       empty: "Nessuna destinazione ancora.",
+      loadError: "Impossibile caricare le destinazioni",
       status: { active: "Attivo", paused: "In pausa", error: "Errore" },
       fields: {
         type: "Tipo", name: "Nome", channel: "Canale di vendita", lang: "Lingua",

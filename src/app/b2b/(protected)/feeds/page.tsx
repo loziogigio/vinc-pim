@@ -31,13 +31,22 @@ export default function FeedsPage() {
   const { t } = useTranslation();
   const [rows, setRows] = useState<DestinationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/b2b/feeds/destinations");
       const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `HTTP ${res.status}`);
+      }
       setRows(json.data ?? []);
+      setError(null);
+    } catch (err) {
+      console.error("Error loading feed destinations:", err);
+      setRows([]);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -84,6 +93,13 @@ export default function FeedsPage() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800 p-4">
+          <p className="text-sm font-medium text-red-700 dark:text-red-300">
+            {t("pages.feeds.loadError")}
+          </p>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-all">{error}</p>
+        </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {rows.map((d) => (

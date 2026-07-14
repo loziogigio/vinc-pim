@@ -3968,6 +3968,7 @@ const en = {
       lastRun: "Last run",
       never: "never",
       empty: "No destinations yet.",
+      loadError: "Could not load destinations",
       status: { active: "Active", paused: "Paused", error: "Error" },
       fields: {
         type: "Type", name: "Name", channel: "Sales channel", lang: "Language",
