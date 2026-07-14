@@ -53,6 +53,7 @@ export interface IFeedDestination {
   // Google Merchant
   google_merchant_account_id?: string;
   google_service_account_json_encrypted?: string;
+  google_data_source?: string; // Merchant API data source name, e.g. "accounts/123/dataSources/456"
 
   // Meta catalog
   meta_catalog_id?: string;
@@ -109,6 +110,7 @@ const FeedDestinationSchema = new Schema(
 
     google_merchant_account_id: { type: String, trim: true },
     google_service_account_json_encrypted: { type: String },
+    google_data_source: { type: String, trim: true },
 
     meta_catalog_id: { type: String, trim: true },
     meta_system_user_token_encrypted: { type: String },
