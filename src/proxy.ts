@@ -399,7 +399,11 @@ export async function proxy(request: NextRequest) {
     actualPath === "/api/public/b2b/resolve-product" ||
     actualPath === "/api/public/b2b/seo-config" ||
     actualPath === "/api/public/b2b/sitemap-data";
-  if (isWebhookRoute || isPaymentCompleteRoute || isPublicB2bSeoRoute) {
+  // Public product feeds (TrovaPrezzi and future comparison engines): fetched
+  // by external crawlers without headers; auth = per-destination feed token
+  // validated inside the route handler (404 on mismatch).
+  const isPublicFeedRoute = actualPath.startsWith("/api/public/feeds/");
+  if (isWebhookRoute || isPaymentCompleteRoute || isPublicB2bSeoRoute || isPublicFeedRoute) {
     const response = NextResponse.next();
     applyHeaders(response, securityHeaders);
     applyHeaders(response, corsHeaders);
