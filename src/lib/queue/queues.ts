@@ -264,6 +264,19 @@ export const smsQueue = new Queue("sms", {
   },
 });
 
+// Feed sync queue (per-destination delta/full/manual pushes to Google
+// Merchant, Meta Catalog, TrovaPrezzi, etc.). Scheduled via per-destination
+// BullMQ job schedulers (see feed-sync-worker.ts) rather than tenant fan-out.
+export const feedSyncQueue = new Queue("feed-sync-queue", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 10000 },
+    removeOnComplete: { count: 200 },
+    removeOnFail: { count: 500 },
+  },
+});
+
 // Export queue names for workers
 export const QUEUE_NAMES = {
   IMPORT: "import-queue",
@@ -279,4 +292,5 @@ export const QUEUE_NAMES = {
   PORTAL_USER_IMPORT: "portal-user-import-queue",
   EMAIL: "email",
   SMS: "sms",
+  FEED_SYNC: "feed-sync-queue",
 } as const;

@@ -17,6 +17,7 @@ import {
   customerImportQueue,
   portalUserImportQueue,
   emailQueue,
+  feedSyncQueue,
 } from "./queues";
 
 const serverAdapter = new ExpressAdapter();
@@ -34,6 +35,7 @@ createBullBoard({
     new BullMQAdapter(bookingExpiryQueue),
     new BullMQAdapter(cleanupQueue),
     new BullMQAdapter(analyticsQueue),
+    new BullMQAdapter(feedSyncQueue),
   ],
   serverAdapter,
 });
