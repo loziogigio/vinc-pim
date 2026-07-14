@@ -25,6 +25,8 @@ export interface GoogleClientConfig {
   serviceAccountJson: string;
   contentLanguage: string;
   feedLabel: string;
+  /** Merchant API data source name, e.g. "accounts/123/dataSources/456". */
+  dataSource?: string;
 }
 
 export class GoogleMerchantClient {
@@ -85,6 +87,13 @@ export class GoogleMerchantClient {
     return this.token.value;
   }
 
+  /** "?dataSource=..." when configured, "" otherwise (URLs stay unchanged). */
+  private dataSourceQuery(): string {
+    return this.cfg.dataSource
+      ? `?dataSource=${encodeURIComponent(this.cfg.dataSource)}`
+      : "";
+  }
+
   private async authedFetch(url: string, init: RequestInit): Promise<Response> {
     const token = await this.getToken();
     return fetch(url, {
@@ -131,7 +140,7 @@ export class GoogleMerchantClient {
 
   async pushProducts(products: FeedProduct[]): Promise<FeedPushResult[]> {
     const byCode = new Map(products.map((p) => [p.entity_code, p]));
-    const url = `${API_BASE}/products/v1/accounts/${this.cfg.merchantAccountId}/productInputs:insert`;
+    const url = `${API_BASE}/products/v1/accounts/${this.cfg.merchantAccountId}/productInputs:insert${this.dataSourceQuery()}`;
     return this.perItem([...byCode.keys()], (code) =>
       this.authedFetch(url, {
         method: "POST",
@@ -148,7 +157,7 @@ export class GoogleMerchantClient {
   async deleteProducts(entityCodes: string[]): Promise<FeedPushResult[]> {
     return this.perItem(entityCodes, (code) => {
       const name = `ONLINE~${this.cfg.contentLanguage}~${this.cfg.feedLabel}~${code}`;
-      const url = `${API_BASE}/products/v1/accounts/${this.cfg.merchantAccountId}/productInputs/${encodeURIComponent(name)}`;
+      const url = `${API_BASE}/products/v1/accounts/${this.cfg.merchantAccountId}/productInputs/${encodeURIComponent(name)}${this.dataSourceQuery()}`;
       return this.authedFetch(url, { method: "DELETE" });
     });
   }

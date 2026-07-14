@@ -56,6 +56,28 @@ describe("GoogleMerchantClient", () => {
     expect(body.offerId).toBe("LED-001");
   });
 
+  it("appends the dataSource query param to insert URLs when configured", async () => {
+    const { GoogleMerchantClient } = await import("@/lib/feeds/clients/google-client");
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) });
+
+    const client = new GoogleMerchantClient({
+      merchantAccountId: "123",
+      serviceAccountJson: JSON.stringify({ client_email: "sa@x", private_key: PRIVATE_PEM }),
+      contentLanguage: "it",
+      feedLabel: "IT",
+      dataSource: "accounts/123/dataSources/456",
+    });
+    const results = await client.pushProducts([FP]);
+    expect(results).toEqual([{ entity_code: "LED-001", ok: true }]);
+
+    const [insertUrl] = fetchMock.mock.calls[1];
+    expect(String(insertUrl)).toContain(
+      "?dataSource=accounts%2F123%2FdataSources%2F456"
+    );
+  });
+
   it("reuses the cached token across calls and deletes by offer id", async () => {
     const { GoogleMerchantClient } = await import("@/lib/feeds/clients/google-client");
     fetchMock
