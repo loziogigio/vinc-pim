@@ -29,6 +29,7 @@ export const APP_IDS = [
   "b2b-portal",
   "bookings",
   "windmill",
+  "feeds",
   "team",
 ] as const;
 

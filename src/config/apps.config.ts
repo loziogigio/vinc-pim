@@ -28,6 +28,7 @@ import {
   LayoutTemplate,
   Database,
   Newspaper,
+  Rss,
 } from "lucide-react";
 
 export interface AppConfig {
@@ -225,6 +226,17 @@ export const APPS: AppConfig[] = [
     href: "/b2b/notifications",
     icon: Bell,
     color: "bg-rose-500",
+    showInLauncher: true,
+    showInHeader: true,
+    hasNavigation: true,
+  },
+  {
+    id: "feeds",
+    name: "Channel Feeds",
+    description: "Product feeds: Google Merchant, Meta Shops, TrovaPrezzi",
+    href: "/b2b/feeds",
+    icon: Rss,
+    color: "bg-orange-500",
     showInLauncher: true,
     showInHeader: true,
     hasNavigation: true,
