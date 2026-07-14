@@ -172,12 +172,15 @@ export async function runFeedSync(
     for await (const product of cursor) {
       scanned++;
       const code = String((product as Record<string, unknown>).entity_code);
-      liveCodes.add(code);
       const fp = buildFeedProduct(product as Record<string, unknown>, opts);
       if (!fp) {
+        // Unrepresentable (no title/price/entity_code): do NOT mark it live,
+        // so a previously-pushed item that becomes unrepresentable is
+        // reconciled as vanished (deleted remotely) on the next full run.
         skipped++;
         continue;
       }
+      liveCodes.add(code);
       const hash = feedContentHash(fp);
       const prev = stateByCode.get(code);
       if (mode === "delta" && prev && prev.content_hash === hash && prev.remote_status === "pushed") {
@@ -207,6 +210,17 @@ export async function runFeedSync(
           } else {
             failed++;
             if (!errorSummary && r.error) errorSummary = r.error;
+            await FeedItemState.updateOne(
+              { destination_id: destinationId, entity_code: r.entity_code },
+              {
+                $set: {
+                  remote_status: "error",
+                  last_error: r.error || "delete failed",
+                  last_run_id: runId,
+                },
+              },
+              { upsert: true }
+            );
           }
         }
       }
@@ -238,7 +252,9 @@ export async function runFeedSync(
     {
       $set: {
         status: status === "failed" ? "error" : "active",
-        status_message: status === "failed" ? errorSummary : undefined,
+        // Explicit null: undefined is dropped from $set, which would leave a
+        // stale error message behind after the destination recovers.
+        status_message: status === "failed" ? errorSummary : null,
         last_run: {
           run_id: runId, finished_at: new Date(), status, pushed, failed, deleted,
         },
@@ -249,7 +265,7 @@ export async function runFeedSync(
   if (failed > 0 && dest.notification_email) {
     try {
       const { sendNotification } = await import("@/lib/notifications/send.service");
-      await sendNotification({
+      const alertResult = await sendNotification({
         tenantDb,
         trigger: "custom",
         to: dest.notification_email,
@@ -258,6 +274,11 @@ export async function runFeedSync(
           content_html: `<p>Run ${runId} (${mode}) finished with status <b>${status}</b>.</p><p>pushed=${pushed} failed=${failed} deleted=${deleted} skipped=${skipped}.</p><p>First error: ${errorSummary || "n/a"}</p>`,
         },
       });
+      // sendNotification reports expected failures (e.g. no active "custom"
+      // template) via { success: false } instead of throwing — surface them.
+      if (!alertResult.success) {
+        console.error("[feeds] degraded-run alert not sent:", alertResult.error);
+      }
     } catch (alertErr) {
       console.error("[feeds] degraded-run alert failed:", alertErr);
     }

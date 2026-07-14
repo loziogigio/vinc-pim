@@ -163,4 +163,68 @@ describe("feed-sync.service", () => {
     expect(summary.pushed).toBe(1);
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it("clears status_message when a later run recovers", async () => {
+    await makeDestination();
+    await conn.models.PIMProduct.create([productDoc("A-1")]);
+
+    // Run 1: every push fails -> run "failed", destination error + message.
+    pushMock.mockResolvedValueOnce([
+      { entity_code: "A-1", ok: false, error: "Catalog offline" },
+    ]);
+    const bad = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+    expect(bad.status).toBe("failed");
+    const errored = await conn.models.FeedDestination.findOne({ destination_id: "fd_meta1" }).lean();
+    expect(errored.status).toBe("error");
+    expect(errored.status_message).toBe("Catalog offline");
+
+    // Run 2: push succeeds -> destination back to active, message cleared.
+    pushMock.mockResolvedValueOnce([{ entity_code: "A-1", ok: true }]);
+    const good = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+    expect(good.status).toBe("success");
+    const recovered = await conn.models.FeedDestination.findOne({ destination_id: "fd_meta1" }).lean();
+    expect(recovered.status).toBe("active");
+    expect(recovered.status_message ?? null).toBeNull();
+  });
+
+  it("records an error item state when a remote deletion fails", async () => {
+    await makeDestination();
+    await conn.models.PIMProduct.create([productDoc("A-1")]);
+    pushMock.mockResolvedValue([{ entity_code: "A-1", ok: true }]);
+    await runFeedSync(T_DB, "test", "fd_meta1", "full");
+
+    // Product vanishes but the remote delete fails.
+    await conn.models.PIMProduct.deleteMany({ entity_code: "A-1" });
+    deleteMock.mockResolvedValueOnce([
+      { entity_code: "A-1", ok: false, error: "Remote 500" },
+    ]);
+    const summary = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+    expect(summary.failed).toBe(1);
+    expect(summary.deleted).toBe(0);
+
+    const state = await conn.models.FeedItemState.findOne({ entity_code: "A-1" }).lean();
+    expect(state.remote_status).toBe("error");
+    expect(state.last_error).toContain("Remote 500");
+  });
+
+  it("deletes previously-pushed products that become unrepresentable", async () => {
+    await makeDestination();
+    await conn.models.PIMProduct.create([productDoc("A-1")]);
+    pushMock.mockResolvedValue([{ entity_code: "A-1", ok: true }]);
+    await runFeedSync(T_DB, "test", "fd_meta1", "full");
+
+    // Price drops to 0 -> buildFeedProduct returns null -> no longer feedable.
+    await conn.models.PIMProduct.updateOne(
+      { entity_code: "A-1" },
+      { $set: { "pricing.list": 0 } }
+    );
+    deleteMock.mockResolvedValueOnce([{ entity_code: "A-1", ok: true }]);
+    const summary = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+
+    expect(deleteMock).toHaveBeenCalledWith(["A-1"]);
+    expect(summary.deleted).toBe(1);
+    expect(summary.skipped).toBe(1);
+    const state = await conn.models.FeedItemState.findOne({ entity_code: "A-1" }).lean();
+    expect(state.remote_status).toBe("deleted");
+  });
 });
