@@ -3967,6 +3967,7 @@ const en = {
       regenerateToken: "Regenerate token",
       lastRun: "Last run",
       never: "never",
+      empty: "No destinations yet.",
       status: { active: "Active", paused: "Paused", error: "Error" },
       fields: {
         type: "Type", name: "Name", channel: "Sales channel", lang: "Language",

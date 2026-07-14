@@ -3940,6 +3940,7 @@ const sk = {
       regenerateToken: "Obnoviť token",
       lastRun: "Posledné spustenie",
       never: "nikdy",
+      empty: "Zatiaľ žiadne ciele.",
       status: { active: "Aktívny", paused: "Pozastavený", error: "Chyba" },
       fields: {
         type: "Typ", name: "Názov", channel: "Predajný kanál", lang: "Jazyk",
