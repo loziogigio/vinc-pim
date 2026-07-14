@@ -134,4 +134,54 @@ describe("feed-destination.service", () => {
       })
     ).rejects.toThrow("delta_interval_minutes must be 5-59 or a multiple of 60 (max 1440)");
   });
+
+  it("rejects zero and negative delta_interval_minutes (0 and -60 are not valid multiples)", async () => {
+    const base = {
+      type: "trovaprezzi" as const, name: "TP", channel: "default", lang: "it",
+      currency: "EUR", product_url_template: "https://x/p/{slug}",
+    };
+    await expect(
+      svc.createDestination(T, "test", { ...base, delta_interval_minutes: 0 })
+    ).rejects.toThrow("delta_interval_minutes must be 5-59 or a multiple of 60 (max 1440)");
+    await expect(
+      svc.createDestination(T, "test", { ...base, delta_interval_minutes: -60 })
+    ).rejects.toThrow("delta_interval_minutes must be 5-59 or a multiple of 60 (max 1440)");
+  });
+
+  it("update ignores protected/unknown fields (mass assignment blocked)", async () => {
+    const created = await svc.createDestination(T, "test", {
+      type: "meta_catalog", name: "Meta", channel: "default", lang: "it",
+      currency: "EUR", product_url_template: "https://x/p/{slug}",
+      meta_catalog_id: "cat1", meta_system_user_token: "SECRET-1",
+    });
+    const id = String(created.destination_id);
+    const before = await conn.models.FeedDestination.findOne({}).lean();
+
+    await svc.updateDestination(T, "test", id, {
+      name: "Meta renamed",
+      destination_id: "fd_evil",
+      feed_token: "stolen",
+      meta_system_user_token_encrypted: "raw",
+      type: "google_merchant",
+    } as Parameters<typeof svc.updateDestination>[3]);
+
+    const after = await conn.models.FeedDestination.findOne({}).lean();
+    expect(after.name).toBe("Meta renamed"); // allowed change applied
+    expect(after.destination_id).toBe(before.destination_id); // not fd_evil
+    expect(after.feed_token).toBe(before.feed_token); // not "stolen"
+    expect(after.type).toBe("meta_catalog"); // immutable after create
+    expect(after.meta_system_user_token_encrypted).toBe(
+      before.meta_system_user_token_encrypted
+    ); // ciphertext not overwritten with raw value
+  });
+
+  it("create does not persist unknown extra keys", async () => {
+    await svc.createDestination(T, "test", {
+      type: "trovaprezzi", name: "TP", channel: "default", lang: "it",
+      currency: "EUR", product_url_template: "https://x/p/{slug}",
+      injected_field: "nope",
+    } as Parameters<typeof svc.createDestination>[2]);
+    const raw = await conn.models.FeedDestination.findOne({}).lean();
+    expect(raw).not.toHaveProperty("injected_field");
+  });
 });

@@ -37,6 +37,25 @@ const SECRET_INPUTS: [keyof FeedDestinationInput, keyof IFeedDestination][] = [
 ];
 
 /**
+ * Allow-list of plain (non-secret) input fields that clients may set.
+ * Anything not listed — destination_id, feed_token, *_encrypted, last_run,
+ * unknown keys — is silently dropped, blocking mass assignment (e.g. echoing
+ * a GET response back on PUT must not rewrite destination_id and orphan
+ * FeedRun/FeedItemState rows).
+ */
+const PLAIN_FIELDS_CREATE: readonly (keyof FeedDestinationInput)[] = [
+  "type", "name", "channel", "lang", "currency", "product_url_template",
+  "brand_labels", "category_ids", "in_stock_only",
+  "delta_interval_minutes", "full_reconcile_hour", "status",
+  "google_merchant_account_id", "google_data_source", "meta_catalog_id",
+  "shipping_cost", "notification_email",
+] as const;
+
+// type is immutable after create (adapters/credentials are type-specific).
+const PLAIN_FIELDS_UPDATE: readonly (keyof FeedDestinationInput)[] =
+  PLAIN_FIELDS_CREATE.filter((f) => f !== "type");
+
+/**
  * Validate delta_interval_minutes: cron patterns silently drift for values
  * >= 60 that aren't divisible by 60 (see Task 10 review). Accept 5-59
  * (minute-of-hour cron) or a multiple of 60 up to 1440 (hour-of-day cron).
@@ -48,7 +67,8 @@ export function validateDeltaIntervalMinutes(value: number | undefined): void {
   if (value === undefined) return;
   const isValid =
     Number.isInteger(value) &&
-    ((value >= 5 && value <= 59) || (value % 60 === 0 && value <= 1440));
+    ((value >= 5 && value <= 59) ||
+      (value >= 60 && value % 60 === 0 && value <= 1440));
   if (!isValid) {
     throw new Error(
       "delta_interval_minutes must be 5-59 or a multiple of 60 (max 1440)"
@@ -78,11 +98,15 @@ function applySecrets(
   }
 }
 
-function plainFields(input: Partial<FeedDestinationInput>): Record<string, unknown> {
-  const { google_service_account_json, meta_system_user_token, ...rest } = input;
-  void google_service_account_json;
-  void meta_system_user_token;
-  return rest as Record<string, unknown>;
+function plainFields(
+  input: Partial<FeedDestinationInput>,
+  allowed: readonly (keyof FeedDestinationInput)[]
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in input && input[key] !== undefined) out[key] = input[key];
+  }
+  return out;
 }
 
 async function syncSchedules(tenantDb: string, tenantId: string, dest: IFeedDestination) {
@@ -119,7 +143,7 @@ export async function createDestination(
   validateDeltaIntervalMinutes(input.delta_interval_minutes);
   const { FeedDestination } = await connectWithModels(tenantDb);
   const doc: Record<string, unknown> = {
-    ...plainFields(input),
+    ...plainFields(input, PLAIN_FIELDS_CREATE),
     destination_id: `fd_${randomBytes(5).toString("hex")}`,
   };
   applySecrets(doc, input);
@@ -139,7 +163,7 @@ export async function updateDestination(
 ) {
   validateDeltaIntervalMinutes(input.delta_interval_minutes);
   const { FeedDestination } = await connectWithModels(tenantDb);
-  const update: Record<string, unknown> = plainFields(input);
+  const update: Record<string, unknown> = plainFields(input, PLAIN_FIELDS_UPDATE);
   applySecrets(update, input);
   const doc = await FeedDestination.findOneAndUpdate(
     { destination_id: destinationId },
