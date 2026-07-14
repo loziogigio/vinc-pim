@@ -87,6 +87,7 @@ import {
 import { RoleSchema } from "./models/role";
 import { DealSchema } from "./models/deal";
 import { SmsLogSchema } from "./models/sms-log";
+import { FeedDestinationSchema } from "./models/feed-destination";
 
 // Model name to schema mapping
 const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
@@ -165,6 +166,7 @@ const MODEL_SCHEMAS: Record<string, mongoose.Schema> = {
   DataModelDefinition: DataModelDefinitionSchema,
   Deal: DealSchema,
   SmsLog: SmsLogSchema,
+  FeedDestination: FeedDestinationSchema,
 };
 
 /**
@@ -285,6 +287,7 @@ export async function getTenantModels(dbName: string) {
     DataModelDefinition: connection.models.DataModelDefinition,
     Deal: connection.models.Deal,
     SmsLog: connection.models.SmsLog,
+    FeedDestination: connection.models.FeedDestination,
   };
 }
 
@@ -373,6 +376,7 @@ export function getModelRegistry(connection: mongoose.Connection) {
     DataModelDefinition: connection.models.DataModelDefinition,
     Deal: connection.models.Deal,
     SmsLog: connection.models.SmsLog,
+    FeedDestination: connection.models.FeedDestination,
   };
 }
 
