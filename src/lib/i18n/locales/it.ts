@@ -3963,10 +3963,17 @@ const it = {
       feedUrl: "URL del feed",
       regenerateToken: "Rigenera token",
       lastRun: "Ultima esecuzione",
+      lastRunLine: "ok {{pushed}} / errori {{failed}}",
       never: "mai",
       empty: "Nessuna destinazione ancora.",
       loadError: "Impossibile caricare le destinazioni",
       status: { active: "Attivo", paused: "In pausa", error: "Errore" },
+      table: {
+        run: "Esecuzione", mode: "Modalità", status: "Stato", scanned: "Scansionati",
+        pushed: "Inviati", skipped: "Saltati", failed: "Falliti", deleted: "Eliminati",
+        started: "Avvio", product: "Prodotto", error: "Errore", updated: "Aggiornato",
+      },
+      runStatus: { success: "successo", partial: "parziale", running: "in corso", failed: "fallita" },
       fields: {
         type: "Tipo", name: "Nome", channel: "Canale di vendita", lang: "Lingua",
         currency: "Valuta", productUrlTemplate: "Template URL prodotto",

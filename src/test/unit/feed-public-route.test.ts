@@ -44,7 +44,7 @@ describe("public trovaprezzi feed route", () => {
 
   it("serves XML with the right token and 404s with a wrong one", async () => {
     await conn.models.FeedDestination.create({
-      destination_id: "fd_tp", type: "trovaprezzi", name: "TP",
+      destination_id: "fd_0123456789", type: "trovaprezzi", name: "TP",
       channel: "default", lang: "it", currency: "EUR",
       product_url_template: "https://x/p/{slug}", feed_token: "good-token",
       shipping_cost: 4.9,
@@ -57,16 +57,33 @@ describe("public trovaprezzi feed route", () => {
       pricing: { list: 12.5, currency: "EUR" },
     });
 
-    const ok = await GET(reqFor("fd_tp", "tenant=test&token=good-token"), paramsFor("fd_tp"));
+    const ok = await GET(reqFor("fd_0123456789", "tenant=test&token=good-token"), paramsFor("fd_0123456789"));
     expect(ok.status).toBe(200);
     expect(ok.headers.get("content-type")).toContain("application/xml");
     const xml = await ok.text();
     expect(xml).toContain("<Name>Prodotto A</Name>");
     expect(xml).toContain("<ShippingCost>4.90</ShippingCost>");
 
-    const bad = await GET(reqFor("fd_tp", "tenant=test&token=WRONG"), paramsFor("fd_tp"));
+    const bad = await GET(reqFor("fd_0123456789", "tenant=test&token=WRONG"), paramsFor("fd_0123456789"));
     expect(bad.status).toBe(404);
-    const missing = await GET(reqFor("fd_tp", "tenant=test"), paramsFor("fd_tp"));
+    const missing = await GET(reqFor("fd_0123456789", "tenant=test"), paramsFor("fd_0123456789"));
     expect(missing.status).toBe(404);
+  });
+
+  it("404s a paused destination even with the right token", async () => {
+    await conn.models.FeedDestination.create({
+      destination_id: "fd_abcdef0123", type: "trovaprezzi", name: "TP paused",
+      channel: "default", lang: "it", currency: "EUR",
+      product_url_template: "https://x/p/{slug}", feed_token: "good-token",
+      status: "paused",
+    });
+
+    const res = await GET(reqFor("fd_abcdef0123", "tenant=test&token=good-token"), paramsFor("fd_abcdef0123"));
+    expect(res.status).toBe(404);
+  });
+
+  it("404s a malformed destinationId before touching the DB", async () => {
+    const res = await GET(reqFor("abc", "tenant=test&token=anything"), paramsFor("abc"));
+    expect(res.status).toBe(404);
   });
 });

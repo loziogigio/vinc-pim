@@ -8,6 +8,7 @@ import {
   listDestinations,
   createDestination,
   validateDeltaIntervalMinutes,
+  validateDestinationConfig,
 } from "@/lib/services/feed-destination.service";
 import { FEED_DESTINATION_TYPES } from "@/lib/db/models/feed-destination";
 
@@ -35,6 +36,10 @@ export async function POST(req: NextRequest) {
     validateDeltaIntervalMinutes(body.delta_interval_minutes);
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+  }
+  const configError = validateDestinationConfig(body);
+  if (configError) {
+    return NextResponse.json({ error: configError }, { status: 400 });
   }
 
   const data = await createDestination(auth.tenantDb, auth.tenantId, body);

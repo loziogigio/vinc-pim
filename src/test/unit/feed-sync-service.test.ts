@@ -207,6 +207,71 @@ describe("feed-sync.service", () => {
     expect(state.last_error).toContain("Remote 500");
   });
 
+  it("mass-deletion guard blocks deletions when most tracked items vanish at once", async () => {
+    await makeDestination();
+    // 60 previously-pushed items tracked, but the product scan comes back
+    // empty (e.g. a bad channel filter) — every one of them "vanishes".
+    const states = Array.from({ length: 60 }, (_, i) => ({
+      destination_id: "fd_meta1",
+      entity_code: `A-${i}`,
+      content_hash: "h",
+      remote_status: "pushed" as const,
+    }));
+    await conn.models.FeedItemState.create(states);
+
+    const summary = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(summary.deleted).toBe(0);
+    expect(summary.status).toBe("failed");
+
+    const run = await conn.models.FeedRun.findOne({ run_id: summary.run_id }).lean();
+    expect(run.error_summary).toContain("mass-deletion guard");
+
+    const stillPushed = await conn.models.FeedItemState.findOne({ entity_code: "A-0" }).lean();
+    expect(stillPushed.remote_status).toBe("pushed"); // untouched, not marked deleted
+  });
+
+  it("mass-deletion guard is bypassed via FEEDS_ALLOW_MASS_DELETE=1", async () => {
+    vi.stubEnv("FEEDS_ALLOW_MASS_DELETE", "1");
+    try {
+      await makeDestination();
+      const states = Array.from({ length: 60 }, (_, i) => ({
+        destination_id: "fd_meta1",
+        entity_code: `A-${i}`,
+        content_hash: "h",
+        remote_status: "pushed" as const,
+      }));
+      await conn.models.FeedItemState.create(states);
+      deleteMock.mockImplementation(async (codes: string[]) =>
+        codes.map((c) => ({ entity_code: c, ok: true }))
+      );
+
+      const summary = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+
+      expect(deleteMock).toHaveBeenCalled();
+      expect(summary.deleted).toBe(60);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("run concurrency guard skips starting a new run while one is already running", async () => {
+    await makeDestination();
+    await conn.models.PIMProduct.create([productDoc("A-1")]);
+    await conn.models.FeedRun.create({
+      run_id: "fr_inflight", destination_id: "fd_meta1", mode: "delta",
+      status: "running", started_at: new Date(),
+    });
+
+    const summary = await runFeedSync(T_DB, "test", "fd_meta1", "full");
+
+    expect(summary.run_id).toBe("");
+    expect(pushMock).not.toHaveBeenCalled();
+    const runCount = await conn.models.FeedRun.countDocuments({ destination_id: "fd_meta1" });
+    expect(runCount).toBe(1); // only the pre-seeded in-flight run — no new one created
+  });
+
   it("deletes previously-pushed products that become unrepresentable", async () => {
     await makeDestination();
     await conn.models.PIMProduct.create([productDoc("A-1")]);

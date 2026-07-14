@@ -4,6 +4,7 @@
  * Public TrovaPrezzi XML feed. Auth = feed_token match (404 on any
  * mismatch, never reveal existence). 30-min Redis cache per destination.
  */
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { connectWithModels } from "@/lib/db/connection";
 import { buildProductScope } from "@/lib/feeds/feed-sync.service";
@@ -12,6 +13,21 @@ import { buildTrovaPrezziXml } from "@/lib/feeds/adapters/trovaprezzi";
 import type { IFeedDestination } from "@/lib/db/models/feed-destination";
 
 const CACHE_TTL_SECONDS = 1800;
+
+// destination_id format is "fd_" + 10 hex chars (see feed-destination.service
+// createDestination). Reject anything else before touching the DB — this is
+// a public, unauthenticated route, so a malformed id must not be allowed to
+// spray arbitrary tenant/destination pairs at the connection pool.
+const DESTINATION_ID_RE = /^fd_[a-f0-9]{10}$/;
+
+function tokensMatch(stored: string, provided: string): boolean {
+  const a = Buffer.from(stored);
+  const b = Buffer.from(provided);
+  // timingSafeEqual throws on length mismatch, so short-circuit first —
+  // that early return leaks only length, not content, same as before.
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 export async function GET(
   req: NextRequest,
@@ -24,6 +40,9 @@ export async function GET(
   if (!tenantId || !token || !/^[a-z0-9-]+$/.test(tenantId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (!DESTINATION_ID_RE.test(destinationId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const tenantDb = `vinc-${tenantId}`;
 
   try {
@@ -31,8 +50,9 @@ export async function GET(
     const dest = (await FeedDestination.findOne({
       destination_id: destinationId,
       type: "trovaprezzi",
+      status: { $ne: "paused" },
     }).lean()) as IFeedDestination | null;
-    if (!dest || !dest.feed_token || dest.feed_token !== token) {
+    if (!dest || !dest.feed_token || !tokensMatch(dest.feed_token, token)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

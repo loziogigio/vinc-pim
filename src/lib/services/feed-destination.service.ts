@@ -76,6 +76,41 @@ export function validateDeltaIntervalMinutes(value: number | undefined): void {
   }
 }
 
+/**
+ * Type-specific required-credential check, run at CREATE only. Updates
+ * remain partial (PLAIN_FIELDS_UPDATE) so an admin can edit unrelated
+ * fields without re-supplying every credential — validating there would
+ * make e.g. renaming a destination fail if a secret was never re-typed.
+ */
+export function validateDestinationConfig(input: FeedDestinationInput): string | null {
+  const missing = (value: string | undefined) => !value || !value.trim();
+
+  if (input.type === "google_merchant") {
+    const fields: [string, string | undefined][] = [
+      ["google_merchant_account_id", input.google_merchant_account_id],
+      ["google_service_account_json", input.google_service_account_json],
+      ["google_data_source", input.google_data_source],
+    ];
+    const missingFields = fields.filter(([, v]) => missing(v)).map(([k]) => k);
+    if (missingFields.length) {
+      return `google_merchant destination requires: ${missingFields.join(", ")}`;
+    }
+  }
+
+  if (input.type === "meta_catalog") {
+    const fields: [string, string | undefined][] = [
+      ["meta_catalog_id", input.meta_catalog_id],
+      ["meta_system_user_token", input.meta_system_user_token],
+    ];
+    const missingFields = fields.filter(([, v]) => missing(v)).map(([k]) => k);
+    if (missingFields.length) {
+      return `meta_catalog destination requires: ${missingFields.join(", ")}`;
+    }
+  }
+
+  return null;
+}
+
 function mask(doc: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...doc };
   for (const [inputKey, storedKey] of SECRET_INPUTS) {
@@ -111,7 +146,7 @@ function plainFields(
 
 async function syncSchedules(tenantDb: string, tenantId: string, dest: IFeedDestination) {
   try {
-    const { upsertFeedSchedules } = await import("@/lib/queue/feed-sync-worker");
+    const { upsertFeedSchedules } = await import("@/lib/queue/feed-sync-schedules");
     await upsertFeedSchedules(tenantDb, tenantId, {
       destination_id: dest.destination_id,
       delta_interval_minutes: dest.delta_interval_minutes,
@@ -141,6 +176,8 @@ export async function createDestination(
   input: FeedDestinationInput
 ) {
   validateDeltaIntervalMinutes(input.delta_interval_minutes);
+  const configError = validateDestinationConfig(input);
+  if (configError) throw new Error(configError);
   const { FeedDestination } = await connectWithModels(tenantDb);
   const doc: Record<string, unknown> = {
     ...plainFields(input, PLAIN_FIELDS_CREATE),
@@ -182,7 +219,7 @@ export async function deleteDestination(tenantDb: string, destinationId: string)
   await FeedItemState.deleteMany({ destination_id: destinationId });
   await FeedRun.deleteMany({ destination_id: destinationId });
   try {
-    const { removeFeedSchedules } = await import("@/lib/queue/feed-sync-worker");
+    const { removeFeedSchedules } = await import("@/lib/queue/feed-sync-schedules");
     await removeFeedSchedules(tenantDb, destinationId);
   } catch (err) {
     console.error("[feeds] scheduler removal failed:", err);

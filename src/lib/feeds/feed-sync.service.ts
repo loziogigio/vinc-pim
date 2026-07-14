@@ -16,6 +16,14 @@ import type { IFeedDestination } from "@/lib/db/models/feed-destination";
 
 const PUSH_CHUNK = 200;
 
+// Mass-deletion circuit breaker: if a full/manual reconcile would delete an
+// implausibly large slice of previously-tracked items (e.g. a bad channel
+// filter or an empty product scan), refuse to propagate deletions rather
+// than silently wiping the remote catalog. Parsed once at module load;
+// env-overridable for tuning without a code change.
+const MASS_DELETE_MIN = parseInt(process.env.FEEDS_MASS_DELETE_MIN || "50", 10);
+const MASS_DELETE_RATIO = parseFloat(process.env.FEEDS_MASS_DELETE_RATIO || "0.2");
+
 export interface FeedSyncSummary {
   run_id: string;
   status: "success" | "partial" | "failed";
@@ -101,6 +109,23 @@ export async function runFeedSync(
   }).lean()) as IFeedDestination | null;
   if (!dest) throw new Error(`Feed destination not found: ${destinationId}`);
   if (dest.status === "paused") {
+    return { run_id: "", status: "success", scanned: 0, pushed: 0, skipped: 0, failed: 0, deleted: 0 };
+  }
+
+  // Concurrency guard: a delta and a full reconcile can both be scheduled
+  // in the same minute (BullMQ job schedulers are independent per kind), and
+  // a manual "sync now" can overlap either. Refuse to start a second run
+  // for the same destination while one still looks live, so two runs never
+  // interleave writes to FeedItemState/FeedRun. "running" rows older than
+  // the stale window are ignored (a crashed worker shouldn't wedge future
+  // runs forever).
+  const staleMs = parseInt(process.env.FEEDS_RUN_STALE_MS || "1800000", 10);
+  const running = await FeedRun.findOne({
+    destination_id: destinationId,
+    status: "running",
+    started_at: { $gt: new Date(Date.now() - staleMs) },
+  }).lean();
+  if (running) {
     return { run_id: "", status: "success", scanned: 0, pushed: 0, skipped: 0, failed: 0, deleted: 0 };
   }
 
@@ -197,30 +222,45 @@ export async function runFeedSync(
       const vanished = states
         .filter((s) => !liveCodes.has(s.entity_code) && s.remote_status !== "deleted")
         .map((s) => s.entity_code);
-      for (let i = 0; i < vanished.length; i += PUSH_CHUNK) {
-        const chunk = vanished.slice(i, i + PUSH_CHUNK);
-        const results = await client.deleteProducts(chunk);
-        for (const r of results) {
-          if (r.ok) {
-            deleted++;
-            await FeedItemState.updateOne(
-              { destination_id: destinationId, entity_code: r.entity_code },
-              { $set: { remote_status: "deleted", last_run_id: runId } }
-            );
-          } else {
-            failed++;
-            if (!errorSummary && r.error) errorSummary = r.error;
-            await FeedItemState.updateOne(
-              { destination_id: destinationId, entity_code: r.entity_code },
-              {
-                $set: {
-                  remote_status: "error",
-                  last_error: r.error || "delete failed",
-                  last_run_id: runId,
+
+      const massDeletionGuardTriggered =
+        vanished.length > MASS_DELETE_MIN &&
+        vanished.length > MASS_DELETE_RATIO * states.length &&
+        process.env.FEEDS_ALLOW_MASS_DELETE !== "1";
+
+      if (massDeletionGuardTriggered) {
+        // Refuse to propagate what looks like a catalog/channel-config
+        // accident (e.g. an empty scan or bad scope filter) as a wave of
+        // remote deletions. Surface it as a failed run so it's visible in
+        // the runs list and triggers the degraded-run alert.
+        errorSummary = `mass-deletion guard: ${vanished.length}/${states.length} tracked items vanished from scope; verify catalog/channel config, then set FEEDS_ALLOW_MASS_DELETE=1 on the worker to force`;
+        failed++;
+      } else {
+        for (let i = 0; i < vanished.length; i += PUSH_CHUNK) {
+          const chunk = vanished.slice(i, i + PUSH_CHUNK);
+          const results = await client.deleteProducts(chunk);
+          for (const r of results) {
+            if (r.ok) {
+              deleted++;
+              await FeedItemState.updateOne(
+                { destination_id: destinationId, entity_code: r.entity_code },
+                { $set: { remote_status: "deleted", last_run_id: runId } }
+              );
+            } else {
+              failed++;
+              if (!errorSummary && r.error) errorSummary = r.error;
+              await FeedItemState.updateOne(
+                { destination_id: destinationId, entity_code: r.entity_code },
+                {
+                  $set: {
+                    remote_status: "error",
+                    last_error: r.error || "delete failed",
+                    last_run_id: runId,
+                  },
                 },
-              },
-              { upsert: true }
-            );
+                { upsert: true }
+              );
+            }
           }
         }
       }

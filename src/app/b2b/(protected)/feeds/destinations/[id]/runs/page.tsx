@@ -71,7 +71,7 @@ export default function FeedRunsPage({ params }: { params: Promise<{ id: string 
               : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
       )}
     >
-      {s}
+      {t(`pages.feeds.runStatus.${s}`)}
     </span>
   );
 
@@ -100,15 +100,15 @@ export default function FeedRunsPage({ params }: { params: Promise<{ id: string 
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-3">Run</th>
-                  <th className="py-2 pr-3">Mode</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3">Scanned</th>
-                  <th className="py-2 pr-3">Pushed</th>
-                  <th className="py-2 pr-3">Skipped</th>
-                  <th className="py-2 pr-3">Failed</th>
-                  <th className="py-2 pr-3">Deleted</th>
-                  <th className="py-2 pr-3">Started</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.run")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.mode")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.status")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.scanned")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.pushed")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.skipped")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.failed")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.deleted")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.started")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,9 +137,9 @@ export default function FeedRunsPage({ params }: { params: Promise<{ id: string 
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="py-2 pr-3">Error</th>
-                  <th className="py-2 pr-3">Updated</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.product")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.error")}</th>
+                  <th className="py-2 pr-3">{t("pages.feeds.table.updated")}</th>
                 </tr>
               </thead>
               <tbody>

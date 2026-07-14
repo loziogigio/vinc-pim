@@ -12,7 +12,7 @@ let conn: mongoose.Connection;
 vi.mock("@/lib/db/connection-pool", () => ({
   getPooledConnection: vi.fn(async () => conn),
 }));
-vi.mock("@/lib/queue/feed-sync-worker", () => ({
+vi.mock("@/lib/queue/feed-sync-schedules", () => ({
   upsertFeedSchedules: vi.fn(async () => {}),
   removeFeedSchedules: vi.fn(async () => {}),
 }));
@@ -173,6 +173,37 @@ describe("feed-destination.service", () => {
     expect(after.meta_system_user_token_encrypted).toBe(
       before.meta_system_user_token_encrypted
     ); // ciphertext not overwritten with raw value
+  });
+
+  it("rejects a google_merchant create missing google_data_source", async () => {
+    await expect(
+      svc.createDestination(T, "test", {
+        type: "google_merchant", name: "Google", channel: "default", lang: "it",
+        currency: "EUR", product_url_template: "https://x/p/{slug}",
+        google_merchant_account_id: "123",
+        google_service_account_json: '{"type":"service_account"}',
+        // google_data_source intentionally omitted
+      })
+    ).rejects.toThrow(/google_merchant destination requires/);
+  });
+
+  it("rejects a meta_catalog create missing meta_system_user_token", async () => {
+    await expect(
+      svc.createDestination(T, "test", {
+        type: "meta_catalog", name: "Meta", channel: "default", lang: "it",
+        currency: "EUR", product_url_template: "https://x/p/{slug}",
+        meta_catalog_id: "cat1",
+        // meta_system_user_token intentionally omitted
+      })
+    ).rejects.toThrow(/meta_catalog destination requires/);
+  });
+
+  it("does not require google/meta credentials for a trovaprezzi create", async () => {
+    const created = await svc.createDestination(T, "test", {
+      type: "trovaprezzi", name: "TP", channel: "default", lang: "it",
+      currency: "EUR", product_url_template: "https://x/p/{slug}",
+    });
+    expect(created.destination_id).toMatch(/^fd_/);
   });
 
   it("create does not persist unknown extra keys", async () => {

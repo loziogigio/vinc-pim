@@ -3939,10 +3939,17 @@ const sk = {
       feedUrl: "URL feedu",
       regenerateToken: "Obnoviť token",
       lastRun: "Posledné spustenie",
+      lastRunLine: "ok {{pushed}} / chyby {{failed}}",
       never: "nikdy",
       empty: "Zatiaľ žiadne ciele.",
       loadError: "Ciele sa nepodarilo načítať",
       status: { active: "Aktívny", paused: "Pozastavený", error: "Chyba" },
+      table: {
+        run: "Beh", mode: "Režim", status: "Stav", scanned: "Skenované",
+        pushed: "Odoslané", skipped: "Preskočené", failed: "Zlyhané", deleted: "Vymazané",
+        started: "Spustené", product: "Produkt", error: "Chyba", updated: "Aktualizované",
+      },
+      runStatus: { success: "úspech", partial: "čiastočné", running: "prebieha", failed: "zlyhalo" },
       fields: {
         type: "Typ", name: "Názov", channel: "Predajný kanál", lang: "Jazyk",
         currency: "Mena", productUrlTemplate: "Šablóna URL produktu",

@@ -118,7 +118,10 @@ export default function FeedsPage() {
               <p className="text-xs text-muted-foreground">
                 {t("pages.feeds.lastRun")}:{" "}
                 {d.last_run?.finished_at
-                  ? `${new Date(d.last_run.finished_at).toLocaleString()} — ok ${d.last_run.pushed ?? 0} / ko ${d.last_run.failed ?? 0}`
+                  ? `${new Date(d.last_run.finished_at).toLocaleString()} — ${t("pages.feeds.lastRunLine", {
+                      pushed: String(d.last_run.pushed ?? 0),
+                      failed: String(d.last_run.failed ?? 0),
+                    })}`
                   : t("pages.feeds.never")}
               </p>
               {d.status === "error" && d.status_message && (

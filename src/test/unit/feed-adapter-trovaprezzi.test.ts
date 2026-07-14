@@ -52,4 +52,12 @@ describe("trovaprezzi adapter", () => {
   it("emits an empty Products element for no products", () => {
     expect(buildTrovaPrezziXml([], {})).toContain("<Products></Products>");
   });
+
+  it("floors decimal purchasable quantities to a whole-unit stock count", () => {
+    const decimal = buildTrovaPrezziXml([{ ...FP, quantity: 0.125 }], {});
+    expect(decimal).toContain("<Stock>0</Stock>");
+
+    const whole = buildTrovaPrezziXml([{ ...FP, quantity: 5 }], {});
+    expect(whole).toContain("<Stock>5</Stock>");
+  });
 });

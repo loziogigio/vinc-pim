@@ -1,64 +1,23 @@
 /**
  * Feed Sync Worker — consumes feed-sync-queue jobs and runs the feed
  * engine. Scheduling uses per-destination BullMQ job schedulers
- * (upsertJobScheduler) managed by the destination CRUD service, so no
- * tenant fan-out enumeration is required.
+ * (upsertJobScheduler), managed by the destination CRUD service via
+ * @/lib/queue/feed-sync-schedules, so no tenant fan-out enumeration is
+ * required. Schedule upsert/removal helpers live in that separate module
+ * (not here) so the CRUD service's dynamic import of them never
+ * instantiates this file's live BullMQ Worker inside the web process.
  */
 import { Worker, type Job } from "bullmq";
 import { runFeedSync } from "@/lib/feeds/feed-sync.service";
-import { feedSchedulerId, feedCronPatterns } from "@/lib/feeds/schedule";
 
 const REDIS_HOST = process.env.REDIS_HOST || "localhost";
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379");
-const CRON_TZ = process.env.VINC_CRON_TZ || "Europe/Rome";
 
 export interface FeedSyncJobData {
   tenantDb: string;
   tenantId: string;
   destinationId: string;
   mode: "delta" | "full" | "manual";
-}
-
-export async function upsertFeedSchedules(
-  tenantDb: string,
-  tenantId: string,
-  dest: {
-    destination_id: string;
-    delta_interval_minutes: number;
-    full_reconcile_hour: number;
-    status: string;
-  }
-): Promise<void> {
-  const { feedSyncQueue } = await import("./queues");
-  if (dest.status === "paused") {
-    await removeFeedSchedules(tenantDb, dest.destination_id);
-    return;
-  }
-  const { delta, full } = feedCronPatterns(dest);
-  const base = { tenantDb, tenantId, destinationId: dest.destination_id };
-  await feedSyncQueue.upsertJobScheduler(
-    feedSchedulerId(tenantDb, dest.destination_id, "delta"),
-    { pattern: delta, tz: CRON_TZ },
-    { name: "feed-sync", data: { ...base, mode: "delta" } }
-  );
-  await feedSyncQueue.upsertJobScheduler(
-    feedSchedulerId(tenantDb, dest.destination_id, "full"),
-    { pattern: full, tz: CRON_TZ },
-    { name: "feed-sync", data: { ...base, mode: "full" } }
-  );
-}
-
-export async function removeFeedSchedules(
-  tenantDb: string,
-  destinationId: string
-): Promise<void> {
-  const { feedSyncQueue } = await import("./queues");
-  await feedSyncQueue.removeJobScheduler(
-    feedSchedulerId(tenantDb, destinationId, "delta")
-  );
-  await feedSyncQueue.removeJobScheduler(
-    feedSchedulerId(tenantDb, destinationId, "full")
-  );
 }
 
 async function processJob(job: Job<FeedSyncJobData>) {

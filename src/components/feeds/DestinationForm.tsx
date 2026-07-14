@@ -30,6 +30,31 @@ const EMPTY: DestinationFormValue = {
   delta_interval_minutes: 60, full_reconcile_hour: 2, status: "active",
 };
 
+/**
+ * Module-level so its component identity is stable across parent re-renders.
+ * Defining this inside DestinationForm would give React a brand-new
+ * component type on every keystroke, unmounting/remounting the underlying
+ * <Input> and losing focus/caret position after each character typed.
+ */
+function Field({
+  label,
+  type = "text",
+  value,
+  onChange,
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
 export function DestinationForm({
   destinationId,
   initial,
@@ -101,19 +126,6 @@ export function DestinationForm({
     }
   };
 
-  const F = ({ k, label, type = "text" }: { k: keyof DestinationFormValue; label: string; type?: string }) => (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <Input
-        type={type}
-        value={String(value[k] ?? "")}
-        onChange={(e) =>
-          set(k, (type === "number" ? Number(e.target.value) : e.target.value) as never)
-        }
-      />
-    </div>
-  );
-
   return (
     <div className="max-w-2xl space-y-4">
       <div className="space-y-1">
@@ -130,7 +142,11 @@ export function DestinationForm({
         </select>
       </div>
 
-      <F k="name" label={t("pages.feeds.fields.name")} />
+      <Field
+        label={t("pages.feeds.fields.name")}
+        value={String(value.name ?? "")}
+        onChange={(v) => set("name", v)}
+      />
 
       <div className="space-y-1">
         <Label>{t("pages.feeds.fields.channel")}</Label>
@@ -147,14 +163,36 @@ export function DestinationForm({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <F k="lang" label={t("pages.feeds.fields.lang")} />
-        <F k="currency" label={t("pages.feeds.fields.currency")} />
+        <Field
+          label={t("pages.feeds.fields.lang")}
+          value={String(value.lang ?? "")}
+          onChange={(v) => set("lang", v)}
+        />
+        <Field
+          label={t("pages.feeds.fields.currency")}
+          value={String(value.currency ?? "")}
+          onChange={(v) => set("currency", v)}
+        />
       </div>
-      <F k="product_url_template" label={`${t("pages.feeds.fields.productUrlTemplate")} — {slug} | {entity_code}`} />
+      <Field
+        label={`${t("pages.feeds.fields.productUrlTemplate")} — {slug} | {entity_code}`}
+        value={String(value.product_url_template ?? "")}
+        onChange={(v) => set("product_url_template", v)}
+      />
 
       <div className="grid grid-cols-2 gap-3">
-        <F k="delta_interval_minutes" label={t("pages.feeds.fields.deltaInterval")} type="number" />
-        <F k="full_reconcile_hour" label={t("pages.feeds.fields.fullHour")} type="number" />
+        <Field
+          label={t("pages.feeds.fields.deltaInterval")}
+          type="number"
+          value={String(value.delta_interval_minutes ?? "")}
+          onChange={(v) => set("delta_interval_minutes", Number(v))}
+        />
+        <Field
+          label={t("pages.feeds.fields.fullHour")}
+          type="number"
+          value={String(value.full_reconcile_hour ?? "")}
+          onChange={(v) => set("full_reconcile_hour", Number(v))}
+        />
       </div>
 
       <label className="flex items-center gap-2 text-sm text-foreground">
@@ -168,8 +206,16 @@ export function DestinationForm({
 
       {value.type === "google_merchant" && (
         <>
-          <F k="google_merchant_account_id" label={t("pages.feeds.fields.merchantAccountId")} />
-          <F k="google_data_source" label={t("pages.feeds.fields.dataSource")} />
+          <Field
+            label={t("pages.feeds.fields.merchantAccountId")}
+            value={String(value.google_merchant_account_id ?? "")}
+            onChange={(v) => set("google_merchant_account_id", v)}
+          />
+          <Field
+            label={t("pages.feeds.fields.dataSource")}
+            value={String(value.google_data_source ?? "")}
+            onChange={(v) => set("google_data_source", v)}
+          />
           <div className="space-y-1">
             <Label>{t("pages.feeds.fields.serviceAccountJson")}</Label>
             <textarea
@@ -184,8 +230,17 @@ export function DestinationForm({
 
       {value.type === "meta_catalog" && (
         <>
-          <F k="meta_catalog_id" label={t("pages.feeds.fields.catalogId")} />
-          <F k="meta_system_user_token" label={t("pages.feeds.fields.systemUserToken")} type="password" />
+          <Field
+            label={t("pages.feeds.fields.catalogId")}
+            value={String(value.meta_catalog_id ?? "")}
+            onChange={(v) => set("meta_catalog_id", v)}
+          />
+          <Field
+            label={t("pages.feeds.fields.systemUserToken")}
+            type="password"
+            value={String(value.meta_system_user_token ?? "")}
+            onChange={(v) => set("meta_system_user_token", v)}
+          />
         </>
       )}
 
@@ -201,7 +256,11 @@ export function DestinationForm({
         </div>
       )}
 
-      <F k="notification_email" label={t("pages.feeds.fields.notificationEmail")} />
+      <Field
+        label={t("pages.feeds.fields.notificationEmail")}
+        value={String(value.notification_email ?? "")}
+        onChange={(v) => set("notification_email", v)}
+      />
 
       <div className="space-y-1">
         <Label>{t("common.status")}</Label>

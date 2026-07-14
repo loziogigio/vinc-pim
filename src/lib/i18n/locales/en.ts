@@ -3966,10 +3966,17 @@ const en = {
       feedUrl: "Feed URL",
       regenerateToken: "Regenerate token",
       lastRun: "Last run",
+      lastRunLine: "ok {{pushed}} / errors {{failed}}",
       never: "never",
       empty: "No destinations yet.",
       loadError: "Could not load destinations",
       status: { active: "Active", paused: "Paused", error: "Error" },
+      table: {
+        run: "Run", mode: "Mode", status: "Status", scanned: "Scanned",
+        pushed: "Pushed", skipped: "Skipped", failed: "Failed", deleted: "Deleted",
+        started: "Started", product: "Product", error: "Error", updated: "Updated",
+      },
+      runStatus: { success: "success", partial: "partial", running: "running", failed: "failed" },
       fields: {
         type: "Type", name: "Name", channel: "Sales channel", lang: "Language",
         currency: "Currency", productUrlTemplate: "Product URL template",

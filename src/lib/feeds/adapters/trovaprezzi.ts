@@ -41,7 +41,10 @@ export function buildTrovaPrezziXml(
       if (fp.category_path)
         parts.push(`<Categories>${esc(fp.category_path)}</Categories>`);
       parts.push(`<ShippingCost>${shipping}</ShippingCost>`);
-      parts.push(`<Stock>${fp.quantity}</Stock>`);
+      // TrovaPrezzi expects a whole-unit stock count; this platform allows
+      // decimal purchasable quantities (e.g. 0.125 = 1/8 of a packaging
+      // unit), so floor rather than emit a fraction the feed spec rejects.
+      parts.push(`<Stock>${Math.floor(fp.quantity)}</Stock>`);
       return `<Offer>${parts.join("")}</Offer>`;
     })
     .join("");
