@@ -26,7 +26,7 @@ function fixture(overrides: Record<string, unknown> = {}) {
     ean: ["8001234567890"],
     category: {
       category_id: "c1",
-      name: { it: "Illuminazione" },
+      name: { it: "LED" },
       hierarchy: [{ name: { it: "Casa" } }, { name: { it: "Illuminazione" } }],
     },
     pricing: { list: 25, sale: 19.9, currency: "EUR", vat_included: true },
@@ -47,7 +47,7 @@ describe("buildFeedProduct", () => {
     expect(fp.gtin).toBe("8001234567890");
     expect(fp.brand).toBe("Deodato");
     expect(fp.availability).toBe("in_stock");
-    expect(fp.category_path).toBe("Casa > Illuminazione");
+    expect(fp.category_path).toBe("Casa > Illuminazione > LED");
     expect(fp.condition).toBe("new");
   });
 
@@ -83,6 +83,29 @@ describe("buildFeedProduct", () => {
   it("returns null without a usable title or price", () => {
     expect(buildFeedProduct(fixture({ name: {} }), OPTS)).toBeNull();
     expect(buildFeedProduct(fixture({ pricing: { list: 0 } }), OPTS)).toBeNull();
+  });
+
+  it("prefers channel-specific category and falls back to base category", () => {
+    const withChannelCat = fixture({
+      channel_categories: [
+        {
+          channel_code: "default",
+          category: { name: { it: "Speciale" }, hierarchy: [] },
+        },
+      ],
+    });
+    expect(buildFeedProduct(withChannelCat, OPTS)!.category_path).toBe(
+      "Speciale"
+    );
+    expect(
+      buildFeedProduct(withChannelCat, { ...OPTS, channel: "b2b" })!
+        .category_path
+    ).toBe("Casa > Illuminazione > LED");
+  });
+
+  it("returns null when entity_code is missing or empty", () => {
+    expect(buildFeedProduct(fixture({ entity_code: undefined }), OPTS)).toBeNull();
+    expect(buildFeedProduct(fixture({ entity_code: "" }), OPTS)).toBeNull();
   });
 
   it("hash is stable and changes when content changes", () => {

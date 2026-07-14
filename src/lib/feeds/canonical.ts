@@ -66,10 +66,15 @@ function resolveCategoryPath(
     channelCats?.find((c) => c.channel_code === channel)?.category ??
     (p.category as Record<string, unknown> | undefined);
   if (!cat) return undefined;
+  // hierarchy holds ANCESTORS ONLY (see buildCategoryEmbedding in
+  // category.service.ts) — the leaf category's own name lives in cat.name,
+  // so append it after the ancestor names.
   const hierarchy = cat.hierarchy as { name?: ML }[] | undefined;
-  const names = (hierarchy?.length ? hierarchy : [cat as { name?: ML }])
+  const names = (hierarchy ?? [])
     .map((h) => pickLang(h.name as ML, lang))
     .filter(Boolean);
+  const leaf = pickLang(cat.name as ML, lang);
+  if (leaf && leaf !== names[names.length - 1]) names.push(leaf);
   return names.length ? names.join(" > ") : undefined;
 }
 
@@ -80,13 +85,16 @@ export function buildFeedProduct(
   const title = pickLang(product.name as ML, opts.lang);
   if (!title) return null;
 
+  const entityCode =
+    product.entity_code == null ? "" : String(product.entity_code);
+  if (!entityCode) return null;
+
   const pricing = (product.pricing as Record<string, unknown>) || {};
   const list = Number(pricing.list) || 0;
   if (list <= 0) return null;
   const sale = Number(pricing.sale) || 0;
 
   const slug = pickLang(product.slug as ML, opts.lang);
-  const entityCode = String(product.entity_code);
   const link = opts.productUrlTemplate
     .replace("{slug}", slug || entityCode)
     .replace("{entity_code}", entityCode);
