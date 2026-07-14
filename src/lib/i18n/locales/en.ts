@@ -3976,6 +3976,7 @@ const en = {
         inStockOnly: "Only in-stock products", deltaInterval: "Delta sync every (minutes)",
         fullHour: "Full reconcile at (hour)", notificationEmail: "Alert email",
         shippingCost: "Shipping cost", merchantAccountId: "Merchant account ID",
+        dataSource: "Data source (accounts/{id}/dataSources/{id})",
         serviceAccountJson: "Service account JSON", catalogId: "Catalog ID",
         systemUserToken: "System user token",
       },

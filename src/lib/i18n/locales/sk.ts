@@ -3949,6 +3949,7 @@ const sk = {
         inStockOnly: "Iba skladové produkty", deltaInterval: "Delta sync každých (minút)",
         fullHour: "Úplná rekonciliácia o (hodina)", notificationEmail: "E-mail pre upozornenia",
         shippingCost: "Cena dopravy", merchantAccountId: "ID účtu Merchant",
+        dataSource: "Data source (accounts/{id}/dataSources/{id})",
         serviceAccountJson: "JSON servisného účtu", catalogId: "ID katalógu",
         systemUserToken: "Token systémového používateľa",
       },

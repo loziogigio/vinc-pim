@@ -3973,6 +3973,7 @@ const it = {
         inStockOnly: "Solo prodotti disponibili", deltaInterval: "Sync delta ogni (minuti)",
         fullHour: "Riconciliazione completa alle (ora)", notificationEmail: "Email di allerta",
         shippingCost: "Costo di spedizione", merchantAccountId: "ID account Merchant",
+        dataSource: "Data source (accounts/{id}/dataSources/{id})",
         serviceAccountJson: "JSON service account", catalogId: "ID catalogo",
         systemUserToken: "Token utente di sistema",
       },
