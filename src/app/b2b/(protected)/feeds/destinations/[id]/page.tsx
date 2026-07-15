@@ -14,12 +14,17 @@ export default function EditDestinationPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const pathname = usePathname();
   const [dest, setDest] = useState<Record<string, unknown> | null>(null);
+  const [tenantId, setTenantId] = useState<string>("");
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/b2b/feeds/destinations/${id}`);
     const json = await res.json();
     setDest(json.data ?? null);
+    // Server-authoritative tenant id (top-level sibling of data in the GET
+    // response). In-app navigation lands on UN-prefixed paths (/b2b/...), so
+    // deriving the tenant from the pathname fails there — see feedUrl below.
+    setTenantId(json.tenant_id ?? "");
   }, [id]);
 
   useEffect(() => {
@@ -45,16 +50,16 @@ export default function EditDestinationPage({ params }: { params: Promise<{ id: 
   if (!dest) return <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div>;
 
   const isTrovaprezzi = dest.type === "trovaprezzi";
-  // Tenant id is the first path segment on tenant-prefixed URLs
-  // (/{tenant}/b2b/...). Guard on "/b2b/" following it (rather than a bare
-  // split("/")[1]) so a non-prefixed dev URL like "/b2b/feeds/..." doesn't
-  // misread "b2b" itself as the tenant id — mirrors
+  // Prefer the server-authoritative tenant id from the GET response; fall
+  // back to the tenant-prefixed URL shape (/{tenant}/b2b/...) only if state
+  // is empty. The "/b2b/" guard (rather than a bare split("/")[1]) prevents
+  // misreading "b2b" as the tenant on un-prefixed paths — mirrors
   // Breadcrumbs.getTenantPrefix and the payments gateway page's regex.
-  const tenantMatch = pathname?.match(/^\/([^/]+)\/b2b\//);
-  const tenantId = tenantMatch ? tenantMatch[1] : "";
+  const pathTenant = pathname?.match(/^\/([^/]+)\/b2b\//)?.[1] ?? "";
+  const effectiveTenantId = tenantId || pathTenant;
   const feedUrl =
     isTrovaprezzi && dest.feed_token
-      ? `${typeof window !== "undefined" ? window.location.origin : ""}/api/public/feeds/${String(dest.destination_id)}?tenant=${tenantId}&token=${String(dest.feed_token)}`
+      ? `${typeof window !== "undefined" ? window.location.origin : ""}/api/public/feeds/${String(dest.destination_id)}?tenant=${effectiveTenantId}&token=${String(dest.feed_token)}`
       : null;
 
   return (

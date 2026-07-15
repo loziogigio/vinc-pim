@@ -18,7 +18,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const data = await getDestination(auth.tenantDb, id);
   if (!data) return NextResponse.json({ error: "Destination not found" }, { status: 404 });
-  return NextResponse.json({ success: true, data });
+  // tenant_id rides at the top level (NOT inside the masked destination) so
+  // the edit page can build the public feed URL server-authoritatively —
+  // in-app navigation uses un-prefixed paths, so deriving it client-side
+  // from the pathname is unreliable.
+  return NextResponse.json({ success: true, data, tenant_id: auth.tenantId });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
