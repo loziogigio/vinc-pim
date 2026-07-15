@@ -86,9 +86,17 @@ export const FACET_FIELDS_CONFIG: Record<string, FacetFieldConfig> = {
     label: 'Canale',
   },
 
-  // Promotion type (typed list — more precise than the has_active_promo flag).
-  // Rendered on the storefront sidebar; kept discoverable so admins can re-add it.
+  // Promotion category code (STD, XXX, OMG, …). Superseded on the storefront
+  // sidebar by promo_code (per-campaign); kept discoverable for admins.
   promo_type: {
+    type: 'flat',
+    label: 'Promozione (categoria)',
+  },
+
+  // Per-campaign promotion code (e.g. "26-SUMMER"). This is the storefront
+  // "Promozione" facet — one row per active campaign. Backed by the
+  // multiValued Solr `promo_code` field (already indexed & populated).
+  promo_code: {
     type: 'flat',
     label: 'Promozione',
   },
@@ -260,7 +268,8 @@ export const FILTER_FIELD_MAP: Record<string, string> = {
   tag_groups: 'tag_groups',
   tag_categories: 'tag_categories',
   channels: 'channels',
-  promo_codes: 'promo_codes',
+  promo_code: 'promo_code',
+  promo_codes: 'promo_code', // alias — stale plural kept pointing at the real singular Solr field
   stock_status: 'stock_status',
   status: 'status',
   has_active_promo: 'has_active_promo',
