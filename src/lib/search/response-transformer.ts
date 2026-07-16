@@ -39,6 +39,7 @@ import {
   loadProductTypes,
   loadProductTypesByCode,
   loadTags,
+  loadPromoLabels,
   mergeMediaFromParent,
 } from './response-enricher';
 import { getSolrClient, SolrClient } from './solr-client';
@@ -55,6 +56,7 @@ interface EntityCaches {
   productTypes: Map<string, any>;
   productTypesByCode: Map<string, any>;
   tags: Map<string, any>;
+  promoLabels: Map<string, any>;
 }
 
 // Cache for attribute labels (slug → label per language)
@@ -163,16 +165,17 @@ function extractAttributeSlug(fieldName: string): string | null {
  * @param tenantDb - Tenant database name (e.g., "vinc-hidros-it")
  */
 async function loadEntityCaches(tenantDb: string): Promise<EntityCaches> {
-  const [brands, categories, collections, productTypes, productTypesByCode, tags] = await Promise.all([
+  const [brands, categories, collections, productTypes, productTypesByCode, tags, promoLabels] = await Promise.all([
     loadBrands(tenantDb),
     loadCategories(tenantDb),
     loadCollections(tenantDb),
     loadProductTypes(tenantDb),
     loadProductTypesByCode(tenantDb),
     loadTags(tenantDb),
+    loadPromoLabels(tenantDb),
   ]);
 
-  return { brands, categories, collections, productTypes, productTypesByCode, tags };
+  return { brands, categories, collections, productTypes, productTypesByCode, tags, promoLabels };
 }
 
 /**
@@ -202,6 +205,9 @@ function getEntityData(
     return caches.productTypesByCode.get(value);
   } else if (labelField === 'tags_json') {
     return caches.tags.get(value);
+  } else if (labelField === 'promotions_json') {
+    // Per-campaign promo label, keyed by promo_code (see loadPromoLabels).
+    return caches.promoLabels.get(value);
   }
 
   return undefined;

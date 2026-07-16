@@ -533,6 +533,24 @@ function buildFilterClause(
     if (isWildcardPattern(value)) {
       return `${field}:${escapeFilterValue(value)}`;
     }
+    // Comma-joined multi-select (e.g. "26-FUORI TUTTO,26-SUMMER"). The GET route
+    // splits these upstream, but the POST/proxy path passes filters through
+    // verbatim — so a multi-value string would otherwise be emitted as one
+    // quoted phrase and match nothing. Comma is the platform-wide multi-value
+    // separator (facet values never contain commas), so split into the OR path.
+    if (value.includes(',')) {
+      const parts = value
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (parts.length > 1) {
+        return buildFilterClause(field, parts);
+      }
+      if (parts.length === 1) {
+        return buildFilterClause(field, parts[0]);
+      }
+      return null;
+    }
     if (value.includes(' ') || value.includes(':')) {
       return `${field}:"${escapeQueryChars(value)}"`;
     }

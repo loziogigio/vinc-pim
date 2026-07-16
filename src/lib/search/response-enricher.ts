@@ -136,6 +136,68 @@ export async function loadTags(tenantDb: string): Promise<Map<string, any>> {
   return loadEntityCache(tenantDb, 'tags', 'tag_id');
 }
 
+/**
+ * Load per-campaign promotion labels keyed by promo_code.
+ *
+ * There is no dedicated promotions collection — labels live embedded on each
+ * product (`pimproducts.promotions[].label`, a `{it,en,…}` map). Aggregate the
+ * distinct code→label pairs so facet enrichment can attach a friendly label to
+ * every `promo_code` bucket, independent of the current page's product sample.
+ * TTL-cached (like the entity caches), so the aggregation runs at most once per
+ * cache window per tenant.
+ *
+ * The returned map values mimic an entity doc (`{ label }`) so the shared
+ * `extractEntityLabel` helper resolves the multilingual label unchanged.
+ */
+export async function loadPromoLabels(tenantDb: string): Promise<Map<string, any>> {
+  const now = Date.now();
+  const cacheKey = 'promo_labels';
+
+  const cache = getCache(tenantDb, cacheKey);
+  if (cache && (now - cache.timestamp) < CACHE_TTL_MS) {
+    return cache.data;
+  }
+
+  const connection = await getPooledConnection(tenantDb);
+  const db = connection.db;
+
+  if (!db) {
+    console.warn('[Enricher] MongoDB not connected, skipping promo label enrichment');
+    return new Map();
+  }
+
+  const map = new Map<string, any>();
+  try {
+    const rows = await db
+      .collection('pimproducts')
+      .aggregate([
+        // Live version only — the collection is SCD-2 versioned; mirror the
+        // `isCurrent: true` (camelCase) flag the other pimproducts queries use
+        // (see enrichSearchResults) so we don't unwind millions of old versions.
+        { $match: { isCurrent: true, 'promotions.0': { $exists: true } } },
+        { $unwind: '$promotions' },
+        {
+          $group: {
+            _id: '$promotions.promo_code',
+            label: { $first: '$promotions.label' },
+          },
+        },
+      ])
+      .toArray();
+
+    for (const row of rows) {
+      if (row?._id) {
+        map.set(String(row._id), { label: row.label });
+      }
+    }
+  } catch (error) {
+    console.error('[Enricher] Failed to aggregate promo labels:', error);
+  }
+
+  setCache(tenantDb, cacheKey, { data: map, timestamp: now });
+  return map;
+}
+
 // ============================================
 // MEDIA MERGE FOR VARIANTS
 // ============================================

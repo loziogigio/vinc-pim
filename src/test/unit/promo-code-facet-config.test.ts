@@ -13,6 +13,11 @@ describe('promo_code facet config', () => {
     expect(cfg?.label).toBe('Promozione');
   });
 
+  it('carries a label_field so facet buckets are enriched with campaign labels', () => {
+    const cfg = getFacetConfig('promo_code');
+    expect(cfg?.label_field).toBe('promotions_json');
+  });
+
   it('maps promo_code filter to the real Solr field', () => {
     expect(getFilterField('promo_code')).toBe('promo_code');
   });

@@ -99,6 +99,10 @@ export const FACET_FIELDS_CONFIG: Record<string, FacetFieldConfig> = {
   promo_code: {
     type: 'flat',
     label: 'Promozione',
+    // Enriched server-side with the per-campaign label harvested from
+    // pimproducts.promotions[] (see loadPromoLabels), so every bucket ships a
+    // friendly label ("ESTATE 2026") regardless of the current page's sample.
+    label_field: 'promotions_json',
   },
 
   // Boolean facets
