@@ -7,6 +7,7 @@ exports.useCmsAdminT = useCmsAdminT;
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const i18n_defaults_js_1 = require("./i18n-defaults.js");
+const search_query_js_1 = require("./search-query.js");
 function defaultT(key, params) {
     let s = i18n_defaults_js_1.DEFAULT_STRINGS[key] ?? key;
     // CS's own EN dictionary mixes both interpolation styles ({{param}} in some keys,
@@ -46,9 +47,10 @@ function makeDefaults() {
                 throw new Error('No URL returned from upload');
             return json.url;
         },
-        // Mirrors CS src/components/shared/ProductSearchPreview.tsx's buildSearchBody defaults
-        // (lang/rows/start) and its response unwrapping (`data.data?.results || data.results || []`),
-        // then maps CS's entity_code/cover_image_url fields onto this package's id/image fields.
+        // Mirrors CS src/components/shared/ProductSearchPreview.tsx's buildSearchBody
+        // (advanced-query parsing into `{ text, filters }`, lang/rows/start defaults) and its
+        // response unwrapping (`data.data?.results || data.results || []`), then maps CS's
+        // entity_code/cover_image_url fields onto this package's id/image fields.
         searchProducts: async (query, opts) => {
             const trimmed = query.trim();
             if (!trimmed)
@@ -56,7 +58,7 @@ function makeDefaults() {
             const response = await fetch('/api/search/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lang: 'it', rows: opts?.limit ?? 12, start: 0, text: trimmed }),
+                body: JSON.stringify((0, search_query_js_1.buildSearchBody)(trimmed, opts?.limit ?? 12)),
             });
             if (!response.ok)
                 return [];

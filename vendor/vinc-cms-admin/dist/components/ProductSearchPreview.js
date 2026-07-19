@@ -8,38 +8,7 @@ const lucide_react_1 = require("lucide-react");
 const input_js_1 = require("../ui/input.js");
 const label_js_1 = require("../ui/label.js");
 const adapter_js_1 = require("../adapter.js");
-// ============================================================================
-// Query parsing helpers
-// ============================================================================
-/** Extract keyword + filters from advanced query strings like `shop?text=moon&filters-brand_id=004` */
-function parseAdvancedQuery(raw) {
-    const trimmed = raw.trim();
-    if (!/[?=&]/.test(trimmed))
-        return null;
-    try {
-        const queryString = trimmed.startsWith("shop?")
-            ? trimmed.slice(5)
-            : trimmed.startsWith("search?")
-                ? trimmed.slice(7)
-                : trimmed.replace(/^\?/, "");
-        const params = new URLSearchParams(queryString);
-        const keyword = params.get("text") || "";
-        const filters = [];
-        params.forEach((value, key) => {
-            if (key === "text")
-                return;
-            const normalizedKey = key.startsWith("filters-") ? key.replace(/^filters-/, "") : key;
-            const values = value.split(";").map((item) => item.trim()).filter(Boolean);
-            if (values.length) {
-                filters.push({ key: normalizedKey, values });
-            }
-        });
-        return { keyword, filters };
-    }
-    catch {
-        return null;
-    }
-}
+const search_query_js_1 = require("../search-query.js");
 // ============================================================================
 // Component
 // ============================================================================
@@ -53,7 +22,7 @@ function ProductSearchPreview({ searchQuery, limit, cachedProducts, onSearchChan
         onProductsLoadedRef.current = onProductsLoaded;
     }, [onProductsLoaded]);
     // Parse advanced query for summary display
-    const parsedSearchSummary = (0, react_1.useMemo)(() => parseAdvancedQuery(localQuery), [localQuery]);
+    const parsedSearchSummary = (0, react_1.useMemo)(() => (0, search_query_js_1.parseAdvancedQuery)(localQuery), [localQuery]);
     // Debounced parent notification of query change
     (0, react_1.useEffect)(() => {
         const timer = setTimeout(() => {
