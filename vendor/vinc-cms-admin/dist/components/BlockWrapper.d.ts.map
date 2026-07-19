@@ -1,0 +1,1 @@
+{"version":3,"file":"BlockWrapper.d.ts","sourceRoot":"","sources":["../../src/components/BlockWrapper.tsx"],"names":[],"mappings":"AAMA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,aAAa,CAAC;AAG7C,UAAU,iBAAiB;IACzB,KAAK,EAAE,SAAS,CAAC;IACjB,KAAK,EAAE,MAAM,CAAC;IACd,cAAc,EAAE,MAAM,IAAI,CAAC;CAC5B;AA8GD,eAAO,MAAM,YAAY,GAAI,kCAAkC,iBAAiB,gCA+G/E,CAAC"}

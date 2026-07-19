@@ -1,0 +1,1 @@
+{"version":3,"file":"CarouselBlockSettings.d.ts","sourceRoot":"","sources":["../../src/components/CarouselBlockSettings.tsx"],"names":[],"mappings":"AAQA,UAAU,0BAA0B;IAClC,OAAO,EAAE,MAAM,CAAC;IAChB,MAAM,EAAE,GAAG,CAAC;IACZ,MAAM,EAAE,CAAC,MAAM,EAAE,GAAG,KAAK,IAAI,CAAC;CAC/B;AAED,wBAAgB,qBAAqB,CAAC,EAAE,OAAO,EAAE,MAAM,EAAE,MAAM,EAAE,EAAE,0BAA0B,+BAuK5F"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"FormBlockSettings.d.ts","sourceRoot":"","sources":["../../src/components/FormBlockSettings.tsx"],"names":[],"mappings":"AAMA,OAAO,KAAK,EAAE,eAAe,EAAkC,MAAM,aAAa,CAAC;AAkBnF,UAAU,sBAAsB;IAC9B,MAAM,EAAE,eAAe,CAAC;IACxB,QAAQ,EAAE,CAAC,MAAM,EAAE,eAAe,KAAK,IAAI,CAAC;CAC7C;AAED,eAAO,MAAM,iBAAiB,GAAI,sBAAsB,sBAAsB,gCA+T7E,CAAC"}
