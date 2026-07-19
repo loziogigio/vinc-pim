@@ -181,6 +181,20 @@ describe("integration: B2C Storefronts API", () => {
       expect(data.data.status).toBe("active");
     });
 
+    it("should create storefront without a channel (office store) (201)", async () => {
+      const req = makeReq("/api/b2b/b2c/storefronts", {
+        method: "POST",
+        body: { name: "Office Store", slug: "office-store" },
+      });
+
+      const res = await createStorefrontRoute(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(201);
+      expect(data.success).toBe(true);
+      expect(data.data.slug).toBe("office-store");
+    });
+
     it("should reject missing name (400)", async () => {
       const req = makeReq("/api/b2b/b2c/storefronts", {
         method: "POST",
