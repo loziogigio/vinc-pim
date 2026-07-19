@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CmsAdminClient, type CmsAdminAdapter } from "vinc-cms-admin";
+import { CmsAdminClient } from "vinc-cms-admin";
+import type { CmsAdminAdapter } from "vinc-cms-admin/react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 /** Builds the CS-side adapter for one storefront. Client component hook. */
