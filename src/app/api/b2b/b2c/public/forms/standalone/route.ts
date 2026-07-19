@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAPIKey } from "@/lib/auth/api-key-auth";
-import { getStorefrontByDomain } from "@/lib/services/b2c-storefront.service";
+import { resolvePublicStorefront } from "@/lib/services/b2c-public-resolve";
 import { connectWithModels } from "@/lib/db/connection";
 import { sendEmail } from "@/lib/email";
 import { getHomeSettings } from "@/lib/db/home-settings";
@@ -35,22 +35,9 @@ export async function POST(req: NextRequest) {
     const tenantDb = `vinc-${authResult.tenantId}`;
 
     // 2. Identify storefront
-    const origin = req.headers.get("origin") || req.headers.get("referer");
-    if (!origin) {
-      return NextResponse.json({ error: "Origin header is required" }, { status: 400 });
-    }
-
-    let domain: string;
-    try {
-      domain = new URL(origin).hostname;
-    } catch {
-      return NextResponse.json({ error: "Invalid Origin header" }, { status: 400 });
-    }
-
-    const storefront = await getStorefrontByDomain(tenantDb, domain);
-    if (!storefront) {
-      return NextResponse.json({ error: `No storefront found for domain "${domain}"` }, { status: 404 });
-    }
+    const resolved = await resolvePublicStorefront(req, tenantDb);
+    if ("response" in resolved) return resolved.response;
+    const storefront = resolved.storefront;
 
     // 3. Parse body
     const body = await req.json();
