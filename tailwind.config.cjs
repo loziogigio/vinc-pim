@@ -6,7 +6,8 @@ const { fontFamily } = require("tailwindcss/defaultTheme");
 module.exports = {
   darkMode: ["class"],
   content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}"
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./vendor/vinc-cms-admin/dist/**/*.js"
   ],
   theme: {
     container: {

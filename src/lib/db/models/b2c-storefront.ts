@@ -225,8 +225,8 @@ export interface IB2CStorefront {
   _id?: string;
   name: string;
   slug: string;
-  /** Sales channel code (e.g., "b2c", "b2c-de") — links storefront to its channel */
-  channel: string;
+  /** Sales channel code (e.g., "b2c", "b2c-de") — links storefront to its channel. Optional: office stores have no CS sales channel. */
+  channel?: string;
   /** Structured domains with primary flag */
   domains: IStorefrontDomain[];
   status: StorefrontStatus;
@@ -466,7 +466,7 @@ const B2CStorefrontSchema = new Schema(
     },
     channel: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       lowercase: true,
     },
@@ -537,7 +537,7 @@ const B2CStorefrontSchema = new Schema(
 // ============================================
 
 B2CStorefrontSchema.index({ slug: 1 }, { unique: true });
-B2CStorefrontSchema.index({ channel: 1 }, { unique: true });
+B2CStorefrontSchema.index({ channel: 1 }, { unique: true, sparse: true });
 B2CStorefrontSchema.index({ "domains.domain": 1 });
 B2CStorefrontSchema.index({ status: 1 });
 

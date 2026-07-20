@@ -1,0 +1,1 @@
+{"version":3,"file":"ProductDataTableSettings.d.ts","sourceRoot":"","sources":["../../src/components/ProductDataTableSettings.tsx"],"names":[],"mappings":"AAQA,OAAO,KAAK,EAEV,2BAA2B,EAI5B,MAAM,aAAa,CAAC;AAGrB,UAAU,6BAA6B;IACrC,MAAM,EAAE,2BAA2B,CAAC;IACpC,QAAQ,EAAE,CAAC,MAAM,EAAE,2BAA2B,KAAK,IAAI,CAAC;CACzD;AA8ED,wBAAgB,wBAAwB,CAAC,EAAE,MAAM,EAAE,QAAQ,EAAE,EAAE,6BAA6B,+BA2oB3F"}

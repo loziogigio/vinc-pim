@@ -41,9 +41,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, slug, channel, domains, settings } = body;
 
-    if (!name || !slug || !channel) {
+    if (!name || !slug) {
       return NextResponse.json(
-        { error: "Name, slug, and channel are required" },
+        { error: "Name and slug are required" },
         { status: 400 }
       );
     }

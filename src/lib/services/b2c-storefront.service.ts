@@ -32,8 +32,8 @@ const logPrefix = "[b2c-storefront]";
 export interface CreateStorefrontInput {
   name: string;
   slug: string;
-  /** Sales channel code — mandatory, links storefront to its channel */
-  channel: string;
+  /** Sales channel code — optional, links storefront to its channel. Office stores have no CS sales channel. */
+  channel?: string;
   domains?: (IStorefrontDomain | string)[];
   branding?: IB2CStorefrontBranding;
   header?: IB2CStorefrontHeader;
@@ -124,13 +124,15 @@ export async function createStorefront(
     throw new Error(`Storefront with slug "${input.slug}" already exists`);
   }
 
-  // Check channel uniqueness (one storefront per channel)
-  const channelCode = input.channel.trim().toLowerCase();
-  const channelConflict = await B2CStorefront.findOne({ channel: channelCode }).lean();
-  if (channelConflict) {
-    throw new Error(
-      `Channel "${channelCode}" is already assigned to storefront "${(channelConflict as any).name}"`
-    );
+  // Check channel uniqueness (one storefront per channel) — office stores have no channel
+  const channelCode = input.channel?.trim().toLowerCase() || undefined;
+  if (channelCode) {
+    const channelConflict = await B2CStorefront.findOne({ channel: channelCode }).lean();
+    if (channelConflict) {
+      throw new Error(
+        `Channel "${channelCode}" is already assigned to storefront "${(channelConflict as any).name}"`
+      );
+    }
   }
 
   // Check domain conflicts
@@ -150,7 +152,7 @@ export async function createStorefront(
   const storefront = await B2CStorefront.create({
     name: input.name.trim(),
     slug: input.slug.trim().toLowerCase(),
-    channel: channelCode,
+    ...(channelCode ? { channel: channelCode } : {}),
     domains,
     status: "active",
     branding: input.branding || {},

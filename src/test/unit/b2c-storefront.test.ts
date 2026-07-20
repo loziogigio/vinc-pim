@@ -183,6 +183,30 @@ describe("unit: B2C Storefront Service", () => {
   });
 
   // ============================================
+  // optional channel (office stores)
+  // ============================================
+
+  describe("optional channel (office stores)", () => {
+    it("creates a storefront without a channel", async () => {
+      const sf = await createStorefront(TEST_DB, { name: "Office Store", slug: "office-store-1" });
+      expect(sf.slug).toBe("office-store-1");
+      expect(sf.channel ?? undefined).toBeUndefined();
+    });
+
+    it("allows multiple storefronts without channel (sparse uniqueness)", async () => {
+      await createStorefront(TEST_DB, { name: "A", slug: "office-a" });
+      await expect(createStorefront(TEST_DB, { name: "B", slug: "office-b" })).resolves.toBeTruthy();
+    });
+
+    it("still rejects a duplicate non-empty channel", async () => {
+      await createStorefront(TEST_DB, { name: "C", slug: "with-ch", channel: "b2c-x" });
+      await expect(
+        createStorefront(TEST_DB, { name: "D", slug: "with-ch-2", channel: "b2c-x" })
+      ).rejects.toThrow(/already assigned/);
+    });
+  });
+
+  // ============================================
   // updateStorefront
   // ============================================
 

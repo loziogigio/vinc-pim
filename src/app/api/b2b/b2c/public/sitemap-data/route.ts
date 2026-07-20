@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAPIKey } from "@/lib/auth/api-key-auth";
-import { getStorefrontByDomain } from "@/lib/services/b2c-storefront.service";
+import { resolvePublicStorefront } from "@/lib/services/b2c-public-resolve";
 import { getSitemapData, DEFAULT_ROBOTS_DISALLOW } from "@/lib/services/b2c-sitemap.service";
 
 /**
@@ -44,34 +44,10 @@ export async function GET(req: NextRequest) {
 
     const tenantDb = `vinc-${authResult.tenantId}`;
 
-    // 2. Extract domain from Origin header
-    const origin = req.headers.get("origin") || req.headers.get("referer");
-    if (!origin) {
-      return NextResponse.json(
-        { error: "Origin header is required to identify the storefront" },
-        { status: 400 }
-      );
-    }
-
-    let domain: string;
-    try {
-      const url = new URL(origin);
-      domain = url.hostname;
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid Origin header" },
-        { status: 400 }
-      );
-    }
-
-    // 3. Look up storefront by domain
-    const storefront = await getStorefrontByDomain(tenantDb, domain);
-    if (!storefront) {
-      return NextResponse.json(
-        { error: `No storefront found for domain "${domain}"` },
-        { status: 404 }
-      );
-    }
+    // 2. Resolve storefront (?storefront=<slug> or Origin/Referer domain)
+    const resolved = await resolvePublicStorefront(req, tenantDb);
+    if ("response" in resolved) return resolved.response;
+    const storefront = resolved.storefront;
 
     // 4. Get sitemap data
     const sitemap = await getSitemapData(tenantDb, storefront.slug);
