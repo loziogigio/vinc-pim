@@ -1,4 +1,5 @@
 import type { PageBlock, PageConfig, PageSEOSettings } from './types.js';
+import type { IB2CStorefrontMetaTags, IB2CCustomScript } from './settings/types.js';
 export interface PageItem {
     _id: string;
     slug: string;
@@ -39,10 +40,30 @@ export declare class CmsAdminError extends Error {
     status: number;
     constructor(status: number, message: string);
 }
+/** Storefront record shape returned by GET/PATCH {apiBase} — the settings screen
+ *  only ever reads/writes meta_tags/custom_scripts/custom_css from it, but the
+ *  server may return other fields (name, slug, channel, domains, ...). */
+export interface StorefrontSettingsRecord {
+    name?: string;
+    slug?: string;
+    meta_tags?: IB2CStorefrontMetaTags;
+    custom_scripts?: IB2CCustomScript[];
+    custom_css?: string;
+    [key: string]: unknown;
+}
 export declare class CmsAdminClient {
-    private readonly cfg;
+    /** Host-relative base for one storefront, e.g. "/api/b2b/b2c/storefronts/simani". */
+    readonly apiBase: string;
+    private readonly fetchInit?;
     constructor(cfg: CmsAdminClientConfig);
     private request;
+    /** GET {apiBase} — the storefront's own settings record (name/slug/meta_tags/
+     *  custom_scripts/custom_css/...). Unwraps {success,data}. */
+    getStorefront(): Promise<StorefrontSettingsRecord>;
+    /** PATCH {apiBase} with exactly the given partial record. Callers are expected to
+     *  send only the fields they own (the settings screen sends meta_tags/custom_scripts/
+     *  custom_css — never name/channel/domains, which are the office security contract). */
+    updateStorefront(patch: Partial<StorefrontSettingsRecord>): Promise<StorefrontSettingsRecord>;
     listPages(): Promise<PageItem[]>;
     createPage(input: {
         title: string;

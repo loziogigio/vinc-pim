@@ -1,0 +1,1 @@
+{"version":3,"file":"css-section.d.ts","sourceRoot":"","sources":["../../src/settings/css-section.tsx"],"names":[],"mappings":"AAOA;;;GAGG;AACH,wBAAgB,UAAU,CAAC,EACzB,GAAG,EACH,QAAQ,EACR,MAAM,EACN,MAAM,GACP,EAAE;IACD,GAAG,EAAE,MAAM,CAAC;IACZ,QAAQ,EAAE,CAAC,GAAG,EAAE,MAAM,KAAK,IAAI,CAAC;IAChC,MAAM,EAAE,OAAO,CAAC;IAChB,MAAM,EAAE,MAAM,IAAI,CAAC;CACpB,+BAwCA"}

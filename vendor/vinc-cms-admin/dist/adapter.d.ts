@@ -35,6 +35,13 @@ export interface CmsAdminAdapter {
         title?: string;
         children: ReactNode;
     }>;
+    /** Uploads a generic file (e.g. a JS asset from ScriptsSection) and returns its public
+     *  URL. Optional: when omitted, ScriptsSection's ScriptAssetUpload falls back to POSTing
+     *  its own `scriptUploadEndpoint` FormData request. */
+    uploadFile?: (file: File) => Promise<{
+        url: string;
+        fileName?: string;
+    }>;
 }
 export declare function defaultT(key: string, params?: Record<string, string>): string;
 export declare function CmsAdminProvider({ adapter, children }: {

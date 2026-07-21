@@ -16,4 +16,11 @@ export { ProductSearchPreview, type SearchPreviewProduct } from './components/Pr
 export { PagesListScreen } from './screens/PagesListScreen.js';
 export { PageBuilderScreen } from './screens/PageBuilderScreen.js';
 export { HomeBuilderScreen } from './screens/HomeBuilderScreen.js';
+export { SeoSection } from './settings/seo-section.js';
+export { ScriptsSection } from './settings/scripts-section.js';
+export { CssSection } from './settings/css-section.js';
+export { SitemapSection } from './settings/sitemap-section.js';
+export { SectionCard } from './settings/section-card.js';
+export type { IB2CStorefrontMetaTags, IB2CCustomScript, ScriptPlacement, ScriptLoadingStrategy, IB2BPortalSeoConfig } from './settings/types.js';
+export { StorefrontSettingsScreen, type SettingsSectionId } from './screens/StorefrontSettingsScreen.js';
 //# sourceMappingURL=react.d.ts.map

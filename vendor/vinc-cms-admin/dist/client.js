@@ -11,25 +11,39 @@ class CmsAdminError extends Error {
 exports.CmsAdminError = CmsAdminError;
 class CmsAdminClient {
     constructor(cfg) {
-        this.cfg = cfg;
+        this.apiBase = cfg.apiBase;
+        this.fetchInit = cfg.fetchInit;
     }
     async request(method, path, body) {
-        const headers = new Headers(this.cfg.fetchInit?.headers);
+        const headers = new Headers(this.fetchInit?.headers);
         if (body !== undefined)
             headers.set('Content-Type', 'application/json');
         const init = {
-            ...this.cfg.fetchInit,
+            ...this.fetchInit,
             method,
             cache: 'no-store',
             headers,
             ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
         };
-        const res = await fetch(`${this.cfg.apiBase}${path}`, init);
+        const res = await fetch(`${this.apiBase}${path}`, init);
         if (!res.ok) {
             const errBody = (await res.json().catch(() => ({})));
             throw new CmsAdminError(res.status, errBody.error || `HTTP ${res.status}`);
         }
         return res.json();
+    }
+    /** GET {apiBase} — the storefront's own settings record (name/slug/meta_tags/
+     *  custom_scripts/custom_css/...). Unwraps {success,data}. */
+    async getStorefront() {
+        const envelope = await this.request('GET', '');
+        return envelope.data;
+    }
+    /** PATCH {apiBase} with exactly the given partial record. Callers are expected to
+     *  send only the fields they own (the settings screen sends meta_tags/custom_scripts/
+     *  custom_css — never name/channel/domains, which are the office security contract). */
+    async updateStorefront(patch) {
+        const envelope = await this.request('PATCH', '', patch);
+        return envelope.data;
     }
     async listPages() {
         const envelope = await this.request('GET', '/pages');
