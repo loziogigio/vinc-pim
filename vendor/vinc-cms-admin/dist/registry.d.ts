@@ -55,4 +55,7 @@ export declare const resolveDefaultBlocks: () => PageBlock[];
 export declare const PAGE_BLOCKS: readonly ["hero-full-width", "hero-split", "hero-with-widgets", "carousel-hero", "carousel-products", "carousel-gallery", "content-rich-text", "content-custom-html", "youtubeEmbed", "media-image", "form-contact"];
 /** Block variants available in the home builder (no forms on home). */
 export declare const HOME_PAGE_BLOCKS: ("youtubeEmbed" | "hero-full-width" | "hero-split" | "content-rich-text" | "content-custom-html" | "media-image" | "hero-with-widgets" | "carousel-hero" | "carousel-products" | "carousel-gallery")[];
+/** Blocks available for blog posts (same content set as custom pages).
+ *  Copied verbatim from CS `app/b2b/(builder)/blog-builder/page.tsx`'s BLOG_BLOCKS. */
+export declare const BLOG_BLOCKS: readonly ["hero-full-width", "hero-split", "carousel-gallery", "content-rich-text", "content-custom-html", "youtubeEmbed", "media-image", "form-contact"];
 //# sourceMappingURL=registry.d.ts.map

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HOME_PAGE_BLOCKS = exports.PAGE_BLOCKS = exports.resolveDefaultBlocks = exports.DEFAULT_HOME_BLOCKS = exports.getBlockTemplate = exports.getAllBlockTemplates = exports.BLOCK_REGISTRY = void 0;
+exports.BLOG_BLOCKS = exports.HOME_PAGE_BLOCKS = exports.PAGE_BLOCKS = exports.resolveDefaultBlocks = exports.DEFAULT_HOME_BLOCKS = exports.getBlockTemplate = exports.getAllBlockTemplates = exports.BLOCK_REGISTRY = void 0;
 const heroFullWidthDefault = {
     variant: "fullWidth",
     title: "Welcome to Our Store",
@@ -731,4 +731,10 @@ exports.PAGE_BLOCKS = [
 ];
 /** Block variants available in the home builder (no forms on home). */
 exports.HOME_PAGE_BLOCKS = exports.PAGE_BLOCKS.filter((b) => b !== "form-contact");
+/** Blocks available for blog posts (same content set as custom pages).
+ *  Copied verbatim from CS `app/b2b/(builder)/blog-builder/page.tsx`'s BLOG_BLOCKS. */
+exports.BLOG_BLOCKS = [
+    "hero-full-width", "hero-split", "carousel-gallery",
+    "content-rich-text", "content-custom-html", "youtubeEmbed", "media-image", "form-contact",
+];
 //# sourceMappingURL=registry.js.map

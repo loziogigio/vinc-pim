@@ -1,5 +1,6 @@
 import type { PageBlock, PageConfig, PageSEOSettings, FormBlockConfig } from './types.js';
 import type { IB2CStorefrontMetaTags, IB2CCustomScript } from './settings/types.js';
+import type { BlogPostListItem, BlogTaxonomyItem } from './blog/types.js';
 export interface PageItem {
     _id: string;
     slug: string;
@@ -93,6 +94,18 @@ export interface FormDefinitionInput {
     send_submitter_copy: boolean;
     enabled: boolean;
 }
+/** Full blog-post record returned by GET/PATCH {apiBase}/blog/posts/{id}. Broader than
+ *  BlogPostListItem (per-locale translations, channels, taxonomy ids, …); callers read
+ *  only the fields they need, so the shape is left open. */
+export interface BlogPostRecord {
+    post_id: string;
+    slug: string;
+    channels: string[];
+    [key: string]: unknown;
+}
+/** Blog content template for one post + locale. Same PageConfig the builder store loads
+ *  (the content routes return it un-enveloped, exactly like the page/home template routes). */
+export type BlogContentConfig = PageConfig;
 export declare class CmsAdminClient {
     /** Host-relative base for one storefront, e.g. "/api/b2b/b2c/storefronts/simani". */
     readonly apiBase: string;
@@ -159,5 +172,44 @@ export declare class CmsAdminClient {
     createFormDefinition(input: FormDefinitionInput): Promise<FormDefinitionRecord>;
     updateFormDefinition(slug: string, input: Partial<FormDefinitionInput>): Promise<FormDefinitionRecord>;
     deleteFormDefinition(slug: string): Promise<void>;
+    listBlogPosts(params?: {
+        locale?: string;
+        status?: string;
+        category?: string;
+        tag?: string;
+        q?: string;
+        page?: number;
+        limit?: number;
+    }): Promise<{
+        items: BlogPostListItem[];
+        pagination: Pagination;
+    }>;
+    createBlogPost(input: {
+        title: string;
+        slug?: string;
+        default_locale?: string;
+    }): Promise<{
+        post_id: string;
+        slug: string;
+    }>;
+    getBlogPost(postId: string): Promise<BlogPostRecord>;
+    updateBlogPost(postId: string, patch: Record<string, unknown>): Promise<BlogPostRecord>;
+    deleteBlogPost(postId: string): Promise<void>;
+    getBlogContent(postId: string, locale: string): Promise<BlogContentConfig>;
+    saveBlogDraft(postId: string, locale: string, payload: {
+        blocks: PageBlock[];
+        seo?: PageSEOSettings;
+    }): Promise<BlogContentConfig>;
+    publishBlogContent(postId: string, locale: string, options?: {
+        scheduled_at?: string;
+    }): Promise<BlogContentConfig>;
+    listBlogCategories(): Promise<BlogTaxonomyItem[]>;
+    createBlogCategory(input: Record<string, unknown>): Promise<BlogTaxonomyItem>;
+    updateBlogCategory(id: string, patch: Record<string, unknown>): Promise<BlogTaxonomyItem>;
+    deleteBlogCategory(id: string): Promise<void>;
+    listBlogTags(): Promise<BlogTaxonomyItem[]>;
+    createBlogTag(input: Record<string, unknown>): Promise<BlogTaxonomyItem>;
+    updateBlogTag(id: string, patch: Record<string, unknown>): Promise<BlogTaxonomyItem>;
+    deleteBlogTag(id: string): Promise<void>;
 }
 //# sourceMappingURL=client.d.ts.map
