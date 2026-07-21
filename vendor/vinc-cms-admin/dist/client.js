@@ -99,6 +99,52 @@ class CmsAdminClient {
     async unpublishHomeVersion(version) {
         return this.request('POST', '/home-template/unpublish-version', { version });
     }
+    async listSubmissions(params) {
+        const query = new URLSearchParams();
+        if (params?.page !== undefined)
+            query.set('page', String(params.page));
+        if (params?.limit !== undefined)
+            query.set('limit', String(params.limit));
+        if (params?.form_type)
+            query.set('form_type', params.form_type);
+        if (params?.ip)
+            query.set('ip', params.ip);
+        const qs = query.toString();
+        const envelope = await this.request('GET', `/forms${qs ? `?${qs}` : ''}`);
+        return envelope.data;
+    }
+    async getSubmission(id) {
+        const envelope = await this.request('GET', `/forms/${id}`);
+        return envelope.data;
+    }
+    async setSubmissionSeen(id, seen) {
+        const envelope = await this.request('PATCH', `/forms/${id}`, { seen });
+        return envelope.data;
+    }
+    async deleteSubmission(id) {
+        await this.request('DELETE', `/forms/${id}`);
+    }
+    async listFormDefinitions(params) {
+        const query = new URLSearchParams();
+        if (params?.page !== undefined)
+            query.set('page', String(params.page));
+        if (params?.limit !== undefined)
+            query.set('limit', String(params.limit));
+        const qs = query.toString();
+        const envelope = await this.request('GET', `/form-definitions${qs ? `?${qs}` : ''}`);
+        return envelope.data;
+    }
+    async createFormDefinition(input) {
+        const envelope = await this.request('POST', '/form-definitions', input);
+        return envelope.data;
+    }
+    async updateFormDefinition(slug, input) {
+        const envelope = await this.request('PUT', `/form-definitions/${slug}`, input);
+        return envelope.data;
+    }
+    async deleteFormDefinition(slug) {
+        await this.request('DELETE', `/form-definitions/${slug}`);
+    }
 }
 exports.CmsAdminClient = CmsAdminClient;
 //# sourceMappingURL=client.js.map

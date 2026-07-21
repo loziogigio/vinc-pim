@@ -1,4 +1,4 @@
-import type { PageBlock, PageConfig, PageSEOSettings } from './types.js';
+import type { PageBlock, PageConfig, PageSEOSettings, FormBlockConfig } from './types.js';
 import type { IB2CStorefrontMetaTags, IB2CCustomScript } from './settings/types.js';
 export interface PageItem {
     _id: string;
@@ -51,6 +51,48 @@ export interface StorefrontSettingsRecord {
     custom_css?: string;
     [key: string]: unknown;
 }
+/** Server-side pagination envelope shared by the submissions/definitions list endpoints. */
+export interface Pagination {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+}
+export interface FormSubmissionRecord {
+    _id: string;
+    storefront_slug: string;
+    page_slug?: string;
+    form_block_id?: string;
+    form_type?: 'page_form' | 'standalone';
+    form_definition_slug?: string;
+    order_id?: string;
+    data: Record<string, unknown>;
+    submitter_email?: string;
+    ip_address?: string;
+    seen: boolean;
+    created_at: string;
+}
+export interface FormDefinitionRecord {
+    _id: string;
+    storefront_slug: string;
+    slug: string;
+    name: string;
+    config: FormBlockConfig;
+    notification_emails: string[];
+    send_submitter_copy: boolean;
+    is_system: boolean;
+    enabled: boolean;
+    created_at: string;
+    updated_at: string;
+}
+export interface FormDefinitionInput {
+    name: string;
+    slug?: string;
+    config: FormBlockConfig;
+    notification_emails: string[];
+    send_submitter_copy: boolean;
+    enabled: boolean;
+}
 export declare class CmsAdminClient {
     /** Host-relative base for one storefront, e.g. "/api/b2b/b2c/storefronts/simani". */
     readonly apiBase: string;
@@ -95,5 +137,27 @@ export declare class CmsAdminClient {
     duplicateHomeVersion(version: number): Promise<PageConfig>;
     renameHomeVersion(version: number, label: string): Promise<PageConfig>;
     unpublishHomeVersion(version: number): Promise<PageConfig>;
+    listSubmissions(params?: {
+        page?: number;
+        limit?: number;
+        form_type?: string;
+        ip?: string;
+    }): Promise<{
+        items: FormSubmissionRecord[];
+        pagination: Pagination;
+    }>;
+    getSubmission(id: string): Promise<FormSubmissionRecord>;
+    setSubmissionSeen(id: string, seen: boolean): Promise<FormSubmissionRecord>;
+    deleteSubmission(id: string): Promise<void>;
+    listFormDefinitions(params?: {
+        page?: number;
+        limit?: number;
+    }): Promise<{
+        items: FormDefinitionRecord[];
+        pagination: Pagination;
+    }>;
+    createFormDefinition(input: FormDefinitionInput): Promise<FormDefinitionRecord>;
+    updateFormDefinition(slug: string, input: Partial<FormDefinitionInput>): Promise<FormDefinitionRecord>;
+    deleteFormDefinition(slug: string): Promise<void>;
 }
 //# sourceMappingURL=client.d.ts.map

@@ -23,4 +23,7 @@ export { SitemapSection } from './settings/sitemap-section.js';
 export { SectionCard } from './settings/section-card.js';
 export type { IB2CStorefrontMetaTags, IB2CCustomScript, ScriptPlacement, ScriptLoadingStrategy, IB2BPortalSeoConfig } from './settings/types.js';
 export { StorefrontSettingsScreen, type SettingsSectionId } from './screens/StorefrontSettingsScreen.js';
+export { FormsScreen, type FormsTab } from './screens/FormsScreen.js';
+export { FormDefinitionsTab } from './forms/FormDefinitionsTab.js';
+export { FullScreenModal } from './ui/full-screen-modal.js';
 //# sourceMappingURL=react.d.ts.map
